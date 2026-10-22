@@ -12,15 +12,14 @@ internal sealed class FinanceOverviewViewModel
     public required BudgetYearDetail Year { get; init; }
     public required IReadOnlyList<BudgetYearSummarySnapshot> AllYears { get; init; }
 
-    // Summary data (same logic as public summary, but includes restricted groups)
+    // Unlike the member summary, includes restricted groups.
     public decimal TotalIncome { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
     public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
 
-    /// <summary>Holded actual spend per budget category (keyed by BudgetCategoryId), each row
-    /// carrying the approved purchase docs it sums so the category panel can show them.</summary>
+    /// <summary>Keyed by BudgetCategoryId.</summary>
     public IReadOnlyDictionary<Guid, HoldedActualRow> HoldedActualsByCategory { get; init; } =
         new Dictionary<Guid, HoldedActualRow>();
 }
@@ -73,9 +72,7 @@ internal sealed class BudgetSummaryViewModel
     public bool IsCoordinator { get; init; }
 }
 
-/// <summary>
-/// Represents a virtual VAT cash flow entry computed from a line item with VatRate > 0.
-/// </summary>
+/// <summary>A virtual VAT cash flow entry for a line item with VatRate &gt; 0.</summary>
 internal sealed class VatProjection
 {
     public required string SourceDescription { get; init; }
@@ -84,10 +81,7 @@ internal sealed class VatProjection
     public int VatRate { get; init; }
     public bool IsExpense { get; init; }
 
-    /// <summary>
-    /// View-model shaping only — the tax math (VAT portion, settlement date) is
-    /// Finance's <see cref="VatCalculation"/>. Ordered by settlement date.
-    /// </summary>
+    /// <summary>Shaping only: the tax math is Finance's <see cref="VatCalculation"/>. Ordered by settlement date.</summary>
     public static List<VatProjection> ForLineItems(IEnumerable<BudgetCategoryLineItemSnapshot> lineItems) =>
         [.. lineItems
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)

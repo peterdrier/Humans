@@ -3,11 +3,7 @@ using NodaTime;
 
 namespace Humans.Shifts.Models;
 
-/// <summary>
-/// Server-side period↔date-range mutex.
-/// Dates filter only when period is null; once a preset period is selected,
-/// explicit dates are ignored so the URL has one source of truth.
-/// </summary>
+/// <summary>A selected period ignores explicit dates, so the URL has one source of truth.</summary>
 internal static class ShiftFilterResolver
 {
     internal static (LocalDate? activeStart, LocalDate? activeEnd) Resolve(
@@ -19,9 +15,7 @@ internal static class ShiftFilterResolver
             datesAreFilter ? filterEndDate : null);
     }
 
-    /// <summary>
-    /// Maps a preset period to its inclusive date range; null covers Build through Strike.
-    /// </summary>
+    /// <summary>Inclusive; null covers Build through Strike.</summary>
     internal static (LocalDate From, LocalDate To) ResolvePeriodRange(ShiftPeriod? period, BurnSettingsInfo es) =>
         period switch
         {

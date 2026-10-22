@@ -4,28 +4,20 @@ using Humans.Gate.Services;
 
 namespace Humans.Gate.Models;
 
-/// <summary>The visual state of a gate result card — drives colour and layout.</summary>
 internal enum GateCardKind
 {
-    /// <summary>Green — admitted.</summary>
     Admit,
 
-    /// <summary>Red — turned away.</summary>
     Stop,
 
-    /// <summary>Blue-grey question — valid ticket, agent must confirm the photo ID (Yes/No).</summary>
     IdConfirm,
 
-    /// <summary>Amber — can't decide automatically; supervisor / name search.</summary>
     Amber,
 }
 
 /// <summary>
-/// Gate result card view model. Deliberately projected to <b>name + verdict + one
-/// reason line only</b> — Early-Entry source, the previous scanner's identity, and
-/// internal GUIDs stay server-side and never reach the tablet (privacy review I2).
-/// Built from the service DTOs by the factory methods below so the controller
-/// holds no mapping logic.
+/// Name, verdict and one reason line only: the Early Entry source, the previous scanner and internal ids never reach
+/// the tablet (privacy).
 /// </summary>
 internal sealed record GateScanCardViewModel(
     GateCardKind Kind,
@@ -37,7 +29,6 @@ internal sealed record GateScanCardViewModel(
     bool AllowChildWithAdult,
     bool AllowSupervisorOverride = false)
 {
-    /// <summary>Map a live (pre-ID) evaluation to a card.</summary>
     public static GateScanCardViewModel FromEvaluation(GateScanResult r) => r.Outcome switch
     {
         GatePreCheckOutcome.Invalid =>
@@ -46,20 +37,16 @@ internal sealed record GateScanCardViewModel(
             new(GateCardKind.Stop, "Stop", r.GuestName, "Already scanned — ticket already used", false, r.Barcode, false),
         GatePreCheckOutcome.CutoffNotConfigured =>
             new(GateCardKind.Amber, "Supervisor", r.GuestName, "Gate cutoff not set — get a supervisor", false, r.Barcode, false),
-        // Too early: tell the supervisor WHICH case it is (holds a later-day EE grant, vs no grant at
-        // all), and offer a supervisor override either way (the reason is what informs the decision).
+        // Say which case it is (a later-day EE grant, or none); that informs the override decision.
         GatePreCheckOutcome.TooEarly =>
             new(GateCardKind.Stop, "Stop", r.GuestName, TooEarlyReason(r), false, r.Barcode, false, AllowSupervisorOverride: true),
-        // Early Entry unknown: the search-by-name fallback stays the primary route, but the card
-        // is otherwise a dead end at the doors — offer the supervisor override here too.
+        // Name search stays the main route, but offer the override too or the card is a dead end at the doors.
         GatePreCheckOutcome.EarlyEntryUnknown =>
             new(GateCardKind.Amber, "Supervisor", r.GuestName, "Early Entry can't be confirmed — search by name", false, r.Barcode, false, AllowSupervisorOverride: true),
-        // NeedsIdCheck / NeedsIdCheckEarly → ask the agent to confirm the ID.
         _ => new(GateCardKind.IdConfirm, "Does the ID say", r.GuestName,
             r.IsEarly ? "Early entry OK" : null, r.IsEarly, r.Barcode, AllowChildWithAdult: true),
     };
 
-    /// <summary>Map a recorded decision to a final card.</summary>
     public static GateScanCardViewModel FromDecision(GateDecisionResult d, string barcode) => d.Verdict switch
     {
         GateVerdict.AdmittedEarlyOverride =>
@@ -79,11 +66,7 @@ internal sealed record GateScanCardViewModel(
         _ => new(GateCardKind.Stop, "Stop", d.GuestName, "Not a valid ticket for this gate", false, barcode, false),
     };
 
-    /// <summary>
-    /// The precise too-early reason. A holder with a <em>later-day</em> Early Entry grant
-    /// (e.g. a Friday EE ticket scanned on Wednesday) reads differently from one with no grant
-    /// at all — the supervisor needs that distinction to decide on an override. Date only.
-    /// </summary>
+    /// <summary>Date only, never the EE source.</summary>
     private static string TooEarlyReason(GateScanResult r) =>
         r.EarliestEntryDate is { } early
             ? $"Early entry from {early.ToWeekdayDayMonth()}{(r.Today is { } today ? $" — today is {today.ToWeekdayDayMonth()}" : string.Empty)}"
@@ -92,48 +75,30 @@ internal sealed record GateScanCardViewModel(
                 : "Too early — no early entry grant";
 }
 
-/// <summary>The scan page shell. <paramref name="CutoffConfigured"/> drives a loud
-/// warning banner: while the general-entry cutoff is unset, every scan fails safe to
-/// AMBER, so the terminal tells staff to have an admin set it before doors.</summary>
+/// <summary><paramref name="CutoffConfigured"/> drives the banner telling staff to have the cutoff set before doors.</summary>
 internal sealed record GateIndexViewModel(string DataAsOf, bool CutoffConfigured);
 
-/// <summary>Gate settings admin form.</summary>
 internal sealed record GateSettingsViewModel(
     string GeneralEntryOpensAtUtc,
-    // Validation metadata must target the record's constructor PARAMETER, not the generated
-    // property — ASP.NET throws at POST-bind time for a record with property-level validation.
+    // Validation must target the constructor parameter: ASP.NET throws at bind time on a record with property-level
+    // validation.
     [param: System.ComponentModel.DataAnnotations.Range(0, 21,
         ErrorMessage = "Minor age threshold must be between 0 and 21.")] int MinorAgeThresholdYears);
 
-/// <summary>
-/// The "Who is scanning?" claim screen. <see cref="Roster"/> is a one-tap quick-pick of
-/// people signed up for the gate shift roster (empty unless <c>Gate:RosterTeamId</c> is
-/// configured and that team has signups); the search box below it always finds anyone
-/// — including helpers who aren't rostered.
-/// </summary>
 internal sealed record GateClaimViewModel(IReadOnlyList<GateRosterMember> Roster);
 
-/// <summary>One pre-filled roster pick on the claim screen.</summary>
 internal sealed record GateRosterMember(Guid UserId, string DisplayName);
 
-/// <summary>What the PIN keypad is for.</summary>
 internal enum GatePinMode
 {
-    /// <summary>First use — choose a new 4-digit PIN.</summary>
     Set,
 
-    /// <summary>Returning — enter the existing PIN to take over the scanner.</summary>
     Verify,
 }
 
-/// <summary>The full-screen PIN keypad shown after a name is picked on the claim screen.</summary>
 internal sealed record GatePinViewModel(Guid UserId, string DisplayName, GatePinMode Mode, string? Error)
 {
-    /// <summary>
-    /// Resolve the keypad mode from the server-derived PIN status (never a client-supplied hint):
-    /// has a PIN → Verify; otherwise Set. Everyone — supervisors included — may self-enrol a claim
-    /// PIN; it attributes scans only, never authorizes an override (that stays admin-enrolled).
-    /// </summary>
+    /// <summary>From the server-derived status, never a client hint. A self-set claim PIN attributes scans only.</summary>
     public static GatePinViewModel ForClaim(Guid userId, string displayName, GatePinStatus status, string? error = null) =>
         new(userId, displayName, status.HasPin ? GatePinMode.Verify : GatePinMode.Set, error);
 }

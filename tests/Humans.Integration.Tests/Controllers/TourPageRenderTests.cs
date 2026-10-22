@@ -6,9 +6,8 @@ using Xunit;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// Renders the Tour section's public page: the standing proof that a table-less section RCL
-/// routes, resolves its own layout (_TourLayout), and renders — the failure modes are a 404
-/// (controller not discovered) or a 200 with literal markup (missing _ViewImports line).
+/// Proves a table-less section RCL routes, resolves its own <c>_TourLayout</c> and renders. Failures are a 404
+/// (controller not discovered) or a 200 with literal markup (missing <c>_ViewImports</c> line).
 /// </summary>
 public class TourPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {

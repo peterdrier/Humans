@@ -41,7 +41,7 @@ internal sealed class VolunteerTrackingService(
     public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default)
     {
-        // EF can't translate List<int>.Contains over jsonb; load all and filter in memory (small user base).
+        // EF can't translate List<int>.Contains over jsonb, so filter in memory.
         var all = await trackingRepo.GetAvailabilityForEventAsync(eventSettingsId, ct: ct);
         return all
             .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
@@ -370,7 +370,7 @@ internal sealed class VolunteerTrackingService(
 
         if (trimmed is { Count: > 0 })
         {
-            // Fresh DbContext per call → safe to fan out concurrently.
+            // Audit writes through a fresh context per call, so the fan-out is safe.
             await Task.WhenAll(trimmed.Select(dayOffset =>
                 audit.LogAsync(
                     AuditAction.VolunteerDayOffCleared,

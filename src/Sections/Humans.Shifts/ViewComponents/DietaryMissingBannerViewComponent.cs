@@ -5,11 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// Renders a gentle dietary-info prompt on /Shifts and /Shifts/Mine when the user has a
-/// qualifying cantina signup and Cantina has neither a preference nor an "I don't want to answer"
-/// on file. It never blocks a signup. The visibility gate lives inside the
-/// component so callers can invoke it unconditionally.
-/// Spec: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md
+/// Never blocks a signup. The visibility gate lives inside, so callers invoke it unconditionally. Spec:
+/// <c>src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md</c>.
 /// </summary>
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
@@ -45,7 +42,7 @@ public sealed class DietaryMissingBannerViewComponent : ViewComponent
         }
         catch (Exception ex)
         {
-            // A banner-fetch failure shouldn't crash /Shifts — log and render nothing.
+            // A banner failure must not crash /Shifts.
             _logger.LogError(ex, "Failed to evaluate dietary banner for user {UserId}", userId);
             return Content(string.Empty);
         }

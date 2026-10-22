@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.MailerLite.Services.Dtos;
 
-/// <summary>
-/// Read-only projection of a MailerLite subscriber row. Excludes engagement
-/// metrics and IP fields by design — GDPR scope minimisation.
-/// </summary>
+/// <summary>Engagement metrics and IP fields are left out on purpose: GDPR minimisation.</summary>
 internal sealed record MailerLiteSubscriber(
     string Id,
     string Email,
@@ -22,9 +19,8 @@ internal sealed record MailerLiteSubscriber(
         new(StringComparer.OrdinalIgnoreCase) { "unsubscribed", "bounced", "junk" };
 
     /// <summary>
-    /// MailerLite will not deliver to this address, so no group may hold it. The one
-    /// definition of that rule: the sync, the dashboard stats and the debug preview all read
-    /// it here, so a preview can never disagree with the apply about who gets excluded.
+    /// The one definition of "MailerLite won't deliver here": sync, stats and the debug preview all read it, so a
+    /// preview can't disagree with the apply.
     /// </summary>
     public bool IsSuppressed => SuppressedStatuses.Contains(Status);
 }

@@ -5,11 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
 
-/// <summary>
-/// The member dashboard's assembly-votes card. Renders only while at least one vote is open,
-/// for every logged-in member — a member who is not on the roster still sees that the
-/// association is deciding something (Docs/features/assembly-votes.md, decision 8).
-/// </summary>
+/// <summary>Renders only while a vote is open, for every member — on the roster or not.</summary>
 internal sealed class AssemblyVotesCardViewComponent(IAssemblyVoteService votes) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

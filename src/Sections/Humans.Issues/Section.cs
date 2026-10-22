@@ -15,10 +15,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Issues;
 
 /// <summary>
-/// Issues' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix. No caching decorator: the service
-/// owns the per-viewer nav-badge count cache itself and evicts it on every count-shifting
-/// write (memory/code/viewcomponent-no-cache.md).
+/// No caching decorator: the service owns the per-viewer badge count cache and evicts it on every count-shifting
+/// write.
 /// </summary>
 public sealed class Section : ISection
 {
@@ -26,14 +24,9 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");
 
-        // Singleton + IDbContextFactory so the repository owns context lifetime.
         services.AddSingleton<IIssuesRepository, IssuesRepository>();
 
-        // The queue routing table, assembled from what every section declared through
-        // IIssueQueueOwner — Issues names no section.
         services.AddSingleton<IssueSectionRouting>();
-        // Issues owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<IssuesEmails>();
         services.AddScoped<IEmailPreviewContributor, IssuesEmailPreviews>();
 
@@ -41,11 +34,8 @@ public sealed class Section : ISection
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssueTriage>(sp => sp.GetRequiredService<IssuesService>());
-        // Owns the user-scoped issues / issue_comments tables → GDPR export contributor.
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesService>());
 
-        // Resource-based handler for IssuesOperationRequirement.Handle. The *policies*
-        // register through ISectionPolicies when the section owns them; shared platform policies stay in Shell.
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         services.AddScoped<CleanupIssuesJob>();

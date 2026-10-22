@@ -24,18 +24,14 @@ internal sealed class WorkgroupConfiguration : IEntityTypeConfiguration<Workgrou
         b.Property(w => w.HoldedAccountId).HasMaxLength(64);
         b.Property(w => w.DiscordChannelUrl).HasMaxLength(500);
         b.Property(w => w.Reasons).HasMaxLength(4000);
-        // AppliedByUserId is a bare cross-section reference: no FK, no navigation.
         b.Property(w => w.AppliedAt).IsRequired();
         b.Property(w => w.CreatedAt).IsRequired();
         b.Property(w => w.UpdatedAt).IsRequired();
 
-        // Plain, not unique: uniqueness on a user-editable string is forbidden
-        // (memory/architecture/unique-constraints-ids-only.md). ReserveSlugAsync in the
-        // service is where slug collisions are resolved, on apply and on rename.
+        // Plain, not unique: no unique constraints on user-editable strings. ReserveSlugAsync resolves collisions.
         b.HasIndex(w => w.Slug);
         b.HasIndex(w => w.Status);
-        // One group per folder: a second claim on the same folder would make two sections'
-        // expected access fight each other in the Drive fan-out.
+        // One group per folder: two claims on one folder would make their expected access fight in the Drive fan-out.
         b.HasIndex(w => w.DriveFolderId).IsUnique().HasFilter("\"DriveFolderId\" IS NOT NULL");
     }
 }

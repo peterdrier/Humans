@@ -186,13 +186,10 @@ public class AgentPromptAssemblerTests
 
         var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
 
-        // First 10 entries rendered.
         tail.Should().Contain("Rota 0");
         tail.Should().Contain("Rota 9");
-        // Entries beyond cap not in body.
         tail.Should().NotContain("Rota 10");
         tail.Should().NotContain("Rota 11");
-        // Overflow marker present.
         tail.Should().Contain("+2 more");
     }
 

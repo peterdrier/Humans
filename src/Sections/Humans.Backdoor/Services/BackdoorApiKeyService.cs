@@ -20,7 +20,6 @@ internal sealed class BackdoorApiKeyService(
     IClock clock,
     ILogger<BackdoorApiKeyService> logger) : IBackdoorApiKeyService, IUserDataContributor, IUserMerge
 {
-    /// <summary>GDPR export JSON key for this contributor's data.</summary>
     internal const string BackdoorApiKeys = "BackdoorApiKeys";
 
     /// <summary>Human-readable marker so a leaked key is recognisable in a log or a paste.</summary>
@@ -32,8 +31,8 @@ internal sealed class BackdoorApiKeyService(
     /// <summary>Leading characters kept in the clear so a human can tell their rows apart.</summary>
     private const int DisplayPrefixLength = 12;
 
-    /// <summary>Matches the <c>varchar(100)</c> Label column, so an over-long label is a
-    /// validation message rather than a Postgres error from the insert.</summary>
+    /// <summary>Matches the <c>varchar(100)</c> column, so an over-long label is a validation message, not an insert
+    /// error.</summary>
     private const int MaxLabelLength = 100;
 
     public async Task<BackdoorKeyIssueResult> IssueAsync(
@@ -115,15 +114,10 @@ internal sealed class BackdoorApiKeyService(
             eligibleOwners.Contains(k.UserId)))];
     }
 
-    /// <summary>Resolves an active key whose owner remains eligible.</summary>
-    /// <remarks>
-    /// Eligibility is re-checked here, not just at issue time: an Admin or Board assignment
-    /// can expire, be revoked, or be swept by <c>RevokeAllActiveAsync</c> when the account
-    /// requests deletion, the account itself can be suspended, and a key that outlived
-    /// either would otherwise keep working.
-    /// Refusal is deliberate rather than auto-revocation — a restored role restores the key,
-    /// and a transient gap must not destroy a credential.
-    /// </remarks>
+    /// <summary>
+    /// Refused, not auto-revoked: a role can expire or be revoked and an account suspended, but a restored role
+    /// restores the key, and a transient gap must not destroy a credential.
+    /// </summary>
     public async Task<BackdoorKeyOwner?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(presentedKey)) return null;
@@ -145,11 +139,8 @@ internal sealed class BackdoorApiKeyService(
     }
 
     /// <summary>
-    /// Who may hold a working key: a full Admin or a Board member whose account still has
-    /// app access. The account-state half is not redundant with the role half — suspension
-    /// (<c>HumanLifecycleService.SuspendAsync</c>) moves <c>users.State</c> and deliberately
-    /// leaves role assignments standing, so a role-only test would keep authenticating a
-    /// suspended admin's key while the rest of the app shows them the account-status wall.
+    /// The state check is not redundant: suspension moves <c>users.State</c> and leaves role assignments standing, so a
+    /// role-only test would keep a suspended admin's key working.
     /// </summary>
     private async Task<BackdoorKeyOwner?> GetEligibleOwnerAsync(Guid userId, CancellationToken ct)
     {
@@ -200,9 +191,7 @@ internal sealed class BackdoorApiKeyService(
     private static string NewPlaintext() =>
         KeyPrefix + Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(KeyEntropyBytes));
 
-    // ── User-data fan-outs (design-rules §8a) ───────────────────────────────
-    // backdoor_api_keys is user-keyed, so the section owes Article 15, Article 17 and the
-    // account-merge fold. The hash is never exported: it is the credential itself.
+    // The hash is never exported: it is the credential itself.
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -231,18 +220,10 @@ internal sealed class BackdoorApiKeyService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>
-    /// Keys the person owned are hard-deleted — a machine credential has no basis to outlive
-    /// its owner — and they are detached as the creator or revoker of anyone else's key, so
-    /// nothing of them survives on a row that is not theirs.
-    /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.EraseForUserAsync(userId, ct);
 
-    /// <summary>
-    /// Folds the eliminated account's keys onto the survivor. A key whose new owner holds
-    /// neither role simply stops authenticating — <see cref="ResolveOwnerAsync"/> re-checks.
-    /// </summary>
+    /// <summary>A key whose new owner holds neither role stops authenticating: <see cref="ResolveOwnerAsync"/> re-checks.</summary>
     public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, ct);

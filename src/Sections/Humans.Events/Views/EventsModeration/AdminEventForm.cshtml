@@ -196,7 +196,7 @@
     <partial name="_EventCharacterCounters" />
     <script>
         (function () {
-            // All-day toggle (individual events only)
+            // Individual events only.
             var allDayCheck = document.getElementById('IsAllDay');
             var startTimeField = document.getElementById('startTimeField');
             var durationField = document.getElementById('durationField');
@@ -213,7 +213,6 @@
                 applyAllDay();
             }
 
-            // Recurrence days toggle
             var recurringCheck = document.getElementById('IsRecurring');
             var recSection = document.getElementById('recurrence-days-section');
             var recHidden = document.getElementById('RecurrenceDaysHidden');

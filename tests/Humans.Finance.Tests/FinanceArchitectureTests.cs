@@ -4,9 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Finance.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Finance.
-/// </summary>
 public class FinanceArchitectureTests
 {
     [HumansFact]

@@ -38,13 +38,9 @@ public sealed class TeamPaletteTests
         var id = Guid.Parse("abcd1234-5678-9abc-def0-123456789abc");
         TeamPalette.ColorFor(id).Should().Be("#" + ExpectedHexForGuidD(id));
 
-        // Helper to make the lock explicit. If you change the hash algorithm,
-        // update this expected value AND document why in the commit.
         static string ExpectedHexForGuidD(Guid id)
         {
-            // Pre-computed expected color for this specific Guid + the documented palette.
-            // Captured from the impl on 2026-05-24; if the hash or palette changes this
-            // must be regenerated and the change explained in the commit.
+            // Captured from the impl; a hash or palette change must regenerate it and say why in the commit.
             _ = id;
             return "637939";
         }

@@ -5,138 +5,57 @@ using Humans.Base.Interfaces.Repositories;
 
 namespace Humans.Notifications.Data;
 
-/// <summary>
-/// Repository for the Notifications section's tables: <c>notifications</c>
-/// and <c>notification_recipients</c>. The only non-test file that touches
-/// those DbSets.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
-/// so the repository can be registered as Singleton while
-/// <c>NotificationsDbContext</c> remains Scoped.
-/// </para>
-/// <para>
-/// Read methods never <c>.Include</c> cross-domain navigation properties.
-/// Callers look up the resolver's display name via
-/// <c>IUserService.GetUserInfosAsync</c> and stitch them in memory.
-/// </para>
-/// </remarks>
 internal interface INotificationRepository : IRepository
 {
-    // ==========================================================================
-    // Writes — notifications
-    // ==========================================================================
-
-    /// <summary>
-    /// Persists a batch of individually-targeted notifications (one per user,
-    /// each with a single recipient row) in a single SaveChanges.
-    /// </summary>
     Task AddRangeAsync(IReadOnlyList<Notification> notifications, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a single shared notification (multiple recipients) in a
-    /// single SaveChanges.
-    /// </summary>
     Task AddAsync(Notification notification, CancellationToken ct = default);
 
     /// <summary>
-    /// Marks the notification resolved (sets <c>ResolvedAt</c> and
-    /// <c>ResolvedByUserId</c>) if it exists, the actor is a recipient, and its class matches the service
-    /// policy. An already resolved matching row succeeds without a write. Returns the outcome along with the list
-    /// of recipient user ids for cache invalidation.
+    /// Only when the actor is a recipient and the class matches; an already resolved row succeeds without a write.
+    /// Returns the recipient ids for cache invalidation.
     /// </summary>
     Task<NotificationMutationOutcome> ResolveAsync(
         Guid notificationId, Guid actorUserId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks the recipient row read if the recipient exists and is not
-    /// already read. Returns (true, NotFound=false) when the recipient
-    /// exists (whether or not it was already read) and (false, NotFound=true)
-    /// when no such recipient exists.
-    /// </summary>
+    /// <summary>Succeeds whether or not the row was already read; NotFound when there is no recipient row.</summary>
     Task<NotificationMutationOutcome> MarkReadAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks every unread recipient row for the user as read. Returns the
-    /// number of rows updated.
-    /// </summary>
     Task<int> MarkAllReadAsync(Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Bulk-resolves the subset of <paramref name="notificationIds"/> that
-    /// match the service-selected class, are unresolved, and include the user as a recipient.
-    /// Returns the recipient user ids affected across all updated
-    /// notifications for cache invalidation.
+    /// Only unresolved rows of the service-selected class with the user as a recipient. Returns the affected
+    /// recipient ids for cache invalidation.
     /// </summary>
     Task<IReadOnlyList<Guid>> BulkResolveAsync(
         IReadOnlyList<Guid> notificationIds, Guid userId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
 
-    /// <summary>
-    /// Click-through: marks the recipient row read if needed and returns
-    /// the notification's <c>ActionUrl</c>. Returns (null ActionUrl, NotFound)
-    /// if the recipient does not exist.
-    /// </summary>
+    /// <summary>Marks the row read if needed. NotFound when there is no recipient row.</summary>
     Task<ClickThroughOutcome> ClickThroughAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Resolves every unresolved notification of the given source that the
-    /// user is a recipient of. Used when the underlying condition is fixed
-    /// (e.g., AccessSuspended → consents completed).
-    /// </summary>
     Task<bool> ResolveBySourceAsync(
         Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null);
 
     /// <summary>
-    /// Resolves every unresolved notification matching both <paramref name="source"/>
-    /// and <paramref name="sourceKey"/> (the source-entity correlation key), across
-    /// all recipients. Used when the underlying entity reaches a terminal state
-    /// (e.g., an issue is resolved → its IssueSubmitted alerts clear for everyone).
-    /// Returns the distinct recipient user ids affected, for badge cache invalidation.
-    /// <paramref name="resolvedByUserId"/> attributes the resolution (e.g. the actor
-    /// who closed the issue); null when system-driven with no actor.
+    /// Across all recipients. Returns the distinct affected recipient ids. A null
+    /// <paramref name="resolvedByUserId"/> means no actor.
     /// </summary>
     Task<IReadOnlyList<Guid>> ResolveBySourceKeyAsync(
         NotificationSource source, string sourceKey, Instant now,
         Guid? resolvedByUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes all unresolved notifications whose <c>Source</c> is in
-    /// <paramref name="sources"/>. Used by <c>CleanupNotificationsJob</c> to purge
-    /// retired-source rows (currently ApplicationSubmitted / ConsentReviewNeeded)
-    /// that are no longer emitted and have no resolution path. Returns rows deleted
-    /// and affected recipient user IDs for post-write badge invalidation.
-    /// </summary>
+    /// <summary>For retired sources: nothing emits them and nothing can resolve them.</summary>
     Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)> DeleteUnresolvedBySourcesAsync(
         IReadOnlyList<NotificationSource> sources, CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes resolved notifications whose <c>ResolvedAt</c> is earlier
-    /// than <paramref name="resolvedCutoff"/>. Returns the number of rows
-    /// deleted. Used by <c>CleanupNotificationsJob</c>.
-    /// </summary>
     Task<int> DeleteResolvedOlderThanAsync(Instant resolvedCutoff, CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes unresolved informational notifications whose <c>CreatedAt</c>
-    /// is earlier than <paramref name="createdCutoff"/>. Returns the number
-    /// of rows deleted and affected recipient user IDs for post-write badge invalidation.
-    /// Used by <c>CleanupNotificationsJob</c>.
-    /// </summary>
     Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)> DeleteUnresolvedInformationalOlderThanAsync(
         Instant createdCutoff, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Reads — inbox / popup
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the recipient rows visible in a user's inbox under the given
-    /// tab/filter/search criteria, with the full parent <c>Notification</c>
-    /// entity (but no cross-domain navigations). Unordered — callers sort.
-    /// </summary>
+    /// <summary>Unordered: callers sort.</summary>
     Task<IReadOnlyList<NotificationRecipient>> GetInboxAsync(
         Guid userId,
         string? search,
@@ -145,44 +64,25 @@ internal interface INotificationRepository : IRepository
         Instant resolvedCutoff,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every unresolved recipient row for a user with the parent
-    /// <c>Notification</c>, unordered — the controller sorts. Used by the popup.
-    /// </summary>
+    /// <summary>Unordered: callers sort.</summary>
     Task<IReadOnlyList<NotificationRecipient>> GetPopupAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns unread-badge counts for a user, split by
-    /// <see cref="NotificationClass"/>.
-    /// </summary>
     Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every notification the user is a recipient of, ordered
-    /// newest first. Used by the GDPR export contributor.
-    /// </summary>
+    /// <summary>Newest first, for the GDPR export.</summary>
     Task<IReadOnlyList<NotificationRecipient>> GetAllForUserContributorAsync(
         Guid userId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Account-merge fold
-    // ==========================================================================
-
     /// <summary>
-    /// GDPR Art. 17: drops the user's recipient rows, deletes any notification
-    /// left with no recipients at all, and clears their resolver attribution.
+    /// GDPR Art. 17: also deletes notifications left with no recipients and clears the user's resolver attribution.
     /// </summary>
     Task<int> EraseForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Re-FKs <c>notification_recipients.UserId</c> from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Same-Notification collision: if the target already has a recipient
-    /// row on the same parent <c>NotificationId</c>, the source's row is
-    /// dropped (target wins). Shared-resolution attribution is also reassigned
-    /// to the target user.
+    /// A source row on a notification the target already has is dropped (target wins). Resolver attribution
+    /// moves too.
     /// </summary>
     Task ReassignRecipientsToUserAsync(
         Guid sourceUserId,
@@ -190,27 +90,19 @@ internal interface INotificationRepository : IRepository
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Result of a single-notification mutation. <c>Forbidden</c> covers both
-/// "not a recipient" and "operation not allowed for this notification class"
-/// (e.g., dismissing an actionable notification).
-/// </summary>
+/// <summary>Forbidden covers both "not a recipient" and the wrong class for the operation.</summary>
 internal sealed record NotificationMutationOutcome(
     bool Success,
     bool NotFound,
     bool Forbidden,
     IReadOnlyList<Guid> AffectedUserIds);
 
-/// <summary>
-/// Result of a click-through. <c>ActionUrl</c> is null when the recipient
-/// does not exist or the notification has no action URL.
-/// </summary>
+/// <summary><c>ActionUrl</c> is null when there is no recipient row or no action URL.</summary>
 internal sealed record ClickThroughOutcome(
     string? ActionUrl,
     bool NotFound,
     bool MarkedRead);
 
-/// <summary>Inbox filter pill options.</summary>
 internal enum NotificationInboxFilter
 {
     All,
@@ -220,7 +112,6 @@ internal enum NotificationInboxFilter
     Resolved,
 }
 
-/// <summary>Inbox tab options.</summary>
 internal enum NotificationInboxTab
 {
     All,

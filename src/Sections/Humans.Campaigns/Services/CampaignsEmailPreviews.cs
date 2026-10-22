@@ -2,12 +2,6 @@ using Humans.Email.Contracts;
 
 namespace Humans.Campaigns.Services;
 
-/// <summary>
-/// Campaigns' contribution to the template gallery at <c>/Email/EmailPreview</c>: one
-/// sample per template <see cref="CampaignsEmails"/> can send, built through the same
-/// builder the real send path uses, so the gallery cannot drift from what members receive
-/// Sample data only — no recipient is real and nothing is sent.
-/// </summary>
 internal sealed class CampaignsEmailPreviews(CampaignsEmails emails) : IEmailPreviewContributor
 {
     private const string SampleSubject = "Your ticket code for Elsewhere 2026, {{Name}}";

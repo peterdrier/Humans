@@ -5,15 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Users.ViewComponents;
 
-/// <summary>
-/// The "Preferred language" card on the admin dashboard — language distribution across
-/// Active ∪ MissingConsents users. Contributed into the admin dashboard's
-/// <c>admin-dashboard</c> chrome slot (<see cref="Humans.Users.SectionChrome"/>) since
-/// nobodies-collective/Humans#1091.
-/// </summary>
+/// <summary>The admin dashboard's "Preferred language" card: Active ∪ MissingConsents users.</summary>
 /// <remarks>
-/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
-/// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper.
+/// Internal: invoked by Type through <c>ChromeSlotViewComponent</c>, not a <c>&lt;vc:&gt;</c> tag helper.
 /// </remarks>
 internal sealed class PreferredLanguageCardViewComponent(
     IUserService userService,

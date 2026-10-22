@@ -32,26 +32,17 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
     public const string DeclarationDiagnosticId = "HUM0011";
 
     /// <summary>
-    /// Derived from the attribute class (linked into this project by
-    /// <c>Humans.Analyzers.csproj</c>) rather than spelled as a literal: an
-    /// unresolved lookup makes <see cref="OnCompilationStart"/> register
-    /// nothing, so a stale literal would retire HUM0010/HUM0011 silently.
-    /// See nobodies-collective/Humans#1057.
+    /// Derived from the attribute class, never a literal: an unresolved lookup registers nothing, so a stale literal
+    /// would retire HUM0010/HUM0011 silently.
     /// </summary>
     private static readonly string ExpiresOnAttributeFullName =
         typeof(ExpiresOnAttribute).FullName!;
 
-    /// <summary>
-    /// Test hook. When non-null, replaces <c>DateTime.UtcNow.Date</c> for
-    /// computing diagnostic severity. Production code never sets this.
-    /// </summary>
+    /// <summary>Test hook replacing <c>DateTime.UtcNow.Date</c>. Production code never sets it.</summary>
     /// <remarks>
-    /// Backed by <see cref="AsyncLocal{T}"/> so concurrent test collections
-    /// cannot bleed overrides into each other. AsyncLocal (rather than
-    /// ThreadStatic) is required because Roslyn schedules analyzer callbacks
-    /// on its own threadpool via <c>EnableConcurrentExecution</c> — the
-    /// override must flow through async/await and Task scheduling to reach
-    /// <c>OnCompilationStart</c>. Production code always sees <c>null</c>.
+    /// <see cref="AsyncLocal{T}"/>, not ThreadStatic: Roslyn runs analyzer callbacks on its own threadpool, and the
+    /// override must flow through async scheduling to <c>OnCompilationStart</c> without bleeding across concurrent
+    /// test collections.
     /// </remarks>
     private static readonly AsyncLocal<Func<DateTime>?> _todayOverride = new();
 

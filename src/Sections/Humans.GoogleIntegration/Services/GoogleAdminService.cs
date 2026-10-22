@@ -6,12 +6,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// Workspace admin operations: account provisioning, suspend/reactivate, credential
-/// recovery, group linking, rename detection. All cross-section reads go through the owning
-/// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
-/// <see cref="ITeamService"/>, <see cref="ITeamResourceManagement"/>).
-/// </summary>
 internal sealed class GoogleAdminService(
     IGoogleWorkspaceUserService workspaceUserService,
     IGoogleSyncManagement googleSyncService,
@@ -26,10 +20,8 @@ internal sealed class GoogleAdminService(
 {
     private const string NobodiesTeamDomain = "nobodies.team";
 
-    // Resolve a single Workspace email to the linked human's UserId for audit
-    // attribution. Returns null when the address isn't linked. Mirrors the
-    // verified > UpdatedAt > UserId tie-break used by GetWorkspaceAccountListAsync
-    // so the audit subject matches what /Google/Accounts shows.
+    // Null when the address isn't linked. Same verified > UpdatedAt > UserId tie-break as
+    // GetWorkspaceAccountListAsync, so the audit subject matches /Google/Accounts.
     private async Task<Guid?> TryFindLinkedUserIdAsync(string email, CancellationToken ct)
     {
         var matches = await userEmailService.MatchByEmailsAsync([email], ct);
@@ -48,17 +40,13 @@ internal sealed class GoogleAdminService(
         {
             var accounts = await workspaceUserService.ListAccountsAsync(ct);
 
-            // Match only against emails that correspond to Google-side accounts
-            // we just listed — much cheaper than loading the entire user_emails table.
             var accountEmails = accounts.Select(a => a.PrimaryEmail).ToList();
             var matches = await userEmailService.MatchByEmailsAsync(accountEmails, ct);
 
-            // user_emails may have verified+unverified rows per address. Pick one winner: verified > most-recent > stable UserId.
-            // Keyed by Gmail-alias identity — a row stored as an alias of the account's
-            // primary email must still resolve when looked up by Google's form.
+            // One winner per address: verified > most recent > stable UserId. Keyed by Gmail-alias identity, so a
+            // row stored as an alias still resolves under Google's form.
             var matchByEmail = UserEmailMatchOwner.ByEmail(matches);
 
-            // Batch-load users for matched emails
             var matchedUserIds = matchByEmail.Values.Select(m => m.UserId).Distinct().ToList();
             var usersById = matchedUserIds.Count == 0
                 ? new Dictionary<Guid, UserInfo>()
@@ -73,7 +61,6 @@ internal sealed class GoogleAdminService(
                 matchByEmail.TryGetValue(account.PrimaryEmail, out var matched);
                 var isUsedAsPrimary = matched is { IsPrimary: true };
 
-                // Count accounts that exist in the system but are not used as primary
                 if (matched is not null && !isUsedAsPrimary)
                 {
                     notPrimaryCount++;
@@ -102,8 +89,7 @@ internal sealed class GoogleAdminService(
                 .ToList();
 
             var linkedCount = sorted.Count(a => a.MatchedUserId.HasValue);
-            // Missing-2FA only applies to accounts that can actually be used — suspended
-            // accounts can't sign in at all, so flagging their 2FA gap is noise.
+            // Suspended accounts cannot sign in, so their missing 2FA is noise.
             var missingTwoFactorCount = sorted.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
 
             return new WorkspaceAccountListResult(
@@ -157,9 +143,7 @@ internal sealed class GoogleAdminService(
         }
         var fullEmail = $"{normalizedPrefix}@{NobodiesTeamDomain}";
 
-        // Check DB first: reject if the address is already tied to any human in our system.
-        // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
-        // cannot silently "move" the identity off its current human.
+        // DB check before the Workspace check, so a stale Workspace account cannot move the identity off its human.
         var emailInUse = (await userEmailService.FindByAddressAsync(fullEmail, aliased: false, verifiedOnly: false, ct)).Count > 0;
         if (emailInUse)
         {
@@ -170,11 +154,8 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        // Belt-and-suspenders, and not redundant with the check above: FindByAddressAsync
-        // reads GetAllUserInfosAsync, which omits tombstones, while this one scans the
-        // decorator's whole warmed snapshot — so it is what catches an address owned by a
-        // merge/deletion tombstone. (The alternate form cannot fire here: fullEmail is
-        // always @nobodies.team, and GetAlternateEmail returns null off gmail/googlemail.)
+        // Not redundant: FindByAddressAsync omits tombstones, while this scans the whole warmed snapshot, so it
+        // catches an address a merge or deletion tombstone owns.
         var existingUser = await userService.GetByEmailOrAlternateAsync(fullEmail, ct);
         if (existingUser is not null)
         {
@@ -185,9 +166,7 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        // Reject if the prefix collides with a team's Google Group. Team groups live on
-        // the same domain (@nobodies.team), so provisioning a user account with the same
-        // address would cause mail-routing chaos and break group membership.
+        // A team Group with this address on the same domain would break mail routing and group membership.
         var conflictingTeamName = (await teamService.GetTeamsAsync(ct)).Values
             .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
             ?.Name;
@@ -214,8 +193,7 @@ internal sealed class GoogleAdminService(
             await workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName.Trim(), lastName.Trim(), tempPassword, ct: ct);
 
-            // Audit AFTER Google API success — business "save" here is the Workspace-side
-            // provision. No local DB write happens in this flow.
+            // Audit after Google succeeds: the Workspace call is the business save here.
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", Guid.Empty,
@@ -243,8 +221,7 @@ internal sealed class GoogleAdminService(
         {
             await workspaceUserService.SuspendAccountAsync(email, ct);
 
-            // Audit AFTER Google API success — the "business save" here is the
-            // Workspace-side suspend. No local DB write happens in this flow.
+            // Audit after Google succeeds: the Workspace call is the business save here.
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountSuspended,
                 "WorkspaceAccount", Guid.Empty,
@@ -272,8 +249,7 @@ internal sealed class GoogleAdminService(
         {
             await workspaceUserService.ReactivateAccountAsync(email, ct);
 
-            // Audit AFTER Google API success — the "business save" here is the
-            // Workspace-side reactivate. No local DB write happens in this flow.
+            // Audit after Google succeeds: the Workspace call is the business save here.
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountReactivated,
                 "WorkspaceAccount", Guid.Empty,
@@ -355,9 +331,7 @@ internal sealed class GoogleAdminService(
 
         if (codes.Count == 0)
         {
-            // Generate succeeded but List returned 0 — API hiccup or race.
-            // No codes to deliver and nothing to audit; surface a clear failure
-            // instead of recording "Generated 0 backup codes" in the audit log.
+            // Generated but listed none: nothing to deliver or audit, so fail clearly rather than audit zero codes.
             logger.LogWarning(
                 "Backup-code generation for {Email} returned 0 codes; nothing to deliver",
                 email);
@@ -367,16 +341,11 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"Backup codes were generated for {email} but none were returned. Check logs and try again.");
         }
 
-        // Audit AFTER the Workspace-side rotation succeeds. If audit persistence
-        // throws we must still hand the codes back: Google has already
-        // invalidated any previously-issued set, so dropping the new ones
-        // locks the human out. Surface the audit failure loudly via a critical
-        // log so it can be reconciled out-of-band.
+        // If the audit write throws, still return the codes: Google has already invalidated the old set, so dropping
+        // these locks the member out. A critical log flags it for reconciliation.
         try
         {
-            // EntityId carries the linked human's UserId when the address resolves
-            // to one, so the audit row renders with the human's name as subject;
-            // unlinked accounts log with Guid.Empty and fall back to the email tail.
+            // Linked accounts audit under the member's id; unlinked ones under Guid.Empty, shown by email.
             var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountBackupCodesGenerated,
@@ -410,11 +379,8 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: "Email is required.");
         }
 
-        // Refuse if the account is already enrolled in 2-Step Verification.
-        // The combined flow rotates the backup-code set destructively, so
-        // running it against a properly-set-up account would silently break
-        // the human's working 2FA. Always re-check live Directory state — the
-        // UI hides the button, but a hand-crafted POST must hit the same gate.
+        // Refuse an account already enrolled in 2SV: the backup-code rotation would break its working 2FA. Checked
+        // live, because hiding the button does not stop a hand-crafted POST.
         WorkspaceUserAccount? liveAccount;
         try
         {
@@ -446,11 +412,7 @@ internal sealed class GoogleAdminService(
                 "Reset+2FA refused for {Email}: already enrolled in 2-Step Verification. Actor: {ActorUserId}.",
                 email, actorUserId);
 
-            // Audit AFTER the refusal decision. If audit persistence throws,
-            // log Critical and still return the user-facing refusal — degrading
-            // gracefully on an audit-side outage matches the BackupCodesGenerated
-            // pattern below, and forcing a 500 here would mask a safe outcome
-            // (no Workspace mutation happened).
+            // If the audit write throws, log Critical and still refuse: no Workspace change happened.
             try
             {
                 await auditLogService.LogAsync(
@@ -472,8 +434,7 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"{email} is already enrolled in 2FA. Reset+2FA is for locked-out humans only — use the plain Reset Password button, or rotate 2FA in the Google Admin console.");
         }
 
-        // Step 1: reset the password. Audit + return on failure — there's
-        // no point grabbing a backup code if the human can't sign in anyway.
+        // Step 1. No point grabbing a backup code if the member cannot sign in anyway.
         var resetResult = await ResetPasswordAsync(email, actorUserId, ct);
         if (!resetResult.Success || resetResult.TemporaryPassword is null)
         {
@@ -484,11 +445,7 @@ internal sealed class GoogleAdminService(
                     ?? $"Failed to reset password for {email}. Check logs for details.");
         }
 
-        // Step 2: grab a backup code. If this fails, the password is still
-        // valid — return Success with just the password and an explanatory
-        // message so the admin can deliver what we have. (Google rotates
-        // codes destructively, so a partial success is better than re-asking
-        // the admin to start over.)
+        // Step 2. On failure the password still works, so return it alone: Google rotates codes destructively.
         var codesResult = await GenerateBackupCodesAsync(email, actorUserId, ct);
         if (!codesResult.Success || codesResult.Codes is not { Count: > 0 })
         {
@@ -531,14 +488,11 @@ internal sealed class GoogleAdminService(
                     ErrorMessage: $"{email} is already linked to a human.");
             }
 
-            // Add verified email. A verified @nobodies.team address is the member's Google identity
-            // on read, with its own (Unknown) verdict, so reconciliation resumes (#687).
+            // A verified @nobodies.team address is the Google identity, with an Unknown verdict, so reconciliation resumes.
             await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
 
-            // Enqueue re-sync for team memberships (outbox writes owned by Teams service).
             await teamWrite.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 
-            // Audit AFTER all business writes.
             await auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,
@@ -580,12 +534,8 @@ internal sealed class GoogleAdminService(
             return new GroupLinkActionResult(false, ErrorMessage: "Team not found.");
         }
 
-        // Track whether the prefix write is "committed" (the Google side either
-        // confirmed the group or deferred to a RequiresConfirmation warning the
-        // admin has been told about). If we exit without committing — including
-        // via a thrown exception from EnsureTeamGroupAsync — the finally block
-        // rolls the prefix back so the DB doesn't claim a mapping that Google
-        // never actually got.
+        // Committed once Google confirmed the group or deferred with a warning the admin has seen. Otherwise, even on
+        // a throw from EnsureTeamGroupAsync, the finally block rolls the prefix back.
         var committed = false;
         try
         {
@@ -665,11 +615,8 @@ internal sealed class GoogleAdminService(
                     x.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            // Load resource counts per team for affected resource calculation
             var teamResourceCounts = await teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
 
-            // Active team memberships per user — delegated to ITeamService so we
-            // never read team_members directly from here.
             var userTeamNameLookup = new Dictionary<Guid, IReadOnlyList<Guid>>();
             foreach (var u in nobodiesUsers)
             {
@@ -695,7 +642,6 @@ internal sealed class GoogleAdminService(
 
                     if (!string.Equals(account.PrimaryEmail, user.GoogleEmail, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Email was renamed
                         var affectedResources = 0;
                         if (userTeamNameLookup.TryGetValue(user.Id, out var teamIds))
                         {

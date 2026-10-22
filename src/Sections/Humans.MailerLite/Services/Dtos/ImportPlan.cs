@@ -29,9 +29,7 @@ internal sealed record ImportPlanCounts(
     int UnconfirmedSkipped)
 {
     /// <summary>
-    /// True when any outcome's count moved more than 10% from <paramref name="preview"/> (or
-    /// became non-zero from zero) — the plan an admin confirmed is no longer the plan that
-    /// would be applied.
+    /// More than 10% either way, or up from zero: the plan the admin confirmed is no longer the plan that would apply.
     /// </summary>
     public bool DriftedMoreThanTenPercentFrom(ImportPlanCounts preview)
     {

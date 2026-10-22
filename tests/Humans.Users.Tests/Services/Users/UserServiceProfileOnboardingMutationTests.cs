@@ -358,9 +358,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         remaining.Should().BeEmpty();
     }
 
-    // The consent-check and rejection annotations moved to Consent (consent_reviews, Users
-    // decomposition commit 12; covered by Humans.Consent.Tests). Users keeps the state transitions.
-
     [HumansFact]
     public async Task SetRejectedAsync_SetsRejectedState()
     {
@@ -377,7 +374,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansFact]
     public async Task SetRejectedAsync_StateSurvivesALaterUnsuspend()
     {
-        // The rejection is no longer a profile column, so the classifier must carry it forward
+        // Rejection is not a profile column, so the classifier must carry it forward
         // from users.State on every later transition.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -392,7 +389,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansFact]
     public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsAndClassifiesRejected()
     {
-        // A profile rejected before commit 12 (profiles.RejectedAt set) whose users.State never
+        // A legacy rejected profile (profiles.RejectedAt set) whose users.State never
         // recorded Rejected: it reads as rejected, and the next transition stores Rejected.
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);

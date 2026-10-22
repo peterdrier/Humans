@@ -10,9 +10,6 @@ using Xunit;
 
 namespace Humans.Consent.Tests.Services;
 
-/// <summary>
-/// Consent-owned reminder cooldown reads, stamp writes, export and erasure.
-/// </summary>
 public sealed class ConsentReminderServiceTests : IDisposable
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 10, 21, 12, 0);
@@ -60,8 +57,6 @@ public sealed class ConsentReminderServiceTests : IDisposable
     private Task<ConsentReminder?> RowAsync(Guid userId) =>
         _db.ConsentReminders.AsNoTracking().SingleOrDefaultAsync(r => r.UserId == userId, Ct);
 
-    // ─── Read, write ─────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task GetLastSent_ReturnsOwnedRows_NeverRemindedIsAbsent()
     {
@@ -88,8 +83,6 @@ public sealed class ConsentReminderServiceTests : IDisposable
         (await RowAsync(user.Id))!.LastSentAt.Should().Be(Now);
         (await _sut.GetLastSentAsync([user], Ct))[user.Id].Should().Be(Now);
     }
-
-    // ─── Export, erasure ─────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Export_IncludesSurvivorAndMergedStamps_OrNothing()

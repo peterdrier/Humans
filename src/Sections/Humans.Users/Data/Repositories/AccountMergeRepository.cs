@@ -3,12 +3,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Repositories;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IAccountMergeRepository"/>. The only
-/// non-test file that touches <c>DbContext.AccountMergeRequests</c>.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>UsersDbContext</c> remains Scoped.
-/// </summary>
 internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> factory) : IAccountMergeRepository
 {
     public async Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default)

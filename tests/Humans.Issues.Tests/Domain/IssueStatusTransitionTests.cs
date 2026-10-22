@@ -62,7 +62,7 @@ public class IssueStatusTransitionTests
     /// <summary>
     /// Profiles (merged into Users) and Legal (renamed Consent) are queue keys that outlived
     /// their section names. Users and Consent declare them under the stored spelling, so rows
-    /// filed before those renames keep reaching their handlers (PR peterdrier/Humans#1766).
+    /// filed before those renames keep reaching their handlers.
     /// </summary>
     [HumansTheory]
     [InlineData("Profiles", RoleNames.HumanAdmin)]

@@ -275,8 +275,6 @@ public class MailerLiteAudienceSyncServiceTests
         stats.Single().LastSyncAt.Should().Be(newest);
     }
 
-    // ---------- helpers ----------
-
     private MailerLiteAudienceSyncService NewService(params IMailerLiteAudience[] audiences) => new(
         _ml, _emails, _audit, _repository, new FakeClock(SyncedAt), audiences,
         NullLogger<MailerLiteAudienceSyncService>.Instance);

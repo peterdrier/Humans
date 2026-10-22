@@ -11,9 +11,8 @@ namespace Humans.Base.ViewComponents;
 public sealed record AdminNavLocation(AdminNavGroup Group, AdminNavItem Item, bool IsExact);
 
 /// <summary>
-/// The admin nav as rendered: every section's <see cref="ISectionAdminNav"/> contribution,
-/// merged by group label and sorted alphabetically. No section link, policy gate or pill count
-/// is hard-coded in Shell (nobodies-collective/Humans#1077).
+/// The admin nav as rendered: every section's <see cref="ISectionAdminNav"/> contribution, merged by group label and
+/// sorted alphabetically. No section link, policy gate or pill count is hard-coded in Shell.
 /// </summary>
 /// <remarks>
 /// Items within a group order by weight; the sort is stable, so items that carry no weight keep

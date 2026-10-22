@@ -10,47 +10,27 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// The standing proof for what G5 moved out of <c>Humans.UI</c>: lane 4b-i's shared
-/// partials, which went up into their owning sections, and lane 4b-iii B's tag helpers and
-/// view components, which went down into <c>Humans.Interfaces</c>
-/// (nobodies-collective/Humans#866).
-/// </summary>
+/// <summary>Shared partials owned by sections, and Base's tag helpers and view components, still bind.</summary>
 /// <remarks>
 /// <para>
-/// One class rather than five section files on purpose: each integration test class
-/// composes its own host, and the whole lane's exposure is one page plus one lookup.
+/// A partial resolves by name across application parts, so one in the wrong folder or project throws at render time,
+/// not build time. Each partial now reads its section's <c>_ViewImports</c>, where <c>Localizer</c> is the section's
+/// own set, so a call site left on it renders the raw key on a green 200.
 /// </para>
 /// <para>
-/// Two failure modes, two assertions. <b>Resolution</b> — a partial is found by name
-/// across application parts, not by project reference, so a file that lands in the wrong
-/// folder (or in a project Shell does not reference) is invisible to the view engine.
-/// That failure throws at render time rather than at build time, so the build proves
-/// nothing about it. <b>Localization</b> — every one of these partials read
-/// <c>Humans.UI</c>'s <c>SharedResource</c> through <c>Humans.UI/Views/_ViewImports</c>;
-/// after the move each one picks up its new section's <c>_ViewImports</c>, where
-/// <c>Localizer</c> is the section's own resource set. A call site left on
-/// <c>Localizer</c> renders the raw key, in all six languages, on a green 200.
-/// </para>
-/// <para>
-/// <c>/Debug/WidgetGallery</c> is the probe page because it renders three of them, plus the
-/// <c>&lt;vc:user-search-result&gt;</c> that replaced <c>_HumanSearchResults</c>
-/// (nobodies-collective/Humans#1062), against real sample data on one request — the same
-/// reason Calendar, Tickets and AuditLog use it. <c>_FavouriteButton</c> is not on it (it
-/// needs a published guide event), so the view-engine lookup is what covers that one.
+/// <c>/Debug/WidgetGallery</c> renders three of them against sample data on one request. <c>_FavouriteButton</c> needs
+/// a published guide event, so only the view-engine lookup covers it.
 /// </para>
 /// </remarks>
 public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    /// <summary>Partial name → the section assembly that owns it after lane 4b-i.</summary>
+    /// <summary>Partial name to the section assembly that owns it.</summary>
     private static readonly (string Name, string Owner)[] MovedPartials =
     [
         ("_VolunteerProfileBadges", "Humans.Shifts"),
         ("_ShiftsSummaryCard", "Humans.Teams"),
         ("_RoleBadge", "Humans.Teams"),
         ("_FavouriteButton", "Humans.Events"),
-        // _HumanSearchResults was the fifth until nobodies-collective/Humans#1062 retired it
-        // for Users' own <vc:user-search-result>; the gallery assertion below still covers it.
     ];
 
     [HumansFact(Timeout = 120000)]
@@ -59,14 +39,13 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         using var scope = Factory.Services.CreateScope();
         var engine = scope.ServiceProvider.GetRequiredService<ICompositeViewEngine>();
 
-        // No route values: FindView falls through to the /Views/Shared/{name}.cshtml sweep
-        // across every application part, which is exactly the lookup the render sites use.
+        // No route values: FindView falls through to the /Views/Shared sweep across every part, as the render sites do.
         var context = new ActionContext(
             new DefaultHttpContext { RequestServices = scope.ServiceProvider },
             new RouteData(),
             new ActionDescriptor());
 
-        // Host startup is the slow part this timeout covers; stop here if it used the budget.
+        // Host startup is the slow part; stop here if it used the budget.
         Xunit.TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
 
         var missing = MovedPartials
@@ -88,23 +67,21 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // Content markers, not tag names: each string is produced only by the partial's own
-        // markup against the gallery's sample data, so an empty-state page cannot pass.
+        // Content only each partial's markup produces from the sample data, so an empty-state page can't pass.
         html.Should().Contain("Welding",
             because: "_VolunteerProfileBadges (Humans.Shifts) renders WidgetGalleryController's hard-coded sample skill");
         html.Should().Contain("aria-valuenow=\"70\"",
             because: "_ShiftsSummaryCard (Humans.Teams) renders 17 of 24 slots as a progress bar");
         html.Should().Contain("<span class=\"badge bg-warning text-dark\">Coordinator</span>",
             because: "_RoleBadge (Humans.Teams) renders the Coordinator variant");
-        // The snippet alone would pass vacuously: unbound, the <vc:> element ships as literal
-        // markup and its match-snippet="…" attribute still carries the string. Assert the
-        // wrapper the component's own Default.cshtml writes around it instead.
+        // Unbound, the element's match-snippet attribute still carries the snippet, so assert the wrapper the
+        // component's Default.cshtml writes.
         html.Should().Contain(
             "<span class=\"text-muted ms-1\">...love fire dancing and welding...</span>",
             because: "<vc:user-search-result> (Humans.Users) renders the gallery's sample match "
                    + "snippet — the element only binds through @addTagHelper *, Humans.Users");
 
-        // The rebind from Localizer to SharedLocalizer: a missed call site renders the key.
+        // A call site missed in the Localizer to SharedLocalizer rebind renders the key.
         foreach (var key in new[]
                  {
                      "ShiftsSummary_", "Medical_Badge", "Profile_Coordinator", "Teams_Member",
@@ -115,33 +92,15 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         }
     }
 
-    /// <summary>
-    /// The four Base widgets the gallery renders against real data still bind after lane
-    /// 4b-iii B changed the assembly that owns them.
-    /// </summary>
+    /// <summary>The four Base widgets the gallery renders still bind.</summary>
     /// <remarks>
     /// <para>
-    /// The tag helpers and view components moved from <c>Humans.UI</c> to
-    /// <c>Humans.Interfaces</c> with their namespaces untouched, so every <c>@using</c> and every
-    /// C# reference in the repo is unchanged and the compiler has nothing to say. Only
-    /// <c>@addTagHelper *, X</c> names an assembly, and only Razor reads it — miss one of the 48
-    /// and the element ships as inert literal markup on a green 200, which the browser then
-    /// drops without a trace.
+    /// Only <c>@addTagHelper *, X</c> names an assembly, and only Razor reads it; a miss ships inert markup on a green
+    /// 200. So each assertion is on a marker the widget produces only by running. The <c>authorize-policy</c> helper
+    /// emits nothing, so the suppression of the bogus-policy span is its proof.
     /// </para>
     /// <para>
-    /// So every assertion here is on a marker the widget can only have produced by running:
-    /// an attribute pair only <c>Views/Shared/Components/Human/Default.cshtml</c> writes, ids
-    /// derived from the gallery's own <c>instance-key</c> and <c>name</c>, and — for the
-    /// attribute-targeted <c>authorize-policy</c> helper, which emits no markup of its own — the
-    /// suppression it exists to perform. Unbound, the bogus-policy span renders like any other
-    /// span carrying an unknown attribute, so its absence is the proof.
-    /// </para>
-    /// <para>
-    /// <c>&lt;vc:access-matrix section="Teams"&gt;</c> is asserted here too: the gallery used
-    /// to pass <c>section="teams"</c> while Teams contributes its matrix under the key
-    /// <c>"Teams"</c>, matched ordinally, so that card rendered empty. Fixed by correcting the
-    /// gallery's literal to match the contributed key's own casing, same as every other call
-    /// site.
+    /// The access-matrix key is matched ordinally, so <c>section="teams"</c> would render an empty card.
     /// </para>
     /// </remarks>
     [HumansFact(Timeout = 120000)]

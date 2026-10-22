@@ -26,12 +26,10 @@ internal sealed class UserEmailService(
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
     // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketService.
-    // Used only by the delete-guard (nobodies-collective/Humans#758) to detect ticket-linked addresses.
     private Humans.Tickets.Contracts.ITicketService TicketService =>
         serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
 
-    // Lazy: GoogleIntegration's identity service reads IUserService. The Google Workspace identity
-    // is GoogleIntegration's (Users decomposition commit 15); Users only reports addresses that leave.
+    // Lazy: GoogleIntegration's identity service reads IUserService.
     private IGoogleIntegrationWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleIntegrationWrite>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
@@ -123,7 +121,7 @@ internal sealed class UserEmailService(
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        // Storage mutation is owned by IUserManagement so its caching decorator can refresh UserInfo.
+        // Through IUserManagement so its caching decorator refreshes UserInfo.
         var addResult = await userService.AddUserEmailAsync(
             userId,
             new UserEmailAddCommand(
@@ -147,15 +145,12 @@ internal sealed class UserEmailService(
     public async Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId, Guid emailId, string token, CancellationToken cancellationToken = default)
     {
-        // Cache hits from CachingUserService rehydrate User from UserInfo,
-        // which does not carry SecurityStamp. UserManager.VerifyUserTokenAsync
-        // (below) reads user.SecurityStamp directly without a DB round-trip, so
-        // we must load via UserManager.FindByIdAsync here to get a fully
-        // populated entity.
+        // Not the cache: a UserInfo-rehydrated User lacks the SecurityStamp that
+        // VerifyUserTokenAsync reads.
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null) return Refuse("User not found");
 
-        // see nobodies-collective/Humans#611 — token is bound to this row's Id via the purpose suffix.
+        // The token is bound to this row's Id via the purpose suffix.
         var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
@@ -202,11 +197,10 @@ internal sealed class UserEmailService(
             throw new ValidationException("No email pending verification.");
         }
 
-        // Mirror VerifyEmailAsync duplicate-handling: create merge request when address verified on another account.
+        // As in VerifyEmailAsync: an address verified on another account becomes a merge request.
         if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
 
-        // see nobodies-collective/Humans#687
         var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
@@ -257,15 +251,14 @@ internal sealed class UserEmailService(
             return new DeleteEmailResult(false, "Users_EmailGrid_DeleteRejectedHasProvider");
         }
 
-        // see nobodies-collective/Humans#758 — block removal of the primary email.
-        // The user must promote another verified email to primary first, otherwise they
-        // can accidentally delete their sign-in/notification target (the original incident).
+        // Block removing the primary: the user must promote another verified email first, or
+        // they can delete their own sign-in/notification target.
         if (email.IsPrimary)
         {
             return new DeleteEmailResult(false, "Users_EmailGrid_DeletePrimaryBlocked");
         }
 
-        // Block deletion of the last verified row — post email-decoupling, base.Email is null and the user would silently lose all notifications.
+        // Block deleting the last verified row: the user would silently lose all notifications.
         if (email.IsVerified)
         {
             var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
@@ -277,9 +270,7 @@ internal sealed class UserEmailService(
             }
         }
 
-        // see nobodies-collective/Humans#758 — block removal of a ticket-linked email.
-        // Tickets are matched to users by email address; removing the linked address risks
-        // un-matching the user's event ticket on the next vendor re-sync.
+        // Block removing a ticket-linked email: the next vendor re-sync could un-match the ticket.
         if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
         {
             return new DeleteEmailResult(false, "Users_EmailGrid_DeleteTicketLinkedBlocked");
@@ -322,10 +313,8 @@ internal sealed class UserEmailService(
     public async Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // #1704: raw. The sole consumer is GDPR erasure, which runs per id down the merge
-        // chain and therefore asks about tombstones. A merge moves the addresses to the
-        // survivor, so a tombstone owns none — and resolving forward would answer with the
-        // survivor's Workspace address and suspend a living human's mailbox.
+        // Raw: the sole consumer is GDPR erasure, which asks about tombstones. A tombstone owns no
+        // addresses, and resolving forward would suspend the living survivor's mailbox.
         var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
         return info?.UserEmails
             .FirstOrDefault(e => e.IsVerified
@@ -339,11 +328,8 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        // #1704: resolve first, then look up. A merge tombstone's own address is the
-        // merged-<id>@merged.local sentinel Identity needs for uniqueness, and its
-        // notification-target rows moved to the survivor at merge time — so asking by the
-        // requested id would mail a sentinel that bounces. The key stays the requested id;
-        // the address is the resolved human's.
+        // Resolve first: a tombstone's own address is a sentinel that bounces, and its
+        // notification rows moved to the survivor. The key stays the requested id.
         var resolved = await userService.GetUserInfosAsync(userIds, cancellationToken);
         var allNotificationTargets = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
 
@@ -355,7 +341,6 @@ internal sealed class UserEmailService(
 
             if (allNotificationTargets.TryGetValue(user.Id, out var email))
                 result[userId] = email;
-            // Fall back to User.Email (Identity) for users without a notification-target row.
             else if (!string.IsNullOrEmpty(user.Email))
                 result[userId] = user.Email;
         }
@@ -412,10 +397,8 @@ internal sealed class UserEmailService(
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // #1704: raw, unlike the DTO reads above. These snapshots carry the owner id, and the
-        // callers edit and delete the rows by it, so the rows and the id labelling them have to
-        // come from the same user — a resolving read would hand a tombstone's caller the
-        // survivor's rows stamped with the archived id.
+        // Raw: callers edit and delete rows by the owner id stamped on them, so a resolving read
+        // would hand a tombstone's caller the survivor's rows stamped with the archived id.
         var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
         return info.UserEmails.Select(e => ToSnapshot(userId, e)).ToList();
@@ -456,9 +439,7 @@ internal sealed class UserEmailService(
                 r.Email, r.UserId, r.IsPrimary, r.IsVerified, r.UpdatedAt))
             .ToList();
     }
-    // see nobodies-collective/Humans#758 — true when the address matches one of the user's
-    // ticket emails (order buyer or matched attendee). Reads the Tickets section through its
-    // owning read interface (design-rules §9); IUserEmail row data is never read cross-section.
+    // Order buyer or matched attendee, read through the Tickets section's own interface.
     private async Task<bool> IsAddressTicketLinkedAsync(
         Guid userId, string address, CancellationToken cancellationToken)
     {
@@ -481,7 +462,7 @@ internal sealed class UserEmailService(
     public async Task AddProvisionedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {
-        // Idempotent — retried imports must not re-add the row.
+        // Idempotent: retried imports must not re-add the row.
         await userService.AddUserEmailAsync(
             userId,
             new UserEmailAddCommand(
@@ -491,9 +472,8 @@ internal sealed class UserEmailService(
             cancellationToken);
     }
 
-    // Write paths read the table, not the cache: the merge-request decision must see the
-    // row state as of this call. Any verified row for the same address on another row id
-    // — the same user's or another user's — is the conflict.
+    // Reads the table, not the cache: the decision must see this call's row state. Any verified
+    // row for the same address on another row id, either user's, is the conflict.
     private async Task<bool> RequestMergeForVerificationConflictAsync(
         Guid userId, UserEmail pendingEmail, CancellationToken cancellationToken)
     {
@@ -504,7 +484,7 @@ internal sealed class UserEmailService(
         if (conflictingEmail is null)
             return false;
 
-        // Avoid duplicates from link prefetch, double-clicks, or repeat admin verification.
+        // Link prefetch, double-clicks and repeat admin verification would duplicate it.
         if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
         {
             var now = clock.GetCurrentInstant();
@@ -533,7 +513,7 @@ internal sealed class UserEmailService(
         var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsPrimary) return false;
 
-        // Only allow clearing IsPrimary on a duplicate verified row — must mirror the scanner's verified filter to avoid ZeroIsPrimary.
+        // Duplicate verified rows only, mirroring the scanner's filter, so this can't cause ZeroIsPrimary.
         var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
         if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
 
@@ -543,7 +523,7 @@ internal sealed class UserEmailService(
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.ClearDuplicatePrimary),
             cancellationToken);
         if (!updated.Succeeded) return false;
-        // No auto-promote — admin is resolving a duplicate and picks the new primary deliberately.
+        // No auto-promote: the admin picks the new primary deliberately.
         await auditLogService.LogAsync(
             AuditAction.UserEmailPrimaryCleared,
             nameof(User), userId,
@@ -584,9 +564,7 @@ internal sealed class UserEmailService(
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
     {
-        // Orphans are UserEmail rows whose UserId is missing or merged. Iterating UserInfo can't find rows for
-        // non-existent users, so the repo's full-table scan is still required here.
-        // GetAllUserInfosAsync is already one entry per living human — tombstones are omitted.
+        // Iterating UserInfo can't find rows for missing users, so this needs the full-table scan.
         var allEmails = await repository.GetAllUserEmailsAsync(ct);
         var liveUserIds = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Select(u => u.Id)
@@ -626,16 +604,9 @@ internal sealed class UserEmailService(
         if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
             return new(false);
 
-        // Auth-method invariant: at least one verified email must remain after unlink —
-        // otherwise a programmatic unlink locks the user out of sign-in entirely (magic
-        // link also requires a verified address). This runs regardless of whether the
-        // row being unlinked is itself verified: an unverified row can still carry the
-        // user's only OAuth login — that state is reachable via AddUserEmailAsync with
-        // IsVerified=false and via the provider backfill, which tags existing (possibly
-        // unverified) rows with Provider/ProviderKey — and OAuth sign-in resolves off
-        // the AspNetUserLogins entry, not the row's IsVerified flag. Removing that login
-        // locks the user out just the same. Checked before RemoveLoginAsync so a refusal
-        // mutates nothing.
+        // At least one verified email must remain, or the user is locked out (magic link needs one
+        // too). Checked even for an unverified row, which can still carry the only OAuth login, and
+        // before RemoveLoginAsync so a refusal mutates nothing.
         var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
         var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
         if (verifiedRemaining == 0)
@@ -657,7 +628,7 @@ internal sealed class UserEmailService(
         var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
         if (!removeLogin.Succeeded)
         {
-            // Hard-fail to keep AspNetUserLogins and user_emails in sync — otherwise user thinks they unlinked but can still sign in.
+            // Hard-fail, or the user thinks they unlinked but can still sign in.
             logger.LogError(
                 "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
@@ -665,7 +636,7 @@ internal sealed class UserEmailService(
             return new(false);
         }
 
-        // Identity removal committed; finish the email row, invariants, cache and audit after disconnect.
+        // Identity removal committed; finish row, invariants, cache and audit even after a disconnect.
         cancellationToken = CancellationToken.None;
 
         var removed = await userService.RemoveUserEmailAsync(
@@ -723,17 +694,16 @@ internal sealed class UserEmailService(
             !ReferenceEquals(r, tagged) &&
             string.Equals(r.Email, claimEmail, StringComparison.OrdinalIgnoreCase));
 
-        // Cross-user check before any mutation. Normalize via gmail/googlemail alternate so dot-aliases can't bypass the displacement gate.
+        // Cross-user check before any mutation, normalized so dot-aliases can't bypass the gate.
         var normalizedClaim = EmailNormalization.NormalizeForComparison(claimEmail);
         var alternateClaim = EmailLookupAliases.GetAlternate(normalizedClaim);
         var blocker = (await repository.GetUserEmailsByAddressAsync(
                 normalizedClaim, alternateClaim, cancellationToken))
             .FirstOrDefault(e => e.IsVerified && e.UserId != userId);
 
-        // 2. CrossUserBlocked: another user verified-holds the claim and provider's claim is unverified — no mutation, audit the attempt.
+        // 2. CrossUserBlocked: another user verified-holds the claim and the claim is unverified.
         if (blocker is not null && !claimEmailVerified)
         {
-            // Load displaced user rows for diagnostic only (rare path).
             var blockerRows = await repository.GetUserEmailsByUserIdForMutationAsync(
                 blocker.UserId, cancellationToken);
 
@@ -865,7 +835,6 @@ internal sealed class UserEmailService(
         }
         else
         {
-            // Fresh row.
             rowToInsert = new UserEmail
             {
                 Id = Guid.NewGuid(),
@@ -905,7 +874,7 @@ internal sealed class UserEmailService(
         if (displaced)
             await GoogleIdentity.ClearIfAddressAsync(blocker!.UserId, blocker.Email, cancellationToken);
 
-        // 6. Audit. Displaced path writes the OAuthRenameCollision pair instead of GoogleEmailRenamed/UserEmailLinked.
+        // 6. Audit. A displacement writes the OAuthRenameCollision pair instead.
         if (displaced)
         {
             logger.LogError(
@@ -959,7 +928,6 @@ internal sealed class UserEmailService(
             displacedUserLeftWithoutVerifiedEmail);
     }
 
-    // Structured diagnostic for cross-user collision audits — captures both users' full state.
     private async Task<string> BuildCrossUserDiagnosticAsync(
         string kind,
         Guid signingUserId,

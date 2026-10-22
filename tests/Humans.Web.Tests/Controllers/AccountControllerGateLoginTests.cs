@@ -21,12 +21,8 @@ using Humans.Users.Contracts;
 namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
-/// Gate-terminal sign-in (/Account/GateLogin): the shared gate account
-/// (<see cref="SystemUserIds.GateTerminal"/>) signs in with a username +
-/// password and gets a persistent session pointed at /Scanner/Tickets.
-/// Failures are throttled per source IP (never per account — a public-username
-/// account must not be lockable by an attacker), and the throttle message tells
-/// the user what happened and how to fix it.
+/// Failures are throttled per source IP, never per account: an attacker must not be able to lock out an account whose
+/// username is public.
 /// </summary>
 public class AccountControllerGateLoginTests
 {
@@ -84,8 +80,7 @@ public class AccountControllerGateLoginTests
             .GetTempData(new DefaultHttpContext());
         _controller.ControllerContext = new ControllerContext
         {
-            // RemoteIpAddress is null on DefaultHttpContext, so every attempt in a
-            // test shares the "unknown" throttle bucket — convenient for assertions.
+            // RemoteIpAddress is null here, so every attempt shares the "unknown" throttle bucket.
             HttpContext = new DefaultHttpContext()
         };
     }
@@ -224,13 +219,12 @@ public class AccountControllerGateLoginTests
         var result = await _controller.GateLogin(SystemUserIds.GateTerminalLoginName, "correct");
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
-        // "Index" as a literal: GateController is internal to Humans.Gate since its G5 move.
+        // A literal: GateController is internal to Humans.Gate.
         redirect.ActionName.Should().Be("Index");
         redirect.ControllerName.Should().Be("Gate");
 
         // Persistent session so the laptop survives restarts without an admin.
         await _signInManager.Received(1).SignInAsync(_gateUser, true, Arg.Any<string?>());
-        // Login stamp goes through the single owner of the rule (A1).
         await _userService.Received(1).RecordLoginAsync(_gateUser.Id, Arg.Any<CancellationToken>());
     }
 

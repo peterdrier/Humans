@@ -9,10 +9,7 @@ using Humans.Base.Models;
 
 namespace Humans.Issues.Models;
 
-/// <summary>
-/// Bound by the <c>/Issues/New</c> form post AND the floating widget AJAX path.
-/// Title + Description + Category are required; everything else is optional.
-/// </summary>
+/// <summary>Bound by both the <c>/Issues/New</c> form and the floating widget's AJAX post.</summary>
 internal sealed class SubmitIssueViewModel
 {
     [Required(ErrorMessage = "Validation_Required")]
@@ -28,11 +25,8 @@ internal sealed class SubmitIssueViewModel
     public IssueCategory Category { get; set; }
 
     /// <summary>
-    /// Technical section name (matches <see cref="IssueSectionRouting"/> values).
-    /// If null when the form is posted, the controller infers it from
-    /// <see cref="PageUrl"/> via <c>IssueSectionInference.FromPath</c>.
-    /// An unrouted value degrades to the Admin queue; the cap matches the column and is the
-    /// input-layer half of the service's guard (nobodies-collective/Humans#1509).
+    /// Null on post means the controller infers it from <see cref="PageUrl"/>. An unrouted value degrades to the
+    /// Admin queue; the length cap is the input-layer half of the service's guard.
     /// </summary>
     [StringLength(64, ErrorMessage = "Validation_MaxLength")]
     public string? Section { get; set; }
@@ -51,15 +45,13 @@ internal sealed class SubmitIssueViewModel
     public LocalDate? DueDate { get; set; }
 }
 
-/// <summary>
-/// Quick-filter pill on the Issues index; "Open" means not closed, not the Open status.
-/// </summary>
+/// <summary>"Open" means not closed, not the Open status.</summary>
 internal enum IssueViewMode
 {
     All,
     Open,    // Non-terminal: Triage, Open, InProgress — wider than the nav badge
-    Mine,    // ReporterUserId = current user
-    Closed   // Statuses ∈ {Resolved, WontFix, Duplicate}
+    Mine,
+    Closed
 }
 
 internal sealed class IssuePageViewModel
@@ -76,10 +68,10 @@ internal sealed class IssuePageViewModel
 
     public Guid? SelectedIssueId { get; set; }
 
-    /// <summary>Sections this viewer is allowed to filter on (Admin sees all, others see their owned sections).</summary>
+    /// <summary>Admin sees all; others see the sections they own.</summary>
     public List<SectionOption> SectionOptions { get; set; } = [];
 
-    /// <summary>Reporter dropdown (Admin only — non-admins only see their own queue).</summary>
+    /// <summary>Admin only: non-admins only see their own queue.</summary>
     public List<ReporterDropdownItem> Reporters { get; set; } = [];
 
     public IssueCategory[] CategoryValues => Enum.GetValues<IssueCategory>();
@@ -137,9 +129,7 @@ internal sealed class IssueDetailViewModel
 
     public List<IssueThreadEventViewModel> Thread { get; set; } = [];
 
-    /// <summary>
-    /// Active humans the handler can assign this issue to. Empty for non-handlers.
-    /// </summary>
+    /// <summary>Empty for non-handlers.</summary>
     public List<AssigneeOption> AssigneeOptions { get; set; } = [];
 }
 
@@ -151,13 +141,11 @@ internal sealed class IssueThreadEventViewModel
     public Guid? ActorUserId { get; set; }
     public string? ActorName { get; set; }
 
-    /// <summary>For "comment" rows.</summary>
     public string? Content { get; set; }
 
-    /// <summary>For "audit" rows.</summary>
     public string? Description { get; set; }
 
-    /// <summary>For "comment" rows — true when the comment author is the issue reporter.</summary>
+    /// <summary>Comment rows only.</summary>
     public bool ActorIsReporter { get; set; }
 }
 
@@ -167,10 +155,7 @@ internal sealed class PostIssueCommentModel
     [StringLength(5000)]
     public string Content { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Optional: when true, also moves the issue to <see cref="IssueStatus.Resolved"/>
-    /// after posting the comment. Wired up by the "Comment &amp; mark resolved" button.
-    /// </summary>
+    /// <summary>Also moves the issue to <see cref="IssueStatus.Resolved"/> after posting.</summary>
     public bool ResolveOnPost { get; set; }
 }
 
@@ -189,7 +174,7 @@ internal sealed class UpdateIssueAssigneeModel
 
 internal sealed class UpdateIssueSectionModel
 {
-    /// <summary>Capped at the column width; the service is the invariant (nobodies-collective/Humans#1509).</summary>
+    /// <summary>Capped at the column width; the service holds the invariant.</summary>
     [StringLength(64)]
     public string? Section { get; set; }
 }
@@ -199,10 +184,6 @@ internal sealed class SetIssueGitHubIssueModel
     public int? GitHubIssueNumber { get; set; }
 }
 
-/// <summary>
-/// Resource keys for friendly <see cref="IssueSectionRouting"/> labels, used by the
-/// New-issue form's "Area" select and by the Index/Detail "area" chip.
-/// </summary>
 internal static class AreaLabelMap
 {
     /// <summary>Localizes known labels and the null/General fallback; unknown routing keys keep their spelling.</summary>

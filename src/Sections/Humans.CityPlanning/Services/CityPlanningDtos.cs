@@ -4,15 +4,6 @@ using NodaTime;
 using Humans.Camps.Contracts;
 namespace Humans.CityPlanning.Services;
 
-/// <summary>
-/// The section's internal service DTOs. <c>CityPlanningSettingsDto</c> is not here — it is
-/// the return type of <c>ICityPlanningService.GetSettingsAsync</c> and lives on the
-/// contracts leaf. There is no internal management interface: the section's own
-/// controllers take the concrete <see cref="CityPlanningService"/> (keep an interface
-/// only where something needs the seam), and the cross-section surface is
-/// <c>Humans.CityPlanning.Contracts.ICityPlanningService</c> (reads) and
-/// <c>ICityPlanningWrite</c> (Camps' polygon cleanup).
-/// </summary>
 internal sealed record CampPolygonDto(
     Guid CampSeasonId,
     Guid CampId,
@@ -38,11 +29,6 @@ internal sealed record CampPolygonHistoryEntryDto(
     string Note,
     string GeoJson);
 
-/// <summary>
-/// The persisted polygon facts a save/restore returns to callers: the current
-/// GeoJson and area. Keeps EF entities (CampPolygon / CampPolygonHistory) from
-/// crossing the service boundary into the controllers.
-/// </summary>
 internal sealed record CampPolygonSaveResult(string GeoJson, double AreaSqm);
 
 internal sealed record PlacementScheduleUpdateResult(

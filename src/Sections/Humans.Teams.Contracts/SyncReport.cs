@@ -1,18 +1,10 @@
 namespace Humans.Teams.Contracts;
 
-/// <summary>
-/// A person affected by a sync step, with enough info to render a link.
-/// </summary>
 public record SyncAffectedUser(Guid UserId, string DisplayName);
 
-/// <summary>
-/// A single change within a sync step.
-/// </summary>
 public record SyncChange(string Action, SyncAffectedUser User, string Detail);
 
-/// <summary>
-/// Result of a single sync step (e.g., "Volunteers", "Coordinators").
-/// </summary>
+/// <summary>One step, e.g. "Volunteers" or "Coordinators".</summary>
 public record SyncStepResult(string StepName)
 {
     public List<SyncChange> Changes { get; init; } = [];
@@ -30,9 +22,6 @@ public record SyncStepResult(string StepName)
         Changes.Add(new SyncChange("Fixed", new SyncAffectedUser(userId, displayName), detail));
 }
 
-/// <summary>
-/// Aggregate result of a full system team sync run.
-/// </summary>
 public class SyncReport
 {
     public List<SyncStepResult> Steps { get; init; } = [];

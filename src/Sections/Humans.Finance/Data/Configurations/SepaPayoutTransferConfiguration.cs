@@ -18,9 +18,8 @@ internal sealed class SepaPayoutTransferConfiguration : IEntityTypeConfiguration
         b.Property(x => x.IbanMasked).HasMaxLength(34);
         b.Property(x => x.Amount).HasColumnType("numeric(12,2)");
         b.Property(x => x.HoldedBankMovementId).HasMaxLength(64);
-        // Unbounded: 24-char ids, one per paid document — the 512 cap overflowed at about 20
-        // documents (nobodies-collective/Humans#1185), and a save that fails after Holded took the
-        // money is the one state this column exists to prevent.
+        // Unbounded: one 24-char id per paid document overflowed 512 at about 20, and a save failing after Holded took
+        // the money is the state this column exists to prevent.
         b.Property(x => x.HoldedPaymentRefs);
     }
 }

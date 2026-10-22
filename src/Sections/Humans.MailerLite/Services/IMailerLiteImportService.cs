@@ -4,33 +4,19 @@ using Humans.MailerLite.Services.Dtos;
 
 namespace Humans.MailerLite.Services;
 
-/// <summary>
-/// Splits import into a plan-build step and an apply step, stateless between them.
-/// </summary>
 internal interface IMailerLiteImportService : IApplicationService
 {
-    /// <summary>
-    /// When reconciliation last ran and what it did, or null before the first run.
-    /// Read from the section's own table (nobodies-collective/Humans#1082).
-    /// </summary>
+    /// <summary>Null before the first run.</summary>
     Task<MailerLiteSyncSnapshot?> GetLastReconciliationAsync(CancellationToken ct = default);
 
     Task<ImportPlan> BuildPlanAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// The dashboard's drift report: builds a fresh plan and counts the people Humans has opted
-    /// out of marketing whom the <c>Website</c> list still holds as active.
-    /// <see cref="DriftReport.HumansOptedInMlAbsent"/> is a seam and stays null.
-    /// </summary>
+    /// <summary>Builds a fresh plan. <see cref="DriftReport.HumansOptedInMlAbsent"/> stays null.</summary>
     Task<DriftReport> ComputeDriftAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Applies the plan. When <paramref name="maxPerOutcome"/> is set to a
-    /// positive value, processes at most that many decisions per
-    /// <see cref="Dtos.SubscriberOutcome"/> bucket (in plan order), holding the
-    /// rest back. Decisions held back are counted in
-    /// <see cref="Dtos.ImportResult.DecisionsThrottled"/>. Null or non-positive
-    /// processes the entire plan.
+    /// A positive <paramref name="maxPerOutcome"/> caps each outcome bucket (in plan order) and counts the rest in
+    /// <see cref="Dtos.ImportResult.DecisionsThrottled"/>; null or non-positive applies everything.
     /// </summary>
     [ExternalWrite]
     Task<ImportResult> ApplyAsync(

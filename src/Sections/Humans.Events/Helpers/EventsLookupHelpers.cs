@@ -9,16 +9,9 @@ using Humans.Users.Contracts;
 
 namespace Humans.Events.Helpers;
 
-/// <summary>
-/// Cross-controller lookup helpers for the Events section. Uses the existing Users batch lookup and cached CampInfo projections.
-/// </summary>
 internal static class EventsLookupHelpers
 {
-    /// <summary>
-    /// Builds the day-offset options (one per build/event day from gate opening to
-    /// <see cref="EventSettingsInfo.EventEndOffset"/>) for an event form's date and
-    /// recurrence selectors.
-    /// </summary>
+    /// <summary>One option per day from gate opening to <see cref="EventSettingsInfo.EventEndOffset"/>.</summary>
     public static List<EventDayOptionViewModel> BuildEventDayOptions(EventSettingsInfo burn)
     {
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
@@ -39,9 +32,7 @@ internal static class EventsLookupHelpers
         return days;
     }
 
-    /// <summary>
-    /// A camp's display name for the guide: its active season name, else its slug.
-    /// </summary>
+    /// <summary>The active season name, else the slug.</summary>
     public static string? ResolveCampName(CampInfo? camp) => camp?.Active?.Name ?? camp?.Slug;
 
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
@@ -53,7 +44,7 @@ internal static class EventsLookupHelpers
         return new Dictionary<Guid, UserInfo>(infos);
     }
 
-    /// <summary>The burn the guide is configured for, or null when the guide is not configured.</summary>
+    /// <summary>Null when the guide is not configured.</summary>
     public static async Task<EventSettingsInfo?> LoadBurnSettingsAsync(
         IEventManagement guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default)
     {

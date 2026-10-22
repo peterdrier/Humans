@@ -5,32 +5,14 @@ using Humans.Events.Contracts;
 
 namespace Humans.Events.Data;
 
-/// <summary>
-/// Data-access interface for the Events section. Owns the event_* tables.
-/// Implementation uses <c>IDbContextFactory&lt;EventGuideDbContext&gt;</c> so the
-/// repository can be registered Singleton while <c>EventGuideDbContext</c> stays
-/// Scoped — every method opens its own short-lived context.
-/// <para>
-/// EventSettings is owned by the Settings section; <c>EventService</c>
-/// stitches in EventSettings reads via <c>ISettingsService</c>. This
-/// repository never touches <c>settings_event</c> directly
-/// (memory/architecture/no-cross-section-ef-joins.md).
-/// </para>
-/// </summary>
 internal interface IEventRepository : IRepository
 {
-    // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);
 
     Task UpsertGuideSettingsAsync(EventGuideSettings settings, CancellationToken ct = default);
 
-    // ── Categories ────────────────────────────────────────────────────────
     Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default);
-    /// <summary>
-    /// All categories — active + inactive — with the <c>.Events</c> include.
-    /// Used by the admin list view AND <c>CachingEventService</c> snapshot
-    /// (the latter pays the small Include cost; ~30 categories at this scale).
-    /// </summary>
+    /// <summary>Active and inactive, with <c>.Events</c> included.</summary>
     Task<IReadOnlyList<EventCategory>> GetAllCategoriesAsync(CancellationToken ct = default);
     Task<EventCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default);
     Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId, CancellationToken ct = default);
@@ -41,13 +23,8 @@ internal interface IEventRepository : IRepository
     Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default);
     Task SwapCategoryOrderAsync(Guid id, int direction, CancellationToken ct = default);
 
-    // ── Venues ────────────────────────────────────────────────────────────
     Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default);
-    /// <summary>
-    /// All venues — active + inactive — with the <c>.Events</c> include.
-    /// Used by the admin list view AND <c>CachingEventService</c> snapshot
-    /// (the latter pays the small Include cost; ~30 venues at this scale).
-    /// </summary>
+    /// <summary>Active and inactive, with <c>.Events</c> included.</summary>
     Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default);
     Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default);
     Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default);
@@ -57,7 +34,6 @@ internal interface IEventRepository : IRepository
     Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default);
     Task SwapVenueOrderAsync(Guid id, int direction, CancellationToken ct = default);
 
-    // ── Events (submitter) ────────────────────────────────────────────────
     Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default);
     Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
@@ -65,57 +41,49 @@ internal interface IEventRepository : IRepository
     Task AddEventAsync(Event guideEvent, CancellationToken ct = default);
     Task SaveEventAsync(Event guideEvent, CancellationToken ct = default);
 
-    // ── Events (browse / export / API) ────────────────────────────────────
     Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default);
     Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
 
-    // ── Events (moderation) ───────────────────────────────────────────────
     Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
     Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     /// <summary>Read-only load with Category, EventVenue and moderation history; never pass the result to a save.</summary>
     Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default);
-    /// <summary>Persists the (already-transitioned) event + appends the moderation action in one transaction.</summary>
+    /// <summary>Persists the already-transitioned event and appends the action in one transaction.</summary>
     Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default);
 
-    // ── Favourites ────────────────────────────────────────────────────────
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     /// <summary>
-    /// Adds only when absent. A favourite matches on the same day offset or on a whole-event
-    /// (null) row; a whole-event reference matches every row for the event. Returns false if a
-    /// matching favourite already existed.
+    /// Adds only when absent. A favourite matches on the same day offset or a whole-event (null) row; a whole-event
+    /// reference matches every row for the event. False when a match already existed.
     /// </summary>
     Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default);
-    /// <summary>Removes matching favourites (same match rule as add). Returns false if none existed.</summary>
+    /// <summary>Same match rule as add. False when none existed.</summary>
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
-    // ── Preferences ───────────────────────────────────────────────────────
     Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default);
     Task UpsertPreferenceAsync(Guid userId, string excludedCategorySlugsJson, NodaTime.Instant updatedAt, CancellationToken ct = default);
 
-    // ── GDPR contributor ──────────────────────────────────────────────────
-    /// <summary>All favourite rows for the user, regardless of underlying event status.</summary>
+    /// <summary>Regardless of the event's status.</summary>
     Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>GDPR Art. 17: removes the user's favourites and their category-exclusion preference.</summary>
     Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// GDPR Art. 17: clears <c>Host</c> on every event the user submitted. The submission itself
-    /// is retained — see the retention reason on the section's erasure declaration.
+    /// GDPR Art. 17: clears <c>Host</c> on every event the user submitted. The submission itself is retained (see
+    /// the section's erasure declaration).
     /// </summary>
     Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default);
 
-    // ── Account merge ─────────────────────────────────────────────────────
     /// <summary>
-    /// Re-points the source's submissions, favourites and preference at the target in one save.
-    /// A source favourite the target already covers is deleted; when both have a preference the
-    /// target's wins and the source row stays as archived history. Idempotent.
+    /// A source favourite the target already covers is deleted. When both have a preference the target's wins and the
+    /// source row stays as archived history. Idempotent.
     /// </summary>
     Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, NodaTime.Instant updatedAt, CancellationToken ct = default);
 }

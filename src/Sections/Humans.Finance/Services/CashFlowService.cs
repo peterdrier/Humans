@@ -8,14 +8,10 @@ using NodaTime;
 
 namespace Humans.Finance.Services;
 
-/// <summary>
-/// <c>/Finance/CashFlow</c>: the active budget year's line items plus synthetic VAT settlements,
-/// bucketed by week or month, with running net and an expense-only runway seeded from gross
-/// ticket revenue. Reads Budget and Tickets through their public contracts; owns no tables.
-/// </summary>
+/// <summary>The expense-only runway is seeded from gross ticket revenue.</summary>
 internal sealed class CashFlowService(IBudgetService budgetService, ITicketService ticketService) : IApplicationService
 {
-    /// <summary>The active year's cash flow, or null when no year is active.</summary>
+    /// <summary>Null when no year is active.</summary>
     public async Task<CashFlowViewModel?> GetActiveYearCashFlowAsync(string period, CancellationToken ct = default)
     {
         var year = await budgetService.GetActiveYearAsync(ct);
@@ -26,15 +22,15 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
     }
 
     /// <summary>
-    /// Gross revenue of the year's paid ticket orders: a year with a configured
-    /// <c>VendorEventId</c> counts only that event's orders, an unconfigured year the current event's.
+    /// A year with a configured <c>VendorEventId</c> counts only that event's orders, otherwise the current event's.
+    /// Budget's TicketingBudgetService holds the same rule.
     /// </summary>
     internal async Task<decimal> GetGrossTicketRevenueAsync(BudgetYearDetail year, CancellationToken ct = default) =>
         (await ticketService.GetTicketOrdersAsync(ct))
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.IsForEvent(year.VendorEventId))
             .Sum(o => o.TotalAmount);
 
-    /// <summary>Aggregates by period; an unknown period falls back to monthly.</summary>
+    /// <summary>An unknown period falls back to monthly.</summary>
     internal static CashFlowViewModel Build(BudgetYearDetail year, string period, decimal grossTicketRevenue)
     {
         if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
@@ -115,10 +111,7 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
         };
     }
 
-    /// <summary>
-    /// One synthetic settlement per dated line item with VAT: income owes its VAT portion
-    /// ("VAT Liability", negative), an expense reclaims it ("VAT Credits", positive).
-    /// </summary>
+    /// <summary>Income owes its VAT portion ("VAT Liability", negative); an expense reclaims it ("VAT Credits").</summary>
     internal static IReadOnlyList<CashFlowEntry> ComputeVatEntries(IReadOnlyList<BudgetGroupDetail> groups) =>
         groups
             .SelectMany(g => g.Categories)
@@ -192,7 +185,6 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
             .ToList();
     }
 
-    /// <summary>Cash flow entry — real line item or synthetic VAT settlement.</summary>
     internal sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
 
     private sealed record CashFlowPeriodGroup(

@@ -21,9 +21,8 @@ public static class EnumLocalizationExtensions
     }
 
     /// <summary>
-    /// Select-list items for every value of <typeparamref name="TEnum"/> with localized
-    /// display text. Item values are the enum names, matching how the model binder and the
-    /// previous <c>new SelectList(Enum.GetValues&lt;T&gt;())</c> call sites round-trip.
+    /// Select-list items for every value of <typeparamref name="TEnum"/> with localized text. Item values are the enum
+    /// names, which the model binder round-trips.
     /// </summary>
     public static List<SelectListItem> EnumSelectItems<TEnum>(this IStringLocalizer localizer, TEnum? selected = null)
         where TEnum : struct, Enum =>

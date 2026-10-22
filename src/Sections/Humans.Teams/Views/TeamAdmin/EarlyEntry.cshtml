@@ -8,7 +8,6 @@
 
 <div asp-validation-summary="All" class="text-danger"></div>
 
-@* All grants — each row carries an inline edit form + a remove form, scoped by hidden GrantId. *@
 <div class="card mb-4">
     <div class="card-header">Grants</div>
     <div class="card-body p-0">
@@ -33,7 +32,7 @@
                         <tr>
                             <td>@grant.HumanName</td>
                             <td colspan="2">
-                                @* Auto-saves on change (date pick / project blur) — see the script below. The hidden submit enables Enter-to-save + form.requestSubmit() validation. *@
+                                @* The hidden submit enables Enter-to-save and requestSubmit() validation for the auto-save below. *@
                                 <form asp-controller="TeamAdmin" asp-action="EditEarlyEntry" asp-route-slug="@Model.Slug" method="post" class="row g-2 align-items-center ee-edit-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="GrantId" value="@grant.GrantId" />
@@ -67,7 +66,6 @@
     </div>
 </div>
 
-@* Add card — <vc:human-search> picker posting into the Add action (team from route slug). *@
 <div class="card mb-4 position-relative" style="z-index: 2;">
     <div class="card-header">Grant early entry</div>
     <div class="card-body">
@@ -96,9 +94,7 @@
     </div>
 </div>
 
-@* Inline auto-save: changing a grant's date (picker) or project (on blur / Enter) submits its row
-   form immediately — no Save button. Scoped to .ee-edit-form so the Add form is unaffected.
-   <script> gets a CSP nonce via NonceTagHelper. *@
+@* Auto-save: changing a row's date or project submits its form. Scoped to .ee-edit-form so Add is unaffected. *@
 <script>
     document.querySelectorAll('form.ee-edit-form').forEach(function (form) {
         form.querySelectorAll('input[name="EntryDate"], input[name="ProjectName"]').forEach(function (input) {

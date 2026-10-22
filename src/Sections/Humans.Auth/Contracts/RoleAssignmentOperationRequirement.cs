@@ -2,11 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Auth.Contracts;
 
-/// <summary>
-/// Resource-based authorization requirement for role assignment operations.
-/// Used with IAuthorizationService.AuthorizeAsync(User, roleName, requirement)
-/// where the resource is the target role name string.
-/// </summary>
+/// <summary>The resource is the target role name.</summary>
 public sealed class RoleAssignmentOperationRequirement : IAuthorizationRequirement
 {
     public static readonly RoleAssignmentOperationRequirement Manage = new(nameof(Manage));

@@ -7,39 +7,11 @@ using Humans.GoogleIntegration.Tests.Infrastructure;
 namespace Humans.GoogleIntegration.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository-plus-connector pattern
-/// for the Team Resources section.
-///
-/// <para>
-/// Team resource management splits into three clean pieces:
-/// <list type="bullet">
-///   <item><description>
-///     <see cref="ITeamResourceManagement"/> in <c>Humans.GoogleIntegration.Services</c>
-///     owns business rules + persistence orchestration. It sits in the same
-///     section as the <see cref="IGoogleResourceRepository"/>
-///     it injects (see
-///     <c>memory/architecture/team-resources-google-integration-section.md</c>).
-///   </description></item>
-///   <item><description>
-///     <see cref="IGoogleResourceRepository"/> in <c>Humans.Base.Interfaces.Repositories</c>
-///     is the only path to <c>DbSet&lt;GoogleResource&gt;</c>.
-///   </description></item>
-///   <item><description>
-///     <see cref="ITeamResourceGoogleClient"/> is the narrow connector over
-///     Drive/Cloud-Identity APIs so the Application project stays free of
-///     <c>Google.Apis.*</c> imports.
-///   </description></item>
-/// </list>
-/// The tests below cover the third piece — the connector interface stays in
-/// its own namespace and keeps SDK types off its surface. Nothing here checks
-/// the first or second: that the service takes no Google SDK type, or that the
-/// repository is the only path to <c>DbSet&lt;GoogleResource&gt;</c>.
-/// </para>
+/// Covers the connector only: <see cref="ITeamResourceGoogleClient"/> stays in its own namespace
+/// and keeps SDK types off its surface.
 /// </summary>
 public class TeamResourceArchitectureTests
 {
-    // ── ITeamResourceGoogleClient ────────────────────────────────────────────
-
     [HumansFact]
     public void ITeamResourceGoogleClient_LivesInTheConnectorNamespace()
     {

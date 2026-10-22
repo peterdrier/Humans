@@ -103,7 +103,7 @@ public class DevelopmentDashboardSeederTests
     }
 
     /// <summary>
-    /// Regression for nobodies-collective/Humans#1631b: <c>ResetAsync</c> must drop the
+    /// <c>ResetAsync</c> must drop the
     /// Settings-owned event row too, or a second <c>SeedAsync</c> reports AlreadySeeded
     /// forever even though the Shifts/Teams/Users data is gone.
     /// </summary>

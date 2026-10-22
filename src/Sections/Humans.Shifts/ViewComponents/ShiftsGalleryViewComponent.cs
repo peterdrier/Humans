@@ -8,19 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// The widget gallery's samples, contributed to
-/// <see cref="Humans.Base.Interfaces.ChromeSlots.WidgetGallery"/> via <see cref="SectionChrome"/>:
-/// four rota cards — <c>_RotaHeader</c>, <c>_RotaBadges</c>, <c>_RotaDetails</c> and
-/// <c>_EventRotaTable</c> — rendered against live samples from the active event, plus
-/// &lt;vc:dietary-missing-banner&gt;.
+/// A view component, not a partial, because a partial's model is section-internal and Debug can't name it. A
+/// chrome-slot contribution takes no arguments, so it reads the user from claims.
 /// </summary>
-/// <remarks>
-/// A view component rather than a partial because a partial needs a model and Debug would have
-/// to be able to name it; these four cards are the only ones in the gallery that construct
-/// section-internal types. Stays <c>internal</c>. A chrome-slot contribution
-/// takes no arguments (<c>ISectionChrome</c>'s <c>[ViewComponentSlot]</c> declares none), so it
-/// reads the current user from claims rather than a caller-supplied id.
-/// </remarks>
 internal sealed class ShiftsGalleryViewComponent(
     IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,

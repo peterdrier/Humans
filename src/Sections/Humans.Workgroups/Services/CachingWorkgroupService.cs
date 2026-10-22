@@ -11,28 +11,16 @@ using NodaTime;
 namespace Humans.Workgroups.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IWorkgroupService"/> (design-rules §15): the
-/// whole register is one cached snapshot, and every write clears it. A few dozen groups
-/// rebuild in milliseconds, so there is nothing to gain from finer-grained invalidation.
+/// The whole register is one snapshot and every write clears it: a few dozen groups rebuild in milliseconds.
+/// Nothing time-derived is cached, so a cached register can't show a stale badge.
 /// </summary>
-/// <remarks>
-/// Nothing time-derived is cached — <see cref="WorkgroupRhythm"/> computes the badges from
-/// the snapshot against the caller's clock — so a cached register can never show a stale
-/// "update due". Carries <see cref="IUserDataContributor"/> and <see cref="IUserMerge"/>
-/// because erasure and the merge fold change rows the cache holds.
-/// </remarks>
 internal sealed class CachingWorkgroupService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingWorkgroupService> logger)
     : IWorkgroupService, IUserDataContributor, IUserMerge
 {
-    /// <summary>
-    /// DI service key under which the undecorated inner <see cref="IWorkgroupService"/> is
-    /// registered. The Singleton decorator resolves the Scoped inner per call.
-    /// </summary>
     public const string InnerServiceKey = "workgroups-inner";
 
-    /// <summary>One entry: the whole register. The key is a constant because there is only ever one.</summary>
     private const byte RegisterKey = 0;
 
     private readonly TrackedCache<byte, IReadOnlyList<WorkgroupInfo>> _cache = new(
@@ -41,10 +29,7 @@ internal sealed class CachingWorkgroupService(
     private readonly Lock _cacheGate = new();
     private long _cacheGeneration;
 
-    /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
     public ICacheStats RegisterCacheStats => _cache;
-
-    // ── Reads ─────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default)
     {
@@ -66,9 +51,6 @@ internal sealed class CachingWorkgroupService(
         return register;
     }
 
-    // Single-group reads come off the cached register: the graph is already whole, so a
-    // second query would only add a round trip.
-
     public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
         (await GetRegisterAsync(ct)).FirstOrDefault(w => string.Equals(w.Slug, slug, StringComparison.Ordinal));
 
@@ -77,9 +59,6 @@ internal sealed class CachingWorkgroupService(
 
     public async Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default) =>
         (await GetRegisterAsync(ct)).Where(w => w.IsMember(userId)).ToList();
-
-
-    // ── Applying and joining ──────────────────────────────────────────────
 
     public Task<WorkgroupMutationResult<Guid>> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default) =>
@@ -111,8 +90,6 @@ internal sealed class CachingWorkgroupService(
     public Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RequestStatusAsync(workgroupId, actorUserId, question, ct));
-
-    // ── Member work ───────────────────────────────────────────────────────
 
     public Task<WorkgroupMutationResult> EditRegisterAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default) =>
@@ -156,8 +133,6 @@ internal sealed class CachingWorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupDormantReason reason, CancellationToken ct = default) =>
         MutateAsync(inner => inner.MarkDoneAsync(workgroupId, actorUserId, reason, ct));
 
-    // ── Documents ─────────────────────────────────────────────────────────
-
     public Task<WorkgroupMutationResult<Guid>> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateDocumentAsync(workgroupId, actorUserId, save, ct));
@@ -178,8 +153,6 @@ internal sealed class CachingWorkgroupService(
 
     public Task<WorkgroupMutationResult> DeliverDocumentAsync(Guid documentId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.DeliverDocumentAsync(documentId, actorUserId, ct));
-
-    // ── Comments ──────────────────────────────────────────────────────────
 
     public Task<WorkgroupMutationResult<Guid>> AddCommentAsync(
         Guid documentId, Guid actorUserId, string category, string body, CancellationToken ct = default) =>
@@ -208,8 +181,6 @@ internal sealed class CachingWorkgroupService(
     public Task<WorkgroupMutationResult> HideCommentAsync(
         Guid commentId, Guid actorUserId, string reason, CancellationToken ct = default) =>
         MutateAsync(inner => inner.HideCommentAsync(commentId, actorUserId, reason, ct));
-
-    // ── The Secretary and the Board ───────────────────────────────────────
 
     public Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RegisterAsync(workgroupId, actorUserId, ct));
@@ -252,25 +223,16 @@ internal sealed class CachingWorkgroupService(
         CancellationToken ct = default) =>
         MutateAsync(inner => inner.RecordDispositionAsync(documentId, actorUserId, disposition, note, ct));
 
-    // ── Settings ──────────────────────────────────────────────────────────
-
-    // The root folder id lives in Settings, which owns its own cache; nothing to hold here.
-
     public Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetRootDriveFolderIdAsync(ct));
 
     public Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.SetRootDriveFolderIdAsync(folderId, actorUserId, ct));
 
-    // ── The daily job ─────────────────────────────────────────────────────
-
     public Task RunDailyRhythmAsync(CancellationToken ct = default) =>
         MutateAsync(inner => inner.RunDailyRhythmAsync(ct));
 
-    // ── IUserDataContributor — GDPR export + erasure ──────────────────────
-
-    // Static table: the erasure-coverage architecture test reads it from an uninitialized
-    // instance. Content is kept on purpose (§18) — each note says under what basis.
+    // Static: the erasure-coverage architecture test reads it from an uninitialized instance.
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -304,19 +266,13 @@ internal sealed class CachingWorkgroupService(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         MutateAsync(inner => inner.EraseForUserAsync(userId, ct));
 
-    // ── IUserMerge — account merge fold ───────────────────────────────────
-
     public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         MutateAsync(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
 
-    // ── Inner-service plumbing ────────────────────────────────────────────
-
     /// <summary>
-    /// A write, followed by a cache clear that happens even when the write throws. A
-    /// workflow can persist its row and then fail in a later step (a notification, an audit
-    /// entry), and a cache left holding the pre-write register would serve that stale
-    /// snapshot until the next successful write.
+    /// Clears even when the write throws: a workflow can persist its row and then fail a later step, and the cache
+    /// would otherwise serve the stale register until the next successful write.
     /// </summary>
     private Task MutateAsync(Func<IWorkgroupService, Task> work) =>
         MutateAsync(async inner =>

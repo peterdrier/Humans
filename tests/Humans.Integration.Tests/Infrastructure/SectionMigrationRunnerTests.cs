@@ -40,39 +40,14 @@ using Humans.Users.Data;
 namespace Humans.Integration.Tests.Infrastructure;
 
 /// <summary>
-/// Proves both branches of the real-up baseline mechanism
-/// (nobodies-collective/Humans#858) against a real Postgres:
-/// <list type="bullet">
-/// <item><b>Fresh database</b> (section tables absent), for every section: the
-/// baseline migration executes for real — tables, seed data, and history row
-/// all appear.</item>
-/// <item><b>Existing database</b> (tables present, section history empty): the
-/// baseline is recorded as applied WITHOUT executing — no DDL error, no
-/// duplicate seed, and the path is idempotent across repeated boots. Exercised
-/// for <c>UsersDbContext</c>, the one context still facing a first mark-applied
-/// boot in the wild: the historical root chain that used to build this fixture
-/// was deleted at peel 15, and every other section's mark-applied path was
-/// proven against the real chain in its own peel PR while the chain existed.
-/// The fixture is generated for the baseline migration ONLY (via
-/// <see cref="IMigrator.GenerateScript"/>) — equivalent to the chain-built shape
-/// for Users because its baseline carries no raw-SQL blocks (peel-15 audit: all
-/// chain raw SQL against Users tables was data-only) — so any migration after
-/// the baseline still has real DDL to execute against it.</item>
-/// <item><b>Schema equivalence</b> (Users): both paths yield the same physical
-/// shape (columns, types, nullability, defaults, indexes, and constraints),
-/// ignoring ordinal position, which legitimately differs between a table
-/// evolved incrementally and one created from the model in one shot.</item>
-/// </list>
-/// Each new section adds one entry to <see cref="Sections"/>. The tables to
-/// check come from the context model, not a literal list, so a table added to a
-/// section context is covered without touching this file.
+/// Both branches of the baseline mechanism against real Postgres: on a fresh database every section's baseline runs
+/// for real; on an existing one (tables present, history empty) the Users baseline is recorded without executing,
+/// idempotently. Users is the one context that can still meet that first boot. Both paths must yield the same
+/// physical schema, ignoring column order. Tables come from the context model, so new ones are covered.
 /// </summary>
 public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 {
-    /// <summary>
-    /// The pre-migration snapshot hook (nobodies-collective/Humans#845) is a production-boot
-    /// concern; these tests migrate throwaway Testcontainers databases with nothing to protect.
-    /// </summary>
+    /// <summary>The pre-migration snapshot guards production; these throwaway databases have nothing to protect.</summary>
     private static readonly Func<CancellationToken, Task> NoSnapshot = _ => Task.CompletedTask;
 
     private sealed record SectionCase(
@@ -108,13 +83,11 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "Finance",
             "holded_expense_docs",
             CreateSectionContext<FinanceDbContext>,
-            // No seed probe: the old seeded holded_sync_states singleton moved to the Holded
-            // section re-keyed and lazy-created; Finance's doc-sync state is lazy too.
+            // No seed probe: Holded's sync state and Finance's doc-sync state are lazy-created.
             null),
         new(
-            // After Finance, as in production's name-ordered migration: Finance's
-            // HoldedMirrorMovesToHoldedSection drops holded_ledger_lines before this baseline
-            // recreates it under Holded ownership.
+            // After Finance, as in production's name order: Finance drops holded_ledger_lines before this baseline
+            // recreates it.
             "Holded",
             "holded_accounts",
             CreateSectionContext<HoldedDbContext>,
@@ -173,8 +146,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "GoogleIntegration",
             "google_resources",
             CreateSectionContext<GoogleIntegrationDbContext>,
-            // Three seed rows, one per service type — probe a single reserved
-            // Id so the count is 1 on both the fresh and mark-applied paths.
+            // Three seed rows: probe one reserved Id so the count is 1 on both paths.
             """SELECT count(*) FROM sync_service_settings WHERE "Id" = '00000000-0000-0000-0002-000000000002'"""),
         new(
             "Tickets",
@@ -230,8 +202,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "Teams",
             "teams",
             CreateSectionContext<TeamsDbContext>,
-            // Six system-team seed rows — probe a single reserved Id so the
-            // count is 1 on both the fresh and mark-applied paths.
+            // Six seed rows: probe one reserved Id so the count is 1 on both paths.
             "SELECT count(*) FROM teams WHERE \"Id\" = '00000000-0000-0000-0001-000000000001'"),
         new(
             "Users",
@@ -259,8 +230,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
             foreach (var table in tables)
             {
-                // Quoted: table names come from the EF model in their exact stored
-                // case (e.g. DataProtectionKeys), and to_regclass lowercases bare names.
+                // Quoted: model table names keep their case (DataProtectionKeys), and to_regclass lowercases bare names.
                 (await ScalarAsync<bool>(connectionString,
                     $"""SELECT to_regclass('public."{table}"') IS NOT NULL"""))
                     .Should().BeTrue($"{section.Name}: {table} must exist after the baseline executes");
@@ -272,8 +242,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
                     .Should().Be(1, $"{section.Name}: the HasData seed must be inserted by the baseline");
             }
 
-            // One history row per migration in the section's chain — the baseline plus any
-            // post-baseline migrations (the runner executes those for real on every path).
+            // The baseline plus any post-baseline migrations, which run for real on every path.
             (await HistoryCountAsync(connectionString, section.Name)).Should().Be(migrationCount);
         }
     }
@@ -281,17 +250,11 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     [HumansFact]
     public async Task ExistingDatabase_UsersBaselineMarkedApplied_WithoutExecuting_AndIdempotent()
     {
-        // Tables present, history empty — what QA/prod look like on the first boot
-        // after peel 15 deploys (their Users tables are chain-built; the Users
-        // history table does not exist yet). Baseline-only fixture, not the full
-        // current model: any migration after the baseline must still execute for
-        // real against this database (nobodies-collective/Humans#507 is the first).
+        // Tables present, history empty. Baseline-only, so post-baseline migrations still execute for real.
         var connectionString = await CreateDatabaseAsync("existing_users");
         await CreateUsersSchemaFromBaselineOnlyAsync(connectionString);
 
-        // The runner must record the baseline without executing it (a real execute
-        // would fail on CREATE TABLE). Two passes prove idempotency — the second
-        // boot sees the history row and no-ops.
+        // A real execute would fail on CREATE TABLE. The second boot proves idempotency.
         for (var boot = 1; boot <= 2; boot++)
         {
             await using var db = CreateSectionContext<UsersDbContext>(connectionString);
@@ -312,17 +275,13 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     [HumansFact]
     public async Task CollectPendingFrontier_HistoryTableAbsent_ReturnsFullMigrationSet()
     {
-        // Same fixture shape as ExistingDatabase_UsersBaselineMarkedApplied_WithoutExecuting:
-        // tables present, no history table. GetPendingMigrationsAsync would log an Error
-        // reading a history table that doesn't exist yet (nobodies-collective/Humans#1022);
-        // CollectPendingFrontierAsync must fall back to the full migration set instead.
+        // No history table: GetPendingMigrationsAsync would log an Error reading it, so CollectPendingFrontierAsync must
+        // fall back to the full migration set.
         var connectionString = await CreateDatabaseAsync("frontier_no_history");
         await CreateUsersSchemaFromBaselineOnlyAsync(connectionString);
 
-        // EF.LogTo captures every command EF sends, including ones that fail — a regression
-        // back to calling GetPendingMigrationsAsync unconditionally would still send a SELECT
-        // against the (missing) history table and log it before the failure, so this catches
-        // the regression even though the returned set alone can't distinguish it.
+        // LogTo captures failing commands too, so a SELECT against the missing history table shows here even though
+        // the returned set can't tell the difference.
         var commandLog = new List<string>();
         var historyTable = SectionMigrationsHistory.TableFor<UsersDbContext>();
         var options = new DbContextOptionsBuilder<UsersDbContext>()
@@ -345,9 +304,8 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
 
         frontier.Should().BeEquivalentTo(expected);
 
-        // The history table name only appears double-quoted when used as a SQL identifier
-        // (a FROM/JOIN target) - the legitimate information_schema probe passes it as a
-        // parameter value instead, which logs single-quoted.
+        // Used as an identifier the history table is double-quoted; the information_schema probe passes it
+        // single-quoted as a parameter.
         commandLog.Should().NotContain(
             entry => entry.Contains($"\"{historyTable}\"", StringComparison.Ordinal),
             $"the fallback must never query {historyTable} directly - that's the #1022 regression");
@@ -356,10 +314,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     [HumansFact]
     public async Task BothPaths_ProduceEquivalentUsersSchema()
     {
-        // Model create-script path (the stand-in for a chain-built database — valid
-        // for Users because its baseline carries no raw-SQL blocks) vs the baseline
-        // executing for real. Divergence here means the baseline migration's
-        // operations no longer produce the model's schema.
+        // Model create-script (the stand-in for a chain-built database) vs the baseline executing for real.
         var scriptConnection = await CreateDatabaseAsync("equiv_users_script");
         await CreateUsersSchemaWithoutHistoryAsync(scriptConnection);
 
@@ -390,9 +345,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             .UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.UseNodaTime();
-                // The context's own assembly, not a literal: a section at G5 owns its
-                // migrations (nobodies-collective/Humans#866), and this must match what
-                // AddSectionDbContext configures at runtime.
+                // Must match what AddSectionDbContext configures at runtime.
                 npgsql.MigrationsAssembly(typeof(TContext).Assembly.GetName().Name!);
                 npgsql.MigrationsHistoryTable(SectionMigrationsHistory.TableFor<TContext>());
             })
@@ -400,10 +353,6 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
         return (TContext)Activator.CreateInstance(typeof(TContext), options)!;
     }
 
-    /// <summary>
-    /// The section's tables, taken from the context model rather than a literal
-    /// list, so a table added to a section context is checked automatically.
-    /// </summary>
     private static List<string> SectionTables(DbContext db) =>
         db.Model.GetEntityTypes()
             .Select(e => e.GetTableName())
@@ -412,23 +361,12 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             .Order(StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>
-    /// A pristine database in the assembly's shared Postgres container — these tests
-    /// drive the migration runner from scratch, so they need their own databases,
-    /// not the app's.
-    /// </summary>
     private Task<string> CreateDatabaseAsync(string name) =>
         database.CreateEmptyDatabaseAsync(name, TestContext.Current.CancellationToken);
 
     /// <summary>
-    /// Users tables and seeds from the model's create script, with no migration
-    /// history. Reflects the CURRENT model (every migration's cumulative effect) —
-    /// only valid as a stand-in for "chain-built" while the baseline is the section's
-    /// only migration; used solely by <see cref="BothPaths_ProduceEquivalentUsersSchema"/>
-    /// to compare against a from-scratch real migrate, which also lands on the current
-    /// model. For the "tables exist, history empty" mark-applied scenario, use
-    /// <see cref="CreateUsersSchemaFromBaselineOnlyAsync"/> instead — it isolates the
-    /// baseline so post-baseline migrations still have something to execute for real.
+    /// The current cumulative model, no history. For "tables exist, history empty" use
+    /// <see cref="CreateUsersSchemaFromBaselineOnlyAsync"/>, which leaves post-baseline migrations to run.
     /// </summary>
     private static async Task CreateUsersSchemaWithoutHistoryAsync(string connectionString)
     {
@@ -438,16 +376,8 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     }
 
     /// <summary>
-    /// Users tables and seeds as of the baseline migration ONLY, with no migration
-    /// history table — the shape QA/prod present on the first boot after peel 15,
-    /// before any post-baseline Users migration existed. Unlike
-    /// <see cref="CreateUsersSchemaWithoutHistoryAsync"/> (which reflects the current,
-    /// cumulative model), this generates SQL for just the baseline's own operations via
-    /// <see cref="IMigrationsSqlGenerator"/> — schema DDL only, no history-table
-    /// bookkeeping (unlike <see cref="IMigrator.GenerateScript"/>, which would create and
-    /// populate the history table itself) — so tests exercising the "tables exist but
-    /// history is empty" mark-applied branch still find it genuinely empty, with real
-    /// post-baseline migrations left to apply.
+    /// The baseline's own DDL via <see cref="IMigrationsSqlGenerator"/>, not <see cref="IMigrator.GenerateScript"/>,
+    /// which would also create and fill the history table.
     /// </summary>
     private static async Task CreateUsersSchemaFromBaselineOnlyAsync(string connectionString)
     {
@@ -477,17 +407,8 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
     }
 
     /// <summary>
-    /// Ordinal-independent physical description of a table: one line per column
-    /// (name, type, nullability, default), one per index definition, one per
-    /// constraint (name, type, definition), and one per non-internal trigger
-    /// definition, sorted. Constraints are compared because a missing or
-    /// differently-shaped FK / CHECK is invisible to a columns-plus-indexes
-    /// comparison, and a model-generated baseline that silently omits one would
-    /// produce a fresh database that diverges from every chain-built database.
-    /// Triggers are compared for the same reason: the Legal and AuditLog
-    /// immutability triggers exist only as raw SQL in the baselines
-    /// (nobodies-collective/Humans#858), so without this check the Sql block
-    /// could drift from the chain-built schema silently.
+    /// Column order ignored. Constraints and triggers are included because a missing FK, CHECK or raw-SQL immutability
+    /// trigger is invisible to a columns-and-indexes comparison.
     /// </summary>
     private static async Task<List<string>> DescribeTableAsync(string connectionString, string table)
     {

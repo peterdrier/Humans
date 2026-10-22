@@ -8,7 +8,7 @@ using NodaTime.Text;
 
 namespace Humans.Events.Services;
 
-/// <summary>Validation boundary for the all-or-nothing barrio bulk-upload format.</summary>
+/// <summary>All or nothing.</summary>
 internal static class EventBulkImportValidator
 {
     public static List<BulkImportRowError> ValidateRows(

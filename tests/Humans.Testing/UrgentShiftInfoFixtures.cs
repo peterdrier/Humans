@@ -4,18 +4,9 @@ using NodaTime;
 
 namespace Humans.Testing;
 
-/// <summary>
-/// Builders for <see cref="UrgentShiftInfo"/> and its two nested records.
-/// </summary>
-/// <remarks>
-/// Same call as <c>BurnFixtures</c> (Shifts lane A finding 7): the boundary row
-/// is 11 members over two 11-member nested records, and a test that cares about
-/// two of them should not have to spell 33. Every parameter is defaulted, so a
-/// call reads as exactly the fields under test.
-/// </remarks>
+/// <summary>Every parameter is defaulted, so a call names only the fields under test.</summary>
 public static class UrgentShiftFixtures
 {
-    /// <summary>A rota header with sensible defaults.</summary>
     public static RotaInfo Rota(
         Guid? id = null,
         string name = "Test Rota",
@@ -41,7 +32,6 @@ public static class UrgentShiftFixtures
             isVisibleToVolunteers,
             tags ?? []);
 
-    /// <summary>A shift's own fields with sensible defaults.</summary>
     public static ShiftInfo Shift(
         Guid? id = null,
         Guid? rotaId = null,
@@ -66,12 +56,7 @@ public static class UrgentShiftFixtures
             isAllDay,
             IsEarlyEntry: dayOffset < 0);
 
-    /// <summary>
-    /// A boundary row. <paramref name="shift"/> and <paramref name="rota"/>
-    /// default to <see cref="Shift"/> / <see cref="Rota"/>, and the absolute
-    /// window is derived from <paramref name="burn"/> when one is supplied so
-    /// the row is self-consistent without the caller doing the arithmetic.
-    /// </summary>
+    /// <summary>The absolute window is derived from <paramref name="burn"/> when given, so the row is self-consistent.</summary>
     public static UrgentShiftInfo Urgent(
         ShiftInfo? shift = null,
         RotaInfo? rota = null,

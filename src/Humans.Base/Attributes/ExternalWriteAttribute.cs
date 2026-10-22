@@ -7,32 +7,16 @@ namespace Humans.Base.Attributes;
 /// methods it calls.
 /// </summary>
 /// <remarks>
-/// Consumed by <c>RequestScopedCancellationOnExternalWriteAnalyzer</c> (HUM0033),
-/// which fails the build when a state-changing controller action
-/// (<c>[HttpPost]</c> / <c>[HttpPut]</c> / <c>[HttpDelete]</c> / <c>[HttpPatch]</c>)
-/// passes a <b>request-scoped</b> cancellation token — <c>HttpContext.RequestAborted</c>
-/// or the action's own <c>CancellationToken</c> parameter — into a marked method.
-///
 /// <para>
-/// Rationale and the full three-way token taxonomy live in
-/// <c>memory/architecture/cancellation-token-propagation.md</c>. In short: a user
-/// closing the tab must not tear a remote write in half, because a partially
-/// applied vendor mutation has no rollback and no record of where it stopped.
+/// HUM0033 fails the build when a state-changing controller action passes a request-scoped cancellation token
+/// (<c>HttpContext.RequestAborted</c> or the action's own token) into a marked method: a closed tab must not tear a
+/// remote write in half, since a partial vendor mutation has no rollback
+/// (<c>memory/architecture/cancellation-token-propagation.md</c>).
 /// </para>
-///
 /// <para>
-/// <b>Apply it whenever you add a service method that reaches a new outbound
-/// write.</b> The analyzer is only as complete as these markers — an unmarked
-/// method is simply not checked. Mark the method on the <i>interface</i>: the
-/// controller's compilation only ever sees the interface symbol, never the
-/// Infrastructure implementation.
-/// </para>
-///
-/// <para>
-/// A method that is write-<i>capable</i> is marked even when some arguments make
-/// a particular call read-only (e.g. a <c>SyncAction.Preview</c> reconcile). The
-/// HTTP verb of the calling action is what decides: a <c>[HttpGet]</c> action may
-/// still pass a request-scoped token, a state-changing one may not.
+/// Mark every method that reaches a new outbound write, on the <i>interface</i>: an unmarked method is not checked,
+/// and the controller only sees the interface symbol. A write-<i>capable</i> method is marked even when some
+/// arguments make a call read-only; the calling action's HTTP verb decides.
 /// </para>
 /// </remarks>
 [AttributeUsage(

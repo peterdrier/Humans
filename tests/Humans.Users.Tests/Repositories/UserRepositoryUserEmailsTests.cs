@@ -9,9 +9,6 @@ using Humans.Users.Data;
 
 namespace Humans.Users.Tests.Repositories;
 
-/// <summary>
-/// Repository tests for <c>UserRepository</c> user-email lookups.
-/// </summary>
 public sealed class UserRepositoryUserEmailTests : IDisposable
 {
     [HumansTheory]
@@ -97,10 +94,4 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
 
         result.Select(email => email.Id).Should().Equal(exact.Id, alias.Id);
     }
-
-    // Note: the OAuth-callback write path is now driven by
-    // UserEmailService.ReconcileOAuthIdentityAsync; the legacy repo-level
-    // UpdateEmailAsync primitive is gone. Service-level coverage lives in
-    // UserEmailServiceReconcileOAuthTests; controller-level coverage in
-    // AccountControllerOAuthReconcileTests.
 }

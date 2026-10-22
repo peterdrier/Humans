@@ -21,7 +21,7 @@ public static class DateFormattingExtensions
     public static string? ToInvariantDate(this DateTime? value) =>
         value?.ToInvariantDate();
 
-    // --- Canonical display formats — day/month ORDER and names follow the request UI culture ---
+    // Canonical display formats: day/month order and names follow the request UI culture.
 
     // True when the resolved culture writes day before month (es/de/fr/it/ca -> "5 jun");
     // false when month-first (en-US -> "Jun 5"). Read from the live culture, never hard-coded.
@@ -91,16 +91,12 @@ public static class DateFormattingExtensions
     public static string ToMonthName(this DateTime value) => value.ToString("MMMM", CultureInfo.CurrentUICulture);
     public static string ToTimeWithSeconds(this DateTimeOffset value) => value.ToString("HH:mm:ss", CultureInfo.CurrentUICulture);
 
-    // --- Audit timestamps ---
-
     public static string ToInvariantTimestamp(this DateTime value) =>
         value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
     // Audit timestamps from an Instant are always UTC (never the user's session tz).
     public static string ToInvariantTimestamp(this Instant value) => value.ToDateTimeUtc().ToInvariantTimestamp();
     public static string? ToInvariantTimestamp(this Instant? value) => value?.ToInvariantTimestamp();
-
-    // --- Invariant / machine / interchange ---
 
     /// <summary>Invariant year-month label, "yyyy-MM".</summary>
     public static string ToInvariantYearMonth(this YearMonth value) =>
@@ -135,12 +131,10 @@ public static class DateFormattingExtensions
     public static string ToInvariantTime(this DateTime value) =>
         value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
-    // --- Filename / export stamps ---
-
     public static string ToFileTimestamp(this DateTime value) =>
         value.ToString("yyyy-MM-dd-HHmm", CultureInfo.InvariantCulture);
 
-    // --- NodaTime patterns: the one sanctioned home for parse/format pattern literals (HUM0030) ---
+    // NodaTime patterns: the one sanctioned home for parse/format pattern literals (HUM0030).
 
     /// <summary>iCal basic date-time (RFC 5545 DATE-TIME, e.g. "20260131T142500").</summary>
     public static readonly LocalDateTimePattern IcalBasicDateTimePattern =

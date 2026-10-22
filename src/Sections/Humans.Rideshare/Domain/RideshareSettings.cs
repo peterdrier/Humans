@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Rideshare.Domain;
 
-/// <summary>
-/// Per-year singleton: where vehicles actually drive to (the routable burn end of
-/// every trip) and the inbound/outbound travel windows.
-/// </summary>
+/// <summary>Per-year singleton: the routable burn end of every trip, and the travel windows.</summary>
 internal sealed class RideshareSettings
 {
     public Guid Id { get; init; }

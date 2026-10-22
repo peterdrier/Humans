@@ -5,17 +5,9 @@ using Xunit;
 namespace Humans.AuditLog.Tests.Enums;
 
 /// <summary>
-/// AuditLog's share of the string-stored-enum guard, moved out of
-/// <c>Humans.Domain.Tests.Enums.EnumStringStabilityTests</c> when that orphaned project's rows
-/// were distributed to their owners —
-/// <see cref="AuditAction"/> lives on <c>Humans.AuditLog.Contracts</c>, so the guard belongs to
-/// the section that owns it (nobodies-collective/Humans#866).
+/// <see cref="AuditAction"/> is persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the OLD
+/// string in every historical row, so a rename needs a migration that UPDATEs the stored values.
 /// </summary>
-/// <remarks>
-/// <c>AuditAction</c> is persisted with <c>HasConversion&lt;string&gt;()</c> in
-/// <c>audit_log_entries.action</c>: renaming a member leaves the OLD string in the column, and
-/// every historical row keeps it. A rename needs a migration that UPDATEs the stored values.
-/// </remarks>
 public class EnumStringStabilityTests
 {
     [HumansTheory]
@@ -54,7 +46,7 @@ public class EnumStringStabilityTests
                 "CampImageUploaded", "CampImageDeleted",
                 "ShiftSignupCreated", "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
                 "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled", "ShiftSignupReassigned",
-                // Retired (peterdrier/Humans#1633): no writer left, but persisted rows still
+                // Retired: no writer left, but persisted rows still
                 // carry the string, so the member has to survive.
                 "CampSettingsEeStartDateChanged"
             ]

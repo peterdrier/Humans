@@ -5,12 +5,6 @@ using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// The Secretary's and the Board's decisions (design §6): register, refer, refuse,
-/// withdraw, close, reactivate, register an existing group, and record the Board's reply
-/// to a delivered document. Registration is administrative recognition only — nothing
-/// here happens without a human asking for it.
-/// </summary>
 internal sealed partial class WorkgroupService
 {
     public async Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
@@ -22,8 +16,7 @@ internal sealed partial class WorkgroupService
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
 
-        // The folder comes first: a group is not registered until it has somewhere to work,
-        // and a failure here leaves the row exactly as it was so the Secretary can retry.
+        // The folder comes first: a failure here leaves the row as it was, so the Secretary can retry.
         if (workgroup.DriveFolderId is null)
         {
             var folderResult = await CreateGroupFolderAsync(workgroup, ct);
@@ -58,7 +51,6 @@ internal sealed partial class WorkgroupService
         workgroup.Status = WorkgroupStatus.Referred;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
-        // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Referred, now, Trimmed(note), ct);
@@ -88,7 +80,6 @@ internal sealed partial class WorkgroupService
         workgroup.Reasons = reasons.Trim();
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
-        // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Refused, now, reasons.Trim(), ct);
@@ -114,7 +105,6 @@ internal sealed partial class WorkgroupService
         workgroup.EndedAt = now;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
-        // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
         await ClosePendingRequestsAsync(workgroup, now, ct);
 
@@ -122,7 +112,7 @@ internal sealed partial class WorkgroupService
         await AuditAsync(AuditAction.WorkgroupWithdrawn, workgroup,
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
-        // Withdrawn is not Active, so the source stops claiming write access.
+        // Withdrawn isn't Active, so the source stops claiming write access.
         await RequestDriveSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: false, ct);
         return new();
@@ -137,8 +127,7 @@ internal sealed partial class WorkgroupService
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Active) is { } statusRefusal) return new(Refusal: statusRefusal);
 
-        // The Secretary's close after the two-month silence; the member's own ending is
-        // MarkDoneAsync, which cannot reach the Quiet reason.
+        // The member's own ending is MarkDoneAsync, which can't reach the Quiet reason.
         await EndAsync(workgroup, actorUserId, WorkgroupDormantReason.Quiet, reasons, ct);
         return new();
     }
@@ -157,14 +146,12 @@ internal sealed partial class WorkgroupService
         workgroup.Reasons = null;
         workgroup.UpdatedAt = now;
         await repository.UpdateWorkgroupAsync(workgroup, ct);
-        // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Reactivated, now, body: null, ct);
         await AuditAsync(AuditAction.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
-        // Active again: the source claims ContentManager for the current members once more.
         await RequestDriveSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();
@@ -189,8 +176,7 @@ internal sealed partial class WorkgroupService
         {
             Id = Guid.NewGuid(),
             Slug = slug,
-            // Bootstrapping records a group that already exists: it is registered from the
-            // moment it really started, and the application it never filed is the same date.
+            // The application it never filed takes the same backdated date.
             Status = WorkgroupStatus.Active,
             AppliedByUserId = coordinatorId,
             AppliedAt = bootstrap.RegisteredAt,
@@ -213,8 +199,8 @@ internal sealed partial class WorkgroupService
         workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.Registered,
             bootstrap.RegisteredAt, body: null));
 
-        // Finance before anything durable: a Holded failure must fail the whole registration,
-        // or the form reports an error for a group that exists and a retry registers it twice.
+        // Finance before anything durable: otherwise a Holded failure reports an error for a group that exists,
+        // and a retry registers it twice.
         var budget = bootstrap.Budget is { Amount: not null } b ? b : null;
         if (budget is not null)
         {
@@ -260,8 +246,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        // The Board replies to what it received, so there is nothing to dispose of until
-        // the group has delivered.
         if (document.Status != WorkgroupDocumentStatus.Delivered)
             return new(Refusal: new(WorkgroupErrorKeys.NotDelivered));
 
@@ -272,7 +256,6 @@ internal sealed partial class WorkgroupService
         document.DispositionByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
-        // The decision committed; finish its record and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DispositionRecorded, now,
@@ -284,19 +267,13 @@ internal sealed partial class WorkgroupService
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDispositionRecorded,
             $"Enum_WorkgroupDisposition_{disposition}", info, $"{document.Title}: {note.Trim()}", ct);
-        // Members see it in-app; the coordinators, who owe the follow-up, also get the email.
+        // The coordinators owe the follow-up, so they also get the email.
         await EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
             $"{disposition}: {note.Trim()}", ct);
         return new();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Creates the group's subfolder under the configured root. Both failure modes are
-    /// the Secretary's to act on: an unset root is a settings problem, a Google failure is
-    /// a retry — neither leaves the group half-registered.
-    /// </summary>
+    /// <summary>Neither failure (unset root, Google error) leaves the group half-registered.</summary>
     private async Task<WorkgroupMutationResult<string>> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
     {
         var root = await GetRootDriveFolderIdAsync(ct);
@@ -315,7 +292,6 @@ internal sealed partial class WorkgroupService
         }
     }
 
-    /// <summary>The §14 pair for a decision the coordinators need to know about: notify and email.</summary>
     private async Task AnnounceDecisionAsync(
         Workgroup workgroup,
         WorkgroupNoticeKind kind,

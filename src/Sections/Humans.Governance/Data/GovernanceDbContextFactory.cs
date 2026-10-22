@@ -4,13 +4,7 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace Humans.Governance.Data;
 
-/// <summary>
-/// Design-time factory used by <c>dotnet ef … --context GovernanceDbContext</c>.
-/// The migrations-history table comes
-/// from <see cref="SectionMigrationsHistory"/> — the same helper the runtime
-/// registration uses — so CI's from-scratch apply records baselines in the table
-/// the app reads.
-/// </summary>
+/// <summary>Same history table as the runtime registration, so a CI apply writes the table the app reads.</summary>
 internal sealed class GovernanceDbContextFactory : IDesignTimeDbContextFactory<GovernanceDbContext>
 {
     public GovernanceDbContext CreateDbContext(string[] args)

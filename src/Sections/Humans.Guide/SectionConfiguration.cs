@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Guide;
 
-/// <summary>Guide's own settings — the GitHub folder its content is rendered from.</summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

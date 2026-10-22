@@ -4,15 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Health;
 
-/// <summary>
-/// Health check that probes the ticket vendor connector (TicketTailor in Production).
-/// Mirrors <c>Humans.Stripe</c>'s internal <c>StripeStartupSmokeService</c> (prose, not a
-/// cref — it is internal to that section): authenticate +
-/// a cheap read so a broken/missing vendor connector surfaces in <c>/health</c>
-/// instead of silently no-opping at gate time.
-/// Returns <see cref="HealthCheckResult.Degraded"/> when unconfigured (missing API key or EventId)
-/// and <see cref="HealthCheckResult.Unhealthy"/> when the API call fails.
-/// </summary>
+/// <summary>A broken vendor connector shows in <c>/health</c> instead of failing silently at gate time.</summary>
 internal sealed class TicketVendorHealthCheck(
     ITicketVendorService vendorService,
     IOptions<TicketVendorSettings> settings,

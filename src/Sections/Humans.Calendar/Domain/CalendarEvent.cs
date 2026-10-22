@@ -2,9 +2,6 @@ using NodaTime;
 
 namespace Humans.Calendar.Domain;
 
-/// <summary>
-/// A calendar event belonging to a team, supporting both one-off and recurring occurrences.
-/// </summary>
 internal sealed class CalendarEvent
 {
     public Guid Id { get; init; }

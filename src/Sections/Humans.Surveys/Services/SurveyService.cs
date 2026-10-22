@@ -19,11 +19,6 @@ using NodaTime;
 
 namespace Humans.Surveys.Services;
 
-/// <summary>
-/// Application-layer <see cref="ISurveyService"/>. Plain Scoped service (no caching decorator).
-/// Cross-domain display data is stitched from <c>I&lt;Section&gt;Service</c> contracts — the
-/// repository never resolves user/team navs.
-/// </summary>
 internal sealed class SurveyService(
     ISurveyRepository repo,
     IAuditLogService auditLog,
@@ -676,10 +671,8 @@ internal sealed class SurveyService(
             $"Approved survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'; sending invitations",
             viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
 
-        // CancellationToken.None, not ct: approval is persisted, and the invitation send is an
-        // outbound write to the mail provider — a request-scoped token that fires mid-send
-        // would leave the survey Open with a partial invitation set
-        // (memory/architecture/cancellation-token-propagation.md).
+        // CancellationToken.None, not ct: approval is persisted, and a request-scoped token firing mid-send would
+        // leave the survey Open with a partial invitation set.
         return await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None);
     }
 
@@ -1685,15 +1678,9 @@ internal sealed class SurveyService(
     }
 
     /// <summary>
-    /// GDPR Article 15 contributor: the user's own submitted <see cref="ResponseAnonymity.Identified"/>
-    /// survey responses, the surveys they authored, and their invitation ledger.
-    /// CompletionTracked/Anonymous responses carry no <c>UserId</c> and are excluded by the repository
-    /// query (not personal data linkable to the user) — the invitation slice is what such a person,
-    /// and anyone who was only invited, gets instead. Prompts/labels are resolved in the response's own
-    /// <see cref="SurveyResponse.Culture"/>, falling back to the survey's default culture.
-    /// Identified responses and invitations keep their original account IDs across merges;
-    /// export includes the survivor's full identity chain without linking anonymous answers.
-    /// Every slice is always emitted (an empty list, never null) so the export keys stay stable.
+    /// Only Identified responses carry a <c>UserId</c>; for CompletionTracked/Anonymous respondents and the merely
+    /// invited, the invitation slice is the record instead. Every slice is always emitted (empty, never null) so the
+    /// export keys stay stable.
     /// </summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -2321,12 +2308,9 @@ internal sealed class SurveyService(
 
             case SurveyAudienceType.LoggedInSince:
                 {
-                    // "Logged in on or after the cutoff" = LastLoginAt >= cutoff; null LastLoginAt never
-                    // matches (predates tracking). Deliberately no IsApproved filter — mid-onboarding
-                    // users belong in this audience (nobodies-collective/Humans#894) — but
-                    // deletion-pending users and accounts walled off by state
-                    // (rejected/suspended — they can't reach the survey) are never invited.
-                    // Tombstones are already absent: GetAllUserInfosAsync omits them (peterdrier/Humans#1704).
+                    // Null LastLoginAt never matches (predates tracking). Deliberately no IsApproved filter:
+                    // mid-onboarding users belong in this audience. Deletion-pending, rejected and suspended
+                    // accounts can't reach the survey, so they are never invited.
                     if (loggedInSince is null) return new HashSet<Guid>();
                     var users = await userService.GetAllUserInfosAsync(ct);
                     return users

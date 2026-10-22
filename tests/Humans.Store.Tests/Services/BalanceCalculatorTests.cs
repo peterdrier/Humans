@@ -112,7 +112,6 @@ public class BalanceCalculatorTests
         BalanceCalculator.Compute(order).BalanceEur.Should().Be(0m);
     }
 
-    // ── Payment status exclusion (nobodies-collective/Humans#638) ───────────────
     // Only Paid rows count. A Pending mandate (captured, not yet cleared) and a Failed
     // settlement (bounced) must NOT reduce the order balance.
 
@@ -162,7 +161,6 @@ public class BalanceCalculatorTests
         r.BalanceEur.Should().Be(50m); // mandate ≠ payment — still fully owed
     }
 
-    // ── Repricing (nobodies-collective/Humans#816) ──────────────────────────────
     // Open orders are a running tab: totals track the *current* catalog price.
     // Issued orders are frozen and read their add-time snapshots forever.
 

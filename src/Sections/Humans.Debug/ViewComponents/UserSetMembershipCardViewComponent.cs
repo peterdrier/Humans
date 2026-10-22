@@ -8,14 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Debug.ViewComponents;
 
-/// <summary>
-/// The Venn + UpSet "user set membership" card on the admin dashboard. Contributed into the
-/// admin dashboard's <c>admin-dashboard</c> chrome slot (<see cref="Humans.Debug.SectionChrome"/>).
-/// </summary>
-/// <remarks>
-/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
-/// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper.
-/// </remarks>
+/// <summary>Internal: invoked by type through <c>ChromeSlotViewComponent</c>, not a <c>&lt;vc:&gt;</c> tag helper.</summary>
 internal sealed class UserSetMembershipCardViewComponent(
     IUserService userService,
     ISettingsService settingsService,

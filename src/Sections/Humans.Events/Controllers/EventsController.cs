@@ -43,10 +43,9 @@ internal sealed class EventsController(
 
         var tz = GetTimeZone(eventSettings);
 
-        // Personal block
         var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
 
-        // Barrio blocks — camps the user leads/workshops
+        // Camps the user leads or runs workshops for.
         var campSettings = await CampService.GetSettingsAsync(ct);
         var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear, ct))
             .Where(camp => camp.IsEventManager(user.Id))
@@ -320,8 +319,6 @@ internal sealed class EventsController(
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
             var campName = ResolveCampName(camp);
 
-            // One line per favourited occurrence: a day-specific favourite expands
-            // to that single occurrence, a whole-event favourite to all of them.
             IReadOnlyList<Instant> occurrences = e.GetOccurrenceInstants(gateOpeningDate, tz, f.DayOffset);
 
             return occurrences.Select(startInstant =>
@@ -358,7 +355,6 @@ internal sealed class EventsController(
             });
         }).OrderBy(i => i.StartInstant).ToList();
 
-        // Detect time conflicts
         foreach (var index in EventConflictDetector.FindConflictingIndexes(
                      scheduleItems, i => i.StartInstant, i => i.DurationMinutes))
         {
@@ -520,8 +516,6 @@ internal sealed class EventsController(
 
         model.EventDays = BuildEventDayOptions(burn);
     }
-
-    // ─── Barrio event actions (replaces /Barrios/{slug}/Events/*) ────────────
 
     [HttpGet("Barrio/{slug}/Submit")]
     public async Task<IActionResult> BarrioSubmit(string slug)

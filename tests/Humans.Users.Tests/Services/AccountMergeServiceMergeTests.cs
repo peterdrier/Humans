@@ -252,7 +252,7 @@ public class AccountMergeServiceMergeTests
     [HumansFact]
     public async Task ReconcileMergedRequestAsync_Throws_WhenOneAccountMergedIntoThirdParty()
     {
-        // Codex P2: source merged into an UNRELATED third account, target still active.
+        // Source merged into an UNRELATED third account, target still active.
         // The A<->B request must NOT be closeable — that conflict is still unresolved.
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var third = Guid.NewGuid();
         var req = new AccountMergeRequest

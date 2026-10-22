@@ -1,10 +1,6 @@
 @model Humans.Users.ViewComponents.UsersGalleryViewModel
 
-@* The widget-gallery cards this section owns — sample models internal to this section
-   (_ProfileCard, _HumanPopover) plus this section's public view components, rendered here so
-   Debug never has to name their internals or pass a caller-supplied user id (ShiftsGallery's
-   shape; nobodies-collective/Humans#1091, #1815). The wg-* CSS classes are the gallery page's;
-   this renders inside it. *@
+@* Rendered here so Debug never names this section's internals; the wg-* classes are the gallery page's. *@
 
 @functions {
     private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)

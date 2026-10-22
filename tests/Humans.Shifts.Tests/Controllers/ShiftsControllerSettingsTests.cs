@@ -26,11 +26,8 @@ using Humans.Users.Contracts;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
-/// The knobs form moved to /Settings#shifts (peterdrier/Humans#1634). The old
-/// <c>GET /Shifts/Settings</c> page is retired outright, with no redirect kept, since
-/// redirecting a legacy URL is tech debt here. <c>POST /Shifts/Settings</c> stays (the
-/// tab posts to it) and now redirects back to the tab (post-redirect-get, not a
-/// legacy-URL redirect).
+/// <c>GET /Shifts/Settings</c> is retired with no redirect (legacy-URL redirects are debt);
+/// <c>POST /Shifts/Settings</c> stays and redirects back to the /Settings#shifts tab.
 /// </summary>
 public sealed class ShiftsControllerSettingsTests
 {

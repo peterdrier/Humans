@@ -17,21 +17,9 @@ using Humans.Users.Contracts;
 namespace Humans.Notifications.Services;
 
 /// <summary>
-/// Provides live counter meters for admin/coordinator work queues. Counts
-/// are computed by calling into each owning section's read interface
-/// (<see cref="IUserService"/>, <see cref="IGoogleSyncService"/>,
-/// <see cref="ITeamService"/>, <see cref="ITicketSync"/>,
-/// <see cref="IGovernanceService"/>, <see cref="ICampService"/>)
-/// and cached for ~2 minutes. No direct DB access.
+/// The counts cache is this provider's alone and expires rather than being evicted. Counts the owner already
+/// caches or holds in RAM bypass it, so the owner's own eviction keeps them fresh.
 /// </summary>
-/// <remarks>
-/// Notifications owns <c>notifications</c>/<c>notification_recipients</c> only —
-/// every other table is reached through its owning section's public service
-/// interface. The meter counts cache (<see cref="CountsCacheKey"/>) is a short-TTL
-/// request-acceleration cache this provider alone reads; nothing evicts it, it
-/// expires. Counts their owner already caches or holds in RAM (team join requests,
-/// per-member voting) bypass it, so the owner's own eviction keeps them fresh.
-/// </remarks>
 internal sealed class NotificationMeterProvider(
     IUserService userService,
     IConsentService consentService,
@@ -46,7 +34,6 @@ internal sealed class NotificationMeterProvider(
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
-    /// <summary>Cache key for the shared meter counts; this provider is its only reader and writer.</summary>
     internal const string CountsCacheKey = "NotificationMeters";
 
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
@@ -125,8 +112,7 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        // Team join requests pending — Admin (visible to admins since coordinators
-        // see their own team's requests on the team page)
+        // Admin only: coordinators see their own team's requests on the team page.
         var teamJoinRequestsPending = isAdmin ? await GetTeamJoinRequestsPendingAsync(cancellationToken) : 0;
         if (teamJoinRequestsPending > 0)
         {
@@ -150,8 +136,7 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        // Pending camp membership requests, per lead: one counter rather than a stored
-        // notification per request.
+        // One counter per lead rather than a stored notification per request.
         {
             var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
             if (Guid.TryParse(userIdClaim, out var leadUserId))
@@ -257,7 +242,7 @@ internal sealed class NotificationMeterProvider(
         }
     }
 
-    // Caching lives in ApplicationDecisionService.GetUnvotedApplicationCountAsync (ApplicationDecisionService.VotingBadgeCacheKey).
+    // Governance caches this per user under its own key.
     private Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken) =>
         applicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
 
@@ -268,9 +253,6 @@ internal sealed class NotificationMeterProvider(
         var consentReviewsPending = allUserInfos.Count(u =>
             u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
 
-        // Pending deletions derived from the cached UserInfo snapshot —
-        // ConsentReviewsPending above already reads the same snapshot, and the
-        // meter result itself is cached for CacheDuration anyway.
         var pendingDeletions = allUserInfos
             .Count(u => u.DeletionRequestedAt != null);
 

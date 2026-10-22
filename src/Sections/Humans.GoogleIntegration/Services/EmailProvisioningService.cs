@@ -13,7 +13,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>4-step @nobodies.team email provisioning flow. Used by GoogleController (Admin, HumanAdmin) and TeamAdminController (Coordinators).</summary>
 internal sealed class EmailProvisioningService(
     IUserService userService,
     IGoogleWorkspaceUserService workspaceUserService,
@@ -34,10 +33,8 @@ internal sealed class EmailProvisioningService(
         string emailPrefix,
         Guid provisionedByUserId)
     {
-        // userId comes from an admin/coordinator form, so an archived id must never reach Workspace
-        // provisioning. Two hazards: GetUserInfoAsync resolves merge chains forward (a merged-away id
-        // returns the survivor, whose Id differs from userId), and a GDPR-deleted/legacy tombstone
-        // returns itself but keeps an anonymized (non-blank) name that would pass the checks below.
+        // userId comes from a form, so an archived id must never reach Workspace: GetUserInfoAsync resolves a
+        // merged-away id to its survivor, and a GDPR tombstone keeps an anonymized name that passes the checks below.
         var user = await userService.GetUserInfoAsync(userId);
         if (user is not { IsActive: true } || user.Id != userId)
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
@@ -53,8 +50,7 @@ internal sealed class EmailProvisioningService(
 
         try
         {
-            // DB conflict check BEFORE Workspace check — prevents stale Workspace accounts from silently re-binding identity.
-            // user_emails is the single source of truth (#687).
+            // DB conflict check before the Workspace check, so a stale Workspace account cannot re-bind the identity.
             var conflictingEmailUserId =
                 (await userEmailService.FindByAddressAsync(fullEmail, aliased: false, verifiedOnly: false))
                 .FirstOrDefault(r => r.UserId != userId)?.UserId;
@@ -67,9 +63,7 @@ internal sealed class EmailProvisioningService(
                     ErrorMessage: $"{fullEmail} is already in use by another human.");
             }
 
-            // Reject if the prefix collides with a team's Google Group. Team groups
-            // live on the same domain (@nobodies.team), so a user account with the
-            // same address would cause mail-routing chaos and break group membership.
+            // A team Group with this address on the same domain would break mail routing and group membership.
             var conflictingTeamName = (await teamService.GetTeamsAsync()).Values
                 .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, sanitizedPrefix, StringComparison.OrdinalIgnoreCase))
                 ?.Name;
@@ -101,7 +95,7 @@ internal sealed class EmailProvisioningService(
                 fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
-            // Link the email — flips notification target; a verified @nobodies.team address is the Google identity (#687). Do NOT move above the recovery-email capture.
+            // Flips the notification target. Do NOT move above the recovery-email capture.
             await userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
 
             // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify it, and designate it explicitly if it is not the identity.
@@ -185,9 +179,7 @@ internal sealed class EmailProvisioningService(
         }
     }
 
-    /// <summary>
-    /// Returns the verified notification-target email, falling back to OAuth email. Never returns @nobodies.team (user can't yet reach it).
-    /// </summary>
+    /// <summary>Never returns @nobodies.team: the member cannot reach it yet.</summary>
     private async Task<string?> ResolveRecoveryEmailAsync(Guid userId, string? oauthEmail)
     {
         var emails = await userEmailService.GetUserEmailsAsync(userId);
@@ -201,10 +193,7 @@ internal sealed class EmailProvisioningService(
         return candidate;
     }
 
-    /// <summary>
-    /// Transliterates to ASCII: German maps (ü→ue, ö→oe, ä→ae, ß→ss) then NFD-strip diacritics.
-    /// Returns null for an invalid Workspace username; empty on blank input.
-    /// </summary>
+    /// <summary>Null for an invalid Workspace username; empty on blank input.</summary>
     internal static string? SanitizeEmailPrefix(string prefix)
     {
         var trimmed = prefix.Trim();
@@ -231,7 +220,6 @@ internal sealed class EmailProvisioningService(
                 sb.Append(ch);
         }
 
-        // NFD decomposition: split base characters from combining marks, then strip marks
         var normalized = sb.ToString().Normalize(NormalizationForm.FormD);
         var result = new StringBuilder(normalized.Length);
         foreach (var ch in normalized)

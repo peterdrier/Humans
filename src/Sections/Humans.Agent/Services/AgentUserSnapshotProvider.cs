@@ -121,12 +121,10 @@ internal sealed class AgentUserSnapshotProvider(
                 Status: status));
         }
 
-        // No display sort here — AgentPromptAssembler.BuildUserContextTail
-        // sorts by StartDate at the rendering layer (memory/architecture/display-sort-in-controllers.md).
+        // Unsorted: AgentPromptAssembler sorts at render time.
         return entries;
     }
 
-    /// <summary>Rota display name, with an unnamed-rota fallback.</summary>
     private static string RotaLabel(ShiftSignupSummary signup) =>
         string.IsNullOrWhiteSpace(signup.RotaName) ? "(unnamed rota)" : signup.RotaName;
 }

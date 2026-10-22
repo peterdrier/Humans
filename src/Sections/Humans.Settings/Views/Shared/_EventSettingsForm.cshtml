@@ -1,8 +1,6 @@
 @model Humans.Settings.Models.EventSettingsViewModel
 
-@* Rendered by the /Settings#event tab (peterdrier/Humans#1628) — the explicit
-   asp-controller/asp-action route it posts to so the tab (served from /Settings)
-   still submits to SettingsAdminController. *@
+@* Rendered from /Settings, so it names the SettingsAdminController route explicitly. *@
 <div class="row">
     <div class="col-lg-8">
         <form method="post" asp-controller="SettingsAdmin" asp-action="Index">

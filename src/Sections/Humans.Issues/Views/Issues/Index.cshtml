@@ -104,8 +104,7 @@
                 <p class="text-muted p-3">@Localizer["Issue_NoneFound"]</p>
             }
             <table class="table table-hover table-sm align-middle issues-table mb-0">
-                @* Three headers for three cells: the reporter and the comment count live
-                   inside the title and updated cells, so they get no column of their own. *@
+                @* Three headers for three cells: the reporter and comment count live inside the title and updated cells. *@
                 <thead class="visually-hidden">
                     <tr>
                         <th>@Localizer["Issue_ColStatus"]</th>
@@ -166,11 +165,8 @@
     </div>
 </div>
 
-@* The detail panel's _EmailComposer is fetched over AJAX and injected via innerHTML, so its own
-   markdown-editor/composer <script> tags never run (loadIssueDetail wires it manually below).
-   This hidden editor loads the EasyMDE assets + window.HumansMarkdownEditor once via the normal
-   page load, and the modal below is the one window.HumansEmailComposer.preview targets — see
-   EmailComposerViewModel.IncludePreviewModal on _Detail.cshtml's composer. *@
+@* The detail panel's _EmailComposer arrives via innerHTML, so its own <script> tags never run. This hidden editor
+   loads the EasyMDE assets once, and the modal below is the one window.HumansEmailComposer.preview targets. *@
 <div style="display:none" aria-hidden="true">
     <markdown-editor name="__issuesDetailAssetPreload" rows="1" />
 </div>

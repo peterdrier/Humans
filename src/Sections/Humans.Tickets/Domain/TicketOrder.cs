@@ -3,87 +3,64 @@ using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Domain;
 
-/// <summary>
-/// A ticket purchase order synced from the ticket vendor.
-/// One record per purchase — may contain multiple attendees (issued tickets).
-/// </summary>
 internal sealed class TicketOrder
 {
     public Guid Id { get; init; }
 
-    /// <summary>Vendor's order identifier (e.g. TT order ID). Unique.</summary>
     public string VendorOrderId { get; init; } = string.Empty;
 
-    /// <summary>Buyer's name from the vendor.</summary>
     public string BuyerName { get; set; } = string.Empty;
 
-    /// <summary>Buyer's email from the vendor.</summary>
     public string BuyerEmail { get; set; } = string.Empty;
 
-    /// <summary>
-    /// When GDPR erasure tombstoned this order's <see cref="BuyerName"/> and
-    /// <see cref="BuyerEmail"/>. Null until erased. While non-null, sync must
-    /// never write those two fields again. Issue nobodies-collective/Humans#1178.
-    /// </summary>
+    /// <summary>While set, sync must never write <see cref="BuyerName"/> or <see cref="BuyerEmail"/> again.</summary>
     public Instant? PiiErasedAt { get; set; }
 
-    /// <summary>Auto-matched user by email. Null if no match found.</summary>
     public Guid? MatchedUserId { get; set; }
 
-    /// <summary>Order total amount.</summary>
     public decimal TotalAmount { get; set; }
 
-    /// <summary>Currency code (e.g. "EUR").</summary>
     public string Currency { get; set; } = string.Empty;
 
-    /// <summary>Discount/voucher code used, if any.</summary>
     public string? DiscountCode { get; set; }
 
-    /// <summary>Payment status from vendor.</summary>
     public TicketPaymentStatus PaymentStatus { get; set; }
 
-    /// <summary>Vendor event ID at time of sync (for future multi-event).</summary>
     public string VendorEventId { get; set; } = string.Empty;
 
-    /// <summary>Deep link to vendor dashboard for this order.</summary>
     public string? VendorDashboardUrl { get; set; }
 
-    /// <summary>When the purchase was made (from vendor data).</summary>
     public Instant PurchasedAt { get; set; }
 
-    /// <summary>When this record was last synced from the vendor.</summary>
     public Instant SyncedAt { get; set; }
 
-    /// <summary>Stripe PaymentIntent ID from vendor txn_id (e.g. pi_xxx). Used to look up fee details.</summary>
+    /// <summary>From the vendor's <c>txn_id</c>; keys the Stripe fee lookup.</summary>
     public string? StripePaymentIntentId { get; set; }
 
-    /// <summary>Payment method type from Stripe (e.g. "card", "link", "ideal", "bancontact", "klarna").</summary>
     public string? PaymentMethod { get; set; }
 
-    /// <summary>Payment method detail — card brand for cards (e.g. "visa", "mastercard"), null for others.</summary>
+    /// <summary>Card brand for cards, null for other methods.</summary>
     public string? PaymentMethodDetail { get; set; }
 
-    /// <summary>Stripe processing fee in order currency.</summary>
     public decimal? StripeFee { get; set; }
 
-    /// <summary>Application fee (Ticket Tailor platform fee) in order currency.</summary>
+    /// <summary>Ticket Tailor's platform fee.</summary>
     public decimal? ApplicationFee { get; set; }
 
-    /// <summary>Stripe's <c>tax</c> fee bucket: VAT Stripe charged on its fees. Null on orders enriched before it was captured.</summary>
+    /// <summary>VAT Stripe charged on its fees. Null on orders enriched before it was captured.</summary>
     public decimal? FeeTax { get; set; }
 
-    /// <summary>Stripe's <c>withheld_tax</c> fee bucket: tax withheld from the payout. Null on orders enriched before it was captured.</summary>
+    /// <summary>Tax Stripe withheld from the payout. Null on orders enriched before it was captured.</summary>
     public decimal? WithheldTax { get; set; }
 
-    /// <summary>Discount amount applied to order (from vendor line items). Stored as positive value.</summary>
+    /// <summary>Stored as a positive value.</summary>
     public decimal? DiscountAmount { get; set; }
 
-    /// <summary>Standalone donation amount from vendor line items (VAT-exempt). Stored in euros.</summary>
+    /// <summary>Standalone donation line items, VAT-exempt.</summary>
     public decimal DonationAmount { get; set; }
 
-    /// <summary>Correctly computed VAT amount using VIP split logic. Not from vendor (TT computes incorrectly).</summary>
+    /// <summary>Computed locally with the VIP split; the vendor's tax line applies 10% to the full price.</summary>
     public decimal VatAmount { get; set; }
 
-    /// <summary>Individual attendees (issued tickets) for this order.</summary>
     public ICollection<TicketAttendee> Attendees { get; set; } = new List<TicketAttendee>();
 }

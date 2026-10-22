@@ -27,26 +27,9 @@ using Humans.AuditLog.Contracts;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>
-/// Phase 6.4 of the AccountMergeService fold-into-target redesign: a single
-/// end-to-end integration test that seeds the source user with a row in every
-/// fixture-supported section (plus a handful of target-side collisions to
-/// exercise dedup paths), accepts the merge, and asserts a comprehensive set
-/// of post-conditions:
-/// <list type="bullet">
-///   <item>Source <see cref="User"/> tombstoned with <c>MergedToUserId</c>,
-///         <c>MergedAt</c>, and far-future <c>LockoutEnd</c>.</item>
-///   <item>Live cross-section tables hold no rows attributed to source.</item>
-///   <item>Append-only sections (AuditLog, ConsentRecord, BudgetAuditLog)
-///         still hold source's rows for the chain-follow read path.</item>
-///   <item>Target picked up source's content via re-FK / dedup / move
-///         depending on the per-rule fold semantics.</item>
-/// </list>
-/// <para>
-/// Sections deferred (require heavy parent-row setup): Tickets,
-/// VolunteerEventProfile / VolunteerTagPreference, GeneralAvailability, and
-/// CampLead / CampRoleAssignment. These are covered by their own dedicated
-/// per-rule tests when the fixture builder grows support.
-/// </para>
+/// One merge with a source row in every fixture-supported section, plus target collisions for the dedup paths. Tickets,
+/// volunteer event profiles and tag preferences, general availability and camp roles need heavier parents and are not
+/// covered.
 /// </summary>
 public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
     : IntegrationTestBase(database)
@@ -54,9 +37,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
     [HumansFact(Timeout = 60_000)]
     public async Task AcceptAsync_FullFixture_FoldsAllSectionsAndTombstonesSource()
     {
-        // Per-test unique strings so this test can share a class-fixture DB
-        // with its siblings without colliding on uniqueness indices /
-        // description-based assertions.
         var runTag = Guid.NewGuid().ToString("N");
         var sourceOnlyEmail = $"src-only-{runTag}@example.com";
         var sharedEmail = $"shared-{runTag}@example.com";
@@ -77,59 +57,46 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         Guid budgetYearId;
         Guid documentVersionId;
 
-        // Stage 1 — seed source/target user pair plus all per-section data
-        // that does NOT need an ad-hoc parent (UserEmails, ContactFields,
-        // VolunteerHistory, ProfileLanguages, CommPrefs, IdentityUserLogins,
-        // EventParticipations, Applications, AuditLogEntries, RoleAssignments).
+        // Rows that need no ad-hoc parent.
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            // UserEmail — shared (collapse) + source-only (re-FK).
+            // Shared (collapses) plus source-only (re-FKs).
             b.WithSourceEmail(sharedEmail, verified: true);
             b.WithTargetEmail(sharedEmail, verified: false, isPrimary: true);
             b.WithSourceEmail(sourceOnlyEmail, verified: true);
 
-            // ContactField — source-only Telegram + shared Phone.
             b.WithSourceContactField(ContactFieldType.Telegram, $"@src-{runTag}");
             b.WithTargetContactField(ContactFieldType.Phone, $"+34 600 100 {runTag.Substring(0, 3)}");
             b.WithSourceContactField(ContactFieldType.Phone, $"+34 600 100 {runTag.Substring(0, 3)}");
 
-            // VolunteerHistory — source-only entry.
             b.WithSourceVolunteerHistory(2024, $"BurnFest-{runTag}");
 
-            // ProfileLanguage — source-only language.
             b.WithSourceLanguage($"x-{runTag.Substring(0, 4)}", LanguageProficiency.Native);
 
-            // CommunicationPreference — source-only category.
             b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true);
 
-            // IdentityUserLogin — source-only key (logins keyed on
-            // (provider, key); two users can never share the same key).
+            // Logins are keyed on (provider, key), so two users never share one.
             b.WithSourceLogin("Google", sourceLoginKey);
 
-            // EventParticipation — source-only year.
             b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
 
-            // Application — source-only.
             b.WithSourceApplication();
 
-            // AuditLog — append-only; chain-follow stitches at read time.
+            // Append-only; chain-follow stitches at read time.
             b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, auditDescription);
 
-            // RoleAssignment — shared (drop source) + source-only (re-FK).
+            // Shared (source drops) plus source-only (re-FKs).
             b.WithSourceRoleAssignment(sharedRole);
             b.WithTargetRoleAssignment(sharedRole);
             b.WithSourceRoleAssignment(sourceOnlyRole);
         });
 
-        // Stage 2 — seed the per-section data that needs ad-hoc parent rows
-        // (Teams, Notifications, Campaigns, FeedbackMessages, BudgetAuditLog,
-        // ConsentRecord). Mirrors the patterns in AcceptAsyncFoldTests for
-        // each section.
+        // Rows that need ad-hoc parents, seeded as in AcceptAsyncFoldTests.
         await using (var seedScope = Factory.Services.CreateAsyncScope())
         {
             var builder = new MergeFixtureBuilder(seedScope, sourceId, targetId);
 
-            // Teams: shared (drop source slot) + source-only (re-FK).
+            // Shared (source slot drops) plus source-only (re-FKs).
             sharedTeamId = builder.SeedTeamNow($"Shared-{runTag}".Substring(0, 12));
             sourceOnlyTeamId = builder.SeedTeamNow($"SrcOnly-{runTag}".Substring(0, 12));
             joinTeamId = builder.SeedTeamNow($"Join-{runTag}".Substring(0, 12));
@@ -138,33 +105,30 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             builder.WithSourceTeamMember(sourceOnlyTeamId);
             builder.WithSourceTeamJoinRequest(joinTeamId);
 
-            // Notifications: shared (drop dup) + source-only (re-FK).
+            // Shared (duplicate drops) plus source-only (re-FKs).
             sharedNotificationId = builder.SeedNotificationNow($"shared-{runTag}");
             sourceOnlyNotificationId = builder.SeedNotificationNow($"src-{runTag}");
             builder.WithSourceNotificationRecipient(sharedNotificationId);
             builder.WithTargetNotificationRecipient(sharedNotificationId);
             builder.WithSourceNotificationRecipient(sourceOnlyNotificationId);
 
-            // Campaigns: contested (dedup) + source-only (re-FK). Use source
-            // as creator — fold doesn't touch Campaigns themselves.
+            // Contested (dedups) plus source-only (re-FKs). The fold doesn't touch Campaigns themselves.
             contestedCampaignId = builder.SeedCampaignNow($"Contested-{runTag}", sourceId);
             sourceOnlyCampaignId = builder.SeedCampaignNow($"SrcOnly-{runTag}", sourceId);
             builder.WithSourceCampaignGrant(contestedCampaignId);
             builder.WithTargetCampaignGrant(contestedCampaignId);
             builder.WithSourceCampaignGrant(sourceOnlyCampaignId);
 
-            // FeedbackReport (target-owned) + source FeedbackMessage on it.
+            // Target-owned report carrying a source message.
             feedbackReportId = builder.SeedFeedbackReportNow(targetId, $"report-{runTag}");
             builder.WithSourceFeedbackMessage(feedbackReportId, $"src-msg-{runTag}");
 
-            // Source's own FeedbackReport — should re-FK to target.
             builder.WithSourceFeedbackReport($"src-report-{runTag}");
 
-            // BudgetAuditLog — append-only; chain-follow at read time.
+            // Append-only, as is the consent record below; chain-follow at read time.
             budgetYearId = builder.SeedBudgetYearNow($"BY-{runTag}".Substring(0, 6));
             builder.WithSourceBudgetAuditLog(budgetYearId, budgetDescription);
 
-            // ConsentRecord — append-only; chain-follow at read time.
             documentVersionId = builder.SeedDocumentVersionNow($"Doc-{runTag}".Substring(0, 16));
             builder.WithSourceConsentRecord(documentVersionId);
 
@@ -173,7 +137,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
 
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
-        // Act — accept the merge.
         var adminId = await SeedAdminUserAsync();
         await using (var actScope = Factory.Services.CreateAsyncScope())
         {
@@ -181,7 +144,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             await mergeService.AcceptAsync(requestId, adminId, survivorUserId: targetId, ct: TestContext.Current.CancellationToken);
         }
 
-        // Assert — comprehensive post-merge state.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
@@ -196,28 +158,20 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
         var emailDb = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
-        // ----------------------------------------------------------------
-        // Source User: tombstoned with MergedToUserId, MergedAt, lockout.
-        // ----------------------------------------------------------------
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
         sourceUser.MergedToUserId.Should().Be(targetId);
         sourceUser.MergedAt.Should().NotBeNull();
         sourceUser.LockoutEnabled.Should().BeTrue();
         sourceUser.LockoutEnd.Should().NotBeNull();
-        // AnonymizeForMergeAsync sets LockoutEnd = DateTimeOffset.MaxValue —
-        // assert "far future" rather than the exact value.
         sourceUser.LockoutEnd!.Value.Should().BeAfter(DateTimeOffset.UtcNow.AddYears(50));
 
-        // Target User: still active, no lockout, no merged-to.
         var targetUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetId, TestContext.Current.CancellationToken);
         targetUser.Should().NotBeNull();
         targetUser.MergedToUserId.Should().BeNull();
         targetUser.MergedAt.Should().BeNull();
 
-        // ----------------------------------------------------------------
-        // Live cross-section tables: source row count == 0.
-        // ----------------------------------------------------------------
+        // Live cross-section tables hold nothing for the source.
         (await db.UserEmails.AsNoTracking().CountAsync(e => e.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all UserEmails re-FK or collapse off the source");
         (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId, TestContext.Current.CancellationToken))
@@ -251,10 +205,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         (await feedbackDb.FeedbackMessages.AsNoTracking().CountAsync(m => m.SenderUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
 
-        // Profile is the one live-section EXCEPTION — source profile row
-        // stays as a tombstone with anonymized scalars; per-Profile child
-        // rows (ContactFields, ProfileLanguages, VolunteerHistoryEntries)
-        // re-FK to the target profile.
+        // Profile is the exception: the source row stays as an anonymized tombstone while its child rows re-FK.
         var sourceProfileId = await db.Profiles.AsNoTracking()
             .Where(p => p.UserId == sourceId).Select(p => p.Id).SingleAsync(TestContext.Current.CancellationToken);
         var targetProfileId = await db.Profiles.AsNoTracking()
@@ -267,9 +218,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         (await db.VolunteerHistoryEntries.AsNoTracking().CountAsync(v => v.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
             .Should().Be(0);
 
-        // ----------------------------------------------------------------
-        // Append-only sections: source rows still attached (chain-follow).
-        // ----------------------------------------------------------------
+        // Append-only sections keep the source rows for chain-follow.
         (await auditLogDb.AuditLogEntries.AsNoTracking()
                 .CountAsync(a => a.Description == auditDescription && a.ActorUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(1, "audit log is append-only — source row stays for chain-follow");
@@ -279,9 +228,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                 .CountAsync(b => b.Description == budgetDescription && b.ActorUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(1, "budget audit log is append-only — source row stays for chain-follow");
 
-        // ----------------------------------------------------------------
-        // Target picked up source content (one assertion per fold rule).
-        // ----------------------------------------------------------------
+        // The target picked up the source's content, one assertion per fold rule.
         (await db.UserEmails.AsNoTracking().AnyAsync(e =>
                 e.UserId == targetId && e.Email == sourceOnlyEmail, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only email re-FK'd onto target");
@@ -370,19 +317,12 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                 .AnyAsync(m => m.SenderUserId == targetId && m.Content == $"src-msg-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source feedback message re-FK'd to target");
 
-        // ----------------------------------------------------------------
-        // Source profile tombstone — anonymized scalars.
-        // ----------------------------------------------------------------
         var sourceProfile = await db.Profiles.AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == sourceId, TestContext.Current.CancellationToken);
         sourceProfile.Should().NotBeNull("source profile row stays as a tombstone");
         sourceProfile.FirstName.Should().Be("Merged");
         sourceProfile.LastName.Should().Be("User");
     }
-
-    // ==================================================================
-    // Helpers — mirrors AcceptAsyncFoldTests / ChainFollowReadTests
-    // ==================================================================
 
     private async Task<Guid> SeedAdminUserAsync()
     {

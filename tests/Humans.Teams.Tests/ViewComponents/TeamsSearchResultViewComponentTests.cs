@@ -10,9 +10,8 @@ using NSubstitute;
 namespace Humans.Teams.Tests.ViewComponents;
 
 /// <summary>
-/// Covers <see cref="TeamsSearchResultViewComponent"/>: the global-search row for a team.
-/// Callers pass a team id and nothing else (nobodies-collective/Humans#1062), so the fetch
-/// and the empty-content fallback are the whole behaviour.
+/// Callers pass a team id and nothing else, so the fetch and the empty-content fallback are the
+/// whole behaviour.
 /// </summary>
 public class TeamsSearchResultViewComponentTests
 {

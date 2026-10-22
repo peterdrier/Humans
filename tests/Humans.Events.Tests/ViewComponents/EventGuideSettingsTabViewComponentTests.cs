@@ -13,7 +13,7 @@ using NSubstitute;
 namespace Humans.Events.Tests.ViewComponents;
 
 /// <summary>
-/// The /Settings#event-guide tab (peterdrier/Humans#1634) builds the guide-settings form model.
+/// The /Settings#event-guide tab builds the guide-settings form model.
 /// </summary>
 public sealed class EventGuideSettingsTabViewComponentTests
 {

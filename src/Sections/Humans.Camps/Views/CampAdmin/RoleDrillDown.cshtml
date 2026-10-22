@@ -67,7 +67,7 @@
 </div>
 
 <script nonce="@Context.Items["CspNonce"]">
-    // Year picker auto-submit — CSP-compliant replacement for inline onchange.
+    // CSP-compliant replacement for inline onchange.
     document.querySelectorAll('select.js-autosubmit').forEach(function(el) {
         el.addEventListener('change', function() { el.form.submit(); });
     });

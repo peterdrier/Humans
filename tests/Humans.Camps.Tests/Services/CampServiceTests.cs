@@ -189,10 +189,6 @@ public sealed class CampServiceTests : CampsTestHarness
         }
     }
 
-    // ==========================================================================
-    // ReassignAsync (account-merge fold) — cache invalidation
-    // ==========================================================================
-
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -216,10 +212,6 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.Status == CampMemberStatus.Pending, ct))
             .Should().Be(1);
     }
-
-    // ==========================================================================
-    // CreateCampAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task CreateCampAsync_NewCamp_CreatesCampWithPendingSeason()
@@ -326,10 +318,6 @@ public sealed class CampServiceTests : CampsTestHarness
         (await act()).ErrorKey.Should().Be("Camps_Flash_ReservedName");
     }
 
-    // ==========================================================================
-    // GetCampsForYearAsync role facts
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetCampsForYearAsync_RoleLeadResolvesSeason_NonLeadNull()
     {
@@ -357,10 +345,6 @@ public sealed class CampServiceTests : CampsTestHarness
         info.Active!.LeadUserIds.Should().Contain(camp.CreatedByUserId);
     }
 
-    // ==========================================================================
-    // ApproveSeasonAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task ApproveSeasonAsync_PendingSeason_SetsActive()
     {
@@ -378,10 +362,6 @@ public sealed class CampServiceTests : CampsTestHarness
         updated.ResolvedAt.Should().NotBeNull();
     }
 
-    // ==========================================================================
-    // RejectSeasonAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task RejectSeasonAsync_PendingSeason_SetsRejected()
     {
@@ -395,10 +375,6 @@ public sealed class CampServiceTests : CampsTestHarness
         updated.Status.Should().Be(CampSeasonStatus.Rejected);
         updated.ReviewNotes.Should().Be("Not a real camp");
     }
-
-    // ==========================================================================
-    // OptInToSeasonAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(2027, false, "Camps_Flash_SeasonNotOpen")]
@@ -472,10 +448,6 @@ public sealed class CampServiceTests : CampsTestHarness
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
 
-    // ==========================================================================
-    // GetCampsForYearAsync lead role facts
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetCampsForYearAsync_NonLead_FilterReturnsFalse()
     {
@@ -503,10 +475,6 @@ public sealed class CampServiceTests : CampsTestHarness
 
         result.Should().BeFalse();
     }
-
-    // ==========================================================================
-    // GetCampsForYearAsync event manager role facts
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetCampsForYearAsync_EventManagerRoleAssignment_CanBeFilteredFromCampInfo()
@@ -601,10 +569,6 @@ public sealed class CampServiceTests : CampsTestHarness
 
         result.Should().BeEmpty();
     }
-
-    // ==========================================================================
-    // Public projections
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetCampsForYearAsync_ProjectsPublicApiFacts()
@@ -1004,10 +968,6 @@ public sealed class CampServiceTests : CampsTestHarness
         afterUpload.Single(info => info.Id == camp.Id).Images.Should().NotBeEmpty();
     }
 
-    // ==========================================================================
-    // ChangeSeasonNameAsync
-    // ==========================================================================
-
     [HumansFact(Timeout = 10000)]
     public async Task ChangeSeasonNameAsync_LogsOldNameToHistory()
     {
@@ -1043,10 +1003,6 @@ public sealed class CampServiceTests : CampsTestHarness
         var act = () => _service.ChangeSeasonNameAsync(camp.Id, season.Id, "Too Late", actorUserId: TestActorId, TestContext.Current.CancellationToken);
         (await act()).ErrorKey.Should().Be("Camps_Edit_NameLocked");
     }
-
-    // ==========================================================================
-    // Camp membership per season (issue nobodies-collective#488)
-    // ==========================================================================
 
     [HumansFact]
     public async Task RequestCampMembershipAsync_OpenSeason_CreatesPending()
@@ -1087,8 +1043,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task RequestCampMembershipAsync_FullSeason_StillAcceptsRequest()
     {
-        // Full is informational only — it tells
-        // visitors the camp looks full, it does not gate join requests. Humans doesn't
+        // Full is informational only: it does not gate join requests, since Humans doesn't
         // yet know everyone actually in the camp.
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -1269,7 +1224,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task ApproveCampMemberAsync_CrossCampMemberId_Throws()
     {
-        // P1 fix: controller authorizes camp A, but attacker submits camp B's member id.
+        // The controller authorizes camp A, but the attacker submits camp B's member id.
         await SeedSettingsAsync();
         var campA = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(campA.Id);
@@ -1669,7 +1624,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task AddCampMemberToActiveSeason_FullSeason_StillAdds()
     {
-        // Full is informational only (Peter, 2026-08-20) — camp management must keep
+        // Full is informational only — camp management must keep
         // working on a Full season, so this must still succeed.
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "full-add-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Full };
@@ -1689,7 +1644,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task AddMemberAndAssignRoleInActiveSeason_FullSeason_StillAssigns()
     {
-        // Full is informational only (Peter, 2026-08-20) — camp management must keep
+        // Full is informational only — camp management must keep
         // working on a Full season, so this must still succeed.
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "full-role-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Full };
@@ -1932,7 +1887,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task WithdrawSeasonAsync_NotifiesPendingRequesters_DoesNotChangeMemberStatus()
     {
-        // No more auto-withdraw cascade — just a notification out. Pending rows stay pending.
+        // No auto-withdraw cascade, just a notification: pending rows stay pending.
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
         await ApproveLatestSeasonAsync(camp.Id);
@@ -2529,10 +2484,6 @@ public sealed class CampServiceTests : CampsTestHarness
         creatorRow.Id.Should().NotBe(Guid.Empty);
     }
 
-    // ==========================================================================
-    // GetCampUserInfoAsync / CampUserInfo.Resolve
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetCampUserInfoAsync_ActiveMemberWithRole_ReturnsActiveSeasonAndNamedRole()
     {
@@ -2682,10 +2633,6 @@ public sealed class CampServiceTests : CampsTestHarness
             JsonSerializer.SerializeToElement(slice.Data).GetArrayLength().Should().Be(0);
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private static CampSeasonData MakeSeasonData() => new(
         BlurbLong: "A fun camp for everyone",
         BlurbShort: "Fun camp",
@@ -2746,10 +2693,6 @@ public sealed class CampServiceTests : CampsTestHarness
             campId, "resolve-camp", "camp@example.com", "+34600000010",
             IsSwissCamp: false, TimesAtNowhere: 1, [season]);
     }
-
-    // ==========================================================================
-    // DeleteCampAsync — City Planning cleanup (nobodies-collective/Humans#992)
-    // ==========================================================================
 
     [HumansFact]
     public async Task DeleteCampAsync_ClearsCityPlanningPolygonsForItsSeasons()

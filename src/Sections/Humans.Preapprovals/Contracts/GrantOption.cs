@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Contracts;
 
-/// <summary>
-/// A grant as the section's expense-facing reads see it: enough to list it on an expense form and to stamp
-/// a report. Nothing outside Preapprovals learns what a program is beyond its name.
-/// </summary>
+/// <summary>Nothing outside Preapprovals learns what a program is beyond its name.</summary>
 public sealed record GrantOption(
     Guid Id,
     string ProgramName,
@@ -16,10 +13,7 @@ public sealed record GrantOption(
     LocalDate ClaimBy,
     GrantStatus Status);
 
-/// <summary>
-/// What <see cref="IPreapprovalWrite.ClaimAsync"/> returns and Expenses writes onto the
-/// report: the cap and account read from the program as it is at submit time.
-/// </summary>
+/// <summary>The cap and account as the program has them at submit time; Expenses writes them onto the report.</summary>
 public sealed record GrantStamp(
     decimal MaxAmount,
     int HoldedAccountNumber,

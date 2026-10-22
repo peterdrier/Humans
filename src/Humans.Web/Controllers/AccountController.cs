@@ -156,8 +156,6 @@ public class AccountController(
         return View(nameof(Login));
     }
 
-    // --- Magic Link Auth ---
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MagicLinkRequest(string email, string? returnUrl = null)
@@ -347,8 +345,6 @@ public class AccountController(
     private async Task<User?> FindIdentityUserAsync(Guid? userId) =>
         userId is { } id ? await userManager.FindByIdAsync(id.ToString()) : null;
 
-    // --- Gate terminal ---
-
     /// <summary>
     /// Shared gate-terminal sign-in for the laptop at gate (see
     /// <see cref="SystemUserIds.GateTerminal"/>). Credential is set from the
@@ -402,15 +398,10 @@ public class AccountController(
         await signInManager.SignInAsync(user, isPersistent: true);
         logger.LogInformation("Gate terminal signed in");
 
-        // Land the kiosk on the new gate terminal (which redirects to the claim screen
-        // to pick who's scanning), not the old read-only Scanner section.
-        // GateController is internal to Humans.Gate since its G5 move, so the action name is
-        // a literal here rather than a nameof. Guarded by AdminNavTreeRoutingTests' sibling
-        // route sweep — a rename on either side fails a routed-endpoint assertion, not the build.
+        // GateController is internal to Humans.Gate, so the action is a literal. AdminNavTreeRoutingTests' sibling
+        // route sweep catches a rename on either side.
         return RedirectToAction("Index", "Gate");
     }
-
-    // --- Standard Auth ---
 
     [HttpPost]
     [ValidateAntiForgeryToken]

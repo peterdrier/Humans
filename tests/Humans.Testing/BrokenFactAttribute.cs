@@ -3,13 +3,8 @@ using System.Runtime.CompilerServices;
 namespace Humans.Testing;
 
 /// <summary>
-/// Marks a test as permanently skipped due to a known breakage. The required
-/// <c>reason</c> should explain the breakage and reference the
-/// tracking issue (e.g. a URL to the relevant issue).
-///
-/// Prefer this over commenting out a broken test — the test body stays in
-/// place and the reason is visible in test output, keeping broken tests
-/// discoverable and tracked.
+/// Permanently skips a known-broken test; the reason should link the tracking issue. Prefer it over commenting the
+/// test out, so it stays discoverable.
 /// </summary>
 public sealed class BrokenFactAttribute : HumansFactAttribute
 {

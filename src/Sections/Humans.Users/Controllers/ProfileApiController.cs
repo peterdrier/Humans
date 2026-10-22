@@ -16,10 +16,8 @@ internal sealed class ProfileApiController(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
-    // No result cap: at our small scale a name match returns a handful of rows, and a hard cap
-    // returned an *arbitrary* N in cache-iteration order (so the person being searched for could be
-    // missing entirely), then alphabetized them. We request the full match set, rank by relevance,
-    // and the scrollable dropdown shows the best matches first. Mirrors SearchService's Unlimited.
+    // Uncapped: a cap returned an arbitrary N in cache order (the person searched for could be missing), then
+    // alphabetized them. Rank the full match set by relevance instead.
     private const int Unlimited = int.MaxValue;
 
     private readonly IUserService _userService = userService;
@@ -34,20 +32,19 @@ internal sealed class ProfileApiController(
         if (!q.HasSearchTerm())
             return Ok(Array.Empty<HumanLookupSearchResult>());
 
-        // scope=name → display/burner name only; default → broad public match. Admin bit never set on public endpoint.
+        // Never the Admin bit on this public endpoint.
         var fields = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
             ? PersonSearchFields.Name
             : PersonSearchFields.PublicAll;
 
-        // Cover the deleted-user-but-session-still-valid race — fail-closed with 401.
+        // A deleted user with a still-valid session fails closed with 401.
         var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (authError is not null)
             return authError;
         var viewerUserId = viewer.Id;
 
-        // AllowEmail: an exact (case-insensitive) verified-email match resolves at most
-        // one person — no enumeration/substring leak, so it is safe on this non-admin
-        // endpoint. Only triggers when the query looks like an email.
+        // An exact verified-email match resolves at most one person: no enumeration or substring leak, so it is safe on
+        // this non-admin endpoint.
         if (allowEmail && q.Contains('@', StringComparison.Ordinal))
         {
             var owners = (await userEmailService.FindByAddressAsync(q, aliased: false, verifiedOnly: true, ct))
@@ -71,7 +68,6 @@ internal sealed class ProfileApiController(
         var results = await _userService.SearchUsersAsync(q, fields, Unlimited, ct);
 
         var response = new List<HumanLookupSearchResult>(results.Count);
-        // Display sort at controller (display-sort-in-controllers): relevance, then name.
         foreach (var result in results.OrderByRelevance())
         {
             var detail = await GetSharedDetailAsync(
@@ -86,12 +82,10 @@ internal sealed class ProfileApiController(
                 result.ProfilePictureUrl));
         }
 
-        // Display sort at controller — memory/architecture/display-sort-in-controllers.md.
         return Ok(response);
     }
 
-    // Exact (accent-/case-folded full-string) burner-name collision count, excluding the editing user.
-    // Drives the live edit-profile warning. Uncapped — the real number must surface, not the search cap.
+    // Uncapped: the real number must surface. Excludes the editing user.
     [HttpGet("burner-name-count")]
     public async Task<IActionResult> BurnerNameCount(
         [FromQuery] string? name,
@@ -100,8 +94,7 @@ internal sealed class ProfileApiController(
         if (!name.HasSearchTerm())
             return Ok(new BurnerNameCountResult(0));
 
-        // The editing user is the authenticated session identity — never a
-        // caller-supplied id — so the self-exclusion below can't be spoofed.
+        // The session identity, never a caller-supplied id, so the self-exclusion can't be spoofed.
         var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
         if (authError is not null)
             return authError;
@@ -111,7 +104,6 @@ internal sealed class ProfileApiController(
         return Ok(new BurnerNameCountResult(count));
     }
 
-    // Single-person lookup by userId — same shape as Search.
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
     {
@@ -137,7 +129,7 @@ internal sealed class ProfileApiController(
             info.ProfilePictureUrl));
     }
 
-    // Disambiguation: viewer-visible primary email → highest-priority visible contact field → null. Legal name omitted deliberately.
+    // Visible primary email, else the highest-priority visible contact field. Never the legal name.
     private async Task<string?> GetSharedDetailAsync(
         Guid userId,
         Guid viewerUserId,
@@ -163,7 +155,7 @@ internal sealed class ProfileApiController(
             ct);
 
         return visibleContactFields
-#pragma warning disable CS0618 // Obsolete ContactFieldType.Email is skipped; UserEmail is the canonical email source.
+#pragma warning disable CS0618 // UserEmail is the email source; the obsolete Email type is skipped.
             .Where(f => f.FieldType is not ContactFieldType.Email)
 #pragma warning restore CS0618
             .OrderBy(f => GetContactFieldDisplayPriority(f.FieldType))

@@ -6,7 +6,6 @@
     // `<input type="number">` speaks invariant, and so does the controller that parses it back.
     string Amount(decimal? value) => (value ?? 0m).ToString("0.00", CultureInfo.InvariantCulture);
 
-    // Header links toggle the direction of the active column and open every other one ascending.
     string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
     string Header(string label, string col) =>
         Model.SortBy == col ? label + (Model.SortDir == "asc" ? " ▲" : " ▼") : label;
@@ -141,9 +140,8 @@ else
         }
     </form>
 
-    @* Default-on filter: hide every row we don't owe money to (balance not positive from the
-       member's side), so the screen opens on just the accounts a payout would touch. Client-side
-       only — the rows are all rendered; unticking reveals the zero/negative and unbound rows. *@
+    @* Default on: hides rows we owe nothing to, so the screen opens on the accounts a payout would touch. Client-side
+       only; unticking reveals the rest. *@
     <div class="form-check mb-2">
         <input class="form-check-input" type="checkbox" id="owedOnly" checked>
         <label class="form-check-label" for="owedOnly">Only show accounts we owe money to</label>
@@ -248,10 +246,8 @@ else
                             <span class="text-muted">—</span>
                         }
                     </td>
-                    @* Every binding is listed, not just one. Two members on a single 400000xx point one
-                       person's expense payments at the other's creditor account; the automatic push
-                       paths record what Holded assigned rather than refusing it, so this table is
-                       where that collision has to become visible. *@
+                    @* Every binding, not just one: the automatic push paths record what Holded assigned rather than
+                       refusing, so this table is where a collision becomes visible. *@
                     <td>
                         @if (r.Bindings.Count == 0)
                         {
@@ -288,11 +284,8 @@ else
     </div>
 
     <script>
-        // Idempotency guard: a successful
-        // generation answers with a file download, so the page never navigates and a second click
-        // would write a second payout file for the same balances. Disable on submit; it comes back
-        // on reload — which is what an admin wants anyway, since these balances are stale the
-        // moment a file is out. A refusal redirects back here and reloads the button with it.
+        // Idempotency guard: success answers with a download, so the page never navigates and a second click would
+        // write a second payout file. A reload re-enables it, and the balances are stale by then anyway.
         document.getElementById('sepaForm')?.addEventListener('submit', function (e) {
             var btn = e.target.querySelector('button[type="submit"]');
             if (!btn) return;
@@ -300,9 +293,7 @@ else
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Generating…';
         });
 
-        // Hide the rows we owe nothing to while the box is ticked (its default). Balance is stamped
-        // on each row server-side, so this is display only — the selection posts from #sepaForm and
-        // only payable rows carry a checkbox regardless of what is shown.
+        // Display only: the selection posts from #sepaForm, and only payable rows carry a checkbox.
         (function () {
             var owedOnly = document.getElementById('owedOnly');
             if (!owedOnly) return;

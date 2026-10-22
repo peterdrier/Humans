@@ -6,10 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Expenses;
 
-/// <summary>
-/// The admin dashboard's expense-report tile. Policy-gated below /Admin's AnyAdminRole,
-/// mirroring the expense pages' own tighter policy.
-/// </summary>
+/// <summary>Gated tighter than /Admin's AnyAdminRole, matching the expense pages' own policy.</summary>
 internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>

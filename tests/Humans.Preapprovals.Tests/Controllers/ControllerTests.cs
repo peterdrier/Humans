@@ -294,8 +294,6 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         return await db.Grants.SingleAsync(Ct);
     }
 
-    // ── Builders ──────────────────────────────────────────────────────────
-
     private PreapprovalsAdminController BuildAdmin(Guid actorId, params string[] roles)
     {
         var (provider, http) = Host(actorId, roles);

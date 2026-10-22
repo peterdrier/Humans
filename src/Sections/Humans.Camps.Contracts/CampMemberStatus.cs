@@ -1,16 +1,12 @@
 namespace Humans.Camps.Contracts;
 
-/// <summary>
-/// Status of a human's membership in a camp for a specific season.
-/// </summary>
 public enum CampMemberStatus
 {
-    /// <summary>The human has requested membership and is awaiting lead approval.</summary>
+    /// <summary>Awaiting lead approval.</summary>
     Pending = 0,
 
-    /// <summary>The human is an active member of the camp for the season.</summary>
     Active = 1,
 
-    /// <summary>Membership was removed or withdrawn. Soft-deleted row preserved for audit.</summary>
+    /// <summary>Soft-delete tombstone kept for audit; a re-request creates a new row.</summary>
     Removed = 2
 }

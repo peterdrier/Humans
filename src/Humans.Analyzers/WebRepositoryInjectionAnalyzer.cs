@@ -10,10 +10,8 @@ namespace Humans.Analyzers;
 /// application service (peters-hard-rules: "Controllers … can not call repositories").
 /// </summary>
 /// <remarks>
-/// The subject was every class in <c>Humans.Web</c>; it is the controller itself now,
-/// matched by <c>ControllerBase</c>. Deliberately no wider — who else inside a section
-/// holds its own repository is that section's business, and cross-section access is
-/// already impossible now that repositories are <c>internal</c>.
+/// Deliberately no wider than controllers: who else inside a section holds its own repository is that section's
+/// business, and cross-section access is impossible now that repositories are <c>internal</c>.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer

@@ -26,11 +26,8 @@ using Humans.Users.Services;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
-/// The browse page's conflict strip (<see cref="ShiftBrowseViewModel.UserActiveSignups"/>)
-/// renders each signup against the burn its own rota belongs to, not the active one.
-/// A user's signup history spans cycles, so a single-burn fixture would pass even if
-/// the controller wrongly resolved every row through <c>GetActiveAsync()</c> — these
-/// tests deliberately straddle two burns in different timezones (issue nobodies-collective/Humans#809).
+/// A user's signups span cycles, so these tests straddle two burns in different time zones:
+/// a single-burn fixture would pass even if every row were resolved through the active burn.
 /// </summary>
 public class ShiftsControllerUserActiveSignupsTests
 {

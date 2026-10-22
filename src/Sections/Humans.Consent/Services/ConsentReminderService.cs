@@ -8,22 +8,15 @@ using NodaTime;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// Consent's re-consent reminder cooldown stamps (<c>consent_reminders</c>): the read and write
-/// behind <c>SendReConsentReminderJob</c> and the Article 15/17 slice.
+/// No <c>IUserMerge</c>: the job reads by the resolved survivor id.
 /// </summary>
-/// <remarks>
-/// No <c>IUserMerge</c>: rows stay keyed to the id they were written for. The job reads by the
-/// resolved survivor id, so a merged-away id's stamp is never consulted, as when this was a
-/// <c>users</c> column the merge never moved.
-/// </remarks>
 internal sealed class ConsentReminderService(
     IConsentReminderRepository repo,
     IUserService users) : IApplicationService, IUserDataContributor
 {
     internal const string ConsentReminderSlice = "ConsentReminder";
 
-    /// <summary>When each of <paramref name="members"/> was last reminded; members never reminded
-    /// are absent.</summary>
+    /// <summary>Members never reminded are absent.</summary>
     public async Task<IReadOnlyDictionary<Guid, Instant>> GetLastSentAsync(
         IEnumerable<UserInfo> members, CancellationToken ct = default)
     {
@@ -31,13 +24,10 @@ internal sealed class ConsentReminderService(
         return (await repo.GetByUserIdsAsync(ids, ct)).ToDictionary(r => r.UserId, r => r.LastSentAt);
     }
 
-    /// <summary>Stamps the member's cooldown anchor.</summary>
     public Task RecordSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
         repo.UpsertAsync(userId, sentAt, ct);
 
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
-
-    /// <summary>The stamps of this human's own id and every merged-away id, survivor first.</summary>
+    /// <summary>Survivor first, then merged-away ids.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
@@ -58,6 +48,5 @@ internal sealed class ConsentReminderService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Deletes the member's reminder row.</summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) => repo.DeleteAsync(userId, ct);
 }

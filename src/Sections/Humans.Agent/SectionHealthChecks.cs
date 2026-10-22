@@ -6,12 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Agent;
 
-/// <summary>
-/// Agent's health-check contribution, at the project root by convention. Discovered by
-/// Shell — nothing names it, so it needs no section prefix. Keeps the "anthropic-api-reachable"
-/// and "agent-grounding-docs" monitoring keys their existing names; only the former carries
-/// the "external" tag (nobodies-collective/Humans#1075).
-/// </summary>
+/// <summary>Keeps the existing monitoring keys; only "anthropic-api-reachable" carries the "external" tag.</summary>
 internal sealed class SectionHealthChecks : ISectionHealthChecks
 {
     public void AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)

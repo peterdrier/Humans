@@ -3,11 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Email.Controllers;
 
-/// <summary>
-/// The unsubscribe links in every outbound email (<c>/Email/Unsubscribe/{token}</c> and the RFC 8058
-/// one-click <c>/Email/Unsubscribe/OneClick</c>). Moved from Users in Users decomposition commit 14;
-/// tokens minted before the move still validate (same Data Protection purposes and payload).
-/// </summary>
 [Route("Email/Unsubscribe")]
 internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogger<UnsubscribeController> logger)
     : Controller
@@ -56,7 +51,7 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
         return View("Done");
     }
 
-    // RFC 8058 one-click — POSTed by email clients via List-Unsubscribe header; no AF token.
+    // RFC 8058 one-click: email clients POST here from the List-Unsubscribe header, so there is no anti-forgery token.
     [HttpPost("OneClick")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> OneClick([FromQuery] string token)

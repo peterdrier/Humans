@@ -39,12 +39,9 @@ internal sealed class AgentPreloadAugmentor(
 
     public string BuildGlossariesMarkdown()
     {
-        // Glossary keys name help-widget pages, not section docs. The model uses a heading it
-        // sees as a fetch_section_guide argument (nobodies-collective/Humans#949), so each block is
-        // emitted under the section key the tool accepts. Pages sharing a key are collected under one
-        // heading but keep their own table and page label: several define the same term with
-        // different emphasis ("Barrio Lead" three ways across the city-planning pages), so folding
-        // them into one table would either duplicate the term or drop a definition.
+        // Glossary keys name help-widget pages, but the model uses a heading as a fetch_section_guide argument, so
+        // each block goes under the section key the tool accepts. Pages sharing a key keep their own tables: several
+        // define the same term differently, so folding them would duplicate or drop a definition.
         var glossaries = helpContributions
             .SelectMany(c => c.HelpEntries)
             .OrderBy(e => e.Order)
@@ -123,13 +120,11 @@ internal sealed class AgentPreloadAugmentor(
         "Distilled from real user questions. Prefer these answers; they are verified against the live app." +
         Environment.NewLine + Environment.NewLine + SectionHelpContent.Faq;
 
-    /// <summary>A glossary table data row ("| **Term** | Definition |") — as opposed to headings and the table header.</summary>
     private static bool IsTermRow(string line) => line.StartsWith("| **", StringComparison.Ordinal);
 
     /// <summary>
-    /// Maps a help-widget glossary key onto the <c>fetch_section_guide</c> key covering it. Falls
-    /// back to the glossary key when nothing resolves — <c>AgentPreloadAugmentorTests</c> fails the
-    /// build in that case rather than letting an unfetchable heading ship into the prompt.
+    /// Falls back to the glossary key when nothing resolves; <c>AgentPreloadAugmentorTests</c> fails the build then,
+    /// rather than shipping an unfetchable heading.
     /// </summary>
     private static string ResolveSectionKey(string glossaryKey) =>
         AgentSectionKeys.TryResolve(glossaryKey, out var section) ? section : glossaryKey;
@@ -137,10 +132,7 @@ internal sealed class AgentPreloadAugmentor(
     private static List<string> TermRows(string body) =>
         body.Split('\n').Select(l => l.TrimEnd()).Where(IsTermRow).ToList();
 
-    /// <summary>
-    /// The help page a glossary belongs to, read off its own "## &lt;title&gt; Glossary" heading so
-    /// the label survives regrouping. Falls back to the glossary key for a body without one.
-    /// </summary>
+    /// <summary>Read off the "## &lt;title&gt; Glossary" heading; falls back to the glossary key.</summary>
     private static string PageTitle(string body, string glossaryKey)
     {
         var heading = body.Split('\n')

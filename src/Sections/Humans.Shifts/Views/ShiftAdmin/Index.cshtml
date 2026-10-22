@@ -489,18 +489,14 @@
                                                 var confirmedSignups = shiftRow.Signups
                                                     .Where(ss => ss.Status == SignupStatus.Confirmed)
                                                     .ToList();
-                                                // Past shifts surface no-show/bailed history in the same panel, so show
-                                                // Manage whenever there is anything to manage or review.
+                                                // Past shifts show no-show and bailed history here too.
                                                 var hasManagePanel = isPast ? shiftSignups.Count > 0 : confirmedSignups.Count > 0;
                                                 if (hasManagePanel)
                                                 {
                                                     var manageBtnId = "manage-" + shift.Id.ToString("N");
                                                     <button class="btn btn-sm btn-outline-secondary ms-1" type="button"
                                                             data-bs-toggle="collapse" data-bs-target="#@manageBtnId">
-                                                        @* Count stays confirmed-only (no-show/bailed history is shown
-                                                           in the panel but not counted). Drop the numeral entirely when
-                                                           confirmed = 0 — i.e. a past shift with only history — so the
-                                                           button never reads a misleading "Manage (0)". *@
+                                                        @* Counts confirmed only; no numeral at zero, so it never reads "Manage (0)". *@
                                                         Manage@(confirmedSignups.Count > 0 ? $" ({confirmedSignups.Count})" : "")
                                                     </button>
                                                 }
@@ -599,10 +595,8 @@
                                     }
                                     @if (Model.CanApproveSignups)
                                     {
-                                        // Unified Manage panel for past and future shifts. Confirmed humans are
-                                        // actionable: Remove always; Mark No-Show + Bail Range only when the shift is
-                                        // past (post-shift corrections). Past shifts also list no-show/bailed humans
-                                        // as read-only history so nothing is lost from the old past-only panel.
+                                        // Confirmed humans can always be removed; no-show and bail range only once the
+                                        // shift is past. Past shifts also list no-show and bailed humans, read-only.
                                         var manageConfirmed = shiftRow.Signups
                                             .Where(ss => ss.Status == SignupStatus.Confirmed)
                                             .OrderBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.BurnerName, StringComparer.OrdinalIgnoreCase)
@@ -763,7 +757,6 @@
                             </form>
                         </div>
 
-                        @* Day data for JS — all days in the period with labels *@
                         <script type="application/json" class="staffing-days-data">
                             [@for (var d = periodRange.Start; d <= periodRange.End; d++)
                             {
@@ -1096,7 +1089,6 @@
         ["ShowPoolBadge"] = true
     })
 
-    // Staffing grid: two-step date range → day grid with cascade-fill
     document.querySelectorAll('.staffing-grid-container').forEach(function(container) {
         var showBtn = container.querySelector('.staffing-show-btn');
         var startSelect = container.querySelector('.staffing-start');
@@ -1124,7 +1116,7 @@
                 tbody.appendChild(tr);
             });
 
-            // Cascade-fill: changing a row fills all subsequent rows that haven't been manually edited
+            // Changing a row fills every later row not edited by hand.
             var manuallyEdited = {};
             tbody.querySelectorAll('.staffing-min, .staffing-max').forEach(function(input) {
                 input.addEventListener('input', function() {
@@ -1133,7 +1125,6 @@
                     var val = this.value;
                     manuallyEdited[idx + '-' + (isMin ? 'min' : 'max')] = true;
 
-                    // Min/Cap sync: when min exceeds cap on this row, bump cap
                     if (isMin) {
                         var row = this.closest('tr');
                         var maxInput = row.querySelector('.staffing-max');
@@ -1143,7 +1134,6 @@
                         }
                     }
 
-                    // Fill down to subsequent rows not manually edited
                     var rows = tbody.querySelectorAll(isMin ? '.staffing-min' : '.staffing-max');
                     for (var j = idx + 1; j < rows.length; j++) {
                         var key = j + '-' + (isMin ? 'min' : 'max');
@@ -1152,7 +1142,6 @@
                         }
                     }
 
-                    // After cascade-fill min, also sync cap on filled rows
                     if (isMin) {
                         var maxRows = tbody.querySelectorAll('.staffing-max');
                         var minRows = tbody.querySelectorAll('.staffing-min');
@@ -1169,7 +1158,6 @@
         });
     });
 
-    // Dynamic time slot rows for Generate Shifts
     function reindexSlots(container) {
         container.querySelectorAll('.slot-row').forEach(function(row, i) {
             row.querySelectorAll('input[name]').forEach(function(input) {
@@ -1196,7 +1184,7 @@
             });
         });
     });
-    // Min/Cap sync: when min exceeds cap, bump cap to match
+    // A min above the cap bumps the cap.
     function syncMinCap(minInput, maxInput) {
         minInput.addEventListener('input', function() {
             var minVal = parseInt(this.value) || 0;
@@ -1208,7 +1196,6 @@
         });
     }
 
-    // Apply to all Add Shift and Edit Shift forms
     document.querySelectorAll('form').forEach(function(form) {
         var minInput = form.querySelector('input[name="MinVolunteers"]');
         var maxInput = form.querySelector('input[name="MaxVolunteers"]');
@@ -1224,7 +1211,7 @@
             var input = e.target;
             if (!input.classList.contains('voluntell-range-search')) return;
 
-            // Reset selection when input changes to prevent stale userId submission
+            // Reset on input so a stale userId can't be submitted.
             var form = input.closest('form');
             var hiddenInput = form?.querySelector('.voluntell-range-userId');
             if (hiddenInput) hiddenInput.value = '';
@@ -1310,7 +1297,6 @@
         }
     }
 
-    // Tag picker: sync checkboxes to hidden input
     function syncTagIds(pickerId) {
         var container = document.querySelector('[data-tag-picker="' + pickerId + '"]');
         var hidden = document.querySelector('[data-tag-ids="' + pickerId + '"]');
@@ -1329,12 +1315,10 @@
         });
     });
 
-    // Initialize tag hidden fields on page load
     document.querySelectorAll('[data-tag-picker]').forEach(function(picker) {
         syncTagIds(picker.getAttribute('data-tag-picker'));
     });
 
-    // New tag creation
     var tagSearchUrl = '@Url.Action("SearchTags", "ShiftAdmin", new { slug = Model.Department.Slug })';
     var tagCreateUrl = '@Url.Action("CreateTag", "ShiftAdmin", new { slug = Model.Department.Slug })';
     var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
@@ -1354,7 +1338,6 @@
             .then(function(r) { return r.json(); })
             .then(function(tag) {
                 var container = document.querySelector('[data-tag-picker="' + pickerId + '"]');
-                // Check if tag already exists in picker
                 if (container.querySelector('[data-tag-id="' + tag.id + '"]')) {
                     container.querySelector('[data-tag-id="' + tag.id + '"]').checked = true;
                 } else {
@@ -1372,7 +1355,6 @@
         });
     });
 
-    // Allow Enter key to create new tags
     document.querySelectorAll('[data-new-tag-input]').forEach(function(input) {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {

@@ -17,67 +17,33 @@ using Humans.Users.Contracts;
 namespace Humans.Events.Services;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IEventManagement"/>. Owns
-/// four split projections — per-event <see cref="ApprovedEventView"/>,
-/// flat <see cref="EventCategoryView"/> list, flat <see cref="EventVenueView"/>
-/// list, and the <see cref="EventGuideSettingsView"/> singleton. Composes
-/// <see cref="TrackedCache{TKey, TValue}"/> for diagnostics on
-/// <c>/Debug/CacheStats</c>.
+/// Caches approved events, categories, venues and guide settings. Every write delegates to the inner service, then
+/// refreshes the affected slice. The moderation dashboard reads past the cache: it needs a live pending count.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Pattern mirrors <c>CachingTeamService</c>: dict hits are served from the
-/// in-memory snapshot; every write through this surface delegates to the
-/// inner <see cref="IEventManagement"/> then invalidates the affected slice.
-/// No <c>SaveChangesInterceptor</c> — every event_* write flows through
-/// <see cref="IEventManagement"/> by design, enforced by the
-/// universal <c>HUM0025</c> analyzer (only <c>EventRepository</c> references the Event DbSets).
-/// </para>
-/// <para>
-/// The <c>GetAllEventsForDashboardAsync</c> moderator-only read passes
-/// through to the inner service and goes straight to DB — moderation needs
-/// a fresh pending count and the cache only holds approved events.
-/// </para>
-/// </remarks>
 internal sealed class CachingEventService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingEventService> logger)
     : IEventManagement, IUserDataContributor, IUserMerge, IEventSettingsChangeListener, IHostedService
 {
-    /// <summary>
-    /// DI service key under which the undecorated inner <see cref="IEventManagement"/>
-    /// is registered. The Singleton decorator resolves the Scoped inner via
-    /// <see cref="IServiceScopeFactory"/> per-call.
-    /// </summary>
     public const string InnerServiceKey = "event-inner";
 
-    // warmOnStartup: false — the decorator owns cross-cutting warmup over all
-    // four projections (events + categories + venues + settings) via its own
-    // IHostedService surface; per-cache hosted-service kickoff would only see
-    // the events dict.
+    // warmOnStartup: false: the decorator warms all four projections together, which a per-cache kickoff can't.
     private readonly TrackedCache<Guid, ApprovedEventView> _eventCache = new(
         "Event.ApprovedEventView", warmOnStartup: false, logger);
 
-    // Flat lookup tables — categories and venues are admin-managed lookups
-    // (~10–30 rows each), so a simple immutable snapshot is the natural shape.
-    // Updated atomically via field assignment under _loadLock.
+    // Swapped atomically under _loadLock.
     private volatile IReadOnlyList<EventCategoryView> _categories = [];
     private volatile IReadOnlyList<EventVenueView> _venues = [];
     private volatile EventGuideSettingsView? _settings;
 
-    // Set by the Settings fan-out; cleared by the next GetSettingsViewAsync, which
-    // reloads the projection. A flag rather than nulling _settings, because null is
-    // also the legitimate "no guide settings row yet" answer.
+    // A flag rather than nulling _settings, because null is also the legitimate "no guide settings row" answer.
     private volatile bool _settingsStale;
 
     private readonly TrackedLock _loadLock = new("CachingEventService.Load");
     private readonly TrackedLock _settingsLock = new("CachingEventService.Settings");
     private volatile bool _isLoaded;
 
-    /// <summary>Diagnostics surface for <c>/Debug/CacheStats</c>.</summary>
     public ICacheStats EventCacheStats => _eventCache;
-
-    // ── Settings — singleton projection ──
 
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         GetSettingsViewAsync(ct);
@@ -101,8 +67,6 @@ internal sealed class CachingEventService(
             return saved;
         });
 
-    // ── Categories — flat list projection ──
-
     public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct);
@@ -114,8 +78,7 @@ internal sealed class CachingEventService(
 
     public async Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default)
     {
-        // Inner method includes .Events for management UI counts — the cache
-        // doesn't carry that, so pass through.
+        // The inner method includes .Events for management counts, which the cache doesn't carry.
         return await WithInnerAsync(inner => inner.GetAllCategoriesAsync(ct));
     }
 
@@ -151,8 +114,7 @@ internal sealed class CachingEventService(
         {
             await WithInnerAsync(inner => inner.UpdateCategoryAsync(category, ct));
             await RefreshCategoriesAsync(ct);
-            // A category rename/sensitive-flip changes flattened fields on every
-            // approved event projection — refresh the event cache too.
+            // A rename or sensitivity flip changes flattened fields on every approved event.
             await RefreshAllEventsAsync(ct);
         });
 
@@ -172,8 +134,6 @@ internal sealed class CachingEventService(
             await RefreshCategoriesAsync(ct);
         });
 
-    // ── Venues — flat list projection ──
-
     public async Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct);
@@ -185,7 +145,7 @@ internal sealed class CachingEventService(
 
     public async Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default)
     {
-        // Inner method includes .Events for management UI counts — pass through.
+        // The inner method includes .Events for management counts.
         return await WithInnerAsync(inner => inner.GetAllVenuesAsync(ct));
     }
 
@@ -213,7 +173,7 @@ internal sealed class CachingEventService(
         {
             await WithInnerAsync(inner => inner.UpdateVenueAsync(venue, ct));
             await RefreshVenuesAsync(ct);
-            // Venue rename → refresh approved events to update flattened VenueName.
+            // A rename changes the flattened VenueName on approved events.
             await RefreshAllEventsAsync(ct);
         });
 
@@ -232,8 +192,6 @@ internal sealed class CachingEventService(
             await WithInnerAsync(inner => inner.MoveVenueAsync(id, direction, ct));
             await RefreshVenuesAsync(ct);
         });
-
-    // ── Submissions — pass-through (submitter scope, infrequent) ──
 
     public Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetUserSubmissionsAsync(userId, ct));
@@ -256,15 +214,14 @@ internal sealed class CachingEventService(
     public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
-        // Submission is Pending, not Approved — no approved-event cache change.
+        // Submission is Pending, not Approved: no cache change.
     }
 
     public Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
             await WithInnerAsync(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
-            // Resubmit never leaves the event Approved → drop any cache entry
-            // (no-op when it was not approved).
+            // Resubmit never leaves the event Approved.
             _eventCache.Invalidate(eventId);
         });
 
@@ -287,10 +244,7 @@ internal sealed class CachingEventService(
         MutateAsync(async () =>
         {
             await WithInnerAsync(inner => inner.AdminUpdateAsync(eventId, edit, actorUserId, note, ct));
-            // Status is preserved, so an edited Approved event stays approved but its
-            // flattened fields changed — re-project the single entry (sets the fresh
-            // view if still approved, no-op for any non-approved status). Mirrors the
-            // ApplyModerationAsync invalidation contract.
+            // Status is preserved, so an edited Approved event stays approved with changed flattened fields.
             await RefreshEventEntryAsync(eventId, ct);
         });
 
@@ -302,15 +256,11 @@ internal sealed class CachingEventService(
         {
             var result = await WithInnerAsync(inner => inner.BulkImportAsync(
                 campId, submitterUserId, rows, gateOpeningDate, eventEndOffset, timeZone, ct));
-            // Updates can transition Approved events away from Approved; rebuild the
-            // approved-event projection wholesale. New events are Pending and never
-            // enter the approved cache, so a create-only import needs no refresh.
+            // Updates can move Approved events out of Approved. New events are Pending and never enter the cache.
             if (result.UpdatedCount > 0)
                 await RefreshAllEventsAsync(ct);
             return result;
         });
-
-    // ── Browse / API — cached snapshot with in-memory filter ──
 
     public async Task<IReadOnlyList<ApprovedEventView>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
@@ -349,8 +299,7 @@ internal sealed class CachingEventService(
         view.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
         view.Description.Contains(q, StringComparison.OrdinalIgnoreCase);
 
-    // Served entirely from the cached approved-event snapshot — search must never hit the DB
-    // (mirrors CachingTeamService.SearchAsync / CachingCampService.SearchAsync).
+    // Served entirely from the cache: search must never hit the database.
     public async Task<IReadOnlyList<EventSearchHit>> SearchAsync(
         string query, int max, CancellationToken ct = default)
     {
@@ -361,8 +310,7 @@ internal sealed class CachingEventService(
 
         var trimmed = query.Trim();
 
-        // GUID paste → jump straight to that event, mirroring the by-id path
-        // (nobodies-collective/Humans#1062, matching Teams/Camps/Shifts).
+        // A pasted GUID jumps straight to that event.
         if (Guid.TryParse(trimmed, out var id))
         {
             return _eventCache.TryGet(id, out var byId)
@@ -372,8 +320,7 @@ internal sealed class CachingEventService(
 
         return _eventCache.Values
             .Where(e => MatchesQuery(e, trimmed))
-            // Deterministic Take(max) for global search; controller re-ranks by score before
-            // display (mirrors ShiftRepository.SearchVolunteerVisibleRotasAsync).
+            // Deterministic Take(max); the caller re-ranks by score.
             .OrderBy(e => e.Title, StringComparer.OrdinalIgnoreCase)
             .Take(max)
             .Select(e => new EventSearchHit(e.Id, e.Title, ScoreEventMatch(e, trimmed)))
@@ -381,18 +328,14 @@ internal sealed class CachingEventService(
     }
 
     /// <summary>
-    /// Title match scores via the shared exact/prefix/contains tiers (100/80/60).
-    /// A Description-only match uses the same three tiers halved (50/40/30), so it
-    /// always ranks below every Title match while description-only rows still order
-    /// sensibly against each other instead of tying (nobodies-collective/Humans#1062).
+    /// Title: 100/80/60 (exact/prefix/contains). Description only: half that, so it ranks below every Title match
+    /// while description-only rows still order sensibly instead of tying.
     /// </summary>
     private static int ScoreEventMatch(ApprovedEventView view, string query)
     {
         var titleScore = view.Title.NameMatchScore(query);
         return titleScore > 0 ? titleScore : view.Description.NameMatchScore(query) / 2;
     }
-
-    // ── Favourites — per-user, pass-through (not in projection scope) ──
 
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetFavouriteEventIdsAsync(userId, ct));
@@ -406,15 +349,11 @@ internal sealed class CachingEventService(
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.RemoveFavouriteAsync(userId, eventId, dayOffset, ct));
 
-    // ── Preferences — per-user, pass-through (not in projection scope) ──
-
     public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetExcludedCategorySlugsAsync(userId, ct));
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.SavePreferenceAsync(userId, slugs, ct));
-
-    // ── Moderation — fresh-count critical, route past cache ──
 
     public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetEventStatusCountsAsync(ct));
@@ -436,40 +375,26 @@ internal sealed class CachingEventService(
             var outcome = await WithInnerAsync(inner => inner.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct));
             if (outcome is not ModerationOutcome.Applied)
                 return outcome;
-            // Approve / reject / resubmit-request all transition the event's
-            // approved-ness — re-load the single entry against the DB so the
-            // cache reflects the post-moderation state (add for new approval,
-            // remove for unapproved, no-op if it was never approved).
+            // Every moderation action can change approved-ness; reload the one entry from the database.
             await RefreshEventEntryAsync(eventId, ct);
             return outcome;
         });
 
-    // ── Dashboard / Export — moderator-only, must show fresh pending count ──
-
     public Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default) =>
-        // STAYS DIRECT DB — moderation dashboard needs current pending/rejected
-        // counts that the approved-only cache cannot answer.
+        // Stays on the database: the approved-only cache cannot answer pending/rejected counts.
         WithInnerAsync(inner => inner.GetAllEventsForDashboardAsync(ct));
 
     public Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default) =>
         // Every CSV disclosure must audit, including repeated downloads of unchanged data.
         WithInnerAsync(inner => inner.GetApprovedEventsForExportAsync(actorUserId, ct));
 
-    // ── IEventSettingsChangeListener: Settings-side fan-out ──
-
     /// <summary>
-    /// <see cref="EventGuideSettingsView"/> carries <c>TimeZoneId</c>, stitched from the
-    /// Settings-owned event settings row, and the guide renders every event time in it.
-    /// Events' own writes refresh the projection; a timezone edit on the Settings side
-    /// did not, so the guide showed the previous zone until restart. Marks the projection
-    /// stale instead of refreshing inline, because the seam is a synchronous void and the next
-    /// read reloads.
+    /// Marks the projection stale rather than refreshing inline: the seam is a synchronous void, and the next read
+    /// reloads. Without it a time zone edit in Settings showed the old zone until restart.
     /// </summary>
     public void EventSettingsChanged(Guid eventSettingsId) => _settingsStale = true;
 
-    // ── IUserDataContributor — GDPR export + erasure ──
-    // Carried by the decorator, not the inner service: erasure clears the person's
-    // Host name on events that stay in the guide, and those rows are in _eventCache.
+    // Carried by the decorator: erasure clears the person's Host name on events that stay cached.
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => EventService.Erasure;
 
@@ -483,7 +408,6 @@ internal sealed class CachingEventService(
             await RefreshAllEventsAsync(ct);
         });
 
-    // ── IUserMerge — account merge fold ──
     // Carried by the decorator: the fold re-points SubmitterUserId on cached approved events.
 
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
@@ -493,11 +417,7 @@ internal sealed class CachingEventService(
             await RefreshAllEventsAsync(ct);
         });
 
-    // ── Warmup — composition forces the decorator to own IHostedService directly. ──
-    // _isLoaded / _loadLock guard all four projections together (events dict +
-    // categories + venues + settings); the inner _eventCache passes
-    // warmOnStartup: false because that single-dict view is not the warmup
-    // unit here.
+    // _isLoaded / _loadLock guard all four projections together.
 
     async Task IHostedService.StartAsync(CancellationToken cancellationToken)
     {
@@ -532,10 +452,8 @@ internal sealed class CachingEventService(
         using var _ = await _loadLock.AcquireAsync(logger, ct);
         if (_isLoaded) return;
 
-        // Snapshot holds ALL rows (active + inactive) — admin Edit pages
-        // and slug-uniqueness must see inactive rows, matching the DB.
-        // Active-only filtering happens at projection time in
-        // GetActiveCategoriesAsync / GetActiveVenuesAsync.
+        // Holds inactive rows too: admin edit pages and slug-uniqueness must see them. Active filtering happens at
+        // projection time.
         var categories = await WithInnerAsync(inner => inner.GetAllCategoriesAsync(ct));
         var venues = await WithInnerAsync(inner => inner.GetAllVenuesAsync(ct));
         var approved = await WithInnerAsync(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
@@ -556,8 +474,6 @@ internal sealed class CachingEventService(
         if (_isLoaded) return;
         await WarmAllAsync(ct);
     }
-
-    // ── Refresh helpers — surgical re-loads after writes ──
 
     private async Task<EventGuideSettingsView?> GetSettingsViewAsync(CancellationToken ct)
     {
@@ -611,11 +527,8 @@ internal sealed class CachingEventService(
 
     private async Task RefreshAllEventsAsync(CancellationToken ct)
     {
-        // If the cache hasn't been warmed yet (rare write-before-warmup race),
-        // do a full WarmAllAsync rather than a partial event-only refresh —
-        // otherwise _categories/_venues/_settings stay in their empty
-        // constructor state and _isLoaded stays false, forcing a redundant
-        // re-warmup on the very next read. WarmAllAsync sets _isLoaded = true.
+        // Not warmed yet (a write-before-warmup race): warm everything, or the other slices stay empty and the next
+        // read re-warms.
         if (!_isLoaded)
         {
             await WarmAllAsync(ct);
@@ -624,20 +537,16 @@ internal sealed class CachingEventService(
 
         var approved = await WithInnerAsync(inner => inner.GetApprovedEventsAsync(null, null, null, null, [], ct));
 
-        // Rebuild the whole approved set — category / venue renames touch
-        // every event row's flattened fields.
+        // Rebuild the whole set: a category or venue rename touches every row's flattened fields.
         var fresh = new ConcurrentDictionary<Guid, ApprovedEventView>();
         foreach (var ev in approved)
             fresh[ev.Id] = ev;
 
-        // Replace via clear + set rather than swapping the underlying dict —
         // TrackedCache owns its dict and exposes only Clear / Set / Invalidate.
         _eventCache.Clear();
         foreach (var (id, view) in fresh)
             _eventCache.Set(id, view);
     }
-
-    // ── Projection helpers ──
 
     private static EventCategoryView ManageInfoToCategoryView(EventCategoryManageInfo c) => new(
         Id: c.Id,
@@ -654,8 +563,6 @@ internal sealed class CachingEventService(
         LocationDescription: v.LocationDescription,
         DisplayOrder: v.DisplayOrder,
         IsActive: v.IsActive);
-
-    // ── Inner-service plumbing ──
 
     // Include the write and its projection refresh in one failure boundary. Either can
     // fail after a commit; the next cached read must reload all four slices together.

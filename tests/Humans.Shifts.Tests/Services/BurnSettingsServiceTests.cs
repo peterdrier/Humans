@@ -9,9 +9,8 @@ using NSubstitute;
 namespace Humans.Shifts.Tests.Services;
 
 /// <summary>
-/// The calendar always comes from Settings via <see cref="EventCalendarResolver"/>;
-/// this section's own repo only supplies the knobs row, which may not exist yet
-/// (nobodies-collective/Humans#1631).
+/// The calendar always comes from Settings via <see cref="EventCalendarResolver"/>; this
+/// section's repo only supplies the knobs row, which may not exist yet.
 /// </summary>
 public sealed class BurnSettingsServiceTests
 {

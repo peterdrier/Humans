@@ -1,11 +1,5 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Dev/test <see cref="IGoogleGroupProvisioningClient"/> that keeps an
-/// in-memory map of provisioned groups so the sync service can exercise group lifecycle
-/// flows without a Google service account. The real service runs against this stub —
-/// there is no separate stub service.
-/// </summary>
 internal sealed class StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupProvisioningClient> logger)
     : IGoogleGroupProvisioningClient
 {
@@ -90,13 +84,7 @@ internal sealed class StubGoogleGroupProvisioningClient(ILogger<StubGoogleGroupP
         return Task.FromResult<GoogleClientError?>(null);
     }
 
-    /// <summary>
-    /// Builds a shape-neutral snapshot from the expected-settings input, so
-    /// a subsequent <see cref="GetGroupSettingsAsync"/> call returns what was
-    /// written. Fields not present on <see cref="GroupSettingsExpected"/> are
-    /// left null (the deprecated + ancillary fields the admin page displays
-    /// for visibility only — not reconciled).
-    /// </summary>
+    /// <summary>So a later <see cref="GetGroupSettingsAsync"/> returns what was written; other fields stay null.</summary>
     private static GroupSettingsSnapshot MapSnapshot(GroupSettingsExpected e) => new(
         WhoCanJoin: e.WhoCanJoin,
         WhoCanViewMembership: e.WhoCanViewMembership,

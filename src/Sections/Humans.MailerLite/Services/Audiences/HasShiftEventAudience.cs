@@ -4,10 +4,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// "Humans - Has Shift - Event" — humans with at least one Pending/Confirmed
-/// signup on an Event-period shift (during the event) in the active event.
-/// </summary>
 internal sealed class HasShiftEventAudience(
     IShiftView shiftView,
     IUserService users,

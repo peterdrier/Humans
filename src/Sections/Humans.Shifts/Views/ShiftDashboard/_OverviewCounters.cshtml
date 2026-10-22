@@ -14,8 +14,7 @@
     var engagedPct = o.TicketHolderCount == 0 ? 0 : 100.0 * o.TicketHoldersEngaged / o.TicketHolderCount;
     var unreached = Math.Max(0, o.TicketHolderCount - o.TicketHoldersEngaged);
 
-    // TEMP: ticket figures are not shareable yet. Flip to true once ticket data is publishable.
-    // The underlying DashboardOverview still computes them (see ShiftManagementService).
+    // TEMP: ticket figures are not shareable yet; flip once they are. DashboardOverview still computes them.
     var showTicketData = false;
 }
 

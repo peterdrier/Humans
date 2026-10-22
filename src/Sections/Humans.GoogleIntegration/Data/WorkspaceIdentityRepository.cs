@@ -5,8 +5,6 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>EF-backed <see cref="IWorkspaceIdentityRepository"/>. Singleton over
-/// <see cref="IDbContextFactory{TContext}"/> per design-rules §15b.</summary>
 internal sealed class WorkspaceIdentityRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
     : IWorkspaceIdentityRepository
 {

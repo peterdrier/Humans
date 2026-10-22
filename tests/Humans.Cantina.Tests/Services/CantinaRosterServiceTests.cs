@@ -105,7 +105,7 @@ public class CantinaRosterServiceTests
         _audit.ReceivedCalls().Should().ContainSingle("page reads do not disclose a file");
     }
 
-    /// <summary>Builds a profile carrying burner name + dietary (dietary now lives on the profile).</summary>
+    /// <summary>Builds a profile carrying burner name + dietary (dietary lives on the profile).</summary>
     private static (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet) Human(
         Guid userId,
         string burner,
@@ -432,7 +432,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_MedicalConditionsNeverInDto()
     {
         // The cantina output DTO must not expose MedicalConditions, even though
-        // medical now lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
+        // medical lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
         typeof(Humans.Cantina.Services.Dtos.RosterPersonDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
@@ -454,8 +454,6 @@ public class CantinaRosterServiceTests
         json.Should().NotContain("MedicalConditions");
         json.Should().NotContain("Severe peanut allergy");
     }
-
-    // Display-sort tests live in Humans.Web.Tests/Cantina/CantinaRosterAssemblerTests.cs.
 
     [HumansFact]
     public async Task GetWeeklyRoster_ArrivesOn_IsEarliestOnSiteDay_AndNoShift_IsComplement()
@@ -521,7 +519,7 @@ public class CantinaRosterServiceTests
         person.NoShift.Should().NotContain(GateOpening.PlusDays(1)); // arrival is on-site
         person.NoShift.Should().NotContain(GateOpening.PlusDays(2)); // confirmed shift is on-site
         // The weekly per-day strip counts the arrival person on Tuesday (offset 1),
-        // matching what the daily drill-down will show (Task 2.4).
+        // matching what the daily drill-down will show.
         result.Days[1].TotalOnSite.Should().Be(1);
     }
 
@@ -599,8 +597,6 @@ public class CantinaRosterServiceTests
         result.Days[0].TotalOnSite.Should().Be(0); // offset 7 — no shift and no arrival
     }
 
-    // ---- helpers ----
-
     /// <summary>Stubs the on-site cohort for a single day (dietary comes from SetupHumans).</summary>
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(
@@ -616,8 +612,7 @@ public class CantinaRosterServiceTests
         var dict = profiles.ToDictionary(
             p => p.UserId,
             p => UserInfo.Create(
-                // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-                // UserInfo.BurnerName reads User.BurnerName only (#1098).
+                // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 eventParticipations: [],

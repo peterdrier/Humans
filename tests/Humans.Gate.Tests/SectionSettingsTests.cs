@@ -4,7 +4,7 @@ using Humans.Base.Authorization;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// The /Settings#gate tab contribution (peterdrier/Humans#1634). The Policy assertion is
+/// The /Settings#gate tab contribution. The Policy assertion is
 /// the negative case: <c>SettingsTabComposition</c> (Humans.Settings.Tests) drops any tab
 /// whose policy the viewer fails, so a non-TicketAdmin/Admin viewer never sees this tab.
 /// </summary>

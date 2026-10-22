@@ -2,10 +2,10 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Services;
 
-/// <summary>Single source of truth for AuditAction → verb tables (transitive, self-form, description-tail policy). Shared by agent + view components.</summary>
+/// <summary>The one set of AuditAction verb tables, shared by the agent and the view components.</summary>
 internal static class AuditEventTextualizer
 {
-    /// <summary>Transitive verb for action. Null = no mapping (HTML falls back to Description; agent skips).</summary>
+    /// <summary>Null means no mapping: the HTML falls back to Description and the agent skips the entry.</summary>
     internal static string? GetActionVerb(AuditAction action) => action switch
     {
         AuditAction.TeamMemberAdded => "added",

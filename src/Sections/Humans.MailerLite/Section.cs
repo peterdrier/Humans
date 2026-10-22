@@ -14,52 +14,28 @@ using Microsoft.Extensions.Options;
 namespace Humans.MailerLite;
 
 /// <summary>
-/// MailerLite's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
+/// <c>MailerLiteOptions</c> binds here, not in Shell: the section's own client is its only consumer. No caching
+/// decorator: the Singleton client holds its own snapshot and refreshes on demand.
 /// </summary>
-/// <remarks>
-/// MailerLite stays the system of record for subscriber state — every Humans-side write to it
-/// routes through another section's service (<c>IUserEmailService</c>,
-/// <c>IAccountProvisioningService</c>, Email's <c>ICommunicationPreferenceWrite</c>). The one thing
-/// this section owns is <c>mailerlite_sync_states</c>: when each audience last synced and what
-/// happened (nobodies-collective/Humans#1082).
-/// <para>
-/// <c>MailerLiteOptions</c> binds here rather than in Shell — unlike Email's settings, which
-/// four other sections read, <c>MailerLite:*</c> has exactly one consumer and it is the
-/// section's own client. The raw <c>MailerLite:AudienceSyncCron</c> read — the job schedule,
-/// not the client's configuration — lives in <c>SectionJobs.cs</c>.
-/// </para>
-/// <para>
-/// No caching decorator: <c>MailerLiteClient</c> is a Singleton that holds its own
-/// subscriber/group snapshot and refreshes only on demand, which is what the §15 decorator
-/// would otherwise be doing for a remote the section does not own.
-/// </para>
-/// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // The section's only table, and the only one this baseline creates — so its presence
-        // proves the baseline already ran.
+        // The section's only table, so its presence proves the baseline ran.
         services.AddSectionDbContext<MailerLiteDbContext>(sentinelTable: "mailerlite_sync_states");
         services.AddScoped<IMailerLiteRepository, Repository>();
 
-        // Bind MailerLite options from "MailerLite:*" config section.
-        // Second Configure pass applies a flat env-var fallback for PR/prod
-        // environments that cannot use dotted key names (MAILERLITE_API_KEY).
         services
             .Configure<MailerLiteOptions>(configuration.GetSection(MailerLiteOptions.SectionName))
             .Configure<MailerLiteOptions>(opts =>
             {
-                // Flat env-var fallback — PR/prod envs that can't use dotted keys.
+                // Flat env var for hosts that can't set dotted keys.
                 var flat = Environment.GetEnvironmentVariable("MAILERLITE_API_KEY");
                 if (!string.IsNullOrWhiteSpace(flat) && string.IsNullOrWhiteSpace(opts.ApiKey))
                     opts.ApiKey = flat;
             });
 
-        // Named HttpClient for MailerLite — resolved per-call by the Singleton
-        // MailerLiteClient through IHttpClientFactory. Keeping the client
-        // Singleton lets it cache subscribers/groups across requests.
+        // The client is a Singleton so it can cache subscribers and groups across requests.
         services.AddHttpClient(MailerLiteClient.HttpClientName, (sp, http) =>
         {
             var opts = sp.GetRequiredService<IOptions<MailerLiteOptions>>().Value;
@@ -73,17 +49,13 @@ public sealed class Section : ISection
         });
         services.AddSingleton<IMailerLiteService, MailerLiteClient>();
 
-        // GDPR fan-out: MailerLite owns no user-scoped tables, but Article 17 erasure must
-        // still delete the person's MailerLite subscriber (design-rules §8a, nobodies-collective/Humans#853).
+        // No user-scoped tables, but Article 17 erasure must still delete the MailerLite subscriber.
         services.AddScoped<MailerLiteGdprContributor>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MailerLiteGdprContributor>());
 
-        // Import orchestrator — stateless plan+apply, injected by the Admin controller.
         services.AddScoped<IMailerLiteImportService, MailerLiteImportService>();
 
-        // Audience framework — orchestrator + audience registrations.
-        // Audiences are Scoped because their dependencies (ITicketService,
-        // IShiftView) are Scoped/decorated-Singleton.
+        // Audiences are Scoped because their dependencies are.
         services.AddScoped<IMailerLiteAudienceSyncService, MailerLiteAudienceSyncService>();
         services.AddScoped<IMailerLiteAudience, TicketNoShiftsAudience>();
         services.AddScoped<IMailerLiteAudience, HasShiftAudience>();

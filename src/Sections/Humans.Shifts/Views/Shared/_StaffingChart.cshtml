@@ -95,8 +95,7 @@
                 layout: { padding: { top: 20 } },
                 scales: {
                     x: { stacked: true },
-                    // Volunteer counts are integers — pin ticks to whole numbers so
-                    // small ranges (e.g. 0–3 vols) don't show 0.5/1.5/2.5.
+                    // Whole-number ticks, so small ranges don't show 0.5 volunteers.
                     y: { stacked: true, beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
                 },
                 interaction: { mode: 'index', intersect: false },

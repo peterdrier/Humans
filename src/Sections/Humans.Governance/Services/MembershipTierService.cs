@@ -10,11 +10,8 @@ using MemberApplication = Humans.Governance.Domain.Application;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// The membership tiers Governance owns (<c>governance_membership_tiers</c>): the reads behind
-/// <see cref="IGovernanceService"/>, the grant on approval, the term-expiry downgrade, the
-/// <c>governance.profile-tier</c> copy, the Article 15/17 slice and the account-merge fold.
-/// Until the copy has run, a member without a row reads their legacy <c>profiles.MembershipTier</c>
-/// through <see cref="UserInfo"/> (Users decomposition plan §3.1 step 4).
+/// Until the <c>governance.profile-tier</c> copy has run, a member without a row reads their
+/// legacy <c>profiles.MembershipTier</c> through <see cref="UserInfo"/>.
 /// </summary>
 internal sealed class MembershipTierService(
     IMembershipTierRepository repo,
@@ -61,11 +58,6 @@ internal sealed class MembershipTierService(
     public Task SyncExpiryAsync(Guid applicationId, LocalDate? expiresAt, CancellationToken ct = default) =>
         repo.UpdateExpiryForApplicationAsync(applicationId, expiresAt, ct);
 
-    /// <summary>
-    /// Term expiry: every member holding <paramref name="tier"/> without an Approved application for
-    /// it still in term on <paramref name="today"/> drops to their other in-term tier, or to Volunteer.
-    /// Returns each member with the tier written; the caller audits (<c>TierDowngraded</c>).
-    /// </summary>
     public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> ExpireAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default)
     {
@@ -95,8 +87,6 @@ internal sealed class MembershipTierService(
         }
         return result;
     }
-
-    // ─── governance.profile-tier ─────────────────────────────────────────────────
 
     /// <summary>Living members whose legacy profile tier is not Volunteer and who have no row yet,
     /// with the row the copy would write (term and grant read from their latest Approved
@@ -158,8 +148,6 @@ internal sealed class MembershipTierService(
         };
     }
 
-    // ─── IUserMerge ──────────────────────────────────────────────────────────────
-
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
@@ -174,8 +162,6 @@ internal sealed class MembershipTierService(
         }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
     }
-
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

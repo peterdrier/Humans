@@ -10,40 +10,12 @@ using NodaTime.Text;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Calendar page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Calendar</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Calendar page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>, so
-/// "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build. Calendar's
-/// audit panel goes through <c>Component.InvokeAsync("AuditLog", …)</c>, which resolves by name
-/// across application parts and throws rather than degrading, so the <c>&lt;vc:&gt;</c> check
-/// here guards against a future tag being added rather than anything shipped today.
-/// </description></item>
-/// <item><description>
-/// The resx carve moved all 58 <c>Calendar_*</c> keys out of <c>SharedResource</c>. A key the
-/// carve missed, or a call site bound to the wrong set, renders the raw key — in every
-/// language, with no error. <c>Common_*</c> and <c>Profile_Location</c> deliberately stayed
-/// shared and are read through <c>SharedLocalizer</c>; a mis-bind there is what the
-/// "Cancel"/"Location" assertions catch.
-/// </description></item>
-/// <item><description>
-/// The Spanish request is the only thing that proves the section RCL's satellite assemblies
-/// reach the host's probing path at all — an English-only check passes either way, because the
-/// neutral set is embedded in the main assembly and the fallback is silent.
-/// </description></item>
-/// </list>
-/// <para>
-/// Calendar ships no <c>wwwroot/</c>, so there is no static-asset half here.
-/// </para>
+/// Failures render as a 200 with degraded content: a mis-bound key renders as its name, and only Spanish proves the
+/// satellites ship. <c>Common_*</c> and <c>Profile_Location</c> stay shared and are read through
+/// <c>SharedLocalizer</c>, which the "Cancel"/"Location" checks guard. The audit panel is invoked by name and throws
+/// rather than degrading.
 /// </remarks>
 public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -51,11 +23,8 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
     private static readonly Instant SeriesEnd = Instant.FromUtc(2026, 5, 4, 18, 0);
 
     /// <summary>
-    /// Creates one weekly series through <see cref="ICalendarService"/> rather than straight
-    /// through <c>CalendarDbContext</c>: the section registers a Singleton caching decorator
-    /// that warms at startup, so a row written behind it is invisible to the window scans the
-    /// month/list/agenda pages run, and those are exactly the pages whose copy this test reads.
-    /// Each integration test class owns its database (nobodies-collective/Humans#983).
+    /// Through <see cref="ICalendarService"/>, not <c>CalendarDbContext</c>: the Singleton cache warmed at startup and
+    /// would hide a direct write from the window scans these pages run.
     /// </summary>
     private async Task<(Guid EventId, Guid TeamId)> SeedRecurringEventAsync(Guid userId, CancellationToken ct)
     {
@@ -63,8 +32,7 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
         var teams = scope.ServiceProvider.GetRequiredService<ITeamService>();
         var calendar = scope.ServiceProvider.GetRequiredService<ICalendarService>();
 
-        // Dev login seeds the persona's team membership through the team service, so the
-        // cached read already sees at least one active team by the time this runs.
+        // Dev login adds the persona's team through the team service, so the cached read already sees it.
         var team = (await teams.GetTeamsAsync(ct)).Values
             .First(t => t is { IsActive: true, IsHidden: false });
 
@@ -116,7 +84,6 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
 
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            // The fallback for a key the carve missed is the key itself.
             html.Should().NotContain("Calendar_", $"GET {url} rendered a raw resource key");
         }
     }
@@ -141,9 +108,7 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
     [HumansFact(Timeout = 120000)]
     public async Task The_event_page_renders_the_shared_keys_that_stayed_in_SharedResource()
     {
-        // Common_Edit / Common_Delete / Profile_Location are genuinely shared copy and stayed
-        // behind; the section's views read them through SharedLocalizer. A mis-bind renders the
-        // raw key with a green build, and neither the carve grep nor the build sees it.
+        // Shared keys the section reads through SharedLocalizer; a mis-bind renders the raw key on a green build.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var (eventId, _) = await SeedRecurringEventAsync(userId, ct);
@@ -159,15 +124,13 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
     [HumansFact(Timeout = 120000)]
     public async Task Calendar_pages_render_in_spanish_from_the_sections_satellite_assemblies()
     {
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities, so the assertions
-        // stay on ASCII-only runs of the Spanish copy.
+        // HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var (eventId, _) = await SeedRecurringEventAsync(userId, ct);
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // returns the user's PreferredLanguage and short-circuits the rest of the chain, and
-        // every Calendar page is [Authorize]. Switch the language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var switcherPage = await (await Client.GetAsync($"/Calendar/Event/{eventId}", ct))
             .Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
@@ -192,15 +155,9 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
     [HumansFact(Timeout = 120000)]
     public async Task Shell_renders_the_sections_user_calendar_component()
     {
-        // UserCalendarViewComponent moved out of Humans.Web into Humans.Calendar/Contracts/
-        // with the iCal feed (G5 lane 4b-2c). An @using of the namespace does not import the
-        // tag helper — Shell needs its own `@addTagHelper *, Humans.Calendar` in
-        // Views/_ViewImports.cshtml, and the component must stay public. Without either the
-        // element ships as inert literal markup: 200, correct-looking source, no card.
-        //
-        // /Debug/WidgetGallery is the probe because it is the only Shell page with a <vc:user-calendar>
-        // element. The "Calendar Feed" assertion is the component's own card header, so it is
-        // absent unless the component actually ran — an empty feed still renders it.
+        // An @using doesn't import the tag helper: Shell needs its own @addTagHelper *, Humans.Calendar and the
+        // component must stay public, or the element ships inert. The card header renders only if the component ran,
+        // even for an empty feed.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -214,9 +171,7 @@ public class CalendarPageRenderTests(HumansTestDatabase database) : IntegrationT
     [HumansFact(Timeout = 120000)]
     public async Task Users_admin_detail_resolves_the_component_view_across_the_rcl_boundary()
     {
-        // Users' AdminDetail invokes the component by name, which resolves across application
-        // parts — but Default.cshtml now lives in the Calendar RCL, so the *view* lookup is the
-        // cross-assembly half and it is what a bad move breaks.
+        // Invoked by name, but Default.cshtml lives in the Calendar RCL, so the view lookup is the cross-assembly half.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 

@@ -13,12 +13,10 @@ internal sealed class SurveyInvitationConfiguration : IEntityTypeConfiguration<S
 
         b.Property(i => i.LatestEmailStatus).HasConversion<string>().HasMaxLength(20);
 
-        // One invitation per (survey, user) — the idempotent send model diffs against this.
+        // The idempotent send diffs against this.
         b.HasIndex(i => new { i.SurveyId, i.UserId }).IsUnique();
-        // Reminder sweep predicate index.
         b.HasIndex(i => new { i.SurveyId, i.Completed, i.SentAt });
 
         // Completed is a plain bool — NO completion-time column and NO UpdatedAt (timing side-channel).
-        // UserId is a bare Guid column — no nav, no cross-section EF FK constraint.
     }
 }

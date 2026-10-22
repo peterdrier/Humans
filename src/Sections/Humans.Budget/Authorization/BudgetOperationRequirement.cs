@@ -2,11 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Budget.Authorization;
 
-/// <summary>
-/// Resource-based authorization requirement for budget operations.
-/// Used with IAuthorizationService.AuthorizeAsync(User, resource, requirement)
-/// where the resource is a BudgetCategory.
-/// </summary>
 internal sealed class BudgetOperationRequirement : IAuthorizationRequirement
 {
     public static readonly BudgetOperationRequirement Edit = new(nameof(Edit));

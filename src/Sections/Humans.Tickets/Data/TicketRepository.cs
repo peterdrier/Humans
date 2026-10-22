@@ -9,16 +9,6 @@ using Humans.Tickets.Services.Dtos;
 
 namespace Humans.Tickets.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ITicketRepository"/>. The only
-/// non-test file that writes to <c>ticket_orders</c>, <c>ticket_attendees</c>
-/// and <c>ticket_sync_state</c>.
-/// </summary>
-/// <remarks>
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>TicketsDbContext</c> remains short-lived
-/// per method - same pattern as <c>UserRepository</c>.
-/// </remarks>
 internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory, IClock clock) : ITicketRepository
 {
     private const RegexOptions LiteralSearchOptions =
@@ -103,10 +93,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Exclude NULL / empty / placeholder ("--") / whitespace-only PI rows at the
-        // SQL layer so we don't drag them into memory and hit Stripe with bogus ids.
-        // LTRIM(RTRIM(...)) collapses any pure-whitespace
-        // value to '' and lets us catch the placeholder regardless of surrounding spaces.
+        // Exclude empty, whitespace and "--" placeholder ids in SQL, so bogus ids never reach Stripe.
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.StripePaymentIntentId != null
@@ -186,10 +173,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         {
             if (existing.TryGetValue(order.VendorOrderId, out var tracked))
             {
-                // Copy mutable fields (Id, VendorOrderId are init-only).
-                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync write
-                // the buyer name/email back in — every other field still syncs. The tombstone
-                // check covers rows erased before PiiErasedAt existed (NULL on migration).
+                // Once GDPR-erased, sync never writes the buyer name/email back; every other field still syncs.
                 if (tracked.PiiErasedAt is null
                     && !TicketPiiTombstone.IsTombstoned(tracked.BuyerName, tracked.BuyerEmail))
                 {
@@ -198,8 +182,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 }
                 else
                 {
-                    // Self-heal rows erased before PiiErasedAt existed: the tombstone is the
-                    // older, equally authoritative record of the same erasure.
+                    // Self-heal rows erased before PiiErasedAt existed: the tombstone records the same erasure.
                     tracked.PiiErasedAt ??= clock.GetCurrentInstant();
                 }
                 tracked.TotalAmount = order.TotalAmount;
@@ -240,10 +223,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         {
             if (existing.TryGetValue(attendee.VendorTicketId, out var tracked))
             {
-                // nobodies-collective/Humans#1178: once GDPR-erased, never let a sync write
-                // the attendee name/email back in — every other field still syncs. The
-                // tombstone check covers rows erased before PiiErasedAt existed (NULL on
-                // migration).
+                // Once GDPR-erased, sync never writes the attendee name/email back; every other field still syncs.
                 if (tracked.PiiErasedAt is null
                     && !TicketPiiTombstone.IsTombstoned(tracked.AttendeeName, tracked.AttendeeEmail))
                 {
@@ -252,8 +232,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 }
                 else
                 {
-                    // Self-heal rows erased before PiiErasedAt existed: the tombstone is the
-                    // older, equally authoritative record of the same erasure.
+                    // Self-heal rows erased before PiiErasedAt existed: the tombstone records the same erasure.
                     tracked.PiiErasedAt ??= clock.GetCurrentInstant();
                 }
                 tracked.TicketTypeName = attendee.TicketTypeName;
@@ -280,8 +259,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         if (checkIns.Count == 0) return;
 
-        // Earliest scan wins when the vendor returns more than one check-in for a
-        // ticket (e.g. a re-scan); a full resync re-applies all of them idempotently.
+        // A full resync re-applies every check-in, so this must stay idempotent.
         var earliestByTicket = checkIns
             .GroupBy(c => c.VendorTicketId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Min(c => c.CheckedInAt), StringComparer.Ordinal);
@@ -295,7 +273,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         foreach (var attendee in attendees)
         {
             var scan = earliestByTicket[attendee.VendorTicketId];
-            // Write-once: keep the earliest gate scan, never clear or push later.
             if (attendee.CheckedInAt is null || scan < attendee.CheckedInAt.Value)
                 attendee.CheckedInAt = scan;
         }
@@ -413,8 +390,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Attendee rows only: buying an order for someone else is not holding a ticket
-        // (Tickets.md, "buyer-only is not a holding").
+        // Attendee rows only: buying for someone else is not holding a ticket.
         return await ctx.TicketAttendees
             .AsNoTracking()
             .AnyAsync(
@@ -459,8 +435,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Ownership is attendee-only: the buyer never sees attendees owned by other
-        // accounts (nobodies-collective/Humans#856).
+        // Ownership is attendee-only: the buyer never sees attendees other accounts own.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
@@ -710,7 +685,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 PaymentStatus = o.PaymentStatus,
                 VendorDashboardUrl = o.VendorDashboardUrl,
                 MatchedUserId = o.MatchedUserId,
-                // MatchedUserName stitched by the service via IUserService
                 MatchedUserName = null,
             })
             .ToListAsync(ct);
@@ -797,7 +771,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 Price = a.Price,
                 Status = a.Status,
                 MatchedUserId = a.MatchedUserId,
-                // MatchedUserName stitched by the service via IUserService
                 MatchedUserName = null,
                 VendorOrderId = a.TicketOrder.VendorOrderId,
             })
@@ -896,11 +869,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     public async Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Filter must run against the source entity, not the projected record:
-        // EF can't translate a Where over a Select-projected DTO's properties
-        // (it tries to re-evaluate the constructor inside SQL and fails). Push
-        // the IssuedCount > ValidCount predicate upstream as a subquery on the
-        // attendee collection. Sort is the controller's job — see TicketTransferAdminController.
+        // Filter on the entity, not the projected record: EF can't translate a Where over a projected DTO.
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
@@ -955,11 +924,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        // updatedAt is part of the standard fold signature but unused here:
-        // neither TicketOrder nor TicketAttendee carries a generic UpdatedAt
-        // column (only SyncedAt, owned by the vendor-sync pipeline). Tickets
-        // are unique per purchase, so the conflict rule is plain re-FK — no
-        // dedup needed.
         _ = updatedAt;
 
         await using var ctx = await factory.CreateDbContextAsync(ct);

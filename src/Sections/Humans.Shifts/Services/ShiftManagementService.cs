@@ -22,9 +22,7 @@ using Humans.Shifts.Models;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Consolidated shift-management (authorization, event settings, rotas, shifts, urgency,
-/// coordinator dashboard, shift tags, volunteer event profiles).
-/// Caches: 5min dashboard. No full-grid cache; coordinator-team ids read through Teams' in-RAM model.
+/// Caches the dashboard for 5 minutes. No grid cache: coordinator-team ids read through Teams' in-RAM model.
 /// </summary>
 internal sealed class ShiftManagementService(
     IShiftManagementRepository repo,
@@ -47,11 +45,10 @@ internal sealed class ShiftManagementService(
         [ShiftPriority.Essential] = 6
     };
 
-    // Width of the all-day shift window, used by pie-row math.
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
-    // Lazy-resolved to break DI cycles (TeamService → this → TeamService etc.).
+    // Lazy, to break the DI cycle with TeamService.
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private ITicketService TicketQueryService => serviceProvider.GetRequiredService<ITicketService>();
@@ -109,8 +106,7 @@ internal sealed class ShiftManagementService(
         return await IsDeptCoordinatorAsync(userId, departmentTeamId, ct);
     }
 
-    // No cache of its own: Teams' singleton decorator answers this from its in-RAM team
-    // read model, which it keeps current on every team / coordinator / role write.
+    // No cache of its own: Teams' singleton decorator answers from its in-RAM model, current on every team write.
     public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
         TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
 
@@ -137,11 +133,8 @@ internal sealed class ShiftManagementService(
     }
 
     /// <summary>
-    /// Loads the knobs row for <paramref name="eventSettingsId"/>, creating a
-    /// default one if it doesn't exist yet (nobodies-collective/Humans#1631 —
-    /// "active event" is Settings' concept; a Shifts row only exists once a rota
-    /// or knob edit needs it). Callers that go on to mutate the row must save it
-    /// themselves; this only guarantees the row is there.
+    /// Creates the knobs row on demand: "active event" is Settings' concept, and a Shifts row exists only once a
+    /// rota or knob edit needs it. Callers that mutate the row save it themselves.
     /// </summary>
     private async Task<EventSettings> EnsureKnobsRowAsync(Guid eventSettingsId)
     {
@@ -153,9 +146,6 @@ internal sealed class ShiftManagementService(
         await repo.SaveEventSettingsAsync(created, EntityMutationMode.Add);
         return created;
     }
-
-    // ── IShiftSeeding — the dev-fixture verbs, over input records so the
-    //    boundary never names EventSettings or Rota (nobodies-collective/Humans#866).
 
     public async Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen)
     {
@@ -208,12 +198,10 @@ internal sealed class ShiftManagementService(
         if (team.SystemTeamType != SystemTeamType.None)
             throw new InvalidOperationException("Rotas cannot be created on system teams.");
 
-        // The rota's event must be a real Settings cycle; "active" no longer matters
-        // here — a rota can be created against any cycle (nobodies-collective/Humans#1631).
+        // Any real Settings cycle will do; it need not be the active one.
         if (await calendarResolver.GetAsync(rota.EventSettingsId) is null)
             throw new InvalidOperationException("Event not found.");
 
-        // On-demand: the first rota against this event id creates its Shifts knobs row.
         await EnsureKnobsRowAsync(rota.EventSettingsId);
 
         rota.UpdatedAt = clock.GetCurrentInstant();
@@ -272,7 +260,6 @@ internal sealed class ShiftManagementService(
         if (rota.TeamId == input.TargetTeamId)
             return RotaMoveResult.Failure("Rota is already in this team.");
 
-        // Fetch the old team name via the Teams read model - no cross-domain Include.
         var oldTeam = await TeamService.GetTeamAsync(rota.TeamId);
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
@@ -285,9 +272,7 @@ internal sealed class ShiftManagementService(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             input.ActorUserId,
-            // "Team" is a persisted audit discriminator, matched by exact equality when the log is
-            // read back, so it stays a literal now that the entity lives in Humans.Teams and Base
-            // cannot name it (memory/code/type-name-as-persisted-string.md).
+            // A persisted audit discriminator matched by exact equality, so a literal: Base cannot name the entity.
             relatedEntityId: input.TargetTeamId, relatedEntityType: "Team");
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
@@ -304,7 +289,7 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             return RefuseDeletion(rotaId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
-        // Keep the removed requests for the audit after the cascade commits.
+        // Captured before the cascade, for the audit after it commits.
         var removedSignups = rota.Shifts.SelectMany(s => s.ShiftSignups).ToList();
         var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
@@ -337,7 +322,7 @@ internal sealed class ShiftManagementService(
         Guid? rotaId = null,
         CancellationToken ct = default)
     {
-        // ── Resolve scope + validate (null → controller returns 404) ──────────
+        // Null scope: the controller returns 404.
         ShiftSummaryScope scope;
         IReadOnlyCollection<Guid>? filterTeamIds = null;
         Guid? filterRotaId = null;
@@ -375,13 +360,9 @@ internal sealed class ShiftManagementService(
             }
         }
 
-        // ── Confirmed per-user totals for the scope (Shifts-owned read) ───────
         var totals = await repo.GetConfirmedUserShiftTotalsAsync(
             activeEvent.Id, filterTeamIds, filterRotaId, ct);
 
-        // ── Stitch display names (Users) + each human's camp (Camps) ──────────
-        // Both are cache-served reads through the cross-section read interfaces;
-        // no shift data leaves the section.
         var userIds = totals.Select(t => t.UserId).ToList();
         var userInfos = await UserService.GetUserInfosAsync(userIds, ct);
 
@@ -389,7 +370,6 @@ internal sealed class ShiftManagementService(
         foreach (var userId in userIds)
             campByUser[userId] = (await CampService.GetCampUserInfoAsync(userId, ct)).Season;
 
-        // ── Table 1: one flat row per human with ≥1 confirmed signup in scope ─
         var humans = totals
             .Select(t =>
             {
@@ -400,10 +380,8 @@ internal sealed class ShiftManagementService(
             })
             .ToList();
 
-        // ── Table 2: by-camp pivot, active-camp roster left-joined ────────────
         var camps = await BuildCampPivotAsync(humans, ct);
 
-        // ── Drill-down navigation (global → teams, team → rotas) ──────────────
         IReadOnlyList<ShiftSummaryTeamLink> teamLinks = scope == ShiftSummaryScope.Global
             ? await BuildDepartmentLinksAsync(activeEvent.Id, ct)
             : [];
@@ -417,11 +395,8 @@ internal sealed class ShiftManagementService(
             humans, camps, teamLinks, rotaLinks);
     }
 
-    // Builds the by-camp pivot: aggregate the flat rows by camp, then left-join
-    // the active-camp roster for the current public year so camps with nobody in
-    // scope surface as zero rows. Humans with no active camp form the campless
-    // bucket (CampId null). Any camp with scoped humans the roster didn't cover is
-    // still emitted so no hours silently vanish.
+    // Left-joins the active-camp roster so camps with nobody in scope show as zero rows; campless humans get a
+    // CampId-null bucket.
     private async Task<IReadOnlyList<ShiftSummaryCampRow>> BuildCampPivotAsync(
         IReadOnlyList<ShiftSummaryHumanRow> humans, CancellationToken ct)
     {
@@ -454,13 +429,11 @@ internal sealed class ShiftManagementService(
                 : new ShiftSummaryCampRow(camp.Id, season.Name, 0, 0, 0));
         }
 
-        // Camps with scoped humans that the roster didn't cover — so no hours
-        // silently vanish from the pivot.
+        // Camps the roster missed still get a row, so no hours silently vanish.
         foreach (var (campId, a) in byCamp)
             if (!seen.Contains(campId))
                 rows.Add(new ShiftSummaryCampRow(campId, a.Name, a.People, a.Hours, a.Count));
 
-        // Campless bucket: humans signed up with no active camp this year.
         var campless = humans.Where(h => h.CampId is null).ToList();
         if (campless.Count > 0)
             rows.Add(new ShiftSummaryCampRow(
@@ -469,10 +442,7 @@ internal sealed class ShiftManagementService(
         return rows;
     }
 
-    // Resolves the set of department pages to link from the global summary: every
-    // team that owns a rota in the event, rolled up to its department (a
-    // non-promoted sub-team folds into its parent; top-level / promoted teams are
-    // their own department) — the inverse of ResolveDepartmentTeamIdsAsync.
+    // A non-promoted sub-team folds into its parent; the inverse of ResolveDepartmentTeamIdsAsync.
     private async Task<IReadOnlyList<ShiftSummaryTeamLink>> BuildDepartmentLinksAsync(
         Guid eventSettingsId, CancellationToken ct)
     {
@@ -530,15 +500,12 @@ internal sealed class ShiftManagementService(
 
     public async Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default)
     {
-        // Through the per-rota cache, so one search row costs no query once warm.
         var view = await RowView.GetRotaAsync(rotaId, cancellationToken);
         return view.Rota is null ? null : ToRotaInfo(view.Rota);
     }
 
-    /// <summary>Re-export of <see cref="Shift.AllDayWindowStart"/>.</summary>
     internal static LocalTime AllDayShiftStartTime => Shift.AllDayWindowStart;
 
-    /// <summary>Re-export of <see cref="Shift.AllDayWindowEnd"/>.</summary>
     internal static LocalTime AllDayShiftEndTime => Shift.AllDayWindowEnd;
 
     public async Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input)
@@ -576,7 +543,7 @@ internal sealed class ShiftManagementService(
                 throw new InvalidOperationException($"Day offset {dayOffset} is outside the {rota.Period.ToString().ToLowerInvariant()} period ({periodStart} to {periodEnd})");
         }
 
-        // Skip days that already have shifts (additive mode)
+        // Additive: days that already have shifts are skipped.
         var existingDayOffsets = await repo.GetShiftDayOffsetsForRotaAsync(input.RotaId);
         var existingSet = existingDayOffsets.ToHashSet();
 
@@ -591,7 +558,7 @@ internal sealed class ShiftManagementService(
                 RotaId = input.RotaId,
                 IsAllDay = true,
                 DayOffset = dayOffset,
-                // StartTime/Duration are don't-care for IsAllDay rows; store midnight/24h as neutral sentinel.
+                // Ignored for all-day rows; midnight/24h is a neutral sentinel.
                 StartTime = LocalTime.Midnight,
                 Duration = Duration.FromHours(24),
                 MinVolunteers = staffing.Min,
@@ -808,7 +775,7 @@ internal sealed class ShiftManagementService(
         return shift?.Rota is null ? null : new ShiftWithRota(ToShiftInfo(shift), ToRotaInfo(shift.Rota));
     }
 
-    /// <summary>Resolves (period, subPeriod) to inclusive day-offset bounds. subPeriod only narrows when period is Build.</summary>
+    /// <summary>Inclusive bounds. subPeriod narrows only when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
         ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettingsInfo es)
     {
@@ -833,17 +800,14 @@ internal sealed class ShiftManagementService(
         {
             var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
             minDayOffset = start;
-            // BoundsFor is half-open; repo bounds are inclusive — subtract a day.
+            // BoundsFor is half-open; repo bounds are inclusive.
             maxDayOffset = end - 1;
         }
 
         return (minDayOffset, maxDayOffset);
     }
 
-    /// <summary>
-    /// Builds the explicit list of day offsets covered by <paramref name="period"/> (all three when null).
-    /// Iteration-list counterpart to <see cref="GetDayOffsetBounds"/>.
-    /// </summary>
+    /// <summary>All three periods when <paramref name="period"/> is null.</summary>
     private static List<int> BuildDayOffsetList(
         ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettingsInfo es)
     {
@@ -877,8 +841,7 @@ internal sealed class ShiftManagementService(
 
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
 
-        // Date range overrides period bounds; defensively swap if start > end.
-        // A single bound stays open-ended — do not mirror it onto the missing side.
+        // A reversed range is swapped. A single bound stays open-ended; do not mirror it onto the missing side.
         if (startDate.HasValue || endDate.HasValue)
         {
             var s = startDate;
@@ -907,7 +870,6 @@ internal sealed class ShiftManagementService(
             maxDayOffset,
             flags));
 
-        // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
 
@@ -963,7 +925,6 @@ internal sealed class ShiftManagementService(
             toOffset,
             flags), ct);
 
-        // Cross-domain lookups via services.
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
 
@@ -1010,10 +971,8 @@ internal sealed class ShiftManagementService(
             .ToList();
     }
 
-    // Mirrors the pie bucketing in GetDepartmentCoveragePiesAsync: filtering by a
-    // department includes its non-promoted sub-teams (which roll up into the parent's
-    // pie) but excludes promoted sub-teams (which have their own pie and filter).
-    // Uses the warm in-process team cache (GetTeamsAsync) rather than a fresh DB scope.
+    // Mirrors the pie bucketing in GetDepartmentCoveragePiesAsync: non-promoted sub-teams roll into the parent,
+    // promoted ones have their own pie and filter.
     private async Task<IReadOnlyCollection<Guid>?> ResolveDepartmentTeamIdsAsync(Guid? departmentId, CancellationToken ct = default)
     {
         if (!departmentId.HasValue) return null;
@@ -1028,9 +987,8 @@ internal sealed class ShiftManagementService(
     }
 
     /// <summary>
-    /// Flattens a shift, its rota and the urgency arithmetic into the boundary
-    /// shape. The event-relative scalars are resolved here — where the event is
-    /// in scope — so no consumer has to fetch the burn to render a row.
+    /// Resolves the event-relative scalars here, where the event is in scope, so no consumer fetches the burn to
+    /// render a row.
     /// </summary>
     private static UrgentShiftInfo ToUrgentShiftInfo(
         Shift shift,
@@ -1053,7 +1011,6 @@ internal sealed class ShiftManagementService(
             remainingSlots,
             signups);
 
-    /// <summary>Flattens a shift's own fields into the boundary shape.</summary>
     private static ShiftInfo ToShiftInfo(Shift shift) =>
         new(
             shift.Id,
@@ -1068,7 +1025,6 @@ internal sealed class ShiftManagementService(
             shift.IsAllDay,
             shift.IsEarlyEntry);
 
-    /// <summary>Flattens a rota's header fields into the boundary shape.</summary>
     private static RotaInfo ToRotaInfo(Rota rota) =>
         new(
             rota.Id,
@@ -1092,7 +1048,7 @@ internal sealed class ShiftManagementService(
         var durationHours = shift.IsAllDay ? Shift.AllDayWindowHours : shift.Duration.TotalHours;
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
-        // Proximity boost: 1 + 10/(1+daysUntilStart). Today→11x, tomorrow→6x, 7d→2.25x, 30d→1.32x.
+        // Proximity boost 1 + 10/(1+days): today 11x, tomorrow 6x, a week 2.25x, a month 1.32x.
         var now = clock.GetCurrentInstant();
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var daysUntilStart = Math.Max(0, (shiftStart - now).TotalDays);
@@ -1102,11 +1058,6 @@ internal sealed class ShiftManagementService(
     }
 
     /// <summary>Top-N with period diversity: one slot per non-Build period if eligible, rest from top scorers.</summary>
-    /// <remarks>
-    /// Takes the projection rather than the entity: <see cref="UrgentShiftInfo.Period"/>
-    /// is already resolved against the event, so this no longer needs
-    /// <c>EventSettings</c> to classify a row.
-    /// </remarks>
     internal static List<UrgentShiftInfo> ApplyPeriodDiverseLimit(
         List<UrgentShiftInfo> rankedShifts, int limit)
     {
@@ -1267,7 +1218,6 @@ internal sealed class ShiftManagementService(
         var teamIdsWithRotas = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
         if (teamIdsWithRotas.Count == 0) return [];
 
-        // Brings rota-owning teams + parents in one lookup (avoids second hop for sub-team rotas).
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsWithRotas, ct);
 
         var allRotas = await repo.GetRotasAsync(
@@ -1276,7 +1226,6 @@ internal sealed class ShiftManagementService(
             RotaReadShape.ShiftsWithSignups,
             ct);
 
-        // Pie-eligible teams = top-level departments + promoted sub-teams.
         var pieTeams = teamLookup.Values.Where(IsInDirectory).ToList();
         var pieTeamIds = pieTeams.Select(t => t.Id).ToHashSet();
 
@@ -1287,7 +1236,6 @@ internal sealed class ShiftManagementService(
         {
             if (!teamLookup.TryGetValue(rota.TeamId, out var rotaTeam)) continue;
 
-            // Bucket: own pie if eligible; otherwise nearest ancestor's pie.
             Guid? bucketId = pieTeamIds.Contains(rotaTeam.Id)
                 ? rotaTeam.Id
                 : (rotaTeam.ParentTeamId is { } pid && pieTeamIds.Contains(pid) ? pid : null);
@@ -1312,7 +1260,7 @@ internal sealed class ShiftManagementService(
             }
         }
 
-        // Natural name order; display-layer ordering (sub-team adjacent to parent) lives in the VM.
+        // Display order (sub-team beside parent) lives in the view model.
         return pieTeams
             .Where(t => requested.GetValueOrDefault(t.Id) > 0)
             .OrderBy(t => t.Name, StringComparer.Ordinal)
@@ -1336,7 +1284,7 @@ internal sealed class ShiftManagementService(
         var teamIds = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
         if (teamIds.Count == 0) return [];
 
-        // Filter parents back out — only rota-owning teams belong in the department dropdown.
+        // Parents came along for the lookup; only rota-owning teams belong in the dropdown.
         var rotaOwningIds = teamIds.ToHashSet();
         var teams = await GetTeamLookupWithParentsAsync(teamIds, ct);
         return teams.Values
@@ -1370,7 +1318,7 @@ internal sealed class ShiftManagementService(
 
     public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
-        // Sub-period results aren't cached (4× key fan-out); base period overview is.
+        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
         if (subPeriod is not null)
             return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod);
 
@@ -1442,7 +1390,6 @@ internal sealed class ShiftManagementService(
         var staleThreshold = clock.GetCurrentInstant().Minus(Duration.FromDays(3));
         var stalePendingCount = await repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold);
 
-        // Teams resolved via the Teams read model — no cross-domain navigation.
         var teamIdsOnRotas = shifts
             .Select(s => s.Rota.TeamId)
             .Distinct()
@@ -1515,7 +1462,6 @@ internal sealed class ShiftManagementService(
                 if (directShifts.Count > 0)
                 {
                     var dAgg = AggregateShifts(directShifts, confirmedCounts, es);
-                    // "Direct" points at the parent's own team page.
                     subgroups.Insert(0, new SubgroupStaffingRow(
                         deptId, "Direct", SlugOf(deptId), IsDirect: true,
                         dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
@@ -1590,7 +1536,7 @@ internal sealed class ShiftManagementService(
 
     public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
-        // Sub-period results aren't cached (4× key fan-out); base period is.
+        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
         if (subPeriod is not null)
             return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod);
 
@@ -1715,7 +1661,7 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null)
     {
-        // Sub-period results aren't cached (4× key fan-out); base period is.
+        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
         if (subPeriod is not null)
             return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod);
 
@@ -1730,8 +1676,7 @@ internal sealed class ShiftManagementService(
     private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
-        // CreatedAt is Shifts-owned (not on the Settings-sourced calendar), so the local
-        // row is fetched alongside the calendar for TrendWindow.All's start date.
+        // CreatedAt is Shifts-owned, not on the Settings calendar; TrendWindow.All starts there.
         var local = await repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (local is null) return [];
         var es = await calendarResolver.GetAsync(eventSettingsId);
@@ -1794,7 +1739,7 @@ internal sealed class ShiftManagementService(
     public async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
-        // Only meaningful for Build/Strike; Event planning has different day-over-day dynamics.
+        // Event days have different day-over-day dynamics.
         if (period is not (ShiftPeriod.Build or ShiftPeriod.Strike))
             return [];
 
@@ -1803,7 +1748,6 @@ internal sealed class ShiftManagementService(
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
 
-        // Caller restricts to Build/Strike up-front (early return above).
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
@@ -1894,7 +1838,7 @@ internal sealed class ShiftManagementService(
             })
             .ToList();
 
-        // Display team: top-level → self; promoted subteam → self; non-promoted subteam → parent.
+        // A non-promoted subteam displays as its parent.
         TeamInfo? DisplayTeamFor(Shift s)
         {
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return null;
@@ -1903,7 +1847,6 @@ internal sealed class ShiftManagementService(
             return team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
         }
 
-        // One row per directory team (top-level always; subteams only if IsPromotedToDirectory).
         var shiftsByDisplayTeam = allShifts
             .Select(s => (Shift: s, Team: DisplayTeamFor(s)))
             .Where(x => x.Team is not null && IsInDirectory(x.Team))
@@ -1938,7 +1881,6 @@ internal sealed class ShiftManagementService(
 
             if (!teamHasAnyShift) continue;
 
-            // Promoted subteam rows carry parent's name as the department tag.
             var departmentName = team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parentTeam)
                 ? parentTeam.Name
                 : team.Name;
@@ -1958,9 +1900,7 @@ internal sealed class ShiftManagementService(
         return new CoverageHeatmap(days, rows);
     }
 
-    // Two admin-dashboard components (the shift-coverage tile and the staffing card) call this
-    // on every /Admin render — cached like the other dashboard reads above so one render costs
-    // one set of reads, not two.
+    // Two /Admin components call this on every render; cached so one render costs one set of reads.
     public async Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default)
     {
         var cached = await cache.GetOrCreateAsync(OverallCoverageCacheKey, async entry =>
@@ -2020,7 +1960,7 @@ internal sealed class ShiftManagementService(
             return Math.Min(confirmed, s.MaxVolunteers);
         }
 
-        // Key: (IsAllDay, whole-hour Duration). All-day shifts collapse into one bucket.
+        // All-day shifts collapse into one bucket; others group by whole-hour duration.
         var grouped = periodShifts
             .GroupBy(s => (
                 s.IsAllDay,
@@ -2030,7 +1970,6 @@ internal sealed class ShiftManagementService(
                 DurationHours: g.Key.Hours,
                 TotalSlots: g.Sum(s => s.MaxVolunteers),
                 FilledSlots: g.Sum(FilledSlotsOn)))
-            // Full-day on top; hourly shifts sorted ascending by duration.
             .OrderByDescending(r => r.IsAllDay)
             .ThenBy(r => r.DurationHours)
             .ToList();
@@ -2104,9 +2043,7 @@ internal sealed class ShiftManagementService(
         Guid userId,
         CancellationToken ct = default)
     {
-        // Fail closed when no event is active (or its calendar isn't in Settings yet) —
-        // the nudge would be meaningless (no shifts to attend means no cantina meals to
-        // plan for).
+        // Fails closed with no active event: no shifts means no cantina meals to plan for.
         var eventSettings = await calendarResolver.GetActiveAsync(ct);
         if (eventSettings is null)
             return false;
@@ -2145,16 +2082,14 @@ internal sealed class ShiftManagementService(
         if (es is null)
             return null;
 
-        // Load all shifts so we can compute totals (including shifts with zero signups).
+        // All shifts, so totals include those with zero signups.
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
 
-        // Load confirmed/no-show counts per shift from DB.
         var signupCounts = await repo.GetSignupStatusCountsForEventAsync(eventSettingsId, ct);
         var countsByShiftId = signupCounts.ToDictionary(r => r.ShiftId);
 
-        // Resolve team lookup so we can map shifts to their parent department.
         var teamIdsOnRotas = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas, ct);
 
@@ -2174,7 +2109,6 @@ internal sealed class ShiftManagementService(
         int totalNoShow = 0;
         int shiftsWithData = 0;
 
-        // Aggregate per shift into per-department, per-period buckets.
         var deptBuckets = new Dictionary<Guid, Dictionary<ShiftPeriod, (int Confirmed, int NoShow)>>();
 
         foreach (var shift in allShifts)

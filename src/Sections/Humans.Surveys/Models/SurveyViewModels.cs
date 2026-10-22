@@ -8,20 +8,19 @@ using NodaTime.Text;
 
 namespace Humans.Surveys.Models;
 
-/// <summary>Admin index: the survey list, scoped to the viewer (sorting done in the controller).</summary>
+/// <summary>Sorted in the controller.</summary>
 internal sealed class SurveyAdminIndexViewModel
 {
     public IReadOnlyList<SurveyAdminSummary> Surveys { get; init; } = [];
     public bool IsBoardOrAdmin { get; init; }
 }
 
-/// <summary>The Board/Admin approval queue: surveys awaiting approve-and-send or reject.</summary>
 internal sealed class SurveyPendingApprovalViewModel
 {
     public IReadOnlyList<SurveyPendingApprovalItem> Items { get; init; } = [];
 }
 
-/// <summary>Side-effect-free preview of the current user's survey invitation email.</summary>
+/// <summary>Side-effect-free.</summary>
 internal sealed class SurveyEmailPreviewViewModel
 {
     public Guid SurveyId { get; init; }
@@ -30,16 +29,9 @@ internal sealed class SurveyEmailPreviewViewModel
     public string HtmlBody { get; init; } = string.Empty;
 }
 
-/// <summary>A team choice for the audience picker.</summary>
 internal sealed record SurveyTeamOption(Guid Id, string Name);
 
-// ── Answering wizard (entry) ────────────────────────────────────────────────
-
-/// <summary>
-/// The wizard intro/privacy step: survey title/intro resolved for display, the transparency note,
-/// a language picker, and (only when the survey allows it) the anonymity-tier selector. Carries the
-/// token through to the Start POST.
-/// </summary>
+/// <summary>The wizard intro/privacy step. Carries the token through to the Start POST.</summary>
 internal sealed class SurveyIntroViewModel
 {
     public string Token { get; init; } = string.Empty;
@@ -47,40 +39,35 @@ internal sealed class SurveyIntroViewModel
     [MarkdownContent]
     public string Intro { get; init; } = string.Empty;
 
-    /// <summary>The currently-selected language; the form posts it back so the wizard runs in it.</summary>
+    /// <summary>Posted back so the wizard runs in it.</summary>
     public string Culture { get; init; } = CultureCatalog.DefaultCultureCode;
 
-    /// <summary>When true, the three-tier anonymity selector is shown; otherwise only Identified applies.</summary>
     public bool AllowAnonymous { get; init; }
 
     /// <summary>
-    /// When true the anonymity-tier radios are rendered: on the invited path when anonymity is allowed,
-    /// and on the public path for a logged-in Human. Logged-out public visitors remain Anonymous.
+    /// On the invited path when anonymity is allowed, and on the public path for a logged-in Human. Logged-out public
+    /// visitors remain Anonymous.
     /// </summary>
     public bool ShowAnonymitySelector { get; init; }
 
-    /// <summary>True on the public-slug path: the intro form posts to <c>Public/Start</c> with <see cref="Slug"/> instead of <c>Answer/Start</c> with the token.</summary>
+    /// <summary>The intro form posts to <c>Public/Start</c> with <see cref="Slug"/> instead of <c>Answer/Start</c> with the token.</summary>
     public bool IsPublic { get; init; }
 
-    /// <summary>The public slug (only set when <see cref="IsPublic"/>); drives the start route on the public path.</summary>
     public string Slug { get; init; } = string.Empty;
 
-    /// <summary>True when the invitee already has answers in progress (Identified resume).</summary>
+    /// <summary>Identified resume.</summary>
     public bool HasResumableDraft { get; init; }
 
-    /// <summary>True when this is a binding, identified Asociado vote.</summary>
     public bool IsAsociadoVote { get; init; }
 
-    /// <summary>True for the protected, side-effect-free Board/Admin preview flow.</summary>
     public bool IsPreview { get; init; }
 
-    /// <summary>The previewed survey id; set only when <see cref="IsPreview"/>.</summary>
+    /// <summary>Set only when <see cref="IsPreview"/>.</summary>
     public Guid? PreviewSurveyId { get; init; }
 
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
 }
 
-/// <summary>Posted by the intro form to begin the wizard.</summary>
 internal sealed class SurveyStartViewModel
 {
     public string Token { get; set; } = string.Empty;
@@ -88,13 +75,13 @@ internal sealed class SurveyStartViewModel
     public string Culture { get; set; } = CultureCatalog.DefaultCultureCode;
 }
 
-/// <summary>Closed / invalid-link page. <see cref="Reason"/> is a friendly explanation key.</summary>
+/// <summary><see cref="Reason"/> is a friendly explanation key.</summary>
 internal sealed class SurveyClosedViewModel
 {
     public string? Reason { get; init; }
 }
 
-/// <summary>Admin Send page: header, net-new recipient count, and per-invite status rows (sorted in the controller).</summary>
+/// <summary>Invite rows are sorted in the controller.</summary>
 internal sealed class SurveySendViewModel
 {
     public Guid Id { get; init; }
@@ -132,10 +119,8 @@ internal sealed record SurveyQuestionCardModel(
 /// <summary>One option row in the builder. Keys are non-sequential indexers (or <c>__QKEY__</c>/<c>__OKEY__</c> placeholders in templates).</summary>
 internal sealed record SurveyOptionRowModel(string QuestionKey, string OptionKey, SurveyOptionBuilderViewModel Option);
 
-/// <summary>One Grid row in the builder. Keys are non-sequential indexers.</summary>
 internal sealed record SurveyGridRowModel(string QuestionKey, string RowKey, SurveyGridRowBuilderViewModel Row);
 
-/// <summary>One Information image row in the builder. Keys are non-sequential indexers.</summary>
 internal sealed record SurveyInformationImageRowModel(
     string QuestionKey,
     string ImageKey,
@@ -145,13 +130,10 @@ internal sealed record SurveyInformationImageRowModel(
 internal sealed record SurveyBranchClauseRowModel(string QuestionKey, string ClauseKey, SurveyBranchClauseBuilderViewModel Clause);
 
 /// <summary>
-/// The full survey builder form. Localized fields bind per culture (<c>Title[en]</c>, …); questions,
-/// options and show-if clauses use non-sequential indexers (a <c>.Index</c> hidden field per
-/// collection) so rows can be added/removed client-side without renumbering. Show-if conditions are
-/// posted as structured clause rows (question/operator/option values) and the resulting
-/// <see cref="BranchCondition"/> is validated server-side on save. New questions get their
-/// <see cref="SurveyQuestionBuilderViewModel.Id"/> pre-assigned client-side so clauses can reference
-/// questions that haven't been saved yet (the service honours supplied ids).
+/// Questions, options and show-if clauses use non-sequential indexers (a <c>.Index</c> hidden field per collection) so
+/// rows can be added or removed client-side without renumbering. New questions get their
+/// <see cref="SurveyQuestionBuilderViewModel.Id"/> client-side so clauses can reference unsaved questions (the service
+/// honours supplied ids).
 /// </summary>
 internal sealed class SurveyBuilderViewModel
 {
@@ -183,9 +165,8 @@ internal sealed class SurveyBuilderViewModel
     public bool HasSavedAnswers { get; set; }
 
     /// <summary>
-    /// Whether the viewer may run the survey, not just author it. The builder is open to any
-    /// approved human now, but opening, closing, previewing and reviewing recipients are all
-    /// <c>BoardOrAdmin</c> actions — showing an author a button that ends in 403 is a bug.
+    /// Opening, closing, previewing and reviewing recipients are <c>BoardOrAdmin</c> actions, though any approved human
+    /// may author: showing an author a button that ends in 403 is a bug.
     /// </summary>
     public bool IsBoardOrAdmin { get; set; }
 
@@ -207,7 +188,7 @@ internal sealed class SurveyBuilderViewModel
     private static string FormatLocal(LocalDateTime? local)
         => local is null ? string.Empty : DateFormattingExtensions.PlacementDateTimePattern.Format(local.Value);
 
-    /// <summary>Maps the posted form to the service authoring input. Question/option order is the posted order.</summary>
+    /// <summary>Question and option order is the posted order.</summary>
     public SurveyEditInput ToEditInput(DateTimeZone zone) => new(
         new LocalizedText(Title),
         new LocalizedText(Intro),
@@ -388,7 +369,6 @@ internal sealed class SurveyInformationImageBuilderViewModel
     };
 }
 
-/// <summary>One structured show-if clause: an earlier question, an operator, and (for Is/IsNot) the option values to match.</summary>
 internal sealed class SurveyBranchClauseBuilderViewModel
 {
     public Guid? QuestionId { get; set; }

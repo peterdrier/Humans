@@ -4,27 +4,14 @@ using NodaTime;
 
 namespace Humans.Testing;
 
-/// <summary>
-/// Builds <see cref="ProfileInfo"/> and its nested projections for tests that stub
-/// <c>IUserService</c> / <c>IUserService</c>.
-/// </summary>
-/// <remarks>
-/// Same reason as <see cref="ShiftFixtures"/>: <see cref="ProfileInfo"/> is positional with
-/// forty-four members and is built from twenty-nine section test projects, so every parameter is
-/// defaulted and a test that only cares about the burner name writes
-/// <c>UserFixtures.Profile(burnerName: "Alice")</c>. It replaces constructing the
-/// <c>Profile</c> row, which became internal to <c>Humans.Users</c>
-/// (nobodies-collective/Humans#1051).
-/// </remarks>
+/// <summary>Every parameter is defaulted: <c>UserFixtures.Profile(burnerName: "Alice")</c>.</summary>
 public static class UserFixtures
 {
-    /// <summary>The instant every fixture profile is created/updated at unless overridden.</summary>
     public static readonly Instant DefaultInstant = Instant.FromUtc(2026, 1, 1, 0, 0);
 
     /// <summary>
-    /// The stored <c>User.State</c> a row with <paramref name="profile"/> carries: Rejected once
-    /// rejected, otherwise Bare until the required name fields are filled. Nothing derives state on
-    /// read any more, so a test that builds a <c>UserInfo</c> by hand must stamp it.
+    /// The stored <c>User.State</c> for <paramref name="profile"/>. Nothing derives state on read, so a test that builds
+    /// a <c>UserInfo</c> by hand must stamp it.
     /// </summary>
     public static UserState StateFor(ProfileInfo? profile) =>
         profile switch
@@ -104,8 +91,7 @@ public static class UserFixtures
             Intolerances: intolerances ?? [],
             IntoleranceOtherText: intoleranceOtherText,
             MedicalConditions: medicalConditions,
-            // Derived exactly as UserInfoFactory derives it from the entity, so no fixture
-            // can build the impossible "has a picture with no content type" combination.
+            // Derived as UserInfoFactory does, so no fixture can have a picture without a content type.
             HasCustomPicture: profilePictureContentType is not null,
             ProfilePictureContentType: profilePictureContentType,
             CreatedAt: createdAt ?? DefaultInstant,
@@ -150,7 +136,7 @@ public static class UserFixtures
         Guid? id = null) =>
         new(id ?? Guid.NewGuid(), date ?? new LocalDate(2026, 1, 1), eventName, description);
 
-    /// <summary>A frozen legacy Users preference row (Email owns the live ones since Users decomposition commit 14).</summary>
+    /// <summary>A frozen legacy Users preference row; Email owns the live ones.</summary>
     public static LegacyCommunicationPreferenceInfo Preference(
         LegacyMessageCategory category = LegacyMessageCategory.System,
         bool optedOut = false,

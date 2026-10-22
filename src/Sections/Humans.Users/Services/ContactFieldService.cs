@@ -11,9 +11,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Users.Services;
 
-/// <summary>
-/// Service for managing contact fields with visibility controls.
-/// </summary>
 internal sealed class ContactFieldService(
     IUserRepository userRepository,
     IUserService userService,
@@ -73,7 +70,7 @@ internal sealed class ContactFieldService(
     {
         var now = clock.GetCurrentInstant();
 
-        // Entities detached after call (IDbContextFactory) — pass mutations explicitly to BatchSaveAsync.
+        // Detached: mutations go back explicitly through BatchSaveAsync.
         var existingFields = await userRepository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);

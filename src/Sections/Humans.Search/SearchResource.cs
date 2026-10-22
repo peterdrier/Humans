@@ -1,14 +1,9 @@
 namespace Humans.Search;
 
 /// <summary>
-/// Marker type for Search's resource set — every key that only <c>/Search</c> renders.
-/// The <c>.resx</c> files sit beside this file and the manifest name derives from this
-/// type's namespace, so it must stay <c>namespace Humans.Search</c>; anything else makes every
-/// Search string fall back to its raw key at runtime.
+/// The .resx files sit beside this file, so it must stay in <c>namespace Humans.Search</c>: the manifest name comes
+/// from this file's namespace, and any other makes every string fall back to its key. Public because the boot
+/// localization check finds markers through <c>GetExportedTypes()</c>. <c>Search_</c> keys rendered elsewhere stay in
+/// <c>SharedResource</c>.
 /// </summary>
-/// <remarks>
-/// Public because the boot localization diagnostic discovers section resource markers via
-/// <c>GetExportedTypes()</c>. Other <c>Search_</c>-prefixed keys live in <c>SharedResource</c>
-/// because their renderers are elsewhere (<c>Docs/Search.md</c>, Resource set).
-/// </remarks>
 public class SearchResource;

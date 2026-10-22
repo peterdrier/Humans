@@ -7,10 +7,6 @@ using NodaTime;
 
 namespace Humans.Tickets.Tests.Data;
 
-/// <summary>
-/// <c>tickets_event_participations</c>: the lifecycle rules moved from Users' repository in
-/// decomposition commit 13, plus the legacy seed and cleared-row behaviour the move added.
-/// </summary>
 public sealed class EventParticipationRepositoryTests : IDisposable
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 7, 8, 12, 0);
@@ -52,8 +48,6 @@ public sealed class EventParticipationRepositoryTests : IDisposable
 
     private Task<List<EventParticipation>> RowsAsync(Guid userId) =>
         _db.EventParticipations.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(Ct);
-
-    // ─── UpsertAsync ─────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Upsert_CreatesNewRecord_WhenNoneExists()
@@ -150,8 +144,6 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         (await RowsAsync(userId)).Single().Status.Should().Be(ParticipationStatus.Ticketed);
     }
 
-    // ─── ClearAsync ──────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Clear_DeletesWhenSourceMatches_AndNoLegacyRow()
     {
@@ -201,8 +193,6 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         (await RowsAsync(userId)).Single().Status.Should().Be(status);
     }
 
-    // ─── BackfillAsync ───────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Backfill_AddsAndUpdates_PreservesAttended_AndReportsOnlyChanges()
     {
@@ -232,8 +222,6 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         (await RowsAsync(attendedId)).Single().Status.Should().Be(ParticipationStatus.Attended);
         (await RowsAsync(legacyId)).Single().Status.Should().Be(ParticipationStatus.Attended);
     }
-
-    // ─── ReassignAsync (merge fold) ──────────────────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData(ParticipationStatus.Ticketed, false)]
@@ -278,8 +266,6 @@ public sealed class EventParticipationRepositoryTests : IDisposable
         var source = await RowsAsync(sourceId);
         source.Should().ContainSingle().Which.Should().Match<EventParticipation>(r => r.Year == 2025 && r.Status == null);
     }
-
-    // ─── TryInsertAsync (copy) ───────────────────────────────────────────────
 
     [HumansFact]
     public async Task TryInsert_SkipsAYearThatHasAnyRow_ClearedIncluded()

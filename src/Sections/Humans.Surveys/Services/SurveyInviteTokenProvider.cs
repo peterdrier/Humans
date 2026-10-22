@@ -3,10 +3,6 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace Humans.Surveys.Services;
 
-/// <summary>
-/// ASP.NET Data Protection implementation of <see cref="ISurveyInviteTokenProvider"/>. The token
-/// payload is just the invitation id, with a fixed 60-day lifetime.
-/// </summary>
 internal sealed class SurveyInviteTokenProvider(IDataProtectionProvider dataProtection) : ISurveyInviteTokenProvider
 {
     private const string ProtectorPurpose = "SurveyInvite";

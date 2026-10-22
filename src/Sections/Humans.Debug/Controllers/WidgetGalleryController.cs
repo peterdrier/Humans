@@ -16,12 +16,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Debug.Controllers;
 
-/// <summary>
-/// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
-/// shared partials — rendered against hard-coded sample data so designers and developers
-/// can see what exists, what it's called, and how it looks filled in. Companion to
-/// <c>/ColorPalette</c>. Admin dev tool — linked from the admin sidebar "Design" group.
-/// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug/WidgetGallery")]
 internal sealed class WidgetGalleryController(
@@ -90,9 +84,8 @@ internal sealed class WidgetGalleryController(
     }
 
     /// <summary>
-    /// One real key per search-result row card. Those components render nothing for an
-    /// unresolved key, so a fabricated sample would be indistinguishable from an unbound tag.
-    /// Every read is cache-served. Null where this environment holds no such row; the card says so.
+    /// One real key per search-result card: the components render nothing for an unresolved key, so a fabricated
+    /// sample would look like an unbound tag. Null where this environment holds no such row.
     /// </summary>
     private async Task<SearchRowKeys> ResolveSearchRowKeysAsync(CancellationToken ct)
     {
@@ -128,7 +121,6 @@ internal sealed class WidgetGalleryController(
         Quirks: ["Early riser", "Coffee snob"],
         Languages: ["English", "Spanish"]);
 
-    /// <summary>The staffing-chart samples and the active event's name — leaf records only.</summary>
     private static EventSettingsInfo BuildSampleEventSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Elsewhere 2026",
@@ -178,10 +170,7 @@ internal sealed class WidgetGalleryViewModel
     public List<TableDemoRow> SampleTableRows { get; set; } = [];
 }
 
-/// <summary>
-/// Live keys for four of the five search-result rows; the humans row keys off the signed-in
-/// admin. Null where the environment holds no such row.
-/// </summary>
+/// <summary>The humans row keys off the signed-in admin. Null where the environment holds no such row.</summary>
 internal sealed record SearchRowKeys(
     Guid? TeamId,
     Guid? CampId,

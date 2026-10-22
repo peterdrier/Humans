@@ -6,14 +6,8 @@ using NodaTime.Text;
 namespace Humans.Surveys.Contracts;
 
 /// <summary>
-/// Renders an already-filtered set of <see cref="SurveyExportRow"/>s as a GitHub-flavoured Markdown
-/// table — the token-lean shape an agent reads when scanning the bulk of a survey's responses. Columns
-/// are <c>SurveyCsvExportBuilder</c>'s without the join keys (no <c>response_id</c>, no
-/// <c>user_id</c>): leading <c>anonymity</c> + <c>input_method</c> + identity
-/// (<c>user_name</c>, populated only for Identified rows — already enforced by the export DTO), then one
-/// column per question (header = resolved prompt). Choice cells flatten to the stable option
-/// <b>values</b> (<c>a|b</c>), not labels, so the table joins cleanly against the definition endpoint.
-/// Cells escape Markdown table specials: newlines collapse to a space and <c>|</c> becomes <c>\|</c>.
+/// The token-lean table an agent reads. The CSV export's columns without the join keys; choice cells hold the stable
+/// option <b>values</b> (<c>a|b</c>), not labels, so the table joins against the definition endpoint.
 /// </summary>
 public static class SurveyResponsesMarkdownBuilder
 {
@@ -52,7 +46,7 @@ public static class SurveyResponsesMarkdownBuilder
         return sb.ToString();
     }
 
-    /// <summary>The cell content for one answer: choice values flattened <c>a|b</c>, free text verbatim, the rating integer, or JSON for Grid selections and ranked ballots.</summary>
+    /// <summary>Choice values flattened <c>a|b</c>, free text verbatim, the rating integer, or JSON for Grid selections and ranked ballots.</summary>
     internal static string CellValue(SurveyExportQuestion question, SurveyExportAnswer answer) => question.Type switch
     {
         SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice =>
@@ -71,7 +65,7 @@ public static class SurveyResponsesMarkdownBuilder
         _ => answer.TextValue ?? string.Empty,
     };
 
-    /// <summary>Markdown-table-safe cell: collapse newlines to a space, escape the column separator.</summary>
+    /// <summary>Collapses newlines to a space and escapes the column separator.</summary>
     private static string Escape(string value) => value
         .Replace("\r\n", " ", StringComparison.Ordinal)
         .Replace('\r', ' ')

@@ -6,17 +6,10 @@ using NodaTime;
 
 namespace Humans.Workgroups.ViewComponents;
 
-/// <summary>
-/// The register's card on the Governance page (design §16): every Active group, its
-/// coordinator(s), the deliverable sentence, its next meeting, and the same badges the
-/// register itself shows. Renders nothing when there is nothing Active — Governance
-/// takes no space for a switched-off or empty Workgroups.
-/// </summary>
+/// <summary>Renders nothing when no group is Active, so Governance takes no space for an empty register.</summary>
 /// <remarks>
-/// Internal — invoked by Type through the Shell's slot renderer
-/// (<c>Component.InvokeAsync</c>), never as a <c>&lt;vc:&gt;</c> tag helper, so Razor's
-/// public-only tag-helper discovery does not apply. Public would not compile: the
-/// constructor takes the section-internal <c>IWorkgroupService</c> (CS0051).
+/// Internal: invoked by Type through the Shell's slot renderer, never as a tag helper. Public wouldn't compile:
+/// the constructor takes the internal <c>IWorkgroupService</c>.
 /// </remarks>
 internal sealed class GovernanceWorkgroupsViewComponent(
     IWorkgroupService workgroups, IUserService users, IClock clock) : ViewComponent
@@ -25,9 +18,8 @@ internal sealed class GovernanceWorkgroupsViewComponent(
     {
         var ct = HttpContext.RequestAborted;
         var register = await workgroups.GetRegisterAsync(ct);
-        // The card is read by everyone on Governance, so a sensitive group shows its register
-        // entry only: no next meeting, no open-for-comment badge, and the view skips the
-        // update-due badge (which reads the log) for it too.
+        // Everyone reads this card, so a sensitive group shows its register entry only: no next meeting and no
+        // comment or update-due badge.
         var active = register
             .Where(w => w.Status == WorkgroupStatus.Active)
             .Select(w => w.IsSensitive ? w with { Meetings = [], Documents = [] } : w)

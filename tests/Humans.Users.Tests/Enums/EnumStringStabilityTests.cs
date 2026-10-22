@@ -5,15 +5,9 @@ using Xunit;
 namespace Humans.Users.Tests.Enums;
 
 /// <summary>
-/// Users' share of the string-stored-enum guard:
-/// <see cref="LegacyMembershipTier"/>, <see cref="LegacyConsentCheckStatus"/>, <see cref="LegacyMessageCategory"/>,
-/// <see cref="ContactFieldType"/> and <see cref="ContactFieldVisibility"/> live on
-/// <c>Humans.Users.Contracts</c>, so the guard belongs to the section that owns them.
-/// </summary>
-/// <remarks>
 /// All five are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves
 /// the OLD string in the column. A rename needs a migration that UPDATEs the stored values.
-/// </remarks>
+/// </summary>
 public class EnumStringStabilityTests
 {
     [HumansTheory]

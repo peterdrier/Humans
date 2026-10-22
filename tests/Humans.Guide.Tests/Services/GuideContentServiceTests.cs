@@ -205,8 +205,7 @@ public class GuideContentServiceTests
     {
         // The cache is per stem, so "something is cached" is not the fallback condition — the
         // requested stem's own copy is. PopulateAsync's hasStale flag only suppresses its own
-        // throw; the caller still finds the key missing and 503s. health.md invariant 7 said
-        // otherwise until peterdrier/Humans#1655.
+        // throw; the caller still finds the key missing and 503s.
         var source = new FakeSource();
         var service = CreateService(source, out var cache);
         await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
@@ -225,10 +224,8 @@ public class GuideContentServiceTests
     [HumansFact]
     public async Task GetPageAsync_RenderTimesOut_SurfacesAsUnavailableNotAnUnhandledThrow()
     {
-        // Raised by Codex on peterdrier/Humans#1655. Before the markdown-filtering change,
-        // rendering happened inside PopulateAsync's per-file catch; moving it onto the request
-        // path put GuideHtmlPostprocessor's timeout-bounded regexes outside any handler, where
-        // they would have reached the user as a raw 500 instead of the section's 503 view.
+        // Rendering runs on the request path, so GuideHtmlPostprocessor's timeout-bounded regexes
+        // must fail into the section's 503 view, not a raw 500.
         var source = new FakeSource();
         var service = CreateService(
             source,

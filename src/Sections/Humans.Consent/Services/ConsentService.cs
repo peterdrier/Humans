@@ -14,7 +14,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 
-// consent_records is append-only (design-rules §12).
 internal sealed class ConsentService(
     IConsentRepository repo,
     CachingConsentService consentCache,
@@ -29,11 +28,8 @@ internal sealed class ConsentService(
 {
     internal const string Consents = "Consents";
 
-    // Read ids: every id the human behind userId has held. The read resolves a merge
-    // tombstone forward, so the list is the resolved record's (its own id plus the ids
-    // merged into it), never [userId ∪ …]: asked with an archived id, that would leave
-    // the survivor's own consents out. When nothing was merged the list is just the one
-    // id, so every consent read runs through the multi-id repository methods uniformly.
+    // The resolved record's ids, never [userId ∪ …]: asked with an archived id, that would leave the
+    // survivor's own consents out.
     private async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
         Guid userId, CancellationToken ct) =>
         (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
@@ -109,7 +105,6 @@ internal sealed class ConsentService(
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var consentRecord = await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
-        // Profile is owned by Profiles section — go through UserInfo cache, not the DbSet.
         var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         return new ConsentReviewDetail(
@@ -132,7 +127,7 @@ internal sealed class ConsentService(
         if (!explicitConsent)
             return new ConsentSubmitResult(false, ErrorKey: "ExplicitConsentRequired");
 
-        // Defense-in-depth Stub gate: never write a ConsentRecord for a profile without verified legal name.
+        // Defense in depth: never write a record for a profile without a verified legal name.
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null || !info.HasRequiredNameFields)
             return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
@@ -178,8 +173,8 @@ internal sealed class ConsentService(
         };
 
         await repo.AddAsync(consentRecord, ct);
-        // Evict this section's own cache before the membership check below reads it back
-        // through IConsentService; the decorator's ReplaceAsync runs only after this returns.
+        // Evict before the membership check below reads it back; the decorator's ReplaceAsync runs only after
+        // this returns.
         foreach (var id in info.AllUserIds)
             consentCache.Invalidate(id);
         metrics.RecordConsentGiven();
@@ -188,11 +183,7 @@ internal sealed class ConsentService(
             "User {UserId} consented to document {DocumentName} version {Version}",
             userId, version.LegalDocumentName, version.VersionNumber);
 
-        // No team sync here: SystemTeamSyncJob admits Volunteers/Coordinators on name + consents,
-        // decoupled from the consent write.
-
-        // Consent is committed; finish suspension cleanup even if the signing request ends.
-        // Auto-resolve AccessSuspended notifications only after ALL required consents complete.
+        // Consent is committed: finish suspension cleanup even if the request ends.
         try
         {
             var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
@@ -210,7 +201,6 @@ internal sealed class ConsentService(
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
     }
 
-    // The Coordinator review is ConsentReviewService's table; IConsentService carries its reads.
     public Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default) =>
         serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewAsync(userId, ct);
 
@@ -233,13 +223,11 @@ internal sealed class ConsentService(
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default)
     {
-        // Chain-follow per input id — source ids are never returned as keys, only inputs are.
+        // Only inputs are returned as keys, never source ids.
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlySet<Guid>>();
 
-        // Per input, every id its human has held: the resolved record's own id plus the
-        // ids merged into it, as GetChainFollowIdsAsync does for one. An input that is
-        // itself an archived id resolves to the survivor, whose own consents are then in.
+        // An archived input resolves to the survivor, whose own consents are then included.
         var infos = await userService.GetUserInfosAsync(userIds, ct);
         var idsByInput = new Dictionary<Guid, IReadOnlyList<Guid>>(userIds.Count);
         foreach (var userId in userIds)
@@ -249,23 +237,20 @@ internal sealed class ConsentService(
 
         if (idsByInput.All(kv => kv.Value.Count == 1 && kv.Value[0] == kv.Key))
         {
-            // Common case: nothing merged anywhere. Dedup defensively; callers may pass overlapping ids.
+            // Callers may pass overlapping ids.
             var distinctInputs = userIds.Distinct().ToList();
             return await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
         }
 
-        // One repo batch over every id any input needs.
-        // HashSet dedup is required — repo's ToDictionary throws on duplicate keys.
+        // The repository's ToDictionary throws on duplicate keys.
         var allIdsSet = new HashSet<Guid>();
         foreach (var ids in idsByInput.Values)
             allIdsSet.UnionWith(ids);
 
         var raw = await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
 
-        // Each input unions its own id list. A reverse source→target map would not do:
-        // a batch holding both a survivor and one of its tombstones resolves both to the
-        // survivor's row, so both inputs carry the same list and the last one written
-        // would take sole ownership of it.
+        // Each input unions its own id list. A reverse source→target map wouldn't do: a batch holding a survivor
+        // and one of its tombstones resolves both to the survivor, and the last written would own the list.
         var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
@@ -319,7 +304,6 @@ internal sealed class ConsentService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Chain-follow for GDPR export. Source User rows are anonymized by AnonymizeForMergeAsync.
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
         var consents = await repo.GetAllForUserIdsAsync(chainIds, ct);
 

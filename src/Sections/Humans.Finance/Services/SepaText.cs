@@ -4,10 +4,8 @@ using System.Text;
 namespace Humans.Finance.Services;
 
 /// <summary>
-/// Folds a name or a remittance line into the restricted SEPA character subset Sabadell accepts:
-/// <c>a-z A-Z 0-9 / - ? : ( ) . , ' +</c> and space. Accents decompose (Ñ→N, Ç→C, Á→A); the few
-/// letters that do not decompose are mapped by hand; anything still outside the set becomes a
-/// space. XML-reserved characters need no handling here — the writer escapes them.
+/// Folds text into the SEPA subset Sabadell accepts (<c>a-z A-Z 0-9 / - ? : ( ) . , ' +</c> and space): accents
+/// decompose, a few letters are mapped by hand, the rest become a space. The XML writer escapes reserved characters.
 /// </summary>
 internal static class SepaText
 {

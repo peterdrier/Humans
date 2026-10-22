@@ -722,7 +722,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
     [HumansFact]
     public async Task ReconcileOneAsync_MergeTombstoneInTheAccessList_IsFilteredOut()
     {
-        // #1704: the read resolves merges forward, so an ACL entry keyed to an archived id
+        // The read resolves merges forward, so an ACL entry keyed to an archived id
         // answers with the living survivor and the MergedToUserId test never sees a tombstone.
         // The entry must still grant nobody: it names an id that is no longer a human, and
         // handing the survivor access off it would be a silent grant nothing asked for.
@@ -822,7 +822,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
         await _drivePermissions.Received(1)
             .CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", Arg.Any<CancellationToken>());
-        // The inherited permission is untouchable at this level (#945) — only the grant happens.
+        // The inherited permission is untouchable at this level; only the grant happens.
         await _drivePermissions.DidNotReceiveWithAnyArgs()
             .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -1260,7 +1260,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     /// <summary>Answers <paramref name="requestedId"/> with the survivor's record and the
-    /// survivor's addresses, the way Users resolves a merge tombstone forward (#1704).</summary>
+    /// survivor's addresses, the way Users resolves a merge tombstone forward.</summary>
     private void ResolveTo(Guid requestedId, Guid survivorId)
     {
         _usersById[requestedId] = _usersById[survivorId];

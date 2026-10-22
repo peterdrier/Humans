@@ -3,26 +3,14 @@ using Humans.Email.Contracts;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// Handles token validation, user lookup, and unsubscribe actions
-/// for both new category-aware tokens and legacy campaign-only tokens.
-/// </summary>
+/// <summary>Accepts both category-aware tokens and legacy campaign-only tokens.</summary>
 internal interface IUnsubscribeService : IApplicationService
 {
-    /// <summary>
-    /// Validates an unsubscribe token (new or legacy) and returns the resolved result.
-    /// </summary>
     Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default);
 
-    /// <summary>
-    /// Performs the unsubscribe action for a validated token.
-    /// </summary>
     Task<UnsubscribeTokenResult> ConfirmUnsubscribeAsync(string token, string source, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Result of validating an unsubscribe token.
-/// </summary>
 internal sealed record UnsubscribeTokenResult
 {
     public bool IsValid { get; init; }

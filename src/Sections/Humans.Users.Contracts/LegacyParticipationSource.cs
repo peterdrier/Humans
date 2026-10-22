@@ -1,10 +1,8 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// The type of the frozen <c>event_participations.Source</c> column; Tickets' <c>ParticipationSource</c>
-/// is the live one (Users decomposition commit 13). Mapped by name by the
-/// <c>tickets.event-participations</c> copy and deleted with its retirement PR. Member names are
-/// stored as strings: never rename.
+/// The frozen <c>event_participations.Source</c> type; the <c>tickets.event-participations</c> copy maps by name.
+/// Stored by name: never rename.
 /// </summary>
 public enum LegacyParticipationSource
 {

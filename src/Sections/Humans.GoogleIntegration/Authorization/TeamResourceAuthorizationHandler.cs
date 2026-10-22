@@ -8,12 +8,8 @@ using Microsoft.AspNetCore.Http;
 namespace Humans.GoogleIntegration.Authorization;
 
 /// <summary>
-/// Resource-based handler for <see cref="TeamResourceManageRequirement"/> on a <c>TeamInfo</c>.
-/// TeamsAdmin, Board and Admin manage any team. Everyone else needs
-/// <see cref="ITeamResourceService.CanManageTeamResourcesAsync"/> on the team's department:
-/// a sub-team is checked at its parent, so sub-team coordinators do not pass.
-/// Deny-by-default: only the explicit Succeed paths grant access. The manager read observes the
-/// request's cancellation, since handlers receive no token of their own.
+/// TeamsAdmin, Board and Admin manage any team; anyone else needs the manage check on the team's department, so
+/// sub-team coordinators do not pass. Handlers get no token, so the read uses the request's cancellation.
 /// </summary>
 internal sealed class TeamResourceAuthorizationHandler(
     ITeamResourceService teamResources,

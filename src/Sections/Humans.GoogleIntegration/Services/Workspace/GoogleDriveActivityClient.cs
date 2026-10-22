@@ -11,12 +11,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Real Google-backed implementation of <see cref="IGoogleDriveActivityClient"/>.
-/// Talks to the Google Drive Activity API v2 and the Admin Directory API
-/// using the configured service account. This is the only file that imports
-/// <c>Google.Apis.*</c> for Drive Activity monitoring.
-/// </summary>
 internal sealed class GoogleDriveActivityClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleDriveActivityClient> logger) : IGoogleDriveActivityClient

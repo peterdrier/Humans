@@ -4,7 +4,7 @@ using Humans.Base.Authorization;
 namespace Humans.Agent.Tests;
 
 /// <summary>
-/// The /Settings#agent tab (peterdrier/Humans#1634). <c>Policy = AdminOnly</c> means
+/// The /Settings#agent tab. <c>Policy = AdminOnly</c> means
 /// <c>SettingsTabComposition</c> drops this tab for a non-admin before it ever reaches
 /// the view component — the negative case for who sees it.
 /// </summary>

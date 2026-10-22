@@ -23,12 +23,8 @@ using Xunit;
 namespace Humans.Governance.Tests.Infrastructure;
 
 /// <summary>
-/// Shared wiring for <see cref="AssemblyVoteService"/> tests: an in-memory
-/// <see cref="GovernanceDbContext"/>, a real <see cref="AssemblyVoteRepository"/> over it, a
-/// <see cref="FakeClock"/> the tests move by hand, and substitutes for every crosscut the
-/// service depends on. Composed by each test class (not inherited) — same reasoning as
-/// <c>ApplicationDecisionServiceTests</c>: this stays a plain field, not a base class with a
-/// widening surface of its own.
+/// Shared wiring for <see cref="AssemblyVoteService"/> tests. Composed by each test class, not
+/// inherited, so it never grows a base-class surface of its own.
 /// </summary>
 internal sealed class AssemblyVoteServiceFixture : IDisposable
 {
@@ -100,8 +96,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             {
                 Id = id,
                 DisplayName = "Member " + id,
-                // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-                // UserInfo.BurnerName reads User.BurnerName only (#1098).
+                // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 BurnerName = "Member " + id,
                 UserName = id + "@example.org",
                 Email = id + "@example.org",
@@ -120,10 +115,9 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
 
     /// <summary>
     /// Folds <paramref name="source"/> into <paramref name="survivor"/> the way an accepted
-    /// account merge leaves it, as Users now reports it (#1704): both ids read back as the
-    /// <b>survivor's</b> record, carrying <c>MergedUserIds = [source]</c>, and both resolve to
-    /// the survivor's notification address. The tombstone's own sentinel address is never
-    /// handed out — "where do I mail this person" has one answer.
+    /// account merge leaves it: both ids read back as the <b>survivor's</b> record, carrying
+    /// <c>MergedUserIds = [source]</c>, and both resolve to the survivor's notification address.
+    /// The tombstone's own sentinel address is never handed out.
     /// </summary>
     public void StubMergedInto(Guid source, Guid survivor)
     {
@@ -236,15 +230,10 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         new(StringComparer.OrdinalIgnoreCase) { ["en"] = value };
 
     /// <summary>Adds a frozen electorate row for a test vote.</summary>
-    /// <param name="voteId">The vote receiving the roster row.</param>
-    /// <param name="userId">The member on the roster.</param>
-    /// <param name="isOfficial">Whether this row belongs to the binding electorate.</param>
-    /// <param name="tier">The member’s tier frozen on the roster.</param>
-    /// <param name="isBoardMember">Whether the member belongs to the Board.</param>
-    /// <param name="notified">
-    /// Whether the row already got its vote-opened email, as every row of a real open vote
-    /// has. Pass false for a row the send never reached — what the sweep retries.
-    /// </param>
+    /// <remarks>
+    /// <paramref name="notified"/>: whether the row already got its vote-opened email, as every
+    /// row of a real open vote has. Pass false for a row the send never reached — what the sweep retries.
+    /// </remarks>
     public async Task<AssemblyVoteRoster> AddRosterRowAsync(
         Guid voteId, Guid userId, bool isOfficial, MembershipTier tier = MembershipTier.Volunteer,
         bool isBoardMember = false, bool notified = true)

@@ -66,9 +66,8 @@
 
             @if (audience.Rounds is { Count: > 0 } rounds)
             {
-                @* Authored order, not key order: the authored order is the documented final
-                   elimination tie-break, so a member checking the acta against these columns
-                   has to see the same sequence the tie-break used. *@
+                @* Authored order, not key order: it is the documented final tie-break, so a member
+                   checking the acta sees the sequence the tie-break used. *@
                 var optionKeys = vote.Options.OrderBy(o => o.Order).Select(o => o.Key).ToList();
                 <h6>@Localizer["Governance_Votes_RoundsHeading"]</h6>
                 <div class="table-responsive mb-3">
@@ -128,10 +127,8 @@
                 </dl>
             }
 
-            @* Official only. The notice states the Art. 10.2 consequence of a tie — the
-               President's deciding vote, recorded in the acta — and that only attaches to
-               the binding result. The indicative audience is advisory and excluded from it,
-               so printing it there would give an advisory tie a legal effect it has not. *@
+            @* Official only: the Art. 10.2 tie consequence attaches to the binding result, and
+               printing it on the advisory indicative tally would give it a legal effect it has not. *@
             @if (isOfficial && audience.Verdict == AssemblyVoteVerdict.Tie)
             {
                 <p class="alert alert-warning mt-3 mb-0">@Localizer["Governance_Votes_TieNotice"]</p>

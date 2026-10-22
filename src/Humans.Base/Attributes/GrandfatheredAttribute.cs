@@ -11,39 +11,17 @@ namespace Humans.Base.Attributes;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the project's standard mechanism for grandfathering rule violations.
-/// Per-file attributes only — <b>do not</b> introduce analyzer-internal
-/// allowlists, <c>.editorconfig</c> per-file severity blocks, or any other
-/// centralised maintained list. Centralised lists conflict on every merge and
-/// pull cleanup work away from the violating code.
+/// Per-declaration attributes only: never analyzer-internal allowlists, <c>.editorconfig</c> severity blocks or any
+/// centralised list, which conflict on every merge and pull cleanup away from the violating code.
 /// </para>
-///
 /// <para>
-/// Add to a class:
 /// <code>
-/// [Grandfathered(
-///     ruleId: "HUM0009",
-///     justification: "Pending migration to repository pattern.",
-///     since: "2026-05-12",
-///     issueRef: "nobodies-collective/Humans#701")]
-/// public class ProcessEmailOutboxJob { … }
+/// [Grandfathered(ruleId: "HUM0009", justification: "Pending migration to repository pattern.",
+///     since: "2026-05-12", issueRef: "nobodies-collective/Humans#701")]
 /// </code>
-/// </para>
-///
-/// <para>
-/// The <c>since</c> date lets reviewers see how long the grandfather has been
-/// in place. The <c>issueRef</c> is the umbrella or per-class tracking issue.
-/// Both are informational — the analyzer only branches on the presence of the
-/// attribute with the matching <see cref="RuleId"/>.
-/// </para>
-///
-/// <para>
-/// The optional <see cref="Scope"/> further narrows the grandfather to a single
-/// sub-target named by the rule (used by HUM0025, which grandfathers at
-/// (repository, DbSet) granularity — one attribute per shared table). It is the
-/// DbSet property name, e.g. <c>scope: "Users"</c>. <see cref="AttributeUsageAttribute.AllowMultiple"/>
-/// lets a repository carry one entry per shared table. Rules that do not use a
-/// scope (HUM0009, HUM0031, …) leave it <c>null</c> and ignore it.
+/// <c>since</c> and <c>issueRef</c> are informational; the analyzer branches only on <see cref="RuleId"/>.
+/// <see cref="Scope"/> narrows the grandfather to one sub-target (for HUM0025, a DbSet name, one attribute per
+/// shared table); rules without a scope leave it null.
 /// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Method, AllowMultiple = true, Inherited = false)]

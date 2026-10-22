@@ -2,13 +2,7 @@ using Humans.Email.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// GoogleIntegration's contribution to the template gallery at
-/// <c>/Email/EmailPreview</c>: one sample per template
-/// <see cref="GoogleIntegrationEmails"/> can send, built through the same builder the
-/// real send path uses, so the gallery cannot drift from what members receive
-/// (peterdrier/Humans#1651). Sample data only — no recipient is real and nothing is sent.
-/// </summary>
+/// <summary>Built through the real send path's builder, so the gallery cannot drift from what members get.</summary>
 internal sealed class GoogleIntegrationEmailPreviews(GoogleIntegrationEmails emails) : IEmailPreviewContributor
 {
     private const string SampleGroupName = "Art Collective";

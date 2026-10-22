@@ -4,9 +4,6 @@ using NodaTime;
 
 namespace Humans.Shifts.Services.Dtos;
 
-// Only VolunteerBuildStripDto has a consumer outside the section; it lives in
-// Humans.Shifts.Contracts. The heatmap models below are section-internal.
-
 internal sealed record VolunteerCohortRow(
     Guid UserId,
     int FirstAvailableDay,

@@ -9,10 +9,8 @@ internal sealed class IndexViewModel
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
     public IReadOnlyList<CounterpartyOrders> Counterparties { get; init; } = [];
     /// <summary>
-    /// Keyed by <see cref="CounterpartyOrders.CounterpartyId"/>: whether the viewer may act on that
-    /// counterparty's order (Create when it has none, Delete when it does). Privileged readers see
-    /// counterparties they cannot manage (e.g. a TeamsAdmin sees camp orders read-only), so per-row gating
-    /// is resolved against the order authorization handler in the controller rather than a blanket admin flag.
+    /// Keyed by counterparty: may the viewer Create (no order) or Delete (has one). Resolved per row, since privileged
+    /// readers see counterparties they cannot manage.
     /// </summary>
     public IReadOnlyDictionary<Guid, bool> CanManageByCounterparty { get; init; } =
         new Dictionary<Guid, bool>();
@@ -24,42 +22,27 @@ internal sealed class OrderViewModel
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
     public string CounterpartyDisplayName { get; init; } = string.Empty;
     public bool CanEdit { get; init; }
-    /// <summary>True when the camp lead may initiate Stripe Checkout against this order (auth + balance > 0 + Stripe configured).</summary>
     public bool CanPay { get; init; }
-    /// <summary>False when STRIPE_STORE_KEY is unset; suppresses the Pay button + shows a disabled tooltip.</summary>
     public bool IsStripeConfigured { get; init; }
-    /// <summary>True when the current user may delete the order (Store admin, or TeamsAdmin on a team order), it is Open, its balance is zero and it has no payment rows. Surfaces the Delete button.</summary>
     public bool CanDelete { get; init; }
 
-    /// <summary>True when the current user may issue this camp order's Holded factura — Store
-    /// admin, order still Open, at least one line. Surfaces the Issue invoice button.</summary>
     public bool CanIssueInvoice { get; init; }
 
-    /// <summary>True when the current user is a Store admin on a camp order. Surfaces the
-    /// deposit-return / refund form.</summary>
     public bool CanRecordPayment { get; init; }
 
-    /// <summary>True when the current user may also record a refund (FinanceAdmin or Admin on a camp order).</summary>
     public bool CanRefund { get; init; }
 
-    /// <summary>True when the current user may delete a payment row (Admin only). Surfaces the per-row Delete buttons.</summary>
     public bool CanDeletePayment { get; init; }
 
-    /// <summary>Paid deposit returns credited to the order (the "Deposits returned" box).</summary>
     public decimal DepositsReturnedEur => Order.Payments
         .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
         .Sum(p => p.AmountEur);
 
-    /// <summary>True when the org owes the camp (negative balance): the last box reads "Refund amount".</summary>
+    /// <summary>Negative balance: the org owes the camp.</summary>
     public bool IsRefundDue => Order.BalanceEur < 0;
 
-    /// <summary>The last box's figure: the amount owed, or — when <see cref="IsRefundDue"/> — the positive refund amount.</summary>
     public decimal BalanceBoxAmountEur => Math.Abs(Order.BalanceEur);
 
-    /// <summary>
-    /// Line ids whose Remove button renders, resolved per line against the order authorization
-    /// handler in the controller: past the product's order deadline only Store admins qualify.
-    /// </summary>
     public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
 
     public static OrderViewModel FromPageData(

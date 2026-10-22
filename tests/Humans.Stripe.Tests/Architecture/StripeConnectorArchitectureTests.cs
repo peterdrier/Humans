@@ -4,19 +4,13 @@ using Humans.Stripe.Contracts;
 namespace Humans.Stripe.Tests.Architecture;
 
 /// <summary>
-/// Enforces the §15i connector (API bridge) seam for Stripe
-/// (nobodies-collective/Humans#556): consumers depend on <see cref="IStripeService"/> under
-/// <c>Contracts/</c>, never on <c>Stripe.net</c> SDK types. One test, below.
+/// Consumers depend on <see cref="IStripeService"/> under <c>Contracts/</c>, never on
+/// <c>Stripe.net</c> SDK types.
 /// </summary>
 public class StripeConnectorArchitectureTests
 {
-    // COVERAGE REDUCED (nobodies-collective/Humans#866): the assertion that the hub carried no
-    // Stripe.net reference is gone — Humans.Application has no types left to measure. Nothing now
-    // enforces "Humans.Stripe is the only production project referencing Stripe.net".
-
-    // COVERAGE REDUCED (nobodies-collective/Humans#866): the matching Humans.Web assertion was
-    // dropped rather than have this section's test project take a ProjectReference to Shell to
-    // keep one reflection assertion alive. Restore it from a host-level architecture test project.
+    // Nothing enforces "only Humans.Stripe references Stripe.net" any more: the hub and Web assertions were
+    // dropped (nobodies-collective/Humans#866). Restore it from a host-level architecture test project.
 
     [HumansFact]
     public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()

@@ -10,7 +10,6 @@ internal sealed class GateStaffPinConfiguration : IEntityTypeConfiguration<GateS
     {
         builder.ToTable("gate_staff_pins");
 
-        // One PIN per Humans user — UserId is the key (a bare cross-section id, not an FK).
         builder.HasKey(x => x.UserId);
         builder.Property(x => x.UserId).ValueGeneratedNever();
 
@@ -21,8 +20,7 @@ internal sealed class GateStaffPinConfiguration : IEntityTypeConfiguration<GateS
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
 
-        // Override-authority flag. Plain IsRequired (no HasDefaultValue — that bool-sentinel makes EF
-        // omit a `false` from writes). Every write sets the value explicitly from the entity.
+        // No HasDefaultValue: that bool sentinel makes EF omit a false from writes.
         builder.Property(x => x.AdminEnrolled).IsRequired();
     }
 }

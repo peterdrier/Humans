@@ -3,11 +3,6 @@ using NodaTime;
 
 namespace Humans.Email.Domain;
 
-/// <summary>
-/// A member's opt-in/opt-out preference for one message category (<c>email_communication_preferences</c>,
-/// Users decomposition commit 14). One row per user per category; CAN-SPAM/GDPR compliance. Bare
-/// <see cref="UserId"/>, no FK: <c>users</c> is Users' table.
-/// </summary>
 internal sealed class CommunicationPreference
 {
     public Guid Id { get; init; }
@@ -17,34 +12,22 @@ internal sealed class CommunicationPreference
     public MessageCategory Category { get; init; }
 
     /// <summary>
-    /// True when the member opted out of email for the category. Null marks a preference reset to
-    /// "nothing recorded" while a frozen legacy Users row still backs this user and category: the
-    /// row shadows the legacy value so the read fallback never brings it back. Written only in that
-    /// case; a reset with no legacy row deletes the row instead.
+    /// Null only for a reset that shadows a legacy Users row, so the read fallback can't bring the old value
+    /// back. A reset with no legacy row deletes the row instead.
     /// </summary>
     public bool? OptedOut { get; set; }
 
-    /// <summary>
-    /// Whether in-app inbox notifications are enabled for this category.
-    /// Default true. When false, informational notifications for this category are suppressed.
-    /// Actionable notifications are always shown regardless of this setting.
-    /// </summary>
+    /// <summary>When false, informational notifications in this category are hidden; actionable ones always show.</summary>
     public bool InboxEnabled { get; set; } = true;
 
     public Instant UpdatedAt { get; set; }
 
-    /// <summary>
-    /// How this preference was set: "Profile", "MagicLink", "DataMigration", etc.
-    /// </summary>
+    /// <summary>For example "Profile", "MagicLink", "DataMigration".</summary>
     public string UpdateSource { get; set; } = string.Empty;
 
     /// <summary>
-    /// Earliest opt-in instant we know about for this category. Stamped on the
-    /// first opt-in transition (OptedOut: true → false) or on the first import
-    /// from an external source that carries a real subscribe date. Preserved
-    /// across opt-out / re-opt cycles — represents "first ever subscribed",
-    /// not "currently subscribed since". Null for rows that pre-date the column
-    /// or were lazy-seeded as default-opted-out.
+    /// First opt-in ever known, kept across later opt-outs: "first subscribed", not "subscribed since".
+    /// Null for rows older than the column or seeded as opted out.
     /// </summary>
     public Instant? SubscribedAt { get; set; }
 }

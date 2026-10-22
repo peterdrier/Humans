@@ -22,8 +22,5 @@ internal abstract class TeamFormViewModelBase
 
     public Guid? ParentTeamId { get; set; }
 
-    /// <summary>
-    /// Available parent teams for the dropdown.
-    /// </summary>
     public List<SelectListItem> EligibleParents { get; set; } = [];
 }

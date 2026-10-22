@@ -19,9 +19,6 @@ using Humans.Base;
 
 namespace Humans.Users.Controllers;
 
-// Own profile only. Own email addresses live in ProfileEmailsController; other members'
-// profiles, popovers, messaging and search live in ProfileViewController. All three share
-// the /Profile route prefix.
 [Authorize]
 [Route("Profile")]
 internal sealed class ProfileController(
@@ -34,8 +31,6 @@ internal sealed class ProfileController(
     ConfigurationRegistry configRegistry,
     ILogger<ProfileController> logger,
     IStringLocalizer<UsersResource> localizer,
-    // The generic Common_/Validation_/Profile_ strings this controller formats stayed in
-    // SharedResource at the Users carve.
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
     IMembershipCalculator membershipCalculator,
@@ -43,7 +38,7 @@ internal sealed class ProfileController(
 {
     private readonly IUserManagement _userService = userService;
 
-    private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
+    private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024;
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -59,8 +54,6 @@ internal sealed class ProfileController(
         [".heif"] = "image/heif",
         [".avif"] = "image/avif"
     };
-
-    // ─── Own Profile (Me) ────────────────────────────────────────────
 
     [HttpGet("")]
     public IActionResult Index() => RedirectToAction(nameof(Me));
@@ -91,7 +84,6 @@ internal sealed class ProfileController(
             DisplayName = info.BurnerName,
         };
 
-        // Tier app status (skip Withdrawn).
         if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)
         {
             viewModel.TierApplicationStatus = latestApplication.Status;
@@ -147,8 +139,7 @@ internal sealed class ProfileController(
             return View(model);
         }
 
-        // The Consent Coordinator's approval (Consent's review): "not approved yet" IS initial
-        // setup (it already absorbs the no-profile case).
+        // Not yet approved by the Consent Coordinator is initial setup (it covers the no-profile case too).
         var isInitialSetup = user.Profile is null
             || !(await consentService.GetConsentReviewAsync(user.Id)).IsApproved;
 
@@ -163,14 +154,13 @@ internal sealed class ProfileController(
         if (saveResult is not null)
             return saveResult;
 
-        // Onboarding owns what follows a profile save (consent-check trigger,
-        // pending-deletion cancel); ProfileEditorService must not call it back
-        // (no-leaf-to-director-callbacks), so the controller reports the save.
+        // ProfileEditorService must not call Onboarding back (no leaf-to-director callbacks), so the controller
+        // reports the save.
         await onboardingService.ProfileSavedAsync(user.Id);
 
         await SaveEditedContactFieldsAsync(model, profileId);
 
-        // Languages: remove-and-replace.
+        // Remove and replace.
         var newLanguages = model.EditableLanguages
             .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
             .Select(l => new ProfileLanguageInfo(
@@ -185,9 +175,7 @@ internal sealed class ProfileController(
         return RedirectToAction(nameof(Me));
     }
 
-    // Simple field-level guards (phone E.164 format) —
-    // localized, form-field-targeted, so they stay controller-side alongside
-    // the ModelState they populate.
+    // Localized and tied to form fields, so these stay beside the ModelState they fill.
     private void ValidateEditSimpleFieldGuards(ProfileViewModel model)
     {
         var phoneTypes = new[] { ContactFieldType.Phone, ContactFieldType.WhatsApp };
@@ -208,7 +196,7 @@ internal sealed class ProfileController(
         }
     }
 
-    // CV: existing rows keep Id/CreatedAt; new rows post Guid.Empty and get fresh Id.
+    // CV: existing rows keep Id and CreatedAt; new rows post Guid.Empty and get a fresh Id.
     private static ProfileSaveRequest BuildProfileSaveRequest(
         ProfileViewModel model, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
     {
@@ -257,7 +245,6 @@ internal sealed class ProfileController(
         if (result.Succeeded) return (result.ProfileId!.Value, null);
         var errorKey = result.ErrorKey;
 
-        // ProfileEditorService owns the Burner CV rule; its refusal targets the checkbox field.
         ModelState.AddModelError(
             string.Equals(errorKey, ProfileEditorService.BurnerCvRequiredErrorKey, StringComparison.Ordinal) ? nameof(model.NoPriorBurnExperience) : string.Empty,
             errorKey is not null ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
@@ -331,9 +318,7 @@ internal sealed class ProfileController(
         return (true, result.Value.Data, result.Value.ContentType);
     }
 
-    // Medical conditions are GDPR Art. 9 data: owner-only here (every action acts on the signed-in
-    // member), and elsewhere shown only behind MedicalDataViewer. The food answers that used to share
-    // this form are Cantina's, at /Cantina/Dietary.
+    // GDPR Art. 9 data: owner-only here, and shown elsewhere only behind MedicalDataViewer.
     [HttpGet("Me/Medical")]
     public async Task<IActionResult> Medical(CancellationToken ct)
     {
@@ -369,8 +354,6 @@ internal sealed class ProfileController(
             return View(model);
         }
     }
-
-    // ─── Helpers ─────────────────────────────────────────────────────
 
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);

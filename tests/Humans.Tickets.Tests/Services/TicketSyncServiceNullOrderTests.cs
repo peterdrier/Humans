@@ -73,10 +73,6 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         SaveAll();
     }
 
-    // ==========================================================================
-    // Test 1: null VendorOrderId + local row exists → upsert succeeds
-    // ==========================================================================
-
     /// <summary>
     /// An API-issued ticket with no order_id already has a local row from a
     /// previous sync. The service should resolve the parent via the existing
@@ -85,7 +81,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
     [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_NullVendorOrderId_ExistingLocalRow_UpsertsSucessfully()
     {
-        // Arrange — seed a parent order and a pre-existing attendee row.
+        // Seed a parent order and a pre-existing attendee row.
         var parentOrderId = Guid.NewGuid();
         var parentOrder = new TicketOrder
         {
@@ -135,10 +131,8 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto> { ticket });
 
-        // Act
         var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert — the attendee row was upserted (not skipped)
         result.AttendeesSynced.Should().Be(1);
 
         var dbAttendees = await TicketsDb.TicketAttendees.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -147,10 +141,6 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         dbAttendees[0].AttendeeName.Should().Be("Bob Recipient Updated");
         dbAttendees[0].TicketOrderId.Should().Be(parentOrderId);
     }
-
-    // ==========================================================================
-    // Test 2: null VendorOrderId + no local row → skip with warning
-    // ==========================================================================
 
     /// <summary>
     /// An API-issued ticket with no order_id and no pre-existing local row is
@@ -175,19 +165,13 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto> { ticket });
 
-        // Act
         var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert — skipped; no attendee rows written
         result.AttendeesSynced.Should().Be(0);
 
         var dbAttendees = await TicketsDb.TicketAttendees.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendees.Should().BeEmpty();
     }
-
-    // ==========================================================================
-    // Test 3: known VendorOrderId → existing happy path still works
-    // ==========================================================================
 
     /// <summary>
     /// A ticket with a known VendorOrderId (the normal case) continues to sync
@@ -227,10 +211,8 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        // Act
         var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Assert
         result.OrdersSynced.Should().Be(1);
         result.AttendeesSynced.Should().Be(1);
 
@@ -242,10 +224,6 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         dbOrders.Should().ContainSingle();
         dbOrders[0].VendorOrderId.Should().Be("ord_normal");
     }
-
-    // ==========================================================================
-    // Test 4: null VendorOrderId reissue → original price preserved (no $ drift)
-    // ==========================================================================
 
     /// <summary>
     /// A transfer reissue is an API-issued ticket whose TT listed_price drifts to the

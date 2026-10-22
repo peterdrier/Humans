@@ -377,10 +377,6 @@ public class GdprServiceTests
         log.Order.Should().Equal("A", "B", "C");
     }
 
-    // ==========================================================================
-    // EraseForUserAsync (Article 17 fan-out)
-    // ==========================================================================
-
     [HumansFact]
     public async Task EraseForUserAsync_RunsEveryContributor()
     {

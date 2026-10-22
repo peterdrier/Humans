@@ -4,10 +4,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.MailerLite.Services.Audiences;
 
-/// <summary>
-/// "Humans - Has Shift - Setup" — humans with at least one Pending/Confirmed
-/// signup on a Build-period shift (before gates open) in the active event.
-/// </summary>
 internal sealed class HasShiftSetupAudience(
     IShiftView shiftView,
     IUserService users,

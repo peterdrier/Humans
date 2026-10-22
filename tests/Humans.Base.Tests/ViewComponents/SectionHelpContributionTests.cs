@@ -45,7 +45,7 @@ public class SectionHelpContributionTests
     }
 
     /// <summary>
-    /// The key is matched ordinally, as the dictionaries this replaced were: the call site
+    /// The key is matched ordinally: the call site
     /// spells the key the contributing section declared.
     /// </summary>
     [HumansFact]

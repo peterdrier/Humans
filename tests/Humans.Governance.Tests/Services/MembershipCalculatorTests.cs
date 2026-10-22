@@ -203,8 +203,6 @@ public class MembershipCalculatorTests
         }
     }
 
-    // --- GetRequiredTeamIdsForUserAsync tests ---
-
     [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_AlwaysIncludesVolunteers()
     {
@@ -270,8 +268,6 @@ public class MembershipCalculatorTests
         result.Should().Contain(SystemTeamIds.Volunteers);
     }
 
-    // --- GetMembershipSnapshotAsync with Coordinators docs ---
-
     [HumansFact]
     public async Task GetMembershipSnapshotAsync_IncludesCoordinatorsDocsForCoordinatorUser()
     {
@@ -283,7 +279,6 @@ public class MembershipCalculatorTests
         var geeks = SeedTeam("Geeks", SystemTeamType.None);
         SeedTeamMember(userId, geeks.Id, TeamMemberRole.Coordinator);
 
-        // Volunteers member
         SeedVolunteersTeamMember(userId);
 
         // Volunteer doc (required)
@@ -298,7 +293,6 @@ public class MembershipCalculatorTests
 
         var snapshot = await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        // Should include both Volunteers and Coordinators docs
         snapshot.RequiredConsentCount.Should().Be(2);
         snapshot.PendingConsentCount.Should().Be(2);
         snapshot.MissingConsentVersionIds.Should().Contain(volVersionId);
@@ -334,8 +328,6 @@ public class MembershipCalculatorTests
         snapshot.MissingConsentVersionIds.Should().ContainSingle().Which.Should().Be(volVersionId);
     }
 
-    // --- GetRequiredTeamIdsForUserAsync: Colaboradors team ---
-
     [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_IncludesColaboradors_WhenUserIsColaborador()
     {
@@ -361,8 +353,6 @@ public class MembershipCalculatorTests
         result.Should().Contain(SystemTeamIds.Volunteers);
         result.Should().NotContain(SystemTeamIds.Colaboradors);
     }
-
-    // --- ComputeStatusAsync (additional tests) ---
 
     [HumansFact]
     public async Task ComputeStatusAsync_NoProfile_ReturnsNone()
@@ -414,8 +404,6 @@ public class MembershipCalculatorTests
         result.Should().Be(MembershipStatus.Inactive);
     }
 
-    // --- HasActiveRolesAsync tests ---
-
     [HumansFact]
     public async Task HasActiveRolesAsync_ActiveRole_ReturnsTrue()
     {
@@ -436,8 +424,6 @@ public class MembershipCalculatorTests
 
         result.Should().BeFalse();
     }
-
-    // --- HasAllRequiredConsentsAsync tests ---
 
     [HumansFact]
     public async Task HasAllRequiredConsentsAsync_AllSigned_ReturnsTrue()
@@ -477,8 +463,6 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    // --- HasAllRequiredConsentsForTeamAsync tests ---
-
     [HumansFact]
     public async Task HasAllRequiredConsentsForTeamAsync_AllSigned_ReturnsTrue()
     {
@@ -515,8 +499,6 @@ public class MembershipCalculatorTests
 
         result.Should().BeTrue();
     }
-
-    // --- HasAnyExpiredConsentsForTeamAsync tests ---
 
     [HumansFact]
     public async Task HasAnyExpiredConsentsForTeamAsync_ExpiredUnsigned_ReturnsTrue()
@@ -558,8 +540,6 @@ public class MembershipCalculatorTests
 
         result.Should().BeFalse();
     }
-
-    // --- GetMissingConsentVersionsAsync tests ---
 
     [HumansFact]
     public async Task GetMissingConsentVersionsAsync_ReturnsMissingIds()
@@ -604,8 +584,6 @@ public class MembershipCalculatorTests
         result.Should().Contain(v1);
         result.Should().Contain(v2);
     }
-
-    // --- GetUsersRequiringStatusUpdateAsync tests ---
 
     [HumansFact]
     public async Task GetUsersRequiringStatusUpdateAsync_UsersWithActiveRolesAndExpiredConsents_ReturnsThem()
@@ -673,8 +651,6 @@ public class MembershipCalculatorTests
         suspensions.Contains(userId).Should().Be(suspend);
     }
 
-    // --- GetUsersWithAllRequiredConsentsAsync tests ---
-
     [HumansFact]
     public async Task GetUsersWithAllRequiredConsentsAsync_AllSigned_ReturnsUser()
     {
@@ -709,13 +685,9 @@ public class MembershipCalculatorTests
         result.Should().BeEmpty();
     }
 
-    // --- Seed helpers ---
-
     /// <summary>
     /// Stand-ins for the <c>Team</c> / <c>TeamMember</c> entities, which are internal to
-    /// <c>Humans.Teams</c> and so cannot be named here. The substitutes read only the four
-    /// members below, and keeping the property names identical leaves every call site in the
-    /// test bodies unchanged.
+    /// <c>Humans.Teams</c> and so cannot be named here.
     /// </summary>
     private sealed record SeedTeamRow(Guid Id, string Name, SystemTeamType SystemTeamType);
 

@@ -29,10 +29,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
         _dbContext.Dispose();
     }
 
-    // ==========================================================================
-    // GetByIdAsync / FindForMutationAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
     {
@@ -98,10 +94,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
             .FirstAsync(r => r.Id == reportId, Xunit.TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(FeedbackStatus.Resolved);
     }
-
-    // ==========================================================================
-    // GetListAsync filters
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetListAsync_FiltersByAssignedTeam_AndOrdersByCreatedAtDesc()
@@ -190,10 +182,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
         result[0].Description.Should().Be("unassigned");
     }
 
-    // ==========================================================================
-    // GetActionableCountAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetActionableCountAsync_CountsOpenWithoutAdminReplyAndReporterAfterAdmin()
     {
@@ -243,10 +231,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
         count.Should().Be(2);
     }
 
-    // ==========================================================================
-    // GetReporterCountsAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetReporterCountsAsync_GroupsByUserId_AndCounts()
     {
@@ -265,10 +249,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
         rows.Single(r => r.UserId == u1).Count.Should().Be(2);
         rows.Single(r => r.UserId == u2).Count.Should().Be(1);
     }
-
-    // ==========================================================================
-    // AddMessageAndSaveReportAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task AddMessageAndSaveReportAsync_PersistsMessageAndUpdatesReport_InOneSaveChanges()
@@ -310,10 +290,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var reloadedMsg = await _dbContext.FeedbackMessages.AsNoTracking().FirstAsync(m => m.Id == msg.Id, Xunit.TestContext.Current.CancellationToken);
         reloadedMsg.Content.Should().Be("hello");
     }
-
-    // ==========================================================================
-    // GetForUserExportAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetForUserExportAsync_ReturnsOnlyForUser_AndIncludesMessages()

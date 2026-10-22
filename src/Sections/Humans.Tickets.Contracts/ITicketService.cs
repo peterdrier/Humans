@@ -2,49 +2,22 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Tickets.Contracts;
 
-/// <summary>
-/// Public contract of the Tickets section. External sections inject this
-/// interface; it exposes only DTO/read-model projections, primitives, NodaTime,
-/// and collections. It must not expose EF entity types.
-/// </summary>
-/// <remarks>
-/// Every call site outside the section uses only these
-/// methods. A caller wanting a derived aggregate gets a property on
-/// <see cref="TicketOrderInfo"/>, not a new method
-/// (memory/architecture/read-model-enrichment.md).
-/// </remarks>
+/// <summary>A caller wanting a derived aggregate gets a property on <see cref="TicketOrderInfo"/>, not a new method.</summary>
 public interface ITicketService : IApplicationService
 {
-    /// <summary>
-    /// Returns the ticket order projection used by cross-section read callers.
-    /// Callers derive aggregate questions from this DTO instead of adding
-    /// one-off service methods.
-    /// </summary>
     Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Resolves a trimmed, case-sensitive barcode within the current event only.
-    /// Blank or unknown codes return null; ticket status does not restrict this read.
+    /// Trimmed, case-sensitive, current event only. Blank or unknown codes return null; any ticket status matches.
     /// </summary>
     Task<TicketAttendeeInfo?> FindCurrentEventAttendeeByBarcodeAsync(
         string? barcode, CancellationToken ct = default);
 
-    /// <summary>
-    /// Snapshot of a user's ticket holdings: count of orders where they're the
-    /// buyer, plus the attendee names of every ticket where they are the
-    /// current owner.
-    /// </summary>
+    /// <summary>Orders they bought, plus every ticket they currently hold.</summary>
     Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Every event-participation record of one member, all years. An id merged away resolves to
-    /// the surviving account, whose records it returns.
-    /// </summary>
+    /// <summary>All years. A merged-away id resolves to the survivor's records.</summary>
     Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Every event-participation record, all members and years. Callers filter by year and status
-    /// (the dataset fits in memory).
-    /// </summary>
     Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default);
 }

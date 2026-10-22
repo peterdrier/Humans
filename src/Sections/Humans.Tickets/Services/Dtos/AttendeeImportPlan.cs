@@ -1,9 +1,5 @@
 namespace Humans.Tickets.Services.Dtos;
 
-/// <summary>
-/// Output of <c>IAttendeeContactImportService.BuildPlanAsync</c>.
-/// Stateless — the apply step re-queries to defend against concurrent sync mutation.
-/// </summary>
 internal sealed record AttendeeImportPlan(
     IReadOnlyList<AttendeeImportDecision> Decisions,
     int TotalUnmatched)

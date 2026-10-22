@@ -5,11 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Humans.GoogleIntegration.Tests.Infrastructure;
 
 /// <summary>
-/// Contract tests for <see cref="StubGoogleDirectoryClient"/>. The stub
-/// returns a small deterministic domain so the email-mismatch and
-/// all-domain-groups flows can be exercised without Google credentials.
-/// These tests pin the shape the sync service relies on (non-empty primary
-/// email, non-null id + email on each group row).
+/// Pins the shape the sync service relies on: a non-empty primary email, and a non-null id and
+/// email on each group row.
 /// </summary>
 public class StubGoogleDirectoryClientTests
 {

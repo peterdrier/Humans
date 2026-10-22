@@ -32,9 +32,8 @@ internal sealed class StoreController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        // Full store admins and TeamsAdmins read every counterparty; TeamsAdmins
-        // can edit team orders but only view camp orders, so per-row affordances
-        // are resolved against the order authorization handler below.
+        // TeamsAdmins read every counterparty but edit only team orders, so per-row affordances go through the order
+        // authorization handler.
         var isPrivilegedReader = RoleChecks.CanAdministerStore(User) || RoleChecks.IsTeamsAdmin(User);
         var pageData = isPrivilegedReader
             ? await storeService.GetAllCounterpartiesIndexDataAsync(ct)
@@ -43,8 +42,6 @@ internal sealed class StoreController(
         var canManage = new Dictionary<Guid, bool>(pageData.Counterparties.Count);
         foreach (var cp in pageData.Counterparties)
         {
-            // The order's one actionable affordance on this page: Delete when it
-            // exists, Create when it doesn't.
             var (resource, requirement) = cp.Orders.Count > 0
                 ? ((object)cp.Orders[0], OrderOperationRequirement.Delete)
                 : (new OrderCreateContext(
@@ -97,12 +94,7 @@ internal sealed class StoreController(
             removableLineIds));
     }
 
-    /// <summary>
-    /// Per-row line-edit affordances, resolved against <see cref="OrderAuthorizationHandler"/>
-    /// (same pattern as the index's per-counterparty gating): the add-line catalog keeps only
-    /// products the viewer may still add, and Remove buttons render only for lines the viewer
-    /// may still remove — past the product deadline that's Store admins only.
-    /// </summary>
+    /// <summary>Past a product's deadline only Store admins may add or remove its lines.</summary>
     private async Task<(IReadOnlyList<ProductDto> Catalog, IReadOnlyCollection<Guid> RemovableLineIds)>
         FilterLineEditAffordancesAsync(OrderDto order, IReadOnlyList<ProductDto> catalog, bool canEdit, CancellationToken ct)
     {
@@ -155,11 +147,8 @@ internal sealed class StoreController(
 
         try
         {
-            // Deliberately not passing the request-scoped token: creating the
-            // Checkout Session is a write to Stripe, and the outcome (the
-            // session id we redirect to) has to exist whole or not at all
-            // (nobodies-collective/Humans#950). The order read above keeps the
-            // token — abandoning a read is free.
+            // Not the request token: creating the Checkout Session is a Stripe write whose session id must exist
+            // whole or not at all.
             var result = await storeService.CreateStripeCheckoutSessionAsync(
                 order, amountEur, orderUrl, CancellationToken.None);
             if (result.ErrorKey is { } key)
@@ -193,9 +182,8 @@ internal sealed class StoreController(
 
         try
         {
-            // No request-scoped token anywhere on this path: issuance creates and approves a
-            // document in Holded, and a torn write leaves a doc we have no local record of
-            // (memory/architecture/cancellation-token-propagation.md).
+            // No request token: issuance creates and approves a Holded document, and a torn write leaves one we have
+            // no local record of.
             var result = await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
             if (result.Succeeded) SetSuccess(localizer["Store_InvoiceIssued"].Value);
             else SetError(result.Refusal ?? localizer["Store_InvoiceFailed"].Value);
@@ -332,8 +320,7 @@ internal sealed class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        // Authorize against the product's order deadline when known; an unknown product
-        // falls back to the plain order resource and the service rejects it as not found.
+        // Unknown product: fall back to the plain order resource; the service rejects it as not found.
         var product = await storeService.GetProductAsync(productId, ct);
         object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.AddLine);
@@ -360,8 +347,7 @@ internal sealed class StoreController(
         var order = await storeService.GetOrderAsync(id, ct);
         if (order is null) return NotFound();
 
-        // Authorize against the line's product deadline when known; an unknown line/product
-        // falls back to the plain order resource and the service rejects it authoritatively.
+        // Unknown line or product: fall back to the plain order resource; the service rejects it.
         var lineProductId = order.Lines.FirstOrDefault(l => l.Id == lineId)?.ProductId;
         var product = lineProductId is { } pid ? await storeService.GetProductAsync(pid, ct) : null;
         object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);

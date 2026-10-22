@@ -11,11 +11,8 @@ namespace Humans.Shifts.Data.Configurations;
 internal sealed class VolunteerBuildStatusConfiguration
     : IEntityTypeConfiguration<VolunteerBuildStatus>
 {
-    // DayOffEntry.MarkedAt is a NodaTime.Instant, which the default
-    // System.Text.Json converters do not understand — without these
-    // converters every read after a write would deserialize MarkedAt
-    // as Instant.MinValue. Configured once and reused for both
-    // directions of the HasConversion below.
+    // System.Text.Json does not understand NodaTime's Instant: without these converters every read after a write
+    // would deserialize MarkedAt as Instant.MinValue.
     private static readonly JsonSerializerOptions JsonOptions =
         new JsonSerializerOptions().ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
@@ -25,11 +22,8 @@ internal sealed class VolunteerBuildStatusConfiguration
 
         builder.HasKey(x => x.Id);
 
-        // Cross-section: bare Guid, NO HasOne<User>() — per
-        // memory/architecture/no-cross-section-ef-joins.md.
         builder.Property(x => x.UserId).IsRequired();
 
-        // Same-section FK to event_settings; no nav property on the entity.
         builder.HasOne<EventSettings>()
             .WithMany()
             .HasForeignKey(x => x.EventSettingsId)
@@ -42,11 +36,8 @@ internal sealed class VolunteerBuildStatusConfiguration
         builder.Property(x => x.SetByUserId);
         builder.Property(x => x.SetAt);
 
-        // List<DayOffEntry> is a collection of records — neither Npgsql's
-        // automatic jsonb mapping nor EF's primitive-collection mapping
-        // handle it, so we serialize explicitly with System.Text.Json.
-        // The same converter is applied for both the Postgres jsonb column
-        // and the InMemory provider used in unit tests.
+        // A collection of records: neither Npgsql's jsonb mapping nor EF's primitive collections handle it, so it is
+        // serialized explicitly, for Postgres and the InMemory test provider alike.
         builder.Property(x => x.DayOffs)
             .HasColumnType("jsonb")
             .HasDefaultValueSql("'[]'::jsonb")

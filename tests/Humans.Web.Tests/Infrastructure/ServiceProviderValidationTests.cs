@@ -23,12 +23,8 @@ using Microsoft.Extensions.Options;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// Captive dependencies: a Singleton (or hosted service) that constructor-injects a Scoped
-/// service. <c>Program.cs</c> builds the host with <c>ValidateScopes</c> /
-/// <c>ValidateOnBuild</c>, so one of these throws at startup and the deployment answers 503
-/// with nothing else failing first — the shipped section registrations are checked nowhere
-/// else before a deploy. Singletons that need a Scoped service take
-/// <c>IServiceScopeFactory</c> and open a scope per call (see <c>CachingCampService</c>).
+/// A Singleton or hosted service that constructor-injects a Scoped service throws at startup under
+/// <c>ValidateScopes</c>, and the deployment answers 503. Such a Singleton takes <c>IServiceScopeFactory</c> instead.
 /// </summary>
 public sealed class ServiceProviderValidationTests
 {

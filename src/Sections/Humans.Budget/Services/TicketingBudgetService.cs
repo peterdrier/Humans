@@ -5,9 +5,6 @@ using NodaTime;
 
 namespace Humans.Budget.Services;
 
-/// <summary>
-/// Tickets→Budget bridge: reads paid ticket sales, delegates BudgetLineItem/Projection writes to BudgetService.
-/// </summary>
 internal sealed class TicketingBudgetService(
     ITicketService ticketService,
     IBudgetManagement budgetService,
@@ -39,8 +36,8 @@ internal sealed class TicketingBudgetService(
             var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 
-            // Persist canonical English descriptions independently of the operator's UI language;
-            // BudgetRepository matches existing actuals rows by description.
+            // Canonical English descriptions whatever the operator's UI language: BudgetRepository matches existing
+            // actuals rows by description.
             List<TicketingWeeklyActuals> weeklyActuals;
             using (new CultureScope("en"))
             {
@@ -124,7 +121,6 @@ internal sealed class TicketingBudgetService(
         return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
     }
 
-    // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
     private static LocalDate GetIsoMonday(LocalDate date)
     {
         var dayOfWeek = (int)date.DayOfWeek;

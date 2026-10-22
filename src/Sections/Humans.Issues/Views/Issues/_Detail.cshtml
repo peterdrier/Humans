@@ -94,13 +94,11 @@
                         BodyRows = 3,
                         BodyMaxLength = 5000,
                         Category = nameof(Humans.Email.Contracts.MessageCategory.System),
-                        // A handler's comment emails the reporter; a reporter's comment only
-                        // notifies the issue's handlers in-app (IssuesService.DispatchCommentNotificationsAsync).
+                        // A handler's comment emails the reporter; a reporter's comment only notifies handlers in-app.
                         RecipientCount = Model.IsReporter ? null : 1,
                         RecipientUserId = Model.IsReporter ? null : Model.ReporterUserId,
                         RecipientSummary = Model.IsReporter ? Localizer["Issue_ComposerRecipientsHandlers"].Value : null,
-                        // This partial is fetched over AJAX and injected via innerHTML, so its scripts
-                        // never run; Index.cshtml hosts the one working copy of the preview modal + assets.
+                        // Injected via innerHTML, so its scripts never run; Index.cshtml hosts the working preview modal.
                         IncludePreviewModal = false,
                     })
                     <div class="d-flex gap-2 mt-2 flex-wrap">

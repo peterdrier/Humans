@@ -21,10 +21,6 @@ using NodaTime.Serialization.SystemTextJson;
 
 namespace Humans.Governance.Services;
 
-/// <summary>
-/// Implements <see cref="IAssemblyVoteService"/>. See that interface for the embargo
-/// contract — this class is where it is kept.
-/// </summary>
 internal sealed class AssemblyVoteService(
     IAssemblyVoteRepository repository,
     IApplicationRepository applications,
@@ -48,17 +44,10 @@ internal sealed class AssemblyVoteService(
     /// <summary>The recurring job that closes lapsed votes and sends the T-24h reminder.</summary>
     internal const string LapseJobName = "governance-assembly-vote-lapse";
 
-    // Every bounded text column this section writes, mirrored from the EF configurations, in
-    // one place. Text arriving from a form is checked with Fits before it reaches the
-    // DbContext, so an over-long value is a rejected draft or action rather than a 500 from
-    // PostgreSQL. A new bounded column belongs in this block and in the check that guards it;
-    // the localized JSON columns (OfficialText, option Label) are unbounded by design.
-    //
-    // Title is the exception: the column is jsonb and uncapped, but the title is copied into
-    // bounded columns elsewhere — the email outbox Subject (varchar(1000)) and Notification
-    // Title (varchar(200)) — and those writes happen after a transition that cannot be undone.
-    // A title is bounded at the draft so the Board hears about it while the vote is still
-    // editable. Email subjects still trim legacy drafts; Notifications owns its previews.
+    // Bounded text columns, mirrored from the EF configurations: form text is checked with Fits
+    // so an over-long value is a rejected draft rather than a 500. Title's jsonb column is
+    // uncapped, but it is copied into bounded email and notification columns after an
+    // irreversible transition, so it is bounded at the draft while the vote is still editable.
     internal const int MaxTitleLength = 200;         // assembly_votes.Title, per culture
     internal const int MaxOptionKeyLength = 100;     // assembly_vote_options.Key
     internal const int MaxCancelReasonLength = 4000; // assembly_votes.CancelReason
@@ -80,20 +69,12 @@ internal sealed class AssemblyVoteService(
     private static readonly Duration InterruptedCloseGrace = Duration.FromMinutes(5);
 
     /// <summary>
-    /// Enums serialize as names so a stored result stays readable and survives any later
-    /// reordering of the CLR enums. NodaTime is configured because
-    /// <see cref="AssemblyVoteResult.ComputedAt"/> is an <see cref="Instant"/>, which the
-    /// default converters do not understand — without this every stored result would read
-    /// back with <c>ComputedAt = Instant.MinValue</c>, the same trap
-    /// <c>VolunteerBuildStatusConfiguration</c> documents.
+    /// Enums as names so a stored result survives CLR reordering; NodaTime because
+    /// <see cref="AssemblyVoteResult.ComputedAt"/> would otherwise read back as <c>Instant.MinValue</c>.
     /// </summary>
     private static readonly JsonSerializerOptions ResultJsonOptions =
         new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }
             .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
-
-    // ==========================================================================
-    // Member-facing reads
-    // ==========================================================================
 
     public async Task<IReadOnlyList<AssemblyVoteListItem>> GetVotesForMemberAsync(
         Guid userId, CancellationToken ct = default)
@@ -101,10 +82,8 @@ internal sealed class AssemblyVoteService(
         var votes = await SettleAllAsync(ct);
         var items = new List<AssemblyVoteListItem>(votes.Count);
 
-        // A draft is the Board's authoring surface: unannounced, still being written, and
-        // deletable. Members see a vote from the moment it opens, never before.
-        // Resolved once for the whole list rather than per vote: a member with no roster row
-        // of their own is the common case, and that is exactly the case that has to ask.
+        // Members never see a draft. Chain ids are resolved once for the whole list: a member
+        // with no roster row of their own is the common case, and exactly the one that has to ask.
         var chainIds = (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
         foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
@@ -169,10 +148,8 @@ internal sealed class AssemblyVoteService(
             Resolve(vote.Title, vote.OfficialCulture),
             Resolve(vote.OfficialText, vote.OfficialCulture),
             vote.OfficialCulture,
-            // Only when a culture-specific text actually exists and is not the binding one.
-            // `Resolve` falls back to the official text when the viewer's culture was never
-            // authored, and warning a member that the binding text is "a translation" is the
-            // opposite of what this flag is for.
+            // Only when the viewer's culture was actually authored: Resolve falls back to the
+            // official text, and labelling the binding text "a translation" would be wrong.
             IsTranslation: vote.OfficialText.HasCulture(culture)
                            && !culture.Equals(vote.OfficialCulture, StringComparison.OrdinalIgnoreCase),
             vote.InfoUrl,
@@ -209,10 +186,6 @@ internal sealed class AssemblyVoteService(
                     h.Revision, h.Choice, h.Ranking, h.RecordedAt))
                 .ToList());
 
-    // ==========================================================================
-    // Casting a ballot
-    // ==========================================================================
-
     public async Task<BallotSubmissionOutcome> CastBallotAsync(
         Guid voteId,
         Guid userId,
@@ -244,16 +217,9 @@ internal sealed class AssemblyVoteService(
         // published result.
         if (ballot is null) return BallotSubmissionOutcome.VoteNotOpen;
 
-        // The action distinguishes a first cast from a change, read from the revision the
-        // locked upsert assigned rather than from a ballot read before it: two first ballots
-        // for the same roster row can both see none, and the second one is a change.
-        // Neither entry records what was chosen. That is the whole point — the audit log is
-        // widely readable.
-        //
-        // The entity is the vote, never the ballot. An audit row keeps its ActorUserId for
-        // good (AuditLogService.EraseForUserAsync is a no-op by design), so naming the ballot
-        // id here would leave a permanent join from an erased person to the row holding their
-        // Choice and Ranking — which is exactly what erasure promises to sever.
+        // First cast vs change comes from the revision the locked upsert assigned: two first
+        // ballots can both read none. Neither entry records the choice, and the entity is the vote,
+        // never the ballot — audit rows outlive erasure, so a ballot id would re-link the person.
         await audit.LogAsync(
             ballot.Revision == 1 ? AuditAction.AssemblyBallotCast : AuditAction.AssemblyBallotChanged,
             AuditEntityTypes.AssemblyVote,
@@ -310,10 +276,6 @@ internal sealed class AssemblyVoteService(
     private static string Resolve(GovernanceLocalizedText text, string officialCulture) =>
         text.Resolve(CultureInfo.CurrentUICulture.Name, officialCulture);
 
-    // ==========================================================================
-    // Settling state — the inline close that makes the deadline real
-    // ==========================================================================
-
     /// <summary>
     /// Loads a vote and closes it first if its deadline has passed, so no caller can ever
     /// observe an Open vote that should be Closed.
@@ -347,10 +309,8 @@ internal sealed class AssemblyVoteService(
             return vote;
         }
 
-        // The close was refused: an Extend moved the deadline, or another close landed first.
-        // CloseAsync has already stamped this object Closed, so handing it back would have the
-        // rest of the request treat a vote that is still open as closed — a ballot refused,
-        // the form hidden. The row is the truth.
+        // Refused: an Extend moved the deadline or another close landed first. CloseAsync already
+        // stamped this object Closed, so the row, not this object, is the truth.
         return await repository.GetByIdAsync(vote.Id, ct) ?? vote;
     }
 
@@ -364,11 +324,8 @@ internal sealed class AssemblyVoteService(
     {
         if (vote.Status != AssemblyVoteStatus.Closed || vote.ResultJson is not null) return;
 
-        // A close that committed its status seconds ago is not interrupted, it is running:
-        // its own tail sits between the status write and the stored tally right now. Replaying
-        // that would duplicate the audit entry and the notification retirement of a close
-        // nobody interrupted, so a result-less close is taken over only once it has stood
-        // long enough that no request could still be finishing it.
+        // A close that committed its status seconds ago is still running its own tail; only one
+        // that has stood past the grace period is taken over, or the audit entry would duplicate.
         var readAt = vote.UpdatedAt;
         if (clock.GetCurrentInstant() < readAt + InterruptedCloseGrace) return;
 
@@ -416,24 +373,15 @@ internal sealed class AssemblyVoteService(
         var now = clock.GetCurrentInstant();
 
         vote.Status = AssemblyVoteStatus.Closed;
-        // A lapsed vote closed at its announced time, whenever the sweep or the next read
-        // happened to notice. BuildActa prints ClosedAt into the legal summary, so stamping
-        // the observation instant would have the acta claim a vote ran late. An Admin Stop
-        // really does close it now.
+        // A lapsed vote closed at its announced time, whenever it was noticed; BuildActa prints
+        // ClosedAt into the legal summary. An Admin Stop really does close it now.
         vote.ClosedAt = closedByUserId is null ? vote.ClosesAt : now;
         vote.ClosedByUserId = closedByUserId;
         vote.UpdatedAt = now;
 
-        // Order matters, and it is the only thing standing between a late ballot and a tally
-        // that silently omits it. The status is persisted *before* the ballots are read: from
-        // that commit on, UpsertBallotAsync re-reads the vote and refuses, so every ballot the
-        // system accepted is already in the table by the time counting looks. Computing first
-        // and flipping second would leave the whole counting interval open for a submission to
-        // slip in behind the snapshot, be told "recorded", and never appear in the result.
-        // Refused means the row is no longer Open — somebody else finished this vote first —
-        // or an Extend moved the deadline this lapse was working from. Either way the other
-        // actor owns the close and nothing here should run, including the audit entry and the
-        // notification: the tail belongs to whoever's status write landed.
+        // The status is persisted *before* the ballots are read: from that commit on,
+        // UpsertBallotAsync refuses, so every accepted ballot is in the table when counting looks.
+        // Refused means another actor closed or extended first and owns the whole tail.
         if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct)) return false;
 
         await FinishCloseAsync(vote, closedByUserId, action, description, ct);
@@ -441,18 +389,9 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Everything a close owes after its status is down: the retired open-vote notification,
-    /// the audit entry, and the stored tally. Separate from <see cref="CloseAsync"/> because
-    /// the status write commits first, and anything that throws after it leaves a closed vote
-    /// owing all three — <see cref="SettleAsync"/> replays this, not just the result.
-    /// <para>
-    /// The stored result is written <em>last</em> because its absence is what the replay
-    /// looks for. Storing it first would mark the close complete while the notification and
-    /// the audit entry were still owed, and a process that stopped there would leave a
-    /// permanently unaudited close, which the terminal-state check then refuses to redo. In
-    /// this order the worst a crash can cost is a repeated close entry on the next read —
-    /// a duplicate in the audit log is visible and explicable; a missing one is neither.
-    /// </para>
+    /// Everything a close owes after its status is down; <see cref="SettleAsync"/> replays it. The
+    /// stored result is written last because its absence is what the replay looks for: the worst a
+    /// crash costs is a duplicate close entry, never a missing one.
     /// </summary>
     private async Task FinishCloseAsync(
         AssemblyVote vote,
@@ -475,11 +414,7 @@ internal sealed class AssemblyVoteService(
         await StoreResultAsync(vote, ct);
     }
 
-    /// <summary>
-    /// Computes the vote's tally and stores it on the already-closed vote. Split out of
-    /// <see cref="CloseAsync"/> so the status can be persisted first, and reused by the
-    /// settle path to finish a close that was interrupted after the status went down.
-    /// </summary>
+    /// <summary>Stores the tally on the already-closed vote; also the settle path's repair.</summary>
     private async Task StoreResultAsync(AssemblyVote vote, CancellationToken ct)
     {
         var result = await ComputeResultAsync(vote, ct);
@@ -491,15 +426,8 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Retires the open-vote notification for a vote that has just ended, best-effort.
-    /// <para>
-    /// Every caller reaches this <em>after</em> persisting a terminal status, and terminal
-    /// means nothing re-enters that path — so a throw from here would strand whatever the
-    /// caller still had to do (the closure audit, the cancellation audit and its roster
-    /// email) with no retry, permanently. That is worth more than a tidy notification
-    /// meter, so the failure is logged and swallowed. It lives here rather than at each
-    /// end-of-vote path so the next one cannot be written without it.
-    /// </para>
+    /// Best-effort: every caller has already persisted a terminal status with no retry, so a throw
+    /// here would strand the audit and email work still owed. Logged and swallowed.
     /// </summary>
     private Task ClearOpenNotificationAsync(
         AssemblyVote vote, Guid? actorUserId, CancellationToken _) =>
@@ -509,24 +437,16 @@ internal sealed class AssemblyVoteService(
                 NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct));
 
     /// <summary>
-    /// Runs a side effect that happens <em>after</em> a committed state change, without
-    /// letting it undo one. Open / Stop / Cancel are irreversible and have no retry path, so
-    /// a throw from notification or email work leaves the vote in its new state with the
-    /// audit entry, the roster email or the notification permanently missing.
-    /// <para>
-    /// Every such call goes through here, so the guarantee lives in one place rather than in
-    /// a try/catch per call site that the next path to be written will forget.
-    /// </para>
+    /// Runs a side effect after an irreversible, committed transition without letting a throw
+    /// leave the audit entry, roster email or notification permanently missing.
     /// </summary>
     private async Task AfterTransitionAsync(
         string what, Guid voteId, Func<CancellationToken, Task> work)
     {
         try
         {
-            // Deliberately not the request's token. The state change is committed and
-            // irreversible, and the roster's email is part of it being real: an Admin who
-            // closes the tab after clicking Open would otherwise cancel the recipient lookup,
-            // the emails and the notification, and nothing ever retries them.
+            // Deliberately not the request's token: the change is committed, and an Admin closing
+            // the tab must not cancel the roster's emails and notification with no retry.
             await work(CancellationToken.None);
         }
         catch (Exception ex)
@@ -536,10 +456,6 @@ internal sealed class AssemblyVoteService(
                 voteId, what);
         }
     }
-
-    // ==========================================================================
-    // Counting
-    // ==========================================================================
 
     /// <summary>
     /// Counts the vote's ballots into a storable result: the official audience always, the
@@ -589,10 +505,6 @@ internal sealed class AssemblyVoteService(
         return new AssemblyVoteAudienceResult(
             audience.Count, cast.Count, null, rounds, winner, rankedVerdict, notes);
     }
-
-    // ==========================================================================
-    // Results
-    // ==========================================================================
 
     public async Task<AssemblyVoteResultsView?> GetResultsAsync(
         Guid voteId, Guid userId, bool viewerIsBoardOrAdmin, CancellationToken ct = default)
@@ -707,11 +619,8 @@ internal sealed class AssemblyVoteService(
         var acta = new StringBuilder();
         var official = result.Official;
 
-        // The counting result is keyed by the stable option key; the acta is read by people.
-        // Resolved in the vote's official culture, like the title above it. Rendering the
-        // acta for every viewer's language is peterdrier/Humans#1695: it needs the acta out
-        // of this service, which holds no localizer by convention, and a multi-culture
-        // display control that does not exist yet (peterdrier/Humans#1694).
+        // The counting result is keyed by option key; the acta is read by people, in the vote's
+        // official culture like the title above it.
         string Label(string key) =>
             vote.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal))
                 is { } option
@@ -781,10 +690,6 @@ internal sealed class AssemblyVoteService(
         // their own block, which is where an advisory number belongs.
         return acta.ToString();
     }
-
-    // ==========================================================================
-    // Drafting
-    // ==========================================================================
 
     public async Task<IReadOnlyList<AssemblyVoteListItem>> GetAllForAdminAsync(
         CancellationToken ct = default)
@@ -974,11 +879,8 @@ internal sealed class AssemblyVoteService(
     /// </summary>
     private bool IsDraftValid(AssemblyVoteDraft draft)
     {
-        // Every posted enum is checked against its definition. A numeric value outside the enum
-        // binds silently, and each one then falls through to the wrong default: an undefined
-        // Kind is not RankedChoice, so it stores no options, yet counting treats everything
-        // that is not YesNo as instant-runoff — a vote that opens with no options and results
-        // in nothing. A draft is the last place to catch that, since content locks at open.
+        // An out-of-range numeric enum binds silently and falls through to the wrong default — an
+        // undefined Kind opens with no options yet counts as instant-runoff. Content locks at open.
         if (!Enum.IsDefined(draft.Kind)) return false;
         if (!Enum.IsDefined(draft.RequiredMajority)) return false;
         if (!Enum.IsDefined(draft.IndicativeAudience)) return false;
@@ -995,11 +897,8 @@ internal sealed class AssemblyVoteService(
 
         if (draft.Kind != AssemblyVoteKind.RankedChoice) return true;
 
-        // A ranked vote is counted by instant runoff, whose majority base is the ballots
-        // still ranking a continuing option — a 2/3 threshold has no defined meaning there,
-        // and accepting the combination stores a legal record whose acta claims a threshold
-        // the count never applied. The statutes' qualified majorities are asked as YesNo
-        // questions ("approve this amendment"); a ranked vote is an election.
+        // A 2/3 threshold has no defined meaning under instant runoff, and the acta would claim a
+        // threshold the count never applied. Qualified majorities are asked as YesNo questions.
         if (draft.RequiredMajority != RequiredMajority.Simple) return false;
 
         return draft.Options.Count >= 2
@@ -1040,10 +939,6 @@ internal sealed class AssemblyVoteService(
                     Label = new GovernanceLocalizedText(o.Label.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase))
                 })
                 .ToList();
-
-    // ==========================================================================
-    // Lifecycle
-    // ==========================================================================
 
     public async Task<AssemblyVoteActionResult> OpenAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default)
@@ -1200,10 +1095,8 @@ internal sealed class AssemblyVoteService(
         if (newClosesAt <= vote.ClosesAt) return AssemblyVoteActionResult.Invalid;
 
         var previous = vote.ClosesAt;
-        // The revision this extension was built from. Two admins extending at once both
-        // validate against the deadline they read, so without this the shorter extension
-        // commits second and moves the deadline the electorate was just given backwards —
-        // and its audit entry names a previous value that was never the persisted one.
+        // The revision this extension was built from: two concurrent Extends must not let the
+        // shorter commit second and move the electorate's deadline backwards.
         var readAt = vote.UpdatedAt;
         var extendedAt = clock.GetCurrentInstant();
         vote.ClosesAt = newClosesAt;
@@ -1222,17 +1115,9 @@ internal sealed class AssemblyVoteService(
                 $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
                 adminUserId));
 
-        // Re-arm the T-24h reminder. A vote already inside the reminder window has stamped
-        // rows, and the stamp means "told about the old deadline" — left alone, everyone
-        // reminded before the extension is never told the new one, which is the deadline
-        // that decides whether their ballot counts. Only stamps up to the extension are
-        // cleared: an extension that leaves the vote inside the window does not stop a sweep
-        // already running, and that sweep is announcing the new deadline already.
-        //
-        // Through the post-transition path, not on the request token: the new deadline is
-        // committed and there is no replay for an extension, so an Admin closing the tab
-        // would otherwise leave the stamps standing for a deadline that no longer exists
-        // and everyone already reminded permanently holding the old one.
+        // Re-arm the T-24h reminder: stamps up to now mean "told about the old deadline"; later
+        // stamps come from a sweep already announcing the new one. Post-transition, not on the
+        // request token: there is no replay for an extension.
         await AfterTransitionAsync(
             "re-arming the reminder after the extension", vote.Id,
             token => repository.ClearReminderStampsAsync(vote.Id, extendedAt, token));
@@ -1288,11 +1173,8 @@ internal sealed class AssemblyVoteService(
         var vote = await SettleAsync(voteId, ct);
         if (vote is null) return (null, false);
 
-        // A peek at a closed vote is just the results page; the peek log exists to record
-        // looking *early*, so only an open vote writes one. Recorded = false says so, because
-        // a page that claims "this peek has been recorded" when nothing was is a worse lie
-        // than no page at all. Note the vote can lapse inside SettleAsync, so the caller
-        // cannot decide this for itself from an earlier read.
+        // The peek log records looking *early*, so only an open vote writes one, and Recorded =
+        // false says so. The vote can lapse inside SettleAsync, so the caller cannot decide this.
         if (vote.Status != AssemblyVoteStatus.Open)
         {
             return (vote.ResultJson is null
@@ -1303,11 +1185,8 @@ internal sealed class AssemblyVoteService(
 
         var now = clock.GetCurrentInstant();
 
-        // The peek row and the audit entry are written before the tally is handed back, so
-        // there is no way to look without leaving the trace that says you did. The row goes in
-        // only while the vote is still Open: the peek log is the record of looking *early*,
-        // and a close that commits in this gap turns this request into an ordinary results
-        // read, which is published on that page and must not accuse the Admin of an early look.
+        // The peek row and audit entry are written before the tally is handed back, so there is
+        // no looking without a trace. A close in this gap makes it an ordinary results read.
         var recorded = await repository.AddPeekAsync(
             new AssemblyVotePeek
             {
@@ -1350,10 +1229,6 @@ internal sealed class AssemblyVoteService(
         return await DisclosureRowsAsync(voteId, ct);
     }
 
-    // ==========================================================================
-    // Notifying the roster
-    // ==========================================================================
-
     /// <summary>
     /// Raises one in-app notification keyed to the vote, which closing later resolves, and
     /// emails everyone on the roster that the vote is open.
@@ -1365,22 +1240,9 @@ internal sealed class AssemblyVoteService(
     private async Task NotifyRosterOpenedAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
     {
-        // The notification goes out before the emails, not after. A stop or cancel that
-        // commits mid-send resolves this vote's notification by source key, and a row that
-        // does not exist yet cannot be resolved — so emitting after a roster-long email loop
-        // leaves an actionable "vote is open" alert on a vote that is already closed, with
-        // nothing left to clear it. Emitted first, the window is one round trip, and the
-        // re-read closes what is left of it.
-        //
-        // That re-read tests the deadline, not just the status: opening a vote that closes
-        // minutes from now is allowed, a lapsed vote stays persisted Open until something
-        // settles it, and an actionable "cast your ballot" alert on a vote that no longer
-        // accepts one is a prompt the member cannot act on.
-        // The alert is its own post-transition step, so a throw out of Notifications — a
-        // preference lookup, its own database write — cannot take the roster's emails down
-        // with it. Those have a recovery path (the hourly sweep re-sends every unstamped
-        // row); the in-app alert has none, so the failure mode worth preventing is the one
-        // where a Notifications fault costs the electorate both.
+        // The alert goes out before the emails: a stop or cancel mid-send resolves notifications
+        // by source key, and a row that does not exist yet cannot be resolved. It is its own
+        // post-transition step so a Notifications fault cannot also cost the roster its emails.
         await AfterTransitionAsync(
             "alerting the roster that the vote opened", vote.Id,
             token => EmitOpenedAlertAsync(vote, roster, token));
@@ -1410,13 +1272,8 @@ internal sealed class AssemblyVoteService(
                 sourceKey: vote.Id.ToString(),
                 cancellationToken: ct);
 
-            // The check and the send are two awaits, and a stop or cancel landing between
-            // them resolves a source key with no rows behind it yet — leaving an actionable
-            // "this vote is open" alert nothing will ever clear. There is no transaction
-            // spanning two sections, so the rows are cleaned up after the fact instead: read
-            // once more, and if the vote stopped accepting ballots in that gap, resolve what
-            // was just written. The resolve is idempotent, so doing it twice costs nothing,
-            // and the lapse sweep resolving a vote this already cleared is one of those times.
+            // A stop or cancel landing between the check and the send resolves a key with no rows
+            // yet, and no transaction spans two sections: re-read and resolve again (idempotent).
             if (await repository.GetByIdAsync(vote.Id, ct) is not { } after
                 || !after.AcceptsBallotsAt(clock.GetCurrentInstant()))
             {
@@ -1426,15 +1283,9 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// Emails the roster that the vote is open, stamping each row that was sent. An unstamped
-    /// row is one the email never reached, and the hourly sweep retries it. Takes the whole
-    /// roster and skips a human any of whose rows is already stamped: two rows for one human
-    /// (enrolled twice, then merged) are one member, mailed once, and a human reached through
-    /// one row is not told again through the other. Returns how many members the email
-    /// actually reached, every one of their rows stamped. The vote is re-read per recipient,
-    /// so a stop, cancel or extend mid-batch ends it rather than mailing the rest a deadline
-    /// — or a vote — that no longer stands; the unstamped rows are then left for the sweep,
-    /// which only retries while the vote is Open.
+    /// Emails the roster that the vote is open, stamping every row of each human reached; an
+    /// unstamped row is retried by the hourly sweep. Returns how many members were reached.
+    /// Takes the whole roster so a human with a stamped row is not mailed again through another.
     /// </summary>
     private async Task<int> SendOpenedEmailsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
@@ -1446,15 +1297,8 @@ internal sealed class AssemblyVoteService(
 
         foreach (var (rosterRow, rows, info, address, language) in recipients)
         {
-            // Re-read per recipient, as the reminder loop does: mailing a whole electorate
-            // takes long enough for an Admin to stop, cancel or extend the vote in the
-            // middle of it, and "this vote is open, here is the deadline" is wrong for
-            // everybody left — a cancelled vote's roster would get the opening notice after
-            // the cancellation email, and an extended one a deadline it no longer has.
-            // The clock comes per recipient too, and the deadline is part of the test: a vote
-            // whose announced time passes mid-batch is stored Open until something settles
-            // it, so a status-only check would keep mailing "the vote is open, it closes at"
-            // with a time already gone.
+            // Re-read per recipient, with the clock: a stop, cancel, extend or lapse mid-batch
+            // ends it rather than mailing the rest a deadline — or a vote — that no longer stands.
             var sentAt = clock.GetCurrentInstant();
             var current = await repository.GetByIdAsync(vote.Id, ct);
             if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
@@ -1473,13 +1317,8 @@ internal sealed class AssemblyVoteService(
                         language),
                     ct);
 
-                // Stamped per row, immediately, as the reminder path does: the stamp is what
-                // tells the retry sweep this row was reached, so a batch that dies halfway —
-                // or a stamp write that fails after the enqueues — must not leave every
-                // delivered row looking unsent and earn the whole roster a duplicate notice.
-                // Conditional on the deadline this email named, for the same reason the
-                // reminder stamp is: an Extend landing while it went out leaves no stamp, and
-                // the retry sweep sends this member the deadline now in force.
+                // Stamped per row immediately, so a batch dying halfway does not earn the whole
+                // roster a duplicate; conditional on the deadline this email named.
                 await repository.StampNotifiedAsync(
                     rows.Select(r => r.Id).ToList(), clock.GetCurrentInstant(), current.ClosesAt, ct);
                 notified++;
@@ -1496,10 +1335,8 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// The vote's title in the reader's language, bounded for the email subject that carries
-    /// it (varchar(1000)). Drafts are bounded at <see cref="MaxTitleLength"/>, so this only
-    /// bites on one written before that check existed — where the alternative is an enqueue
-    /// that throws for every recipient after the vote is already Open.
+    /// Bounded for the email subject (varchar(1000)): only bites on a draft written before
+    /// <see cref="MaxTitleLength"/> existed, where it would otherwise throw after the vote opened.
     /// </summary>
     private static string EmailTitle(AssemblyVote vote, string language) =>
         Truncate(vote.Title.Resolve(language, vote.OfficialCulture), MaxTitleLength);
@@ -1542,24 +1379,9 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// The roster row that entitles this human to a ballot on this vote: their own, or one
-    /// left standing on an account merged into theirs.
-    /// <para>
-    /// An account merge deliberately leaves roster rows and ballots keyed to the merged-away
-    /// id — they record who was entitled when the vote opened, not who holds the account
-    /// today. Without this resolution the survivor of a merge reads as off-roster on a vote
-    /// their other account was enrolled in: no ballot, no amendment, no result. The record
-    /// stays untouched and the chain is walked at read time instead.
-    /// </para>
-    /// <para>
-    /// A row that already carries a ballot wins over every other candidate, the viewer's own
-    /// included. One human can hold several rows on one vote — enrolled under two accounts,
-    /// or under three after an A→B→C chain — and handing them a blank row while one of their
-    /// others holds a ballot would let them cast a second one into a binding tally. Picking
-    /// the ballot-bearing row turns that into an amendment of the ballot they already cast.
-    /// Two rows both holding ballots is the double vote itself, already recorded and audited
-    /// by the merge; this resolves to the first of them by id so every read agrees on which.
-    /// </para>
+    /// The roster row entitling this human: their own, or one left on an account merged into
+    /// theirs. A row already carrying a ballot wins, so a human enrolled twice amends their ballot
+    /// rather than casting a second; two ballot-bearing rows resolve to the first by id.
     /// </summary>
     private async Task<AssemblyVoteRoster?> EffectiveRosterAsync(
         Guid voteId, Guid userId, CancellationToken ct, IReadOnlyList<Guid>? chainIds = null)
@@ -1593,25 +1415,12 @@ internal sealed class AssemblyVoteService(
     }
 
     /// <summary>
-    /// One recipient per human on the roster: their details, their notification address, and
-    /// every roster row that resolved to them. Rows with no reachable address drop out.
-    /// Always fed the whole roster, never a pre-filtered slice of it: a filter that drops one
-    /// of a human's rows (already stamped, already voted) hides that row from the group, and
-    /// the decision to mail is taken over the group; see the callers.
+    /// One recipient per human on the roster, with every row that resolved to them; rows with no
+    /// address drop out. Always fed the whole roster: the decision to mail is taken over the group.
     /// </summary>
     /// <remarks>
-    /// A roster row stays on the account that held the entitlement when the vote opened, and
-    /// that account may since have been merged away (peterdrier/Humans#1699 keeps the row
-    /// where it is deliberately — it is the evidence of who was entitled). Users resolves such
-    /// an id forward to the surviving account (#1704), so the member is mailed at the address
-    /// they actually read, and this section never knows a merge chain exists. A GDPR-erased
-    /// row resolves to itself, still has no address, and still drops out.
-    ///
-    /// <para>Two roster rows can therefore resolve to one human — enrolled twice, then merged.
-    /// They are one recipient, mailed once, and <b>every</b> row in the group is stamped;
-    /// stamping only one would earn that member the same email again on the next sweep.
-    /// The group is represented by an official row where it has one, since that is the
-    /// member's standing and the emails say so.</para>
+    /// Users resolves a merged-away id forward to the survivor, so the member is mailed where they
+    /// read. Every row in a group is stamped, or that member is mailed again next sweep.
     /// </remarks>
     private async Task<List<(AssemblyVoteRoster Roster, IReadOnlyList<AssemblyVoteRoster> Rows, UserInfo Info, string Address, string Language)>>
         RecipientsAsync(IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
@@ -1656,10 +1465,6 @@ internal sealed class AssemblyVoteService(
     /// UTC instant in an email would be a different deadline to every reader.
     /// </summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    // ==========================================================================
-    // The hourly sweep
-    // ==========================================================================
 
     public async Task<int> RunLapseAndReminderSweepAsync(CancellationToken ct = default)
     {
@@ -1721,10 +1526,8 @@ internal sealed class AssemblyVoteService(
         var sent = await SendOpenedEmailsAsync(vote, roster, ct);
         if (sent == 0) return;
 
-        // Automation that emails the electorate says so under the job actor, as the reminder
-        // batch does. The Admin's AssemblyVoteOpened entry is about their transition; it
-        // cannot show that the job reached members hours later, which is exactly the thing
-        // the Board would be looking for.
+        // Automation that emails the electorate says so under the job actor: the Admin's
+        // AssemblyVoteOpened entry cannot show the job reached members hours later.
         await audit.LogAsync(
             AuditAction.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Re-sent the opening email for assembly vote {vote.Id} to {sent} roster member(s) "
@@ -1746,13 +1549,8 @@ internal sealed class AssemblyVoteService(
             var pending = await repository.GetRosterNeedingReminderAsync(vote.Id, ct);
             if (pending.Count == 0) continue;
 
-            // Grouped over the whole roster, not the pending rows. The pending read excludes
-            // a row holding a ballot and a row already reminded, so a human who voted on one
-            // row, or was reminded through it, and still holds a blank one would arrive
-            // here through the blank row alone, and a decision taken on that row alone tells
-            // a member who has voted that they have not. A human is reminded only when every
-            // row they hold is pending; a group with a voted or reminded row is left as it
-            // is, and its blank rows pend again next sweep at the cost of this read.
+            // Grouped over the whole roster: a human with one voted or reminded row and one blank
+            // row is left alone, or a member who voted is told they have not.
             var pendingIds = pending.Select(r => r.Id).ToHashSet();
             var recipients = (await RecipientsAsync(await repository.GetRosterAsync(vote.Id, ct), ct))
                 .Where(r => r.Rows.All(row => pendingIds.Contains(row.Id)))
@@ -1768,21 +1566,12 @@ internal sealed class AssemblyVoteService(
                 var current = await repository.GetByIdAsync(vote.Id, ct);
                 if (current is null || current.Status != AssemblyVoteStatus.Open) break;
 
-                // And the clock per recipient too: a vote whose deadline passes mid-batch is
-                // still persisted Open until the close pass below runs, so comparing against
-                // the sweep-start instant would keep mailing "closing soon" after it closed.
-                //
-                // Read after the vote, never before: this instant becomes the row's reminder
-                // stamp, and ExtendAsync clears every stamp at or before the instant it
-                // extended. An Extend that commits before this read is therefore older than
-                // the stamp and cannot clear it, so the member who was just told the new
-                // deadline is not reminded of it a second time.
+                // The clock per recipient, read after the vote: a lapse mid-batch stops the
+                // mailing, and an Extend committed before this read cannot clear this stamp.
                 var sentAt = clock.GetCurrentInstant();
 
-                // The deadline comes from that same read, not from the queried row. An Extend
-                // mid-batch moves it, and half an electorate holding an email that announces a
-                // deadline the vote no longer has is worse than no reminder: the rest of the
-                // roster is reminded on the sweep after the new deadline comes into range.
+                // The deadline from that same read: an Extend mid-batch moves it, and the rest of
+                // the roster is reminded when the new deadline comes into range.
                 if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
                 var closesAt = ClosingLocal(current.ClosesAt);
 
@@ -1806,12 +1595,7 @@ internal sealed class AssemblyVoteService(
                             language),
                         ct);
 
-                    // Stamped per row, immediately: the stamp is the only thing stopping the
-                    // next sweep re-sending, so the widest window worth having between the
-                    // send and the stamp is one roster row, not the whole batch. Conditional
-                    // on the deadline this email named: if an Extend landed while it was
-                    // going out, no stamp, and the next sweep tells this member the deadline
-                    // now in force rather than leaving them with the one they were sent.
+                    // Stamped per row immediately, conditional on the deadline this email named.
                     await repository.StampReminderSentAsync(
                         rows.Select(r => r.Id).ToList(), sentAt, current.ClosesAt, ct);
                     // One entry per human, not per row: every row of a merge chain is stamped,
@@ -1828,10 +1612,7 @@ internal sealed class AssemblyVoteService(
 
             if (reminded.Count > 0)
             {
-                // Automation that emails the electorate says so in the audit log (US-V8).
-                // The count is the one actually delivered, not the one attempted: a send
-                // that threw above is in the log as an error and is not stamped, so the
-                // reminder is retried on the next sweep.
+                // The count actually delivered: a send that threw is unstamped and retried.
                 await audit.LogAsync(
                     AuditAction.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
                     $"Sent the closing reminder for assembly vote {vote.Id} to {reminded.Count} roster member(s).",
@@ -1850,10 +1631,6 @@ internal sealed class AssemblyVoteService(
         return false;
     }
 
-    // ==========================================================================
-    // GDPR and account merge
-    // ==========================================================================
-
     /// <summary>
     /// The member's own voting record: which votes they were entitled to vote in, whether
     /// their ballot was official, and every revision of what they recorded.
@@ -1863,10 +1640,8 @@ internal sealed class AssemblyVoteService(
     {
         var info = await users.GetUserInfoAsync(userId, ct);
 
-        // Plus every account merged into this one. The merge leaves roster rows and ballots
-        // on the merged-away id, so the survivor's download would otherwise omit an
-        // entitlement and a ballot that are unmistakably theirs — the erasure path beside
-        // this one already follows the same chain.
+        // Plus every account merged into this one: the merge leaves roster rows and ballots on
+        // the merged-away id, and the erasure path follows the same chain.
         IReadOnlyList<(AssemblyVoteRoster Roster, AssemblyVote Vote, AssemblyBallot? Ballot)> record = [];
         foreach (var id in info?.AllUserIds ?? [userId])
         {

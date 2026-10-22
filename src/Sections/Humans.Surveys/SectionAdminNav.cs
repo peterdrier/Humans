@@ -5,20 +5,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Surveys;
 
-/// <summary>Surveys' admin sidebar group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Surveys", [
-            // First-party survey tool (own section); Board happens to be its main
-            // user today, but it is not Governance. App access, not Board: authoring is
-            // self-service (Workgroups §11), and the index the link lands on is scoped by the
-            // service to what the viewer authored — a Board gate here would leave authors with
-            // a page they may use and no way to reach it.
+            // App access, not Board: authoring is self-service and the index is scoped to what the viewer authored,
+            // so a Board gate would leave authors with a page they may use and no way to reach it.
             new("Surveys", "SurveyAdmin", "Index", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.AppAccess),
-            // Self-service approval gate (Workgroups design §11): any active human may author a
-            // Draft survey; this is where Board/Admin approve-and-send or reject a submission.
             new("Approvals", "SurveyAdmin", "Queue", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin,
                 PillCount: PillCounts.PendingApprovalQueueAsync)
         ])

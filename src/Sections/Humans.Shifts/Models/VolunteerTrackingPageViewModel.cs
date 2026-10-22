@@ -5,16 +5,8 @@ using Humans.Shifts.Services.Dtos;
 namespace Humans.Shifts.Models;
 
 /// <summary>
-/// View-model for <c>Views/VolunteerTracking/Index.cshtml</c>. Carries both
-/// cohorts (already sorted in the controller per
-/// <c>memory/architecture/display-sort-in-controllers.md</c>), the build-
-/// window start offset for the column layout, the three filter-toggle states,
-/// and the BurnerName-resolved display name per row (batched in the
-/// controller so the partials never make per-row service calls). Avatars and
-/// rendered names come from <c>&lt;vc:human&gt;</c> per
-/// <c>memory/architecture/burnername-is-the-display-name.md</c>; the
-/// <see cref="DisplayNameByUserId"/> dictionary is only used for the row
-/// tooltip / search-filter string and for the controller-side display sort.
+/// Cohorts arrive sorted by the controller. <see cref="DisplayNameByUserId"/> is batch-resolved, for the row
+/// tooltip, search string and sort only; rendered names come from <c>&lt;vc:human&gt;</c>.
 /// </summary>
 internal sealed class VolunteerTrackingPageViewModel
 {
@@ -31,11 +23,7 @@ internal sealed class VolunteerTrackingPageViewModel
     public bool HideCampSetup { get; init; }
     public bool HideUnbookedSection { get; init; }
 
-    /// <summary>
-    /// State for the Export card. Populated by the controller alongside the
-    /// active-event branch; the empty-event short-circuit uses a default
-    /// instance with no departments so the partial can render safely.
-    /// </summary>
+    /// <summary>Defaults to no departments so the partial renders safely when there is no active event.</summary>
     public VolunteerTrackingExportFormViewModel ExportForm { get; init; } = new();
 
     public VolunteerTrackingPageViewModel() { }

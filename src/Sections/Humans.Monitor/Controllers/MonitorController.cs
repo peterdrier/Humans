@@ -8,10 +8,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Monitor.Controllers;
 
-/// <summary>
-/// Operator-facing monitoring of the Google Workspace estate through the on-demand
-/// Drive-activity anomaly scan.
-/// </summary>
 [Route("Monitor")]
 internal sealed class MonitorController(
     IUserService userService,

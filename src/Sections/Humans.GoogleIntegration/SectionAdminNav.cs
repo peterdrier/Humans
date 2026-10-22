@@ -3,9 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>
-/// GoogleIntegration's admin sidebar group, labelled "Google" (nobodies-collective/Humans#1077).
-/// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

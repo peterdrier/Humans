@@ -20,7 +20,6 @@
 
 <div class="row">
     <div class="col-md-8">
-        @* Image carousel *@
         @if (Model.ImageUrls.Count > 0)
         {
             if (Model.ImageUrls.Count == 1)
@@ -57,7 +56,6 @@
             }
         }
 
-        @* Camp name and badges *@
         <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
                 <h1 class="mb-1">@Model.Name</h1>
@@ -91,24 +89,18 @@
             </div>
         </div>
 
-        @* Season details *@
         @if (Model.CurrentSeason != null)
         {
             var season = Model.CurrentSeason;
 
             <partial name="_CampRosterCard" model="Model" />
 
-            @* Camp parts (today: Events' hosted-events card, logged-in users only) render through
-               the ICampPart seam — invoked by Type, not by name (nobodies-collective/Humans#1815).
-               ViewComponentSlotContractTests type-checks CampPartArgs.CampId against every
-               contributor's matching parameter, including an optional one; it is a fanout, so it
-               does not require every contributor to bind CampId. *@
+            @* Invoked by Type, not by name. A fanout: not every contributor must bind CampId. *@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <vc:camp-parts camp-id="@Model.Id" />
             }
 
-            @* Blurb *@
             <div class="card mb-4">
                 <div class="card-header">
                     <i class="fa-solid fa-pen-fancy me-1"></i> @SharedLocalizer["Nav_About"]
@@ -118,7 +110,6 @@
                 </div>
             </div>
 
-            @* Community info *@
             <div class="card mb-4">
                 <div class="card-header">
                     <i class="fa-solid fa-users me-1"></i> @Localizer["Camps_CommunityHeading"]
@@ -157,7 +148,6 @@
                 </div>
             </div>
 
-            @* Vibes *@
             @if (season.Vibes.Count > 0)
             {
                 <div class="card mb-4">
@@ -175,7 +165,6 @@
                 </div>
             }
 
-            @* Performance & Culture *@
             @if (season.HasPerformanceSpace != PerformanceSpaceStatus.No || !string.IsNullOrEmpty(season.PerformanceTypes))
             {
                 <div class="card mb-4">
@@ -196,7 +185,6 @@
                 </div>
             }
 
-            @* Placement data (visible to leads, CampAdmins, and city planning team) *@
             @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin || isCityPlanningMember)
             {
                 var placementState = ViewBag.PlacementState as Humans.CityPlanning.Contracts.BarrioPlacementState?
@@ -275,7 +263,6 @@
     </div>
 
     <div class="col-md-4">
-        @* Links & Contact *@
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-link me-1"></i> @Localizer["Camps_Links_Header"]
@@ -308,21 +295,10 @@
                        class="btn btn-outline-primary w-100">
                         <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camps_ContactLoginHint"]
                     </a>
-                    @* Only name the events and membership cards when the authenticated branch would
-                       actually render them, read off the camp rather than the viewer: Model.Membership
-                       is resolved per-user and is always NoOpenSeason on this branch, which is
-                       anonymous by construction, so testing it here would leave the claim permanently
-                       unspoken. The viewer-independent form of the gate is a displayed season that is
-                       Active or Full *for the public year* — that makes GetMembershipState find an
-                       open season so the membership card renders, and it matches the season
-                       CampService.RequestCampMembership accepts, so the join actually goes through.
-                       Dropping the year would let a fallback season (Details serves the latest one
-                       when the camp has not renewed) or an older season page promise a join that the
-                       mutation rejects. The events half of the copy is deliberately hedged ("any
-                       events it's hosting") rather than gated: EventsCardViewComponent auto-hides
-                       when Features:Events is off or the camp has no approved events, and querying
-                       Events from here to firm up one subtitle is not worth the cross-section read.
-                       Anything else falls back to the privacy line and promises nothing. *@
+                    @* Gate on the camp, not the viewer: Model.Membership is always NoOpenSeason on this anonymous
+                       branch. An Active or Full season *for the public year* is what renders the membership card
+                       and what RequestCampMembership accepts; dropping the year would promise a join the mutation
+                       rejects. The events half is hedged rather than gated, to avoid a cross-section read. *@
                     var loginShowsMore =
                         Model.CurrentSeason is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full }
                         && Model.CurrentSeason.Year == Model.PublicYear;
@@ -335,7 +311,6 @@
             </div>
         </div>
 
-        @* Times participating *@
         @if (Model.TimesAtNowhere > 0)
         {
             <div class="card mb-4">
@@ -346,7 +321,6 @@
             </div>
         }
 
-        @* Roles (sourced from CampRoleAssignment) *@
         <partial name="_CampRolesCard" model="Model" />
 
         @* My membership (authenticated only — never shown to anonymous visitors) *@
@@ -422,7 +396,6 @@
             </div>
         }
 
-        @* Actions *@
         @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
         {
             <div class="card mb-4">

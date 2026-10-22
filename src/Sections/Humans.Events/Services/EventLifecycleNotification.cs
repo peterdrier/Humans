@@ -3,14 +3,8 @@ using Humans.Events.Contracts;
 namespace Humans.Events.Services;
 
 /// <summary>
-/// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
-/// the template: <see cref="EventStatus.Pending"/> = submission received,
-/// <see cref="EventStatus.Approved"/> = approved, <see cref="EventStatus.Rejected"/>
-/// = rejected (requires <see cref="Reason"/> and <see cref="ActionUrl"/> for the
-/// edit link), <see cref="EventStatus.ResubmitRequested"/> = changes requested
-/// (also requires <see cref="Reason"/> and <see cref="ActionUrl"/>).
-/// Internal to Events: only <see cref="EventService"/> builds one and only
-/// <see cref="EventsEmails"/> reads it (peterdrier/Humans#1651).
+/// <see cref="NewStatus"/> picks the template. Rejected and ResubmitRequested also need <see cref="Reason"/> and
+/// <see cref="ActionUrl"/> (the edit link).
 /// </summary>
 internal sealed record EventLifecycleNotification(
     EventStatus NewStatus,

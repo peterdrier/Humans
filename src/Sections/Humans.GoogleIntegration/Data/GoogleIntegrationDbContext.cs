@@ -5,23 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.GoogleIntegration.Data;
 
-/// <summary>
-/// Per-section database context for the GoogleIntegration section: maps only <c>google_resources</c>,
-/// <c>google_sync_outbox</c>, <c>sync_service_settings</c>,
-/// <c>google_sync_log</c> and <c>google_workspace_identities</c>, with its own
-/// <c>__EFMigrationsHistory_GoogleIntegration</c> table and migrations under
-/// <c>Migrations/GoogleIntegration/</c>. Same database, same connection — the
-/// split is a code-side partition of the EF model.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context: repositories
-/// are the only consumers. Configurations are applied explicitly (not by
-/// assembly scanning) so this model can never accrete another section's tables.
-/// The team a resource is provisioned for is a bare Guid, so the Teams tables
-/// stay in <c>TeamsDbContext</c> and are deliberately absent here.
-/// <c>SyncServiceSettings</c> carries a model-level <c>HasData</c> singleton, so
-/// the generated baseline re-emits the seed the old chain inserted.
-/// </remarks>
 internal sealed class GoogleIntegrationDbContext(DbContextOptions<GoogleIntegrationDbContext> options)
     : DbContext(options)
 {

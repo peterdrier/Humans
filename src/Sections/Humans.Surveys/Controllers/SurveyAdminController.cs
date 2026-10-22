@@ -16,13 +16,9 @@ using Humans.Users.Contracts;
 namespace Humans.Surveys.Controllers;
 
 /// <summary>
-/// Survey authoring: any signed-in Human with an approved profile may create and edit a Draft
-/// survey they own, and submit it for approval; Board/Admin additionally get the index of every
-/// survey, the approval queue, open/close, preview and send. Results and CSV/JSON export are
-/// not Board-only: the author reads their own survey's results once it closes.
-/// Author-scoped visibility and per-survey ownership are enforced via <see cref="SurveyAuthorizationHandler"/>
-/// (design-rules §11) — never by filtering in the view. Controllers parse → call the service →
-/// format; sorting and VM↔DTO mapping live here (hard rule).
+/// Any Human with an approved profile may author their own Draft and submit it; Board/Admin get the rest. The author
+/// reads their own survey's results once it closes. Ownership is enforced by <see cref="SurveyAuthorizationHandler"/>,
+/// never by filtering in the view.
 /// </summary>
 [Authorize(Policy = PolicyNames.AppAccess)]
 [Route("Survey/Admin")]
@@ -36,7 +32,6 @@ internal sealed class SurveyAdminController(
 {
     private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    /// <summary>The acting user plus the one role bit the service's own ownership checks need.</summary>
     private SurveyViewer CurrentViewer(Guid actorId) => new(actorId, RoleChecks.IsAdminOrBoard(User));
 
     [HttpGet("")]
@@ -397,8 +392,8 @@ internal sealed class SurveyAdminController(
             return View("Builder", model);
         }
 
-        // The save is committed at this point — a translation failure must not re-render the
-        // builder as unsaved (a re-submit would double-create), so it reports and redirects.
+        // The save is already committed: a translation failure must not re-render the builder as unsaved (a re-submit
+        // would double-create), so it reports and redirects.
         if (string.Equals(submitAction, "save-translate", StringComparison.Ordinal))
         {
             await ReportTranslationPassAsync(id, CurrentViewer(actorId.Value), ct);
@@ -416,7 +411,6 @@ internal sealed class SurveyAdminController(
             : RedirectToAction(nameof(Edit), new { id });
     }
 
-    /// <summary>The two audience shapes that need a companion field before the survey can be saved.</summary>
     private void ValidateAudience(SurveyBuilderViewModel model)
     {
         if (model.AudienceType == SurveyAudienceType.Team && model.AudienceTeamId is null)
@@ -432,10 +426,7 @@ internal sealed class SurveyAdminController(
         }
     }
 
-    /// <summary>
-    /// Runs the pre-fill pass and reports it. The save is already committed when this runs, so a
-    /// translation failure reports and lets the caller redirect rather than re-rendering the builder.
-    /// </summary>
+    /// <summary>Runs after the save commits, so a failure reports and lets the caller redirect.</summary>
     private async Task ReportTranslationPassAsync(Guid id, SurveyViewer viewer, CancellationToken ct)
     {
         try
@@ -604,8 +595,8 @@ internal sealed class SurveyAdminController(
     }
 
     /// <summary>
-    /// Shared results/export gate: Board/Admin see every survey; the author sees only their own
-    /// after it closes (design §11). Returns the 404/403 result to short-circuit on, or null to proceed.
+    /// Board/Admin see every survey; the author only their own after it closes. Returns the 404/403 to short-circuit
+    /// on, or null to proceed.
     /// </summary>
     private async Task<IActionResult?> AuthorizeViewResultsAsync(Guid id, CancellationToken ct)
     {

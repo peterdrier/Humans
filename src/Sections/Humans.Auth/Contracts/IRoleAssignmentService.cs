@@ -3,7 +3,6 @@ using NodaTime;
 
 namespace Humans.Auth.Contracts;
 
-/// <summary>Public read contract of the Auth section: role-assignment projections and checks consumed outside Auth. Writes live on <see cref="IRoleAssignmentWrite"/>.</summary>
 public interface IRoleAssignmentService : IApplicationService
 {
     Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
@@ -14,50 +13,23 @@ public interface IRoleAssignmentService : IApplicationService
 
     Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>True if the user has an active Admin assignment.</summary>
     Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>True if the user has an active Board assignment.</summary>
     Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>True if the user has an active TeamsAdmin assignment.</summary>
     Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// True if the user has an active assignment for the specified role.
-    /// </summary>
     Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns true if the user has any active role assignment (regardless of role name).
-    /// Used by the membership calculator to distinguish governance members from
-    /// plain volunteers.
-    /// </summary>
+    /// <summary>Any role at all: tells governance members from plain volunteers.</summary>
     Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the distinct set of user IDs that have at least one active
-    /// role assignment at the current instant. Used by batch jobs
-    /// (e.g., membership status reconciliation) that need to enumerate every
-    /// governance-active user without reading the role assignments table
-    /// themselves.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the user ids of every human with an active assignment for the
-    /// given role. Read-only. Used by cross-section composers that need to
-    /// enumerate Board members, Coordinators, etc. without touching the
-    /// <c>role_assignments</c> table directly — including notification
-    /// dispatch for role-targeted sends.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);
 
-    /// <summary>
-    /// All assignments active now (ValidFrom &lt;= now, ValidTo null or later).
-    /// Served from the row cache.
-    /// </summary>
+    /// <summary>Active means ValidFrom &lt;= now &lt; ValidTo, with a null ValidTo open-ended. Served from the row cache.</summary>
     Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
 }
 

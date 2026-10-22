@@ -8,11 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Cantina;
 
-/// <summary>
-/// Cantina's entry on the member dashboard's things-to-do list: the dietary nudge, shown while the
-/// member has neither a preference on file nor chose "I don't want to answer".
-/// Spec: Docs/features/dietary-nudge.md (US-35.1).
-/// </summary>
+/// <summary>Shown while the member has neither a preference nor chose "I don't want to answer".</summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(IServiceProvider services, ClaimsPrincipal user)
@@ -24,7 +20,6 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         if (profile is { HasPreference: true } or { DeclinedToAnswer: true })
             return [];
 
-        // Copy varies by whether a qualifying shift already needs feeding; the entry is the same either way.
         // A failure here is logged by ThingsToDoViewComponent, which drops this contributor's entries.
         var hasQualifyingSignup = await services.GetRequiredService<IShiftService>()
             .HasQualifyingCantinaSignupAsync(userId);

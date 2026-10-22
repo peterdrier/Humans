@@ -650,12 +650,9 @@ public sealed class EventServiceTests
     private Guid StubSubmitterWithEmail(string email, string burnerName, string language = "en")
     {
         var userId = Guid.NewGuid();
-        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (nobodies-collective/Humans#1097) —
-        // UserInfo.BurnerName reads User.BurnerName only (nobodies-collective/Humans#1098).
+        // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
         var user = new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            // UserInfoStubHelpers.ToUserInfo lives in Humans.Application.Tests and is not
-            // visible across the section boundary; UserInfo.Create is the public builder.
             .Returns(UserInfo.Create(
                 user,
                 [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email, IsVerified = true, IsPrimary = true }],
@@ -1331,8 +1328,7 @@ public sealed class EventServiceTests
     public async Task BulkImportAsync_EditedDraftRow_SubmitsViaUpdatePath_NoDuplicateInsert()
     {
         OpenSubmissionWindow();
-        // Regression: the Draft branch previously called SubmitEventAsync (INSERT)
-        // on an already-persisted entity, which throws a duplicate-key error.
+        // The Draft branch must update an already-persisted entity, not INSERT it (duplicate key).
         var campId = Guid.NewGuid();
         var cat = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
         _repo.Categories.Add(cat);

@@ -13,33 +13,18 @@ namespace Humans.Analyzers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Rule: <c>memory/architecture/cancellation-token-propagation.md</c>. A
-/// request-scoped token (<c>HttpContext.RequestAborted</c>, or the action's own
-/// <c>CancellationToken</c> parameter, which the framework binds to the same
-/// thing) fires when the user closes the tab or navigates away. Handing it to an
-/// outbound call that mutates a third-party system means an impatient admin can
-/// tear a vendor write in half — the incident behind
-/// nobodies-collective/Humans#950 was a Google Workspace reconcile abandoned
-/// partway through applying group memberships and Drive permissions.
+/// A request-scoped token (<c>HttpContext.RequestAborted</c>, or the action's own <c>CancellationToken</c>) fires
+/// when the user closes the tab, so handing it to a vendor mutation lets an impatient admin tear the write in half: a
+/// Google Workspace reconcile was once abandoned partway through applying memberships and permissions.
 /// </para>
 /// <para>
-/// <b>Why the rule is shaped this way.</b> The obvious formulation — "a
-/// request-scoped token must never reach an external-write client" — is not
-/// decidable by a Roslyn analyzer: the taint crosses assemblies (Web →
-/// Application interface → Infrastructure client) and Web's compilation only
-/// sees the interface symbol, never the implementation that eventually calls
-/// Google. So the check is made local on both ends: <c>[ExternalWrite]</c>
-/// carries the "this reaches a remote mutation" fact across the assembly
-/// boundary in metadata, and the HTTP verb of the enclosing action carries the
-/// "this request is state-changing" fact. A <c>[HttpGet]</c> action is exempt by
-/// design — read-only outbound fetches are the case where honouring the token is
-/// correct.
+/// "A request-scoped token never reaches an external-write client" is not decidable by an analyzer: the taint crosses
+/// assemblies. So both ends are local: <c>[ExternalWrite]</c> carries "this reaches a remote mutation" in metadata,
+/// and the action's HTTP verb carries "this request changes state". A <c>[HttpGet]</c> action is exempt by design.
 /// </para>
 /// <para>
-/// <b>Known limits</b> (deliberate — under-detection is preferable to noise):
-/// only direct call sites inside an action body are checked, so a token laundered
-/// through a private controller helper is missed; and a method nobody has marked
-/// <c>[ExternalWrite]</c> is not checked at all.
+/// Known limits, deliberate since under-detection beats noise: only direct calls in an action body are checked, so a
+/// token laundered through a private helper is missed, and an unmarked method is not checked at all.
 /// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -48,11 +33,8 @@ public sealed class RequestScopedCancellationOnExternalWriteAnalyzer : Diagnosti
     public const string DiagnosticId = "HUM0033";
 
     /// <summary>
-    /// Derived from the attribute class (linked into this project by
-    /// <c>Humans.Analyzers.csproj</c>) rather than spelled as a literal: an
-    /// unresolved lookup makes <see cref="OnCompilationStart"/> register
-    /// nothing, so a stale literal would retire HUM0033 silently.
-    /// See nobodies-collective/Humans#1057.
+    /// Derived from the attribute class, never a literal: an unresolved lookup registers nothing, so a stale literal
+    /// would retire HUM0033 silently.
     /// </summary>
     public static readonly string ExternalWriteAttributeFullName =
         typeof(ExternalWriteAttribute).FullName!;

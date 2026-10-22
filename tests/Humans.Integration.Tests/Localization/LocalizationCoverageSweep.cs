@@ -15,19 +15,16 @@ namespace Humans.Integration.Tests.Localization;
 ///   <item>Public pages (anonymous / <c>AppAccess</c>): unbracketed prose = hard-coded string that should be localized.</item>
 ///   <item>Admin/role-gated pages: bracketed text = a string that should have stayed English-only.</item>
 /// </list>
-/// The first run is report-only (it never fails on findings) — it writes
-/// <c>localization-sweep-report.md</c> at the repo root and echoes it to test output. How
-/// aggressively (if at all) it should gate is decided after we read that first report; the
-/// intended cadence is a bi-weekly maintenance sweep, not a per-build blocker.
+/// Report-only: it never fails on findings, but writes <c>localization-sweep-report.md</c> at the repo root and echoes
+/// it to test output. It's a maintenance sweep, not a per-build blocker.
 /// </summary>
 public sealed class LocalizationCoverageSweep(
     HumansTestDatabase database,
     ITestOutputHelper output)
 {
     /// <summary>
-    /// Gates the sweep out of normal CI runs (it boots a second app host and crawls every
-    /// page, ~20s). Set <c>RUN_LOCALIZATION_SWEEP=1</c> (plus the project's own opt-in,
-    /// <c>HUMANS_INTEGRATION_TESTS=1</c>) to run it — e.g. from the bi-weekly maintenance job. How (and whether) it should gate on findings is decided separately.
+    /// Off in normal runs: it boots a second app host and crawls every page. Set <c>RUN_LOCALIZATION_SWEEP=1</c> on top
+    /// of the project's own opt-in to run it.
     /// </summary>
     public static bool SweepEnabled =>
         string.Equals(Environment.GetEnvironmentVariable("RUN_LOCALIZATION_SWEEP"), "1", StringComparison.Ordinal);
@@ -38,8 +35,7 @@ public sealed class LocalizationCoverageSweep(
         SkipUnless = nameof(SweepEnabled))]
     public async Task Public_pages_are_localized_and_admin_pages_are_not()
     {
-        // Built here rather than injected as a fixture: the sweep is skipped on
-        // normal runs, and a fixture would pay for the second app boot anyway.
+        // Built here, not injected as a fixture, which would pay for the second boot on runs that skip the sweep.
         var connectionString = await database.CloneTemplateAsync(
             "pseudo_localization", TestContext.Current.CancellationToken);
         await using var factory = new PseudoLocalizationWebApplicationFactory(connectionString);
@@ -234,8 +230,7 @@ internal static class SweepReport
         return path;
     }
 
-    // Cheap first-pass classifier so the public-page findings separate obvious dynamic data
-    // (emails, seeded persona tokens) from real hard-coded literals; refined after the first run.
+    // Separates obvious dynamic data (emails, seeded persona tokens) from real hard-coded literals.
     private static bool IsLikelyDynamic(string run)
     {
         var value = run.Trim();

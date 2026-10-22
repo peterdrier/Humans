@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// Castle DynamicProxy, behind NSubstitute in Humans.Tickets.Tests, needs to see the
-// internal ITicketManagement / ITicketRepository and friends to proxy them.
+// NSubstitute's proxy generator needs the internal interfaces to mock them.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

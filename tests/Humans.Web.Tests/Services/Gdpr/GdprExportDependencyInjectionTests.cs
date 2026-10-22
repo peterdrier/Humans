@@ -8,30 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Web.Tests.Services.Gdpr;
 
 /// <summary>
-/// Architecture tests for GDPR-export contributor wiring. These prevent the
-/// silent-omission bug the whole refactor exists to eliminate: when a new
-/// user-scoped section is added and its owning service forgets to register
-/// its <see cref="IUserDataContributor"/> implementation in DI, the export
-/// would drop that category without warning. These tests fail loudly
-/// instead.
-///
-/// <para>
-/// The contributor roster is derived entirely from reflection over the
-/// section assemblies the runtime composes itself from — never a pinned
-/// type list — so a spoke that implements the interface is automatically
-/// in scope and a spoke that moves or renames cannot silently drop out.
-/// </para>
+/// A contributor missing from DI would silently drop its category from the export. The roster comes from reflection,
+/// never a pinned list, so a new contributor is in scope the moment it implements the interface.
 /// </summary>
 public class GdprExportDependencyInjectionTests
 {
-    /// <summary>
-    /// Every <see cref="IUserDataContributor"/> implementation found by reflection
-    /// over the section assemblies the runtime composes itself from, plus the host
-    /// assembly (residue that hasn't moved into a section project). This is the
-    /// ground truth the tests below check DI registration against — no section is
-    /// named here, so a new contributor joins the roster the moment it implements
-    /// the interface.
-    /// </summary>
     private static Type[] DiscoverContributorTypes()
     {
         var hostAssembly = typeof(Extensions.InfrastructureServiceCollectionExtensions).Assembly;
@@ -50,8 +31,6 @@ public class GdprExportDependencyInjectionTests
     [HumansFact]
     public void ContributorsAreDiscoverable()
     {
-        // Guards the rest of the class against passing vacuously if section
-        // discovery ever returns nothing.
         DiscoverContributorTypes().Should().NotBeEmpty(
             "GDPR export DI coverage is enforced by reflecting over the composed section assemblies");
     }
@@ -59,10 +38,7 @@ public class GdprExportDependencyInjectionTests
     [HumansFact]
     public void EveryDiscoveredContributorIsRegisteredInInfrastructure()
     {
-        // Walk the real InfrastructureServiceCollectionExtensions registrations
-        // and verify each discovered contributor appears as an IUserDataContributor
-        // forwarding factory. We read the collection's ServiceDescriptors directly
-        // so the test doesn't need a live DbContext, Postgres, or config.
+        // Reads the ServiceDescriptors directly, so no DbContext, Postgres or config is needed.
         var expectedContributorTypes = DiscoverContributorTypes();
 
         var services = new ServiceCollection();
@@ -80,11 +56,8 @@ public class GdprExportDependencyInjectionTests
         contributorDescriptors.Should().HaveCount(expectedContributorTypes.Length,
             "every discovered contributor must have exactly one IUserDataContributor registration");
 
-        // Each IUserDataContributor registration is a factory that forwards to
-        // the concrete section service. We can't introspect the factory body,
-        // but we CAN verify that for every discovered contributor type, its
-        // concrete-type registration exists AND exactly one IUserDataContributor
-        // factory is wired alongside it.
+        // The forwarding factory body can't be inspected, so check each concrete registration has exactly one
+        // IUserDataContributor factory beside it.
         foreach (var expected in expectedContributorTypes)
         {
             services.Should().ContainSingle(d => d.ServiceType == expected,
@@ -109,14 +82,8 @@ public class GdprExportDependencyInjectionTests
     [HumansFact]
     public void EveryIUserDataContributorFactoryForwardsToADistinctDiscoveredConcreteType()
     {
-        // This is the "prevent silent drop" assertion. Counting descriptors
-        // alone doesn't catch the bug where one contributor's factory is
-        // duplicated and another is omitted — count still matches. Here we
-        // actually invoke the real forwarding factories via a test
-        // ServiceProvider whose concrete-type registrations are replaced with
-        // `GetUninitializedObject` fakes. Each factory resolves its target
-        // concrete type, and the set of resolved types must exactly match the
-        // discovered roster.
+        // Counting descriptors misses one factory duplicated and another omitted, so invoke the real factories against
+        // uninitialized fakes and compare the resolved types with the roster.
         var expectedContributorTypes = DiscoverContributorTypes();
 
         var services = new ServiceCollection();
@@ -127,10 +94,7 @@ public class GdprExportDependencyInjectionTests
                 config,
                 new StubHostEnvironment());
 
-        // Replace every contributor's concrete-type registration with a fake
-        // instance of that same type. GetUninitializedObject skips the
-        // constructor, so we never touch DbContext, IClock, or any of the
-        // other runtime dependencies.
+        // GetUninitializedObject skips the constructor, so no runtime dependency is touched.
         foreach (var type in expectedContributorTypes)
         {
             var existing = services.FirstOrDefault(d =>

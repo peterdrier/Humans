@@ -20,10 +20,6 @@ using NSubstitute;
 
 namespace Humans.Users.Tests.Services;
 
-/// <summary>
-/// The single deletion entry point. Verifies cascade order and side effects
-/// of the three deletion paths: user-requested, admin-initiated, expiry.
-/// </summary>
 public class AccountDeletionServiceTests
 {
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
@@ -61,10 +57,6 @@ public class AccountDeletionServiceTests
             _environment,
             NullLogger<AccountDeletionService>.Instance);
     }
-
-    // ==========================================================================
-    // RequestDeletionAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task RequestDeletionAsync_UnknownUser_ReturnsNotFound()
@@ -202,10 +194,6 @@ public class AccountDeletionServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // CancelDeletionAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task CancelDeletionAsync_PendingDeletion_ClearsViaUserService()
     {
@@ -245,10 +233,6 @@ public class AccountDeletionServiceTests
         result.ErrorKey.Should().Be("NotFound");
         await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // PurgeAsync (admin-initiated)
-    // ==========================================================================
 
     [HumansFact]
     public async Task PurgeAsync_UnknownUser_ReturnsNotFound()
@@ -393,10 +377,6 @@ public class AccountDeletionServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // ==========================================================================
-    // AnonymizeExpiredAccountAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task AnonymizeExpiredAccountAsync_UnknownUser_ReturnsNull()
     {
@@ -436,8 +416,7 @@ public class AccountDeletionServiceTests
     {
         // A failing erasure must abort the run: the Account contributor (inside Gdpr) never
         // clears DeletionScheduledFor, so tomorrow's job retries the whole fan-out. The
-        // post-erasure cross-section cache invalidations must not run either. Contributor
-        // ordering and per-section semantics are Gdpr's concern (GdprServiceTests).
+        // post-erasure cross-section cache invalidations must not run either.
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
         _gdprService.When(x => x.EraseForUserAsync(userId, Arg.Any<CancellationToken>()))
@@ -471,10 +450,6 @@ public class AccountDeletionServiceTests
         await _userInfoRefresher.Received(1).RefreshAsync(
             archived, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private static UserInfo MakeUser(
         Guid userId,

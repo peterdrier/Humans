@@ -14,11 +14,6 @@ using NSubstitute;
 
 namespace Humans.Users.Tests.Contributions;
 
-/// <summary>
-/// Covers the optional medical-conditions prompt in Users' <see cref="SectionThingsToDo"/>: shown
-/// while Cantina's dietary nudge is open and no medical conditions are on file (Users
-/// decomposition commit 10). The dietary nudge itself is Cantina's (DietaryProfileTests).
-/// </summary>
 public class ThingsToDoMedicalPromptTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();

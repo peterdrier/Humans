@@ -5,9 +5,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Domain;
 
 /// <summary>
-/// A request to merge two user accounts.
-/// Created when a user verifies an email that belongs to another account.
-/// The source account's data is migrated to the target account on acceptance.
+/// Raised when a user verifies an email that belongs to another account; acceptance moves the
+/// source account's data to the target.
 /// </summary>
 internal sealed class AccountMergeRequest
 {
@@ -23,10 +22,7 @@ internal sealed class AccountMergeRequest
 
     public string Email { get; init; } = string.Empty;
 
-    /// <summary>
-    /// The pending (unverified) email record on the target user's account.
-    /// Will be verified and kept on acceptance, or removed on rejection.
-    /// </summary>
+    /// <summary>The target's unverified email row: verified on acceptance, removed on rejection.</summary>
     public Guid PendingEmailId { get; init; }
 
     public AccountMergeRequestStatus Status { get; set; }

@@ -5,32 +5,15 @@ using Humans.Users.Contracts;
 namespace Humans.MailerLite.Services;
 
 /// <summary>
-/// GDPR fan-out contributor for a section that owns no user-scoped tables (design-rules
-/// §8a) but does hold per-person state in a third-party system: MailerLite subscriber
-/// membership. Article 15 export contributes nothing — the subscriber list mirrors state
-/// already exported by the sections that generate it (marketing opt-in lives on
-/// Email's communication preferences), not new personal data — so
-/// <see cref="ContributeForUserAsync"/> always returns an empty list. Article 17 erasure
-/// deletes the person's MailerLite subscriber outright (nobodies-collective/Humans#853).
-///
-/// <para>
-/// Separate class rather than adding this role to <see cref="MailerLite.MailerLiteClient"/>: that
-/// class is a Singleton (it holds its own subscriber/group cache), so its
-/// dependencies must all be Singleton-safe, and resolving a user's email needs the Scoped
-/// <see cref="IUserEmailService"/>.
-/// </para>
+/// Export contributes nothing: subscriber state mirrors what other sections already export. Erasure deletes the
+/// subscriber. A separate class because <c>MailerLiteClient</c> is a Singleton and resolving emails needs the
+/// Scoped <see cref="IUserEmailService"/>.
 /// </summary>
 internal sealed class MailerLiteGdprContributor(
     IMailerLiteService mailerLiteService,
     IUserEmailService userEmailService) : IApplicationService, IUserDataContributor
 {
-    /// <summary>
-    /// Erasure-only: MailerLite owns no user-scoped tables, so
-    /// <see cref="ContributeForUserAsync"/> never emits this key and it never appears in an
-    /// export. It exists so the section's Article 17 erasure account (deleting the person's
-    /// MailerLite subscriber, nobodies-collective/Humans#853) has a key to declare —
-    /// required by <c>GdprErasureCoverageTests</c>.
-    /// </summary>
+    /// <summary>Erasure only, so the section has a key to declare; never appears in an export.</summary>
     internal const string MailerLiteSubscriber = "MailerLiteSubscriber";
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
@@ -45,18 +28,9 @@ internal sealed class MailerLiteGdprContributor(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>
-    /// Deletes the subscriber under <em>every</em> address the human owns, not just the
-    /// current notification target. A subscriber routinely sits under a non-primary verified
-    /// address — the "Frank pattern" the audience debug screen exists to explain
-    /// (<c>Docs/features/audience-debug-screen.md</c>) — and erasing only the primary would
-    /// leave that subscriber and its group memberships at the processor after the local
-    /// <c>user_emails</c> rows are gone, with nothing left to find it by.
-    ///
-    /// <para>
-    /// The primary is included explicitly rather than assumed to be in the verified set, and
-    /// each delete is independently idempotent (an absent subscriber is a 404, which the
-    /// client treats as success), so the whole method stays safe to retry.
-    /// </para>
+    /// Every address the member owns, not just the primary: a subscriber often sits under a non-primary verified
+    /// address, and once the local email rows are gone nothing could find it. A 404 counts as success, so a retry
+    /// is safe.
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {

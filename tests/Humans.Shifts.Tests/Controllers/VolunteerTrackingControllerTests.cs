@@ -30,19 +30,8 @@ using Humans.Users.Services;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
-/// Verifies <see cref="VolunteerTrackingController"/> wiring:
-/// authorization attributes (read = ShiftDashboardAccess, write =
-/// VolunteerTrackingWrite), Index sort/filter/empty-event behavior,
-/// and the write actions (SetCampSetup / ClearCampSetup / SetDayOff /
-/// ClearDayOff / SetAvailabilityDay / ClearAvailabilityDay): success
-/// → 302 + audit, validation failures → no audit, service rejection
-/// → error TempData, and returnUrl honored when local.
-///
-/// This is a unit-test project (no Testcontainers/WebApplicationFactory),
-/// so policy enforcement is verified by reflection on the
-/// <c>[Authorize(Policy = …)]</c> attributes — the policies themselves are
-/// covered by separate authorization tests under
-/// <c>tests/Humans.Web.Tests/Authorization/</c>.
+/// A unit-test project, so policy enforcement is checked by reflecting on the
+/// <c>[Authorize(Policy = …)]</c> attributes; the policies have their own tests.
 /// </summary>
 public class VolunteerTrackingControllerTests
 {
@@ -119,13 +108,6 @@ public class VolunteerTrackingControllerTests
         return ctrl;
     }
 
-    // ---------------------------------------------------------------------
-    // Authorization — class-level read policy + per-action write policies.
-    // The integration story (anonymous redirect / role-rejected 403 / VC 200)
-    // is enforced by ASP.NET's policy pipeline; here we verify the wiring
-    // is in place so the framework will enforce it.
-    // ---------------------------------------------------------------------
-
     [HumansFact]
     public void Class_RequiresShiftDashboardAccess_Policy()
     {
@@ -164,10 +146,6 @@ public class VolunteerTrackingControllerTests
         attr.Should().NotBeNull($"{actionName} must validate the anti-forgery token");
     }
 
-    // ---------------------------------------------------------------------
-    // Index — empty-event short-circuit.
-    // ---------------------------------------------------------------------
-
     [HumansFact]
     public async Task Index_NoActiveEvent_RendersEmptyViewModel()
     {
@@ -190,10 +168,6 @@ public class VolunteerTrackingControllerTests
         model.MainCohort.Should().BeEmpty();
         model.UnbookedCohort.Should().BeEmpty();
     }
-
-    // ---------------------------------------------------------------------
-    // Index — sorting in the controller (display-sort-in-controllers rule).
-    // ---------------------------------------------------------------------
 
     [HumansFact]
     public async Task Index_MainCohort_SortedByGapsThenLastSignupThenName()
@@ -306,10 +280,6 @@ public class VolunteerTrackingControllerTests
         model.HideUnbookedSection.Should().BeTrue();
     }
 
-    // ---------------------------------------------------------------------
-    // SetCampSetup
-    // ---------------------------------------------------------------------
-
     [HumansFact]
     public async Task SetCampSetup_ValidForm_RedirectsAndSetsSuccessTempData()
     {
@@ -409,10 +379,6 @@ public class VolunteerTrackingControllerTests
         Assert.IsType<ForbidResult>(result);
     }
 
-    // ---------------------------------------------------------------------
-    // ClearCampSetup
-    // ---------------------------------------------------------------------
-
     [HumansFact]
     public async Task ClearCampSetup_HappyPath_CallsServiceAndRedirects()
     {
@@ -442,10 +408,6 @@ public class VolunteerTrackingControllerTests
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Shifts_VolTrack_Err_BadRequest");
     }
-
-    // ---------------------------------------------------------------------
-    // SetDayOff / ClearDayOff
-    // ---------------------------------------------------------------------
 
     [HumansFact]
     public async Task SetDayOff_HappyPath_RedirectsWithSuccess()
@@ -514,10 +476,6 @@ public class VolunteerTrackingControllerTests
 
         Assert.IsType<RedirectToActionResult>(result);
     }
-
-    // ---------------------------------------------------------------------
-    // SetAvailabilityDay / ClearAvailabilityDay
-    // ---------------------------------------------------------------------
 
     [HumansFact]
     public void SetAvailabilityDay_Requires_VolunteerTrackingWrite_Policy()

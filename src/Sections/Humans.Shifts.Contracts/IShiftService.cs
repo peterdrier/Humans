@@ -6,55 +6,32 @@ using Humans.Base.Interfaces;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// Public contract for the Shifts section. Carved from the call
-/// sites, not from the interface: these are the members of the section's
-/// internal <c>IShiftManagement</c> that something outside the section
-/// actually calls. The rota/shift generation surface, the coordinator
-/// dashboard's aggregate reads and the post-event stats have no
-/// external caller and stay internal.
+/// The members of the internal <c>IShiftManagement</c> that other sections call. Volunteer shift profiles are on
+/// <see cref="IShiftVolunteerProfiles"/> (they carry writes); dev-fixture verbs on <see cref="IShiftSeeding"/>.
 /// </summary>
-/// <remarks>
-/// The volunteer
-/// shift-profile cluster is <see cref="IShiftVolunteerProfiles"/> (it carries
-/// writes and would make this name a lie); the dev-fixture verbs are
-/// <see cref="IShiftSeeding"/>.
-/// </remarks>
 public interface IShiftService : IApplicationService
 {
-    /// <summary>
-    /// Whether the user is a department coordinator for the given team
-    /// (has a management role on a parent team).
-    /// </summary>
+    /// <summary>Holds a management role on the team's parent.</summary>
     Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
-    /// </summary>
+    /// <summary>Departments and sub-teams the user coordinates or manages.</summary>
     Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Volunteer-visible rotas in the active event whose <c>Name</c>
-    /// contains <paramref name="query"/> (case-insensitive), each scored by
-    /// name-match strength. Capped at <paramref name="max"/>; returned in
-    /// unspecified order — the global search orchestrator ranks. Returns an
-    /// empty list when no event is active. Used by the global /Search page
-    /// (<c>SearchService</c>); every caller sees the public surface regardless
-    /// of role.
+    /// Volunteer-visible rotas in the active event, matched by name and scored, in no order: the search
+    /// orchestrator ranks. Every caller sees the public surface whatever their role.
     /// </summary>
     Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// One rota's header fields by id, or <c>null</c> when it does not exist.
-    /// Served from the per-rota cache; no visibility filter — the id came from
-    /// a filtered search and the destination page enforces access.
+    /// No visibility filter: the id came from a filtered search and the destination page enforces access.
     /// </summary>
     Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets shifts ranked by urgency score, excluding admin-only shifts and hidden rotas by default.
-    /// The role-protected operator dashboard opts into restricted shifts.
+    /// Excludes admin-only shifts and hidden rotas unless asked; the role-protected dashboard opts in.
     /// </summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
@@ -64,39 +41,26 @@ public interface IShiftService : IApplicationService
         BuildSubPeriod? subPeriod = null,
         bool includeRestricted = false);
 
-    /// <summary>
-    /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
-    /// </summary>
+    /// <summary>Includes full shifts.</summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets shifts summary aggregated across one or more teams. Returns null if no rotas.
-    /// </summary>
+    /// <summary>Null when the teams have no rotas.</summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
         Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets the number of distinct pending shift signups per team for the active event.
-    /// </summary>
+    /// <summary>Distinct pending signups per team, in the active event.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// True when the user has at least one Pending or Confirmed signup on a
-    /// future-or-current qualifying shift (see the shift qualifying-duration rule).
-    /// Used by the dashboard Things-to-do nudge for dietary/medical info.
-    /// Returns false when no active event settings exist (fail closed).
+    /// A Pending or Confirmed signup on a current or future shift long enough for cantina meals. Fails closed with
+    /// no active event.
     /// </summary>
     Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the distinct user ids of volunteers on-site for the given event
-    /// day — those with a Confirmed signup on a shift whose
-    /// day offset matches. Service-layer read for the Cantina
-    /// roster (feature #36) so it never reaches into the Shifts repository.
-    /// </summary>
+    /// <summary>Users with a Confirmed signup on a shift that day: the Cantina roster.</summary>
     Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
         Guid eventSettingsId,
         int dayOffset,
@@ -104,17 +68,9 @@ public interface IShiftService : IApplicationService
 }
 
 /// <summary>
-/// One rota that matched a global-search query. Returned by
-/// <see cref="IShiftService.SearchAsync"/>, already scored by this
-/// section — the orchestrator ranks by <see cref="Score"/> and passes
-/// <see cref="RotaId"/> to <c>&lt;vc:shifts-search-result&gt;</c>, which fetches
-/// the row's team name and link itself.
-/// Names-only matching: only <see cref="Name"/> is matched.
+/// Matched on <see cref="Name"/> only. <see cref="Name"/> is an alphabetical tiebreak for the orchestrator, never
+/// rendered: <c>&lt;vc:shifts-search-result&gt;</c> fetches the row's display itself from <see cref="RotaId"/>.
 /// </summary>
-/// <param name="RotaId">The matched rota; the key the row's view component is invoked with.</param>
-/// <param name="Name">Rota display name (the only matched field). Ordering only —
-/// the orchestrator uses it as an alphabetical tiebreak and never renders it.</param>
-/// <param name="Score">Name-match strength, per <c>StringSearchExtensions.NameMatchScore</c>.</param>
 public record RotaSearchHit(
     Guid RotaId,
     string Name,
@@ -136,9 +92,6 @@ public sealed record ShiftBrowseQuery(
     LocalDate? ToDate = null,
     ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None);
 
-/// <summary>
-/// Per-day staffing data for set-up/event/strike visualization.
-/// </summary>
 public record DailyStaffingData(
     int DayOffset,
     string DateLabel,
@@ -148,8 +101,7 @@ public record DailyStaffingData(
     string Period);
 
 /// <summary>
-/// Per-day staffing hours grouped by shift priority for volume visualization.
-/// Hours = shift duration × MaxVolunteers. All-day shifts count as 8h per slot.
+/// Hours are each shift's overlap with the day times its MaxVolunteers; an all-day shift counts its 10h window.
 /// </summary>
 public record DailyStaffingHours(
     int DayOffset,
@@ -165,9 +117,6 @@ public sealed record ShiftStaffingSnapshot(
     public static ShiftStaffingSnapshot Empty { get; } = new([], []);
 }
 
-/// <summary>
-/// Aggregated shift summary for a department.
-/// </summary>
 public record ShiftsSummaryData(
     int TotalSlots,
     int ConfirmedCount,

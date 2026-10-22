@@ -5,14 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// The implementation of <see cref="IEmailBodyComposer"/>. Owns the
-/// <see cref="EmailSettings.BaseUrl"/> and
-/// <see cref="IHostEnvironment.EnvironmentName"/> inputs so
-/// <c>OutboxEmailService</c> does not have to take them.
-/// Delegates the actual wrapping to
-/// <see cref="BrandedEmailTemplate"/> + <see cref="HtmlPlainTextConverter"/>.
-/// </summary>
 internal sealed class BrandedEmailBodyComposer(IOptions<EmailSettings> settings, IHostEnvironment hostEnvironment)
     : IEmailBodyComposer
 {

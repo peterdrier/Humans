@@ -13,35 +13,15 @@ public class ServiceBoundaryArchitectureTests
         "tests/Humans.Web.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt";
 
     /// <summary>
-    /// COVERAGE REDUCED (G5 lane 3b, nobodies-collective/Humans#866). These eight interfaces
-    /// are application service boundaries by name and would be marked, but cannot be.
+    /// Boundary interfaces on <c>Humans.Users.Contracts</c> that cannot carry their marker: Base references that leaf,
+    /// so it cannot reference the markers back without a cycle. The csproj carries the record.
     /// </summary>
     /// <remarks>
-    /// <c>IApplicationService</c> and <c>IOrchestrator</c> live in <c>Humans.Interfaces</c>
-    /// (Base). Base references <c>Humans.Users.Contracts</c> — <c>HumansControllerBase</c>
-    /// injects <c>IUserService</c> and <c>Humans.UI</c> names the <c>User</c> entity — so
-    /// that leaf must hold no reference back, or 4b-iii closes an assembly cycle when
-    /// <c>HumansControllerBase</c> moves into Base. Peter's ruling: the migration outranks the
-    /// marker. The markers were dropped; <c>Humans.Users.Contracts.csproj</c> carries the record.
-    ///
-    /// Listed by name rather than excluding the whole assembly ON PURPOSE: a NEW unmarked
-    /// I*Service on that leaf still fails this test. The exclusion covers exactly the interfaces
-    /// that lost a marker they used to carry, and nothing else. <c>INonCompliantMemberSuspension</c>
-    /// also lost <c>IOrchestrator</c> but is absent here because the name predicate below never
-    /// matched it.
-    ///
-    /// <c>IHumanLifecycleService</c> stays listed because this test inspects interfaces, but its
-    /// analyzer coverage is back: <c>HumanLifecycleService</c> carries <c>IOrchestrator</c> and
-    /// HUM0026/HUM0027 key on the implementing class.
-    ///
-    /// Exit condition: delete this list when the leaf can name the markers again — either
-    /// because Base stops referencing it, or because the markers move somewhere it may
-    /// reference. Re-add the inheritance in the same commit.
+    /// Listed by name, not by assembly, so a new unmarked I*Service on the leaf still fails. Delete the list when the
+    /// leaf can name the markers again, and re-add the inheritance in the same commit.
     /// </remarks>
     private static readonly HashSet<string> MarkersDroppedForBaseCycle =
     [
-        // Moved from Humans.Users' Contracts/ folder (where it carried IOrchestrator) so Gdpr can
-        // inject it (Users decomposition, commit 0); AccountDeletionService carries the marker.
         "Humans.Users.Contracts.IAccountDeletionService",
         "Humans.Users.Contracts.IAccountProvisioningService",
         "Humans.Users.Contracts.ICommunicationPreferenceService",
@@ -94,30 +74,14 @@ public class ServiceBoundaryArchitectureTests
     }
 
     /// <summary>
-    /// EF entity types that sit in a section's contracts rather than under a <c>*.Domain</c>
-    /// namespace, so neither half of the sweep above finds them.
+    /// Entities that live on a contracts leaf rather than under a <c>*.Domain</c> namespace, so the namespace sweep
+    /// misses them. Without this list their baseline rows would read as fixed on unchanged code.
     /// </summary>
-    /// <remarks>
-    /// <c>User : IdentityUser&lt;Guid&gt;</c> is named by Base (<c>Humans.Interfaces</c>; the namers
-    /// arrived there from <c>Humans.UI</c> in G5 lanes 4b-iii A and B) and by ~48 files
-    /// across Shell and twenty test projects, and Base cannot reference a section, so it stays
-    /// public on <c>Humans.Users.Contracts</c> (nobodies-collective/Humans#866, G5 lane 2) and
-    /// drags <c>UserEmail</c> and <c>EventParticipation</c> with it through its navigations.
-    /// Without this list the two <c>Humans.Domain.Entities.User</c> rows in the baseline read as
-    /// *fixed* on byte-identical code — the silent shrink the baseline guards against, arriving
-    /// through a third keying (not a path, not an assembly: the namespace convention that says
-    /// "entities live in .Domain"). The six Profile-side entities left this list when they moved
-    /// to <c>Humans.Users.Domain</c> as internal types (nobodies-collective/Humans#1051).
-    /// </remarks>
     private static readonly Type[] LeafResidentEntities =
     [
         typeof(Users.Contracts.User),
         typeof(Users.Contracts.UserEmail),
         typeof(Users.Contracts.EventParticipation),
-        // GoogleIntegration's three entities: GoogleResource and GoogleSyncOutboxEvent are
-        // public members of IGoogleSyncService / IGoogleSyncOutboxService in the section's
-        // Contracts/ folder, so they are public there rather than internal under
-        // Humans.GoogleIntegration.Domain.
         typeof(GoogleIntegration.Contracts.GoogleResource),
         typeof(GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
         typeof(GoogleIntegration.Contracts.SyncServiceSettings),
@@ -125,17 +89,7 @@ public class ServiceBoundaryArchitectureTests
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
     {
-        // Shell-era entities plus each G5 section's own Domain/ namespace
-        // (nobodies-collective/Humans#866). Without the section half, a section that moves
-        // takes its entity-returning reads out of this ratchet's sight and the removal
-        // reads as "you fixed it" — the exact silent-shrink §10 warns about.
-        // Re-anchored off Humans.Domain.Entities.GoogleResource, which moved to
-        // Humans.GoogleIntegration.Contracts in G5 lane 4b-2j and took the last three
-        // types in Humans.Domain.Entities with it. The namespace filter below now
-        // matches nothing; the clause is kept (anchored on a type still resident in
-        // Humans.Domain) so the sweep re-arms if anything lands back there before
-        // phase 5a deletes the project. Coverage did not shrink — the three entities
-        // are listed in LeafResidentEntities above.
+        // The Humans.Domain.Entities clause matches nothing today; it re-arms the sweep if an entity lands there.
         var entityTypes = typeof(Base.Enums.GoogleSyncSource).Assembly
             .GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
@@ -146,9 +100,8 @@ public class ServiceBoundaryArchitectureTests
             .ToHashSet();
 
         foreach (var serviceType in ApplicationInterfaceTypes()
-                     // Both role markers — the axis is exclusive, so scanning only
-                     // IApplicationService would drop a service the moment it is
-                     // reclassified as an orchestrator.
+                     // Both role markers: the axis is exclusive, so a service reclassified as an orchestrator
+                     // would otherwise drop out.
                      .Where(t => typeof(IApplicationService).IsAssignableFrom(t)
                                  || typeof(IOrchestrator).IsAssignableFrom(t))
                      .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
@@ -167,31 +120,9 @@ public class ServiceBoundaryArchitectureTests
         }
     }
 
-    // Anchored to a type that lives in Humans.Application — the marker
-    // interfaces (IApplicationService, IRepository, …) moved to the
-    // Humans.Interfaces assembly, keeping their namespaces. Section projects
-    // (nobodies-collective/Humans#866) are scanned too: their service and repository
-    // interfaces are internal and live under Humans.<Section>.*, so a namespace filter
-    // anchored on Humans.Base.Interfaces alone would stop seeing a section the
-    // moment it moves, quietly shrinking every ratchet built on this.
-    // …and the contracts leaves, which carry neither the namespace nor the [Section]
-    // attribute the two clauses above key on. A service interface that lives *entirely* on
-    // a leaf — with no Base-side interface deriving from it — leaves this sweep the moment
-    // it is carved, and its baseline rows read as fixed on byte-identical code. The
-    // GetInterfaces() walk in EntityReturnReadMembers only rescues the read-split shape
-    // (a public I<Section>Service with an internal I<Section>Management deriving from it);
-    // Users' IAccountProvisioningService is the whole-interface case and is what surfaced
-    // this (nobodies-collective/Humans#866, lane 2 PR A).
-    // The Humans.Application half of this sweep is gone (G5 lane 5c): the assembly holds no
-    // types, so the anchor it needed no longer exists. Every interface it used to contribute
-    // has landed either on a section, on a contracts leaf, or in Humans.Interfaces.
-    // COVERAGE NOTE: the marker/infra interfaces that now live in Humans.Interfaces under
-    // Humans.Base.Interfaces.* (IFileStorage, IGuideContentSource, IHumansMetrics,
-    // the cache invalidators, …) are no longer scanned. They cannot regress this rule —
-    // Humans.Interfaces declares no entity type to expose. It stopped being EF-free at G5
-    // lane 3a-2, which put the AddSectionDbContext cluster there, but that cluster is
-    // registration plumbing over an open TContext: the assembly still maps no table and owns
-    // no DbSet, so there is nothing there for an entity-returning read to leak.
+    // Contracts leaves are scanned too: they carry neither the section namespace nor [Section], and a service
+    // interface living entirely on a leaf would otherwise leave the sweep and its baseline rows read as fixed.
+    // Base's own interfaces are not scanned; Base declares no entity to expose.
     private static IEnumerable<Type> ApplicationInterfaceTypes()
     {
         return SectionAssemblies()
@@ -202,18 +133,10 @@ public class ServiceBoundaryArchitectureTests
                 .Where(t => t.IsInterface));
     }
 
-    /// <summary>
-    /// Every G5 section assembly, via the same discovery the runtime uses, so this file
-    /// never carries a hard-coded list of moved sections.
-    /// </summary>
     private static IEnumerable<Assembly> SectionAssemblies() =>
         Extensions.SectionDiscoveryExtensions.SectionAssemblies();
 
-    /// <summary>
-    /// Every G5 contracts leaf. Discovered from the dependency graph by name rather than by
-    /// <c>[Section]</c> — a leaf deliberately carries no section marker, because it is not
-    /// an MVC application part and registers no services.
-    /// </summary>
+    /// <summary>Found by name: a leaf carries no <c>[Section]</c> marker because it registers nothing.</summary>
     private static IEnumerable<Assembly> SectionContractsAssemblies() =>
         DependencyContext.Default?.RuntimeLibraries
             .Where(l => l.Name.StartsWith("Humans.", StringComparison.Ordinal)
@@ -234,13 +157,8 @@ public class ServiceBoundaryArchitectureTests
 
     private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
     {
-        // Base interfaces included: Type.GetMethods() on an interface returns only
-        // *declared* members, so a service whose entity-returning reads were split onto a
-        // section contracts leaf it inherits (Shifts, nobodies-collective/Humans#866) would
-        // drop out of this ratchet while the code stands still — the silent shrink §10
-        // warns about, and the leaf itself is not scanned because it carries no
-        // IApplicationService marker. Distinct by (name, return type): a member
-        // re-declared on the deriving interface would otherwise be yielded twice.
+        // GetMethods() on an interface returns only declared members, so inherited leaf reads must be walked
+        // explicitly or they drop out of the ratchet. Distinct by (name, return type) for re-declared members.
         var declaringTypes = new[] { serviceType }.Concat(serviceType.GetInterfaces());
 
         foreach (var member in declaringTypes
@@ -254,11 +172,8 @@ public class ServiceBoundaryArchitectureTests
         }
     }
 
-    // Note: Get*/Find* also match GetOrCreate*/FindOrCreate* upsert mutations.
-    // Mutations that temporarily return entities are allowed as ratcheted debt (queued
-    // for re-audit in docs/architecture/debt-ledger.yml's inbox). If a new GetOrCreate*
-    // method is flagged here, either use a result record (preferred) or add it to the
-    // baseline with a comment.
+    // Get*/Find* also match GetOrCreate*/FindOrCreate* upserts. A newly flagged one: return a result record
+    // (preferred) or add it to the baseline.
     private static bool IsReadMethod(MethodInfo method) =>
         method.Name.StartsWith("Get", StringComparison.Ordinal) ||
         method.Name.StartsWith("List", StringComparison.Ordinal) ||
@@ -333,25 +248,10 @@ public class ServiceBoundaryArchitectureTests
     }
 
     /// <summary>
-    /// Types this scan recurses *into* looking for an exposed entity: Base DTOs, plus
-    /// anything on a G5 section's contracts leaf (nobodies-collective/Humans#866).
+    /// Types the scan recurses into: anything on a contracts leaf, keyed on the <c>.Contracts</c> namespace so a leaf
+    /// folded back into its section stays in scan. Not whole section assemblies: a section-internal DTO wrapping its
+    /// own entity crosses no boundary.
     /// </summary>
-    /// <remarks>
-    /// The leaf half is what this rule is about — a result record that moves onto a leaf
-    /// keeps wrapping whatever entity it wrapped, and keying the recursion on the
-    /// <c>Humans.Application.</c> namespace alone stops it at the assembly boundary and
-    /// reports the violation as fixed while the code stands still. Shifts'
-    /// <c>UrgentShift(Shift, …)</c> is the case that surfaced it.
-    /// <para>
-    /// Deliberately *not* widened to whole section assemblies: a section-internal DTO
-    /// wrapping that section's own internal entity crosses no boundary, and recursing into
-    /// them adds 96 rows across twenty sections that this rule was never asserting about.
-    /// </para>
-    /// <para>
-    /// Keyed on the <c>.Contracts</c> namespace segment rather than the assembly name so a
-    /// leaf folded back into its section project (which keeps the namespace) stays in scan.
-    /// </para>
-    /// </remarks>
     private static bool IsApplicationReturnShape(Type type) =>
         type is { IsPrimitive: false, IsEnum: false } &&
         type != typeof(string) &&

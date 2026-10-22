@@ -22,13 +22,6 @@ using Humans.Users.Data;
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Tests.Infrastructure;
 
-/// <summary>
-/// Base class for the Teams section's service tests. Owns the per-test in-memory <see cref="UsersDbContext"/>,
-/// an <see cref="IDbContextFactory{TContext}"/>, a deterministic <see cref="FakeClock"/>,
-/// and an <see cref="IMemoryCache"/>, plus the most common entity seeders. Tests construct
-/// their service-under-test in their own ctor using these resources; the harness does not
-/// pre-build the service.
-/// </summary>
 public abstract class TeamsTestHarness : IDisposable
 {
     private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
@@ -39,44 +32,24 @@ public abstract class TeamsTestHarness : IDisposable
     private protected UsersDbContext Db { get; }
     private protected TestDbContextFactory DbFactory { get; }
 
-    // ----- Peeled-section contexts (nobodies-collective/Humans#858) ----------
-    // These sections' tables are no longer in Db's model, so seeding them and
-    // wiring their repositories both go through the section context. Each pair
-    // is an independent in-memory store; a test that seeds across two saves on
-    // each. Add a pair here as each further section peels.
-    //
-    // Every pair is built on FIRST TOUCH, not in the constructor: this class is
-    // the base for ~4000 tests and almost none of them touch any given section.
-    // Building all of them eagerly gives each test six extra sets of
-    // DbContextOptions — each with its own EF internal service provider — and
-    // that overhead alone pushed a 5s-budget test over its timeout on CI.
-    // SaveAllAsync/ClearAllTrackers/Dispose therefore visit only the pairs a
-    // test actually created.
+    // Section contexts are separate in-memory stores: a test seeding across two saves each.
+    // Every pair is built on first touch: eager construction gave each test its own EF
+    // service provider, which pushed a 5s-budget test past its CI timeout.
 
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
-    /// <summary>Auth: <c>role_assignments</c> (see <see cref="SeedRoleAssignment"/>).</summary>
     private readonly Lazy<SectionDb<AuthDbContext>> _authDb;
     private protected AuthDbContext AuthDb => _authDb.Value.Context;
     private protected TestDbContextFactory<AuthDbContext> AuthDbFactory => _authDb.Value.Factory;
 
-    /// <summary>GoogleIntegration: <c>google_resources</c>, <c>google_sync_outbox</c>, <c>sync_service_settings</c>.</summary>
     private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
     private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
     private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
 
-
-    /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
-    /// <c>shift_tags</c>, <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
-    /// <c>general_availability</c>, <c>volunteer_build_statuses</c>, <c>volunteer_tag_preferences</c>.</summary>
     private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
     private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
     private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
 
-    /// <summary>Teams: <c>teams</c>, <c>team_members</c>, <c>team_join_requests</c>,
-    /// <c>team_join_request_state_history</c>, <c>team_role_definitions</c>,
-    /// <c>team_role_assignments</c>, <c>team_early_entry_grants</c>
-    /// (see <see cref="SeedTeam(string, SystemTeamType, Guid?, bool, bool)"/>).</summary>
     private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
     private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
     private protected TestDbContextFactory<TeamsDbContext> TeamsDbFactory => _teamsDb.Value.Factory;
@@ -84,11 +57,7 @@ public abstract class TeamsTestHarness : IDisposable
     private protected FakeClock Clock { get; }
     private protected IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
 
-    // ----- Shared NSubstitute stubs -----------------------------------------
-    // Bare substitutes for the four interfaces that ~30 service tests stub
-    // identically. xUnit creates a fresh test class instance per test, so
-    // these are per-test-fresh — no state leak across tests. Override behavior
-    // in a derived ctor via `.When(...).Do(...)` or `.Returns(...)` if needed.
+    // xUnit builds a fresh class instance per test, so these substitutes never leak state.
 
     private protected IAuditLogService AuditLog { get; } = Substitute.For<IAuditLogService>();
     private protected INotificationEmitter Notifier { get; } = Substitute.For<INotificationEmitter>();
@@ -115,11 +84,6 @@ public abstract class TeamsTestHarness : IDisposable
     private sealed record SectionDb<TContext>(TContext Context, TestDbContextFactory<TContext> Factory)
         where TContext : DbContext;
 
-    /// <summary>
-    /// Declares a peeled-section context without building it. The options, the
-    /// context and the factory are all created the first time a test reads the
-    /// corresponding property; until then the section costs nothing.
-    /// </summary>
     private Lazy<SectionDb<TContext>> RegisterSection<TContext>(Func<DbContextOptions<TContext>, TContext> create)
         where TContext : DbContext
     {
@@ -133,15 +97,12 @@ public abstract class TeamsTestHarness : IDisposable
         return lazy;
     }
 
-    /// <summary>The section contexts this test actually touched, in declaration order.</summary>
     private IEnumerable<DbContext> CreatedSectionContexts() =>
         _sectionContextProbes.Select(probe => probe()).OfType<DbContext>();
 
     /// <summary>
-    /// In-memory options for a per-section DbContext (nobodies-collective/Humans#858),
-    /// e.g. <c>ContainersDbContext</c>. Pair with
-    /// <c>new TestDbContextFactory&lt;TContext&gt;(options)</c> for the repository under
-    /// test and construct a context directly from the options for seeding.
+    /// Pair with <c>new TestDbContextFactory&lt;TContext&gt;(options)</c> for the repository under
+    /// test, and construct a context directly from the options for seeding.
     /// </summary>
     private protected static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
         where TContext : DbContext =>
@@ -150,13 +111,7 @@ public abstract class TeamsTestHarness : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
-    /// <summary>
-    /// Flushes <see cref="Db"/> and every peeled-section context. A test that
-    /// stages rows across the main pile and one or more section contexts calls
-    /// this instead of <c>Db.SaveChangesAsync</c>, so it does not have to track
-    /// which context each seed landed in. <c>SaveChanges</c> on a context with
-    /// no pending changes is a no-op, so this is safe everywhere.
-    /// </summary>
+    /// <summary>Flushes <see cref="Db"/> and every section context, so a test need not track where each seed landed.</summary>
     private protected async Task SaveAllAsync(CancellationToken ct = default)
     {
         await Db.SaveChangesAsync(ct);
@@ -167,11 +122,8 @@ public abstract class TeamsTestHarness : IDisposable
     }
 
     /// <summary>
-    /// Clears the change tracker on <see cref="Db"/> and every peeled-section
-    /// context. Tests do this after exercising a service so the read-back sees
-    /// what the repository actually wrote rather than the instance the seed
-    /// left tracked — and the entity now lives in whichever context owns its
-    /// section, so clearing only <see cref="Db"/> silently returns stale state.
+    /// Clears the tracker on <see cref="Db"/> and every section context: clearing only
+    /// <see cref="Db"/> silently returns stale state for entities another context owns.
     /// </summary>
     private protected void ClearAllTrackers()
     {
@@ -193,14 +145,7 @@ public abstract class TeamsTestHarness : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>
-    /// Creates an NSubstitute <see cref="IUserService"/> whose reader methods
-    /// (<c>GetUserInfoAsync</c>, <c>GetUserInfosAsync</c>)
-    /// are wired to read from this harness's in-memory DB.
-    /// Mirrors the production behavior of the User stitcher without requiring the real
-    /// caching/repository stack. Use for services that depend on <see cref="IUserService"/>
-    /// for cross-domain user lookups.
-    /// </summary>
+    /// <summary>An <see cref="IUserService"/> whose user-info reads come from this harness's in-memory DB.</summary>
     private protected IUserService NewDbBackedUserService()
     {
         var svc = Substitute.For<IUserService>();
@@ -212,9 +157,7 @@ public abstract class TeamsTestHarness : IDisposable
         return svc;
     }
 
-    // ----- Common entity seeders ------------------------------------------------
-    // Add to Db but do not SaveChanges — callers stage multiple seeds, then await
-    // Db.SaveChangesAsync() once. Matches the existing per-file pattern.
+    // Seeders add to Db without saving: callers stage several, then save once.
 
     protected User SeedUser(Guid? id = null, string displayName = "Test User")
     {
@@ -225,8 +168,7 @@ public abstract class TeamsTestHarness : IDisposable
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             PreferredLanguage = "en",
-            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = displayName,
         };
         LegacyDisplayNameProperty.SetValue(user, displayName);
@@ -234,16 +176,8 @@ public abstract class TeamsTestHarness : IDisposable
         return user;
     }
 
-    /// <summary>
-    /// Positional-displayName overload — absorbs <c>SeedUser("Alice")</c> call sites
-    /// without forcing migration to named args.
-    /// </summary>
     protected User SeedUser(string displayName) => SeedUser(null, displayName);
 
-    /// <summary>
-    /// Id-first overload — absorbs <c>SeedTeam(teamId, "name")</c> call sites that
-    /// pre-existing local helpers used.
-    /// </summary>
     private protected Team SeedTeam(Guid teamId, string name) =>
         SeedTeam(name, SystemTeamType.None, teamId);
 
@@ -305,10 +239,8 @@ public abstract class TeamsTestHarness : IDisposable
             CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = Guid.NewGuid()
         };
-        // Unlike the Db seeders above, this one saves: role_assignments sits in
-        // its own context since the Auth peel, so callers' `Db.SaveChangesAsync()`
-        // would never reach it, and the row has no ordering dependency on
-        // anything staged in Db.
+        // Unlike the Db seeders above, this one saves: role_assignments sits in its own
+        // context, so a caller's Db.SaveChangesAsync() would never reach it.
         AuthDb.RoleAssignments.Add(ra);
         AuthDb.SaveChanges();
         return ra;

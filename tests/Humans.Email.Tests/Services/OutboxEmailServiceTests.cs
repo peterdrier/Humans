@@ -56,10 +56,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
     private readonly IEmailBodyComposer _bodyComposer = Substitute.For<IEmailBodyComposer>();
     private readonly IEmailTransport _transport = Substitute.For<IEmailTransport>();
 
-    /// <summary>
-    /// <c>email_outbox_messages</c> moved to <see cref="EmailDbContext"/> with
-    /// the Email peel (nobodies-collective/Humans#858).
-    /// </summary>
     private readonly EmailDbContext _emailDb;
 
     public OutboxEmailServiceTests()
@@ -499,7 +495,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_CampaignCodesCategory_NeverSuppressesAndStampsNoUnsubscribe()
     {
-        // CampaignCodes is always-on (confirmed intended, nobodies-collective/Humans#1032):
+        // CampaignCodes is always-on by design:
         // the opt-out it would advertise can never take effect, so the transport must not
         // advertise one — no List-Unsubscribe headers, no footer link, and it never even
         // asks CommunicationPreferenceService about opt-out status.

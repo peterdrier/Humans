@@ -3,9 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Gate;
 
-/// <summary>
-/// Gate's admin sidebar group: gate ops, then a temporary backfill (nobodies-collective/Humans#1077).
-/// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

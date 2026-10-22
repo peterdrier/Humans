@@ -3,17 +3,10 @@ using NodaTime;
 namespace Humans.MailerLite.Domain;
 
 /// <summary>
-/// Current sync state for one <see cref="Services.IMailerLiteAudience"/> — or for the import
-/// reconciliation run, under <see cref="MailerLiteSyncKeys.Reconciliation"/>. One row per key,
-/// overwritten on every run: this is current state, not history
-/// (nobodies-collective/Humans#1082).
+/// Current state, not history: one row per key, overwritten each run. <see cref="Id"/> must survive runs, since
+/// the audit row points at it. The reconciliation row leaves the counts at zero and puts its numbers in
+/// <see cref="Summary"/>.
 /// </summary>
-/// <remarks>
-/// <see cref="Id"/> is what gives the sync's audit row a real subject to point at, so it must
-/// survive across runs — the repository upserts on <see cref="Key"/> and never replaces the row.
-/// The count columns describe an audience push; the reconciliation row leaves them at zero and
-/// carries its numbers in <see cref="Summary"/>, which is what the dashboard renders.
-/// </remarks>
 internal sealed class MailerLiteSyncState
 {
     public Guid Id { get; init; }
@@ -23,7 +16,6 @@ internal sealed class MailerLiteSyncState
 
     public Instant LastSyncAt { get; set; }
 
-    /// <summary>Human prose, shown on the MailerLite admin dashboard.</summary>
     public string Summary { get; set; } = "";
 
     public string? GroupId { get; set; }
@@ -38,13 +30,8 @@ internal sealed class MailerLiteSyncState
     public int Errors { get; set; }
 }
 
-/// <summary>Sync keys that are not an audience key.</summary>
 internal static class MailerLiteSyncKeys
 {
-    /// <summary>
-    /// The import reconciliation run's row. Not an audience key — no
-    /// <see cref="Services.IMailerLiteAudience"/> may claim it, which
-    /// <c>MailerLiteArchitectureTests</c> pins.
-    /// </summary>
+    /// <summary>No audience may claim this key.</summary>
     public const string Reconciliation = "import-reconciliation";
 }

@@ -5,13 +5,9 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Humans.Surveys.Models;
 
-// ── Answering wizard (question pages) ───────────────────────────────────────
-
 /// <summary>
-/// One page of the answering wizard, fully resolved to the chosen culture (the view is dumb —
-/// <see cref="SurveyPageViewModelFactory"/> does all <c>LocalizedText</c> resolution, for both the
-/// live path and admin preview, so the two cannot drift). Pages are numbered for the visible subset
-/// (e.g. "Page 2 of 3"), not by the survey's raw page numbers.
+/// Fully resolved to the chosen culture: the view is dumb. Pages are numbered for the visible subset ("Page 2 of
+/// 3"), not by the survey's raw page numbers.
 /// </summary>
 internal sealed class SurveyPageViewModel
 {
@@ -23,7 +19,6 @@ internal sealed class SurveyPageViewModel
     /// <summary>The public slug (only set when <see cref="IsPublic"/>); drives the post route on the public path.</summary>
     public string Slug { get; init; } = string.Empty;
 
-    /// <summary>True for the protected, read-only admin preview flow.</summary>
     public bool IsPreview { get; init; }
 
     public Guid? PreviewSurveyId { get; init; }
@@ -31,7 +26,7 @@ internal sealed class SurveyPageViewModel
     public int? PreviousPreviewPage { get; init; }
     public int? NextPreviewPage { get; init; }
 
-    /// <summary>The survey's raw page number this view renders (posted back so the server re-validates the right page).</summary>
+    /// <summary>The survey's raw page number, posted back so the server re-validates the right page.</summary>
     public int Page { get; init; }
 
     public string Title { get; init; } = string.Empty;
@@ -52,7 +47,6 @@ internal sealed class SurveyPageViewModel
     public IReadOnlyList<SurveyPageQuestion> Questions { get; init; } = [];
 }
 
-/// <summary>One resolved question on a wizard page, with its prior answer pre-filled for re-render.</summary>
 internal sealed class SurveyPageQuestion
 {
     public Guid Id { get; init; }
@@ -81,22 +75,17 @@ internal sealed class SurveyPageQuestion
     public bool RankedAllowReject { get; init; }
 }
 
-/// <summary>One resolved choice option: stable machine <see cref="Value"/> + display <see cref="Label"/>.</summary>
 internal sealed record SurveyPageOption(string Value, string Label);
 
-/// <summary>One resolved Grid row.</summary>
 internal sealed record SurveyPageGridRow(string Value, string Label);
 
-/// <summary>One resolved, publicly served image in an Information survey item.</summary>
 internal sealed record SurveyPageInformationImage(Guid Id, string Url, string Label, string AltText);
 
-/// <summary>Pure presentation model for the shared author-preview notice.</summary>
 internal sealed record SurveyPreviewNoticeModel(
     Guid SurveyId,
     string Message,
     string AdditionalCssClasses = "");
 
-/// <summary>Posted by one wizard page. <see cref="Answers"/> binds via indexed form fields.</summary>
 internal sealed class SurveyPageInputModel
 {
     // Non-nullable strings are implicitly [Required]; the public path posts no Token, and blank
@@ -106,11 +95,9 @@ internal sealed class SurveyPageInputModel
     public int Page { get; set; }
     public List<SurveyPostedAnswer> Answers { get; set; } = [];
 
-    /// <summary>True when the user pressed Back rather than Next/Submit.</summary>
     public bool Back { get; set; }
 }
 
-/// <summary>One posted answer for a question on the current page.</summary>
 internal sealed class SurveyPostedAnswer
 {
     public Guid QuestionId { get; set; }
@@ -121,7 +108,6 @@ internal sealed class SurveyPostedAnswer
     public List<SurveyPostedRankedOption> RankedOptions { get; set; } = [];
 }
 
-/// <summary>One posted Grid row and its selected column values.</summary>
 internal sealed class SurveyPostedGridRow
 {
     [ValidateNever]
@@ -136,7 +122,6 @@ internal sealed class SurveyPostedRankedOption
     public string? Selection { get; set; }
 }
 
-/// <summary>The closing thank-you page, with the survey's ThankYou copy resolved for display.</summary>
 internal sealed class SurveyThankYouViewModel
 {
     public string Title { get; init; } = string.Empty;

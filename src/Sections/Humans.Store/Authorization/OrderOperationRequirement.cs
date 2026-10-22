@@ -4,11 +4,7 @@ using NodaTime;
 
 namespace Humans.Store.Authorization;
 
-/// <summary>
-/// Resource-based authorization requirement for Store order operations.
-/// Used with IAuthorizationService.AuthorizeAsync(User, order, requirement)
-/// where the resource is an <c>OrderDto</c>, <c>OrderCreateContext</c> or <c>OrderLineContext</c>.
-/// </summary>
+/// <summary>The resource is an <c>OrderDto</c>, <c>OrderCreateContext</c> or <c>OrderLineContext</c>.</summary>
 internal sealed class OrderOperationRequirement : IAuthorizationRequirement
 {
     public static readonly OrderOperationRequirement View = new(nameof(View));
@@ -16,17 +12,14 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     public static readonly OrderOperationRequirement AddLine = new(nameof(AddLine));
     public static readonly OrderOperationRequirement RemoveLine = new(nameof(RemoveLine));
     public static readonly OrderOperationRequirement EditCounterparty = new(nameof(EditCounterparty));
-    /// <summary>Initiate Stripe Checkout to pay against the order. Allowed regardless of order state — payments continue after invoice issuance.</summary>
+    /// <summary>Allowed in any order state: payments continue after invoice issuance.</summary>
     public static readonly OrderOperationRequirement Pay = new(nameof(Pay));
-    /// <summary>Delete a zero-balance Open order. Store admins, plus TeamsAdmin on team orders — camp leads and team coordinators cannot delete their own orders.</summary>
+    /// <summary>Camp leads and team coordinators can't delete their own orders.</summary>
     public static readonly OrderOperationRequirement Delete = new(nameof(Delete));
-    /// <summary>Issue the order's Holded factura. Store admins only, and never on a non-billable team order.</summary>
     public static readonly OrderOperationRequirement IssueInvoice = new(nameof(IssueInvoice));
-    /// <summary>Record a deposit return against the order. Store admins only, and never on a non-billable team order.</summary>
     public static readonly OrderOperationRequirement RecordPayment = new(nameof(RecordPayment));
-    /// <summary>Record a <c>Refund</c> payment (money sent back out). Finance admin and Admin only — narrower than <see cref="RecordPayment"/>, which Store admins hold for deposit returns.</summary>
+    /// <summary>Narrower than <see cref="RecordPayment"/>: Finance admin and Admin only.</summary>
     public static readonly OrderOperationRequirement Refund = new(nameof(Refund));
-    /// <summary>Hard-delete a payment row. Full Admin only — not FinanceAdmin, not StoreAdmin — and never on a team order.</summary>
     public static readonly OrderOperationRequirement DeletePayment = new(nameof(DeletePayment));
 
     public string OperationName { get; }
@@ -37,18 +30,8 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     }
 }
 
-/// <summary>
-/// Resource passed to <see cref="OrderAuthorizationHandler"/> when
-/// authorizing a Create-order operation. There is no <c>Order</c> yet, so
-/// the camp-lead or team-coordinator check is rooted at the target
-/// <c>CampSeason</c> or <c>Team</c>. Exactly one of the two ids is non-null.
-/// </summary>
+/// <summary>No order exists yet, so the check is rooted at the target camp season or team. Exactly one id is non-null.</summary>
 internal sealed record OrderCreateContext(Guid? CampSeasonId, Guid? TeamId = null);
 
-/// <summary>
-/// Resource passed to <see cref="OrderAuthorizationHandler"/> when authorizing an
-/// AddLine/RemoveLine operation against a specific product: carries the product's
-/// <c>OrderableUntil</c> so the handler can deny non-admin line edits past the order
-/// deadline. Store admins are exempt (the admin path succeeds before the deadline gate).
-/// </summary>
+/// <summary>Carries the product's deadline so the handler can deny non-admin line edits past it.</summary>
 internal sealed record OrderLineContext(OrderDto Order, LocalDate ProductOrderableUntil);

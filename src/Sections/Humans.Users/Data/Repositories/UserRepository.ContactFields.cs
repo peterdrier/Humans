@@ -3,9 +3,6 @@ using NodaTime;
 
 namespace Humans.Users.Data.Repositories;
 
-/// <summary>
-/// Contact-field operations on <see cref="UserRepository"/>.
-/// </summary>
 internal sealed partial class UserRepository
 {
     public async Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
@@ -29,8 +26,6 @@ internal sealed partial class UserRepository
     public async Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        // With IDbContextFactory the context is short-lived, so returned entities
-        // are detached. Callers must pass mutated entities explicitly to BatchSaveAsync.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ContactFields
             .AsNoTracking()
@@ -60,8 +55,7 @@ internal sealed partial class UserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // Resolve User -> Profile for both sides. ContactField FKs to Profile,
-        // not User, so the bulk-move pivots on profile id.
+        // ContactField FKs to Profile, not User, so the move pivots on profile id.
         var sourceProfileId = await ctx.Profiles
             .Where(p => p.UserId == sourceUserId)
             .Select(p => (Guid?)p.Id)
@@ -83,10 +77,7 @@ internal sealed partial class UserRepository
             .Where(cf => cf.ProfileId == targetProfileId.Value)
             .ToListAsync(ct);
 
-        // Dedup on (FieldType, Value). ContactField.Value has no canonical
-        // comparison configured, so we use case-insensitive match to keep the
-        // collapse correct for emails/usernames where casing may differ. Target
-        // wins on collision.
+        // Value has no canonical comparison, so match case-insensitively; target wins.
         var targetKeys = targetRows
             .Select(cf => (cf.FieldType, Value: cf.Value.ToLowerInvariant()))
             .ToHashSet();
@@ -96,12 +87,10 @@ internal sealed partial class UserRepository
             var key = (src.FieldType, Value: src.Value.ToLowerInvariant());
             if (targetKeys.Contains(key))
             {
-                // Target already has the same (FieldType, Value) — drop source.
                 ctx.ContactFields.Remove(src);
             }
             else
             {
-                // Re-FK to target's profile.
                 ctx.Entry(src).Property(nameof(ContactField.ProfileId)).CurrentValue = targetProfileId.Value;
                 src.UpdatedAt = updatedAt;
                 targetKeys.Add(key);

@@ -22,11 +22,6 @@ using NSubstitute;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// <see cref="WorkspaceIdentityService"/>: the read-time resolution that replaced Users'
-/// <c>EnsureGoogleInvariantAsync</c>, the writes, the <c>google.workspace-identities</c> copy, and
-/// the GDPR / merge hooks of <c>google_workspace_identities</c> (Users decomposition commit 15).
-/// </summary>
 public sealed class WorkspaceIdentityServiceTests
 {
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
@@ -72,10 +67,9 @@ public sealed class WorkspaceIdentityServiceTests
         return info;
     }
 
-    // ─── Resolution parity with today's IsGoogle invariant ──────────────────────
-    // For a member whose data satisfies the invariant EnsureGoogleInvariantAsync kept (exactly one
-    // verified IsGoogle row, the @nobodies.team one when there is one), the effective identity is
-    // that same address, with that row's status — before and after the copy.
+    // Resolution parity: for a member satisfying the old IsGoogle invariant (exactly one verified
+    // IsGoogle row, the @nobodies.team one when there is one), the effective identity is that same
+    // address with that row's status, before and after the copy.
 
     public static Xunit.TheoryData<string, string, LegacyGoogleEmailStatus> ParityCases => new()
     {
@@ -169,8 +163,6 @@ public sealed class WorkspaceIdentityServiceTests
             archivedId, new WorkspaceIdentity(info.Id, "alice@nobodies.team", GoogleEmailStatus.Unknown)));
     }
 
-    // ─── ClearIfAddress ──────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task ClearIfAddress_ThenLegacyFallback_DoesNotResurrectTheAddress()
     {
@@ -199,8 +191,6 @@ public sealed class WorkspaceIdentityServiceTests
         _repo.Rows[info.Id].Email.Should().Be("alice@gmail.com");
         _repo.Rows[info.Id].Status.Should().Be(GoogleEmailStatus.Valid);
     }
-
-    // ─── Set ─────────────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Set_DesignatesAVerifiedAddress_AndAuditsTheChange()
@@ -260,8 +250,6 @@ public sealed class WorkspaceIdentityServiceTests
 
         _repo.Rows[info.Id].Status.Should().Be(after);
     }
-
-    // ─── SetStatusFromSync ───────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task SetStatusFromSync_WritesTheVerdictForTheCurrentIdentity()
@@ -332,8 +320,6 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.GetDriveEmailsAsync(Ct)).Should().BeEmpty();
     }
 
-    // ─── google.workspace-identities ─────────────────────────────────────────────
-
     [HumansFact]
     public async Task Copy_TakesOnlyMembersWithLegacyState_AndIsIdempotent()
     {
@@ -365,8 +351,6 @@ public sealed class WorkspaceIdentityServiceTests
         (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
         (await migration.Status(services, Ct)).Pending.Should().Be(0);
     }
-
-    // ─── Merge, export, erasure ──────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Merge_DeletesTheArchivedRow_AndKeepsTheSurvivors()
@@ -410,8 +394,6 @@ public sealed class WorkspaceIdentityServiceTests
             DriveEmail = "alice@example.org"
         });
     }
-
-    // ─── Surfaces ────────────────────────────────────────────────────────────────
 
     [HumansFact]
     public void Controller_SetRoutesAreAntiforgery_AndTheAdminRouteNeedsHumanAdminBoardOrAdmin()

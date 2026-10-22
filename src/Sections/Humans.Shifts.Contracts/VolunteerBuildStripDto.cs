@@ -3,16 +3,9 @@ using NodaTime;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// One cell in a volunteer build-window row. States are shared across the
-/// section's main cohort heatmap, its unbooked cohort heatmap, and the
-/// single-volunteer profile build strip (which can render any of them in one
-/// row); the notes below indicate the typical origin.
+/// Shared by both cohort heatmaps and the profile build strip, which can render any state in one row. On the leaf
+/// because <see cref="VolunteerBuildStripDto"/> is built from it.
 /// </summary>
-/// <remarks>
-/// On the leaf rather than in the section because
-/// <see cref="VolunteerBuildStripDto"/> — the only volunteer-tracking
-/// projection with a consumer outside the section — is built from it.
-/// </remarks>
 public enum VolunteerCellState
 {
     Outside,        // outside active window
@@ -27,18 +20,13 @@ public enum VolunteerCellState
     NotAvailable,         // grey — unbooked cohort only
 }
 
-/// <summary>
-/// One cell in the heatmap. RotaNames is non-empty only when there is a
-/// Confirmed/Pending signup on that day; the partial uses it to render the
-/// cell-click popover (which rotas the volunteer is signed up for).
-/// </summary>
+/// <summary>RotaNames is non-empty only on a day with a Confirmed or Pending signup; it feeds the popover.</summary>
 public sealed record VolunteerCell(
     int DayOffset,
     VolunteerCellState State,
     IReadOnlyList<string> RotaNames,
     bool DeclaredAvailable = false);
 
-/// <summary>One day-off entry distilled for the view layer.</summary>
 public sealed record DayOffSummary(int DayOffset, string? Reason);
 
 public sealed record VolunteerHeatmapRow(
@@ -50,8 +38,6 @@ public sealed record VolunteerHeatmapRow(
     IReadOnlyList<VolunteerCell> Cells,
     IReadOnlyList<DayOffSummary> DayOffs);
 
-/// <summary>One volunteer's build-window strip for the profile build-strip
-/// view component. Reuses <see cref="VolunteerHeatmapRow"/>.</summary>
 public sealed record VolunteerBuildStripDto(
     int BuildStartOffset,
     LocalDate GateOpeningDate,

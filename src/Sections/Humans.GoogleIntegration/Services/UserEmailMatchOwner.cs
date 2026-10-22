@@ -10,11 +10,8 @@ namespace Humans.GoogleIntegration.Services;
 internal static class UserEmailMatchOwner
 {
     /// <summary>
-    /// Winner per address: verified &gt; most-recently-updated &gt; stable UserId. Without a
-    /// deterministic pick an unverified duplicate can outrank the real owner, and whatever the
-    /// sync attributes to that address lands on the wrong human — including in their GDPR export.
-    /// Keyed by <see cref="GmailAliasEmailComparer"/>: the row's stored address may be a Gmail
-    /// alias of the address Google reported, and the caller looks up by Google's form.
+    /// Verified &gt; most recently updated &gt; stable UserId: otherwise an unverified duplicate can outrank the real
+    /// owner, and the sync's records land on the wrong member. Keyed by <see cref="GmailAliasEmailComparer"/>.
     /// </summary>
     public static Dictionary<string, UserEmailMatch> ByEmail(IEnumerable<UserEmailMatch> matches) =>
         matches

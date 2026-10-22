@@ -77,8 +77,6 @@ public sealed partial class ExpenseReportServiceTests
         await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    // ─── Draft ─────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task CreateDraft_WithGrant_BooksToTheGrantsAccount_WithNoCategory()
     {
@@ -219,8 +217,6 @@ public sealed partial class ExpenseReportServiceTests
         loaded.Note.Should().Be("note");
     }
 
-    // ─── Submit ────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Submit_WithGrant_ClaimsIt_AndRestampsAccountAndCapFromTheGrant()
     {
@@ -351,8 +347,6 @@ public sealed partial class ExpenseReportServiceTests
         loaded.MaxAmount.Should().BeNull();
     }
 
-    // ─── Approve ───────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Approve_WithGrant_BlankCap_KeepsTheGrantsCurrentAmount_AndConsumesIt()
     {
@@ -458,8 +452,6 @@ public sealed partial class ExpenseReportServiceTests
         (await _expenseRepo.GetLatestOutboxForReportAsync(id, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
-    // ─── Reject / withdraw ─────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task FinanceReject_WithGrant_LeavesTheGrantClaimed()
     {
@@ -545,8 +537,6 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
         await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
-
-    // ─── Rejected draft: the grant it still holds ───────────────────────────────
 
     [HumansFact]
     public async Task UpdateDraft_RejectedDraft_DroppingTheClaimedGrant_ReleasesIt()

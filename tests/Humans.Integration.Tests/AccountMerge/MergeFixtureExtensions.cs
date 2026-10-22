@@ -8,21 +8,9 @@ using Humans.Users.Domain;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
-/// <summary>
-/// Extension entry points for seeding the source/target user pair plus
-/// optional per-section data that the AccountMergeService.AcceptAsync fold
-/// path needs to exercise. Phase 6.1 of the fold redesign — consumed by the
-/// per-rule AcceptAsync tests in phase 6.2.
-/// </summary>
 public static class MergeFixtureExtensions
 {
-    /// <summary>
-    /// Seeds a source User+Profile and a target User+Profile, then runs the
-    /// supplied <paramref name="configure"/> action against a
-    /// <see cref="MergeFixtureBuilder"/> so the test can layer per-section
-    /// data on either side. All builder state is flushed in a single
-    /// <c>SaveChangesAsync</c> at the end.
-    /// </summary>
+    /// <summary>All builder state is flushed in one <c>SaveChangesAsync</c> at the end.</summary>
     public static async Task<(Guid sourceId, Guid targetId)> SeedMergeFixtureAsync(
         this HumansWebApplicationFactory fx,
         Action<MergeFixtureBuilder>? configure = null)
@@ -42,10 +30,8 @@ public static class MergeFixtureExtensions
     }
 
     /// <summary>
-    /// Seeds a pending unverified <see cref="UserEmail"/> on the target user
-    /// and a Pending <see cref="AccountMergeRequest"/> pointing at it, of the
-    /// shape <c>AccountMergeService.AcceptAsync</c> expects to consume.
-    /// Returns the merge-request id so callers can pass it to AcceptAsync.
+    /// A pending unverified email on the target and a Pending request pointing at it, the shape <c>AcceptAsync</c>
+    /// consumes.
     /// </summary>
     public static async Task<Guid> SeedMergeRequestAsync(
         this HumansWebApplicationFactory fx,
@@ -53,9 +39,6 @@ public static class MergeFixtureExtensions
         Guid targetUserId,
         string? email = null)
     {
-        // Generate a unique pending email per call so multiple tests in the
-        // same fixture (shared Postgres container, shared DB) don't trip the
-        // user_emails Email-uniqueness index.
         email ??= $"merge-target-{Guid.NewGuid():N}@example.com";
 
         ArgumentNullException.ThrowIfNull(fx);
@@ -64,8 +47,7 @@ public static class MergeFixtureExtensions
         var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var now = SystemClock.Instance.GetCurrentInstant();
 
-        // Pending (unverified) email on the target — production code creates
-        // this when the user starts adding the conflicting address.
+        // Production creates this when the user starts adding the conflicting address.
         var pendingEmail = new UserEmail
         {
             Id = Guid.NewGuid(),
@@ -95,13 +77,7 @@ public static class MergeFixtureExtensions
         return request.Id;
     }
 
-    /// <summary>
-    /// Seeds a fresh source+target user pair plus a Pending
-    /// <see cref="AccountMergeRequest"/> (with a pending unverified
-    /// <see cref="UserEmail"/> on the target), and returns the request id together
-    /// with the target and source user ids. Convenience over calling
-    /// <see cref="SeedMergeFixtureAsync"/> + <see cref="SeedMergeRequestAsync"/>.
-    /// </summary>
+    /// <summary><see cref="SeedMergeFixtureAsync"/> plus <see cref="SeedMergeRequestAsync"/>.</summary>
     public static async Task<(Guid requestId, Guid targetId, Guid sourceId)> SeedPendingMergeRequestAsync(
         this HumansWebApplicationFactory fx,
         string? email = null)
@@ -112,13 +88,7 @@ public static class MergeFixtureExtensions
         return (requestId, targetId, sourceId);
     }
 
-    /// <summary>
-    /// Mirror of the inline <c>SeedUserAsync</c> pattern in
-    /// <c>CalendarServiceTests</c>: Identity-managed user creation plus a
-    /// minimal Profile so cross-section seeders can attach
-    /// <see cref="ContactField"/>, <see cref="ProfileLanguage"/>,
-    /// <see cref="VolunteerHistoryEntry"/> rows directly.
-    /// </summary>
+    /// <summary>A minimal Profile so seeders can attach profile child rows directly.</summary>
     private static async Task<Guid> SeedUserAndProfileAsync(IServiceScope scope, string displayNameTag)
     {
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
@@ -130,9 +100,7 @@ public static class MergeFixtureExtensions
         {
             Id = userId,
             DisplayName = $"{displayNameTag} {userId:N}".Substring(0, Math.Min(40, displayNameTag.Length + 33)),
-            // Identity needs a non-null Email/UserName for CreateAsync; using a
-            // unique-per-user synthetic address keeps the username uniqueness
-            // check happy. Real verified emails attach via UserEmail rows.
+            // Identity's CreateAsync needs a unique Email/UserName; real addresses attach as UserEmail rows.
             Email = $"merge-{userId:N}@test.local",
             UserName = $"merge-{userId:N}@test.local",
             CreatedAt = now,

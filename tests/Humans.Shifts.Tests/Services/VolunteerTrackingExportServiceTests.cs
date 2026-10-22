@@ -90,8 +90,7 @@ public sealed class VolunteerTrackingExportServiceTests
             {
                 Id = userId,
                 DisplayName = burnerName,
-                // UserInfo.BurnerName reads User.BurnerName only (#1098); mirrors
-                // CopyNamesToUser's dual-write from Profile onto User (#1097).
+                // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 BurnerName = burnerName,
                 PreferredLanguage = "en",
                 CreatedAt = TestNow,
@@ -320,8 +319,7 @@ public sealed class VolunteerTrackingExportServiceTests
     [HumansFact]
     public async Task ServiceTrustsRepoFilter_DoesNotReFilterByStatus()
     {
-        // Whatever the repo returns is treated as authoritative.
-        // The repo's integration test (Chunk 2) covers the actual WHERE clause.
+        // Whatever the repo returns is authoritative; the repo's own test covers the status filter.
         var shifts = new[] { ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 17) };
         var (repo, shiftMgmt, burnSettings, users) = BuildMocks(
             shifts: shifts,
@@ -403,7 +401,7 @@ public sealed class VolunteerTrackingExportServiceTests
         model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Zara", "Alice");
     }
 
-    /// <summary>Helper: build a ConfirmedShiftRow with start/end specified as event-local hours on a given local date.</summary>
+    /// <summary>Start and end are event-local hours on <paramref name="localDate"/>.</summary>
     private static ConfirmedShiftRow ShiftRow(Guid userId, Guid teamId, LocalDate localDate, int startHourLocal, int endHourLocal)
     {
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];

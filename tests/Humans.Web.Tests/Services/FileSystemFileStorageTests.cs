@@ -6,12 +6,6 @@ using NSubstitute;
 
 namespace Humans.Web.Tests.Services;
 
-/// <summary>
-/// Unit tests for the real <see cref="FileSystemFileStorage"/>. Carries
-/// forward the coverage from the deleted FileSystemProfilePictureStoreTests
-/// — atomic writes, lazy directory creation, missing-file reads, and the
-/// path-traversal / rooted-path security guards in <c>ResolveAbsolute</c>.
-/// </summary>
 public class FileSystemFileStorageTests : IDisposable
 {
     private readonly string _contentRoot;
@@ -165,7 +159,6 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task DeleteAsync_MissingFile_IsNoOp()
     {
-        // Should not throw.
         await _store.DeleteAsync("uploads/profile-pictures/does-not-exist.jpg", Xunit.TestContext.Current.CancellationToken);
     }
 

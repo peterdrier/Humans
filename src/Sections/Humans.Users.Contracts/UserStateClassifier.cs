@@ -2,18 +2,9 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// The single precedence definition for <see cref="UserState"/>. Every write-site mutates the
-/// underlying fields (name, reject, deletion, merge) or supplies the new suspension, then sets
-/// <see cref="User.State"/> from this classifier, so no site can hard-code a state that drifts
-/// from the underlying data.
-///
-/// <para>Precedence (most-final wins): Merged &gt; Deleted &gt; Rejected &gt;
-/// AdminSuspended/Suspended &gt; DeletePending &gt; Bare &gt; Active. Note GDPR deletion reuses the merge tombstone columns, so a
-/// GDPR-deleted row carries <c>MergedAt</c> too: <c>isMerged</c> excludes it and
-/// <c>isGdprDeleted</c> wins, classifying it as <see cref="UserState.Deleted"/>.</para>
-///
-/// <para>This is not a read-time access source; access reads the stored
-/// <see cref="User.State"/>. The classifier only produces the value to persist.</para>
+/// Every write site sets <see cref="User.State"/> from this, so no site can hard-code a state that drifts from the
+/// data. GDPR deletion reuses the merge columns, so an erased row carries <c>MergedAt</c> too: <c>isGdprDeleted</c>
+/// wins and it classifies as <see cref="UserState.Deleted"/>. Not a read-time source: access reads the stored state.
 /// </summary>
 public static class UserStateClassifier
 {

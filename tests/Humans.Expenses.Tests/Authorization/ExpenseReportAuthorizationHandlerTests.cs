@@ -13,11 +13,6 @@ using NodaTime;
 
 namespace Humans.Expenses.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for ExpenseReportAuthorizationHandler.
-/// Covers the actors-and-roles matrix: submitter / coordinator-of-this-category /
-/// coordinator-of-other-category / FinanceAdmin / Admin / random user × key operations.
-/// </summary>
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
@@ -46,8 +41,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
             .Returns(call => TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(
                 teams, call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
     }
-
-    // ─── Submitter × View ────────────────────────────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData("View", ExpenseReportStatus.Approved)]
@@ -78,8 +71,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // ─── Submitter × Edit ────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Submitter_CanEdit_OwnDraftReport()
     {
@@ -91,8 +82,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [HumansFact]
     public async Task Submitter_CannotEdit_OwnSubmittedReport()
     {
-        // Lines are frozen at submission per src/Sections/Humans.Expenses/Docs/Expenses.md invariants
-        // and ExpenseReportService.RequireEditableReportAsync enforcement.
+        // Lines are frozen at submission.
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Edit);
         result.Should().BeFalse();
@@ -105,8 +95,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Edit);
         result.Should().BeFalse();
     }
-
-    // ─── Submitter × Submit ──────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Submitter_CanSubmit_OwnDraftReport()
@@ -123,8 +111,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Submit);
         result.Should().BeFalse();
     }
-
-    // ─── Submitter × Withdraw ────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Submitter_CanWithdraw_SubmittedReport()
@@ -154,8 +140,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    // ─── Submitter cannot approve/endorse/coordinatorreject ──────────────────
-
     [HumansFact]
     public async Task Submitter_CannotApprove_OwnReport()
     {
@@ -171,8 +155,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Endorse);
         result.Should().BeFalse();
     }
-
-    // ─── Coordinator (this category) × View / Endorse / CoordinatorReject ───
 
     [HumansFact]
     public async Task Coordinator_CanView_ReportInTheirCategory()
@@ -224,8 +206,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    // ─── Coordinator cannot approve or edit ───────────────────────────────────
-
     [HumansFact]
     public async Task Coordinator_CannotApprove_SubmittedReport()
     {
@@ -242,8 +222,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    // ─── Coordinator (other category) × all denied ───────────────────────────
-
     [HumansFact]
     public async Task OtherCoordinator_CannotView_ReportNotInTheirCategory()
     {
@@ -259,8 +237,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUser(OtherCoordinatorId), report, ExpenseReportOperation.Endorse);
         result.Should().BeFalse();
     }
-
-    // ─── FinanceAdmin × View / Approve / FinanceReject ───────────────────────
 
     [HumansFact]
     public async Task FinanceAdmin_CanView_AnyReport()
@@ -303,8 +279,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, op);
         result.Should().Be(expected);
     }
-
-    // ─── FinanceAdmin edits on a member's behalf ──────────────────────────────
 
     [HumansTheory]
     [Xunit.InlineData(ExpenseReportStatus.Draft)]
@@ -354,14 +328,11 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [HumansFact]
     public async Task FinanceAdmin_CanEndorse_SubmittedReport()
     {
-        // Per src/Sections/Humans.Expenses/Docs/Expenses.md actors table: FinanceAdmin has all coordinator
-        // capabilities, including Endorse (gated to Submitted status).
+        // FinanceAdmin has all coordinator capabilities, including Endorse (gated to Submitted).
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Endorse);
         result.Should().BeTrue();
     }
-
-    // ─── Admin × all privileged operations ────────────────────────────────────
 
     [HumansFact]
     public async Task Admin_CanView_AnyReport()
@@ -389,8 +360,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // ─── Random user × all denied ────────────────────────────────────────────
-
     [HumansFact]
     public async Task RandomUser_CannotView_AnyReport()
     {
@@ -407,8 +376,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    // ─── Unauthenticated ──────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Unauthenticated_CannotView_AnyReport()
     {
@@ -417,8 +384,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(unauthenticated, report, ExpenseReportOperation.View);
         result.Should().BeFalse();
     }
-
-    // ─── Category with no team (coordinator lookup short-circuits) ────────────
 
     [HumansFact]
     public async Task CoordinatorCheck_DeniedWhen_CategoryHasNoTeam()
@@ -431,10 +396,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var result = await EvaluateAsync(CreateUser(CoordinatorId), report, ExpenseReportOperation.Endorse);
         result.Should().BeFalse();
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
-    // ─── DeclineLine ─────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Coordinator_CanDeclineLine_OnSubmittedReportInTheirCategory()

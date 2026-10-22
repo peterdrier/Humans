@@ -4,8 +4,8 @@ using Humans.Tickets.Data;
 namespace Humans.Tickets.Tests.Data;
 
 /// <summary>
-/// <see cref="TicketPiiTombstone.IsTombstoned"/> is the sync guard's fallback for rows
-/// erased before <c>PiiErasedAt</c> existed — nobodies-collective/Humans#1178.
+/// <see cref="TicketPiiTombstone.IsTombstoned"/> is the sync guard's fallback for rows erased before
+/// <c>PiiErasedAt</c> existed.
 /// </summary>
 public sealed class TicketPiiTombstoneTests
 {

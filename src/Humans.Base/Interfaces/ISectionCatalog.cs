@@ -49,9 +49,8 @@ public sealed record SectionInfo(string Name, bool IsActive)
 }
 
 /// <summary>
-/// The section list, published from DI at startup so nothing has to hand-maintain its own copy
-/// (nobodies-collective/Humans#1509). Shell composes it from the same dependency-graph walk that
-/// registers the sections, so it cannot drift from what the app actually runs.
+/// The section list, published from DI at startup so nothing hand-maintains its own copy. Composed from the same
+/// dependency-graph walk that registers the sections, so it cannot drift from what the app runs.
 /// </summary>
 /// <remarks>
 /// Registered as a singleton, so any service may inject it. It answers "is this a real section,

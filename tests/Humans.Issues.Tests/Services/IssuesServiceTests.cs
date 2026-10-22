@@ -36,19 +36,14 @@ using IssuesApplicationService = Humans.Issues.Services.IssuesService;
 namespace Humans.Issues.Tests.Services;
 
 /// <summary>
-/// Owns its fixture rather than deriving from <c>Humans.Users.Tests</c>'
-/// <c>ServiceTestHarness</c>: that harness is built around an in-memory
-/// <c>UsersDbContext</c>, and inheriting it would grant this section test project
-/// <c>InternalsVisibleTo</c> on another section's context. Issues reads users back through
-/// stubs instead — an in-memory people registry behind a <c>Db</c> shim.
+/// Owns its fixture: inheriting a <c>UsersDbContext</c>-based harness would grant this project
+/// <c>InternalsVisibleTo</c> on another section's context, so users come from an in-memory registry.
 /// </summary>
 public sealed class IssuesServiceTests
 {
     /// <summary>
-    /// The viewer these tests act as unless they are about scoping. An Admin reaches every
-    /// issue, which is what the service did for everyone before it took a viewer at all — so
-    /// the cases below still assert what they were written to assert. The scoping rule itself
-    /// is pinned by the "Who may reach one issue" cases further down.
+    /// The viewer these tests act as unless they are about scoping: an Admin reaches every issue.
+    /// The scoping rule itself is pinned by the "Who may reach one issue" cases further down.
     /// </summary>
     private static readonly IssueViewer Admin = new(Guid.NewGuid(), [RoleNames.Admin]);
 
@@ -58,17 +53,13 @@ public sealed class IssuesServiceTests
     private readonly InMemoryFileStorage FileStorage = new();
 
     /// <summary>
-    /// The published section list (nobodies-collective/Humans#1509). A substitute: the service
+    /// The published section list. A substitute: the service
     /// reads it only to say, in the log line, whether an unrouted value at least names a real
     /// section — the routing decision itself is <c>IssueSectionRouting</c>'s.
     /// </summary>
     private readonly ISectionCatalog SectionCatalog = Substitute.For<ISectionCatalog>();
 
-    /// <summary>
-    /// Stand-in for the harness's <c>UsersDbContext</c>: these tests only ever staged
-    /// users on it and flushed. <c>SaveChangesAsync</c> is a no-op because the registry is
-    /// already the store the stubs read.
-    /// </summary>
+    /// <summary>Stands in for a users context; <c>SaveChangesAsync</c> is a no-op because the registry is the store the stubs read.</summary>
     private readonly PeopleRegistry Db = new();
 
     private readonly IEmailService _emailService;
@@ -296,10 +287,6 @@ public sealed class IssuesServiceTests
         var abandoned = () => ReadAsync();
         await abandoned.Should().ThrowAsync<OperationCanceledException>();
     }
-
-    // ==========================================================================
-    // SubmitIssueAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task CreateIssueAsync_audits_the_filer_and_the_thread_surfaces_it()
@@ -609,10 +596,6 @@ public sealed class IssuesServiceTests
 
         issue.AdditionalContext.Should().Be("browser details | roles: Admin, TeamsAdmin");
     }
-
-    // ==========================================================================
-    // PostCommentAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(1999, "x", 2000)]
@@ -997,7 +980,6 @@ public sealed class IssuesServiceTests
         stored.ResolvedByUserId.Should().Be(actorId);
     }
 
-    // ==========================================================================
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(999)]
@@ -1027,9 +1009,6 @@ public sealed class IssuesServiceTests
         AuditLog.ReceivedCalls().Should().BeEmpty();
         _notificationService.ReceivedCalls().Should().BeEmpty();
     }
-
-    // UpdateStatusAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task UpdateStatusAsync_to_terminal_sets_ResolvedAt_and_ResolvedByUserId()
@@ -1283,10 +1262,6 @@ public sealed class IssuesServiceTests
             call.GetArguments()[3] == null);
     }
 
-    // ==========================================================================
-    // UpdateAssigneeAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task UpdateAssigneeAsync_audit_includes_old_and_new_names()
     {
@@ -1379,10 +1354,6 @@ public sealed class IssuesServiceTests
         stored.AssigneeUserId.Should().Be(assigneeId);
     }
 
-    // ==========================================================================
-    // UpdateSectionAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task UpdateSectionAsync_audits_change_and_invalidates_nav_badge()
     {
@@ -1439,10 +1410,6 @@ public sealed class IssuesServiceTests
         result.Succeeded.Should().BeTrue();
         result.NotFound.Should().BeFalse();
     }
-
-    // ==========================================================================
-    // Section validation (nobodies-collective/Humans#1509)
-    // ==========================================================================
 
     [HumansFact]
     public async Task SubmitIssueAsync_routes_an_unknown_section_to_the_Admin_queue()
@@ -1596,10 +1563,6 @@ public sealed class IssuesServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // ==========================================================================
-    // GetIssueListAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetIssueListAsync_applies_updated_descending_limit()
     {
@@ -1647,10 +1610,8 @@ public sealed class IssuesServiceTests
         result.Select(i => i.Id).Should().Equal(newer.Id, middle.Id);
     }
 
-    // ==========================================================================
-    // Visibility predicate, against the real repository:
-    // "in one of my sections OR reported by me"; Admin sees everything.
-    // ==========================================================================
+    // Visibility predicate, against the real repository: in one of my sections OR reported
+    // by me; Admin sees everything.
 
     [HumansFact]
     public async Task GetIssueListAsync_role_holder_sees_own_section_and_own_reports_only()
@@ -1730,10 +1691,6 @@ public sealed class IssuesServiceTests
         (await _service.GetActionableCountForViewerAsync(Admin, TestContext.Current.CancellationToken))
             .Should().Be(4, "Admin counts every Triage/Open issue, unrouted included");
     }
-
-    // ==========================================================================
-    // GDPR contributor
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(false)]
@@ -1902,14 +1859,9 @@ public sealed class IssuesServiceTests
         comments[0].SenderUserId.Should().BeNull();
     }
 
-    // ==========================================================================
-    // Who may reach one issue
-    //
-    // The rule the service applies to every per-item read and mutation, whichever door the
-    // call arrives through: a handler (Admin, or a role owning the issue's section) may do
+    // Who may reach one issue: a handler (Admin, or a role owning the issue's section) may do
     // anything, the reporter may read and comment on their own issue, and everyone else is
-    // told it does not exist.
-    // ==========================================================================
+    // told it does not exist. Applies to every per-item read and mutation.
 
     // A property, not a field: TestContext.Current is ambient per test, and HumansFact gives
     // each one its own timeout CTS, so a captured token would outlive the test that made it.
@@ -2028,10 +1980,6 @@ public sealed class IssuesServiceTests
         after.Status.Should().Be(IssueStatus.Open);
     }
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
     private async Task<(Guid reporterId, Guid issueId)> SeedIssueAsync(
         IssueStatus status,
         bool withResolvedFields = false,
@@ -2097,10 +2045,6 @@ public sealed class IssuesServiceTests
         await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         return issue.Id;
     }
-
-    // ==========================================================================
-    // Screenshots — stored through IFileStorage, served behind the issue's reach check
-    // ==========================================================================
 
     private static IFormFile PngUpload(byte[] bytes)
     {
@@ -2250,10 +2194,6 @@ public sealed class IssuesServiceTests
         (await ScreenshotController(stranger.Id).Screenshot(Guid.NewGuid())).Should().BeOfType<NotFoundResult>();
     }
 
-    // ==========================================================================
-    // PurgeExpiredAsync — 6-month retention sweep used by CleanupIssuesJob
-    // ==========================================================================
-
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -2397,10 +2337,7 @@ public sealed class IssuesServiceTests
         (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
-    // ==========================================================================
-    // Merged-away ids (peterdrier/Humans#1704): in-app notifications reach the survivor, and the
-    // assignee is stored as the live id.
-    // ==========================================================================
+    // Merged-away ids: in-app notifications reach the survivor, and the assignee is stored as the live id.
 
     [HumansFact]
     public async Task UpdateStatusAsync_notifies_the_survivor_when_the_reporter_id_was_merged_away()

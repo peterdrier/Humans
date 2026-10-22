@@ -3,18 +3,10 @@ using Humans.Governance.Services;
 namespace Humans.Governance.Jobs;
 
 /// <summary>
-/// Hourly sweep for assembly votes: closes votes whose announced time has passed and sends
-/// the T-24h reminder to roster members who have not voted.
+/// Backstop, not the mechanism: the service closes a lapsed vote on the first request that sees
+/// the deadline. The job adds the audit entry and stored result for an unobserved vote, and the
+/// T-24h reminder, which has no request to ride along with.
 /// </summary>
-/// <remarks>
-/// A backstop, not the mechanism: the service closes a lapsed vote inline on the first
-/// request that observes the deadline, so correctness never depends on this job having run.
-/// What the job adds is the audit entry and the stored result for a vote nobody happened to
-/// look at, and the reminder, which has no request to ride along with.
-/// <para>
-/// Calls the service like every other job in this section — never a repository directly.
-/// </para>
-/// </remarks>
 internal sealed class AssemblyVoteLapseJob(
     IAssemblyVoteService votes,
     ILogger<AssemblyVoteLapseJob> logger)

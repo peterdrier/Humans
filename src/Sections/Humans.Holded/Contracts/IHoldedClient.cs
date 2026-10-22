@@ -5,139 +5,106 @@ namespace Humans.Holded.Contracts;
 public interface IHoldedClient
 {
     /// <summary>
-    /// False when no <c>HOLDED_API_KEY_V2</c> is configured (PR previews, local dev). Every call
-    /// would 401 — a permanent error — so callers skip the work instead of writing off their
-    /// queues, and can tell "not configured" apart from "queued" when reporting state.
+    /// False without <c>HOLDED_API_KEY_V2</c> (PR previews, local dev). Every call would 401, so callers skip the
+    /// work instead of writing off their queues.
     /// </summary>
     bool IsConfigured { get; }
 
-    /// <summary>Creates a purchase document and returns the new doc id.</summary>
+    /// <summary>Returns the new doc id.</summary>
     Task<string> CreatePurchaseDocumentAsync(
         HoldedPurchaseDocumentInput input,
         CancellationToken ct = default);
 
-    /// <summary>Uploads a single attachment to a purchase document.</summary>
     Task UploadAttachmentAsync(
         string documentId,
         HoldedAttachmentInput attachment,
         CancellationToken ct = default);
 
-    /// <summary>Reads a purchase document by id.</summary>
     Task<HoldedPurchaseDocumentDto> GetPurchaseDocumentAsync(
         string documentId,
         CancellationToken ct = default);
 
-    /// <summary>Approves a purchase document. POST /purchases only creates a draft — only an
-    /// approved doc books to the ledger and leaves the draft list. Idempotent: a doc that is already
-    /// approved returns normally.</summary>
+    /// <summary>POST /purchases only creates a draft; only an approved doc books to the ledger. Idempotent: an
+    /// already approved doc returns normally.</summary>
     Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
 
-    /// <summary>Deletes a purchase document (DELETE /purchases/{id}). Holded refuses a document that
-    /// carries a payment, so callers check <c>payments_pending</c> first and never retry a 4xx.</summary>
+    /// <summary>Holded refuses a document that carries a payment, so callers check <c>payments_pending</c> first and
+    /// never retry a 4xx.</summary>
     Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default);
 
-    /// <summary>Records a payment against a purchase document and returns the new payment id.
-    /// Partial payments are allowed — <paramref name="amount"/> may be less than what the document
-    /// still owes. <paramref name="treasuryId"/> names the account the money left; omitting it lets
-    /// Holded pick its own default, so callers that care pass one.
-    /// The POST answers <c>{"status":"paid"}</c> with no id (verified live 2026-10-18), so the id is
-    /// read from the document's <c>payments_detail</c>: the list is read before the POST and again
-    /// after it, and the one new entry matching amount, date and treasury account is the payment.
-    /// A read that fails <em>before</em> the POST throws like any other read — nothing was posted.
-    /// Never throws once the payment is posted: when the after-read fails, or zero or several new
-    /// entries match, it returns <c>"unconfirmed:{documentId}"</c> instead. Callers persist that ref
-    /// like any other — it names the document a human must check.</summary>
+    /// <summary>Partial payments are allowed. Omitting <paramref name="treasuryId"/> lets Holded pick its default.
+    /// The POST returns no id, so the id is the one new <c>payments_detail</c> entry matching amount, date and
+    /// treasury, read before and after. A failed before-read throws (nothing was posted). Once posted it never
+    /// throws: when the after-read fails or zero or several entries match it returns
+    /// <c>"unconfirmed:{documentId}"</c>, which callers persist like any ref.</summary>
     Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default);
 
-    /// <summary>Posts a two-line manual journal entry — debit one account, credit the other, one
-    /// amount — and returns the new entry id. Accounts are ledger account <em>numbers</em>
-    /// (<c>57200001</c>), not Holded ids. Same rule as <see cref="PayPurchaseDocumentAsync"/> for an
-    /// unreadable success: the entry is already posted, so it returns <c>"unconfirmed:entry"</c>
-    /// rather than throwing.</summary>
+    /// <summary>Debit one account, credit the other, one amount; returns the entry id. Accounts are ledger
+    /// <em>numbers</em> (<c>57200001</c>), not Holded ids. An unreadable success returns <c>"unconfirmed:entry"</c>
+    /// rather than throwing, as in <see cref="PayPurchaseDocumentAsync"/>.</summary>
     Task<string> PostLedgerEntryAsync(
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
         CancellationToken ct = default);
 
-    /// <summary>Lists all P&amp;L expense accounts (id + number + name).</summary>
     Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Creates a P&amp;L expense account; returns the new account id.</summary>
+    /// <summary>Returns the new account id.</summary>
     Task<string> CreateExpenseAccountAsync(
         int accountNum, string name, CancellationToken ct = default);
 
-    /// <summary>Lists all purchase documents (cursor-paginated internally).</summary>
     Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Creates a contact (POST) and returns its id. Never updates one: v2's contact PUT is a
-    /// full replacement that would reset the contact's creditor account.</summary>
+    /// <summary>Creates only, never updates: v2's contact PUT is a full replacement that would reset the
+    /// contact's creditor account.</summary>
     Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
 
-    /// <summary>Creates a draft invoice or sales receipt; returns the new doc id. A draft books
-    /// nothing — follow with <see cref="ApproveSalesDocumentAsync"/>.</summary>
+    /// <summary>A draft books nothing: follow with <see cref="ApproveSalesDocumentAsync"/>.</summary>
     Task<string> CreateSalesDocumentAsync(
         HoldedSalesDocumentKind kind, HoldedSalesDocumentInput input, CancellationToken ct = default);
 
-    /// <summary>Approves a sales document. Only an approved doc books revenue and gets a number.</summary>
+    /// <summary>Only an approved doc books revenue and gets a number.</summary>
     Task ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
-    /// <summary>Ids of the sales documents of <paramref name="kind"/> carrying <paramref name="tag"/>.
-    /// v2 has no server-side tag filter and its list responses omit <c>notes</c>, so the collection is
-    /// walked and matched on the tag client-side. Used to find a document a previous attempt already
-    /// issued before issuing a second one.</summary>
+    /// <summary>v2 has no server-side tag filter, so the collection is walked and matched client-side. Finds a
+    /// document an earlier attempt already issued.</summary>
     Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
         HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default);
 
-    /// <summary>Reads a sales document back — the post-approval document number and totals.</summary>
     Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
-    /// <summary>Reads one contact; exposes supplierRecord.num (the 400000xx account).</summary>
     Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
 
-    /// <summary>Deletes one contact via DELETE v2/contacts/{id}. A contact already gone (404) is success.
-    /// Used to retract a contact minted by a push that lost a binding race, and to remove a duplicate
-    /// contact that owns no documents — Holded keeps a contact's documents, so deleting a non-empty one
-    /// is the caller's bug.</summary>
+    /// <summary>A contact already gone (404) is success. Holded keeps a contact's documents, so deleting one that
+    /// owns any is the caller's bug.</summary>
     Task DeleteContactAsync(string contactId, CancellationToken ct = default);
 
-    /// <summary>Lists journal lines from GET v2/ledger-entries across a date window. Paginates internally
-    /// via cursor; optionally scoped to one account number.</summary>
     Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
         LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default);
 
-    /// <summary>Lists the full chart of accounting accounts with their current totals.</summary>
     Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(CancellationToken ct = default);
 
-    /// <summary>Reads the current API usage/quota counters.</summary>
     Task<HoldedUsageDto> GetUsageAsync(CancellationToken ct = default);
 
-    /// <summary>Lists all contacts (id + name + supplierRecord.num) for account-number → contact
-    /// resolution. Cursor-paginated internally; a page that cannot be completed throws rather than
-    /// returning the prefix. One contact carrying an unreadable value is skipped and logged — an
-    /// unreadable page envelope is not.</summary>
+    /// <summary>A page that can't be completed throws rather than returning the prefix. One contact with an
+    /// unreadable value is skipped and logged; an unreadable page envelope is not.</summary>
     Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default);
 
-    /// <summary>Lists a treasury account's bank movements over a date window, newest-first order not
-    /// guaranteed. Cursor-paginated internally. The window is also applied client-side, so the contract
-    /// holds whether or not Holded honours the date query parameters. A pending outgoing line with no
-    /// readable date fails the read closed (<c>HoldedPermanentException.BankMovementId</c> names it)
-    /// unless its id is in <paramref name="skipUnreadableDateIds"/>, in which case it is skipped and
-    /// logged (peterdrier/Humans#1946).</summary>
-    /// REASON: nothing in the client can read the bank feed; #1185 makes the bank line the trigger.
+    /// <summary>Order not guaranteed. The window is also applied client-side, whether or not Holded honours the
+    /// date parameters. A pending outgoing line with no readable date fails the read closed
+    /// (<c>HoldedPermanentException.BankMovementId</c> names it) unless its id is in
+    /// <paramref name="skipUnreadableDateIds"/>, in which case it is skipped and logged.</summary>
     Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
         string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default,
         IReadOnlySet<string>? skipUnreadableDateIds = null);
 
-    /// <summary>Reconciles one bank movement against the documents that settle it. Split reconciliation
-    /// (several documents on one line) is supported. Throws <c>HoldedPermanentException</c> when Holded
-    /// refuses the pairing — unlike a payment, a refused reconcile moved no money, so there is nothing
-    /// to lose by throwing.</summary>
-    /// REASON: #1185 requires the Sabadell line to end up reconciled; no existing method can.
+    /// <summary>Several documents on one line are allowed. Throws <c>HoldedPermanentException</c> when Holded
+    /// refuses the pairing: unlike a payment, a refused reconcile moved no money.</summary>
     Task ReconcileBankMovementAsync(
         string treasuryAccountId, string movementId,
         IReadOnlyList<HoldedReconcileDocumentRef> documents, CancellationToken ct = default);

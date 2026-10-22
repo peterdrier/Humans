@@ -12,12 +12,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.GoogleIntegration.Controllers;
 
-/// <summary>
-/// A team's linked Google resources: link, unlink, permission level, inherited-access
-/// restriction and single-resource sync. Gated per team: TeamsAdmin/Board/Admin, or a
-/// coordinator of the team's department (sub-team coordinators manage at department level).
-/// The per-team gate is <see cref="TeamResourceAuthorizationHandler"/>.
-/// </summary>
+/// <summary>A team's linked Google resources, gated per team by <see cref="TeamResourceAuthorizationHandler"/>.</summary>
 [Authorize]
 [Route("Google/Teams/{slug}/Resources")]
 internal sealed class TeamResourcesController(
@@ -227,10 +222,7 @@ internal sealed class TeamResourcesController(
 
         try
         {
-            // Deliberately not passing HttpContext.RequestAborted: a team admin
-            // navigating away mid-reconcile would abort partway through applying
-            // Drive permissions, leaving the resource half-synced
-            // (nobodies-collective/Humans#950).
+            // Not RequestAborted: navigating away mid-reconcile would leave the resource half-synced.
             var diff = await googleSync.SyncSingleResourceAsync(
                 resourceId,
                 SyncAction.Execute,
@@ -249,9 +241,7 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    /// <summary>
-    /// Current user, then team by slug (404), then the manage-resources gate (403).
-    /// </summary>
+    /// <summary>Current user, then team by slug (404), then the manage-resources gate (403).</summary>
     private async Task<(IActionResult? Error, UserInfo User, TeamInfo Team)> ResolveManageableTeamAsync(
         string slug, CancellationToken ct = default)
     {

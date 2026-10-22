@@ -1,9 +1,6 @@
 
 namespace Humans.Containers.Contracts;
 
-/// <summary>
-/// Minimal shape <c>ContainerAuthorizationHandler</c> needs to make a decision.
-/// </summary>
 public sealed record ContainerAuthorizationTarget(Guid CampId)
 {
     /// <summary>Placement year; null uses the current public year.</summary>

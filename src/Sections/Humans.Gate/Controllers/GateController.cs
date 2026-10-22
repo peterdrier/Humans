@@ -17,17 +17,8 @@ using NodaTime.Text;
 namespace Humans.Gate.Controllers;
 
 /// <summary>
-/// Gate admissions terminal. Distinct from the read-only <c>Scanner</c> section:
-/// this one decides entry and writes the durable <c>gate_scan_events</c> record.
-/// The terminal authenticates via the <see cref="PolicyNames.ScannerAccess"/>
-/// policy (shared gate-terminal account or a ticket admin) for the read actions
-/// (Index/Evaluate/Leaderboard); the write action (Decision) requires the dedicated
-/// <see cref="PolicyNames.GateAdmit"/> policy so it never rides on the read-only
-/// Scanner gate. Scans are attributed to the authenticated gate account, taken from
-/// the principal (never the request body). Too-early / unconfirmed-Early-Entry and
-/// child-without-ID admits are a supervisor override authorized by the shared
-/// override PIN (<c>Gate:SupervisorPin</c>), server-verified and brute-force
-/// throttled via <see cref="GatePinThrottle"/>.
+/// Reads need <see cref="PolicyNames.ScannerAccess"/>; the Decision write needs <see cref="PolicyNames.GateAdmit"/>, so
+/// admission never rides on the read-only Scanner gate. Scans are attributed from the principal, never the request.
 /// </summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Gate")]
@@ -42,15 +33,12 @@ internal sealed class GateController(
     private const string ScannerSessionKey = "GateScannerId";
     private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
 
-    // Throttle bucket for the shared override PIN — one bucket for the terminal, distinct
-    // from the per-user claim buckets so a fumbled override can never lock a claim (or vice versa).
+    // One bucket for the terminal, apart from the per-user claim buckets, so a fumbled override never locks a claim.
     private const string SharedOverridePinKey = "override:shared";
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        // No claim step and no per-scanner identity shown: the terminal simply scans as its
-        // authenticated gate account (attribution is taken from the principal on Decision).
         var settings = await gate.GetSettingsAsync(ct);
         var asOf = InstantPattern.ExtendedIso.Format(clock.GetCurrentInstant());
         return View(new GateIndexViewModel(asOf, settings.CutoffConfigured));
@@ -79,9 +67,8 @@ internal sealed class GateController(
             return BadRequest();
         }
 
-        // Overrides (too-early / unconfirmed-EE admit, child-without-ID waiver) require the shared
-        // supervisor PIN, verified server-side before anything is recorded. One PIN for all
-        // supervisors: it authorizes but cannot attribute, so the event records the gate account.
+        // Overrides need the shared supervisor PIN, verified before anything is recorded. It authorizes but cannot
+        // attribute, so the event records the gate account.
         Guid? overrideBy = null;
         if (childWithAdult || overrideEarly)
         {
@@ -101,10 +88,7 @@ internal sealed class GateController(
     [HttpGet("Claim")]
     public async Task<IActionResult> Claim(CancellationToken ct)
     {
-        // Quick-pick the gate-shift roster so a staffer taps their name at shift start;
-        // the search box below it still finds anyone (helpers who aren't rostered). The
-        // roster is opt-in: empty unless an admin points Gate:RosterTeamId at the Shifts
-        // department that staffs the gate, so unconfigured deployments just get search.
+        // The roster is opt-in (Gate:RosterTeamId); search still finds helpers who aren't rostered.
         var roster = await BuildRosterAsync(ct);
         return View(new GateClaimViewModel(roster));
     }
@@ -114,16 +98,12 @@ internal sealed class GateController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Claim(Guid userId, CancellationToken ct)
     {
-        // The claimant must be a real active member — the id comes from the form, so an
-        // arbitrary/inactive guid must never reach PIN enrolment (attribution integrity).
-        // A merged-away id resolves to its survivor; fail closed rather than stamp the
-        // session with an id the PIN store and attribution no longer recognise.
+        // The id comes from the form: it must be an active member, and a merged-away id fails closed rather than
+        // stamping the session with an id the PIN store no longer recognises.
         var info = await UserService.GetUserInfoAsync(userId, ct);
         if (info is not { IsActive: true } || info.Id != userId)
             return RedirectToAction(nameof(Claim));
 
-        // Don't stamp the session yet — resolve the staffer's PIN status and hand off to the
-        // keypad (set a new PIN, or verify the existing one).
         var status = await gate.GetPinStatusAsync(userId, ct);
         return View("Pin", GatePinViewModel.ForClaim(userId, info.BurnerName, status));
     }
@@ -133,14 +113,12 @@ internal sealed class GateController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClaimPin(Guid userId, string? pin, CancellationToken ct)
     {
-        // The claimant must be a real active member — guard before any enrol/verify/stamp, so a
-        // direct POST with an arbitrary or inactive id can't mint a PIN or claim the session.
-        // A merged-away id resolves to its survivor; fail closed (see Claim).
+        // Guard before any enrol/verify/stamp: a direct POST with an arbitrary or inactive id must not mint a PIN.
         var info = await UserService.GetUserInfoAsync(userId, ct);
         if (info is not { IsActive: true } || info.Id != userId)
             return RedirectToAction(nameof(Claim));
 
-        // Re-derive the mode from the server (never trust a client-supplied set/verify hint).
+        // Re-derive the mode server-side; never trust a client set/verify hint.
         var status = await gate.GetPinStatusAsync(userId, ct);
         var name = info.BurnerName;
 
@@ -154,18 +132,13 @@ internal sealed class GateController(
     [ValidateAntiForgeryToken]
     public IActionResult EndShift()
     {
-        // End the current scanner's session so the terminal drops back to "Who is scanning?".
-        // Clearing attribution server-side (not just navigating away) means a walk-away can't
-        // leave the next person's scans recorded against whoever last claimed — the session
-        // otherwise survives ~8h of idle, long past a single staffer's shift.
+        // Clear attribution server-side: the session survives ~8h idle, so a walk-away would credit the next
+        // person's scans to whoever last claimed.
         HttpContext.Session.Remove(ScannerSessionKey);
         return RedirectToAction(nameof(Claim));
     }
 
-    // Name-only people search for the claim screen. The route-locked kiosk can't reach
-    // /api/profiles/search, so the claim picker points here instead — this endpoint stays
-    // inside the /Gate route-lock. Matching is burner-name only — never by email or broad
-    // fields — but each result shows a *masked* email as a disambiguator (see below).
+    // The route-locked kiosk can't reach /api/profiles/search. Burner-name matching only, never email.
     [HttpGet("Search")]
     public async Task<IActionResult> Search(string? q, CancellationToken ct)
     {
@@ -173,11 +146,7 @@ internal sealed class GateController(
         if (query.Length < 2)
             return Json(Array.Empty<HumanLookupSearchResult>());
 
-        // Name-only search (never email — see the note above). To tell same-name staffers apart,
-        // each result carries a *masked* primary email as a disambiguator — enough to recognise
-        // your own address, not enough to broadcast it. The effective emails come from the cached batch lookup
-        // and are masked here at the presentation layer, so the search itself and its
-        // response shape stay email-free.
+        // A masked email tells same-name staffers apart; it is masked here, so the search itself stays email-free.
         var matches = (await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct))
             .OrderByRelevance()
             .ToList();
@@ -189,11 +158,7 @@ internal sealed class GateController(
         return Json(rows);
     }
 
-    // The one email safe to hint on a shared, role-less kiosk: a verified address the owner set to
-    // org-public (AllActiveProfiles) visibility, never a Board/coordinator/team-scoped address.
-    // Tombstones never reach here: search omits them and the resolving read returns the
-    // survivor. Mirrors the Bio-bucket public-email rule; if the person has no org-public
-    // email, the picker simply shows no disambiguator (the photo still helps).
+    // The one email safe to hint on a shared, role-less kiosk: verified and org-public, never a scoped address.
     private static string? PublicEmail(UserInfo? info) =>
         info is null
             ? null
@@ -203,9 +168,7 @@ internal sealed class GateController(
                 .Select(e => e.Email)
                 .FirstOrDefault();
 
-    // Masks an email for the shared kiosk picker: first char + bullets + last char of the local
-    // part, then the full domain (paul.smith@gmail.com → p•••h@gmail.com). Recognisable to its
-    // owner, minimal to a bystander. Presentation-only — never used for matching.
+    // p•••h@gmail.com: recognisable to its owner, minimal to a bystander. Presentation only, never matching.
     private static string? MaskEmail(string? email)
     {
         if (string.IsNullOrWhiteSpace(email)) return null;
@@ -233,9 +196,7 @@ internal sealed class GateController(
         return View(rows);
     }
 
-    // Settings (general-entry instant, minor age threshold) moved to /Settings#gate
-    // (peterdrier/Humans#1634) — see GateSettingsTabViewComponent. The page stays for
-    // Staff PIN admin below, so GET keeps rendering it rather than redirecting outright.
+    // Settings live in /Settings#gate; this page stays for staff PIN admin.
     [HttpGet("Admin")]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public IActionResult Admin() => View();
@@ -263,8 +224,7 @@ internal sealed class GateController(
         return Redirect("/Settings#gate");
     }
 
-    // Admin PIN enrolment: set any user's claim PIN out of band (stored AdminEnrolled — see
-    // GateStaffPin). Kiosk overrides themselves use the shared Gate:SupervisorPin, not these.
+    // Stored AdminEnrolled. Kiosk overrides use the shared Gate:SupervisorPin, not these PINs.
     [HttpPost("Admin/SetPin")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
@@ -300,7 +260,6 @@ internal sealed class GateController(
         return RedirectToAction(nameof(Admin));
     }
 
-    // ── Claim helpers ────────────────────────────────────────────────────────
     private async Task<IActionResult> VerifyClaimAsync(
         Guid userId, string name, GatePinStatus status, string? pin, CancellationToken ct)
     {
@@ -329,24 +288,20 @@ internal sealed class GateController(
 
     private IActionResult StampAndScan(Guid userId)
     {
-        // Stamp the verified user-id server-side (never from the request body) so attribution can't be forged.
+        // Server-side, never from the request body, so attribution can't be forged.
         HttpContext.Session.SetString(ScannerSessionKey, userId.ToString());
         return RedirectToAction(nameof(Index));
     }
 
-    // ── Override authorization (shared supervisor PIN) ──────────────────────
     // Returns null when the override is authorized; otherwise the error card to show.
     private GateScanCardViewModel? AuthorizeOverride(string? pin, string barcode, bool childWithAdult)
     {
-        // Fail closed: no configured PIN means no overrides — never a free pass. Say so
-        // explicitly on the card (it's a staff-only kiosk; the fix is an admin action).
+        // Fail closed: no configured PIN means no overrides, and the card says so.
         if (string.IsNullOrEmpty(configuration[SupervisorPinConfigKey]))
             return OverrideErrorCard(barcode, childWithAdult,
                 "Override PIN not configured — an admin must set it before overrides work");
 
-        // One throttle bucket for the whole terminal: a single shared PIN has no per-user key.
-        // A lockout blocks only the override path — scanning is unaffected — and caps
-        // brute-force at 5 tries / 15 min across the 10k PIN space.
+        // A lockout blocks only the override path, never scanning, and caps brute force at 5 tries per 15 min.
         if (ThrottleWait(SharedOverridePinKey) is { } wait)
             return OverrideErrorCard(barcode, childWithAdult, $"Too many PIN attempts — wait {wait}s");
 
@@ -375,15 +330,11 @@ internal sealed class GateController(
     private static GateScanCardViewModel OverrideErrorCard(string barcode, bool childWithAdult, string reason) =>
         new(GateCardKind.Amber, "Supervisor", null, reason, IsEarly: false, barcode,
             AllowChildWithAdult: false,
-            // An early override can retry inline (the barcode is preserved on the card). The child
-            // waiver lives on the ID-confirm card, so a failed child auth just re-scans.
+            // The child waiver lives on the ID-confirm card, so a failed child auth just re-scans.
             AllowSupervisorOverride: !childWithAdult);
 
-    // ── Throttle helpers ─────────────────────────────────────────────────────
-    // Two bucket shapes: claim PINs key per target user (a shared device/IP key would let one
-    // bad run freeze every claim — the proxy collapses all kiosk traffic to one IP), while the
-    // shared override PIN uses the single terminal-wide bucket above, whose lockout blocks
-    // only the override path, never scanning.
+    // Claim PINs throttle per target user: the proxy collapses all kiosk traffic to one IP, so an IP key would let
+    // one bad run freeze every claim.
     private static string UserKey(Guid userId) => $"u:{userId}";
 
     private int? ThrottleWait(string userKey) => pinThrottle.SecondsUntilRetry(userKey);
@@ -392,7 +343,6 @@ internal sealed class GateController(
 
     private void ResetPinThrottle(string userKey) => pinThrottle.Reset(userKey);
 
-    // ── Lookups ──────────────────────────────────────────────────────────────
     private async Task<IReadOnlyList<GateRosterMember>> BuildRosterAsync(CancellationToken ct)
     {
         if (!Guid.TryParse(configuration["Gate:RosterTeamId"], out var teamId))

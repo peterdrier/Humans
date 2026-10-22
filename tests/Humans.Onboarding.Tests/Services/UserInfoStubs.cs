@@ -3,15 +3,10 @@ using Humans.Users.Contracts;
 namespace Humans.Onboarding.Tests.Services;
 
 /// <summary>
-/// The two pure <c>UserInfo</c> projections these tests use, copied out of
-/// <c>UserInfoStubHelpers</c> (now <c>tests/Humans.AuditLog.Tests/Infrastructure/</c>).
+/// The two pure <c>UserInfo</c> projections these tests use. Copied rather than shared: the shared
+/// helper also builds on <c>UsersDbContext</c>, which would push <c>InternalsVisibleTo</c> on it
+/// into every section test project.
 /// </summary>
-/// <remarks>
-/// Copied rather than shared through <c>tests/Directory.Build.props</c> because the same
-/// file also carries <c>StubGetUserInfosFromDb</c> overloads built on an in-memory
-/// <c>UsersDbContext</c>: sharing it would push <c>InternalsVisibleTo</c> on
-/// <c>UsersDbContext</c> into every section test project.
-/// </remarks>
 internal static class UserInfoStubs
 {
     internal static UserInfo ToUserInfo(
@@ -30,8 +25,7 @@ internal static class UserInfoStubs
     {
         var info = profile ?? UserFixtures.Profile(burnerName: displayName, isApproved: true);
         return UserInfo.Create(
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             new User { Id = userId, PreferredLanguage = "en", BurnerName = info.BurnerName, State = UserFixtures.StateFor(info) },
             [],
             [],

@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Agent.Domain;
 
-/// <summary>
-/// Singleton row (<c>Id = 1</c> enforced in EF configuration). Admin-editable at
-/// the <c>/Settings#agent</c> tab. Mirrored in-memory by <c>IAgentSettingsStore</c>.
-/// </summary>
+/// <summary>Singleton row (<c>Id = 1</c>). Mirrored in memory by <c>IAgentSettingsStore</c>.</summary>
 internal sealed class AgentSettings
 {
     public int Id { get; init; } = 1;

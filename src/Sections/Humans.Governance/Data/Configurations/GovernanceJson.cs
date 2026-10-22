@@ -8,16 +8,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Humans.Governance.Data.Configurations;
 
 /// <summary>
-/// Shared jsonb plumbing for Governance's assembly-vote tables: one cached
-/// <see cref="JsonSerializerOptions"/> (CA1869) plus the two property converters the
-/// entities need. Mirrors Surveys' <c>SurveyJson</c>, which is the precedent for
-/// culture-keyed jsonb in this codebase.
+/// One cached <see cref="JsonSerializerOptions"/> (CA1869) for the assembly-vote jsonb columns.
 /// </summary>
 internal static class GovernanceJson
 {
     public static readonly JsonSerializerOptions Options = new();
 
-    /// <summary>Maps a <see cref="GovernanceLocalizedText"/> property to a jsonb culture→text column.</summary>
     public static void LocalizedText<TEntity>(
         EntityTypeBuilder<TEntity> b,
         Expression<Func<TEntity, GovernanceLocalizedText>> prop) where TEntity : class

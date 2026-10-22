@@ -1,92 +1,43 @@
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Narrow connector over the Google Cloud Identity Groups API and the Groups
-/// Settings API, scoped to the group-lifecycle and configuration operations
-/// performed by <c>GoogleWorkspaceSyncService</c>. Shape-neutral so the service layer never
-/// names a <c>Google.Apis.*</c> type (design-rules §13).
-/// </summary>
 internal interface IGoogleGroupProvisioningClient
 {
-    /// <summary>
-    /// Creates a new Google Group with the given email and display name under
-    /// the configured Cloud Identity customer and returns its numeric id.
-    /// </summary>
-    /// <param name="groupEmail">Primary email of the new group.</param>
-    /// <param name="displayName">Display name of the new group.</param>
-    /// <param name="description">Description shown on the group page.</param>
-    /// <param name="ct">Token used to cancel group creation.</param>
-    /// <returns>
-    /// The numeric group id (the <c>{id}</c> in <c>groups/{id}</c>) on
-    /// success, or a populated <see cref="GoogleClientError"/> on failure.
-    /// </returns>
+    /// <summary>Returns the numeric id, the <c>{id}</c> in <c>groups/{id}</c>.</summary>
     Task<GroupCreateResult> CreateGroupAsync(
         string groupEmail,
         string displayName,
         string description,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Looks up a Google Group by its email and returns its numeric id.
-    /// Returns a populated <see cref="GoogleClientError"/> when the group
-    /// does not exist (HTTP 404 / 403) or any other failure occurs.
-    /// </summary>
+    /// <summary>A missing group is an error (404 or 403).</summary>
     Task<GroupLookupIdResult> LookupGroupIdAsync(
         string groupEmail,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Fetches the current Google Workspace group settings for the group
-    /// identified by <paramref name="groupEmail"/>.
-    /// </summary>
-    /// <returns>
-    /// A shape-neutral <see cref="GroupSettingsSnapshot"/> on success, or a
-    /// populated <see cref="GoogleClientError"/> on failure. The snapshot
-    /// surfaces both the enforced settings and the deprecated ones so the
-    /// admin "all groups" page can display them.
-    /// </returns>
+    /// <summary>The snapshot includes deprecated settings, for the all-groups page.</summary>
     Task<GroupSettingsGetResult> GetGroupSettingsAsync(
         string groupEmail,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies the supplied <paramref name="expected"/> settings to the group.
-    /// The implementation issues a single <c>Groups.Update</c> call, returning
-    /// null on success or a populated <see cref="GoogleClientError"/> when
-    /// Google rejects the update.
-    /// </summary>
+    /// <summary>One <c>Groups.Update</c> call; null on success.</summary>
     Task<GoogleClientError?> UpdateGroupSettingsAsync(
         string groupEmail,
         GroupSettingsExpected expected,
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Outcome of <see cref="IGoogleGroupProvisioningClient.CreateGroupAsync"/>.
-/// Exactly one of <see cref="GroupNumericId"/> or <see cref="Error"/> is
-/// non-null.
-/// </summary>
+/// <summary>Exactly one of <see cref="GroupNumericId"/> or <see cref="Error"/> is non-null.</summary>
 internal sealed record GroupCreateResult(string? GroupNumericId, GoogleClientError? Error);
 
-/// <summary>
-/// Outcome of <see cref="IGoogleGroupProvisioningClient.LookupGroupIdAsync"/>.
-/// Exactly one of <see cref="GroupNumericId"/> or <see cref="Error"/> is
-/// non-null.
-/// </summary>
+/// <summary>Exactly one of <see cref="GroupNumericId"/> or <see cref="Error"/> is non-null.</summary>
 internal sealed record GroupLookupIdResult(string? GroupNumericId, GoogleClientError? Error);
 
-/// <summary>
-/// Outcome of <see cref="IGoogleGroupProvisioningClient.GetGroupSettingsAsync"/>.
-/// Exactly one of <see cref="Settings"/> or <see cref="Error"/> is non-null.
-/// </summary>
+/// <summary>Exactly one of <see cref="Settings"/> or <see cref="Error"/> is non-null.</summary>
 internal sealed record GroupSettingsGetResult(GroupSettingsSnapshot? Settings, GoogleClientError? Error);
 
 /// <summary>
-/// Complete shape-neutral snapshot of a Google Group's settings, including
-/// both enforced and deprecated fields (deprecated fields are shown on the
-/// admin all-groups page for visibility even though they aren't reconciled).
-/// Every field is nullable because the Groups Settings API returns null for
-/// settings that haven't been explicitly set.
+/// Every field is nullable: the Settings API returns null for settings never set. Deprecated fields are shown on the
+/// all-groups page but not reconciled.
 /// </summary>
 internal sealed record GroupSettingsSnapshot(
     string? WhoCanJoin,
@@ -148,12 +99,7 @@ internal sealed record GroupSettingsSnapshot(
     string? MessageDisplayFont,
     long? MaxMessageBytes);
 
-/// <summary>
-/// Expected Google Group settings the caller wants applied. Mirrors the
-/// enforced subset of <see cref="GroupSettingsSnapshot"/> — the settings the
-/// system reconciles on provisioning and drift checks. The connector
-/// translates these into Google SDK types internally.
-/// </summary>
+/// <summary>The enforced subset of <see cref="GroupSettingsSnapshot"/>.</summary>
 internal sealed record GroupSettingsExpected(
     string? WhoCanJoin,
     string? WhoCanViewMembership,

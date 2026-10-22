@@ -23,8 +23,7 @@ internal sealed class ProfileAdminController(
     {
         var report = await emailProblems.ScanAsync(ct);
 
-        // Raw: the report names the rows that hold each address, tombstones included, and the
-        // page labels (and deletes by) exactly those rows.
+        // Raw: the report names the exact rows holding each address, tombstones included, and the page deletes by them.
         var allInvolvedUserIds = report.Problems
             .SelectMany(p => new[] { p.UserId, p.OtherUserId })
             .OfType<Guid>()

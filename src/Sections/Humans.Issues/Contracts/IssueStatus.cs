@@ -1,11 +1,8 @@
 namespace Humans.Issues.Contracts;
 
 /// <summary>
-/// Issue lifecycle. Submissions land in <see cref="Triage"/>. Terminal states:
-/// <see cref="Resolved"/>, <see cref="WontFix"/>, <see cref="Duplicate"/>.
-/// A reporter posting a comment on a terminal issue auto-reopens it to <see cref="Open"/>.
-/// In <c>Contracts/</c> beside <see cref="IssueCategory"/> because the Backdoor machine API filters
-/// and sets it.
+/// Submissions land in <see cref="Triage"/>. Terminal: <see cref="Resolved"/>, <see cref="WontFix"/>,
+/// <see cref="Duplicate"/>. A reporter's comment on a terminal issue reopens it to <see cref="Open"/>.
 /// </summary>
 public enum IssueStatus
 {

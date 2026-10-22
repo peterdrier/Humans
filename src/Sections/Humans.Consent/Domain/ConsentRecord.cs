@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Consent.Domain;
 
-/// <summary>
-/// Immutable record of a user's consent to a document version.
-/// This table is append-only - no updates or deletes allowed.
-/// </summary>
+/// <summary>Append-only: DB triggers reject UPDATE and DELETE.</summary>
 internal sealed class ConsentRecord
 {
     public Guid Id { get; init; }
@@ -18,21 +15,13 @@ internal sealed class ConsentRecord
 
     public Instant ConsentedAt { get; init; }
 
-    /// <summary>
-    /// IP address from which consent was given (for GDPR compliance).
-    /// </summary>
     public string IpAddress { get; init; } = string.Empty;
 
     public string UserAgent { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Hash of the document content at time of consent (for verification).
-    /// </summary>
+    /// <summary>SHA-256 hex of the canonical Spanish content at consent time.</summary>
     public string ContentHash { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Whether the user explicitly checked the consent checkbox.
-    /// Must be true for valid consent.
-    /// </summary>
+    /// <summary>Always true for a valid record.</summary>
     public bool ExplicitConsent { get; init; }
 }

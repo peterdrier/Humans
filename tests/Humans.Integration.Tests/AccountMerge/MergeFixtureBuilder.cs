@@ -23,8 +23,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
-// Mirror the DbContext alias: the CLR type is Humans.Domain.Entities.Application
-// but a sibling Humans.Application namespace shadows it inside this project.
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
@@ -37,26 +35,14 @@ using Humans.Feedback.Contracts;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>
-/// Fluent seed-builder for the AccountMergeService fold-into-target
-/// integration tests. Each <c>WithSourceX</c>/<c>WithTargetX</c> stages an
-/// entity in memory; <see cref="SaveAllAsync"/> flushes them in a single
-/// <c>SaveChanges</c>.
-/// <para>
-/// Phase 6.1 implements the minimum surface phase 6.2 needs to write the
-/// per-rule fold tests. Methods that require a richer per-section setup
-/// (Camp seasons, Tickets, Team rows, Notifications, Budget, etc.) are
-/// stubbed with <c>TODO(phase 6.x)</c> markers so the test author can grow
-/// the fixture as cases come online.
-/// </para>
+/// Each <c>WithSourceX</c>/<c>WithTargetX</c> stages an entity in memory; <see cref="SaveAllAsync"/> flushes them in
+/// one <c>SaveChanges</c>.
 /// </summary>
 public sealed class MergeFixtureBuilder
 {
     private readonly UsersDbContext _db;
 
-    // role_assignments and notifications/notification_recipients moved to their
-    // own contexts with the Auth and Notifications peels
-    // (nobodies-collective/Humans#858). Same database, so a fixture can still
-    // stage rows for all three and flush them together.
+    // Separate contexts over the same database, so staged rows still flush together.
     private readonly AuthDbContext _authDb;
     private readonly NotificationsDbContext _notificationsDb;
     private readonly GovernanceDbContext _governanceDb;
@@ -102,10 +88,6 @@ public sealed class MergeFixtureBuilder
         TargetUserId = targetUserId;
     }
 
-    // ------------------------------------------------------------------
-    // UserEmail (Users section)
-    // ------------------------------------------------------------------
-
     public MergeFixtureBuilder WithSourceEmail(
         string email,
         bool verified = false,
@@ -139,10 +121,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // ContactField (Profiles section)
-    // ------------------------------------------------------------------
-
     public MergeFixtureBuilder WithSourceContactField(ContactFieldType type, string value)
         => AddContactField(SourceUserId, type, value);
 
@@ -168,10 +146,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // VolunteerHistory (Profiles section)
-    // ------------------------------------------------------------------
-
     public MergeFixtureBuilder WithSourceVolunteerHistory(int year, string eventName)
         => AddVolunteerHistory(SourceUserId, year, eventName);
 
@@ -196,10 +170,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // Language / ProfileLanguage (Profiles section)
-    // ------------------------------------------------------------------
-
     public MergeFixtureBuilder WithSourceLanguage(string code, LanguageProficiency proficiency)
         => AddLanguage(SourceUserId, code, proficiency);
 
@@ -222,11 +192,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // CommunicationPreference (Users' frozen legacy table; Email reads it as a fallback until
-    // a row in email_communication_preferences shadows it — Users decomposition commit 14)
-    // ------------------------------------------------------------------
-
+    // Users' frozen legacy table; Email reads it as a fallback until its own row shadows it.
     public MergeFixtureBuilder WithSourceCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(SourceUserId, category, optedOut, updatedAt);
 
@@ -247,10 +213,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // AspNetUserLogin (Auth section — Identity table)
-    // ------------------------------------------------------------------
-
     public MergeFixtureBuilder WithSourceLogin(string loginProvider, string providerKey)
         => AddLogin(SourceUserId, loginProvider, providerKey);
 
@@ -270,11 +232,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // EventParticipation — the frozen legacy Users table (Users decomposition
-    // commit 13). Tickets' merge fold materializes these into tickets_event_participations.
-    // ------------------------------------------------------------------
-
+    // The frozen legacy Users table; Tickets' fold materializes it into tickets_event_participations.
     public MergeFixtureBuilder WithSourceEventParticipation(int year, LegacyParticipationStatus status)
         => AddEventParticipation(SourceUserId, year, status);
 
@@ -295,14 +253,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // ShiftSignup (Shifts section)
-    //
-    // Note: requires an existing Shift row. Tests that exercise the shift
-    // fold rule are responsible for seeding the Shift+Rota themselves and
-    // passing its Id; this helper just attaches the signup.
-    // ------------------------------------------------------------------
-
+    // Needs an existing Shift; the caller seeds the Shift and Rota.
     public MergeFixtureBuilder WithSourceShiftSignup(Guid shiftId)
         => AddShiftSignup(SourceUserId, shiftId);
 
@@ -323,13 +274,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // NotificationRecipient (Notifications section)
-    //
-    // Note: requires a Notification row to already exist; phase 6.2 tests
-    // exercising the notification-fold rule pre-seed it themselves.
-    // ------------------------------------------------------------------
-
+    // Needs an existing Notification row.
     public MergeFixtureBuilder WithSourceNotificationRecipient(Guid notificationId)
         => AddNotificationRecipient(SourceUserId, notificationId);
 
@@ -345,11 +290,6 @@ public sealed class MergeFixtureBuilder
         }));
         return this;
     }
-
-    // ------------------------------------------------------------------
-    // Application (Governance / tier applications — entity is mapped as
-    // MemberApplication in the DbContext but the CLR type is Application).
-    // ------------------------------------------------------------------
 
     public MergeFixtureBuilder WithSourceApplication(MembershipTier tier = MembershipTier.Colaborador)
         => AddApplication(SourceUserId, tier);
@@ -370,10 +310,6 @@ public sealed class MergeFixtureBuilder
         }));
         return this;
     }
-
-    // ------------------------------------------------------------------
-    // FeedbackReport (Feedback section)
-    // ------------------------------------------------------------------
 
     public MergeFixtureBuilder WithSourceFeedbackReport(string title)
         => AddFeedbackReport(SourceUserId, title);
@@ -397,14 +333,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ------------------------------------------------------------------
-    // AuditLogEntry (AuditLog section)
-    //
-    // Audit log is append-only and per-user via ActorUserId / RelatedEntityId.
-    // For the fold tests we attach to ActorUserId which is what the
-    // chain-follow read uses.
-    // ------------------------------------------------------------------
-
+    // Attached via ActorUserId, which the chain-follow read uses.
     public MergeFixtureBuilder WithSourceAuditLogEntry(AuditAction action, string description)
     {
         _pendingAuditLog.Add(db => db.AuditLogEntries.Add(new AuditLogEntry
@@ -419,10 +348,6 @@ public sealed class MergeFixtureBuilder
         }));
         return this;
     }
-
-    // ==================================================================
-    // RoleAssignment (Auth section)
-    // ==================================================================
 
     public MergeFixtureBuilder WithSourceRoleAssignment(
         string roleName, Instant? validFrom = null, Instant? validTo = null)
@@ -448,20 +373,11 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ==================================================================
-    // Team / TeamMember / TeamJoinRequest (Teams section)
-    //
-    // The fixture creates non-system teams ad hoc, returning the Team.Id
-    // so tests can assert against it. System teams are excluded from the
-    // fold, so we always build IsSystemTeam = false here.
-    // ==================================================================
-
+    // Non-system teams only: system teams are excluded from the fold.
     public Guid SeedTeamNow(string name)
     {
         var teamId = Guid.NewGuid();
-        // IsSystemTeam is computed (SystemTeamType == None). Leaving
-        // SystemTeamType at default None gives IsSystemTeam = false, which
-        // is what the merge fold expects for the TeamMember rule.
+        // SystemTeamType None makes IsSystemTeam false, as the fold expects.
         var team = new Team
         {
             Id = teamId,
@@ -516,10 +432,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ==================================================================
-    // Notification / NotificationRecipient (Notifications section)
-    // ==================================================================
-
     public Guid SeedNotificationNow(string title)
     {
         var notificationId = Guid.NewGuid();
@@ -537,10 +449,6 @@ public sealed class MergeFixtureBuilder
         return notificationId;
     }
 
-    // ==================================================================
-    // Campaign / CampaignGrant (Campaigns section)
-    // ==================================================================
-
     public Guid SeedCampaignNow(string title, Guid creatorUserId)
     {
         var campaignId = Guid.NewGuid();
@@ -556,8 +464,7 @@ public sealed class MergeFixtureBuilder
         };
         _campaignsDb.Campaigns.Add(campaign);
 
-        // CampaignGrant requires a CampaignCode FK; seed one alongside the
-        // campaign so tests can attach grants without extra plumbing.
+        // CampaignGrant needs a CampaignCode FK.
         var code = new CampaignCode
         {
             Id = Guid.NewGuid(),
@@ -581,9 +488,7 @@ public sealed class MergeFixtureBuilder
     {
         _pendingCampaigns.Add(db =>
         {
-            // One CampaignCode per grant (1:1 nav on the entity). Seed a
-            // fresh code per grant so two grants on the same campaign
-            // don't collide on the unique CampaignCodeId.
+            // One code per grant: CampaignCodeId is unique.
             var codeId = Guid.NewGuid();
             db.CampaignCodes.Add(new CampaignCode
             {
@@ -604,10 +509,6 @@ public sealed class MergeFixtureBuilder
         });
         return this;
     }
-
-    // ==================================================================
-    // FeedbackMessage (Feedback section)
-    // ==================================================================
 
     public Guid SeedFeedbackReportNow(Guid userId, string description)
     {
@@ -647,13 +548,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ==================================================================
-    // BudgetAuditLog (Budget section)
-    //
-    // Append-only with DB triggers blocking UPDATE/DELETE; INSERT is the
-    // only legal mutation. Chain-follow read mirrors the audit-log pattern.
-    // ==================================================================
-
+    // Append-only (DB triggers block UPDATE/DELETE): insert only.
     public Guid SeedBudgetYearNow(string yearLabel)
     {
         var budgetYearId = Guid.NewGuid();
@@ -686,17 +581,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ==================================================================
-    // ConsentRecord (Legal & Consent section)
-    //
-    // Append-only with DB triggers blocking UPDATE/DELETE; INSERT is the
-    // only legal mutation. Chain-follow read mirrors the audit-log pattern.
-    // Seeding requires a Team -> LegalDocument -> DocumentVersion chain;
-    // <see cref="SeedDocumentVersionNow"/> builds that minimal chain in one
-    // shot and returns the version id callers pass into
-    // <see cref="WithSourceConsentRecord"/>.
-    // ==================================================================
-
+    // Append-only (DB triggers block UPDATE/DELETE). SeedDocumentVersionNow builds the chain a record needs.
     public Guid SeedDocumentVersionNow(string documentName = "TestDoc")
     {
         var teamId = Guid.NewGuid();
@@ -754,38 +639,7 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // ==================================================================
-    // Deferred — heavier chains; phase 6.2 author can pull these in as
-    // needed.
-    // ==================================================================
-
-    // TODO(phase 6.x): seed Ticket — needs a TicketOrder + TicketAttendee
-    //   pair and lives in the Tickets section; the order is keyed by user.
-
-    // TODO(phase 6.x): seed VolunteerEventProfile — needs an EventSettings
-    //   row; phase 6.2 test for that rule pre-seeds it.
-
-    // TODO(phase 6.x): seed VolunteerTagPreference — needs a ShiftTag row.
-
-    // TODO(phase 6.x): seed GeneralAvailability — needs an EventSettings
-    //   row.
-
-    // TODO(phase 6.x): seed ShiftSignup helper for phase 6.2 — the existing
-    //   builder takes a Shift.Id but seeding the Shift requires a Rota +
-    //   EventSettings + Team. Defer until a rota fixture is needed.
-
-    // TODO(phase 6.x): seed CampLead — needs a Camp + CampSeason chain.
-
-    // TODO(phase 6.x): seed CampRoleAssignment — needs Camp + CampSeason
-    //   + CampRoleDefinition.
-
-    // ------------------------------------------------------------------
-
-    /// <summary>
-    /// Flushes everything staged via the With* methods in a single
-    /// <c>SaveChanges</c>. Called automatically by
-    /// <see cref="MergeFixtureExtensions.SeedMergeFixtureAsync"/>.
-    /// </summary>
+    /// <summary>Called by <see cref="MergeFixtureExtensions.SeedMergeFixtureAsync"/>.</summary>
     public async Task SaveAllAsync()
     {
         foreach (var apply in _pending)

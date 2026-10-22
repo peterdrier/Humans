@@ -5,18 +5,12 @@ using Humans.CityPlanning.ViewComponents;
 namespace Humans.CityPlanning;
 
 /// <summary>
-/// City Planning's /Settings tab (peterdrier/Humans#1634): placement windows, scheduled
-/// times, and registration info, moved off <c>/CityPlanning/BarrioMap/Admin</c>. GeoJSON
-/// uploads, container admin, and export/import stay on that page — see
-/// <c>CityPlanningController</c>.
+/// GeoJSON uploads, container admin and export/import stay on <c>/CityPlanning/BarrioMap/Admin</c>.
 /// </summary>
 /// <remarks>
-/// <see cref="PolicyNames.CityPlanningMapAdmin"/> — CampAdmin/Admin *or* a city-planning
-/// team member, the same audience <c>CityPlanningController.RequireMapAdminAsync</c>
-/// admits and that these controls had on the page they moved off. The narrower
-/// <see cref="PolicyNames.CampAdminOrAdmin"/> the "Barrio map" nav item uses would not do
-/// here: that item is narrower only because the page stays reachable another way, while
-/// this tab is now the only route to the controls.
+/// Gated on <see cref="PolicyNames.CityPlanningMapAdmin"/>, not the narrower <see cref="PolicyNames.CampAdminOrAdmin"/>
+/// the "Barrio map" nav item uses: that item can be narrower because the page stays reachable another way, while this
+/// tab is the only route to its controls.
 /// </remarks>
 internal sealed class SectionSettings : ISectionSettings
 {

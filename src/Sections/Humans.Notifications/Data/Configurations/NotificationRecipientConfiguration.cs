@@ -12,7 +12,6 @@ internal sealed class NotificationRecipientConfiguration : IEntityTypeConfigurat
 
         builder.HasKey(r => new { r.NotificationId, r.UserId });
 
-        // Index for badge count query: find unread notifications for a user
         builder.HasIndex(r => r.UserId)
             .HasDatabaseName("IX_NotificationRecipient_UserId");
     }

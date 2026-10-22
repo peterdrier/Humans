@@ -22,7 +22,7 @@ using NSubstitute;
 namespace Humans.Auth.Tests.Controllers;
 
 /// <summary>
-/// The role-assignment admin pages served by Auth (Users decomposition commit 4): the roster,
+/// The role-assignment admin pages served by Auth: the roster,
 /// assign and end. Pins the URLs, the gate, the per-role deny paths and the writes (whose
 /// audit entries are the write service's, covered by <c>RoleAssignmentServiceTests</c>).
 /// </summary>

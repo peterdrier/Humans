@@ -14,46 +14,18 @@ using Humans.Users.Data;
 namespace Humans.Integration.Tests.Infrastructure;
 
 /// <summary>
-/// Guards against the §5.1 "scaffolded physical default" divergence class
-/// (nobodies-collective/Humans#858, found the hard way during the Gate peel):
-/// when EF adds a non-nullable column to an existing table it scaffolds a
-/// <c>DEFAULT</c> clause so existing rows can be backfilled — and never drops
-/// it. The physical default then persists in every chain-built database while
-/// the model (correctly) declares none, silently diverging fresh-baseline
-/// schema from old-chain schema and walling off that section's future peel.
+/// EF scaffolds a <c>DEFAULT</c> to backfill a new non-nullable column and never drops it, so chain-built databases
+/// silently diverge from the model. A column has a model default if and only if the database has one; presence, not
+/// rendered SQL, so Postgres formatting doesn't matter. Identity columns are exempt.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The check is <b>presence parity</b> per column: the model declares a default
-/// (<c>HasDefaultValue</c>/<c>HasDefaultValueSql</c>) if and only if the
-/// chain-built database has one. Comparing presence rather than rendered SQL
-/// keeps the test immune to Postgres literal-formatting noise while still
-/// catching both divergence directions. Identity columns are exempt (their
-/// generation is not a column default).
-/// </para>
-/// <para>
-/// Coverage spans <b>every</b> DbContext DI registers — not every one in
-/// Humans.Infrastructure, which stopped being the same set once sections began
-/// moving into their own projects (nobodies-collective/Humans#866, G5) and would
-/// have dropped a moved section silently: each section context runs through
-/// <see cref="SectionMigrationRunner"/> exactly as production boot does (on a
-/// fresh database every baseline executes for real — the root chain is gone,
-/// #858 peel 15) — so a scaffolded default introduced by a <em>section's
-/// own</em> migration chain fails here too, and new sections are covered
-/// without touching this file. When this test fails on a new column:
-/// required columns need Peter's approval in the first place
-/// (<c>memory/architecture/required-columns-need-approval.md</c>); declare the
-/// approved default in the model (see the bool-sentinel rules in
-/// <c>.claude/agents/ef-migration-reviewer.md</c>) or ship a realignment
-/// migration dropping the scaffolded default — never leave the two disagreeing.
-/// </para>
+/// When this fails on a new column: required columns need Peter's approval
+/// (<c>memory/architecture/required-columns-need-approval.md</c>). Declare the approved default in the model or ship a
+/// migration dropping the scaffolded one.
 /// </remarks>
 public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
 {
-    /// <summary>
-    /// The pre-migration snapshot hook (nobodies-collective/Humans#845) is a production-boot
-    /// concern; this test migrates a throwaway test database with nothing to protect.
-    /// </summary>
+    /// <summary>The pre-migration snapshot guards production; this throwaway database has nothing to protect.</summary>
     private static readonly Func<CancellationToken, Task> NoSnapshot = _ => Task.CompletedTask;
 
     [HumansFact]
@@ -67,15 +39,12 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         contextTypes.Should().Contain(typeof(UsersDbContext));
         contextTypes.Count.Should().BeGreaterThan(1, "the section contexts must be discovered too");
 
-        // (table, column) -> any mapping context declares a default. Multiple
-        // properties can map to one column (TPH); it declares if any does.
+        // Several properties can map to one column (TPH); the column has a default if any does.
         var modelColumns = new Dictionary<(string Table, string Column), bool>();
         foreach (var contextType in contextTypes)
         {
             await using var db = CreateContext(contextType, connectionString);
-            // Any owned table works as the existence sentinel: the database is
-            // fresh, so every sentinel is absent and each baseline executes for
-            // real, then post-baseline section migrations apply on top.
+            // Any owned table is the sentinel: on a fresh database every one is absent, so each baseline runs for real.
             var sentinel = db.Model.GetEntityTypes()
                 .Select(e => e.GetTableName())
                 .OfType<string>()
@@ -156,12 +125,7 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         return (DbContext)Activator.CreateInstance(contextType, optionsBuilder.Options)!;
     }
 
-    /// <summary>
-    /// The authoritative context list — the same set the startup migrator consumes.
-    /// Section contexts arrive via <c>AddSectionDbContext</c>, whether that call sits
-    /// in <c>AddHumansPersistence</c> or in a moved section's <c>ISection.Register</c>.
-    /// No provider is built: the registrations are read straight off the descriptors.
-    /// </summary>
+    /// <summary>The set the startup migrator uses, read off the DI descriptors without building a provider.</summary>
     private static IReadOnlyList<Type> RegisteredContextTypes()
     {
         var services = new ServiceCollection()
@@ -176,10 +140,6 @@ public sealed class PhysicalDefaultParityTests(HumansTestDatabase database)
         ];
     }
 
-    /// <summary>
-    /// A pristine database in the assembly's shared Postgres container — this test
-    /// migrates from scratch, so it needs its own database, not the app's.
-    /// </summary>
     private Task<string> CreateDatabaseAsync(string name) =>
         database.CreateEmptyDatabaseAsync(name, TestContext.Current.CancellationToken);
 }

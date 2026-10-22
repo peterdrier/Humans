@@ -9,11 +9,8 @@ internal static class CalendarGridLayout
     public const int MaxBannerSlots = 3;
 
     /// <summary>
-    /// The inclusive first and last day the Monday-first month grid renders, including the
-    /// adjacent-month cells padding the first and last weeks.
-    ///
-    /// One definition on purpose: the controller queries this range and <c>Index.cshtml</c>
-    /// lays it out, so the adjacent-month cells get their events too.
+    /// Inclusive, with the adjacent-month days padding the first and last weeks. The controller queries this range
+    /// and <c>Index.cshtml</c> lays it out, so the padding cells get their events too.
     /// </summary>
     public static (LocalDate GridStart, LocalDate GridEnd) MonthGridBounds(YearMonth month)
     {
@@ -25,7 +22,7 @@ internal static class CalendarGridLayout
                 lastOfMonth.PlusDays(6 - LeadOffset(lastOfMonth)));
     }
 
-    /// <summary>Days from Monday to <paramref name="d"/>. <c>IsoDayOfWeek.Monday</c> is 1, Sunday 7.</summary>
+    /// <summary><c>IsoDayOfWeek.Monday</c> is 1, Sunday 7.</summary>
     private static int LeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
 
     public static WeekLayout BuildWeekLayout(
@@ -37,7 +34,7 @@ internal static class CalendarGridLayout
         var singleDayByDow = new List<CalendarOccurrence>[7];
         for (var i = 0; i < 7; i++) singleDayByDow[i] = [];
 
-        // Sort: earliest-start, longest-duration first so banners stack deterministically.
+        // Earliest start, then longest, so banners stack deterministically.
         var ordered = weekOccurrences
             .OrderBy(o => o.StartLocalDate(zone))
             .ThenBy(o => o.OccurrenceStartUtc)
@@ -51,7 +48,6 @@ internal static class CalendarGridLayout
             var startDate = o.StartLocalDate(zone);
             var endDate = o.EndLocalDate(zone);
 
-            // Anything spanning more than one local day renders as a banner.
             var coversMultipleDays = endDate > startDate;
 
             if (!coversMultipleDays)
@@ -64,8 +60,7 @@ internal static class CalendarGridLayout
                 continue;
             }
 
-            // Clip the banner to this week's visible window. Caller pre-filters to
-            // occurrences that overlap the week, so clipStart/clipEnd are always inside [weekStart, weekEnd].
+            // The caller pre-filters to occurrences overlapping the week, so the clip stays inside it.
             var weekEnd = weekStart.PlusDays(6);
             var clipStart = startDate < weekStart ? weekStart : startDate;
             var clipEnd = endDate > weekEnd ? weekEnd : endDate;
@@ -82,9 +77,6 @@ internal static class CalendarGridLayout
                 SlotIndex: 0));
         }
 
-        // Greedy slot assignment: walk banners in chronological order, put each in the
-        // lowest slot index that doesn't conflict (overlap) with any banner already in
-        // that slot in this week.
         var placed = new List<BannerPlacement>();
         var slots = new List<List<BannerPlacement>>();
         foreach (var b in multiDay)
@@ -108,8 +100,7 @@ internal static class CalendarGridLayout
                 placed.Add(b with { SlotIndex = idx });
                 assigned = true;
             }
-            // If there's no slot left, the banner overflows — count it toward each covered day's
-            // "+N more" total by pushing it into singleDayByDow of each covered day.
+            // No slot left: the banner counts toward each covered day's "+N more".
             if (!assigned)
             {
                 for (var d = b.StartDow; d <= b.EndDow; d++)
@@ -126,7 +117,6 @@ internal static class CalendarGridLayout
     }
 }
 
-/// <summary>Where a multi-day banner lives inside a week row.</summary>
 internal sealed record BannerPlacement(
     CalendarOccurrence Occurrence,
     int StartDow,

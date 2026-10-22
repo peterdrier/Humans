@@ -1,9 +1,6 @@
 namespace Humans.Governance.Contracts;
 
-/// <summary>
-/// Mutually exclusive partition of users into 6 membership status categories.
-/// Every user appears in exactly one bucket. Buckets sum to total input count.
-/// </summary>
+/// <summary>Every input user is in exactly one bucket.</summary>
 public record MembershipPartition(
     HashSet<Guid> IncompleteSignup,
     HashSet<Guid> PendingApproval,

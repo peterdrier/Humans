@@ -24,8 +24,7 @@ public sealed class TicketAttendeeOwnershipTests
     [HumansFact]
     public void CurrentOwner_ReturnsNull_WhenAttendeeUnmatched_EvenIfOrderHasBuyer()
     {
-        // The buyer never owns the attendee (nobodies-collective/Humans#856).
-        // An unmatched attendee has no owner regardless of who bought the order.
+        // The buyer never owns the attendee: an unmatched attendee has no owner.
         var attendee = new TicketAttendee
         {
             MatchedUserId = null,
@@ -71,8 +70,7 @@ public sealed class TicketAttendeeOwnershipTests
     [HumansFact]
     public void IsCurrentOwner_False_ForOrderBuyer_WhenAttendeeUnmatched()
     {
-        // The buyer never owns the attendee (nobodies-collective/Humans#856).
-        // A buyer is not the owner of an attendee with no MatchedUserId.
+        // The buyer never owns the attendee: a buyer does not own one with no MatchedUserId.
         var attendee = new TicketAttendee
         {
             MatchedUserId = null,

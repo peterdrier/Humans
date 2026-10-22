@@ -11,17 +11,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Governance.Jobs;
 
-/// <summary>
-/// Reminds approved members whose Colaborador / Asociado term expires within
-/// 90 days to submit a renewal application. The schedule lives in
-/// <c>SectionJobs.cs</c>.
-/// </summary>
-/// <remarks>
-/// Reads Applications and marks <c>RenewalReminderSentAt</c> through
-/// <see cref="IGovernanceManagement"/>, and stitches applicant display
-/// info via <see cref="IUserService"/>, so the job never touches a section
-/// DbContext directly (design-rules §2c).
-/// </remarks>
+/// <summary>Reminds members whose term expires within 90 days to apply for renewal.</summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class TermRenewalReminderJob(
     IGovernanceManagement applicationDecisionService,
@@ -45,19 +35,12 @@ internal sealed class TermRenewalReminderJob(
             var today = clock.GetCurrentInstant().InUtc().Date;
             var reminderThreshold = today.PlusDays(ReminderDaysBeforeExpiry);
 
-            // Find approved applications with term expiring within 90 days that
-            // haven't had a reminder sent yet.
             var expiringApplications = await applicationDecisionService
                 .GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, cancellationToken);
 
-            // Exclude users who already have a pending renewal application for
-            // the same tier.
             var pendingSet = await applicationDecisionService
                 .GetPendingApplicationUserTiersAsync(cancellationToken);
 
-            // Stitch applicant user info in memory — Application.User
-            // cross-domain nav was stripped in the Governance migration
-            // (design-rules §6).
             var applicantIds = expiringApplications
                 .Select(a => a.UserId)
                 .Distinct()
@@ -115,7 +98,6 @@ internal sealed class TermRenewalReminderJob(
                         "Sent term renewal reminder to user {UserId} ({Email}) for {Tier} expiring {ExpiresAt}",
                         application.UserId, email, application.MembershipTier, application.TermExpiresAt);
 
-                    // Dispatch in-app notification alongside email.
                     try
                     {
                         var culture = CultureInfo.GetCultureInfo(language);

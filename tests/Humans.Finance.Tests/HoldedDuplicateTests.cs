@@ -23,9 +23,8 @@ using Xunit;
 namespace Humans.Finance.Tests;
 
 /// <summary>
-/// The duplicate purchase documents the 2026-10-18 outbox race left in Holded: the matcher that
-/// finds them, the dry run on /Finance/HoldedDuplicates, the Apply that deletes them, and the
-/// nightly log line in the document sync. One rule, run from every entry point.
+/// The duplicate purchase documents the 2026-10-18 outbox race left in Holded: one rule, run from
+/// the matcher, the /Finance/HoldedDuplicates dry run, the Apply and the nightly sync log line.
 /// </summary>
 public class HoldedDuplicateTests
 {
@@ -112,8 +111,6 @@ public class HoldedDuplicateTests
     private static readonly IReadOnlyDictionary<Guid, IReadOnlySet<string>> NoExtraContacts =
         new Dictionary<Guid, IReadOnlySet<string>>();
 
-    // ---- the matcher ------------------------------------------------------------------------------
-
     [HumansFact]
     public void Matcher_OneLineTwoDocuments_FlagsTheOneTheLineDoesNotLinkTo()
     {
@@ -191,8 +188,6 @@ public class HoldedDuplicateTests
 
         matches.Should().BeEmpty();
     }
-
-    // ---- the dry run --------------------------------------------------------------------------------
 
     [HumansFact]
     public async Task DryRun_ListsTheDuplicatePerMember_WithTotals()
@@ -348,8 +343,6 @@ public class HoldedDuplicateTests
         vm.Members.Should().BeEmpty();
     }
 
-    // ---- apply --------------------------------------------------------------------------------------
-
     [HumansFact]
     public async Task Apply_DeletesTheDocumentsThenTheOrphanContact_AuditsEachId_AndResyncs()
     {
@@ -479,8 +472,6 @@ public class HoldedDuplicateTests
         await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _holded.DidNotReceive().SyncLedgerAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
-
-    // ---- the nightly check ----------------------------------------------------------------------------
 
     [HumansTheory]
     [InlineData(true)]

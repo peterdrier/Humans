@@ -18,16 +18,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets;
 
-/// <summary>
-/// Tickets' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// <c>TicketSyncJob</c> (<c>Jobs/</c>) is the section's sync job; its registration and
-/// schedule are contributed via <c>SectionJobs.cs</c>. <c>TicketVendorHealthCheck</c>
-/// (<c>Health/</c>) is the section's own probe over the vendor port, contributed via
-/// <c>SectionHealthChecks.cs</c>.
-/// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -35,12 +25,10 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();
-
         // Gate-terminal account management, provisioned from /Tickets/Admin/Gate.
         services.AddScoped<GateTerminalAccountSeeder>();
-
-        // Every service that writes the cached ticket rows is a keyed inner behind the one
-        // Singleton decorator, which evicts on its own write pass-through; the unkeyed
+        // Every service that writes cached ticket rows is a keyed inner behind the one Singleton decorator, which
+        // evicts on its own write pass-through; the unkeyed interfaces resolve to the decorator.
         // interfaces (and the GDPR / merge fan-outs) resolve to the decorator.
         services.AddKeyedScoped<ITicketManagement, TicketQueryService>(CachingTicketQueryService.InnerServiceKey);
         services.AddKeyedScoped<ITicketSyncService, TicketSyncService>(CachingTicketQueryService.InnerServiceKey);
@@ -62,22 +50,16 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().UserHoldingsCacheStats);
 
-        // The keyed inner is bound by whichever vendor adapter section is registered
-        // (Humans.TicketTailor today) under TicketVendorServiceKeys.InnerServiceKey —
-        // Tickets never names that section.
+        // Bound by whichever vendor adapter section is registered; Tickets never names it.
         services.AddSingleton<CachingTicketVendorService>();
         services.AddSingleton<ITicketVendorService>(sp => sp.GetRequiredService<CachingTicketVendorService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketVendorService>().EventSummaryCacheStats);
 
-        // Tickets owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<TicketsEmails>();
         services.AddScoped<IEmailPreviewContributor, TicketsEmailPreviews>();
 
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
 
-        // The gateway serves the Tickets.Contracts ports by forwarding to ITicketVendorService,
-        // so consumers never name the vendor port.
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
         services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());
@@ -86,8 +68,6 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<IOnsiteRosterService, OnsiteRosterService>();
 
-        // Event participation (Users decomposition commit 13): reads forward through ITicketService,
-        // Gate writes through ITicketWrite.
         services.AddSingleton<IEventParticipationRepository, EventParticipationRepository>();
         services.AddScoped<EventParticipationService>();
         services.AddScoped<IEventParticipationManagement>(sp => sp.GetRequiredService<EventParticipationService>());
@@ -96,8 +76,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EventParticipationService>());
         services.AddScoped<IUserParticipationBackfillService, UserParticipationBackfillService>();
 
-        // Base's EnumBadgeMap holds no section rows any more; each section pushes its own in
-        // (memory/architecture/base-ui-registries-are-section-populated.md).
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
             [TicketAttendeeStatus.Valid] = "bg-success",
@@ -112,8 +90,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<TicketSyncJob>();
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Tickets";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Tickets";

@@ -1,83 +1,37 @@
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// Narrow connector over the Google Drive Activity API v2 and the Admin
-/// Directory API, scoped to the read-only operations performed by
-/// <c>Humans.Monitor.Contracts.IDriveActivityMonitorService</c>. The real Google-backed client and the
-/// dev-mode stub live in <c>Humans.GoogleIntegration/Services/Workspace/</c>. Public in
-/// <c>Contracts/</c> because Monitor consumes it across an assembly boundary; shape-neutral so no consumer
-/// imports <c>Google.Apis.*</c> (design-rules §13).
-/// </summary>
 public interface IGoogleDriveActivityClient
 {
     /// <summary>
-    /// <c>true</c> when the client is backed by a real Google service-account
-    /// key and can return meaningful activity; <c>false</c> for the stub used
-    /// in dev environments without Google credentials. Follows the same
-    /// convention as <c>IStripeService.IsConfigured</c>. The Drive activity
-    /// monitor consults this to decide whether to advance its last-run
-    /// marker — a stub returns no events, so advancing the marker would
-    /// silently skip historical permission changes if the same database
-    /// later gains real credentials.
+    /// False for the dev stub. The monitor must not advance its last-run marker then: the stub returns no events,
+    /// so advancing would skip real history once credentials arrive.
     /// </summary>
     bool IsConfigured { get; }
 
-    /// <summary>
-    /// Returns the service account's primary email address (the <c>client_email</c>
-    /// field of the configured service-account key), falling back to a sentinel
-    /// <c>unknown@serviceaccount.iam.gserviceaccount.com</c> if the key is not
-    /// available. Used to filter out self-initiated permission changes.
-    /// </summary>
+    /// <summary>The key's <c>client_email</c>, or a sentinel when there is no key. Filters out self-initiated changes.</summary>
     Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the service account's OAuth2 client_id (the <c>client_id</c> field
-    /// of the configured service-account key), or <c>null</c> when no key is
-    /// available. The Drive Activity API often identifies service-account actors
-    /// as <c>people/{client_id}</c>, so the monitor uses this to detect
-    /// self-initiated changes.
+    /// The key's <c>client_id</c>, or null without a key. Drive Activity often names service-account actors
+    /// <c>people/{client_id}</c>.
     /// </summary>
     Task<string?> GetServiceAccountClientIdAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Enumerates Drive Activity events for a single Shared-Drive resource whose
-    /// event timestamp is at or after <paramref name="sinceIsoTimestamp"/>. The
-    /// enumeration pages internally and yields activities in the order returned
-    /// by the Drive Activity API (reverse chronological).
+    /// Newest first, paged internally. <paramref name="googleItemId"/> is the Google-side id (the <c>items/</c> prefix
+    /// is added here); <paramref name="sinceIsoTimestamp"/> is an invariant ISO-8601 instant. Throws
+    /// <see cref="DriveActivityResourceNotFoundException"/> when the item was deleted.
     /// </summary>
-    /// <param name="googleItemId">
-    /// The Drive Activity API resource ID. Callers pass the Google-side ID of
-    /// the shared-drive item (folder or file). The connector prefixes
-    /// <c>items/</c> internally.
-    /// </param>
-    /// <param name="sinceIsoTimestamp">
-    /// Lower-bound filter applied as <c>time &gt;= "{value}"</c> on the query.
-    /// The caller formats as an invariant-culture ISO-8601 instant.
-    /// </param>
-    /// <param name="ct">Token used to cancel the enumeration.</param>
-    /// <remarks>
-    /// May throw <see cref="DriveActivityResourceNotFoundException"/> when the
-    /// underlying Drive item has been deleted.
-    /// </remarks>
     IAsyncEnumerable<DriveActivityEvent> QueryActivityAsync(
         string googleItemId,
         string sinceIsoTimestamp,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Resolves a Drive Activity <c>people/{id}</c> identifier to its primary
-    /// email address via the Google Admin Directory API. Returns <c>null</c>
-    /// when the user is not found (404), the caller is unauthorized (403), or
-    /// any other transient failure occurs (logged by the implementation).
-    /// </summary>
+    /// <summary>Null on 404, 403 or any transient failure (logged).</summary>
     Task<string?> TryResolvePersonEmailAsync(string peopleId, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Raised by <see cref="IGoogleDriveActivityClient.QueryActivityAsync"/> when
-/// the Drive item the caller asked about has been deleted (HTTP 404). Callers
-/// typically downgrade this to a warning and move on.
-/// </summary>
+/// <summary>The Drive item was deleted (404). Callers usually log a warning and move on.</summary>
 public sealed class DriveActivityResourceNotFoundException : Exception
 {
     public DriveActivityResourceNotFoundException()

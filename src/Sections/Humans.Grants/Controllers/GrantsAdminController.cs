@@ -11,12 +11,8 @@ using NodaTime;
 namespace Humans.Grants.Controllers;
 
 /// <summary>
-/// The managers' and the Board's screens. Routed under <c>/Grants/Admin</c> rather than
-/// <c>/Admin</c>: admin pages belong to their section's URL space
-/// (memory/architecture/no-admin-url-section.md). Localization-exempt. The policy admits any
-/// program manager; every action also names its own policy (BoardOrAdmin for program
-/// administration, the manage policy for grant actions), and per-program operations are checked
-/// against the program resource.
+/// The class policy admits any program manager; each action names its own policy too, and per-program operations are
+/// checked against the program resource.
 /// </summary>
 [Authorize(Policy = GrantsPolicies.Manage)]
 [Route("Grants/Admin")]
@@ -26,8 +22,6 @@ internal sealed class GrantsAdminController(
     IAuthorizationService authorization,
     ILogger<GrantsAdminController> logger) : HumansControllerBase(users)
 {
-    // ── Programs ──────────────────────────────────────────────────────────
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -121,8 +115,6 @@ internal sealed class GrantsAdminController(
         return RedirectToAction(nameof(Program), new { programId });
     }
 
-    // ── Grants ────────────────────────────────────────────────────────────
-
     [HttpPost("{programId:guid}/Issue")]
     [Authorize(Policy = GrantsPolicies.Manage)]
     [ValidateAntiForgeryToken]
@@ -147,8 +139,6 @@ internal sealed class GrantsAdminController(
         ManageAsync(programId, async actor =>
             ((GrantMutationResult)await grants.ResendNoticeAsync(grantId, actor, ct), "Notice sent again"), ct, grantId);
 
-    // ── Helpers ───────────────────────────────────────────────────────────
-
     /// <summary>Loads the program and checks the operation against it; 404 and 403 as results.</summary>
     private async Task<(ProgramInfo? Program, IActionResult? Error)> AuthorizedAsync(
         Guid programId, ProgramOperationRequirement requirement, CancellationToken ct)
@@ -159,10 +149,7 @@ internal sealed class GrantsAdminController(
         return allowed.Succeeded ? (program, null) : (null, Forbid());
     }
 
-    /// <summary>
-    /// An action on a program the actor manages. A grant route names the program it is under;
-    /// a grant of another program is 404 so a manager of A never acts on B's grants.
-    /// </summary>
+    /// <summary>A grant of another program is 404, so a manager of A never acts on B's grants.</summary>
     private async Task<IActionResult> ManageAsync(
         Guid programId, Func<Guid, Task<(GrantMutationResult Result, string Success)>> act, CancellationToken ct,
         Guid? grantId = null)

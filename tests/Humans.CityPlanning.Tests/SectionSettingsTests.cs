@@ -4,7 +4,7 @@ using Humans.Base.Authorization;
 namespace Humans.CityPlanning.Tests;
 
 /// <summary>
-/// The /Settings#city-planning tab contribution (peterdrier/Humans#1634). The Policy
+/// The /Settings#city-planning tab contribution. The Policy
 /// assertion is the negative case: <c>SettingsTabComposition</c> (Humans.Settings.Tests)
 /// drops any tab whose policy the viewer fails, so a viewer who is neither CampAdmin/Admin
 /// nor a city-planning team member never sees this tab.

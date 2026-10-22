@@ -5,252 +5,119 @@ using NodaTime;
 using Humans.Teams.Contracts;
 namespace Humans.Teams.Data;
 
-/// <summary>
-/// Repository for the Teams section's tables: <c>teams</c>,
-/// <c>team_members</c>, <c>team_join_requests</c>,
-/// <c>team_join_request_state_history</c>, <c>team_role_definitions</c>,
-/// <c>team_role_assignments</c> and <c>team_early_entry_grants</c>. The only
-/// non-test file that touches these DbSets.
-///
-/// <para>
-/// Aggregate-local navs (<c>Team.ParentTeam</c>, <c>Team.ChildTeams</c>,
-/// <c>Team.Members</c>, <c>Team.JoinRequests</c>, <c>Team.RoleDefinitions</c>,
-/// <c>TeamJoinRequest.StateHistory</c>, <c>TeamMember.Team</c>,
-/// <c>TeamRoleDefinition.Team</c>, <c>TeamRoleAssignment.TeamRoleDefinition</c>,
-/// <c>TeamRoleAssignment.TeamMember</c>) are <c>.Include</c>-d here where
-/// needed. Cross-domain navs (<c>TeamMember.User</c>, <c>TeamJoinRequest.User</c>,
-/// etc.) are never navigated — callers stitch display data from
-/// <see cref="Humans.Users.Contracts.IUserService"/>. See design-rules §6.
-/// </para>
-/// </summary>
 internal interface ITeamRepository : IRepository
 {
-    // ==========================================================================
-    // Team reads
-    // ==========================================================================
-
-    /// <summary>Load a team by id (no navigation). Detached.</summary>
+    /// <summary>No navigation. Detached.</summary>
     Task<Team?> GetByIdAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load a team by id with its active members, parent team, and child teams
-    /// eagerly. Detached. Used by the team detail page.
-    /// </summary>
+    /// <summary>With active members, parent and child teams. Detached.</summary>
     Task<Team?> GetByIdWithRelationsAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load a team for mutation (tracked, no navigation). Used by writes
-    /// that will mutate scalar properties and call <see cref="UpdateTeamAsync"/>
-    /// on the same repository/method.
-    /// </summary>
+    /// <summary>Tracked, no navigation: mutate scalars, then <see cref="UpdateTeamAsync"/>.</summary>
     Task<Team?> FindForMutationAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load every team id whose <c>Slug</c> OR <c>CustomSlug</c> matches one
-    /// of the given candidates, optionally excluding a specific team id.
-    /// Used by create/update to detect slug collisions.
-    /// </summary>
+    /// <summary>Matches <c>Slug</c> or <c>CustomSlug</c>, ignoring <paramref name="excludingTeamId"/>.</summary>
     Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default);
 
-    /// <summary>All active teams with active members and children.</summary>
+    /// <summary>With active members and children.</summary>
     Task<IReadOnlyList<Team>> GetAllActiveAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// All teams with active members eagerly loaded. Detached.
-    /// </summary>
+    /// <summary>Active and inactive, with active members. Detached.</summary>
     Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Map of <c>TeamId → user ids who hold an active management
-    /// (<c>TeamRoleDefinition.IsManagement</c>) role assignment on that team</c>.
-    /// Detached, no navs. Loaded once per team-cache warm to populate
-    /// <see cref="Humans.Teams.Contracts.TeamInfo.ManagementRoleHolderUserIds"/>
-    /// so coordinator/budget readers can decide membership without round-tripping the DB.
-    /// Teams with no management holders are omitted.
-    /// </summary>
+    /// <summary>Teams with no management role holder are omitted.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
         CancellationToken ct = default);
 
     /// <summary>
-    /// Map of <c>TeamId → all role definitions on that team, ordered by
-    /// <c>SortOrder</c> then <c>Name</c></c>, with assignments and assignment
-    /// member nav eagerly loaded. No filters on team activity or system type
-    /// (callers apply the relevant scope). Used once per team-cache warm to
-    /// populate <see cref="Humans.Teams.Contracts.TeamInfo.RoleDefinitions"/>.
-    /// Teams with no role definitions are omitted.
+    /// Ordered by <c>SortOrder</c> then <c>Name</c>, with assignments and their members loaded. No activity or system-type
+    /// filter. Teams with no role definitions are omitted.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Page of all teams (active/inactive) with active members, pending join
-    /// requests, and role definitions eagerly loaded. Admin paging stays
-    /// DB-side because the include graph is too expensive to load wholesale.
-    /// </summary>
+    /// <summary>Paged in the database: the include graph is too expensive to load wholesale.</summary>
     Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
         int page, int pageSize, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load the requested team ids plus any referenced parent teams that
-    /// aren't already in the requested set. Used by the shift coordinator
-    /// dashboard for department-stitching without cross-domain
-    /// <c>.Include(Rota).ThenInclude(Team).ThenInclude(ParentTeam)</c>.
-    /// </summary>
+    /// <summary>Also loads referenced parents missing from the requested set.</summary>
     Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Is <paramref name="teamId"/> an active team that has at least one
-    /// active child team? Used by <c>UpdateTeamAsync</c> / <c>DeleteTeamAsync</c>.
-    /// </summary>
     Task<bool> HasActiveChildrenAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load active child teams of <paramref name="parentTeamIds"/> with their
-    /// id + parent id only. Used by <c>GetMyTeamMembershipsAsync</c> to
-    /// aggregate pending counts for coordinator departments.
-    /// </summary>
     Task<IReadOnlyList<(Guid ChildId, Guid ParentId)>> GetActiveChildIdsByParentsAsync(
         IReadOnlyCollection<Guid> parentTeamIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a <see cref="Team"/> that was loaded via
-    /// <see cref="FindForMutationAsync"/> and mutated in the service layer.
-    /// Commits immediately; returns only known unique-constraint conflicts. Other failures propagate.
-    /// </summary>
+    /// <summary>Returns only known unique-constraint conflicts; other failures propagate.</summary>
     Task<TeamUpdateConflict> UpdateTeamAsync(Team team, CancellationToken ct = default);
 
     /// <summary>
-    /// Creates a team with <paramref name="requiresApproval"/> in one save.
-    /// The configured true sentinel preserves an explicit false on insert.
-    /// Returns <c>true</c> on success, or <c>false</c> when persistence
-    /// aborted because of a unique-constraint collision (typically a slug
-    /// race against a concurrent create). The service layer uses the
-    /// <c>false</c> result to drive its suffix-retry loop without needing
-    /// to catch EF Core exception types directly.
+    /// One save: the configured true sentinel preserves an explicit false on insert. Returns false on a unique-constraint
+    /// collision (usually a slug race), which drives the service's suffix retry.
     /// </summary>
     Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
         Team team, bool requiresApproval, CancellationToken ct = default);
 
-    /// <summary>
-    /// In a single transaction: close every active <see cref="TeamMember"/>
-    /// for the team, mark the team <c>IsActive=false</c> with the given
-    /// timestamp, and commit. Returns the user ids whose memberships were closed.
-    /// </summary>
+    /// <summary>Closes every active membership and deactivates the team in one transaction. Returns the users removed.</summary>
     Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Permanently deletes a team and its Teams-owned child rows. Returns
-    /// false when the team does not exist.
-    /// </summary>
+    /// <summary>Also deletes Teams-owned child rows. False when the team doesn't exist.</summary>
     Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// In a single transaction: set <c>GoogleGroupPrefix</c> on the team and
-    /// commit. Returns the previous value and whether the row was found.
-    /// </summary>
     Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken ct = default);
 
-    // ==========================================================================
-    // TeamMember reads
-    // ==========================================================================
-
-    /// <summary>
-    /// Get the user's active team memberships with <c>Team</c> and
-    /// <c>Team.ParentTeam</c> eagerly loaded. Detached.
-    /// </summary>
+    /// <summary>With <c>Team</c> and <c>Team.ParentTeam</c>. Detached.</summary>
     Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Active non-system team ids where the user holds
-    /// <see cref="TeamMemberRole.Coordinator"/>.
-    /// </summary>
+    /// <summary>Active non-system teams only.</summary>
     Task<IReadOnlyList<Guid>> GetUserCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Team ids where the user is a direct department coordinator (parent is
-    /// null and <see cref="TeamMemberRole.Coordinator"/>).
-    /// </summary>
+    /// <summary>Direct department coordinatorships only (no parent).</summary>
     Task<IReadOnlyList<Guid>> GetUserDepartmentCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Check whether the user has an active membership on the team.
-    /// </summary>
     Task<bool> IsActiveMemberAsync(Guid teamId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Get the single tracked active membership for a user on a team.
-    /// Used by writes (leave, remove, set-role) that will mutate it.
-    /// </summary>
+    /// <summary>Tracked, for writes that mutate it.</summary>
     Task<TeamMember?> FindActiveMemberForMutationAsync(
         Guid teamId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Inserts a new team member in its own transaction.</summary>
     Task AddMemberAsync(TeamMember member, CancellationToken ct = default);
 
-    /// <summary>
-    /// Adds a member and returns false if a unique-constraint violation
-    /// indicates the user is already an active member.
-    /// </summary>
+    /// <summary>False when a unique-constraint violation shows the user is already an active member.</summary>
     Task<bool> TryAddMemberAsync(TeamMember member, CancellationToken ct = default);
 
-    /// <summary>
-    /// Approves a join request and creates a new active TeamMember in a single
-    /// transaction. Returns false if a
-    /// unique-constraint violation indicates the user is already an active
-    /// member.
-    /// </summary>
+    /// <summary>One transaction. False when the user is already an active member.</summary>
     Task<bool> ApproveRequestWithMemberAsync(
         TeamJoinRequest request,
         TeamMember member,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Leave/remove flow: remove a member's role assignments and set
-    /// <c>LeftAt</c> on the membership. Returns the role assignments that
-    /// were removed.
-    /// Account merges can supply a same-team active survivor membership: assignments
-    /// move there with their slot and provenance intact, duplicate role definitions
-    /// keep the survivor's assignment, and Coordinator status is preserved. This fold
-    /// and the source's LeftAt commit together.
+    /// Removes the member's role assignments and sets <c>LeftAt</c>; returns the removed assignments. A merge may pass
+    /// the survivor's same-team membership: assignments move there with slot and provenance, duplicates keep the
+    /// survivor's, Coordinator status is kept, and the fold commits with the source's LeftAt.
     /// </summary>
     Task<IReadOnlyList<TeamRoleAssignment>> MarkMemberLeftAsync(
         Guid teamMemberId, Instant leftAt, Guid? mergeIntoMemberId = null, CancellationToken ct = default);
 
-    /// <summary>
-    /// Sets <see cref="TeamMember.Role"/> for the given membership (looked up
-    /// by teamId + userId) and commits. No-op if the user is not an active
-    /// member. Returns the new role actually persisted, or null if no-op.
-    /// </summary>
+    /// <summary>No-op, returning null, when the user isn't an active member.</summary>
     Task<TeamMemberRole?> SetMemberRoleAsync(
         Guid teamId, Guid userId, TeamMemberRole role, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a withdrawn join request (state + resolved timestamp) in its
-    /// own transaction. Returns true if a pending request was found and
-    /// withdrawn; false otherwise.
-    /// </summary>
+    /// <summary>False when no pending request was found.</summary>
     Task<bool> WithdrawRequestAsync(
         Guid requestId, Guid userId, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a rejected join request (state + reviewer + reason + resolved
-    /// timestamp) in its own transaction. Returns false when the request
-    /// doesn't exist or is no longer pending.
-    /// </summary>
+    /// <summary>False when the request is missing or no longer pending.</summary>
     Task<bool> RejectRequestAsync(
         Guid requestId, Guid reviewerUserId, string reason, Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Assign a team member to an available slot on a role definition.
-    /// Optionally auto-adds the user to the team (with an outbox event)
-    /// if <paramref name="autoAddMember"/> is non-null. Optionally promotes
-    /// the member to <see cref="TeamMemberRole.Coordinator"/> when
-    /// <paramref name="promoteToCoordinator"/> is true. Approves any pending
-    /// join request. Returns the inserted assignment plus whether the team
-    /// member was newly added.
+    /// A non-null <paramref name="autoAddMember"/> adds the user to the team (with an outbox event). Also approves any
+    /// pending join request.
     /// </summary>
     Task<(TeamRoleAssignment Assignment, bool AutoAddedToTeam, TeamMember Member)> AssignToRoleAsync(
         Guid roleDefinitionId,
@@ -261,272 +128,128 @@ internal interface ITeamRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Remove a role assignment. If the role is management and the member
-    /// has no other management assignments, demote them from
-    /// <see cref="TeamMemberRole.Coordinator"/> to
-    /// <see cref="TeamMemberRole.Member"/>. Returns the removed-assignment's
-    /// owning user id.
-    /// </summary>
+    /// <summary>Demotes from Coordinator when this was the member's last management assignment.</summary>
     Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default);
 
     /// <summary>
-    /// Persist an updated role definition, then demote any members that
-    /// had become coordinators solely via this role and no longer have
-    /// another management assignment. Returns the list of user ids demoted
-    /// (empty when not applicable) and whether the active-teams cache should
-    /// be invalidated by the caller (true when demotions occurred).
+    /// Then demotes members who were coordinators only through this role. The caller invalidates the team cache when
+    /// members were demoted.
     /// </summary>
     Task<(IReadOnlyList<Guid> DemotedUserIds, bool DemotedMembers)> PersistRoleDefinitionUpdateAsync(
         TeamRoleDefinition definition,
         bool clearingIsManagement,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Persist SetRoleIsManagement flag changes. Runs the demote-coordinators
-    /// branch server-side if <paramref name="clearingIsManagement"/> is true.
-    /// Returns whether any members were demoted.
-    /// </summary>
+    /// <summary>Demotes coordinators server-side when <paramref name="clearingIsManagement"/>. Returns whether any were.</summary>
     Task<bool> PersistRoleIsManagementAsync(
         TeamRoleDefinition definition,
         bool clearingIsManagement,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // TeamJoinRequest reads
-    // ==========================================================================
-
-    /// <summary>
-    /// Find the user's pending join request for the team (or null).
-    /// </summary>
     Task<TeamJoinRequest?> FindUserPendingRequestAsync(
         Guid teamId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Find a single join request for mutation (tracked, detached before
-    /// return by caller's choice).
-    /// </summary>
     Task<TeamJoinRequest?> FindRequestForMutationAsync(Guid requestId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Find a request and its associated <c>Team</c> eagerly loaded, tracked.
-    /// Used by <c>ApproveJoinRequestAsync</c> which needs the team name.
-    /// </summary>
     Task<TeamJoinRequest?> FindRequestWithTeamForMutationAsync(
         Guid requestId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Pending join requests for a single team, detached.
-    /// </summary>
     Task<IReadOnlyList<TeamJoinRequest>> GetPendingForTeamAsync(
         Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Pending request counts keyed by team id. Teams not in the input are
-    /// absent from the result.
-    /// </summary>
+    /// <summary>Teams not in the input are absent from the result.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetPendingCountsByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
-    /// <summary>Inserts a new join request.</summary>
     Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold: re-FKs every <see cref="TeamJoinRequest"/> authored
-    /// by <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// When source has a pending request to a team where target <em>also</em> has an
-    /// active (<see cref="TeamJoinRequestStatus.Pending"/>) request, the
-    /// source row is dropped (target's pending request stands). All other
-    /// source rows (historical statuses, or pending-without-target-conflict)
-    /// are re-FK'd so request history is preserved on the surviving account.
-    /// Called only by <c>TeamService.ReassignAsync</c>.
+    /// A source pending request to a team where the target also has one is dropped; every other row moves, so request
+    /// history survives on the target.
     /// </summary>
     Task ReassignActiveJoinRequestsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // TeamRoleDefinition reads / writes
-    // ==========================================================================
-
-    /// <summary>
-    /// Role definitions for a team with assignments and team-member data
-    /// eagerly loaded. Detached.
-    /// </summary>
+    /// <summary>With assignments and their members. Detached.</summary>
     Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load a role definition (tracked) with Team + Assignments +
-    /// Assignments.TeamMember loaded, for mutations like
-    /// <c>UpdateRoleDefinitionAsync</c>.
-    /// </summary>
+    /// <summary>Tracked, with Team, Assignments and Assignments.TeamMember.</summary>
     Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load a role definition (tracked) with Team + Assignments +
-    /// Assignments.TeamMember loaded for <c>SetRoleIsManagementAsync</c>.
-    /// </summary>
+    /// <summary>Tracked, with Team, Assignments and Assignments.TeamMember.</summary>
     Task<TeamRoleDefinition?> FindRoleDefinitionWithMembersForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Check whether any role definition on the team has the given
-    /// lowercased name (used for uniqueness).
-    /// </summary>
+    /// <summary>Matches on the lowercased name.</summary>
     Task<bool> RoleDefinitionNameExistsAsync(
         Guid teamId, string lowerName, Guid? excludingId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Check whether another role definition in the same team is already
-    /// marked as management.
-    /// </summary>
     Task<bool> OtherRoleHasIsManagementAsync(
         Guid teamId, Guid excludingRoleDefinitionId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Return the public management role display name for each team that
-    /// has one. Teams without a management role are absent from the result.
-    /// </summary>
+    /// <summary>Teams without a public management role are absent.</summary>
     Task<IReadOnlyDictionary<Guid, string>> GetPublicManagementRoleNamesByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
-    /// <summary>Inserts a new role definition.</summary>
     Task AddRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
-    /// <summary>Removes an attached role definition and commits.</summary>
     Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
-    // ==========================================================================
-    // TeamRoleAssignment reads / writes
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns distinct user ids whose membership belongs to role definitions
-    /// matching the predicate <c>IsManagement &amp;&amp; TeamId == teamId</c>.
-    /// Used by <c>UpdateTeamAsync</c> to invalidate shift authorization when a
-    /// team's parent changes.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsWithManagementOnTeamAsync(
         Guid teamId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Bulk / seed / revoke
-    // ==========================================================================
-
-    /// <summary>
-    /// Ends every active team membership for a user and removes role
-    /// assignments attached to those memberships. Returns the count of
-    /// memberships closed. Commits immediately.
-    /// </summary>
+    /// <summary>Also removes their role assignments. Returns the number of memberships closed.</summary>
     Task<int> RevokeAllMembershipsAsync(Guid userId, Instant now, CancellationToken ct = default);
 
-    /// <summary>
-    /// Active team memberships for which the application service should
-    /// enqueue Google-sync AddUserToTeamResources events.
-    /// </summary>
     Task<IReadOnlyList<(Guid TeamMemberId, Guid TeamId)>> GetActiveMembershipsForGoogleResyncAsync(
         Guid userId, CancellationToken ct = default);
 
-    // GoogleEmailStatus.Rejected suppresses outbox events for users whose Google account is dead.
-    // The application service owns that decision and reads it through IGoogleIntegrationService;
-    // there is no corresponding method on this repository.
-
-    // ==========================================================================
-    // Early-entry grants (team_early_entry_grants)
-    // ==========================================================================
-
-    /// <summary>All EE grants belonging to teams with EarlyEntryEnabled (JOIN-filtered). Detached. The IEarlyEntryProvider feed.</summary>
+    /// <summary>Only teams with EarlyEntryEnabled. Detached.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default);
 
-    /// <summary>A team's EE grants, ordered by project then date. Detached. For the management page.</summary>
+    /// <summary>Ordered by project then date. Detached.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>A user's EE grants across all teams. Detached. For GDPR export + erasure + merge lookups.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Load one grant by id, tracked, for edit/remove.</summary>
     Task<TeamEarlyEntryGrant?> FindEarlyEntryGrantForMutationAsync(Guid grantId, CancellationToken ct = default);
 
-    /// <summary>Insert a new EE grant.</summary>
     Task AddEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default);
 
-    /// <summary>Persist edits to an existing grant (full-row update).</summary>
     Task UpdateEarlyEntryGrantAsync(TeamEarlyEntryGrant grant, CancellationToken ct = default);
 
-    /// <summary>Delete one grant by id (bulk ExecuteDelete).</summary>
     Task RemoveEarlyEntryGrantAsync(Guid grantId, CancellationToken ct = default);
 
-    /// <summary>Bulk-reassign a user's grants to a target user (merge); leaves UpdatedAt untouched.</summary>
+    /// <summary>Leaves UpdatedAt untouched.</summary>
     Task ReassignEarlyEntryGrantsAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
-    /// <summary>Delete all of a user's grants (GDPR erasure; bulk ExecuteDelete).</summary>
     Task RemoveEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // GDPR export contribution
-    // ==========================================================================
-
-    /// <summary>
-    /// Raw data for the GDPR export contributor: all the user's memberships
-    /// (including left) with team name, role assignments, and timestamps.
-    /// </summary>
+    /// <summary>Includes ended memberships.</summary>
     Task<IReadOnlyList<TeamMember>> GetAllMembershipsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Raw data for the GDPR export contributor: all the user's join
-    /// requests with team name and timestamps.
-    /// </summary>
-    /// <summary>
-    /// GDPR Art. 17: hard-deletes every join request the user authored, with its
-    /// state history — the request carries their free-text <c>Message</c>.
-    /// </summary>
+    /// <summary>Hard-deletes with state history: the request carries their free-text <c>Message</c>.</summary>
     Task<int> DeleteJoinRequestsForUserAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TeamJoinRequest>> GetAllJoinRequestsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // System team sync support (issue #570 — §15 Google-writing jobs)
-    //
-    // Narrow repository methods used exclusively by the Teams-section service
-    // methods that back SystemTeamSyncJob. Every mutation commits in its own
-    // DbContext so the Singleton+IDbContextFactory contract is preserved.
-    // ==========================================================================
-
-    /// <summary>
-    /// Load every active (<see cref="TeamMember.LeftAt"/> is null) team
-    /// membership along with its <see cref="TeamMember.RoleAssignments"/>
-    /// and each assignment's <see cref="TeamRoleAssignment.TeamRoleDefinition"/>.
-    /// Also hydrates <see cref="TeamMember.Team"/> so the caller can read the
-    /// team's <see cref="Team.SystemTeamType"/> without a second query.
-    /// Detached. Used by <c>SystemTeamSyncJob.ReconcileCoordinatorRolesAsync</c>
-    /// to decide promote / demote sets in memory.
-    /// </summary>
+    /// <summary>With role assignments, their definitions and the team. Detached.</summary>
     Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies a bulk list of <see cref="TeamMember.Role"/> changes in one save.
-    /// Ignores team-member ids that are no longer active. Used by
-    /// <c>SystemTeamSyncJob.ReconcileCoordinatorRolesAsync</c> so the job
-    /// does not write to <c>team_members</c> directly.
-    /// </summary>
+    /// <summary>Ignores team-member ids that are no longer active.</summary>
     Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Applies a bulk system-team membership reconciliation in a single save:
-    /// inserts a new <see cref="TeamMember"/> with <c>Role=Member</c> +
-    /// <c>JoinedAt=now</c> for each id in <paramref name="userIdsToAdd"/>,
-    /// and for each id in <paramref name="userIdsToRemove"/>, sets
-    /// <see cref="TeamMember.LeftAt"/> on the single active membership and
-    /// cascade-deletes any <see cref="TeamRoleAssignment"/> rows attached to
-    /// that membership. Bumps <see cref="Team.UpdatedAt"/> if at least one
-    /// change lands. Returns true if any writes occurred.
+    /// One save. Removing closes the active membership and deletes its role assignments. Returns true if anything was
+    /// written.
     /// </summary>
     Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,

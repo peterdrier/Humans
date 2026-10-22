@@ -179,10 +179,6 @@ public class BackdoorIssuesControllerTests
                 Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
-    // ==========================================================================
-    // Screenshot
-    // ==========================================================================
-
     [HumansFact]
     public async Task Screenshot_streams_the_file_for_the_key_owner()
     {
@@ -226,10 +222,6 @@ public class BackdoorIssuesControllerTests
         row.GetType().GetProperty("ScreenshotUrl")!.GetValue(row)
             .Should().Be($"/api/backdoor/issues/{snapshot.Id}/screenshot");
     }
-
-    // ==========================================================================
-    // List
-    // ==========================================================================
 
     [HumansFact]
     public async Task List_returns_all_issues()
@@ -306,10 +298,6 @@ public class BackdoorIssuesControllerTests
         captured!.SearchText.Should().BeNull();
     }
 
-    // ==========================================================================
-    // Get
-    // ==========================================================================
-
     [HumansFact]
     public async Task Get_returns_NotFound_for_missing_issue()
     {
@@ -365,10 +353,6 @@ public class BackdoorIssuesControllerTests
         second.GetType().GetProperty("type")!.GetValue(second).Should().Be("audit");
         second.GetType().GetProperty("action")!.GetValue(second).Should().Be("IssueStatusChanged");
     }
-
-    // ==========================================================================
-    // Writes — every one carries the key owner as actor (#1128)
-    // ==========================================================================
 
     [HumansFact]
     public async Task Create_files_for_the_named_reporter_and_records_the_key_owner_as_filer()
@@ -525,10 +509,6 @@ public class BackdoorIssuesControllerTests
 
         result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
     }
-
-    // ==========================================================================
-    // What the machine surface is allowed to see
-    // ==========================================================================
 
     /// <summary>
     /// The queue is fetched as the key's owner, not as a full admin: a Board-only key holder

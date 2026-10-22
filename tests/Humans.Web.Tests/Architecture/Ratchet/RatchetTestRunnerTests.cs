@@ -2,16 +2,7 @@ using AwesomeAssertions;
 
 namespace Humans.Web.Tests.Architecture.Ratchet;
 
-/// <summary>
-/// Unit tests for <see cref="RatchetTestRunner"/> — verify the
-/// hard-fail / soft-fail behavior the ratchet pattern depends on.
-///
-/// These cover the framework, not any individual rule. Each test
-/// creates a temporary baseline file under the system temp dir and
-/// drives <c>RatchetTestRunner.Run</c> against it via a relative path
-/// reachable from the repo root by going through a per-test scratch
-/// directory placed under the repo's <c>obj/</c>.
-/// </summary>
+/// <summary>Scratch baselines live under the repo's <c>obj/</c>, reachable through the same repo-root resolution.</summary>
 public class RatchetTestRunnerTests : IDisposable
 {
     private readonly string _scratchDir;
@@ -22,8 +13,6 @@ public class RatchetTestRunnerTests : IDisposable
     public RatchetTestRunnerTests()
     {
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
-        // Place scratch baseline inside obj/ — gitignored, won't pollute the
-        // repo, and reachable through the same repo-root resolution path.
         var unique = Guid.NewGuid().ToString("N").Substring(0, 8);
         _baselineRelativePath = $"obj/ratchet-tests-scratch/{unique}.baseline.txt";
         _baselineAbsolutePath = Path.Combine(repoRoot, _baselineRelativePath);
@@ -40,7 +29,6 @@ public class RatchetTestRunnerTests : IDisposable
             "src/B.cs:20:bar"
         ]);
 
-        // Act+Assert: should not throw.
         RatchetTestRunner.Run(
             "TestRule",
             _baselineRelativePath, ["src/A.cs:10:foo", "src/B.cs:20:bar"]);
@@ -49,7 +37,6 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void Run_passes_when_baseline_missing_and_no_violations()
     {
-        // Baseline file does not exist → empty baseline → no violations is fine.
         RatchetTestRunner.Run("TestRule", _baselineRelativePath, []);
     }
 
@@ -108,9 +95,6 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void ReadBaseline_strips_trailing_informational_suffix()
     {
-        // Trailing " # ..." on data lines is informational only — the diff
-        // key stops at the " # " separator. Lines without the separator are
-        // returned verbatim.
         File.WriteAllLines(_baselineAbsolutePath, [
             "src/A.cs:foo # L42 lines=10",
             "src/B.cs:bar#1 # L99",
@@ -123,8 +107,6 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void StripTrailingComment_preserves_embedded_hash_in_key()
     {
-        // The key may itself contain a "#N" ordinal (no preceding space) —
-        // those must NOT be treated as the start of a comment.
         RatchetTestRunner.StripTrailingComment("src/A.cs:HasOne<User>#2 # L42")
             .Should().Be("src/A.cs:HasOne<User>#2");
         RatchetTestRunner.StripTrailingComment("src/A.cs:Edit/3")
@@ -136,14 +118,11 @@ public class RatchetTestRunnerTests : IDisposable
     [HumansFact]
     public void Run_passes_when_only_trailing_line_info_changes()
     {
-        // The whole point of the new format: an unrelated edit that shifts
-        // a violation's line number must NOT trip the ratchet.
         File.WriteAllLines(_baselineAbsolutePath, [
             "src/A.cs:Edit/2 # L100 lines=30",
             "src/B.cs:Update/1 # L50 lines=20"
         ]);
 
-        // Same keys, different line numbers and diagnostics — should pass.
         RatchetTestRunner.Run(
             "TestRule",
             _baselineRelativePath, [
@@ -161,8 +140,6 @@ public class RatchetTestRunnerTests : IDisposable
             "TestRule",
             _baselineRelativePath, ["src/B.cs:NewViolation/1 # L77 lines=42"]);
 
-        // The failure message should preserve the trailing info so the
-        // human can locate the violation in the source.
         act.Should().Throw<Exception>()
             .WithMessage("*src/B.cs:NewViolation/1*");
         act.Should().Throw<Exception>()
@@ -182,14 +159,10 @@ public class RatchetTestRunnerTests : IDisposable
         }
         catch (IOException)
         {
-            // Test scratch cleanup is best-effort; concurrent test runs may
-            // collide on the directory delete and that's harmless. Production
-            // code logs; this is a per-test sentinel under obj/ which gets
-            // cleaned by `dotnet clean` regardless.
+            // Best effort: concurrent runs may collide on the delete, and dotnet clean removes obj/ anyway.
         }
         catch (UnauthorizedAccessException)
         {
-            // Same: scratch is gitignored, leaks fail loudly on next CI run.
         }
         GC.SuppressFinalize(this);
     }

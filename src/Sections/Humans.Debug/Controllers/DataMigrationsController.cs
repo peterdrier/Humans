@@ -7,12 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Debug.Controllers;
 
-/// <summary>
-/// <c>/Debug/DataMigrations</c>: every section's registered data migration with its pending
-/// rows, and the Apply button that runs one (memory/process/no-data-backfills.md's
-/// review → confirm screen). The anonymous counts-only twin is <c>/api/data-migrations</c>,
-/// mapped by <see cref="SectionEndpoints"/>.
-/// </summary>
+/// <summary>The anonymous counts-only twin is <c>/api/data-migrations</c> (<see cref="SectionEndpoints"/>).</summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Debug/DataMigrations")]
 internal sealed class DataMigrationsController(

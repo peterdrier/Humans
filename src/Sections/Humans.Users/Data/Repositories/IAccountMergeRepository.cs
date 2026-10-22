@@ -3,34 +3,18 @@ using Humans.Base.Interfaces.Repositories;
 namespace Humans.Users.Data.Repositories;
 
 /// <summary>
-/// Repository for the <c>account_merge_requests</c> table. The only non-test
-/// file that may write to this DbSet.
+/// Reads return scalar user ids; the service stitches display info through
+/// <c>IUserManagement</c>, never through <c>AspNetUsers</c> navigations.
 /// </summary>
-/// <remarks>
-/// Read methods return the merge-request rows with scalar user IDs only.
-/// Display info for the source/target/resolver users is stitched in
-/// <c>AccountMergeService</c> via <c>IUserManagement</c> (§6b), never via the
-/// cross-domain <c>AspNetUsers</c> navigation properties.
-/// </remarks>
 internal interface IAccountMergeRepository : IRepository
 {
-    /// <summary>
-    /// Returns all pending merge requests for admin review, ordered by
-    /// <c>CreatedAt</c> ascending. Scalar user IDs only — the service stitches
-    /// display info via <c>IUserManagement</c>. Read-only (AsNoTracking).
-    /// </summary>
+    /// <summary>Pending requests, oldest first, read-only.</summary>
     Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a single merge request by id. Scalar user IDs only — the service
-    /// stitches display info via <c>IUserManagement</c>. Tracked for modification.
-    /// </summary>
+    /// <summary>Tracked for modification.</summary>
     Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a single merge request by id, read-only (AsNoTracking). Use when
-    /// the caller does not modify the entity.
-    /// </summary>
+    /// <summary>Read-only.</summary>
     Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
@@ -47,45 +31,21 @@ internal interface IAccountMergeRepository : IRepository
     Task<IReadOnlyList<AccountMergeRequestGdprRow>> GetForUserGdprAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the subset of email IDs that have a pending merge request.
-    /// Used by <c>UserEmailService.GetUserEmailsAsync</c> to flag
-    /// merge-in-progress emails.
-    /// </summary>
     Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
         IReadOnlyList<Guid> emailIds, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if a pending merge request exists for the target user and
-    /// the given normalized email (or alternate gmail/googlemail form).
-    /// </summary>
+    /// <summary>Matches the normalized email or its gmail/googlemail alternate.</summary>
     Task<bool> HasPendingForUserAndEmailAsync(
         Guid targetUserId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true if a pending merge request exists for the given pending
-    /// email id.
-    /// </summary>
     Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a new merge request.
-    /// </summary>
     Task AddAsync(AccountMergeRequest request, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists changes to an existing merge request. The entity is attached
-    /// and marked as Modified.
-    /// </summary>
     Task UpdateAsync(AccountMergeRequest request, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Read-only row shape for the GDPR export contributor. Avoids leaking
-/// full <see cref="AccountMergeRequest"/> entities (which carry navigation
-/// properties) into the Application-layer service.
-/// </summary>
 internal sealed record AccountMergeRequestGdprRow(
     string Status,
     bool IsTarget,

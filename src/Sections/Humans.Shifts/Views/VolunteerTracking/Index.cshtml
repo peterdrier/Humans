@@ -5,10 +5,7 @@
 
     var mainTotal = Model.MainCohort.Count;
     var mainWithGaps = Model.MainCohort.Count(r => r.GapCount > 0);
-    // "On camp set-up" reflects today's state: a volunteer is counted only
-    // if their BarrioSetupStartDate is on or before today (i.e., they've
-    // actually moved to camp set-up by now). Future-dated camp-setup plans
-    // don't count toward today's number.
+    // Today's state: a future-dated camp set-up doesn't count yet.
     var onCampSetup = Model.MainCohort.Count(r => r.BarrioSetupStartDate is { } d && d <= Model.Today);
     var unbookedTotal = Model.UnbookedCohort.Count;
     var anyFilterActive = Model.HideNoGaps || Model.HideCampSetup || Model.HideUnbookedSection;
@@ -66,7 +63,7 @@
                            autocomplete="off" />
                 </div>
             </div>
-            @* CSP blocks inline handlers; js-auto-submit (site.js) submits parent form on change. *@
+            @* CSP blocks inline handlers; site.js's js-auto-submit submits the form on change. *@
             <form method="get" asp-action="Index" class="d-flex flex-wrap gap-3 align-items-center">
                 <div class="form-check">
                     <input class="form-check-input js-auto-submit" type="checkbox" name="hideNoGaps" value="true" id="vt-hide-no-gaps"
@@ -152,9 +149,7 @@
 
 @section Scripts {
 <script>
-// Live row filter for the volunteer-tracking heatmaps. Matches case-insensitively
-// against the row's data-vt-search-name (display/playa name lowercased server-side).
-// Pure client-side: rows are already in the DOM, no round-trip needed.
+// Client-side only: the rows are already in the DOM.
 (function () {
     var input = document.getElementById('vt-search');
     if (!input) return;

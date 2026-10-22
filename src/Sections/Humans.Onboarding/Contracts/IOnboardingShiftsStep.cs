@@ -13,21 +13,9 @@ public sealed record OnboardingShiftsStepArgs(
     bool EarlyEntrySignupsClosed);
 
 /// <summary>
-/// The single view component that renders the onboarding widget's step-2 shift picker
-/// (<c>Views/OnboardingWidget/Shifts.cshtml</c>). Lives in this impl project's
-/// <c>Contracts/</c> folder, not a <c>.Contracts</c> leaf: the args record names
-/// <c>Humans.Shifts.Contracts</c> types, and <c>Humans.Onboarding.Contracts</c> is the
-/// zero-<c>ProjectReference</c> terminal of Base's chain, so it cannot see
-/// <see cref="ISectionContribution"/>/<see cref="ViewComponentSlotAttribute"/> without a
-/// cycle (nobodies-collective/Humans#1815). No new project reference: Onboarding already
-/// references <c>Humans.Shifts.Contracts</c>, and Shifts already references this project.
+/// In this project's <c>Contracts/</c> folder, not the <c>.Contracts</c> leaf: the args name Shifts types, and
+/// the leaf can't reference Base's seam types without a cycle. Startup fails if no section contributes it.
 /// </summary>
-/// <remarks>
-/// Single-contributor seam — one property, not a fan-out list — because exactly one section
-/// (Shifts) owns this step's presentation. If no contributor registers, resolving
-/// <see cref="IOnboardingShiftsStep"/> throws at request time, and startup fails first:
-/// <c>SectionActivation.ThrowOnUnmetDependencies</c> rejects an unmet dependency.
-/// </remarks>
 public interface IOnboardingShiftsStep : ISectionContribution
 {
     [ViewComponentSlot(typeof(OnboardingShiftsStepArgs))]

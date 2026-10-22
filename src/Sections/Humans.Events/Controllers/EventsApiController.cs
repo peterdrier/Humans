@@ -154,8 +154,6 @@ internal sealed class EventsApiController(
             c.DisplayOrder)));
     }
 
-    // ─── Preferences (authenticated, same-origin — no CORS) ───────
-
     [Authorize]
     [DisableCors]
     [HttpGet("preferences")]
@@ -195,8 +193,6 @@ internal sealed class EventsApiController(
         public List<string> ExcludedCategorySlugs { get; set; } = [];
     }
 
-    // ─── Favourites (authenticated, same-origin — no CORS) ────────
-
     [Authorize]
     [DisableCors]
     [HttpGet("favourites")]
@@ -221,8 +217,7 @@ internal sealed class EventsApiController(
             var campName = ResolveCampNameById(e.CampId, campsById);
             var submitterName = ResolveSubmitterName(e, submitterInfoById);
 
-            // One entry per favourited occurrence (day-specific favourites
-            // expand to that single occurrence) — mirrors the schedule page.
+            // One entry per favourited occurrence; a day-specific favourite expands to that one occurrence.
             IReadOnlyList<Instant> occurrences = e.GetOccurrenceInstants(gateOpeningDate, tz, f.DayOffset);
 
             return occurrences.Select(start =>
@@ -273,8 +268,6 @@ internal sealed class EventsApiController(
         if (!removed) return NotFound();
         return Ok(new { unfavourited = true });
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────
 
     private async Task<List<string>> GetExcludedSlugsAsync(CancellationToken ct)
     {

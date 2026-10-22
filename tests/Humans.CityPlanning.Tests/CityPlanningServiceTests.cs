@@ -42,8 +42,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             _campService, _teamService, _userService, _auditLog, _settingsService);
     }
 
-    // --- Helpers ---
-
     /// <summary>Camps' public year and the active event's year — city planning's current year — both <paramref name="publicYear"/>.</summary>
     private void SetupCampSettings(int publicYear = 2026)
     {
@@ -81,8 +79,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     // The size guard reads Length, never the stream, so this stays cheap.
     private static IFormFile CreateOversizedUpload() =>
         new FormFile(new MemoryStream([1]), 0, (10 * 1024 * 1024) + 1, "file", "huge.geojson");
-
-    // --- Tests ---
 
     [HumansTheory]
     [InlineData(0.0)]
@@ -332,8 +328,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result.Should().BeTrue();
     }
 
-    // --- Audit: the settings row records when a phase or zone changed, never who. These
-    // writes are organisers acting on the members' behalf, so the actor lives in the audit log.
+    // The settings row records when a phase or zone changed, never who. These writes are
+    // organisers acting on the members' behalf, so the actor lives in the audit log.
 
     [HumansFact]
     public async Task OpenPlacementAsync_WritesAuditEntry_NamingTheActor()
@@ -443,10 +439,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // IAuditLogService takes no cancellation token by design. Before the fix the settings row
-    // was re-read after the save to get its id, so a request aborted during the write committed
-    // the change and never reached LogAsync — the actor record lost exactly when someone hit
-    // stop mid-click. The id is now resolved before the write.
+    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before
+    // the write: re-read after it, an abort mid-write committed the change unaudited.
     [HumansFact]
     public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
     {
@@ -533,9 +527,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<string?>());
     }
 
-    // The slug is normalized on both sides. Before that it was lower-cased on the configured
-    // side only and compared Ordinal, so a stored slug carrying any uppercase never matched
-    // and every city-planning team member silently lost their map-admin exemption.
+    // The slug is normalized on both sides: a stored slug carrying uppercase must still match,
+    // or every city-planning team member silently loses their map-admin exemption.
     [HumansFact]
     public async Task IsCityPlanningTeamMemberAsync_StoredSlugHasUppercase_StillMatches()
     {
@@ -678,7 +671,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result.Should().BeFalse();
     }
 
-    // peterdrier/Humans#2102: a GET used to create the year's row. Reads are side-effect free.
     [HumansFact]
     public async Task GetSettingsAsync_NoRow_ReturnsUnpersistedDefaultsAndWritesNothing()
     {
@@ -896,9 +888,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
 
-        // Stub the user service — replaces the old cross-domain .Include(h => h.ModifiedByUser).
-        // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-        // UserInfo.BurnerName reads User.BurnerName only (#1098).
+        // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
         var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfosAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
@@ -918,10 +908,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, TestContext.Current.CancellationToken);
 
-        // Display ordering (newest first) moved to the controller
-        // (CityPlanningApiController.GetCampPolygonHistory) per
-        // memory/architecture/display-sort-in-controllers.md, so the service
-        // only guarantees the entries and the display-name mapping, not order.
+        // Ordering is the controller's job; the service guarantees entries and display names only.
         history.Should().HaveCount(2);
         history.Select(h => h.AreaSqm).Should().BeEquivalentTo([100.0, 200.0]);
         history.Should().OnlyContain(h => h.ModifiedByDisplayName == "Test User");
@@ -987,8 +974,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         polygons.Single().SoundZone.Should().BeNull();
     }
 
-    // --- UpdateOfficialZonesAsync / DeleteOfficialZonesAsync ---
-
     [HumansFact]
     public async Task UpdateOfficialZonesAsync_StoresGeoJson()
     {
@@ -1017,8 +1002,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
-
-    // --- RegistrationInfo: keyed to the highest open season, else the active event's year ---
 
     [HumansFact]
     public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotTheActiveEventYear()

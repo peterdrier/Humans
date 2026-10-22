@@ -1,10 +1,5 @@
 namespace Humans.MailerLite.Services;
 
-/// <summary>
-/// MailerLite client configuration. Bound from <c>MailerLite:*</c> in
-/// configuration (user-secrets in dev, env-var-shaped <c>MailerLite__ApiKey</c>
-/// or flat <c>MAILERLITE_API_KEY</c> in PR/prod — bound in <c>Section.cs</c>).
-/// </summary>
 internal sealed class MailerLiteOptions
 {
     public const string SectionName = "MailerLite";

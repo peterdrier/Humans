@@ -4,9 +4,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Repositories;
 
-/// <summary>
-/// Profile operations on <see cref="UserRepository"/>.
-/// </summary>
 internal sealed partial class UserRepository
 {
     public async Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
@@ -96,10 +93,8 @@ internal sealed partial class UserRepository
         Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Attach the detached entity and mark only its own scalar properties as
-        // Modified — do NOT use ctx.Profiles.Update(profile) which would cascade
-        // to navigation collections (VolunteerHistory, Languages) and could delete
-        // existing related rows when those collections are empty on the in-memory entity.
+        // Not ctx.Profiles.Update(profile): that cascades to the navigation collections and
+        // could delete related rows that are simply unloaded on this entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
         if (volunteerHistory is not null)
@@ -115,13 +110,12 @@ internal sealed partial class UserRepository
         if (user is null)
             return;
 
-        // #1097 dual-write: the names belong to the human, not the membership profile.
-        // Every Profile write funnels through AddAsync/UpdateAsync, so this is the one seam.
+        // The names belong to the human; every Profile write funnels through here, so this is the one seam.
         CopyNamesToUser(user, profile);
         user.State = UserStateEvaluator.Classify(user, profile);
     }
 
-    /// <summary>#1097 — mirrors the Profile's names onto the User row inside the same save.</summary>
+    /// <summary>Mirrors the Profile's names onto the User row inside the same save.</summary>
     private static void CopyNamesToUser(User user, Profile profile)
     {
         user.BurnerName = profile.BurnerName;
@@ -130,9 +124,8 @@ internal sealed partial class UserRepository
     }
 
     /// <summary>
-    /// #1097 — loads the owning User into <paramref name="ctx"/> and mirrors the profile's
-    /// current names onto it. For the ctx-direct anonymize/merge paths, which do not route
-    /// through <see cref="UpdateAsync"/>.
+    /// Name mirror for the ctx-direct anonymize/merge paths, which do not route through
+    /// <see cref="UpdateAsync"/>.
     /// </summary>
     private static async Task MirrorProfileNamesToUserAsync(
         UsersDbContext ctx, Profile profile, CancellationToken ct)
@@ -149,8 +142,7 @@ internal sealed partial class UserRepository
 
         if (profile is not null)
         {
-            // Article 9 special-category data — health and diet. Not touched by the
-            // profile fold because a merge must not drop them.
+            // GDPR Art. 9 health and diet data: deletion-only, because a merge must not drop it.
             profile.DietaryPreference = null;
             profile.Allergies = [];
             profile.Intolerances = [];
@@ -160,8 +152,7 @@ internal sealed partial class UserRepository
             profile.ConsentCheckNotes = null;
             profile.RejectionReason = null;
 
-            // Bank details. Deletion-only for the same reason as above — the merge
-            // fold keeps the source IBAN so the surviving account can still be paid.
+            // Deletion-only too: the merge fold keeps the source IBAN so the survivor can still be paid.
             profile.Iban = null;
 
             var languages = await ctx.ProfileLanguages
@@ -204,9 +195,8 @@ internal sealed partial class UserRepository
 
             var next = UserStateEvaluator.Classify(
                 user, profile, isSuspended: true, isAdminSuspended: false);
-            // A higher-precedence state (Rejected/Merged/Deleted) outranks Suspended, so the
-            // classifier returns the row unchanged. Report only rows that actually moved — the
-            // caller notifies and audits off this set.
+            // A higher-precedence state outranks Suspended and comes back unchanged. Report only
+            // rows that moved: the caller notifies and audits off this set.
             if (next == user.State)
                 continue;
 
@@ -254,9 +244,7 @@ internal sealed partial class UserRepository
             .Where(l => l.ProfileId == targetProfile.Id)
             .ToListAsync(ct);
 
-        // VolunteerHistory: dedup on (year, EventName) — drop source rows with
-        // a key that already exists on target, re-FK survivors. EventName
-        // comparison is case-sensitive (matches today's CV reconciliation).
+        // EventName comparison is case-sensitive, matching CV reconciliation.
         var targetVolunteerKeys = new HashSet<(int Year, string EventName)>(
             targetVolunteerHistory.Select(v => (v.Date.Year, v.EventName)));
         foreach (var src in sourceVolunteerHistory)
@@ -274,9 +262,6 @@ internal sealed partial class UserRepository
             }
         }
 
-        // Languages: dedup on LanguageCode. If both have the same code, keep
-        // the higher Proficiency (target wins on tie); drop the source row
-        // unconditionally after potentially upgrading target's proficiency.
         var targetLanguageByCode = targetLanguages
             .ToDictionary(l => l.LanguageCode, StringComparer.OrdinalIgnoreCase);
         foreach (var src in sourceLanguages)
@@ -296,18 +281,13 @@ internal sealed partial class UserRepository
             }
         }
 
-        // Anonymize the source profile in place. The row is kept as a tombstone
-        // counterpart to User.MergedToUserId; only identifying scalars are
-        // cleared. ContactField rows belong to the ContactFields section
-        // (IContactFieldService) and are re-FK'd by the merge orchestrator's
-        // separate ContactFieldService.ReassignToUserAsync call.
+        // The row stays as the tombstone counterpart to User.MergedToUserId; only identifying
+        // scalars are cleared.
         sourceProfile.FirstName = "Merged";
         sourceProfile.LastName = "User";
-        // Canonical display label lives on BurnerName — set it so the tombstone shows
-        // "Merged User" via the profile, not via the legacy User.DisplayName fallback.
         sourceProfile.BurnerName = "Merged User";
-        // #1097 dual-write: clear the tombstone's User-side names in the same save, or the
-        // resolver (User.BurnerName first) would keep rendering the merged human's real name.
+        // Clear the User-side names in the same save, or the resolver (User.BurnerName) would keep
+        // rendering the merged human's real name.
         await MirrorProfileNamesToUserAsync(ctx, sourceProfile, ct);
         sourceProfile.Bio = null;
         sourceProfile.City = null;
@@ -344,7 +324,6 @@ internal sealed partial class UserRepository
         profile.FirstName = "Deleted";
         profile.LastName = "User";
         profile.BurnerName = string.Empty;
-        // #1097 dual-write — see MirrorProfileNamesToUserAsync.
         await MirrorProfileNamesToUserAsync(ctx, profile, ct);
         profile.Bio = null;
         profile.City = null;
@@ -383,18 +362,11 @@ internal sealed partial class UserRepository
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct)
     {
-        // Load tracked entities so the change tracker can detect in-place mutations.
+        // Tracked, so the change tracker sees in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
             .Where(v => v.ProfileId == profileId)
             .ToListAsync(ct);
 
-        // Reconcile keyed by Id (the stable per-row identity):
-        //   - entries with an Id that matches an existing row update that row
-        //     in place (keep Id/CreatedAt, bump UpdatedAt only when fields
-        //     actually change);
-        //   - entries with Guid.Empty or an unknown Id are inserted with a
-        //     freshly generated Id;
-        //   - existing rows whose Id is absent from the incoming set are deleted.
         var existingLookup = existing.ToDictionary(v => v.Id);
         var incomingIds = entries
             .Where(e => e.Id != Guid.Empty)

@@ -4,18 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace Humans.Web.Extensions;
 
-/// <summary>
-/// DI wiring for Base's own context, the migration runner and the Identity stores.
-/// </summary>
-/// <remarks>
-/// The generic <c>AddSectionDbContext&lt;TContext&gt;</c> seam left for
-/// <see cref="Humans.Base.Hosting.SectionDbContextServiceCollectionExtensions"/> in the
-/// Humans.Interfaces (Base) assembly at G5 lane 3a-2 (nobodies-collective/Humans#866) — sections
-/// call it and may not reference Web. The rest of the type came here at lane 5b-6, which deleted
-/// Humans.Infrastructure, and was renamed from <c>InfrastructureServiceCollectionExtensions</c>
-/// when Web's <c>Infrastructure/</c> folder dissolved — distinct from
-/// <see cref="InfrastructureServiceCollectionExtensions"/>, the roll-call.
-/// </remarks>
+/// <summary>DI wiring for Shell's own context, the migration runner and the Identity stores.</summary>
 public static class PersistenceServiceCollectionExtensions
 {
     /// <summary>
@@ -24,11 +13,7 @@ public static class PersistenceServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddHumansPersistence(this IServiceCollection services)
     {
-        // Base's own context (nobodies-collective/Humans#858), migrated by
-        // DatabaseMigrationHostedService alongside every section's. UsersDbContext used to be
-        // registered here too — it carries the Identity tables and was the last context left
-        // in Base — and it moved into Humans.Users' Section.Register with the section
-        // (#866, G5 lane 2).
+        // Migrated by DatabaseMigrationHostedService alongside every section's context.
         services.AddSectionDbContext<SystemDbContext>(sentinelTable: "DataProtectionKeys");
 
         services.AddHostedService<DatabaseMigrationHostedService>();

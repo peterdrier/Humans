@@ -2,11 +2,7 @@ using Humans.Issues.Contracts;
 
 namespace Humans.Agent.Models;
 
-/// <summary>
-/// Payload emitted when the agent calls <c>route_to_issue</c>. The agent does
-/// not create the issue server-side; the client opens the issue submission
-/// form pre-filled with these values so the user can review and submit.
-/// </summary>
+/// <summary>The issue is never created server-side: the client opens the submission form pre-filled.</summary>
 internal sealed record AgentIssueProposal(
     string Title,
     IssueCategory Category,

@@ -4,57 +4,30 @@ using Humans.Integration.Tests.Infrastructure;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders GoogleIntegration's pages through the real app — the standing form of the §15
-/// step 12 check for the section's move into its own project
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders GoogleIntegration's pages through the real app.</summary>
 /// <remarks>
-/// <para>
-/// This is the only test that can catch the failure the move is most likely to produce: a
-/// section outside Shell's dependency graph. <c>SectionAssemblies()</c> walks
-/// <c>DependencyContext</c>, so a missing <c>ProjectReference</c> in
-/// <c>Humans.Web.csproj</c> means <c>Section.Register</c> never runs, the internal
-/// <c>GoogleController</c> is never discovered by <c>SectionControllerFeatureProvider</c>,
-/// and all 30 routes 404 — while the solution builds and the whole suite passes
-/// (G5-SECTION-TEMPLATE.md step 1, Guide's case).
-/// </para>
-/// <para>
-/// Three failure modes are silent and get an assertion each. A <c>&lt;vc:&gt;</c> whose
-/// component is not visible from the section renders as inert literal markup rather than
-/// throwing — <c>&lt;vc:access-matrix&gt;</c> is back on the tag-helper form since the
-/// component moved to <c>Humans.UI</c> (nobodies-collective/Humans#1056), and it binds
-/// through the section's <c>@@addTagHelper *, Humans.Interfaces</c>. Note it renders <b>empty</b> on
-/// <c>/Google</c>: no section contributes an access matrix for it and no section's help
-/// contribution has a "Google" key either, a content gap tracked separately — so there is no modal id to assert
-/// here, only the absence of literal markup. A key the resx carve missed renders as its own
-/// name. And the section's <c>_ViewImports</c> is what binds every tag helper, so a missing
-/// line there ships broken HTML with a green build.
-/// </para>
+/// A missing <c>ProjectReference</c> in <c>Humans.Web.csproj</c> leaves the section undiscovered and every route a
+/// 404 while the build and the rest of the suite pass; only this catches it. The access matrix renders empty on
+/// <c>/Google</c> (no section contributes a "Google" key), so only the absence of literal markup is assertable.
 /// </remarks>
 public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     private static readonly string[] AdminPages =
     [
         "/Google",
-        // /Google/SyncSettings is deliberately absent: its GET is removed
-        // (peterdrier/Humans#1634) — the form now lives only at /Settings#google-sync.
+        // /Google/SyncSettings has no GET: the form lives at /Settings#google-sync.
         "/Google/Sync",
         "/Google/AllGroups",
         "/Google/Accounts",
         "/Google/SyncOutbox",
         "/Google/EmailFlagViolations",
-        // One-time history move (nobodies-collective/Humans#1083). A bare GET is the dry run,
-        // so this renders — and writes nothing — against an empty audit_log.
+        // A bare GET is the dry run, so it renders and writes nothing.
         "/Google/Admin/SyncHistoryMigration",
     ];
 
     /// <summary>
-    /// The three pages that read their model out of TempData and redirect to <c>/Google</c>
-    /// when there is none, so a bare GET cannot render them. They still belong here: a 302
-    /// from the action and a 404 from the router are exactly the two outcomes this file exists
-    /// to tell apart, and the router is what a section missing from Shell's dependency graph
-    /// breaks.
+    /// These read their model from TempData and redirect without it. A 302 from the action versus a 404 from the router
+    /// is the distinction this file exists for.
     /// </summary>
     private static readonly string[] TempDataBackedPages =
     [
@@ -71,10 +44,7 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
 
         foreach (var url in AdminPages)
         {
-            // A 200 is also the proof that /Google's `Component.InvokeAsync("AccessMatrix", ...)`
-            // resolves: an unresolvable invoke-by-name throws rather than degrading. Its own
-            // output is not assertable — no section contributes a "Google" matrix, so the
-            // component has rendered empty since before this move.
+            // A 200 also proves /Google's invoke-by-name of AccessMatrix resolves: a miss throws.
             var response = await Client.GetAsync(url, ct);
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
 
@@ -106,10 +76,8 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
     [HumansFact(Timeout = 120000)]
     public async Task Accounts_page_renders_the_sections_own_resource_set()
     {
-        // The account page's localized copy uses GoogleIntegration_Accounts_* keys, and
-        // Accounts.cshtml is their sole renderer. A resource set whose manifest prefix is
-        // wrong degrades every string to its raw key without failing anything else, so this
-        // asserts the resolved English value rather than the absence of the key.
+        // A wrong manifest prefix degrades every string to its raw key without failing anything else, so assert the
+        // resolved English value.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -123,11 +91,8 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
     [HumansFact(Timeout = 120000)]
     public async Task Accounts_page_renders_the_sections_Spanish_satellite()
     {
-        // The neutral set is embedded in the section assembly, so an English-only check passes
-        // whether or not the satellite assemblies shipped with the RCL. Every page here is
-        // [Authorize], and Program.cs's initial culture provider short-circuits on the signed-in
-        // user's PreferredLanguage, so Accept-Language never reaches it — switch the way the UI
-        // does (step 12, CityPlanning's case).
+        // Only Spanish proves the satellites shipped. Accept-Language doesn't reach a signed-in user, so switch the way
+        // the UI does.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -144,19 +109,14 @@ public class GoogleIntegrationPageRenderTests(HumansTestDatabase database) : Int
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        // ASCII-only substring of "Acciones": Razor's HtmlEncoder escapes non-ASCII to numeric
-        // entities, so asserting an accented resx value fails on a perfectly correct page.
+        // HtmlEncoder escapes non-ASCII, so an accented value would fail on a correct page.
         html.Should().Contain("Acciones", "the section's .es satellite must reach the host's probing path");
     }
 
     [HumansFact(Timeout = 120000)]
     public async Task Google_admin_pages_are_closed_to_a_non_privileged_human()
     {
-        // The move rehomed the controller into an internal type in another assembly routed by
-        // SectionControllerFeatureProvider, while its policy stayed in Shell's
-        // AuthorizationPolicyExtensions (step 6's asymmetry). One GET as a volunteer proves the
-        // two halves still meet. Cookie authentication redirects an authenticated-but-
-        // unauthorized request to Program.cs's AccessDeniedPath app-wide — not a 403.
+        // Cookie auth redirects an authenticated-but-unauthorized request to AccessDeniedPath: a 302, not a 403.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 

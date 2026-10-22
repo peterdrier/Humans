@@ -270,12 +270,9 @@
     </div>
 
     <div class="col-md-4">
-        @* Every decision on a report is taken here rather than from a queue row, so nobody
-           approves a report without the lines and receipts on screen (peterdrier/Humans#1447).
-           A finance admin looking at a Submitted report can both endorse and approve it — the
-           authorization handler has always granted them the coordinator's operations — so they
-           see both cards; a coordinator sees only theirs. The cards follow workflow order:
-           the coordinator endorses first, then finance decides and may override the cap. *@
+        @* Every decision is taken here, not from a queue row, so nobody approves without the lines and receipts on
+           screen. A finance admin holds the coordinator's operations too, so on a Submitted report they see both
+           cards, in workflow order. *@
         @if (Model.CanEndorse || Model.CanCoordinatorReject)
         {
             <div class="card mb-3 border-primary">
@@ -482,8 +479,7 @@
             </div>
         }
 
-        @* Finance admins are the only people who can act on a failed push, so they are the ones who
-           get told about it (nobodies-collective/Humans#1045). *@
+        @* Finance admins are the only people who can act on a failed push, so only they are told. *@
         @if (Model.CanBindCreditor && Model.HoldedTimeline is { } sync)
         {
             <div class="card mb-3">
@@ -659,9 +655,7 @@
     </div>
 </div>
 
-@* Who did what, on the report itself — the endorsement, its authorized maximum, the approval and
-   any rejection all land here (peterdrier/Humans#1447). Everyone who may open the report sees it:
-   the entries are that report's own history. *@
+@* Everyone who may open the report sees it: the entries are that report's own history. *@
 <vc:audit-log entity-type="@AuditEntityTypes.Report" entity-id="@r.Id"
               limit="50" title="@Localizer["Expenses_Detail_History"].Value" empty-text="@Localizer["Expenses_Detail_NoHistory"].Value" />
 

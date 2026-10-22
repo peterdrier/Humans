@@ -1,87 +1,36 @@
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Public read contract of the Users section. External sections inject
-/// this interface; it exposes only UserInfo / HumanSearchResult
-/// projections — no EF entities, no writes, no cache hooks. Writes live on <see cref="IUserWrite"/>.
-///
-/// <para>
-/// Merge chains do not exist on this surface (#1704). An account merge leaves a
-/// tombstone row behind, and the six sections that deliberately keep rows keyed to
-/// the archived id read them back through here: every <see cref="UserInfo"/> accessor
-/// resolves such an id forward to the surviving account, so no caller follows a chain
-/// or knows there is one. <see cref="UserInfo.MergedUserIds"/> is the one place the
-/// archived ids surface, for callers that union rows by them.
-/// Users' own merge, deletion and admin code uses the raw reads (<see cref="GetRawUserInfoAsync"/> here, the unfiltered list on the internal <c>IUserManagement</c>).
-/// </para>
+/// Every <see cref="UserInfo"/> accessor resolves a merged-away id forward to the surviving account, so no caller
+/// follows a chain. <see cref="UserInfo.MergedUserIds"/> is the one place archived ids surface, for callers that
+/// union rows by them.
 /// </summary>
-// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserService
 {
     /// <summary>
-    /// Returns the unified <see cref="UserInfo"/> read-model for the given
-    /// user, stitched from <c>users</c>, <c>user_emails</c>,
-    /// <c>event_participations</c> (frozen legacy), <c>user_logins</c>, <c>profiles</c>,
-    /// <c>contact_fields</c>, <c>profile_languages</c>, and
-    /// <c>volunteer_history_entries</c>. Issue #703: the caching decorator
-    /// serves dict hits synchronously; the inner service rebuilds from
-    /// repositories on miss.
-    ///
-    /// <para>#1704: resolves a merge chain forward. An id that was merged away returns the
-    /// surviving account's record, so <c>(await GetUserInfoAsync(a)).Id</c> is the survivor's
-    /// id, not <c>a</c>. A GDPR-erased id resolves to its own row (<see cref="UserState.Deleted"/>),
-    /// which is how a deleted human still renders. Null only when no row exists for the id.</para>
+    /// A merged-away id returns the survivor's record, so <c>.Id</c> may differ from <paramref name="userId"/>. A
+    /// GDPR-erased id returns its own <see cref="UserState.Deleted"/> row. Null only when no row exists.
     /// </summary>
     ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a snapshot of every cached <see cref="UserInfo"/>. The cache is
-    /// the canonical "everything-about-a-person" source; admin stat tiles,
-    /// debug surfaces, and cross-section aggregates read from this snapshot
-    /// rather than re-querying the contributing tables. Returns a new
-    /// collection per call — the underlying dictionary is mutable and callers
-    /// iterate without locking. Drives warmup on demand if the cache is cold.
-    ///
-    /// <para>#1704: tombstones are omitted — merge tombstones and GDPR-erased rows alike —
-    /// so this is one entry per living human. There is no requested id to key a redirect by.
-    /// Both kinds stay reachable through <see cref="GetUserInfoAsync"/>.</para>
+    /// One entry per living human: merge tombstones and erased rows are omitted. A new collection per call, so
+    /// callers can iterate without locking.
     /// </summary>
     Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Batched <see cref="UserInfo"/> lookup. Returns a dictionary keyed by
-    /// user id; ids without a corresponding user are absent. Served from the
-    /// caching decorator's in-memory dict for any id already cached; missing
-    /// ids are refilled through the same per-user load path used by
-    /// <see cref="GetUserInfoAsync"/>. The single batched-lookup surface for
-    /// cross-section readers — no entity-returning equivalent exists
-    /// (nobodies-collective/Humans#979).
-    ///
-    /// <para>#1704: keyed by the <b>requested</b> id, valued by the <b>resolved</b> record,
-    /// per <see cref="GetUserInfoAsync"/>. Asked for all three ids of an A→B→C merge chain,
-    /// the result has three entries, every one of them C's record. Indexing by an id you
-    /// passed in therefore always hits, which is the point.</para>
+    /// Keyed by the requested id, valued by the resolved record: all three ids of an A→B→C chain map to C. Ids with
+    /// no user are absent.
     /// </summary>
     ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Single canonical person-search method. Matches <paramref name="query"/>
-    /// against the buckets named by <paramref name="fields"/> over the cached
-    /// <see cref="UserInfo"/> snapshot and returns up to <paramref name="limit"/>
-    /// matches in unspecified order — callers sort + take(N) at the presentation
-    /// layer per <c>memory/architecture/display-sort-in-controllers.md</c>.
-    ///
-    /// <para>Implicit scope: rows are filtered to "not rejected, has a
-    /// profile" — the only population anyone is searching. Emergency-contact
-    /// data is never reachable regardless of which bits are set.</para>
-    ///
-    /// <para>Auth boundary is the controller per design-rules §6: services
-    /// are auth-free, so a non-admin endpoint passing
-    /// <see cref="PersonSearchFields.Admin"/> or
-    /// <see cref="PersonSearchFields.LegalName"/> (which deanonymizes burners)
-    /// is a programmer error caught in code review, not a runtime check.</para>
+    /// Unordered: callers sort and take at the presentation layer. Rejected and profileless users are never
+    /// matched, nor emergency contacts. Services are auth-free, so passing <see cref="PersonSearchFields.Admin"/>
+    /// or <see cref="PersonSearchFields.LegalName"/> from a non-admin endpoint is a bug only review catches.
     /// </summary>
     Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query,
@@ -90,35 +39,14 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// The row as stored for <paramref name="userId"/>, with no merge redirect:
-    /// a merge tombstone comes back as itself, <see cref="UserInfo.MergedToUserId"/>
-    /// and <see cref="UserInfo.MergedAt"/> intact. <see cref="UserInfo.MergedUserIds"/>
-    /// is still stamped. Returns null when no row exists.
-    /// <para>
-    /// The counterpart to <see cref="GetUserInfoAsync"/>, which
-    /// resolves the chain forward. This one exists for the two callers that must see
-    /// the tombstone itself: Users' own merge/deletion/admin code, which acts on the
-    /// row an admin named, and the claims transformation, which must stamp a
-    /// tombstone's <see cref="UserState.Merged"/> rather than the survivor's state.
-    /// Every other caller wants the redirecting read.
-    /// </para>
+    /// No merge redirect: a tombstone comes back as itself. Only for Users' own merge, deletion and admin code and
+    /// the claims transformation, which must stamp a tombstone's <see cref="UserState.Merged"/>. Null when no row exists.
     /// </summary>
     ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Every row as stored, tombstones included — the unfiltered counterpart to
-    /// <see cref="GetAllUserInfosAsync"/>, which omits tombstones.
-    /// Served from the warmed snapshot, so filtering it by id is the cheap way to
-    /// read several raw rows at once. Public because Users' merged-accounts view component, which other
-    /// sections' views invoke, reads it.
-    /// </summary>
+    /// <summary>Tombstones included. Cheap to filter by id: it is the warmed snapshot.</summary>
     Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Finds the user with a <b>verified</b> <c>user_emails</c> address matching the given
-    /// address (case-insensitive), also checking the gmail/googlemail alternate form, and
-    /// returns the cached <see cref="UserInfo"/> read-model for them. An unverified address
-    /// never resolves. Returns null if no match.
-    /// </summary>
+    /// <summary>Verified addresses only, with the gmail/googlemail twin. Null if no match.</summary>
     Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 }

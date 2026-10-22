@@ -14,16 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Budget;
 
-/// <summary>
-/// Budget's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// <c>TicketingBudgetSyncJob</c> is Budget's — both its collaborators are Budget's and the
-/// rows it writes are budget line items. Its schedule is contributed via
-/// <c>SectionJobs.cs</c>; the DI registration stays here as a factory (ruling 43): the
-/// job's constructor is <c>internal</c>, so only this assembly can build it.
-/// </remarks>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -34,30 +24,23 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddScoped<BudgetService>();
         services.AddScoped<IBudgetManagement>(sp => sp.GetRequiredService<BudgetService>());
         services.AddScoped<IBudgetService>(sp => sp.GetRequiredService<BudgetService>());
-        // Owns the user-attributed budget_audit_logs table → GDPR export contributor
-        // (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<BudgetService>());
 
         services.AddScoped<TicketingBudgetService>();
         services.AddScoped<ITicketingBudgetService>(sp => sp.GetRequiredService<TicketingBudgetService>());
-        // Factory registration, not plain AddScoped<T>: the job's constructor is internal, so
-        // only this assembly can call it — DI's reflection-based activation only sees public ones.
+        // A factory: the job's constructor is internal, and DI's activation only sees public ones.
         services.AddScoped(sp => new TicketingBudgetSyncJob(
             sp.GetRequiredService<ITicketingBudgetService>(),
             sp.GetRequiredService<IBudgetService>(),
             sp.GetRequiredService<ILogger<TicketingBudgetSyncJob>>()));
 
-        // Development's /dev/seed/budget action drives this through the Contracts/ interface rather than
-        // resolving the concrete seeder, which is what keeps Budget's write methods
-        // off the public surface.
+        // Development drives this through the Contracts/ interface, which keeps Budget's write methods off the
+        // public surface.
         services.AddScoped<IBudgetDemoSeeder, DevelopmentBudgetSeeder>();
 
-        // Resource-based handlers register here; section-owned policies register through ISectionPolicies.
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Budget";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Budget";

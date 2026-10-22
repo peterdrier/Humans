@@ -11,10 +11,6 @@ using Humans.Cantina.Contracts;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
-/// <summary>
-/// Covers the visibility gate inside <see cref="DietaryMissingBannerViewComponent"/>.
-/// Spec: src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md (US-35.5)
-/// </summary>
 public class DietaryMissingBannerViewComponentTests
 {
     private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();

@@ -1,8 +1,7 @@
 @model CampBarriosSettingsViewModel
 
-@* Explicit asp-controller/asp-action: this view renders inside /Settings, so ambient
-   route data would otherwise resolve "OpenSeason"/"CloseSeason" against the wrong
-   controller (Settings' own _EventSettingsForm.cshtml documents the same gotcha). *@
+@* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve "OpenSeason"/"CloseSeason"
+   against the wrong controller. *@
 <h6>Open a Season for Registration</h6>
 <form asp-controller="CampAdmin" asp-action="OpenSeason" method="post" class="d-flex gap-2 mb-3">
     @Html.AntiForgeryToken()

@@ -2,13 +2,10 @@ using NodaTime;
 
 namespace Humans.Finance.Contracts;
 
-/// <summary>One journal line of a member's creditor statement: credit = owed to the member,
-/// debit = paid out. Sourced from the cached <c>holded_ledger_lines</c> rows, not from a live
-/// Holded call.</summary>
+/// <summary>Credit = owed to the member, debit = paid out. Read from the cached ledger, not live Holded.</summary>
 /// <remarks>
-/// Finance's own boundary type, deliberately not the Holded connector's <c>HoldedLedgerLineDto</c>,
-/// which it otherwise mirrors: re-exporting another section's wire shape would make every reader of a
-/// creditor statement a consumer of the Holded API. The two drifting apart is the point.
+/// Deliberately not the Holded connector's <c>HoldedLedgerLineDto</c>, which it mirrors: re-exporting it would make
+/// every reader of a creditor statement a consumer of the Holded API.
 /// </remarks>
 public sealed record CreditorLedgerLine
 {
@@ -21,7 +18,7 @@ public sealed record CreditorLedgerLine
     public string? Type { get; init; }
     public string? Description { get; init; }
 
-    /// <summary>The owed balance (positive = owed to the member) after this line, accumulated
-    /// oldest-first (date, entry, line) from the account's first line.</summary>
+    /// <summary>Owed balance (positive = owed to the member) after this line, accumulated oldest first
+    /// (date, entry, line) from the account's first line.</summary>
     public decimal RunningBalance { get; init; }
 }

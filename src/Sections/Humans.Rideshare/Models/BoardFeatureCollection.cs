@@ -11,9 +11,8 @@ using NodaTime;
 namespace Humans.Rideshare.Models;
 
 /// <summary>
-/// The board's GeoJSON: one route per joinable trip (plus a point at its member end so the line is
-/// clickable at its origin), one pin per active request, one point for the destination.
-/// Enum properties carry the localized display text so the client renders them verbatim.
+/// One route per joinable trip (plus a point at its member end so the line is clickable at its origin), one pin per
+/// active request, one point for the destination. Enum properties carry localized text the client renders verbatim.
 /// </summary>
 internal static class BoardFeatureCollection
 {

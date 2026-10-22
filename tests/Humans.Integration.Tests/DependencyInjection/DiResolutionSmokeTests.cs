@@ -63,12 +63,9 @@ public class DiResolutionSmokeTests(HumansTestDatabase database) : IntegrationTe
     }
 
     /// <summary>
-    /// The test above only proves that what we registered can be built. This one goes the other
-    /// way: it walks the set of recurring jobs sections contribute through
-    /// <c>ISectionJobs</c> and checks each scheduled job can actually be built when Hangfire
-    /// asks for it. A job that is scheduled but never registered throws on every tick and
-    /// silently never runs — that has now shipped twice (CleanupNotificationsJob,
-    /// AgentConversationRetentionJob).
+    /// The converse of the test above: every recurring job sections contribute through <c>ISectionJobs</c> can be built
+    /// when Hangfire asks. A scheduled but unregistered job throws on every tick and silently never runs, and that has
+    /// shipped before.
     /// </summary>
     [HumansFact(Timeout = 60000)]
     public async Task Every_scheduled_recurring_job_resolves_from_a_real_app_scope()

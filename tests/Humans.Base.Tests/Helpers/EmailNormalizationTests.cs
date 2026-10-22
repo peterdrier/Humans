@@ -89,7 +89,7 @@ public class EmailNormalizationTests
     }
 
     // A dictionary keyed by this comparer is how a Google-reported canonical address
-    // finds a user_emails row stored in an alias form (nobodies-collective/Humans#1101).
+    // finds a user_emails row stored in an alias form.
     // Equals and GetHashCode must agree or the entry lands in an unreachable bucket.
     [HumansTheory]
     [InlineData("us.er@gmail.com", "user@gmail.com")]

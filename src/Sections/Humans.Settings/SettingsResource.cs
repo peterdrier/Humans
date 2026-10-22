@@ -1,19 +1,8 @@
 namespace Humans.Settings;
 
 /// <summary>
-/// Marker for the Settings section's resource set. Gained member-facing strings
-/// when <c>/Settings</c> shipped (peterdrier/Humans#1628) — before that the section was
-/// admin-only and carried none. Must stay <c>public</c> — the boot diagnostic's
-/// <c>SectionResourceTypes()</c> reads <c>GetExportedTypes()</c> and skips an internal marker
-/// in silence. The <c>.cs</c> and the <c>.resx</c> files must sit in the same folder: this
-/// type's namespace determines the manifest prefix.
-///
-/// <para>
-/// <c>Settings_TabEvent</c> stays in <c>SharedResource</c> instead — it is a tab label, and a
-/// label may come from any contributing section, not just this one, so it must resolve
-/// against the one resource set every section can reach (carve by
-/// renderer). <c>Settings_NoTabs</c> is this section's own empty-state string, rendered by
-/// this section's own <c>SettingsTabsViewComponent</c>, so it lives here.
-/// </para>
+/// The .resx files sit beside this file: its namespace sets the manifest prefix. Public because the boot localization
+/// check finds markers through <c>GetExportedTypes()</c>. Tab labels such as <c>Settings_TabEvent</c> stay in
+/// <c>SharedResource</c>: any section may contribute a tab.
 /// </summary>
 public sealed class SettingsResource;

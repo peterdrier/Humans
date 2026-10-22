@@ -4,19 +4,10 @@ using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// Documents and their comment period (design §12): Draft → Published → Delivered, the
-/// categorised comment window any signed-in human may write into, and the group's
-/// per-comment and per-category answers. Delivery freezes the body and starts the
-/// Board's clock; the disposition itself is in the lifecycle partial.
-/// </summary>
 internal sealed partial class WorkgroupService
 {
-    /// <summary>The 100 characters of <c>WorkgroupDocumentComment.Category</c>, which every
-    /// comment in an opened window has to fit.</summary>
+    /// <summary>Matches <c>WorkgroupDocumentComment.Category</c>, which every comment in an opened window must fit.</summary>
     private const int MaxCommentCategoryLength = 100;
-
-    // ── Documents ─────────────────────────────────────────────────────────
 
     public async Task<WorkgroupMutationResult<Guid>> CreateDocumentAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupDocumentSave save, CancellationToken ct = default)
@@ -85,7 +76,6 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
-        // The write committed; finish its system log and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DocumentPublished, now,
@@ -105,7 +95,6 @@ internal sealed partial class WorkgroupService
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
         if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
-        // A draft has nothing to comment on and a delivered document is past comment.
         if (document.Status != WorkgroupDocumentStatus.Published)
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
@@ -116,8 +105,7 @@ internal sealed partial class WorkgroupService
             .ToList();
         if (categories.Count == 0)
             return new(Refusal: new(WorkgroupErrorKeys.CategoriesRequired));
-        // Comments carry their category in a 100-character column, so a longer one here would
-        // open a window whose own comments could never be saved.
+        // A longer category would open a window whose own comments could never be saved.
         if (categories.Any(c => c.Length > MaxCommentCategoryLength))
             return new(Refusal: new(WorkgroupErrorKeys.CategoryTooLong));
         if (window.ClosesAt <= window.OpensAt)
@@ -130,7 +118,6 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
-        // The write committed; finish its system log and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodOpened, now,
@@ -152,12 +139,10 @@ internal sealed partial class WorkgroupService
             return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
 
         var now = clock.GetCurrentInstant();
-        // Closing early is just moving the end of the window to now; the comments stay.
         document.CommentsCloseAt = now;
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
-        // The write committed; finish its system log and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodClosed, now,
@@ -175,8 +160,7 @@ internal sealed partial class WorkgroupService
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
         var now = clock.GetCurrentInstant();
-        // A comment window must end before Delivered (design §7): delivering mid-window
-        // would cut short a publicly promised comment period.
+        // Delivering mid-window would cut short a publicly promised comment period.
         if (document.CommentsCloseAt is { } closes && closes > now)
             return new(Refusal: new(WorkgroupErrorKeys.CommentsStillOpen));
 
@@ -185,7 +169,6 @@ internal sealed partial class WorkgroupService
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
         await repository.UpdateDocumentAsync(document, ct);
-        // The write committed; finish its system log and notices after browser cancellation.
         ct = CancellationToken.None;
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Delivered, now,
@@ -199,8 +182,6 @@ internal sealed partial class WorkgroupService
         return new();
     }
 
-    // ── Comments ──────────────────────────────────────────────────────────
-
     public async Task<WorkgroupMutationResult<Guid>> AddCommentAsync(
         Guid documentId, Guid actorUserId, string category, string body, CancellationToken ct = default)
     {
@@ -209,16 +190,13 @@ internal sealed partial class WorkgroupService
         var (workgroup, document) = documentResult.Value;
         var now = clock.GetCurrentInstant();
 
-        // Dormant freezes every member mutation, comments included (design §5) — Close and
-        // Withdraw leave an open window alone, so the group's status has to be checked here.
+        // Close and Withdraw leave an open window alone, so the group's status must be checked here too.
         if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
-        // A sensitive group's documents are its members' business; everyone else never sees them.
         if (workgroup.IsSensitive == true && !workgroup.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true))
             return new(Refusal: new(WorkgroupErrorKeys.MembersOnly));
 
-        // Beyond that the window is the only gate: any signed-in human may comment while it is
-        // open, whatever the group's own membership says.
+        // Beyond that the window is the only gate: membership doesn't matter.
         if (!ToInfo(document).IsOpenForComment(now))
             return new(Refusal: new(WorkgroupErrorKeys.CommentsClosed));
 
@@ -253,8 +231,7 @@ internal sealed partial class WorkgroupService
     {
         var comment = await repository.GetCommentAsync(commentId, ct);
         if (comment is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        // Responding is the answering half of the resolution's "show what you heard"; it
-        // stays open after the window closes, but not after the group ends.
+        // Responding stays open after the window closes, but not after the group ends.
         var workgroupResult = await RequireActiveAsync(comment.Document.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
@@ -265,7 +242,6 @@ internal sealed partial class WorkgroupService
         var now = clock.GetCurrentInstant();
         Respond(comment, disposition, response, actorUserId, now);
         await repository.UpdateCommentsAsync([comment], ct);
-        // The write committed; finish its system log and notices after browser cancellation.
         ct = CancellationToken.None;
 
         if (comment.AuthorUserId is { } author)
@@ -294,8 +270,7 @@ internal sealed partial class WorkgroupService
             .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (matched is null) return new(Refusal: new(WorkgroupErrorKeys.UnknownCategory));
 
-        // Only still-Pending comments: a comment already answered individually keeps its
-        // own answer rather than being overwritten by the bulk pass.
+        // Only still-Pending comments: one answered individually keeps its own answer.
         var pending = document.Comments
             .Where(c => c.Disposition == WorkgroupCommentDisposition.Pending
                 && c.HiddenAt is null
@@ -310,7 +285,6 @@ internal sealed partial class WorkgroupService
         foreach (var comment in pending)
             Respond(comment, disposition, response, actorUserId, now);
         await repository.UpdateCommentsAsync(pending, ct);
-        // The write committed; finish its system log and notices after browser cancellation.
         ct = CancellationToken.None;
 
         var info = ToInfo(workgroup);
@@ -340,15 +314,12 @@ internal sealed partial class WorkgroupService
         comment.HiddenReason = reason.Trim();
         await repository.UpdateCommentsAsync([comment], ct);
 
-        // Moderation is the one member action the Board needs to be able to review, so the
-        // reason lives in the audit trail as well as on the row.
+        // Audited so the Board can review moderation; the row shows only "hidden by the group".
         await AuditAsync(AuditAction.WorkgroupCommentHidden, workgroup,
             $"Hid a comment on {comment.Document.Title}: {reason.Trim()}", actorUserId,
             AuditEntityTypes.WorkgroupComment, comment.Id);
         return new();
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private static void Respond(
         WorkgroupDocumentComment comment,

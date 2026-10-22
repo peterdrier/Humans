@@ -525,8 +525,6 @@ public sealed class SurveyAdminControllerTests
     private static LocalizedText Text(string en) =>
         new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
-    // ── Self-service approval gate (Workgroups §11): author-scoped visibility, per-id denial ──
-
     [HumansFact]
     public async Task Index_scopes_to_the_callers_own_surveys_for_a_plain_author()
     {

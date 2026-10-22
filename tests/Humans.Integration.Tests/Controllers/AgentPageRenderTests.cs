@@ -11,39 +11,14 @@ using Humans.Agent.Contracts;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Agent page through the real app, as the standing form of the §15 step 12
-/// check for the section's move into <c>src/Sections/Humans.Agent</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Agent page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// Written and run <em>before</em> the move so it is a genuine baseline, then re-run after each
-/// risky step. The three failure modes it exists to catch all render as a <b>200 with degraded
-/// content</b>, which is why "the page loads" is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c> — a missing
-/// <c>@@using</c> or <c>@@addTagHelper</c> ships literal markup with a green build.
-/// </description></item>
-/// <item><description>
-/// A key that did not make it into the carved <c>AgentResource</c> set falls back to rendering
-/// its own raw name, in every language, with no error.
-/// </description></item>
-/// <item><description>
-/// A static asset that moved to the section's RCL is served from the static-web-assets manifest
-/// rather than from <c>wwwroot</c> on disk, so <c>asp-append-version</c> can silently emit no
-/// <c>?v=</c> hash while the page still returns 200 (§15 step 7, the first section to move any).
-/// </description></item>
-/// </list>
+/// Failures render as a 200 with degraded content: unbound tags ship as markup, a mis-bound key renders as its name,
+/// and an RCL asset can lose its <c>?v=</c> hash silently.
 /// </remarks>
 public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    /// <summary>
-    /// Where the agent's stylesheet is served from. Shell's <c>HelpWidget</c> and the section's
-    /// own <c>Conversation.cshtml</c> both link it, so it pins step 7 from both sides.
-    /// </summary>
+    /// <summary>Linked by Shell's <c>HelpWidget</c> and the section's <c>Conversation.cshtml</c> both.</summary>
     private const string AgentCssPath = "/_content/Humans.Agent/css/agent.css";
 
     private const string AgentWidgetJsPath = "/_content/Humans.Agent/js/agent/widget.js";
@@ -69,13 +44,8 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 60000)]
     public async Task My_conversations_renders_in_Spanish_from_the_sections_satellite_assembly()
     {
-        // The check an English-only capture cannot make: the neutral set is embedded in the main
-        // assembly, so English passes whether or not the section's satellite assemblies shipped.
-        //
-        // Accept-Language alone would not do it: every Agent page is behind [Authorize], and the
-        // app's initial culture provider answers from the signed-in user's PreferredLanguage
-        // before the header provider ever runs (Program.cs). Setting it through IUserService is
-        // also what invalidates the cached UserInfo that provider reads.
+        // Only Spanish proves the satellites shipped. Accept-Language doesn't reach a signed-in user, so set the
+        // preference through IUserService, which also invalidates the cached UserInfo the culture provider reads.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         await SetPreferredLanguageAsync(userId, "es", ct);
@@ -85,8 +55,7 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // Razor's HtmlEncoder escapes non-ASCII to numeric entities, so the assertions stay on
-        // accent-free runs of the Spanish copy.
+        // HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
         html.Should().Contain("Mis conversaciones");        // Agent_HistoryTitle
         html.Should().Contain("n no tienes conversaciones"); // Agent_HistoryEmpty ("Aún no…")
         html.Should().NotContain("No conversations yet.");
@@ -115,10 +84,8 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 60000)]
     public async Task Conversation_page_links_the_sections_stylesheet_with_a_cache_busting_hash()
     {
-        // §15 step 7: the section's own view links the asset. asp-append-version resolves the file
-        // through the host's IFileProvider; once the file lives in an RCL it is served from the
-        // static-web-assets manifest instead of wwwroot on disk, and a provider that cannot see it
-        // emits the bare href with no ?v= rather than failing.
+        // An RCL asset comes from the static-web-assets manifest; a file provider that can't see it emits the bare href
+        // with no ?v= rather than failing.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         var conversationId = await SeedConversationAsync(userId, ct);
@@ -133,8 +100,7 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 60000)]
     public async Task Help_widget_links_the_agent_assets_with_cache_busting_hashes()
     {
-        // The other two reference sites for the section's static assets, both in Shell's own
-        // chrome: HelpWidget links the stylesheet always and the script only when the agent is on.
+        // HelpWidget links the stylesheet always and the script only when the agent is on.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         await EnableAgentAsync(ct);
@@ -150,9 +116,7 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 60000)]
     public async Task The_sections_static_assets_are_served_from_its_own_RCL()
     {
-        // The other half of §15 step 7: the href resolving is not the same as the file being
-        // there. Before the test host composed the static-web-assets manifest both agent assets
-        // 404'd here while the pages still returned 200 — the exact shape the step warns about.
+        // An href resolving doesn't mean the file is served.
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         foreach (var asset in new[] { AgentCssPath, AgentWidgetJsPath })
@@ -176,12 +140,8 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
             $"/Agent/Conversations/{conversationId}",
         };
 
-        // /Agent/Admin/Settings is deliberately absent: its GET is removed
-        // (peterdrier/Humans#1634) — the form now lives only at /Settings#agent.
-
-        // /Agent/Admin/Conversations/{id}/Prompt is deliberately absent: it rebuilds the preload
-        // corpus, which fetches every section guide from GitHub over the network. Including it
-        // made this test fail on network weather rather than on rendering.
+        // /Agent/Admin/Settings has no GET (the form lives at /Settings#agent). The Prompt page is left out: it fetches
+        // every section guide from GitHub, so it would fail on network weather.
 
         foreach (var url in urls)
         {

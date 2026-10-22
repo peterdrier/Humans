@@ -2,30 +2,16 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Calendar.Services;
 
-/// <summary>
-/// Owns the credential behind the personal iCal feed URL: mint on the member's explicit request,
-/// rotation from the feed card, and the GDPR/merge lifecycles. The whole lifecycle
-/// sits in Calendar because the table does, so no page and no other section writes
-/// it and there is no cross-section write to declare.
-/// </summary>
 internal interface ICalendarFeedTokenService : IApplicationService
 {
     /// <summary>
-    /// The member's token, or <c>null</c> when they have never opened the feed card.
-    /// Mints nothing — the feed endpoint and the admin widget must not create a
-    /// credential as a side effect of being looked at.
+    /// Null when the member has none. Never mints: looking at the feed or the admin widget must not create a credential.
     /// </summary>
     Task<Guid?> GetAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// The member's token, minting one on first call. Only the calendar page's explicit
-    /// create-feed POST calls this; no GET mints.
-    /// </summary>
+    /// <summary>Mints on first call. Only the explicit create-feed POST calls this; no GET mints.</summary>
     Task<Guid> EnsureAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Replaces the member's token and returns the new one, revoking every URL
-    /// handed out under the old one.
-    /// </summary>
+    /// <summary>Revokes every URL handed out under the old token.</summary>
     Task<Guid> RotateAsync(Guid userId, CancellationToken ct = default);
 }

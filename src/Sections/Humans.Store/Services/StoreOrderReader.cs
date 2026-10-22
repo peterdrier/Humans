@@ -10,7 +10,6 @@ using NodaTime;
 
 namespace Humans.Store.Services;
 
-/// <summary>Order view projection, live prices and counterparty names for Store reads and issuance.</summary>
 internal sealed class StoreOrderReader(
     IStoreRepository repo,
     ICampService campService,
@@ -18,7 +17,7 @@ internal sealed class StoreOrderReader(
     IClock clock,
     ISettingsService settingsService) : IApplicationService
 {
-    /// <summary>Returns the active event's catalog year, falling back to the current UTC year before it exists.</summary>
+    /// <summary>Falls back to the current UTC year before an active event exists.</summary>
     public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
@@ -26,11 +25,8 @@ internal sealed class StoreOrderReader(
     }
 
     /// <summary>
-    /// Loads the current catalog price components (incl. deactivated products) for the active
-    /// event's year, keyed by product id, so Open orders reprice to the live price. The org runs
-    /// one event year, so a single catalog year drives repricing rather than each order's
-    /// <c>Year</c> — which is also why legacy <c>store_orders</c> rows still at <c>Year = 0</c>
-    /// reprice correctly.
+    /// Includes deactivated products. The org runs one event year, so the active year's catalog drives repricing rather
+    /// than each order's <c>Year</c>; that's also why legacy <c>Year = 0</c> rows reprice correctly.
     /// </summary>
     public async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct)
@@ -43,7 +39,6 @@ internal sealed class StoreOrderReader(
         return prices;
     }
 
-    /// <summary>Display names for the given product ids, live or deactivated, any year.</summary>
     public async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
         IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
         (await repo.GetProductsByIdsAsync(productIds, ct)).ToDictionary(p => p.Id, p => p.Name);

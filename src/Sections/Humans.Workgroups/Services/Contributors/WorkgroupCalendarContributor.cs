@@ -4,14 +4,8 @@ using NodaTime;
 
 namespace Humans.Workgroups.Services.Contributors;
 
-/// <summary>
-/// Workgroups' half of Calendar's fan-out (design §8): a member's own meetings on their
-/// personal feed, and every public meeting on the community calendar. Workgroups owns
-/// <c>workgroup_meetings</c>; Calendar never reads them.
-/// </summary>
 internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups) : ICalendarFeedContributor
 {
-    /// <summary>The ICS CATEGORIES value and the badge in Calendar's admin widget.</summary>
     private const string SourceName = "Workgroups";
 
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(
@@ -19,7 +13,7 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
     {
         var register = await workgroups.GetRegisterAsync(ct);
 
-        // A dormant group's meetings are history, not something to put on a calendar.
+        // A dormant group's meetings are history, not calendar entries.
         return register
             .Where(w => w.Status == WorkgroupStatus.Active && w.IsMember(userId))
             .SelectMany(w => w.Meetings.Select(m => ToItem(w, m)))
@@ -31,8 +25,7 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
     {
         var register = await workgroups.GetRegisterAsync(ct);
 
-        // A sensitive group's meetings are its members' business; the per-user feed above
-        // still carries them for the members themselves.
+        // A sensitive group's meetings are its members' business; their personal feed still carries them.
         return register
             .Where(w => w.Status == WorkgroupStatus.Active && !w.IsSensitive)
             .SelectMany(w => w.Meetings

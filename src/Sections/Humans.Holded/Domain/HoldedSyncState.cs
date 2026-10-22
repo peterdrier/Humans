@@ -2,7 +2,6 @@ using NodaTime;
 
 namespace Humans.Holded.Domain;
 
-/// <summary>Progress and outcome of one <see cref="HoldedSyncKind"/>, keyed on the kind.</summary>
 internal sealed class HoldedSyncState
 {
     public HoldedSyncKind Kind { get; init; }

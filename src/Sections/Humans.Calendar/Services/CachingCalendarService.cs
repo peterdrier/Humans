@@ -7,12 +7,6 @@ using NodaTime;
 
 namespace Humans.Calendar.Services;
 
-/// <summary>
-/// Singleton cache-backed calendar read service. Holds every non-soft-deleted
-/// <c>CalendarEventInfo</c> row with embedded exceptions, keyed by event id.
-/// Write methods delegate to the keyed inner service and refresh the committed read cache
-/// independently of browser cancellation.
-/// </summary>
 internal sealed class CachingCalendarService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingCalendarService> logger)
@@ -34,9 +28,7 @@ internal sealed class CachingCalendarService(
         var teamNames = await ResolveTeamNamesAsync(matched, ct);
         var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger, viewerZone).ToList();
 
-        // Community items have no team of their own (Workgroups' 2026-09-10 section design §8,
-        // which specified this fan-out — not design-rules.md §8) — only merge them into the
-        // unfiltered, all-teams window. A ?teamId filter has nothing of theirs to show.
+        // Community items carry no team, so a ?teamId filter has nothing of theirs to show.
         if (teamId is null)
             occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
 
@@ -44,11 +36,7 @@ internal sealed class CachingCalendarService(
     }
 
     /// <summary>
-    /// Fans out over every registered <see cref="ICalendarFeedContributor"/> for its public
-    /// window items. Never cached — recomputed on every call, same as the team-name stitch
-    /// in <see cref="ResolveTeamNamesAsync"/>, since only the underlying event dict is a
-    /// tracked cache row. A throwing contributor is logged and skipped, not allowed to take
-    /// down the rest of the community calendar.
+    /// Never cached. A throwing contributor is logged and skipped so it can't take down the community calendar.
     /// </summary>
     private async Task<IReadOnlyList<CalendarOccurrence>> FanOutContributorItemsAsync(
         Instant from, Instant to, CancellationToken ct)
@@ -207,8 +195,7 @@ internal sealed class CachingCalendarService(
             .ToDictionary(id => id, id => teamsById[id].Name);
     }
 
-    // A failed save may already have committed; its result cannot prove the old
-    // snapshot remains valid. The next read must reload all rows, including creates.
+    // A failed save may already have committed, so the old snapshot can't be trusted: the next read reloads all rows.
     private async Task<CalendarEventMutationResult> MutateWithResultAsync(
         Func<ICalendarService, Task<CalendarEventMutationResult>> action)
     {
@@ -232,7 +219,6 @@ internal sealed class CachingCalendarService(
         return await action(inner);
     }
 
-    // This overload is used by the delete mutation path.
     private async Task WithInnerAsync(Func<ICalendarService, Task> action)
     {
         var clear = true;

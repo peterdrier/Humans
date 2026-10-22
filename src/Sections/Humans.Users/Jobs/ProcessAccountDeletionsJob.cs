@@ -9,24 +9,10 @@ using Humans.Users.Services;
 
 namespace Humans.Users.Jobs;
 
-/// <summary>
-/// Background job that processes scheduled account deletions.
-/// Runs daily to anonymize accounts where the 30-day grace period has expired.
-/// </summary>
+/// <summary>Anonymizes accounts whose deletion grace period has expired.</summary>
 /// <remarks>
-/// Delegates the actual anonymization to
-/// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/> — the
-/// orchestrator owns the cross-section write order (team memberships, role
-/// assignments, profile anonymization, shift signup cancellation, volunteer-
-/// event-profile deletion, User-aggregate identity collapse) and every
-/// deletion-related cache invalidation. The job retains the loop +
-/// audit-log + confirmation-email orchestration so a per-user failure
-/// doesn't stop the run. Candidate enumeration stays on
-/// <see cref="IUserManagement"/> because <c>DeletionScheduledFor</c> is a User
-/// column (owning-section rule).
-///
-/// Moved out of <c>Humans.Infrastructure/Jobs</c> at G5 lane 5b-4
-/// (nobodies-collective/Humans#866).
+/// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/> owns the cross-section
+/// write order; the job keeps the loop, audit and confirmation email so one failure doesn't stop the run.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class ProcessAccountDeletionsJob(
@@ -39,9 +25,6 @@ internal sealed class ProcessAccountDeletionsJob(
     ILogger<ProcessAccountDeletionsJob> logger,
     IClock clock) : IRecurringJob
 {
-    /// <summary>
-    /// Processes all accounts scheduled for deletion where the grace period has expired.
-    /// </summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
@@ -75,17 +58,14 @@ internal sealed class ProcessAccountDeletionsJob(
 
                     if (summary is null)
                     {
-                        // User disappeared between enumeration and anonymization.
                         logger.LogWarning(
                             "Skipping account deletion for user {UserId} — no longer exists",
                             userId);
                         continue;
                     }
 
-                    // Audit AFTER the business save has succeeded, per design-rules §7a.
-                    // The description must not name the human: the audit log is retained
-                    // through erasure, so writing their display name here would re-seed
-                    // the identity the cascade just removed. The user id is the subject.
+                    // Must not name the human: the audit log outlives erasure, so a name here
+                    // would re-seed the identity just removed.
                     await auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), userId,
                         "Account anonymized",
@@ -93,10 +73,8 @@ internal sealed class ProcessAccountDeletionsJob(
 
                     if (!string.IsNullOrEmpty(summary.OriginalEmail))
                     {
-                        // Courtesy confirmation to an address we have just erased. It sends
-                        // without an outbox row (AccountDeleted sets DoNotPersist), so a
-                        // transport failure is terminal — the erasure itself has already
-                        // succeeded and must not be reported as failed, nor retried.
+                        // Sent without an outbox row, so a transport failure is terminal; the
+                        // erasure already succeeded and must not be reported as failed or retried.
                         try
                         {
                             await emailService.SendAsync(emailMessages.AccountDeleted(

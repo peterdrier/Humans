@@ -17,9 +17,6 @@ using Humans.Governance.Contracts;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>
-/// Tickets read service (inner) behind <c>CachingTicketQueryService</c> decorator (§15).
-/// </summary>
 internal sealed class TicketQueryService(
     ITicketRepository ticketRepository,
     ITicketTransferRepository ticketTransferRepository,
@@ -42,14 +39,13 @@ internal sealed class TicketQueryService(
 
     private async Task<int> ComputeUserTicketCountAsync(Guid userId, CancellationToken ct)
     {
-        // Attendees only — buyers don't count for themselves.
+        // Attendees only: buyers don't count for themselves.
         var matchedCount = await ticketRepository
             .CountValidAttendeesMatchedToUserAsync(userId, ct);
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback: attendee emails against the same verified-email → user index the sync
-        // matches with, so an alias verified by two users counts for neither, as in sync.
+        // Same verified-email index the sync matches with, so an alias verified by two users counts for neither.
         var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync(ct);
         if (attendeeEmails.Count == 0)
             return 0;
@@ -106,7 +102,7 @@ internal sealed class TicketQueryService(
 
     public async Task<TicketDashboardStats> GetDashboardStatsAsync()
     {
-        // Crash recovery: reset Running >30min.
+        // Crash recovery: a sync stuck in Running for 30 minutes resets.
         var now = clock.GetCurrentInstant();
         var staleThreshold = now - Duration.FromMinutes(30);
         var syncState = await ticketRepository.ResetStaleRunningStateAsync(
@@ -120,7 +116,7 @@ internal sealed class TicketQueryService(
         var totalStripeFees = totals.TotalStripeFees;
         var totalAppFees = totals.TotalApplicationFees;
         var ticketsSold = totals.TicketsSold;
-        // Fee VAT and withheld tax are kept by Stripe like the fees, so they reduce the payout too.
+        // Stripe keeps fee VAT and withheld tax like the fees, so they reduce the payout too.
         var netRevenue = revenue - totalStripeFees - totalAppFees - totals.TotalFeeTax - totals.TotalWithheldTax;
         var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = totals.UnmatchedOrderCount;
@@ -310,8 +306,7 @@ internal sealed class TicketQueryService(
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     /// <summary>
-    /// Accounting month of a purchase, in Europe/Madrid — the zone the association books in,
-    /// so a 00:30 UTC purchase on the 1st is not reported against the previous month.
+    /// Europe/Madrid, the zone the association books in, so a 00:30 UTC purchase on the 1st lands in the right month.
     /// </summary>
     private static (int Year, int Month) MonthKey(Instant purchasedAt)
     {
@@ -390,10 +385,8 @@ internal sealed class TicketQueryService(
                     Donations = paid.Sum(o => o.DonationAmount),
                     VipDonations = paid.Sum(o => o.VipDonations),
                     VatAmount = paid.Sum(o => o.VatAmount),
-                    // Built over the live seats the way TicketSyncService.ComputeOrderVat builds
-                    // the VAT base — Σ min(price, threshold) less the discount, floored per order.
-                    // TotalAmount cannot stand in: a transfer voids a seat and adds a live
-                    // replacement at the same price without changing the order total.
+                    // Built per order like ComputeOrderVat's base. TotalAmount can't stand in: a transfer voids a
+                    // seat and adds a live replacement at the same price without changing the order total.
                     TicketIncomeInclVat = paid.Sum(o =>
                         Math.Max(0m, o.LiveSeatGross - o.VipDonations - o.DiscountAmount)),
                     // A refund returns the gross, never the processing fees already charged.
@@ -432,10 +425,8 @@ internal sealed class TicketQueryService(
     }
 
     /// <summary>
-    /// One row per campaign that granted codes, whether or not any were redeemed, so the
-    /// granted column totals org-wide rather than over the campaigns that happen to have
-    /// paid usage. Amounts come from the paid orders that carried each campaign's codes;
-    /// redeemed codes with no matching grant collapse into one unattributed row.
+    /// One row per campaign that granted codes, used or not, so the granted column totals org-wide. Redeemed codes
+    /// with no matching grant collapse into one unattributed row.
     /// </summary>
     private async Task<List<DiscountCampaignAggregate>> BuildDiscountCampaignAggregatesAsync(CancellationToken ct)
     {
@@ -647,9 +638,7 @@ internal sealed class TicketQueryService(
             })
             .ToList();
 
-        // Search the full verified-email set so admins can find secondary-address purchases.
-        // Matched in-memory against the verified emails already carried on each loaded
-        // UserInfo — no extra DB round-trip.
+        // Search all verified emails so admins can find secondary-address purchases.
         HashSet<Guid>? emailMatchUserIds = null;
         if (search.HasSearchTerm(1))
         {
@@ -796,7 +785,7 @@ internal sealed class TicketQueryService(
             .ToList();
 
         var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
-        // GroupBy defensive: stray duplicate pendings must not crash dashboard read.
+        // GroupBy, not ToDictionary: stray duplicate pendings must not crash the dashboard read.
         var pendingByAttendee = (await ticketTransferRepository.GetBySenderAsync(userId, ct))
             .Where(r => r.Status == TicketTransferStatus.Pending)
             .GroupBy(r => r.OriginalTicketAttendeeId)
@@ -964,10 +953,6 @@ internal sealed class TicketQueryService(
         "tombstones, MatchedUserId is dropped, and the free text on their ticket-transfer " +
         "requests is cleared.";
 
-    /// <summary>
-    /// The section's erasure declaration, served by the caching decorator as
-    /// <c>IUserDataContributor.ErasureDeclaration</c>.
-    /// </summary>
     internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {

@@ -6,10 +6,7 @@ namespace Humans.Base.Interfaces;
 /// <c>Section.Register</c>; a consumer injects
 /// <c>IEnumerable&lt;IEntityNameContributor&gt;</c> and asks all of them.
 /// </summary>
-/// <remarks>
-/// In Base, not a consumer's contracts leaf, because consumers must not reference
-/// each other (nobodies-collective/Humans#1059).
-/// </remarks>
+/// <remarks>In Base, not a consumer's contracts leaf, because consumers must not reference each other.</remarks>
 public interface IEntityNameContributor : IFanout
 {
     /// <summary>

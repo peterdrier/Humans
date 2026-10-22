@@ -6,10 +6,7 @@ using MimeKit;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// SMTP transport implementation using MailKit.
-/// Handles only connection and send — no rendering, no template wrapping, no metrics.
-/// </summary>
+/// <summary>Connection and send only: no rendering, wrapping or metrics.</summary>
 internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogger<SmtpEmailTransport> logger) : IEmailTransport
 {
     private readonly EmailSettings _settings = settings.Value;
@@ -60,7 +57,7 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
             }
             message.Body = bodyBuilder.ToMessageBody();
 
-            // Set Message-Id domain to match From address (avoids Docker container hostname)
+            // Message-Id domain matches the From address, not the container hostname.
             var atIndex = _settings.FromAddress.IndexOf('@', StringComparison.Ordinal);
             var fromDomain = atIndex >= 0
                 ? _settings.FromAddress[(atIndex + 1)..]

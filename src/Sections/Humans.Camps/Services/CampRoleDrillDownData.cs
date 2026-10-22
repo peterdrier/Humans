@@ -1,10 +1,5 @@
 namespace Humans.Camps.Services;
 
-/// <summary>
-/// Service-layer DTO returned by <see cref="Humans.Camps.Contracts.ICampRoleService.BuildDrillDownAsync"/>.
-/// One row per camp-season for the resolved year, with assignees (display name + Google email)
-/// for the requested role definition.
-/// </summary>
 internal sealed record CampRoleDrillDownData(
     CampRoleDefinitionInfo Definition,
     int Year,

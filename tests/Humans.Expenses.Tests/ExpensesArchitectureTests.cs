@@ -4,23 +4,16 @@ using Humans.Expenses.Contracts;
 namespace Humans.Expenses.Tests;
 
 /// <summary>
-/// Architecture tests enforcing the section shape for Expenses
-/// (nobodies-collective/Humans#866).
-/// </summary>
-/// <remarks>
 /// The section project references EF Core because its repository lives in it; "only the
 /// repository touches the DbSets" is the universal HUM0025 analyzer's job.
-/// </remarks>
+/// </summary>
 public class ExpensesArchitectureTests
 {
     [HumansFact]
     public void ContractsDoNotReExposeTheHoldedConnector()
     {
-        // ExpenseReportBackgroundProcessor.DrainHoldedOutboxAsync uses IHoldedClient,
-        // HoldedPurchaseDocumentInput, HoldedAttachmentInput and HoldedTransientException
-        // heavily. Those belong to the Base connector, which did not move
-        // (memory/architecture/vendor-connectors-own-sections.md). Letting one into the
-        // contracts leaf is the cycle Finance hit in A2 with HoldedLedgerLineDto.
+        // ExpenseReportBackgroundProcessor uses the Holded connector types heavily. They belong
+        // to Base's connector, and letting one into the contracts leaf creates a project cycle.
         typeof(IExpenseReportBackgroundProcessor).Assembly.GetReferencedAssemblies()
             .Should().NotContain(a => a.Name == "Humans.Application" || a.Name == "Humans.Domain",
                 because: "a section's contracts leaf references only the bottom of the graph "

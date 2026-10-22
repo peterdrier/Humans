@@ -170,10 +170,8 @@ public class ShiftSignupsBucketingTests
     }
 
     /// <summary>
-    /// A flat signup on the event's gate-opening day plus <paramref name="dayOffset"/>,
-    /// resolved in UTC to match <see cref="TestEvent"/>'s time zone. The component reads
-    /// the leaf projection since the section's G5, so the absolute window is the fixture's
-    /// job rather than the entity graph's (nobodies-collective/Humans#866).
+    /// A signup on the gate-opening day plus <paramref name="dayOffset"/>, resolved in UTC to
+    /// match <see cref="TestEvent"/>'s time zone.
     /// </summary>
     private static ShiftSignupSummary MakeSignup(SignupStatus status, int dayOffset, int startHour, int durationHours)
     {

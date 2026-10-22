@@ -25,13 +25,9 @@ using Humans.Users.Services;
 namespace Humans.Shifts.Tests.Controllers;
 
 /// <summary>
-/// <see cref="ShiftsController.ToggleDay"/> — the AJAX per-day signup/bail toggle.
-/// The bail-vs-signup decision lives in
-/// <see cref="IShiftSignupService.ToggleDayAsync"/> (see
-/// <c>ShiftSignupServiceTests</c> for that coverage); these tests only assert
-/// the controller's mapping of a stubbed <see cref="ToggleDaySignupOutcome"/>
-/// onto the response metadata headers (X-Signed-Up, X-Toast-*, X-Redirect) and
-/// view selection, since that mapping is the contract the client JS depends on.
+/// Only the controller's mapping of a stubbed <see cref="ToggleDaySignupOutcome"/> onto the
+/// response headers and view, the contract the client JS depends on. The bail-vs-signup
+/// decision is covered in <c>ShiftSignupServiceTests</c>.
 /// </summary>
 public class ShiftsControllerToggleDayTests
 {
@@ -45,8 +41,6 @@ public class ShiftsControllerToggleDayTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
-    // The name-gate message came home with Onboarding's G5; the controller now resolves it
-    // through the section's own resource set.
     private readonly IStringLocalizer<OnboardingResource> _onboardingLocalizer = Substitute.For<IStringLocalizer<OnboardingResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly ShiftBrowsePageBuilder _builder;
@@ -205,8 +199,6 @@ public class ShiftsControllerToggleDayTests
                 Arg.Is<IReadOnlyList<int>>(offsets => offsets.Count == 0));
     }
 
-    // Stub the builder dependencies so BuildRowAsync returns a row for shiftId.
-    // Mirrors ShiftBrowsePageBuilderRowTests: an all-day row with Shift.Id == shiftId.
     private void StubBrowseRow(Guid shiftId, Guid userId, SignupStatus? rowStatus)
     {
         var shift = UrgentShiftFixtures.Shift(
@@ -361,8 +353,7 @@ public class ShiftsControllerToggleDayTests
     [HumansFact]
     public async Task ToggleDay_WithoutDietaryInfo_SignsUp_WithoutRedirect()
     {
-        // nobodies-collective/Humans#2104: dietary info is opt-in and never blocks a signup.
-        // The controller no longer consults Cantina at all; the member has no dietary answer.
+        // Dietary info is opt-in and never blocks a signup; this member has no dietary answer.
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "B", "F", "L"));
@@ -383,7 +374,6 @@ public class ShiftsControllerToggleDayTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        // Empty name fields → name gate trips.
         var ctrl = BuildSut(userId, MakeUserInfo(userId, burner: "", first: "", last: ""));
 
         var result = await ctrl.ToggleDay(shiftId, Xunit.TestContext.Current.CancellationToken);

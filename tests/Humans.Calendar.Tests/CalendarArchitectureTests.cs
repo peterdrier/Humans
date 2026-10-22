@@ -6,16 +6,6 @@ using Humans.Calendar.Services.Dtos;
 
 namespace Humans.Calendar.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Calendar.
-/// </summary>
-/// <remarks>
-/// Two shape rules this file does NOT cover, so nothing here should be read as
-/// covering them: that <c>CalendarService</c> never touches a <c>DbContext</c>, and
-/// that the <c>ICalendarQueries</c> surface stays DTO-only. Both are review-time
-/// rules; the section assembly holds the repository, so neither is a reference-graph
-/// property any test can read off the assembly.
-/// </remarks>
 public class CalendarArchitectureTests
 {
     [HumansFact]

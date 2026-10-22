@@ -40,9 +40,7 @@ public class AccessMatrixFeature
     public required Dictionary<string, AccessLevel> RoleAccess { get; init; }
 
     /// <summary>
-    /// A feature row built from its role/level pairs. Replaces the private helper the deleted
-    /// <c>AccessMatrixDefinitions</c> table used, so contributing sections keep the same
-    /// one-line-per-feature shape instead of each rebuilding the dictionary by hand.
+    /// A feature row built from its role/level pairs, so contributing sections keep a one-line-per-feature shape.
     /// </summary>
     public static AccessMatrixFeature Of(string name, params (string Role, AccessLevel Access)[] roleAccess)
     {

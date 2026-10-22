@@ -6,15 +6,9 @@ using Humans.Agent.Domain;
 namespace Humans.Agent.Services.Preload;
 
 /// <summary>
-/// Assembles the agent's preload corpus for a given <see cref="AgentPreloadConfig"/> tier —
-/// section docs, the community FAQ and the Shell-owned augmentor blocks — and caches the result
-/// in <see cref="IMemoryCache"/> until an admin-triggered reload swaps it.
+/// Cached until an admin reload swaps it. <see cref="IAgentPreloadAugmentor"/> is required, so a missing registration
+/// fails DI loudly instead of building a corpus without the access matrix, glossaries, route map and FAQ.
 /// </summary>
-/// <remarks>
-/// <see cref="IAgentPreloadAugmentor"/> is required, not optional — a missing Shell registration
-/// must fail DI loudly rather than build a corpus quietly stripped of the access matrix,
-/// glossaries, route map and FAQ (peterdrier/Humans#1259).
-/// </remarks>
 internal sealed class AgentPreloadCorpusBuilder(
     AgentSectionDocReader sections,
     CommunityFaqReader community,

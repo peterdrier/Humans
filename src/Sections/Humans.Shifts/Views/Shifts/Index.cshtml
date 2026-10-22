@@ -3,23 +3,21 @@
 @{
     ViewData["Title"] = Localizer["Shifts_Title"].Value;
     ViewData["SuppressLayoutTempDataAlerts"] = true;
-    // This view is only rendered for the active event; controller guards against null.
+    // The controller guards against no active event.
     var es = Model.EventSettings!;
     var isUrgencySort = string.Equals(Model.Sort, "urgency", StringComparison.OrdinalIgnoreCase);
 
-    // Phase date ranges for display on cards
     var (buildFrom, buildTo) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Build, es);
     var (eventFrom, eventTo) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Event, es);
     var (strikeFrom, strikeTo) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Strike, es);
 
-    // Multiselect phase state: default all selected (= no filter)
+    // All selected means no filter.
     var activePeriods = Model.FilterPeriods;
     var isBuildActive = activePeriods.Count == 0 || activePeriods.Contains("Build", StringComparer.OrdinalIgnoreCase);
     var isEventActive = activePeriods.Count == 0 || activePeriods.Contains("Event", StringComparer.OrdinalIgnoreCase);
     var isStrikeActive = activePeriods.Count == 0 || activePeriods.Contains("Strike", StringComparer.OrdinalIgnoreCase);
     var allPhasesActive = isBuildActive && isEventActive && isStrikeActive;
 
-    // Build sort toggle URLs preserving all current filters
     var hasDayFilter = !string.IsNullOrEmpty(Model.FilterDay);
     var sortBaseRoute = new Dictionary<string, string?>();
     if (Model.FilterDepartmentId.HasValue)
@@ -31,8 +29,7 @@
     var urgencySortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "urgency" };
     var deptSortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "department" };
 
-    // Day-filter dropdown label (issue #889): "<phase> <weekday day month>", e.g.
-    // "Pre-event Fri Jun 26". Local function — pure presentation, not worth a model method.
+    // "<phase> <weekday day month>", e.g. "Pre-event Fri Jun 26".
     string DayOptionLabel(DayFilterOption opt)
     {
         var prefix = opt.Period switch
@@ -61,7 +58,7 @@
     }
 </style>
 <div class="container py-4">
-    @* Antiforgery token for InstantToggle AJAX (shifts.js reads this). *@
+    @* shifts.js reads this for the InstantToggle AJAX. *@
     @Html.AntiForgeryToken()
     <div class="d-flex justify-content-between align-items-center mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
@@ -79,16 +76,14 @@
             </li>
         </ul>
         <div class="d-flex gap-2">
-            @* Hide the info button but keep the modal in the DOM for the "Learn more" button *@
+            @* The modal stays in the DOM for the "Learn more" button. *@
             <span class="shifts-hidden-info-btn"><vc:access-matrix section="Shifts" /></span>
             <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning btn-sm" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             <a href="/Settings#shifts" class="btn btn-outline-secondary btn-sm" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
         </div>
     </div>
 
-    @* Toast alerts — bottom-right, auto-dismiss. role/aria-live so AT announces
-       both server TempData alerts and the toggle toasts injected by shifts.js.
-       data-error-msg carries the localized client-side network-error string. *@
+    @* aria-live so assistive tech announces both TempData alerts and the toasts shifts.js injects. *@
     <div class="shifts-toast-container" role="status" aria-live="polite" aria-atomic="true"
          data-error-msg="@Localizer["Shifts_Toggle_Error"]">
         <vc:temp-data-alerts />
@@ -291,21 +286,18 @@
     }
 
     <script>
-        // Department + day dropdown auto-submit
         document.querySelectorAll('[name="departmentId"], [name="day"]').forEach(function(el) {
             el.addEventListener('change', function() { this.form.submit(); });
         });
 
-        // Phase multiselect: toggle checkboxes and navigate
         document.querySelectorAll('.phase-check').forEach(function(cb) {
             cb.addEventListener('change', function() {
                 var checked = Array.from(document.querySelectorAll('.phase-check:checked')).map(function(c) { return c.value; });
-                // If all unchecked, re-select all (= no filter)
+                // None checked means all, i.e. no filter.
                 if (checked.length === 0) {
                     document.querySelectorAll('.phase-check').forEach(function(c) { c.checked = true; });
                     checked = ['Build', 'Event', 'Strike'];
                 }
-                // Build URL with current filters
                 var params = new URLSearchParams();
                 @if (Model.FilterDepartmentId.HasValue) {
                     <text>params.set('departmentId', '@Model.FilterDepartmentId.Value');</text>
@@ -316,7 +308,6 @@
                 @if (hasDayFilter) {
                     <text>params.set('day', '@Model.FilterDay');</text>
                 }
-                // Only add periods if not all 3 are selected
                 if (checked.length < 3) {
                     checked.forEach(function(p) { params.append('periods', p); });
                 }
@@ -328,10 +319,9 @@
             });
         });
 
-        // Clicking on phase card toggles its checkbox
         document.querySelectorAll('.phase-card').forEach(function(card) {
             card.addEventListener('click', function(e) {
-                // Let native checkbox/label behavior handle clicks on the input or its label
+                // The native checkbox and label handle their own clicks.
                 if (e.target.closest('.form-check-input, .form-check-label')) return;
                 var cb = this.querySelector('.phase-check');
                 cb.checked = !cb.checked;
@@ -339,7 +329,6 @@
             });
         });
 
-        // Auto-dismiss toast alerts after 4 seconds
         document.querySelectorAll('.shifts-toast-container .alert').forEach(function(alert) {
             setTimeout(function() {
                 var bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
@@ -636,7 +625,6 @@
     }
 </div>
 <script>
-    // Rotate disclosure chevrons on Bootstrap collapse show/hide
     document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(trigger) {
         var targetId = trigger.getAttribute('data-bs-target');
         var target = document.querySelector(targetId);

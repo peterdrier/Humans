@@ -5,15 +5,8 @@ using Humans.Issues.Contracts;
 namespace Humans.Issues.Jobs;
 
 /// <summary>
-/// Purges issues that entered a terminal state (Resolved / WontFix / Duplicate)
-/// at least 6 months ago, plus their screenshot files. Runs daily.
+/// Hangfire rewrites the stored type string on every startup, so the job id, not the type, is the stable key.
 /// </summary>
-/// <remarks>
-/// Public and under <c>Jobs/</c> because Shell names the concrete type at registration and
-/// HUM0034 makes every other public type in a section assembly an error. Hangfire does not
-/// pin the job to an assembly: <c>RecurringJob.AddOrUpdate&lt;T&gt;(id, …)</c> rewrites the
-/// stored type string on every startup, so the job id is the stable key.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class CleanupIssuesJob(IIssuesRetention issues, IHumansMetrics metrics, ILogger<CleanupIssuesJob> logger)
     : IRecurringJob

@@ -3,9 +3,8 @@ using Humans.Users.Contracts;
 namespace Humans.Users.Domain;
 
 /// <summary>
-/// Classifies <see cref="UserState"/> from the section's entities. The precedence itself lives in
-/// <see cref="UserStateClassifier"/> on the leaf — this only reads the fields to feed it, and is
-/// here because <see cref="Profile"/> is internal to the section.
+/// Feeds <see cref="UserStateClassifier"/> from the section's entities; lives here because
+/// <see cref="Profile"/> is internal.
 /// </summary>
 internal static class UserStateEvaluator
 {
@@ -44,16 +43,9 @@ internal static class UserStateEvaluator
     }
 
     /// <summary>
-    /// A row erased via GDPR Article 17. Keyed on the minted tombstone email
-    /// (<c>deleted-&lt;id&gt;@deleted.local</c>, written by
-    /// <see cref="Humans.Users.Data.Repositories.IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>)
-    /// rather than any user-editable name field — a member cannot produce that email themselves
-    /// (nobodies-collective/Humans#1742: a burner/display name of "Deleted User" must not read as
-    /// erased). Reads <see cref="User.IdentityEmailColumn"/> (the raw Identity column), not the
-    /// <see cref="User.Email"/> override, both because the erasure path writes the tombstone there
-    /// and because <c>UserEmail</c> rows are removed by the same erasure, so the raw column is the
-    /// only place the tombstone can live; it is null for a live user whose address lives only in
-    /// <c>UserEmail</c> rows, so a null value is never treated as erased.
+    /// A row erased via GDPR Article 17, keyed on the minted tombstone email rather than a name a
+    /// member could type. Reads <see cref="User.IdentityEmailColumn"/>: erasure removes the
+    /// UserEmail rows, so the raw column is the only place the tombstone lives (null never means erased).
     /// </summary>
     internal static bool IsGdprTombstoned(User user) =>
         user.IdentityEmailColumn is { } email && email.EndsWith(DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase);

@@ -7,11 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Email.ViewComponents;
 
 /// <summary>
-/// The "Email Outbox" card, contributed to <c>UserPartSlots.AdminDetail</c>. Admin audience
-/// only: renders for <see cref="ProfileCardViewMode.Admin"/> when the viewer passes the same
-/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/> policy as the host page, and nothing for
-/// anyone else. Shows the member's message count and links to
-/// <c>MemberOutboxController.AdminOutbox</c>; always rendered for an admin, even at zero.
+/// Renders only for an admin viewer who passes the host page's policy, even at zero messages; nothing for anyone else.
 /// </summary>
 public sealed class OutboxCardViewComponent(
     IEmailOutboxService outbox,
@@ -28,5 +24,4 @@ public sealed class OutboxCardViewComponent(
     }
 }
 
-/// <summary>What the Email Outbox card renders.</summary>
 internal sealed record OutboxCardViewModel(Guid UserId, int MessageCount);

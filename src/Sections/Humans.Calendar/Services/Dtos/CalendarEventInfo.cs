@@ -3,33 +3,9 @@ using NodaTime;
 namespace Humans.Calendar.Services.Dtos;
 
 /// <summary>
-/// Immutable projection of a <see cref="Humans.Calendar.Domain.CalendarEvent"/>
-/// row, embedding its per-occurrence <see cref="Exceptions"/> collection.
-/// Owned by the caching decorator; cache key is <see cref="Id"/>.
+/// Cached by event id. Exception writes refresh the whole parent entry: exceptions have no cache row of their own.
+/// Rows with exceptions survive the window prefilter, because overrides can move outside it.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Cache shape: the decorator holds <em>all</em> non-soft-deleted events keyed
-/// by id. Window queries (<c>GetOccurrencesInWindowAsync</c>) snapshot-scan
-/// this dict and filter by date bounds for all-day series or instant bounds for timed
-/// series. Rows with exceptions survive the prefilter because overrides can move outside it.
-/// Expansion + exception merging stay in the service layer
-/// (<see cref="CalendarOccurrenceExpander"/>).
-/// </para>
-/// <para>
-/// Exception writes (<c>CancelOccurrenceAsync</c> / <c>OverrideOccurrenceAsync</c>)
-/// upsert into the <c>calendar_event_exceptions</c> child table but the cache
-/// is keyed by the <em>parent</em> event id — there is no separate exception
-/// row to refresh. Every mutation path replaces the parent
-/// <see cref="CalendarEventInfo"/> eagerly, re-reading it (with its refreshed
-/// <see cref="Exceptions"/> list) through
-/// <see cref="ICalendarService.GetEventInfoAsync"/> before the call returns;
-/// nothing here is lazily repopulated on the next read.
-/// </para>
-/// <para>
-/// The projection must stay well under the §15 50 MB-per-projection budget.
-/// </para>
-/// </remarks>
 internal sealed record CalendarEventInfo(
     Guid Id,
     string Title,
@@ -51,11 +27,6 @@ internal sealed record CalendarEventInfo(
     LocalDate? EndDateExclusive = null,
     LocalDate? RecurrenceUntilDate = null);
 
-/// <summary>
-/// Immutable projection of a single <c>calendar_event_exceptions</c> row,
-/// carried inside <see cref="CalendarEventInfo.Exceptions"/>. Never cached
-/// independently — the parent event is the eviction unit.
-/// </summary>
 internal sealed record CalendarEventExceptionInfo(
     Guid Id,
     Instant? OriginalOccurrenceStartUtc,

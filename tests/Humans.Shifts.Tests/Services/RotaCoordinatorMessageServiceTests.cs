@@ -19,14 +19,6 @@ using Humans.Users.Contracts;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Services;
 
-/// <summary>
-/// Orchestration tests for <see cref="RotaCoordinatorMessageService"/>:
-/// recipient fan-out, per-recipient shift list, audit log, and the failure shapes
-/// (missing message body, missing rota, missing signups). Issue
-/// nobodies-collective/Humans#732. Team-scoped variants cover the
-/// <c>SendTeamRotasMessageAsync</c> path (fan-out across all current/upcoming
-/// rotas in a team, deduped by user).
-/// </summary>
 public sealed class RotaCoordinatorMessageServiceTests
 {
     private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
@@ -37,8 +29,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 15, 12, 0));
 
-    // Calendars for the EventSettings rows the test helpers below create, keyed by id —
-    // stands in for the Settings section (nobodies-collective/Humans#1630).
+    // Stands in for the Settings section: calendars for the EventSettings rows the helpers create.
     private readonly Dictionary<Guid, EventSettings> _calendars = [];
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
 
@@ -205,10 +196,8 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_CarriesSenderEmail_ForReplyTo()
     {
-        // Shifts.md: Reply-To is the sending coordinator while From stays the
-        // shared address. This section's contribution to that invariant is
-        // passing the sender's own address through as SenderEmail — the
-        // Email section's factory turns it into the ReplyTo header.
+        // Reply-To is the sending coordinator while From stays shared (Shifts.md). This
+        // section's part is passing the sender's address through as SenderEmail.
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
@@ -382,11 +371,6 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
     }
-
-    // ============================================================
-    // SendTeamRotasMessageAsync — team-scoped fan-out across all
-    // current/upcoming rotas in a team.
-    // ============================================================
 
     [HumansFact]
     public async Task SendTeamRotasMessageAsync_RejectsBlankMessage()
@@ -827,12 +811,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         return es;
     }
 
-    /// <summary>
-    /// Builds a team-scoped Rota with EventSettings wired up and Shift+ShiftSignup
-    /// collections populated as the team-level path expects (via Rota.Shifts →
-    /// Shift.ShiftSignups). Each tuple is (shift, recipient user ids); all signups
-    /// default to Confirmed status.
-    /// </summary>
+    /// <summary>Attaches each signup and its shift to the rota (Rota.Shifts → Shift.ShiftSignups), as the team-level path reads them.</summary>
     private static void AddSignups(Rota rota, IReadOnlyList<ShiftSignup> signups)
     {
         foreach (var signup in signups)
@@ -941,8 +920,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         {
             Id = id,
             DisplayName = displayName,
-            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = displayName,
             PreferredLanguage = language,
             Email = email,
@@ -987,9 +965,8 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     /// <summary>
-    /// The shift labels the builder wrote into the body, one per <c>&lt;li&gt;</c> row and in
-    /// body order. The list is the only place the per-recipient shift set is observable now
-    /// that the service builds its own message.
+    /// The shift labels the builder wrote into the body, one per <c>&lt;li&gt;</c> row in body order:
+    /// the only place the per-recipient shift set is observable.
     /// </summary>
     private static IReadOnlyList<string> ShiftLines(EmailMessage message) =>
     [

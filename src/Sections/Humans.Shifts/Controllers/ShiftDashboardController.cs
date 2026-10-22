@@ -13,7 +13,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-// Wider policy for page entry; privileged sub-panels gated by ShiftDashboardAccess in views.
+// The wider policy for entry; views gate the privileged sub-panels on ShiftDashboardAccess.
 [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
 [Route("Shifts/Dashboard")]
 internal sealed class ShiftDashboardController(
@@ -98,7 +98,7 @@ internal sealed class ShiftDashboardController(
         return View(ordered);
     }
 
-    // Auth: narrow policy overrides controller-level wider one (subteam managers can't reach directly).
+    // Narrower than the controller's policy: subteam managers can't reach it.
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
@@ -124,7 +124,7 @@ internal sealed class ShiftDashboardController(
         }
     }
 
-    // Auth: narrow policy overrides controller-level wider one — only ShiftDashboardAccess can assign.
+    // Narrower than the controller's policy: only ShiftDashboardAccess can assign.
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpPost("Voluntell")]
     [ValidateAntiForgeryToken]

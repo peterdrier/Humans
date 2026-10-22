@@ -5,19 +5,8 @@ using Humans.Feedback.Domain;
 
 namespace Humans.Feedback.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IFeedbackRepository"/>. The only
-/// non-test file that touches <c>DbContext.FeedbackReports</c> or
-/// <c>DbContext.FeedbackMessages</c>.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>FeedbackDbContext</c> remains Scoped.
-/// </summary>
 internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> factory) : IFeedbackRepository
 {
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
-
     public async Task<FeedbackReport?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -127,10 +116,6 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
             .ToListAsync(ct);
     }
 
-    // ==========================================================================
-    // Writes
-    // ==========================================================================
-
     public async Task SaveTrackedReportAsync(FeedbackReport report, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -149,10 +134,6 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         ctx.FeedbackMessages.Add(message);
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ==========================================================================
-    // GDPR erasure and account-merge fold
-    // ==========================================================================
 
     public async Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -197,10 +178,8 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        // Plain re-FK on both Feedback-owned tables in a single SaveChanges.
-        // Reports and messages are unique events — no dedup. Both UserId and
-        // SenderUserId are init-only on the entities, so we mutate via
-        // EF's Entry().Property().CurrentValue to bypass the init setter.
+        // Reports and messages are unique events: no dedup. UserId and SenderUserId are init-only, so they are set
+        // through Entry().Property().CurrentValue.
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var reports = await ctx.FeedbackReports

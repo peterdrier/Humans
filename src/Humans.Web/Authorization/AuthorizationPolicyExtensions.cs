@@ -8,24 +8,13 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Web.Authorization;
 
 /// <summary>
-/// Registers the cross-section canonical authorization policies for the Humans application —
-/// every other policy is registered by its owning section's <c>ISectionPolicies</c> (design
-/// §15, nobodies-collective/Humans#1076). Each policy corresponds to an entry in the
-/// authorization inventory (docs/authorization-inventory.md, Section 5).
+/// Registers the cross-section authorization policies; every other policy is registered by its owning section's
+/// <c>ISectionPolicies</c>. Each one is an entry in <c>docs/authorization-inventory.md</c>.
 /// </summary>
 public static class AuthorizationPolicyExtensions
 {
     public static IServiceCollection AddHumansAuthorizationPolicies(this IServiceCollection services)
     {
-        // TeamAuthorizationHandler is registered by Humans.Teams' Section.Register: the handler
-        // moved into the section at its G5 and is internal there, while the policies it backs
-        // stay here as shared platform policies. CampComplianceAccessHandler and
-        // IsAnyTeamManagerOrCoordinatorHandler are registered the same way by Humans.Shifts'
-        // Section.Register, and HumanAdminOnlyHandler by Humans.Users'.
-        //
-        // CampComplianceAccess registers in Camps' SectionPolicies — the policy's consumer,
-        // not its handler's home (nobodies-collective/Humans#1091; see the rationale there).
-
         services.AddAuthorization(options =>
         {
             options.AddPolicy(PolicyNames.AdminOnly, policy =>
@@ -91,13 +80,8 @@ public static class AuthorizationPolicyExtensions
                 policy.RequireAssertion(ctx =>
                     RoleAssignmentClaimsTransformation.IsActive(ctx.User)));
 
-            // Resource-based (the resource is the target role-name string). Naming the
-            // requirement type is policy-registration work and therefore Shell's — it lets
-            // Humans.Users reach the gate through the policy name alone, so Auth's Contracts
-            // leaf never has to carry an IAuthorizationRequirement. ("Framework-free leaf" was
-            // the old wording; G5 lane 3c measured it false — the leaf resolves
-            // Microsoft.AspNetCore.App transitively through Humans.Base. Keeping the
-            // requirement out is a choice.)
+            // Resource-based (the resource is the target role-name string). Registered here so Humans.Users reaches
+            // the gate through the policy name alone, and Auth's Contracts leaf never carries an IAuthorizationRequirement.
             options.AddPolicy(PolicyNames.RoleAssignmentManage, policy =>
                 policy.AddRequirements(RoleAssignmentOperationRequirement.Manage));
         });

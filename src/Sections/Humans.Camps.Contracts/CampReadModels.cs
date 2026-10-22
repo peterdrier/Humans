@@ -3,10 +3,7 @@ using NodaTime;
 
 namespace Humans.Camps.Contracts;
 
-/// <summary>
-/// <see cref="PublicYear"/> is populated from Settings' active event year (falling back to
-/// the clock year when no event is active).
-/// </summary>
+/// <summary><see cref="PublicYear"/> is Settings' active event year, else the clock year.</summary>
 public sealed record CampSettingsInfo(
     int PublicYear,
     IReadOnlyList<int> OpenSeasons)
@@ -16,38 +13,11 @@ public sealed record CampSettingsInfo(
 }
 
 /// <summary>
-/// Canonical Camps read-model entry. One <see cref="CampInfo"/> per
-/// camp in the <c>CachingCampService</c> projection; year-keyed views like
-/// <see cref="ICampService.GetCampsForYearAsync"/> are filtered snapshots of
-/// this canonical per-camp cache, never separate cache entries.
+/// One per camp in the cached projection; year-keyed reads filter it rather than caching separately.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>Cache size budget.</b> At Nobodies' steady-state (~100 active camps,
-/// ≤5 leads/camp, ≤5 historical names/camp) the per-entry footprint is
-/// dominated by season blurbs (~2 KB/season) plus scalar fields. Warmup
-/// loads only the seasons referenced by <c>CampSettingsInfo.PublicYear</c> +
-/// <c>OpenSeasons</c> + the current real-world year — typically 1–3 seasons
-/// per camp, not full history. Worst-case ~50 KB/camp × 100 camps ≈ 5 MB —
-/// comfortably under the ~50 MB §15 budget at our small scale.
-/// </para>
-/// <para>
-/// <b>EeGrantedCount cross-table invariant.</b>
-/// <see cref="CampSeasonInfo.EeGrantedCount"/> is computed from
-/// <c>camp_members.HasEarlyEntry</c> WHERE <c>Status = Active</c> (the display
-/// count). The slot-cap check uses the repository's unfiltered count instead,
-/// which also counts consumed grants retained on Removed rows — the two numbers
-/// differ by design. The
-/// methods that flip those fields —
-/// <c>ICampManagement.SetEarlyEntryAsync</c>,
-/// <c>ICampManagement.RemoveCampMemberAsync</c>,
-/// <c>ICampManagement.LeaveCampAsync</c>, and the membership
-/// confirm/withdraw paths — invalidate the affected camp inside the
-/// decorator, so the cached
-/// projection rebuilds with the current count on the next read. No bypass
-/// is possible because only the inner <c>CampService</c> /
-/// <c>CampRoleService</c> may touch <c>ICampRepository</c>.
-/// </para>
+/// <see cref="CampSeasonInfo.EeGrantedCount"/> counts Active rows only, for display. The slot-cap check
+/// also counts consumed grants kept on Removed rows, so the two numbers differ by design.
 /// </remarks>
 public sealed record CampInfo(
     Guid Id,
@@ -68,9 +38,7 @@ public sealed record CampInfo(
 
     public IReadOnlyList<CampImageSummary> Images { get; init; } = [];
 
-    /// <summary>
-    /// The latest season by year. Derived from <see cref="Seasons"/>; not a constructor parameter.
-    /// </summary>
+    /// <summary>The latest season by year, whatever its status.</summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
 
     public CampSeasonInfo? GetSeasonForYear(int year, bool fallbackToLatestSeason = false)
@@ -147,10 +115,7 @@ public sealed record CampSeasonInfo(
 
     public IReadOnlyList<Guid> WorkshopLeadUserIds { get; init; } = [];
 
-    /// <summary>
-    /// A season is public (listed in the directory and open for camp management) while it is
-    /// Active or Full; Full is informational only.
-    /// </summary>
+    /// <summary>Listed in the directory and open for camp management. Full is informational only.</summary>
     public bool IsPublic => Status is CampSeasonStatus.Active or CampSeasonStatus.Full;
 
     public IReadOnlyList<CampSeasonMemberInfo> ActiveMembers =>
@@ -191,33 +156,23 @@ public sealed record CampSeasonMemberInfo(
     Instant? ConfirmedAt,
     bool HasEarlyEntry)
 {
-    /// <summary>
-    /// Names of the camp roles this member holds in the season (e.g. "Camp Lead",
-    /// "Greeter"), ordered by role sort order. Empty when the member holds none.
-    /// Projected from the same active-assignment fetch that feeds
-    /// <see cref="CampSeasonInfo.LeadUserIds"/>/<see cref="CampSeasonInfo.WorkshopLeadUserIds"/>.
-    /// </summary>
+    /// <summary>Ordered by role sort order.</summary>
     public IReadOnlyList<string> Roles { get; init; } = [];
 }
 
 /// <summary>
-/// A user's camp membership for the active (<c>PublicYear</c>) season: the attached
-/// <see cref="Season"/> and the named camp roles the user holds in it. <see cref="Season"/>
-/// is null (and <see cref="Roles"/> empty) when the user is not an Active member of any
-/// camp this year. Derived from the cached <see cref="CampInfo"/> projection — no DB hit.
+/// The active (<c>PublicYear</c>) season only. <see cref="Season"/> is null and <see cref="Roles"/> empty when
+/// the user is not an Active member of any camp this year.
 /// </summary>
 public sealed record CampUserInfo(
     CampSeasonInfo? Season,
     IReadOnlyList<string> Roles)
 {
-    /// <summary>The "not in any camp this year" result.</summary>
     public static readonly CampUserInfo None = new(null, []);
 
     /// <summary>
-    /// Resolves a user's membership for <paramref name="activeYear"/> from a set of camp
-    /// projections. Considers only the season whose <see cref="CampSeasonInfo.Year"/> equals
-    /// <paramref name="activeYear"/> (never a camp's latest season) and only Active membership;
-    /// takes the first match if the user is somehow active in more than one camp.
+    /// Only the season for <paramref name="activeYear"/> (never a camp's latest) and only Active membership.
+    /// First match wins if the user is somehow active in more than one camp.
     /// </summary>
     public static CampUserInfo Resolve(IEnumerable<CampInfo> camps, int activeYear, Guid userId)
     {
@@ -236,9 +191,6 @@ public sealed record CampUserInfo(
     }
 }
 
-/// <summary>
-/// Current human's camp membership state relative to a camp's open-season.
-/// </summary>
 public record CampMembershipState(
     int? OpenSeasonYear,
     Guid? OpenSeasonId,
@@ -247,13 +199,10 @@ public record CampMembershipState(
 
 public enum CampMemberStatusSummary
 {
-    /// <summary>No open season for the camp.</summary>
     NoOpenSeason,
-    /// <summary>Open season exists but human has no record.</summary>
+    /// <summary>The open season has no row for this human.</summary>
     None,
-    /// <summary>Human has a pending request.</summary>
     Pending,
-    /// <summary>Human is an active member.</summary>
     Active
 }
 

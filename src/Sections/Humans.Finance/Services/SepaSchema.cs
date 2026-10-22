@@ -5,9 +5,8 @@ using System.Xml.Schema;
 namespace Humans.Finance.Services;
 
 /// <summary>
-/// The official ISO 20022 pain.001.001.09 schema, embedded so validation costs no network call and
-/// cannot drift. Every generated file is checked against it before it reaches a browser — the bank
-/// rejects a whole submission, so a malformed file must never leave the building.
+/// Embedded, so validation costs no network call and cannot drift. The bank rejects a whole submission, so a malformed
+/// file must never reach a browser.
 /// </summary>
 internal static class SepaSchema
 {

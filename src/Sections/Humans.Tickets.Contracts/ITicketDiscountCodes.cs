@@ -4,20 +4,12 @@ using Humans.Base.Interfaces;
 namespace Humans.Tickets.Contracts;
 
 /// <summary>
-/// Discount-code generation, for sections that hand a human a code: Campaigns' grant
-/// waves today, and a low-income concession next.
+/// Discount codes for sections that hand a member a code. Sections ask Tickets, never the vendor port, which
+/// only Humans.Tickets may inject.
 /// </summary>
-/// <remarks>
-/// Tickets is the application's only door to ticketing, so a section asks <em>Tickets</em>
-/// for codes and Tickets asks the vendor. Campaigns calls this interface. Nothing outside
-/// Humans.Tickets may inject the vendor port — pinned by <c>TicketVendorPortArchitectureTests</c>.
-/// </remarks>
 public interface ITicketDiscountCodes : IApplicationService
 {
-    /// <summary>
-    /// Generates discount codes at the ticket vendor and returns them. The codes are
-    /// live the moment they come back; the caller owns delivering them.
-    /// </summary>
+    /// <summary>The codes are live when they return; the caller owns delivering them.</summary>
     [ExternalWrite]
     Task<IReadOnlyList<string>> GenerateAsync(
         TicketDiscountCodeRequest request, CancellationToken ct = default);

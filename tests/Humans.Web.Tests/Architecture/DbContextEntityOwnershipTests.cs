@@ -8,32 +8,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Web.Tests.Architecture;
 
-/// <summary>
-/// Guards the per-section DbContext split (nobodies-collective/Humans#858):
-/// every <see cref="IEntityTypeConfiguration{TEntity}"/> must be applied by exactly
-/// one context's model.
-/// </summary>
+/// <summary>Every <see cref="IEntityTypeConfiguration{TEntity}"/> is applied by exactly one context's model.</summary>
 /// <remarks>
 /// <para>
-/// The failure this catches: a configuration added under a section namespace
-/// but never applied by that section's context (every context applies its
-/// configurations explicitly). The entity is then mapped
-/// by <b>no</b> context — no migration is ever generated for it and
-/// <c>has-pending-model-changes</c> stays green, because no model describes the
-/// table. The mirror failure, an entity mapped by two contexts, means two
-/// migration chains own the same table.
+/// A configuration no context applies maps a table no migration will ever create, and
+/// <c>has-pending-model-changes</c> stays green. One applied by two contexts gives a table two migration chains.
 /// </para>
 /// <para>
-/// Models are built against the real Npgsql provider (no database is contacted —
-/// <c>DbContext.Model</c> only needs a provider to resolve type mappings), so
-/// this sees exactly the model <c>dotnet ef</c> sees.
-/// </para>
-/// <para>
-/// Contexts and configurations are discovered from what DI actually registers, not
-/// by reflecting over <c>typeof(UsersDbContext).Assembly</c>: a section that moves
-/// into its own project (nobodies-collective/Humans#866, G5) takes its context and
-/// its configurations with it, and an assembly-anchored scan would drop that section
-/// from the guard without failing.
+/// Contexts come from what DI registers, not an assembly anchor, so a section that moves projects stays covered.
+/// Models are built on the real Npgsql provider, so this sees what <c>dotnet ef</c> sees.
 /// </para>
 /// </remarks>
 public class DbContextEntityOwnershipTests
@@ -102,12 +85,7 @@ public class DbContextEntityOwnershipTests
         return byEntity;
     }
 
-    /// <summary>
-    /// The authoritative context list — the one the startup migrator uses. Section
-    /// contexts arrive via <c>AddSectionDbContext</c>, whether that call sits in
-    /// <c>AddHumansPersistence</c> or in a moved section's <c>ISection.Register</c>.
-    /// No provider is built: the registrations are read straight off the descriptors.
-    /// </summary>
+    /// <summary>The list the startup migrator uses, read off the DI descriptors without building a provider.</summary>
     private static IReadOnlyList<Type> RegisteredContextTypes()
     {
         var services = new ServiceCollection()

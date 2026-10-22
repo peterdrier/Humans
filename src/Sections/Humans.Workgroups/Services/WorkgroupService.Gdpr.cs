@@ -7,10 +7,8 @@ using NodaTime;
 namespace Humans.Workgroups.Services;
 
 /// <summary>
-/// The GDPR surface of design §18. Export is one slice per row type; erasure nulls
-/// attribution everywhere and deletes membership rows, but keeps the content — comments,
-/// log bodies, minutes and documents are the association's own record of what it decided
-/// and why, under Art. 17(3)(b). The merge fold re-points every user-id column.
+/// Erasure keeps the content: comments, log bodies, minutes and documents are the association's record of what it
+/// decided and why, under Art. 17(3)(b).
 /// </summary>
 internal sealed partial class WorkgroupService
 {
@@ -25,8 +23,7 @@ internal sealed partial class WorkgroupService
     {
         var rows = await repository.GetRowsForUserAsync(userId, ct);
 
-        // Group names are the register's, not the row's: stitched here so no row type has to
-        // carry a denormalized copy.
+        // Group names come from the register, so no row type carries a denormalized copy.
         var graph = await repository.GetGraphAsync(ct);
         var names = graph.Workgroups.ToDictionary(w => w.Id, w => w.Name);
         var documentGroups = graph.Workgroups
@@ -37,8 +34,7 @@ internal sealed partial class WorkgroupService
 
         return
         [
-            // Applying for a group is an attribution the register keeps on the group row and
-            // the erasure nulls, so it is disclosed here alongside the rows that carry an id.
+            // Erasure nulls the applicant attribution on the group row, so it is disclosed here too.
             new UserDataSlice(WorkgroupApplications, rows.AppliedFor
                 .Select(w => new
                 {
@@ -106,8 +102,7 @@ internal sealed partial class WorkgroupService
                     Document = doc.Title ?? "(unknown)",
                     c.Category,
                     c.Body,
-                    // Which of the three attributions this row carries for this person: they may
-                    // appear as the responder or the moderator on somebody else's comment.
+                    // They may appear as responder or moderator on somebody else's comment.
                     Authored = c.AuthorUserId == userId,
                     Responded = c.RespondedByUserId == userId,
                     HiddenByThisPerson = c.HiddenByUserId == userId,
@@ -125,8 +120,7 @@ internal sealed partial class WorkgroupService
     {
         var now = clock.GetCurrentInstant();
 
-        // The Board needs to know before the row is gone: a group whose only coordinator has
-        // just been erased has nobody named on the register (§18).
+        // Read before the row is gone: the Board must know when a group's only coordinator is erased.
         var graph = await repository.GetGraphAsync(ct);
         var orphaned = graph.Workgroups
             .Where(w => w.Status == WorkgroupStatus.Active)

@@ -1,20 +1,9 @@
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// Renders a single legal-document review body — tabbed multilingual content,
-/// "I agree" checkbox, submit button, and the JS that re-localises the
-/// checkbox text when the language tab changes. Shared by /Consent/Review and
-/// the onboarding widget Consents step so the consent UX is identical
-/// regardless of where the user encounters it.
+/// Shared by /Consent/Review and the onboarding widget's Consents step so the consent UX is identical:
+/// the widget builds this model and renders the section's <c>_ConsentReviewBody</c> partial by name.
 /// </summary>
-/// <remarks>
-/// In <c>Contracts/</c> rather than in the section's <c>Models/</c> because the widget
-/// step is Onboarding's view over Consent's form: Shell constructs this model and renders
-/// the section's <c>_ConsentReviewBody</c> partial, which resolves by name across
-/// application parts. Moving the markup instead
-/// is not available — the step view binds <c>ConsentsStepViewModel</c>, a Shell type a
-/// section cannot name.
-/// </remarks>
 public class ConsentReviewFormViewModel
 {
     public required Guid DocumentVersionId { get; init; }
@@ -23,7 +12,7 @@ public class ConsentReviewFormViewModel
 
     public required string SubmitAction { get; init; }
 
-    /// <summary>Null = same controller as current view.</summary>
+    /// <summary>Null means the current view's controller.</summary>
     public string? SubmitController { get; init; }
 
     public required string SubmitButtonText { get; init; }

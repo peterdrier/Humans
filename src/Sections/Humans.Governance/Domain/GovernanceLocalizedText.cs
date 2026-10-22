@@ -3,11 +3,6 @@ namespace Humans.Governance.Domain;
 /// <summary>
 /// Per-culture authored content (culture code → text), persisted as a single jsonb column.
 /// </summary>
-/// <remarks>
-/// Governance owns its own copy rather than sharing Surveys' <c>LocalizedText</c> or promoting
-/// one to Base (spec decision 5, 2026-09-10): the two sections' authored content has no shared
-/// contract, and a Base type would be public surface nothing outside these sections needs.
-/// </remarks>
 internal sealed class GovernanceLocalizedText : IEquatable<GovernanceLocalizedText>
 {
     private readonly Dictionary<string, string> _values;
@@ -21,14 +16,8 @@ internal sealed class GovernanceLocalizedText : IEquatable<GovernanceLocalizedTe
     public IReadOnlyDictionary<string, string> Values => _values;
 
     /// <summary>
-    /// Requested culture → official culture → any present → "".
-    /// <para>
-    /// Whitespace counts as absent, not as authored. Optional translations are neither
-    /// required nor normalized on the draft form, so a stray space in one culture's box would
-    /// otherwise be resolved as that culture's text — and a blank motion title, blank official
-    /// text or blank email subject on a binding vote is worse than the official-culture
-    /// wording the reader would have got instead.
-    /// </para>
+    /// Requested culture → official culture → any present → "". Whitespace counts as absent: a
+    /// stray space in an optional translation must not blank a binding motion's title or text.
     /// </summary>
     public string Resolve(string culture, string officialCulture)
     {

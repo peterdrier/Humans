@@ -87,8 +87,6 @@ public sealed class RideshareSnapshotTests
             OffersPosted: 2, RequestsPosted: 3, SeatsOffered: 4, SeatsFilled: 2, RidersStillLooking: 1));
     }
 
-    // ── Fixtures ──────────────────────────────────────────────────────────
-
     private static RideshareSnapshot Snapshot(
         IReadOnlyList<TripView>? trips = null,
         IReadOnlyList<RequestView>? requests = null,

@@ -1,41 +1,33 @@
 namespace Humans.Workgroups.Domain;
 
-/// <summary>
-/// Register lifecycle (design §6). Registration is administrative recognition only:
-/// every transition out of <see cref="Applied"/> is a human action by the Secretary
-/// (a Board member) or the Board.
-/// </summary>
+/// <summary>Every transition out of <see cref="Applied"/> is a human action by the Secretary or the Board.</summary>
 internal enum WorkgroupStatus
 {
-    /// <summary>Applied for; waiting on the Secretary. The fourteen-day clock runs from AppliedAt.</summary>
+    /// <summary>Waiting on the Secretary. The fourteen-day clock runs from AppliedAt.</summary>
     Applied,
 
     /// <summary>A refusal ground may apply; the Board decides at its next meeting.</summary>
     Referred,
 
-    /// <summary>Registered. Drive folder created, page and log live.</summary>
     Active,
 
-    /// <summary>Registration refused, with written reasons.</summary>
     Refused,
 
-    /// <summary>Registration withdrawn by the Board, with written reasons.</summary>
+    /// <summary>Withdrawn by the Board, with written reasons.</summary>
     Withdrawn,
 
     /// <summary>Ended. Roster and documents stay readable; the Drive folder goes read-only.</summary>
     Dormant
 }
 
-/// <summary>Why a group is <see cref="WorkgroupStatus.Dormant"/>. Null unless Dormant.</summary>
 internal enum WorkgroupDormantReason
 {
-    /// <summary>The group delivered its output.</summary>
     Delivered,
 
     /// <summary>A member marked it done without delivering.</summary>
     Abandoned,
 
-    /// <summary>Closed by the Secretary after the two-month silence.</summary>
+    /// <summary>Closed by the Secretary for silence; never a member's own ending.</summary>
     Quiet
 }
 
@@ -54,7 +46,6 @@ internal enum WorkgroupDeliverableKind
     Other
 }
 
-/// <summary>Who the deliverable is for.</summary>
 internal enum WorkgroupAudience
 {
     Board,
@@ -62,11 +53,7 @@ internal enum WorkgroupAudience
     Community
 }
 
-/// <summary>
-/// Register-facing role, not a permission level: every member may edit
-/// (design §5). Coordinators are the people named on the register and the
-/// addressees of notifications.
-/// </summary>
+/// <summary>Not a permission level: every member may edit. Only membership decisions are the coordinators'.</summary>
 internal enum WorkgroupMemberRole
 {
     Member,
@@ -74,9 +61,8 @@ internal enum WorkgroupMemberRole
 }
 
 /// <summary>
-/// One dated line in a group's history. <c>Applied</c> through <c>SurveySent</c> are
-/// <b>system</b> kinds — written by the section, never edited. <c>Update</c> through
-/// <c>Note</c> are <b>member</b> kinds — written, edited and deleted by members.
+/// Stored as strings: never rename or drop a member. System kinds are written by the section and never edited;
+/// member kinds are written, edited and deleted by members.
 /// </summary>
 internal enum WorkgroupLogKind
 {
@@ -125,7 +111,6 @@ internal enum WorkgroupDocumentStatus
     Delivered
 }
 
-/// <summary>The Board's written reply to a delivered document.</summary>
 internal enum WorkgroupDisposition
 {
     Accepted,
@@ -134,7 +119,6 @@ internal enum WorkgroupDisposition
     Noted
 }
 
-/// <summary>The group's answer to one comment.</summary>
 internal enum WorkgroupCommentDisposition
 {
     Pending,

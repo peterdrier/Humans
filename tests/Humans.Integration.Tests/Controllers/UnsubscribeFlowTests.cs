@@ -12,32 +12,26 @@ using NodaTime;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// PR 5 of the email/OAuth decoupling sequence. Locks in the
-/// <c>UpdateSource</c> attribution split for Email's <c>GuestAccountController.UpdatePreference</c>:
-/// anonymous token-driven POSTs must record <c>"MagicLink"</c>, while
-/// session-driven POSTs must record <c>"Guest"</c>. The previous in-flight
-/// version of these tests went green on a no-op flip — the seed row already
-/// matched the POST body, so <see cref="Humans.Email.Services.ICommunicationPreferenceManagement.UpdatePreferenceAsync(Guid, MessageCategory, bool, bool, string, Guid?, System.Threading.CancellationToken)"/>
-/// short-circuited as idempotent and the row stayed at <c>UpdateSource = "Default"</c>
-/// while the controller still returned 200 OK. The fix is to drive the POST
-/// against <see cref="MessageCategory.VolunteerUpdates"/> (default OptedOut=false)
-/// with <c>emailEnabled=false</c>, which forces an actual write.
+/// <c>GuestAccountController.UpdatePreference</c> records <c>UpdateSource</c> as <c>"MagicLink"</c> for an anonymous
+/// token POST and <c>"Guest"</c> for a session POST.
 /// </summary>
+/// <remarks>
+/// The POST must change the row: <see cref="MessageCategory.VolunteerUpdates"/> (default OptedOut=false) with
+/// <c>emailEnabled=false</c>. A no-op POST short-circuits as idempotent, leaving <c>"Default"</c> behind a 200, and the
+/// test passes for nothing.
+/// </remarks>
 public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 30_000)]
     public async Task TokenDriven_UpdatePreference_AttributesUpdateSourceToMagicLink()
     {
-        // Seed a profileless user.
         Guid userId;
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             userId = await SeedBareUserAsync(scope, $"untoken-{Guid.NewGuid():N}@x.test");
         }
 
-        // Generate an unsubscribe token for VolunteerUpdates (default OptedOut=false).
-        // POSTing emailEnabled=false flips OptedOut → true, so the service writes
-        // (instead of short-circuiting as idempotent and leaving the row at "Default").
+        // Must flip OptedOut, or the service short-circuits and the row stays "Default".
         string token;
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
@@ -46,8 +40,6 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             token = new Uri(url).Segments[^1];
         }
 
-        // Use the per-test-class anonymous client (no session cookie). The GET with
-        // utoken renders the page with an antiforgery field; the POST sends it back.
         var (formToken, cookie) = await GetAntiforgeryAsync(
             $"/Email/Guest/CommunicationPreferences?utoken={Uri.EscapeDataString(token)}");
 
@@ -79,12 +71,9 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 30_000)]
     public async Task SessionDriven_UpdatePreference_AttributesUpdateSourceToGuest()
     {
-        // Sign in the per-test client. SignInAsFullyOnboardedAsync issues the
-        // Identity cookie on the same HttpClient/CookieContainer used below.
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        // No utoken → ResolveUserIdOrTokenAsync prefers the authenticated session,
-        // which produces fromToken=false and source="Guest".
+        // No utoken, so the authenticated session wins: fromToken=false, source "Guest".
         var (formToken, cookie) = await GetAntiforgeryAsync("/Email/Guest/CommunicationPreferences");
 
         var resp = await PostFormWithAntiforgeryAsync(
@@ -109,10 +98,6 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
         pref.UpdateSource.Should().Be("Guest",
             "session-driven updates must be attributed to Guest, distinct from MagicLink.");
     }
-
-    // ---------------------------------------------------------------------
-    // Helpers — mirror EmailGridFlowTests.
-    // ---------------------------------------------------------------------
 
     private static async Task<Guid> SeedBareUserAsync(IServiceScope scope, string email)
     {

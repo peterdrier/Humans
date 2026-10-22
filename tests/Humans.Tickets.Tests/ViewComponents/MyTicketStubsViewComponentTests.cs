@@ -10,11 +10,6 @@ using NSubstitute;
 
 namespace Humans.Tickets.Tests.ViewComponents;
 
-/// <summary>
-/// Covers <see cref="MyTicketStubsViewComponent"/>: it renders the holder's owned
-/// tickets (from the owner-filtered holdings read model) as stubs with the EE pill
-/// and pendency stamped, and renders nothing when the holder owns none.
-/// </summary>
 public class MyTicketStubsViewComponentTests
 {
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();

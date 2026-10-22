@@ -5,17 +5,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octokit;
-// See the note in StripeService.cs: `Stripe` binds to the section from inside
-// `Humans.Stripe.Services`, so never qualify SDK types inline in this project.
+// `Stripe` would bind to this section inside its namespaces; see StripeService.cs.
 using Stripe;
 
 namespace Humans.Stripe.Services;
 
-/// <summary>
-/// Auto-registers the Store Stripe webhook at boot for ephemeral envs (PR previews, QA).
-/// Self-gated on STRIPE_STORE_WEBHOOK_REGISTRAR_KEY; prod uses a dashboard-configured webhook.
-/// Also sweeps stale endpoints for closed PRs. Failures log warnings and don't block boot.
-/// </summary>
+/// <summary>Production uses a dashboard-configured webhook. Failures log warnings and never block boot.</summary>
 internal sealed class StoreWebhookRegistrationService(
     IOptions<StripeSettings> settings,
     IOptions<GitHubSettings> githubSettings,
@@ -39,7 +34,6 @@ internal sealed class StoreWebhookRegistrationService(
     private const string WebhookPath = "/Store/StripeWebhook";
     private const string OwnedHostSuffix = ".n.burn.camp";
 
-    /// <summary>Matches the leading PR-id label in a host like "37.n.burn.camp".</summary>
     private static readonly Regex PrIdFromHostPattern = new(
         @"^(?<pr>\d+)" + Regex.Escape(OwnedHostSuffix) + "$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
@@ -47,7 +41,6 @@ internal sealed class StoreWebhookRegistrationService(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        // Background fire-and-forget — never block boot on a Stripe API call.
         _ = Task.Run(() => RegisterAsync(cancellationToken), cancellationToken);
         return Task.CompletedTask;
     }
@@ -59,7 +52,6 @@ internal sealed class StoreWebhookRegistrationService(
         var stripe = settings.Value;
         if (!stripe.IsWebhookRegistrarConfigured)
         {
-            // Quiet — production and QA deliberately don't set the registrar key.
             return;
         }
 
@@ -73,9 +65,7 @@ internal sealed class StoreWebhookRegistrationService(
 
         var webhookUrl = $"{baseUrl.TrimEnd('/')}{WebhookPath}";
 
-        // Only auto-register on hosts we own. Dev (localhost / nuc.home) and any other
-        // unrecognized host should never register — Stripe couldn't reach it anyway, and
-        // the endpoint would just burn against the per-account quota.
+        // Only hosts we own: Stripe can't reach any other, and each endpoint counts against the account quota.
         if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
             !webhookUri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase))
         {
@@ -85,9 +75,8 @@ internal sealed class StoreWebhookRegistrationService(
             return;
         }
 
-        // Warning level — this is a rare, boot-time-only event in PR-preview environments
-        // and the success line is the only on-host confirmation that the in-memory
-        // STRIPE_STORE_WEBHOOK_SECRET was stamped. Information would be filtered out in prod.
+        // Warning, not Information, so production filters don't hide the only confirmation that the
+        // in-memory signing secret was stamped.
         logger.LogWarning("Auto-registering Stripe webhook for PR-preview env at {Url}…", webhookUrl);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -144,16 +133,9 @@ internal sealed class StoreWebhookRegistrationService(
     }
 
     /// <summary>
-    /// One listing of the account's endpoints, deleting the kinds that should not survive this
-    /// boot: any <c>{N}.n.burn.camp</c> endpoint whose PR <c>{N}</c> is no longer open, and then
-    /// our own URL, which we are about to recreate with a fresh signing secret. Our own goes
-    /// last so that a failure part-way through leaves the account as this boot found it.
+    /// Deletes endpoints of closed PRs, then our own URL (about to be recreated with a fresh secret). The
+    /// cross-PR sweep needs the open-PR list; the own-URL delete runs without it.
     /// </summary>
-    /// <remarks>
-    /// The cross-PR half needs the open-PR list; the own-URL half does not, and still runs when
-    /// <see cref="StripeSettings.WebhookCleanupGitHubOwner"/>/<c>WebhookCleanupGitHubRepository</c>
-    /// or <see cref="GitHubSettings.AccessToken"/> are unset, or GitHub cannot be reached.
-    /// </remarks>
     private async Task DeleteObsoleteEndpointsAsync(
         WebhookEndpointService service, string ownWebhookUrl, CancellationToken ct)
     {
@@ -164,16 +146,14 @@ internal sealed class StoreWebhookRegistrationService(
         var listed = await service.ListAsync(new WebhookEndpointListOptions { Limit = 100 }, cancellationToken: ct);
         foreach (var endpoint in listed.Data)
         {
-            // Only touch endpoints we own (the n.burn.camp suffix, our path). Defense in depth —
-            // the registrar key is account-scoped, but this should never delete an unrelated
-            // integration's webhook even if one ever shared this Stripe account.
+            // Only our own endpoints, even though the registrar key is account-scoped.
             if (!Uri.TryCreate(endpoint.Url, UriKind.Absolute, out var uri)) continue;
             if (!uri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase)) continue;
             if (!uri.AbsolutePath.Equals(WebhookPath, StringComparison.Ordinal)) continue;
 
             if (string.Equals(endpoint.Url, ownWebhookUrl, StringComparison.OrdinalIgnoreCase))
             {
-                // Set aside, not deleted here: see the second pass below.
+                // Deleted last, below.
                 ours.Add(endpoint);
                 continue;
             }
@@ -196,19 +176,16 @@ internal sealed class StoreWebhookRegistrationService(
             }
             catch (StripeException ex)
             {
-                // Idempotent — another PR's registrar may have raced ahead. 404s are fine.
+                // Another PR's registrar may have raced ahead; a 404 is fine.
                 logger.LogDebug(ex,
                     "Could not delete webhook {EndpointId} during sweep — likely already gone.",
                     endpoint.Id);
             }
         }
 
-        // Our own URL goes last, immediately before the caller recreates it. A failure here
-        // aborts registration — deliberately, rather than leave a duplicate endpoint delivering
-        // to this host under a secret we no longer hold — and the sweep above is best-effort per
-        // endpoint but can still abort on a non-Stripe failure such as the timeout expiring. Do
-        // this first and such an abort would leave the host with no endpoint at all; doing it
-        // last means an abort leaves the account exactly as this boot found it.
+        // Our own URL goes last: a failure here aborts registration rather than leave a duplicate endpoint
+        // under a secret we no longer hold, and doing it last means any abort leaves the account as this
+        // boot found it.
         foreach (var endpoint in ours)
         {
             await service.DeleteAsync(endpoint.Id, cancellationToken: ct);
@@ -218,11 +195,7 @@ internal sealed class StoreWebhookRegistrationService(
         }
     }
 
-    /// <summary>
-    /// The open-PR numbers on the configured fork, or <c>null</c> when the cross-PR sweep
-    /// cannot run — unconfigured, or GitHub unreachable. Null means "unknown", never "none":
-    /// treating it as an empty set would delete every other preview's endpoint.
-    /// </summary>
+    /// <summary>Null means unknown, never "none": an empty set would delete every other preview's endpoint.</summary>
     private async Task<ISet<int>?> TryListOpenPullRequestsAsync(CancellationToken ct)
     {
         var stripe = settings.Value;
@@ -271,9 +244,6 @@ internal sealed class StoreWebhookRegistrationService(
         return prs.Select(p => p.Number).ToHashSet();
     }
 
-    /// <summary>
-    /// Public hostname this app is reachable at. Reuses Email:BaseUrl, which Coolify
-    /// already sets per environment for transactional email links.
-    /// </summary>
+    /// <summary>Email:BaseUrl is already set per environment.</summary>
     private string? ResolveBaseUrl() => configuration["Email:BaseUrl"];
 }

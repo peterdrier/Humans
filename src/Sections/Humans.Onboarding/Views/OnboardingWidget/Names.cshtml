@@ -13,9 +13,7 @@
                 <strong>@Localizer["Onboarding_LegalNameLabel"]</strong> — @Localizer["Onboarding_LegalNameExplainerPre"] <strong>@Localizer["Onboarding_LegalNameExplainerEmphasis"]</strong> @Localizer["Onboarding_LegalNameExplainerPost"]
             </p>
             <p class="mb-0">
-                @* Shared with the [Display] attribute on NamesViewModel, which MVC resolves through
-                   the global DataAnnotationLocalizerProvider against SharedResource — so this key
-                   stayed there and this call site binds the shared set. *@
+                @* The [Display] attribute on NamesViewModel resolves this key against SharedResource, so it stays there. *@
                 <strong>@SharedLocalizer["Onboarding_BurnerNameLabel"]</strong> — @Localizer["Onboarding_BurnerNameExplainer"]
             </p>
         </div>

@@ -5,9 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Tour;
 
 /// <summary>
-/// Tour's DI entry point. Register is empty — the section owns no tables and no services —
-/// but the type still matters: implementing ISection is what makes the assembly a section
-/// for discovery and routing.
+/// <c>Register</c> is empty, but the type must stay: implementing <c>ISection</c> is what makes this assembly a
+/// section.
 /// </summary>
 public sealed class Section : ISection
 {

@@ -12,9 +12,6 @@ using NSubstitute;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// The /Settings#google-sync tab body (peterdrier/Humans#1634).
-/// </summary>
 public sealed class GoogleSyncSettingsTabViewComponentTests
 {
     [HumansFact]

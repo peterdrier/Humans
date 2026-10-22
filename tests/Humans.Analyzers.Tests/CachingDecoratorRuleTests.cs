@@ -232,7 +232,7 @@ public class CachingDecoratorRuleTests
     /// <summary>
     /// The regression test for the namespace filter that silently switched this rule off.
     /// Every one of the 11 caching decorators lives in a section project
-    /// (nobodies-collective/Humans#866, G5) under <c>Humans.&lt;Section&gt;.Services</c>, so the
+    /// under <c>Humans.&lt;Section&gt;.Services</c>, so the
     /// old <c>Humans.Infrastructure.Services</c> namespace requirement matched none of them
     /// while the assembly gate happily admitted their assemblies. Without this test the rule
     /// can die the same way again and stay green doing it.

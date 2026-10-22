@@ -1,9 +1,5 @@
-@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error.
-   Guarded by AuditLogPageRenderTests (step 12).
-
-   Member-facing line/table partials inject AuditLogResource themselves. Admin-only
-   pages and the dashboard activity feed retain their English copy. *@
+@* A section RCL doesn't inherit the host's _ViewImports: a missing line here ships broken markup with a green build.
+   Member-facing partials inject AuditLogResource themselves; admin pages and the activity feed stay English. *@
 @using Humans.Base.Extensions
 @using Humans.AuditLog.Contracts
 @using Humans.AuditLog

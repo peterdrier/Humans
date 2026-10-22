@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Humans.CityPlanning.Tests;
 
-/// <summary>The /Settings#city-planning tab (peterdrier/Humans#1634).</summary>
+/// <summary>The /Settings#city-planning tab.</summary>
 public sealed class CityPlanningSettingsTabViewComponentTests
 {
     [HumansFact]

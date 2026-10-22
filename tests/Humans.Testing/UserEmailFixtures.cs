@@ -3,12 +3,6 @@ using NodaTime;
 
 namespace Humans.Testing;
 
-/// <summary>
-/// Builds <see cref="UserEmailRowSnapshot"/> rows for tests that stub
-/// <c>IUserEmailService.FindByAddressAsync</c>. The record is positional with
-/// eleven members and most stubs only care about the owner, the address and
-/// whether it is verified.
-/// </summary>
 public static class UserEmailFixtures
 {
     public static UserEmailRowSnapshot Row(

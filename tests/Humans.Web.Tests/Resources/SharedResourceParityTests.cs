@@ -8,45 +8,17 @@ using Microsoft.Extensions.Options;
 namespace Humans.Web.Tests.Resources;
 
 /// <summary>
-/// Resx parity gate for <see cref="SharedResource"/>: every key defined in the base
-/// (English) resx must exist in every other supported-culture resx file. A missing key
-/// silently falls back to English at runtime instead of failing loudly — this is the
-/// only thing that catches that drift before it ships (nobodies-collective/Humans#848,
-/// following the recurring gaps reported by #873).
-///
-/// Reuses <see cref="TranslationsGalleryModelBuilder"/> — the same key-by-culture
-/// computation that powers <c>/Debug/Translations</c> — instead of re-parsing the .resx
-/// XML, and builds a real <see cref="ResourceManagerStringLocalizerFactory"/> against the
-/// compiled satellite resources so the test exercises exactly what ships, not a
-/// hand-parsed approximation of it.
+/// A missing key silently falls back to English at runtime; this is what catches it. Uses the real localizer over the
+/// compiled satellite resources, so it tests what ships.
 /// </summary>
 public class SharedResourceParityTests
 {
     /// <summary>
-    /// The base resx is embedded under the manifest name <c>AddLocalization()</c> looks for.
+    /// <c>AddLocalization()</c> has no <c>ResourcesPath</c>, so it looks up the type's full name in its own assembly. The
+    /// SDK produces that name only when <c>SharedResource.cs</c> and its <c>.resx</c> files share one folder and the
+    /// namespace is unchanged. Break it and every string renders as its key on a green build, and the parity test
+    /// passes over an empty set.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The whole localization stack hangs off one string. <c>Program.cs</c> calls
-    /// <c>AddLocalization()</c> with no <c>ResourcesPath</c>, so
-    /// <c>ResourceManagerStringLocalizerFactory</c> derives the baseName from
-    /// <c>typeof(SharedResource).FullName</c> and looks it up in that type's own assembly —
-    /// i.e. it needs <c>Humans.Base.SharedResource.resources</c> to be embedded in whichever
-    /// assembly declares the type. The SDK produces that name only through
-    /// <c>EmbeddedResourceUseDependentUponConvention</c>: <c>SharedResource.resx</c> is named
-    /// after the type declared in the <c>SharedResource.cs</c> sitting in the SAME folder.
-    /// </para>
-    /// <para>
-    /// So the name survives a project move only if the <c>.cs</c> and the seven <c>.resx</c>
-    /// travel together, in one folder, with the <c>namespace Humans.UI;</c> line untouched —
-    /// which is exactly what G5 lane 4b-iii B did when <c>Resources/</c> went from
-    /// <c>Humans.UI</c> to <c>Humans.Interfaces</c> (nobodies-collective/Humans#866). Break any
-    /// of the three and every translated string renders as its key, in all six languages, on a
-    /// green build: the compiler never sees a resource name. The parity test below does not
-    /// catch it either — with no resources found, <c>GetAllStrings</c> returns nothing and its
-    /// "no culture is missing a key" assertion passes over an empty set.
-    /// </para>
-    /// </remarks>
     [HumansFact]
     public void TheBaseResxIsEmbeddedUnderTheManifestNameLocalizationResolves()
     {
@@ -67,9 +39,8 @@ public class SharedResourceParityTests
 
         var gallery = TranslationsGalleryModelBuilder.Build(localizer);
 
-        // Guard the assertion below against passing over an empty set: a resx the localizer
-        // cannot find yields zero keys, zero gaps, and a green test. Program.cs's own startup
-        // diagnostic probes Dashboard_Welcome for the same reason.
+        // A resx the localizer can't find yields zero keys and a green test. Program.cs probes Dashboard_Welcome at
+        // startup for the same reason.
         gallery.TotalKeys.Should().BeGreaterThan(500,
             "the shared resx carries 554 keys after the Users carve (nobodies-collective/Humans#1050) "
             + "— a low count means the localizer resolved a different (or no) resource set, which is "

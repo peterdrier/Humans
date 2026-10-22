@@ -6,11 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Events;
 
 /// <summary>
-/// Member top-nav contribution — the Events dropdown, gated on the <c>Features:Events</c> flag plus <see cref="PolicyNames.AppAccess"/>. The two
-/// admin sub-groups (guide dashboard/moderation/export, then guide settings/categories/venues —
-/// guide settings is the <c>/Settings#event-guide</c> tab)
-/// are further gated on <see cref="PolicyNames.EventsAdminOrAdmin"/>, each behind its own
-/// divider so the group appears only when its items do.
+/// Gated on <c>Features:Events</c> plus <see cref="PolicyNames.AppAccess"/>. Each admin sub-group sits behind its own
+/// divider so it appears only when its items do.
 /// </summary>
 internal sealed class SectionNav : ISectionNav
 {

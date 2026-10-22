@@ -256,9 +256,8 @@ public sealed class OnboardingServiceTests
     [HumansFact]
     public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
     {
-        // Reject is the section's only coordinator action with consequences (Docs/health.md §4),
-        // and until this test its success path was unasserted: dropping one of the three
-        // approval-gated team syncs, or the ProfileRejected notification, passed.
+        // Reject is the section's only coordinator action with consequences: dropping one of the
+        // three approval-gated team syncs, or the ProfileRejected notification, must fail.
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
         const string reason = "duplicate account";
@@ -487,8 +486,6 @@ public sealed class OnboardingServiceTests
         data.Flagged.Should().NotContain(u => u.Id == mergedId);
         data.Pending.Should().NotContain(u => u.Id == mergedId);
     }
-
-    // --- GetNextUnsignedConsentAsync (widget consent step, G8/G9) ---
 
     [HumansFact]
     public async Task GetNextUnsignedConsent_AllSigned_SelfHealsSuspensionAndReturnsNullNext()

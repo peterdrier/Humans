@@ -4,17 +4,9 @@ using Humans.Shifts.Contracts;
 namespace Humans.Agent.Models;
 
 /// <summary>
-/// One row in <see cref="AgentUserSnapshot.UpcomingShifts"/>: either a multi-day signup
-/// block (signups sharing the same block id) collapsed to a single entry, or a singleton
-/// signup. The agent surfaces these summaries in the per-turn user-context tail and calls
-/// <c>get_shift_details</c> with <see cref="Key"/> to fetch the full description.
+/// A multi-day signup block collapsed to one entry, or a singleton signup. <paramref name="Key"/> is the block id for
+/// blocks and the signup id for singletons; the agent passes it to <c>get_shift_details</c>.
 /// </summary>
-/// <param name="Key">The signup block id for blocks, the signup id for singletons.</param>
-/// <param name="Label">Display label — derived from the rota name.</param>
-/// <param name="StartDate">Earliest day in the block (== <paramref name="EndDate"/> for singletons).</param>
-/// <param name="EndDate">Latest day in the block.</param>
-/// <param name="DayCount">Number of distinct days spanned (1 for singletons).</param>
-/// <param name="Status">Lifecycle status of the underlying signup(s).</param>
 internal sealed record UpcomingShiftEntry(
     Guid Key,
     string Label,

@@ -15,7 +15,6 @@
 <h1>@Localizer["Camps_AdminTitle"]</h1>
 
 
-@* Summary cards *@
 <div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
     <div class="col">
         <div class="card text-center h-100">
@@ -59,7 +58,6 @@
     </div>
 </div>
 
-@* Camp role tools *@
 <div class="row mb-4">
     <div class="col-md-6 col-lg-4 mb-3">
         <div class="card h-100">
@@ -102,7 +100,6 @@
     }
 </div>
 
-@* Pending Approvals *@
 <div class="card mb-4">
     <div class="card-header">
         <i class="fa-solid fa-clock me-2"></i>Pending Approvals
@@ -166,7 +163,6 @@
     }
 </div>
 
-@* Withdrawn Camps *@
 @if (Model.WithdrawnCamps.Count > 0)
 {
     Func<CampCardViewModel, IHtmlContent> withdrawnNameCell =
@@ -250,7 +246,6 @@
     </div>
 </div>
 
-@* Early Entry summary *@
 <div class="card mb-4">
     <div class="card-header">
         <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.PublicYear)
@@ -271,7 +266,6 @@
     </div>
 </div>
 
-@* Camp Summary Table *@
 @if (Model.AllCampSummaries.Count > 0)
 {
     <div class="card mb-4">
@@ -365,7 +359,6 @@
     </div>
 }
 
-@* All Camps quick list -- link to public page *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-campground me-2"></i>All @SharedLocalizer["Camp_Plural"] (@Model.PublicYear)</span>

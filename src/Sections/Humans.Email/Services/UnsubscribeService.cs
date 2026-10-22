@@ -18,9 +18,7 @@ internal sealed class UnsubscribeService(
         var result = preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
-            // Resolve merge tombstones forward: a token minted for a since-merged id must act on
-            // the survivor, so the returned id (and the preference ConfirmUnsubscribeAsync writes)
-            // is the resolved record's, never the token's.
+            // A token minted for a since-merged id acts on the survivor, never on the token's id.
             var info = await userService.GetUserInfoAsync(result.UserId, ct);
             if (info is null || info.IsGdprAnonymized)
                 return UnsubscribeTokenResult.Invalid();
@@ -42,7 +40,7 @@ internal sealed class UnsubscribeService(
         }
         catch (CryptographicException ex)
         {
-            // No double-log — already logged in CommunicationPreferenceService (see #483).
+            // Already logged in CommunicationPreferenceService.
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
 

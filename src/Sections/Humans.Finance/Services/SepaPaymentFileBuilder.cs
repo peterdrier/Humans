@@ -8,7 +8,7 @@ using Humans.Finance.Models;
 
 namespace Humans.Finance.Services;
 
-/// <summary>Refuses a whole payout file. The message is admin-facing.</summary>
+/// <summary>The message is admin-facing.</summary>
 internal sealed class SepaPaymentFileException : Exception
 {
     public SepaPaymentFileException() { }
@@ -17,9 +17,8 @@ internal sealed class SepaPaymentFileException : Exception
 }
 
 /// <summary>
-/// Builds a Norma 34-14 / pain.001.001.09 SEPA Credit Transfer file. Pure: no IO, no clock, no
-/// configuration — everything arrives on the request, so the whole thing is unit-testable.
-/// Every file it returns has been validated against the official ISO 20022 schema.
+/// Norma 34-14 / pain.001.001.09. Pure: everything arrives on the request. Every file it returns is validated against
+/// the ISO 20022 schema.
 /// </summary>
 internal static class SepaPaymentFileBuilder
 {
@@ -31,14 +30,12 @@ internal static class SepaPaymentFileBuilder
     /// <summary>SEPA caps a party name at 70, well below the schema's own 140.</summary>
     public const int MaxNameLength = 70;
 
-    /// <summary>Organisation tag in the remittance line, between the account number and the creditor
-    /// name — "&lt;account&gt; - NCA - &lt;name&gt;" — so a bank line reads back as the account, the org,
-    /// and who was paid without opening the file. Sabadell shows this line to the recipient.</summary>
+    /// <summary>"&lt;account&gt; - NCA - &lt;name&gt;", so a bank line reads back without opening the file. Sabadell
+    /// shows this line to the recipient.</summary>
     private const string RemittanceOrgTag = "NCA";
 
-    /// <summary>"&lt;account&gt;-NCA-&lt;NAME&gt;", carried in <c>PmtInfId</c>, <c>InstrId</c> and
-    /// <c>EndToEndId</c> alike, so whichever one the bank echoes on the debtor statement names the
-    /// creditor account. Uppercase, SEPA subset, name truncated to fit the 35-character cap.</summary>
+    /// <summary>In <c>PmtInfId</c>, <c>InstrId</c> and <c>EndToEndId</c> alike, so whichever the bank echoes names the
+    /// creditor account. Truncated to the 35-character cap.</summary>
     private static string TransferId(SepaTransfer t)
     {
         var prefix = $"{t.SupplierAccountNum.ToString(CultureInfo.InvariantCulture)}-{RemittanceOrgTag}-";
@@ -99,8 +96,7 @@ internal static class SepaPaymentFileBuilder
             })
             .ToList();
 
-        // Counted and summed off the blocks that were just built, not off the request, so the header
-        // can never describe a different set than the one being serialized.
+        // From the built blocks, not the request, so the header can never describe a different set.
         var count = blocks.Count.ToString(CultureInfo.InvariantCulture);
         var controlSum = Money(request.Transfers.Sum(t => t.Amount));
 

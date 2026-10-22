@@ -18,9 +18,8 @@ using NSubstitute;
 namespace Humans.Cantina.Tests.Controllers;
 
 /// <summary>
-/// <c>/Cantina/Dietary</c> (Users decomposition commit 10): the owner-only form, its
-/// "Other needs text" guard, and the "I don't want to answer" opt-out
-/// (nobodies-collective/Humans#2104, Docs/features/dietary-nudge.md).
+/// <c>/Cantina/Dietary</c>: the owner-only form, its "Other needs text" guard, and the "I don't want
+/// to answer" opt-out (Docs/features/dietary-nudge.md).
 /// </summary>
 public class CantinaProfileControllerTests
 {

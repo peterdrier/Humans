@@ -6,8 +6,7 @@ namespace Humans.Guide.Tests.Services;
 
 public class GuideFilterTests
 {
-    // Fixtures are markdown now, not HTML: the filter runs before Markdig, so these exercise
-    // segmentation and role selection together — the same pair a real request runs.
+    // The filter runs before Markdig, so these exercise segmentation and role selection together.
     private const string Sample = """
         Intro, always visible.
 
@@ -64,8 +63,7 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_Anonymous_DropsTheHeadingAndNotJustTheBody()
     {
-        // Filtering markdown means an invisible block leaves nothing behind — under the old
-        // HTML filter the heading went with its div, and that must stay true.
+        // Filtering markdown means an invisible block, heading included, leaves nothing behind.
         var result = Apply(Sample, GuideRoleContext.Anonymous);
 
         result.Should().NotContain("As a Coordinator");
@@ -209,8 +207,7 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_CampLead_SeesCampLeadBlock()
     {
-        // nobodies-collective/Humans#1035: the Camps Coordinator block is written for camp
-        // leads, who hold no system role — before the CampLead token it reached only Board/Admin.
+        // The Camps Coordinator block is written for camp leads, who hold no system role.
         var result = Apply(CampsLike, CampLeadOnly());
 
         result.Should().Contain("Camp lead content.");

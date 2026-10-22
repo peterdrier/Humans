@@ -77,14 +77,12 @@ else
                         <div class="agent-msg-other small">@msg.Content</div>
                     }
 
-                    @* No legacy Feedback handoff link: /Feedback/{id} is Admin-only
-                       (nobodies-collective/Humans#977), so it would 403 for the reporter
-                       reading their own conversation. Admins still see the handoff id on
-                       the admin conversation view. *@
+                    @* No legacy Feedback handoff link: /Feedback/{id} is Admin-only, so the reporter would get a
+                       403. *@
 
                     @if (isAssistant && msg.FetchedDocs is { Length: > 0 })
                     {
-                        @* nobodies-collective/Humans#632: collapsed when >1 call, expanded for 1. `open` is boolean — emit conditionally. *@
+                        @* Collapsed when >1 call. `open` is boolean, so emit it conditionally. *@
                         var toolSummary = string.Format(System.Globalization.CultureInfo.CurrentCulture,
                             Localizer["Agent_ConversationToolCallsSummary"].Value,
                             msg.FetchedDocs.Length);

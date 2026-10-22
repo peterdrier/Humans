@@ -10,11 +10,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Holded.Controllers;
 
-/// <summary>
-/// <c>/Holded</c> — the mirror's own admin screen: what the API budget looks like, when each
-/// sync last ran, and which accounts reconcile. The two sync buttons live here rather than on
-/// Finance's pages, because the mirror is this section's.
-/// </summary>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Holded")]
 internal sealed class HoldedController(
@@ -33,9 +28,8 @@ internal sealed class HoldedController(
         return View(new HoldedOverviewVm(overview, docSync, docSync.CreditorBindingCount));
     }
 
-    /// <summary>The general-ledger page for any account in the chart — a 629x department, a 572x
-    /// bank, a 400x creditor. Every figure is in the association's own point of view (+ money in,
-    /// − money out), not Holded's raw debit/credit sign — see Holded.md's POV section.</summary>
+    /// <summary>Any account in the chart. Figures are in the association's point of view (+ money in, − money
+    /// out), not Holded's raw debit/credit sign.</summary>
     [HttpGet("Accounts/{number:int}")]
     public async Task<IActionResult> Account(int number, CancellationToken ct)
     {
@@ -44,8 +38,6 @@ internal sealed class HoldedController(
         return View(statement);
     }
 
-    /// <summary>Every leg of one journal entry — the "+N more" landing page from the account
-    /// statement's counterparty column, and the target of every Entry cell link.</summary>
     [HttpGet("Entries/{number:int}")]
     public async Task<IActionResult> Entry(int number, CancellationToken ct)
     {
@@ -84,8 +76,7 @@ internal sealed class HoldedController(
     {
         try
         {
-            // The full-history sweep can outlive the HTTP request (proxy timeout, client
-            // disconnect); the request token would cancel it mid-rebuild and record an error.
+            // The full sweep can outlive the request; the request token would cancel it mid-rebuild.
             if (await holded.SyncLedgerAsync(full: true, CancellationToken.None))
                 SetSuccess("Full ledger resync complete — the mirror was rebuilt from inception.");
             else

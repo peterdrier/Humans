@@ -4,13 +4,8 @@ using Humans.Tickets.Contracts;
 namespace Humans.TicketTailor.Tests.Architecture;
 
 /// <summary>
-/// Pins that Tickets' <c>ITicketVendorService</c> port exposes no HTTP-client or vendor
-/// types: every parameter and return type is expressible in port terms (the port's own
-/// DTOs, primitives, NodaTime, BCL collections). That is what makes the 2027 vendor swap a
-/// project delete. The companion check — that only Tickets (its own health check included)
-/// injects the port — is
-/// <c>tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs</c>, which
-/// needs the whole section graph and so cannot live here.
+/// Tickets' <c>ITicketVendorService</c> port exposes no HTTP-client or vendor types, which is what
+/// makes the 2027 vendor swap a project delete. Who injects the port is pinned in Humans.Web.Tests.
 /// </summary>
 public class TicketVendorArchitectureTests
 {
@@ -69,13 +64,9 @@ public class TicketVendorArchitectureTests
     [HumansFact]
     public void ITicketVendorService_AllDtoTypesLiveBesideThePort()
     {
-        // Strict allowlist: every type surfaced by the interface must be a
-        // primitive, void/string, System.*, NodaTime.*, or live beside the port —
-        // namespace Humans.Tickets.Contracts *and* declared in the port's own assembly.
-        // The assembly clause matters: the Humans.Tickets.Contracts leaf shares that
-        // namespace, and re-exporting a leaf type here would put Tickets' boundary
-        // vocabulary in front of every future vendor adapter. Anything else — a
-        // section's types, vendor SDKs — is a boundary leak.
+        // Strict allowlist: primitives, System.*, NodaTime.*, or types beside the port — namespace
+        // Humans.Tickets.Contracts *and* the port's own assembly, since the Contracts leaf shares the
+        // namespace and re-exporting it would put Tickets' vocabulary in front of every vendor adapter.
         var portAssembly = typeof(ITicketVendorService).Assembly;
         var offenders = new List<string>();
 

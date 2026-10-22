@@ -5,12 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.GoogleIntegration.ViewComponents;
 
 /// <summary>
-/// <c>&lt;vc:workspace-identity&gt;</c> — the Google parts of Users' Emails grid
-/// (<c>/Profile/Me/Emails</c> and <c>/Profile/{id}/Admin/Emails</c>): the rejection banner
-/// (<c>mode="banner"</c>) and, per address row, the Google cell (<c>mode="cell"</c>) with the
-/// identity mark, Google's verdict and the Set / Retry form. The host page authorizes the viewer
-/// (self or HumanAdmin/Board/Admin); the forms post to <c>WorkspaceIdentityController</c>, which
-/// applies the same gate.
+/// The Google parts of Users' Emails grid: the rejection banner (<c>mode="banner"</c>) and each row's Google cell
+/// (<c>mode="cell"</c>). The host page authorizes the viewer; <c>WorkspaceIdentityController</c> repeats the gate.
 /// </summary>
 /// <remarks>Public for Razor's tag-helper discovery (HUM0034 exempts view components).</remarks>
 public sealed class WorkspaceIdentityViewComponent(
@@ -42,7 +38,6 @@ public sealed class WorkspaceIdentityViewComponent(
     }
 }
 
-/// <summary>What one Google cell of the Emails grid renders.</summary>
 internal sealed record WorkspaceIdentityCellViewModel(
     Guid UserId,
     Guid EmailId,

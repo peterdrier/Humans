@@ -32,7 +32,6 @@ internal sealed class SyncServiceSettingsConfiguration : IEntityTypeConfiguratio
             .IsUnique();
 
         // Reserved GUID block: 0002. See docs/guid-reservations.md.
-        // Seed one row per service type, all defaulting to None.
         builder.HasData(
             new
             {

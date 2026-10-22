@@ -323,7 +323,7 @@ internal sealed class ClassifierHarness
                 return Task.FromResult<IReadOnlyList<UserEmailRowSnapshot>>([]);
             });
 
-        // IUserService.GetUserInfoAsync resolves merge chains forward itself (#1704): asking
+        // IUserService.GetUserInfoAsync resolves merge chains forward itself: asking
         // for a tombstone id hands back the surviving row, never the tombstone.
         _users
             .GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

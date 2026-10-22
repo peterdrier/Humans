@@ -77,10 +77,7 @@
     </div>
 }
 
-@* Issue submission modal. The markup lives in the Issues section
-   (Views/Shared/_IssueWidgetModal.cshtml) so its Issue_* copy resolves against
-   IssuesResource; partial lookup by name spans application parts. The submit/pre-fill
-   JS below stays here with the rest of the widget's script. *@
+@* The modal markup lives in Issues (_IssueWidgetModal) so its copy resolves against IssuesResource. *@
 @await Html.PartialAsync("_IssueWidgetModal", Model.PagePath)
 
 <link rel="stylesheet" href="~/_content/Humans.Agent/css/agent.css" asp-append-version="true" />
@@ -96,7 +93,6 @@
 }
 <script>
     (function () {
-        // Help bubble — toggles the menu.
         var launcher = document.getElementById('helpWidgetLauncher');
         var menu = document.getElementById('helpWidgetMenu');
         if (launcher && menu) {
@@ -106,14 +102,12 @@
                 menu.style.display = open ? 'none' : 'block';
                 launcher.setAttribute('aria-expanded', open ? 'false' : 'true');
             });
-            // Click-outside to close.
             document.addEventListener('click', function (e) {
                 if (!menu.contains(e.target) && e.target !== launcher) {
                     menu.style.display = 'none';
                     launcher.setAttribute('aria-expanded', 'false');
                 }
             });
-            // Escape to close.
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape' && menu.style.display === 'block') {
                     menu.style.display = 'none';
@@ -143,7 +137,6 @@
             });
         }
 
-        // Issues modal pre-fill + AJAX submit (carried over from former IssuesWidget).
         var modalEl = document.getElementById('issuesWidgetModal');
         if (!modalEl) return;
 

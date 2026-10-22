@@ -12,7 +12,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(256)
             .IsRequired();
 
-        // #1097 — names move from Profile onto User; nullable until the admin backfill runs.
+        // Nullable until the admin backfill runs.
         builder.Property(u => u.BurnerName)
             .HasMaxLength(256);
 
@@ -29,16 +29,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ProfilePictureUrl)
             .HasMaxLength(2048);
 
-        // Shadow property — no production code reads or writes it any more
-        // (nobodies-collective/Humans#1102). Mapping stays so EF doesn't diff the column
-        // out; the drop is deferred to the nobodies-collective/Humans#1102 +
-        // nobodies-collective/Humans#1098 drop PR (no-drops-until-prod-verified).
+        // Shadow property nothing reads or writes; mapped so EF keeps the column until its drop.
         builder.Property<string?>("GoogleEmail")
             .HasColumnName("GoogleEmail")
             .HasMaxLength(256);
 
-        // Shadow property (#687): the status moved to UserEmail.GoogleEmailStatus and nothing reads
-        // or writes this column. Mapping stays so EF keeps the column until its drop migration.
+        // Shadow property nothing reads or writes; mapped so EF keeps the column until its drop.
         builder.Property<LegacyGoogleEmailStatus>("GoogleEmailStatus")
             .HasConversion<string>()
             .HasMaxLength(50)
@@ -49,7 +45,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
-        // UserEmails nav stays (User.Email override depends on it). Other cross-domain FKs are inverse-side. See #635.
+        // The User.Email override depends on this nav.
         builder.HasMany(u => u.UserEmails)
             .WithOne()
             .HasForeignKey(e => e.UserId)
@@ -76,10 +72,8 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.MergedToUserId)
             .HasFilter("\"MergedToUserId\" IS NOT NULL");
 
-        // Lifecycle/access state — required; enum persisted as string. The physical default is
-        // declared here so model and database agree (memory/architecture/required-columns-need-approval);
-        // without it EF scaffolds a '' default, which is not a parseable UserState.
-        // Out-of-range sentinel so an explicit `Bare` is never mistaken for "unset" (Bare == 0).
+        // The physical default keeps model and database agreed (EF would scaffold '', not a
+        // parseable UserState); it is out of range so an explicit Bare (== 0) never reads as unset.
         builder.Property(u => u.State)
             .HasConversion<string>()
             .HasMaxLength(50)

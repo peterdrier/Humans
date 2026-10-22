@@ -34,7 +34,7 @@ internal sealed class ExpensesController(
 {
     private readonly IUserService _userService = userService;
 
-    /// <summary>Pre-approval claim deadlines are Europe/Madrid dates, the zone the association books in.</summary>
+    /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
@@ -58,10 +58,8 @@ internal sealed class ExpensesController(
             var openGrants = (await preapprovals.ListClaimableForUserAsync(user.Id, HttpContext.RequestAborted))
                 .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 
-            // The member's own Holded creditor-account statement (read-only, real ledger lines). Own
-            // account only. The binding is tracked separately from the ledger: GetCreditorLedgerAsync
-            // returns null both for "not bound" and for "bound, but no journal activity cached yet",
-            // and telling a correctly-bound member to go get bound again is worse than saying nothing.
+            // Own account only. GetCreditorLedgerAsync returns null both for "not bound" and "bound, nothing cached
+            // yet", so the binding is read separately: telling a bound member to get bound is worse than silence.
             HoldedCreditorLedger? accountLedger = null;
             var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
             var boundAccountNum = binding?.SupplierAccountNum;
@@ -108,10 +106,8 @@ internal sealed class ExpensesController(
         }
     }
 
-    /// <summary>The new-report form. <paramref name="grant"/> preselects that pre-approval (the
-    /// "File expense" link on the index and on /Preapprovals). Any grant is accepted here so a
-    /// finance admin can file on a member's behalf; the service only ever lets the submitter's own
-    /// be claimed.</summary>
+    /// <summary><paramref name="grant"/> preselects that pre-approval. Any grant is accepted here so a finance admin can
+    /// file on a member's behalf; the service only lets the submitter's own be claimed.</summary>
     [HttpGet("New")]
     public async Task<IActionResult> New(Guid? grant = null)
     {
@@ -153,8 +149,7 @@ internal sealed class ExpensesController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        // Blank means "me" — the picker only renders for finance admins, and clearing its search
-        // box clears the hidden id.
+        // Blank means "me": the picker renders only for finance admins, and clearing its search clears the hidden id.
         var submitterUserId = model.SubmitterUserId is { } picked && picked != Guid.Empty
             ? picked
             : user.Id;
@@ -197,8 +192,8 @@ internal sealed class ExpensesController(
         }
     }
 
-    /// <summary>The grants the new form offers: the viewer's claimable ones, plus the preselected
-    /// one when it is somebody else's (an admin filing on their behalf) so the form can show it.</summary>
+    /// <summary>The viewer's claimable grants, plus the preselected one when it is somebody else's (an admin filing on
+    /// their behalf).</summary>
     private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, Guid viewerId, CancellationToken ct = default)
     {
         var grants = (await preapprovals.ListClaimableForUserAsync(viewerId, ct)).OrderBy(g => g.ClaimBy).ToList();
@@ -220,8 +215,7 @@ internal sealed class ExpensesController(
             var bookingLabel = (await ResolveBookingLabelsAsync([report], HttpContext.RequestAborted))[report.Id];
             var isSubmitter = user.AllUserIds.Contains(report.SubmitterUserId);
             var canEdit = await AllowsAsync(report, ExpenseReportOperation.Edit);
-            // Always the *report's* IBAN state, never the viewer's — an admin setting it up for a
-            // member needs the member's answer.
+            // Always the report's IBAN state, never the viewer's: an admin setting it up needs the member's answer.
             var iban = isSubmitter || canEdit
                 ? await GetIbanViewAsync(report.SubmitterUserId, HttpContext.RequestAborted)
                 : (HasIban: false, MaskedIban: null);
@@ -235,9 +229,8 @@ internal sealed class ExpensesController(
                 ? await preapprovals.GetGrantAsync(grantId, HttpContext.RequestAborted)
                 : null;
 
-            // View is held only by the submitter, the category coordinator and finance admins, so
-            // reaching this page already proves the viewer may see who the submitter is. IBAN stays
-            // behind CanSeePayee.
+            // Reaching this page needs View, which only the submitter, the category coordinator and finance admins
+            // hold, so the viewer may see who submitted. The IBAN stays behind CanSeePayee.
             var submitterInfo = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
             var profileLegalName = $"{submitterInfo?.Profile?.FirstName} {submitterInfo?.Profile?.LastName}".Trim();
 
@@ -269,8 +262,7 @@ internal sealed class ExpensesController(
                 CanEndorse = decisions.Endorse,
                 CanCoordinatorReject = decisions.CoordinatorReject,
                 CanDeclineLines = await AllowsAsync(report, ExpenseReportOperation.DeclineLine),
-                // Only the approval form offers an account override, so the list is loaded only
-                // for the one viewer who can act on it.
+                // Only the approval form offers an account override.
                 Accounts = decisions.Approve ? await BuildAccountOptionsAsync(HttpContext.RequestAborted) : [],
             };
             return View(model);
@@ -292,8 +284,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
-                // Someone who may read the report but not change it is told why; everyone else is
-                // refused outright.
+                // A viewer who may read but not change the report is told why; anyone else is refused.
                 if (!await AllowsAsync(report, ExpenseReportOperation.View)) return Forbid();
                 SetError(localizer["Expenses_Flash_NotEditable"]);
                 return RedirectToAction(nameof(Detail), new { id });
@@ -367,13 +358,13 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/Lines/Add")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
+    [RequestSizeLimit(25 * 1024 * 1024)] // the service enforces 20 MB and the content type
     public async Task<IActionResult> AddLine(Guid id, AddLineInputModel input, IFormFile? file)
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
         if (errorResult is not null) return errorResult;
 
-        // Where the submitter came from — and returns to on a validation error.
+        // Where the submitter came from, and returns to on a validation error.
         IActionResult BackToForm() => input.ParentLineId is { } parent
             ? RedirectToAction(nameof(LineProofs), new { id, lineId = parent })
             : RedirectToAction(nameof(NewLine), new { id, type = input.LineType });
@@ -499,7 +490,7 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/Lines/{lineId:guid}/Attach")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
+    [RequestSizeLimit(25 * 1024 * 1024)] // the service enforces 20 MB and the content type
     public async Task<IActionResult> AttachFile(Guid id, Guid lineId, IFormFile? file)
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit);
@@ -566,8 +557,8 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
             if (!await CanSetReportIbanAsync(report, user)) return Forbid();
 
-            // The IBAN on this page is always the report submitter's — the page sets who gets paid
-            // for this report, and that is never the viewer when an admin opens it.
+            // Always the submitter's IBAN: this page sets who gets paid, which is never the viewer when an admin
+            // opens it.
             var iban = await GetIbanViewAsync(report.SubmitterUserId, HttpContext.RequestAborted);
             var model = new ExpenseIbanViewModel
             {
@@ -625,8 +616,8 @@ internal sealed class ExpensesController(
     public Task<IActionResult> Attachment(Guid attachmentId)
         => StreamAttachmentAsync(attachmentId, inline: false);
 
-    /// <summary>Same file, rendered in the browser tab (images + PDFs) instead of downloaded, so a
-    /// reviewer can check receipts without saving them. Non-renderable types fall back to download.</summary>
+    /// <summary>Rendered in the tab (images and PDFs) so a reviewer can check receipts without saving them. Other types
+    /// fall back to download.</summary>
     [HttpGet("Attachment/{attachmentId:guid}/View")]
     public Task<IActionResult> AttachmentView(Guid attachmentId)
         => StreamAttachmentAsync(attachmentId, inline: true);
@@ -638,7 +629,7 @@ internal sealed class ExpensesController(
             var (errorResult, _) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            // Visibility = report's View handler grant. NotFound on both miss + denial (no leak).
+            // NotFound for both a miss and a denial, so nothing leaks.
             var owningReport = await service.GetReportOwningAttachmentAsync(attachmentId, HttpContext.RequestAborted);
             if (owningReport is null) return NotFound();
 
@@ -649,8 +640,7 @@ internal sealed class ExpensesController(
             var attachment = await service.TryReadAttachmentAsync(owningReport, attachmentId, HttpContext.RequestAborted);
             if (attachment is null) return NotFound();
 
-            // Inline only for the browser-renderable subset of the upload whitelist — no filename
-            // means no Content-Disposition: attachment, so the browser shows it in the tab.
+            // No filename means no Content-Disposition: attachment, so the browser shows it in the tab.
             if (inline && ExpenseAttachmentDto.IsInlineViewableType(attachment.ContentType))
                 return File(attachment.Bytes, attachment.ContentType);
 
@@ -738,10 +728,7 @@ internal sealed class ExpensesController(
         return RedirectToAction(nameof(Detail), new { id });
     }
 
-    /// <summary>
-    /// The one review queue, scoped to the viewer (peterdrier/Humans#1447). It lists and links;
-    /// every decision is taken from <see cref="Detail"/>.
-    /// </summary>
+    /// <summary>It lists and links; every decision is taken from <see cref="Detail"/>.</summary>
     [HttpGet("Review")]
     public async Task<IActionResult> Review()
     {
@@ -830,9 +817,8 @@ internal sealed class ExpensesController(
     }
 
     /// <summary>
-    /// Finance admins reviewing a report can bind the submitter to a Holded creditor account before
-    /// approval, so the push reuses the right 400000xx instead of minting a duplicate. Empty for
-    /// everyone else — the binding is not theirs to see.
+    /// Lets a finance admin bind the submitter before approval, so the push reuses the right 400000xx instead of
+    /// minting a duplicate. Empty for everyone else.
     /// </summary>
     private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
         IReadOnlyList<HoldedCreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
@@ -852,10 +838,7 @@ internal sealed class ExpensesController(
         return (binding?.SupplierAccountNum, boundName, binding is not null, accounts);
     }
 
-    /// <summary>
-    /// Which decisions the detail page offers the current user. The authorization handler owns the
-    /// actor matrix and each decision's status gate.
-    /// </summary>
+    /// <summary>The authorization handler owns the actor matrix and each decision's status gate.</summary>
     private async Task<(bool Approve, bool FinanceReject, bool Endorse, bool CoordinatorReject)>
         ResolveDecisionsAsync(ExpenseReportDto report)
     {
@@ -866,9 +849,7 @@ internal sealed class ExpensesController(
             CoordinatorReject: await AllowsAsync(report, ExpenseReportOperation.CoordinatorReject));
     }
 
-    /// <summary>Resolve the actor and report before any action-specific work. On failure the
-    /// action must return ErrorResult; User and Report are valid only on success, matching
-    /// RequireCurrentUserAsync's contract. Special access rules stay with their actions.</summary>
+    /// <summary>On failure the action must return ErrorResult; User and Report are valid only on success.</summary>
     private async Task<(IActionResult? ErrorResult, UserInfo User, ExpenseReportDto Report)>
         RequireReportAsync(Guid id, ExpenseReportOperation? operation = null, CancellationToken ct = default)
     {
@@ -888,15 +869,14 @@ internal sealed class ExpensesController(
             new ExpenseReportOperationRequirement(operation))).Succeeded;
 
     /// <summary>
-    /// The actor's finance-admin authority, handed to the service so its own ownership and status
-    /// checks know an admin is acting for a member (see <c>IExpenseReportManagement</c> remarks).
+    /// Handed to the service so its ownership and status checks know an admin is acting for a member.
     /// </summary>
     private async Task<bool> IsFinanceAdminAsync() =>
         (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
 
     /// <summary>
-    /// The line pages stay open to the submitter after submission as a read-only view of their own
-    /// receipts, so access is wider than the Edit grant that decides whether the controls render.
+    /// The line pages stay open to the submitter after submission as a read-only view of their receipts, so access is
+    /// wider than the Edit grant that decides whether the controls render.
     /// </summary>
     private async Task<(bool Allowed, bool CanEditLines)> ResolveLinePageAccessAsync(
         ExpenseReportDto report, UserInfo user)
@@ -905,10 +885,7 @@ internal sealed class ExpensesController(
         return (canEditLines || user.AllUserIds.Contains(report.SubmitterUserId), canEditLines);
     }
 
-    /// <summary>
-    /// The submitter keeps this at any status — it is their own profile — on top of whoever the
-    /// Edit grant covers.
-    /// </summary>
+    /// <summary>The submitter keeps this at any status (it is their own profile), on top of the Edit grant.</summary>
     private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, UserInfo user) =>
         user.AllUserIds.Contains(report.SubmitterUserId) || await AllowsAsync(report, ExpenseReportOperation.Edit);
 
@@ -924,9 +901,8 @@ internal sealed class ExpensesController(
             .ToDictionary(id => id, id => users[id].BurnerName);
     }
 
-    /// <summary>Report id → what it books to, as a label: the Holded account's label (retired
-    /// accounts included, so an old report still reads), or for reports that predate the account
-    /// column, their category in the booked year (active year only for unpinned legacy rows).</summary>
+    /// <summary>The account's label (retired accounts included, so an old report still reads), or for reports that
+    /// predate the account column, their category in the booked year.</summary>
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
@@ -975,7 +951,6 @@ internal sealed class ExpensesController(
         return labels;
     }
 
-    /// <summary>Report id → the pre-approval it files against, for the queue's pre-approval column.</summary>
     private async Task<IReadOnlyDictionary<Guid, GrantOption>> ResolveGrantsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
@@ -990,8 +965,8 @@ internal sealed class ExpensesController(
     {
         model.Report = report;
         model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
-        // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between
-        // the member's own pre-approvals. The one the report holds stays listed in any state.
+        // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between the member's own.
+        // The one the report holds stays listed in any state.
         var grants = (await preapprovals.ListClaimableForUserAsync(report.SubmitterUserId, HttpContext.RequestAborted)).OrderBy(g => g.ClaimBy).ToList();
         if (report.PreapprovalGrantId is { } held && grants.All(g => g.Id != held)
             && await preapprovals.GetGrantAsync(held, HttpContext.RequestAborted) is { } heldGrant)
@@ -1000,10 +975,8 @@ internal sealed class ExpensesController(
         model.Today = Today;
     }
 
-    /// <summary>The accounts a report may book to: Finance's active expense accounts, budget-category
-    /// accounts first. Which year a pending report's category may belong to is the service's call
-    /// (it refuses a cross-year rebooking), so one list serves the new form, the edit form and the
-    /// approval override.</summary>
+    /// <summary>Budget-category accounts first. The service refuses a cross-year rebooking, so one list serves the new
+    /// form, the edit form and the approval override.</summary>
     private async Task<IReadOnlyList<HoldedExpenseAccountOption>> BuildAccountOptionsAsync(
         CancellationToken ct = default)
     {

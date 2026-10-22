@@ -14,15 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Surveys;
 
-/// <summary>
-/// Surveys' DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix. Plain Scoped service (Feedback/Issues
-/// pattern) — no caching decorator.
-/// </summary>
-/// <remarks>
-/// <c>SendSurveyReminderJob</c> drives <see cref="ISurveyReminderSender"/>. Its
-/// registration and schedule are contributed via <c>SectionJobs.cs</c>.
-/// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -34,8 +25,6 @@ public sealed class Section : ISection
         services.AddScoped<ISurveyService>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyReminderSender, SurveyReminderSender>();
         services.AddScoped<ISurveyAnalysisRead>(sp => sp.GetRequiredService<SurveyService>());
-        // Owns the user-scoped survey_responses/survey_invitations tables → GDPR export
-        // contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();
@@ -44,8 +33,6 @@ public sealed class Section : ISection
 
         services.AddScoped<SendSurveyReminderJob>();
 
-        // Surveys owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<SurveysEmails>();
         services.AddScoped<IEmailPreviewContributor, SurveysEmailPreviews>();
 

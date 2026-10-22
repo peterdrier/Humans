@@ -4,13 +4,8 @@ using Humans.Users.Data;
 namespace Humans.Users.Tests.Infrastructure;
 
 /// <summary>
-/// Minimal <see cref="IDbContextFactory{TContext}"/> backed by a shared
-/// in-memory <see cref="UsersDbContext"/> for unit tests.
-/// <para>
-/// Each <see cref="CreateDbContextAsync"/> returns a fresh <see cref="UsersDbContext"/>
-/// instance connected to the same in-memory store, matching the production
-/// IDbContextFactory behavior while keeping the shared data visible across calls.
-/// </para>
+/// Each <see cref="CreateDbContextAsync"/> returns a fresh context over the same in-memory store,
+/// as the production factory does.
 /// </summary>
 internal sealed class TestDbContextFactory(DbContextOptions<UsersDbContext> options)
     : IDbContextFactory<UsersDbContext>

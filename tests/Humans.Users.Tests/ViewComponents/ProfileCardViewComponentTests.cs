@@ -45,7 +45,7 @@ public sealed class ProfileCardViewComponentTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(UsersResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
-            // <vc:nobodies-email-badge> is GoogleIntegration's (Users decomposition commit 15).
+            // <vc:nobodies-email-badge> is GoogleIntegration's.
             .AddApplicationPart(typeof(Humans.GoogleIntegration.ViewComponents.NobodiesEmailBadgeViewComponent).Assembly);
         builder.Services.AddSingleton(Substitute.For<IUserService>());
         var authorization = Substitute.For<IAuthorizationService>();

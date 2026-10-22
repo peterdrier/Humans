@@ -8,7 +8,6 @@ public record ProfileSaveRequest(
     string? EmergencyContactName, string? EmergencyContactPhone, string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,
     byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture,
-    // Burner CV. Null = leave stored history untouched (name-only saves); a list —
-    // including an empty one — is a full replace and is validated against
-    // NoPriorBurnExperience (entries OR the flag).
+    // Null leaves stored history untouched (name-only saves); any list, even empty, is a full replace
+    // validated against NoPriorBurnExperience.
     IReadOnlyList<CVEntry>? VolunteerHistory = null);

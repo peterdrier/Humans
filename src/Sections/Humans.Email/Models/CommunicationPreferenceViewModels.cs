@@ -8,23 +8,13 @@ internal sealed class CommunicationPreferencesViewModel
 {
     public List<CategoryPreferenceItem> Categories { get; set; } = [];
 
-    /// <summary>
-    /// When set, the page is accessed via an unsubscribe token instead of a full session.
-    /// The token must be included in AJAX update calls for authorization.
-    /// </summary>
+    /// <summary>Set when the page is reached through an unsubscribe token instead of a session; update calls must send it back.</summary>
     public string? UnsubscribeToken { get; set; }
 
-    /// <summary>
-    /// Category encoded in the unsubscribe token, when present. Drives the one-click
-    /// "Unsubscribe from &lt;category&gt;" banner and pre-focuses that row in the matrix.
-    /// </summary>
+    /// <summary>The category in the unsubscribe token: drives the one-click banner and focuses that row.</summary>
     public MessageCategory? HighlightCategory { get; set; }
 
-    /// <summary>
-    /// When true, the panel renders values only (no toggles, no POST forms) and exposes
-    /// <see cref="CategoryPreferenceItem.UpdateSource"/> / <see cref="CategoryPreferenceItem.UpdatedAt"/>
-    /// for admin attribution. False on self-service.
-    /// </summary>
+    /// <summary>Admin view: values only, no forms, with who changed each row and when.</summary>
     public bool ReadOnly { get; set; }
 
     /// <summary>Current year, shown on the Ticketing row's label.</summary>
@@ -52,43 +42,21 @@ internal sealed class CategoryPreferenceItem
 
     public MessageCategory Category { get; set; }
 
-    /// <summary>
-    /// Positive framing: true = user receives email for this category.
-    /// Stored as !OptedOut in the entity.
-    /// </summary>
+    /// <summary>True means the member receives email: the inverse of <c>OptedOut</c>.</summary>
     public bool EmailEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Whether in-app alerts are enabled for this category.
-    /// Maps directly to InboxEnabled on the entity.
-    /// </summary>
     public bool AlertEnabled { get; set; } = true;
 
-    /// <summary>
-    /// Whether the user can change the email preference for this category.
-    /// False for always-on categories (System, CampaignCodes) and locked ticketing.
-    /// </summary>
+    /// <summary>False for always-on categories and for locked Ticketing.</summary>
     public bool EmailEditable { get; set; }
 
-    /// <summary>
-    /// Whether the user can change the alert preference for this category.
-    /// </summary>
     public bool AlertEditable { get; set; }
 
-    /// <summary>
-    /// Whether matched ticket ownership locks this category's preferences.
-    /// </summary>
     public bool IsTicketingLocked { get; set; }
 
-    /// <summary>
-    /// Who/what last changed this preference (e.g. "Profile", "MailerLiteSync", "MagicLink").
-    /// Surfaced in admin read-only view; null on self-service.
-    /// </summary>
+    /// <summary>Null on self-service.</summary>
     public string? UpdateSource { get; set; }
 
-    /// <summary>
-    /// When this preference was last changed. Null if no preference row exists yet
-    /// (i.e. the user has never touched this category and we're showing defaults).
-    /// </summary>
+    /// <summary>Null when no row exists and the defaults are shown.</summary>
     public Instant? UpdatedAt { get; set; }
 }

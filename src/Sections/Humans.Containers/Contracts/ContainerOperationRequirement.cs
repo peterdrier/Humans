@@ -4,17 +4,10 @@ namespace Humans.Containers.Contracts;
 
 public enum ContainerOperation
 {
-    /// <summary>
-    /// Create / edit / delete a container. Allowed for admins, city-planning
-    /// team members, and the owning camp's leads.
-    /// </summary>
+    /// <summary>Create, edit or delete. Never phase-gated.</summary>
     Manage,
 
-    /// <summary>
-    /// Place a container on the map (write a <c>ContainerPlacement</c> row).
-    /// Same actors as <see cref="Manage"/>, with an extra gate on the camp-lead
-    /// branch: placement phase must be open.
-    /// </summary>
+    /// <summary>Write a placement. A camp lead also needs the placement phase open.</summary>
     Place,
 }
 

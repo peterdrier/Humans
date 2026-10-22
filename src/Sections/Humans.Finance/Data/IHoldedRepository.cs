@@ -8,88 +8,69 @@ namespace Humans.Finance.Data;
 
 internal interface IHoldedRepository : IRepository
 {
-    // Category map
     Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default);
     Task AddCategoryMapAsync(HoldedCategoryMap row, CancellationToken ct = default);
 
-    // Managed accounts (expense accounts created outside the budget map)
     Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default);
 
-    /// <summary>Insert or, when a row already carries this account number, update its label, id and
-    /// active flag. Keyed on the number because that is what Holded and every caller identify the
-    /// account by.</summary>
+    /// <summary>Keyed on the account number, which is how Holded and every caller identify it.</summary>
     Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default);
 
-    // Docs
-    /// <summary>Replaces the complete document snapshot, removing missing rows while preserving
-    /// the identity and creation time of retained documents.</summary>
+    /// <summary>Removes missing rows and keeps the identity and creation time of retained ones.</summary>
     Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
 
-    /// <summary>Every pulled doc, matched or not, for the <c>/Finance/Holded</c> browse panel. The
-    /// two reads above are each a filtered slice — unmatched-only, and matched-in-one-year — so
-    /// neither composes into "all docs". Unordered: the caller sorts for display.</summary>
+    /// <summary>Matched or not; the two reads above are filtered slices. Unordered.</summary>
     Task<IReadOnlyList<HoldedExpenseDoc>> GetAllDocsAsync(CancellationToken ct = default);
 
-    // Creditor contact bindings (member -> Holded creditor account)
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);
-    /// <summary>Inserts the member's binding, or updates it in place. False only when a concurrent insert
-    /// won the member's unique <c>UserId</c> slot between this call's read and write — nothing was
-    /// written, and the caller re-reads to adopt the winner's binding. True otherwise.</summary>
+    /// <summary>Inserts or updates in place. False only when a concurrent insert won the member's unique slot; nothing
+    /// was written and the caller re-reads to adopt the winner.</summary>
     Task<bool> UpsertCreditorContactAsync(HoldedCreditorContact row, Instant now, CancellationToken ct = default);
 
-    /// <summary>Inserts the member's binding and never touches an existing one. False when the member
-    /// already has a binding (the unique <c>UserId</c> index) — nothing was written, and the caller
-    /// re-reads to adopt the winner's binding. True when the row was inserted.</summary>
+    /// <summary>Never touches an existing binding. False when the member already has one; the caller re-reads to adopt
+    /// it.</summary>
     Task<bool> TryInsertCreditorContactAsync(HoldedCreditorContact row, CancellationToken ct = default);
 
-    /// <summary>Removes the member's binding row and returns it as deleted; null when there was none.</summary>
+    /// <summary>Null when there was none.</summary>
     Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Persists a generated payout file and its transfers in one save — the file is the
-    /// record of what the bank was sent, so a file without its rows (or the reverse) is not a state
-    /// this section ever wants to be in.</summary>
+    /// <summary>One save: a file without its rows, or the reverse, is never a valid state.</summary>
     Task AddSepaPayoutAsync(
         SepaPayoutFile file, IReadOnlyList<SepaPayoutTransfer> transfers, CancellationToken ct = default);
 
-    /// <summary>Every credit transfer made to the member, oldest first, for their Article 15 export.</summary>
+    /// <summary>Oldest first.</summary>
     Task<IReadOnlyList<SepaPayoutExportRow>> GetSepaPayoutsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>Every transfer ever generated, flattened with its file, for <c>/Finance/Sepa</c>.
-    /// Unordered and without the file's XML: the caller sorts for display and nothing on that screen
-    /// renders the document.</summary>
+    /// <summary>Unordered, without the file's XML.</summary>
     Task<IReadOnlyList<SepaPayoutTransferRow>> GetSepaPayoutTransferRowsAsync(
         CancellationToken ct = default);
 
     Task<SepaPayoutTransfer?> GetSepaTransferAsync(Guid transferId, CancellationToken ct = default);
 
-    /// <summary>Stamps a completed booking: when, who (null = the sweep), the bank line it was booked
-    /// against, whether the reconcile already succeeded, and the Holded payment ids it posted
-    /// (comma-joined; null when it posted none).</summary>
+    /// <summary>A null actor is the sweep. The payment ids are comma-joined; null when it posted none.</summary>
     Task SaveSepaTransferBookingAsync(
         Guid transferId, Instant bookedAt, Guid? bookedByUserId,
         string bankMovementId, Instant? reconciledAt, string? holdedPaymentRefs,
         CancellationToken ct = default);
 
-    /// <summary>Records the Holded payment ids a run posted before it stopped short of booking, so a
-    /// retry refuses instead of posting over them. Touches nothing else on the row.</summary>
+    /// <summary>For a run that posted payments and stopped short of booking, so a retry refuses. Touches nothing
+    /// else.</summary>
     Task SaveSepaTransferPaymentRefsAsync(
         Guid transferId, string holdedPaymentRefs, CancellationToken ct = default);
 
-    /// <summary>Stamps a reconcile that succeeded on a later pass, without touching the booking.</summary>
-    /// <summary>Marks a transfer withdrawn: the bank cancelled it by hand before execution. The row
-    /// stays; the service has already checked it is unbooked.</summary>
+    /// <summary>The service has already checked the row is unbooked.</summary>
     Task SaveSepaTransferWithdrawnAsync(
         Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
 
+    /// <summary>A reconcile that succeeded on a later pass; the booking is untouched.</summary>
     Task MarkSepaTransferReconciledAsync(
         Guid transferId, Instant reconciledAt, CancellationToken ct = default);
 
-    // Purchase-doc sync state (singleton, persisted on explicit save)
-    /// <summary>Reads the persisted singleton, or creates an unsaved Idle default. Never writes.</summary>
+    /// <summary>The persisted singleton, or an unsaved Idle default. Never writes.</summary>
     Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
     Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default);
 }

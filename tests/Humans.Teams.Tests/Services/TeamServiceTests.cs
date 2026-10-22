@@ -1,12 +1,8 @@
 using Xunit;
 using Humans.Base.Helpers;
 using Humans.Base.Extensions;
-// Tests seed TeamMember.User navs directly for DB-roundtrip verification.
-// TeamMember.User is Obsolete per Â§6c and is never populated by production
-// code (nobodies-collective/Humans#979 removed the in-memory stitcher); the
-// tests set it on the entity before SaveChanges purely to satisfy the FK.
-// File-wide disable cleared when tests switch to seeding via service calls
-// instead of raw entity inserts.
+// TeamMember.User is Obsolete and never populated in production; these tests set it before
+// SaveChanges only to satisfy the FK.
 #pragma warning disable CS0618
 using AwesomeAssertions;
 using Humans.Base.Caching;
@@ -76,9 +72,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
 
-        // Capture the user service to a local before threading it into the locator
-        // builder â€” NSubstitute can't attach an outer .Returns() to a factory that
-        // itself configures substitute calls.
+        // Capture the user service to a local before threading it into the locator builder:
+        // NSubstitute can't attach an outer .Returns() to a factory that itself configures substitute calls.
         var userService = _userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
@@ -119,12 +114,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             _service, _teamResourceService, shiftManagementService,
             NewSettingsServiceBackedByShiftsDb(), _userService, _roleAssignmentService);
     }
-
-    // IsUserAdminAsync / IsUserBoardMemberAsync coverage lives in RoleAssignmentServiceTests.
-
-    // ==========================================================================
-    // CreateTeamAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(false)]
@@ -370,10 +359,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         second.Slug.Should().Be("alpha-2");
     }
 
-    // ==========================================================================
-    // AddSeededMemberAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task AddSeededMemberAsync_TeamNotFound_Throws()
     {
@@ -432,10 +417,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.LeftAt.Should().BeNull();
         result.Id.Should().Be(stored.Id);
     }
-
-    // ==========================================================================
-    // IsUserCoordinatorOfTeamAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_ActiveCoordinator_ReturnsTrue()
@@ -697,10 +678,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain(message);
     }
-
-    // ==========================================================================
-    // UpdateTeamAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task UpdateTeamAsync_TeamNotFound_Refuses()
@@ -1011,7 +988,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.ParentTeamId.Should().Be(parent.Id);
     }
 
-    // health.md §4: IsSensitive is written only by a global Admin. The gate is the service's,
+    // IsSensitive is written only by a global Admin. The gate is the service's,
     // not the edit controller's, so a second caller cannot set the flag around it.
 
     [HumansFact]
@@ -1062,10 +1039,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await AdminAuthorization.DidNotReceive().RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // Create/Update with Google group (T15 — service-owned compensation)
-    // ==========================================================================
 
     [HumansFact]
     public async Task CreateTeamWithGoogleGroup_ProvisioningFails_ClearsPrefixAndWarns()
@@ -1125,10 +1098,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.GroupWarning.Should().BeNull();
     }
-
-    // ==========================================================================
-    // JoinTeamAsync (T13 — dispatch on the team's join policy)
-    // ==========================================================================
 
     [HumansFact]
     public async Task JoinTeamAsync_ApprovalRequiredTeam_CreatesPendingRequest()
@@ -1236,10 +1205,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .UserId.Should().Be(user.Id);
         (await TeamsDb.TeamJoinRequests.AnyAsync(TestContext.Current.CancellationToken)).Should().BeFalse();
     }
-
-    // ==========================================================================
-    // RequestToJoinTeamAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(false)]
@@ -1425,10 +1390,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
     }
 
-    // ==========================================================================
-    // RemoveMemberAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task RemoveMemberAsync_TeamNotFound_ReturnsRefusal()
     {
@@ -1538,14 +1499,10 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.RemoveMemberAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        // The coordinator-eligibility reconcile is part of the mutation (T1).
+        // The coordinator-eligibility reconcile is part of the mutation.
         await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
             target.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
-
-    // ==========================================================================
-    // RejectJoinRequestAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task RejectJoinRequestAsync_RequestNotFound_Throws()
@@ -1609,10 +1566,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.ReviewedByUserId.Should().Be(coordinator.Id);
         stored.ResolvedAt.Should().Be(Clock.GetCurrentInstant());
     }
-
-    // ==========================================================================
-    // ApproveJoinRequestAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData("normal", "es", "es")]
@@ -1807,10 +1760,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             requester.Id, nameof(User));
     }
 
-    // ==========================================================================
-    // CreateRoleDefinitionAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task CreateRoleDefinitionAsync_TeamNotFound_Throws()
     {
@@ -1912,10 +1861,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.CreatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
-    // ==========================================================================
-    // UpdateRoleDefinitionAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task UpdateRoleDefinitionAsync_DefinitionNotFound_Throws()
     {
@@ -2012,10 +1957,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
-    // ==========================================================================
-    // DeleteRoleDefinitionAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task DeleteRoleDefinitionAsync_NotFound_Throws()
     {
@@ -2058,10 +1999,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().FirstOrDefaultAsync(d => d.Id == def.Id, TestContext.Current.CancellationToken);
         stored.Should().BeNull();
     }
-
-    // ==========================================================================
-    // ToggleRoleIsManagementAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task ToggleRoleIsManagementAsync_DefinitionNotFound_Throws()
@@ -2158,10 +2095,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.IsManagement.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // PermanentlyDeleteTeamAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task PermanentlyDeleteTeamAsync_TeamNotFound_Throws()
     {
@@ -2200,10 +2133,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     // Happy-path PermanentlyDeleteTeamAsync needs a real transactional store; the in-memory
     // EF provider used in this harness does not support transactions. Cover it in Integration tests.
 
-    // ==========================================================================
-    // GetTeamBySlugAsync (TeamInfo? â€” ITeamService surface)
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
@@ -2232,10 +2161,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Should().BeNull();
     }
 
-    // ==========================================================================
-    // GetTeamAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetTeamAsync_ExistingId_ReturnsTeamWithActiveMembers()
     {
@@ -2259,10 +2184,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Should().BeNull();
     }
-
-    // ==========================================================================
-    // GetUserTeamsAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetUserTeamsAsync_ReturnsActiveMembershipsOnly()
@@ -2305,10 +2226,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Should().BeEmpty();
     }
 
-    // ==========================================================================
-    // GetMyTeamMembershipsAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetMyTeamMembershipsAsync_Coordinator_GetsPendingCountsForManageableNonSystemTeams()
     {
@@ -2349,10 +2266,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].Role.Should().Be(TeamMemberRole.Member);
         result[0].PendingRequestCount.Should().Be(1);
     }
-
-    // ==========================================================================
-    // GetTeamDetailAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetTeamDetailAsync_AnonymousViewer_OnlySeesPublicTeamCoordinatorsAndPublicChildren()
@@ -2421,10 +2334,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         pendingRequest.Status.Should().Be(TeamJoinRequestStatus.Pending);
     }
 
-    // ==========================================================================
-    // GetPendingRequestsForTeamAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetPendingRequestsForTeamAsync_ReturnsPendingOnly()
     {
@@ -2484,10 +2393,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].UserId.Should().Be(u1.Id);
         result[1].UserId.Should().Be(u2.Id);
     }
-
-    // ==========================================================================
-    // GetUserPendingRequestAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData("missing")]
@@ -2598,10 +2503,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Should().BeNull();
     }
-
-    // ==========================================================================
-    // GetTeamAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetTeamAsync_ReturnsOnlyActiveMembers()
@@ -2750,10 +2651,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Members.Should().BeEmpty();
     }
 
-    // ==========================================================================
-    // GetAdminTeamListAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetAdminTeamListAsync_ReturnsPaginatedResults()
     {
@@ -2834,10 +2731,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Teams[0].SystemTeamType.Should().BeNull();
         result.Teams[1].SystemTeamType.Should().Be(nameof(SystemTeamType.Volunteers));
     }
-
-    // ==========================================================================
-    // AddMemberToTeamAsync
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(false, "missing")]
@@ -3201,10 +3094,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].IsFilled.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // GetAdminTeamListAsync â€” PendingShiftSignupCount
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetAdminTeamListAsync_CountsPendingShiftSignupsForActiveEvent()
     {
@@ -3222,7 +3111,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Pending);
         SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Confirmed); // not pending
 
-        // Rota on inactive event â€” should NOT be counted
+        // Rota on an inactive event: must NOT be counted.
         var oldRota = SeedRota(team.Id, inactiveEvent.Id, "Old Shifts");
         var oldShift = SeedShift(oldRota.Id);
         SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
@@ -3255,14 +3144,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         summary.PendingShiftSignupCount.Should().Be(0);
     }
 
-    // ==========================================================================
-    // DeleteTeamAsync â€” #494: revoke Google access when a team is soft-deleted
-    // ==========================================================================
-
     [HumansFact]
     public async Task DeleteTeamAsync_ClosesActiveMemberships()
     {
-        // Arrange
         var team = SeedTeam("Doomed Team");
         var alice = SeedUser(displayName: "Alice");
         var bob = SeedUser(displayName: "Bob");
@@ -3274,14 +3158,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var actor = Guid.NewGuid();
-        // Act
         await _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken);
 
         // Service uses its own DbContext; detach trackers so assertions re-read
         // from the store rather than returning stale tracked entities.
         ClearAllTrackers();
 
-        // Assert â€” team soft-deleted
         var reloaded = await TeamsDb.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id, TestContext.Current.CancellationToken);
         reloaded!.IsActive.Should().BeFalse();
 
@@ -3355,8 +3237,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Should().NotContainKey($"shared@{DomainConstants.GoogleGroupDomain}");
     }
 
-    // --- Helpers ---
-
     private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)
     {
         var definition = new TeamRoleDefinition
@@ -3389,12 +3269,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     /// <summary>
-    /// A fake <see cref="ISettingsService"/> resolving "the active event" off this
-    /// test's own <see cref="TeamsTestHarness.ShiftsDb"/>-seeded rows (Shifts still
-    /// keys its per-event knobs by <c>settings_event</c>'s id, so its own
-    /// <c>EventSettings.IsActive</c> stands in for the real Settings-owned table
-    /// here). Mirrors <c>ShiftsTestHarness.NewCalendarResolver</c>, which this test
-    /// class cannot reach directly (it extends <see cref="TeamsTestHarness"/>).
+    /// A fake <see cref="ISettingsService"/> resolving "the active event" off this test's ShiftsDb-seeded
+    /// rows, like <c>ShiftsTestHarness.NewCalendarResolver</c>, which this class cannot reach.
     /// </summary>
     private ISettingsService NewSettingsServiceBackedByShiftsDb()
     {

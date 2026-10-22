@@ -1,9 +1,6 @@
 namespace Humans.Shifts.Contracts;
 
-/// <summary>
-/// Computed classification of a shift's time period relative to the event.
-/// NOT stored in DB — derived from DayOffset vs EventSettings offsets.
-/// </summary>
+/// <summary>Derived from DayOffset against the event's offsets, never stored.</summary>
 public enum ShiftPeriod
 {
     /// <summary>Before gate opening (DayOffset &lt; 0).</summary>

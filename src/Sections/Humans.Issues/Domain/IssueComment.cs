@@ -6,7 +6,7 @@ internal sealed class IssueComment
 {
     public Guid Id { get; init; }
     public Guid IssueId { get; init; }
-    public Issue Issue { get; set; } = null!; // aggregate-local nav, .Include() is legal
+    public Issue Issue { get; set; } = null!;
 
     public Guid? SenderUserId { get; init; }
 

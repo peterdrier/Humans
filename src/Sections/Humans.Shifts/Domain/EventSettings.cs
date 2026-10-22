@@ -4,8 +4,7 @@ using NodaTime;
 namespace Humans.Shifts.Domain;
 
 /// <summary>
-/// Singleton event configuration — dates, timezone, early entry capacity, and global caps.
-/// One active EventSettings per event cycle.
+/// Shifts' knobs for one event cycle. The calendar and early-entry columns are dead: Settings is their source.
 /// </summary>
 internal sealed class EventSettings : IBurnSettingsInfo
 {
@@ -17,78 +16,35 @@ internal sealed class EventSettings : IBurnSettingsInfo
 
     public string TimeZoneId { get; set; } = string.Empty;
 
-    /// <summary>
-    /// The date gates open — DayOffset 0.
-    /// </summary>
     public LocalDate GateOpeningDate { get; set; }
 
-    /// <summary>
-    /// Negative offset for the first build day (e.g., -14).
-    /// </summary>
     public int BuildStartOffset { get; set; }
 
-    /// <summary>
-    /// Offset for the last event day (inclusive). Strike starts at EventEndOffset + 1.
-    /// </summary>
     public int EventEndOffset { get; set; }
 
-    /// <summary>
-    /// Offset for the last strike day (inclusive).
-    /// </summary>
     public int StrikeEndOffset { get; set; }
 
-    // ------------------------------------------------------------------
-    // Build-phase sub-period boundaries — the build period is split into
-    // four named sub-periods so the shift dashboard can filter per phase.
-    // Each offset is the inclusive start day of its sub-period; the end is
-    // the next sub-period's start (exclusive). All offsets are negative
-    // and ascending: BuildStartOffset ≤ FirstCrew ≤ SetupWeek ≤ PreEventWeek
-    // ≤ FinishingWeekend < 0. Coordinators reconfigure these per event so
-    // the absolute dates auto-shift with GateOpeningDate.
-    // ------------------------------------------------------------------
-
-    /// <summary>Inclusive start day of the "First crew" sub-period (default -25).</summary>
     public int FirstCrewStartOffset { get; set; } = -25;
 
-    /// <summary>Inclusive start day of the "Set-up week" sub-period (default -16).</summary>
     public int SetupWeekStartOffset { get; set; } = -16;
 
-    /// <summary>Inclusive start day of the "Pre-event week" sub-period (default -9).</summary>
     public int PreEventWeekStartOffset { get; set; } = -9;
 
-    /// <summary>Inclusive start day of the "Finishing weekend" sub-period (default -4).</summary>
     public int FinishingWeekendStartOffset { get; set; } = -4;
 
-    /// <summary>
-    /// Step function: DayOffset → cumulative EE capacity at that point.
-    /// Keys are day offsets, values are total headcount allowed.
-    /// </summary>
     public Dictionary<int, int> EarlyEntryCapacity { get; set; } = new();
 
-    /// <summary>
-    /// Optional barrios-specific EE allocation (DayOffset → reserved barrios headcount).
-    /// Subtracted from general pool when computing available EE slots.
-    /// </summary>
     public Dictionary<int, int>? BarriosEarlyEntryAllocation { get; set; }
 
-    /// <summary>
-    /// After this instant, non-privileged users cannot sign up for or bail build shifts.
-    /// </summary>
     public Instant? EarlyEntryClose { get; set; }
 
-    /// <summary>
-    /// Whether the shift browsing system is open to regular volunteers.
-    /// </summary>
+    /// <summary>Whether regular volunteers can browse shifts.</summary>
     public bool IsShiftBrowsingOpen { get; set; }
 
-    /// <summary>
-    /// Optional global cap on total volunteer signups per event.
-    /// </summary>
+    /// <summary>Optional cap on total volunteer signups per event.</summary>
     public int? GlobalVolunteerCap { get; set; }
 
-    /// <summary>
-    /// Hours before a shift to send reminder notifications.
-    /// </summary>
+    /// <summary>How long before a shift its reminder goes out.</summary>
     public int ReminderLeadTimeHours { get; set; } = 24;
 
     public bool IsActive { get; set; }
@@ -99,10 +55,7 @@ internal sealed class EventSettings : IBurnSettingsInfo
 
     public ICollection<Rota> Rotas { get; } = new List<Rota>();
 
-    // The early-entry clock rule lives on IBurnSettingsInfo as a default
-    // implementation so entity and DTO share one copy. C# does not surface a
-    // default implementation through the concrete type, so these two forward to
-    // it — they carry no logic of their own and cannot drift from it.
+    // C# does not surface IBurnSettingsInfo's default implementations through the concrete type, so these forward.
 
     /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntryClosed" />
     public bool IsEarlyEntryClosed(Instant now) =>

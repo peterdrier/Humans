@@ -3,22 +3,14 @@ using NodaTime;
 namespace Humans.Governance.Domain;
 
 /// <summary>
-/// A binding vote of the association: Asociados (and Board members, who are de facto
-/// Asociados) voting on a motion during or around a General Assembly, optionally with
-/// indicative participation by the wider community.
+/// A recorded vote under embargo, not a secret ballot: every ballot is attributable and
+/// changeable until close, and no read path exposes the tally before close except the audited
+/// Admin peek. The secret-ballot counterpart lives in Humans.Surveys.
 /// </summary>
-/// <remarks>
-/// A <em>recorded vote under embargo</em>, not a secret ballot: every ballot is attributable
-/// and changeable until close, while no read path exposes the tally before close except the
-/// audited Admin peek. The secret-ballot counterpart lives in Humans.Surveys — see
-/// <c>Docs/features/assembly-votes.md</c>, "Why not Surveys".
-/// </remarks>
 internal sealed class AssemblyVote
 {
-    /// <summary>Unique identifier for the vote.</summary>
     public Guid Id { get; init; }
 
-    /// <summary>Per-culture title.</summary>
     public GovernanceLocalizedText Title { get; set; } = GovernanceLocalizedText.Empty;
 
     /// <summary>
@@ -33,7 +25,6 @@ internal sealed class AssemblyVote
     /// </summary>
     public string OfficialCulture { get; set; } = string.Empty;
 
-    /// <summary>Optional link to supporting information.</summary>
     public string? InfoUrl { get; set; }
 
     /// <summary>Ballot shape. Immutable once Open.</summary>
@@ -48,7 +39,6 @@ internal sealed class AssemblyVote
     /// <summary>How far individual ballots are disclosed after close. Immutable once Open.</summary>
     public BallotDisclosure BallotDisclosure { get; set; }
 
-    /// <summary>Lifecycle state.</summary>
     public AssemblyVoteStatus Status { get; set; } = AssemblyVoteStatus.Draft;
 
     /// <summary>The assembly this vote belongs to, for the acta. Not a link to an entity.</summary>
@@ -61,13 +51,10 @@ internal sealed class AssemblyVote
     /// </summary>
     public Instant ClosesAt { get; set; }
 
-    /// <summary>When the vote was opened and the roster frozen.</summary>
     public Instant? OpenedAt { get; set; }
 
-    /// <summary>The Admin who opened the vote. Bare cross-section reference — no nav.</summary>
     public Guid? OpenedByUserId { get; set; }
 
-    /// <summary>When the vote actually closed.</summary>
     public Instant? ClosedAt { get; set; }
 
     /// <summary>The Admin who stopped the vote; null when it lapsed at <see cref="ClosesAt"/>.</summary>
@@ -83,16 +70,13 @@ internal sealed class AssemblyVote
     public string? ResultJson { get; set; }
 
     /// <summary>
-    /// The Board member or Admin who drafted the vote. Bare reference — no nav. Settable for
-    /// the same single reason as the other actor columns: an account merge repoints it at the
-    /// surviving account, since it is the same human. Never reassigned otherwise.
+    /// Settable only so an account merge can repoint it at the surviving account, since it is
+    /// the same human.
     /// </summary>
     public Guid CreatedByUserId { get; set; }
 
-    /// <summary>When the draft was created.</summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>When the vote was last modified.</summary>
     public Instant UpdatedAt { get; set; }
 
     /// <summary>Authored options; RankedChoice only. Aggregate-local navigation.</summary>

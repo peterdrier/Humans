@@ -2,27 +2,19 @@ using NodaTime;
 
 namespace Humans.Tickets.Domain;
 
-/// <summary>
-/// Singleton tracking ticket sync operational state: when sync last ran, whether it
-/// succeeded, and error details.
-/// </summary>
 internal sealed class TicketSyncState
 {
-    /// <summary>PK — always 1 (singleton).</summary>
+    /// <summary>Always 1.</summary>
     public int Id { get; init; }
 
-    /// <summary>The vendor event ID currently being synced.</summary>
     public string VendorEventId { get; set; } = string.Empty;
 
-    /// <summary>When the last successful sync completed.</summary>
+    /// <summary>The start of the last successful sync; the vendor resume cursor. Null forces a full resync.</summary>
     public Instant? LastSyncAt { get; set; }
 
-    /// <summary>Current sync status.</summary>
     public TicketSyncStatus SyncStatus { get; set; }
 
-    /// <summary>Error message from last failed sync, if any.</summary>
     public string? LastError { get; set; }
 
-    /// <summary>When SyncStatus last changed.</summary>
     public Instant? StatusChangedAt { get; set; }
 }

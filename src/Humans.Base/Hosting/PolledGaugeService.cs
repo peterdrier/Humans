@@ -4,12 +4,9 @@ using Microsoft.Extensions.Hosting;
 namespace Humans.Base.Hosting;
 
 /// <summary>
-/// Base for a section's observable-gauge refresh loop: owns the 60-second timer that
-/// drives <see cref="RefreshAsync"/>, so each metrics gauge service (nobodies-collective/Humans#1091)
-/// only has to implement the read side. Subclasses create their own
-/// <c>Meter("Humans.Metrics")</c> and register gauges against a private snapshot updated by
-/// <see cref="RefreshAsync"/> — multiple <c>Meter</c> instances may share a name; listeners
-/// aggregate by name.
+/// Base for a section's observable-gauge refresh loop: owns the 60-second timer driving <see cref="RefreshAsync"/>.
+/// Subclasses create their own <c>Meter("Humans.Metrics")</c> (instances may share a name; listeners aggregate by
+/// name) and register gauges against a snapshot <see cref="RefreshAsync"/> updates.
 /// </summary>
 public abstract class PolledGaugeService(IServiceScopeFactory scopeFactory, ILogger logger)
     : IHostedService, IDisposable
@@ -20,11 +17,9 @@ public abstract class PolledGaugeService(IServiceScopeFactory scopeFactory, ILog
     private Timer? _refreshTimer;
 
     /// <summary>
-    /// Arms the gauge-refresh timer. Deliberately done here (StartAsync) rather than in the
-    /// constructor: the host runs every <see cref="IHostedLifecycleService"/>.StartingAsync —
-    /// including DatabaseMigrationHostedService, which applies pending migrations — to completion
-    /// before any StartAsync. Arming in the constructor (via an eager resolve before app.Run)
-    /// let the first refresh race schema migrations and query not-yet-migrated tables.
+    /// Arms the timer here, not in the constructor: the host runs every
+    /// <see cref="IHostedLifecycleService"/>.StartingAsync, including the migration runner, before any StartAsync, so
+    /// the first refresh never queries a not-yet-migrated table.
     /// </summary>
     public Task StartAsync(CancellationToken cancellationToken)
     {

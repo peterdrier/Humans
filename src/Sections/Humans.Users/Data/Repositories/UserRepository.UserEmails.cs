@@ -20,9 +20,6 @@ internal sealed partial class UserRepository
     public async Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // With IDbContextFactory the context is short-lived, so returned entities
-        // are detached. Callers must pass mutated entities explicitly back to
-        // UpdateUserEmailAsync / UpdateUserEmailsAsync.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
@@ -125,10 +122,7 @@ internal sealed partial class UserRepository
             .Where(e => e.UserId == targetUserId)
             .ToListAsync(ct);
 
-        // Lookup target rows by case-insensitive address. UserEmail.Email is
-        // service-normalized (lowercased before persistence by AddEmailAsync /
-        // AddVerifiedEmailAsync), but defensive lower-casing here keeps the
-        // collapse correct even if a legacy mixed-case row exists.
+        // Lower-cased defensively: Email is normalized on write, but a legacy mixed-case row may exist.
         var targetByAddress = targetRows
             .ToDictionary(e => e.Email, StringComparer.OrdinalIgnoreCase);
 
@@ -136,8 +130,6 @@ internal sealed partial class UserRepository
         {
             if (targetByAddress.TryGetValue(src.Email, out var tgt))
             {
-                // Same address on both sides — collapse onto target row.
-                // OR-combine IsVerified; preserve target's IsPrimary/IsGoogle.
                 if (src.IsVerified)
                 {
                     tgt.IsVerified = true;
@@ -147,10 +139,8 @@ internal sealed partial class UserRepository
             }
             else
             {
-                // Re-FK to target. Clear IsPrimary so the target's existing primary stands.
-                // IsGoogle is frozen (GoogleIntegration owns the identity since Users
-                // decomposition commit 15); clearing it here keeps the target's legacy
-                // designation the one the google.workspace-identities fallback reads.
+                // Clear IsPrimary and IsGoogle so the target's selections stand; the frozen IsGoogle
+                // designation is what the google.workspace-identities fallback reads.
                 ctx.Entry(src).Property(nameof(UserEmail.UserId)).CurrentValue = targetUserId;
                 src.IsPrimary = false;
                 src.IsGoogle = false;
@@ -319,13 +309,9 @@ internal sealed partial class UserRepository
             when (dbex.InnerException is Npgsql.PostgresException
             { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_user_emails_Email" })
         {
-            // The verified-email partial unique index caught a concurrent
-            // cross-user insert that beat the in-service pre-check. Translate
-            // here so the Web layer never imports Npgsql / Postgres types
-            // (clean architecture per design-rules §1). Sole catcher in the
-            // Web layer is AccountController.TryReconcileOAuthIdentityAsync
-            // (and the new-user inline catch) — both swallow + log so sign-in
-            // never blocks.
+            // The verified-email unique index caught a concurrent cross-user insert. Translated
+            // here so callers never see Npgsql types; the sign-in callers swallow and log it so
+            // sign-in never blocks.
             throw new OAuthReconcileConcurrencyException(
                 "OAuth reconcile race: a concurrent insert violated the " +
                 "verified-email partial unique index (Postgres 23505).",

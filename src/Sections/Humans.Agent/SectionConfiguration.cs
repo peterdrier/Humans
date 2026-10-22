@@ -4,10 +4,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Agent;
 
-/// <summary>
-/// Agent's own settings: the Anthropic credentials it calls with, and the Community KB
-/// repository it binds and reads through <c>GitHubCommunityKbContentSource</c>.
-/// </summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

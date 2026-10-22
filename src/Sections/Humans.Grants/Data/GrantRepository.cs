@@ -8,8 +8,6 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
 {
     internal const string MergeRevokeReason = "Duplicate after account merge";
 
-    // ── Reads ─────────────────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<GrantProgram>> GetProgramsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -47,8 +45,6 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Managers.AsNoTracking().AnyAsync(m => userIds.Contains(m.UserId), ct);
     }
-
-    // ── Writes ────────────────────────────────────────────────────────────
 
     public async Task AddProgramAsync(GrantProgram program, CancellationToken ct = default)
     {
@@ -104,8 +100,6 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         ctx.Entry(tracked).CurrentValues.SetValues(Scalar(grant));
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── GDPR ──────────────────────────────────────────────────────────────
 
     public async Task<GrantUserRows> GetRowsForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -178,7 +172,6 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
                 });
         }
 
-        // Actor columns.
         foreach (var p in await ctx.Programs.Where(p => p.CreatedByUserId == sourceUserId).ToListAsync(ct))
             p.CreatedByUserId = targetUserId;
         foreach (var m in await ctx.Managers.Where(m => m.AddedByUserId == sourceUserId).ToListAsync(ct))
@@ -191,8 +184,6 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         await ctx.SaveChangesAsync(ct);
         return revoked;
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private static IQueryable<GrantProgram> ProgramsWithChildren(GrantsDbContext ctx) =>
         // Identity resolution rather than plain AsNoTracking: the child → Program back-references

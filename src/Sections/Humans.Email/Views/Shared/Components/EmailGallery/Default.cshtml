@@ -1,8 +1,7 @@
 @using Microsoft.AspNetCore.Html
 @model Guid
 
-@* The widget-gallery card this section owns, rendered against the signed-in admin (UsersGallery's
-   and GovernanceGallery's shape). The wg-* CSS classes are the gallery page's; this renders inside it. *@
+@* The wg-* CSS classes belong to the gallery page this renders inside. *@
 
 @functions {
     private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)

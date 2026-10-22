@@ -50,12 +50,8 @@ file sealed class StubAuditLog : IAuditLogService
 }
 
 /// <summary>
-/// Unit tests for the Application-layer <see cref="AccountProvisioningService"/>.
-/// Repositories are stubbed in-memory so these
-/// tests do not depend on Npgsql-specific translations (<c>ILike</c>) that
-/// the EF InMemory provider does not support; behaviour of the actual
-/// <see cref="UserEmail"/> / <see cref="User"/> matching is covered in
-/// integration/QA against Postgres.
+/// Repositories are in-memory fakes because the real matching uses Npgsql <c>ILike</c>, which the
+/// EF InMemory provider cannot evaluate.
 /// </summary>
 public class AccountProvisioningServiceTests
 {
@@ -240,10 +236,8 @@ public class AccountProvisioningServiceTests
     }
 
     /// <summary>
-    /// In-memory fake of the two <c>IUserEmailService</c> methods that
-    /// <c>AccountProvisioningService</c> calls. AccountProvisioningService routes
-    /// UserEmail mutations through <c>IUserEmailService</c> instead of the
-    /// repository, so the test fixture mirrors the same boundary.
+    /// Fakes the <c>IUserEmailService</c> calls the service makes: it routes UserEmail writes
+    /// through that service, not the repository.
     /// </summary>
     private sealed class FakeUserEmailService
     {
@@ -541,7 +535,6 @@ public class AccountProvisioningServiceTests
         StoredUser(result.UserId).BurnerName.Should().Be("Alice Smith");
         StoredUser(result.UserId).ContactSource.Should().Be(ContactSource.TicketTailor);
 
-        // Verify UserEmail was created
         var userEmail = _userEmailFake.All.FirstOrDefault(ue => ue.UserId == result.UserId);
         userEmail.Should().NotBeNull();
         userEmail.Email.Should().Be("alice@example.com");
@@ -552,7 +545,6 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_FindsExisting_ByPrimaryEmail()
     {
-        // Seed an existing user
         var existingUser = new User
         {
             Id = Guid.NewGuid(),
@@ -619,7 +611,6 @@ public class AccountProvisioningServiceTests
             UpdatedAt = _clock.GetCurrentInstant(),
         });
 
-        // Look up by secondary email
         var result = await _service.FindOrCreateUserByEmailAsync(
             "carol@secondary.com", "Carol", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
@@ -630,13 +621,11 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_DoesNotCreateDuplicates()
     {
-        // Create the first time
         var result1 = await _service.FindOrCreateUserByEmailAsync(
             "dave@example.com", "Dave", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result1.Created.Should().BeTrue();
 
-        // Call again with the same email
         var result2 = await _service.FindOrCreateUserByEmailAsync(
             "dave@example.com", "Dave Smith", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
@@ -696,7 +685,6 @@ public class AccountProvisioningServiceTests
 
         result.Created.Should().BeFalse();
         result.UserId.Should().Be(existingUser.Id);
-        // ContactSource should now be set
         StoredUser(result.UserId).ContactSource.Should().Be(ContactSource.TicketTailor);
     }
 
@@ -759,8 +747,7 @@ public class AccountProvisioningServiceTests
     [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_RoutesEmailRowsThroughIUserEmailService()
     {
-        // Email-row policy still routes through IUserEmailService even though
-        // Users now owns the underlying repository storage methods.
+        // Email-row policy routes through IUserEmailService, not the repository.
         var result = await _service.FindOrCreateUserByEmailAsync(
             "jane@example.com", "Jane", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
@@ -952,7 +939,7 @@ public class AccountProvisioningServiceTests
 
         result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
         result.UserId.Should().Be(user.Id);
-        // Login stamp goes through the single owner of the rule (A1).
+        // The login stamp goes through the rule's single owner.
         await _userService.Received(1).RecordLoginAsync(user.Id, Arg.Any<CancellationToken>());
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }

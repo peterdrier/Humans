@@ -7,17 +7,8 @@ using NodaTime;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// Behavior tests for <see cref="GoogleSyncOutboxRepository"/> — the narrow
-/// count surface that Notifications, Metrics, and the Admin daily digest
-/// consume instead of reading <c>google_sync_outbox</c> directly.
-///
-/// <para>
-/// Each count method is exercised against a fixture that intentionally
-/// contains every kind of outbox row — pending, processed, pending-with-
-/// error, permanently failed, retried — so a future tweak that
-/// accidentally reclassifies a row is caught here rather than in
-/// production admin dashboards.
-/// </para>
+/// Each count runs against a fixture holding every kind of outbox row, so a tweak that
+/// reclassifies a row is caught here rather than on the admin dashboards.
 /// </summary>
 public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
 {

@@ -16,16 +16,6 @@ using Humans.Expenses.Authorization;
 
 namespace Humans.Expenses;
 
-/// <summary>
-/// Expenses' DI entry point.
-/// </summary>
-/// <remarks>
-/// The Holded HTTP client is <em>not</em> registered here. <c>IHoldedClient</c> belongs to the
-/// Holded section, which registers it; Expenses consumes it through
-/// <c>Humans.Holded.Contracts</c> (memory/architecture/vendor-connectors-own-sections.md).
-/// <c>HoldedExpenseOutboxJob</c> (<c>Jobs/</c>) drives <c>IExpenseReportBackgroundProcessor</c>;
-/// its registration and schedule are contributed via <c>SectionJobs.cs</c>.
-/// </remarks>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -37,28 +27,19 @@ public sealed class Section : ISection
         services.AddScoped<IExpenseReportManagement>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportBackgroundProcessor, ExpenseReportBackgroundProcessor>();
-        // Finance's read of what each line wrote on Holded; takes nothing from Finance, so Finance
-        // can depend on it while ExpenseReportService depends on IHoldedFinanceService.
+        // Takes nothing from Finance, so Finance can depend on it while ExpenseReportService depends on Finance.
         services.AddScoped<IExpenseHoldedBookingService, ExpenseHoldedBookingService>();
-        // Owns the user-scoped expense_reports table → GDPR export contributor (design-rules §8a).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpenseReportService>());
 
         services.Configure<TravelReimbursementConfig>(configuration.GetSection("TravelReimbursement"));
 
-        // Expenses owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<ExpensesEmails>();
         services.AddScoped<IEmailPreviewContributor, ExpensesEmailPreviews>();
 
-        // The resource-based handler; ExpensesController authorizes against it directly, Backdoor
-        // through PolicyNames.ExpenseReportView (SectionPolicies).
+        // Backdoor reaches it through PolicyNames.ExpenseReportView (SectionPolicies).
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
 
-        // The section owns its badge colours rather than Base holding a literal row per section
-        // enum: Base cannot name ExpenseReportStatus, and referencing the section's contracts
-        // leaf from Base to get it back is the trap that ends with Base knowing every section's
-        // vocabulary (memory/architecture/base-ui-registries-are-section-populated.md).
-        // GetBadgeClass is the single source; the section's own views call it directly.
+        // Base cannot name ExpenseReportStatus, so the section registers its own badge colours.
         EnumBadgeMap.Register(
             Enum.GetValues<ExpenseReportStatus>().ToDictionary(s => (Enum)s, s => s.GetBadgeClass()));
 

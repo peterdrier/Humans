@@ -6,9 +6,6 @@ using Serilog.Events;
 
 namespace Humans.Backdoor.Controllers;
 
-/// <summary>
-/// The in-memory log tail, for an agent triaging QA or production.
-/// </summary>
 [ApiController]
 [Route("api/backdoor/logs")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]

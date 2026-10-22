@@ -8,7 +8,6 @@ using NodaTime;
 
 namespace Humans.Finance.Services;
 
-/// <summary>Refreshes Finance's purchase-document mirror and records the sync outcome.</summary>
 internal sealed class HoldedDocumentSync(
     IHoldedRepository repo,
     IHoldedClient client,
@@ -17,10 +16,9 @@ internal sealed class HoldedDocumentSync(
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    /// <summary>Pulls every purchase document, matches it to a category and replaces the mirror.</summary>
-    /// <param name="checkDocs">Runs over the fetched documents before the mirror is written; the
-    /// facade's duplicate-document log. It must not throw.</param>
-    /// <param name="ct">Cancels the sync.</param>
+    /// <summary>Replaces the mirror.</summary>
+    /// <remarks><paramref name="checkDocs"/> runs over the fetched documents before the mirror is written. It must not
+    /// throw.</remarks>
     public async Task<HoldedSyncResult> SyncAsync(
         Func<IReadOnlyList<HoldedPurchaseDocListItemDto>, CancellationToken, Task> checkDocs,
         CancellationToken ct = default)
@@ -92,8 +90,8 @@ internal sealed class HoldedDocumentSync(
         IReadOnlySet<string> managedIds,
         Instant now)
     {
-        // The whole doc goes on its FIRST line's account, with the union of doc and line tags:
-        // real purchase docs are single-line today. Line-level attribution is a later refinement.
+        // The whole doc goes on its FIRST line's account, with the union of doc and line tags: real purchase docs are
+        // single-line today.
         var bookedAccount = doc.Lines.Count > 0 ? doc.Lines[0].AccountId : null;
         var tags = doc.Tags
             .Concat(doc.Lines.SelectMany(l => l.Tags))
@@ -115,9 +113,8 @@ internal sealed class HoldedDocumentSync(
             Tax = doc.Tax,
             Total = doc.Total,
             Currency = doc.Currency,
-            // Strict equality, not `!= true`: an absent `draft` field is treated as NOT approved —
-            // a silently-approved doc leaks into the budget actuals, an unmatched-approval one just
-            // stays a gap on the Unmatched queue.
+            // Strict equality: an absent `draft` is NOT approved. A wrongly approved doc leaks into the actuals; a
+            // wrongly unapproved one just stays on the Unmatched queue.
             IsApproved = doc.IsDraft == false,
             TagsJson = JsonSerializer.Serialize(tags),
             BookedAccountId = bookedAccount,

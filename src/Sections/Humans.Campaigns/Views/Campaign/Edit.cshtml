@@ -1,7 +1,7 @@
 @model CampaignEditSnapshot
 @{
     ViewData["Title"] = "Edit Campaign";
-    // On validation failure, prefer submitted form values (ViewBag) over the entity's persisted values
+    // On validation failure, prefer submitted values (ViewBag) over the persisted ones.
     var title2 = ViewBag.Title2 as string ?? Model.Title;
     var description = ViewBag.Description as string ?? Model.Description;
     var emailSubject = ViewBag.EmailSubject as string ?? Model.EmailSubject;

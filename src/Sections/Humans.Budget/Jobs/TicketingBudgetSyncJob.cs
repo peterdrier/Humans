@@ -6,14 +6,9 @@ using Humans.Budget.Services;
 namespace Humans.Budget.Jobs;
 
 /// <summary>
-/// Hangfire recurring job that materializes ticket sales actuals into budget line items.
-/// Finds the active budget year's ticketing group and syncs completed weeks.
+/// Public with an internal constructor: Shell names the type for Hangfire, so DI registers it through a factory in
+/// <c>Section.Register</c>.
 /// </summary>
-/// <remarks>
-/// Public type with an internal constructor: Shell names the concrete type for Hangfire
-/// scheduling while HUM0034 forbids other public types, so DI registration is a factory in
-/// <c>Section.Register</c> (ruling 43), which can build it from within the assembly.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class TicketingBudgetSyncJob : IRecurringJob
 {

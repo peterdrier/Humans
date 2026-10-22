@@ -3,11 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Governance;
 
-/// <summary>
-/// Governance's member top-nav contribution: the assembly votes list. Every logged-in member
-/// sees it whether or not they are on any roster — non-roster members still see what the
-/// association is deciding (Docs/features/assembly-votes.md, decision 8).
-/// </summary>
+/// <summary>Every logged-in member sees it, on a roster or not: they still see what the association is deciding.</summary>
 internal sealed class SectionNav : ISectionNav
 {
     public IEnumerable<MemberNavItem> Items() =>

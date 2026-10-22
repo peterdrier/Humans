@@ -2,9 +2,6 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// Represents a Google resource (Drive folder or Group) provisioned for a team.
-/// </summary>
 public class GoogleResource
 {
     public Guid Id { get; init; }
@@ -27,18 +24,12 @@ public class GoogleResource
 
     public string? ErrorMessage { get; set; }
 
-    /// <summary>
-    /// Permission level for team members on this Drive resource.
-    /// Only applicable to Drive resources (folders, files, shared drives), not Groups.
-    /// None (CLR default) for Groups; Drive resources must set an explicit level.
-    /// </summary>
+    /// <summary>Drive resources only, which must set an explicit level; None (the CLR default) for Groups.</summary>
     public DrivePermissionLevel DrivePermissionLevel { get; set; }
 
     /// <summary>
-    /// When true, the system enforces inheritedPermissionsDisabled on the corresponding
-    /// Google Drive folder, preventing parent permission inheritance. The reconciliation
-    /// job detects and corrects drift if someone re-enables inheritance manually.
-    /// Only applicable to Drive folders.
+    /// Drive folders only: enforces <c>inheritedPermissionsDisabled</c>, and reconciliation corrects drift if
+    /// someone re-enables inheritance by hand.
     /// </summary>
     public bool RestrictInheritedAccess { get; set; }
 }

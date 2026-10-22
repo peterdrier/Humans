@@ -53,9 +53,8 @@ internal sealed class AgentController(
             return;
         }
 
-        // Resource-based, with the requirement passed directly rather than through a named
-        // policy: the requirement and its handler are internal to the section, and this is
-        // the only caller (the Store/Expenses/Containers shape).
+        // The requirement is passed directly, not through a named policy: it and its handler are internal to the
+        // section, and this is the only caller.
         var rate = await auth.AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()]);
         if (!rate.Succeeded)
         {
@@ -115,9 +114,7 @@ internal sealed class AgentController(
         var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null) return missing;
 
-        // Ownership mismatch returns 404 (not 403) per Agent.md invariant 7
-        // and the issue nobodies-collective/Humans#632 spec — the existence of someone else's
-        // conversation must not be inferable from the response code.
+        // 404, not 403: someone else's conversation must not be inferable from the status code.
         var view = await agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
         if (view is null) return NotFound();
 
@@ -207,25 +204,17 @@ internal sealed class AgentController(
     }
 }
 
-/// <summary>List of conversations + an admin flag the view uses to decide whether
-/// to surface admin-only chrome (Human column, refusal filters). Paging applies to
-/// the admin view only (the non-admin history is a fixed most-recent window):
-/// <see cref="Page"/> is zero-based and <see cref="HasNext"/> means an older page
-/// exists (detected by over-fetching one row).</summary>
+/// <summary>Paging applies to the admin view only. <see cref="Page"/> is zero-based; <see cref="HasNext"/> means an
+/// older page exists.</summary>
 internal sealed record AgentConversationsViewModel(
     IReadOnlyList<AgentConversationRow> Rows,
     bool IsAdminView,
     int Page = 0,
     bool HasNext = false);
 
-/// <summary>One row in the conversations list. <see cref="DisplayName"/> is null
-/// for non-admin views (the column is hidden) and stitched in from
-/// <c>IUserService</c> for admin views.</summary>
+/// <summary><see cref="DisplayName"/> is null in non-admin views.</summary>
 internal sealed record AgentConversationRow(AgentConversationListSnapshot Conversation, string? DisplayName);
 
-/// <summary>Conversation detail with display name (admin only) and an admin flag
-/// the view uses to gate token counts, tool invocations, and the prompt-preview
-/// link.</summary>
 internal sealed record AgentConversationDetailViewModel(
     AgentConversationTranscriptSnapshot Conversation,
     string? DisplayName,

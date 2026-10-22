@@ -67,8 +67,7 @@ public class UserInfoTests
 #pragma warning restore HUM_USER_COMMPREFS
     }
 
-    // nobodies-collective/Humans#1098: User.BurnerName is the sole source. The Profile.BurnerName
-    // and legacy-DisplayName fallback chain is gone, including the retired tombstone sentinel.
+    // User.BurnerName is the sole source: no Profile.BurnerName or legacy-DisplayName fallback.
 
     [HumansFact]
     public void BurnerName_reads_only_the_User_column()
@@ -119,8 +118,8 @@ public class UserInfoTests
     [HumansFact]
     public void BurnerName_resolves_the_sentinel_for_a_freshly_erased_user()
     {
-        // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which now dual-writes
-        // the sentinel into BurnerName directly (nobodies-collective/Humans#1098).
+        // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which writes the
+        // sentinel into BurnerName directly.
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
         user.BurnerName = UserInfo.GdprAnonymizedBurnerName;
@@ -174,8 +173,7 @@ public class UserInfoTests
         info.IsActive.Should().BeFalse();
     }
 
-    // IsGdprAnonymized recognition (nobodies-collective/Humans#1742) — keyed on the minted
-    // deleted-<id>@deleted.local email, never any combination of user-editable names.
+    // IsGdprAnonymized keys on the minted deleted-<id>@deleted.local email, never on user-editable names.
 
     [HumansFact]
     public void IsGdprAnonymized_false_for_a_live_member_named_Deleted_User()
@@ -234,7 +232,7 @@ public class UserInfoTests
     [HumansFact]
     public void IsGdprAnonymized_false_for_a_live_member_who_types_the_whole_tombstone_shape()
     {
-        // nobodies-collective/Humans#1742: DisplayName, FirstName and LastName are all copied
+        // DisplayName, FirstName and LastName are all copied
         // from what a member types, so the legacy arm must not fire on names alone. Their
         // burner name is populated; a genuinely erased row's is blank.
         var userId = Guid.NewGuid();

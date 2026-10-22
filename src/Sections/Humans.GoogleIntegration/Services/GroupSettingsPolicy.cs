@@ -4,17 +4,9 @@ using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// Single source of truth for the enforced Google Group settings the system
-/// applies on provisioning and checks during drift reconciliation.
-/// </summary>
+/// <summary>Applied on provisioning and checked for drift.</summary>
 internal static class GroupSettingsPolicy
 {
-    /// <summary>
-    /// Builds the expected settings record from the configured options. The
-    /// 7 dynamic fields come from <paramref name="groupOptions"/>; the
-    /// remaining 6 are fixed policy values.
-    /// </summary>
     public static GroupSettingsExpected BuildExpected(GoogleWorkspaceGroupOptions groupOptions) => new(
         WhoCanJoin: groupOptions.WhoCanJoin,
         WhoCanViewMembership: groupOptions.WhoCanViewMembership,

@@ -23,11 +23,6 @@ using Xunit;
 
 namespace Humans.Consent.Tests.Services;
 
-/// <summary>
-/// consent_reviews (Users decomposition commit 12): the read with its legacy profile fallback, the
-/// IConsentWrite annotations, the consent.profile-review copy, export and erasure, the queue
-/// predicates and the two user parts.
-/// </summary>
 public sealed class ConsentReviewServiceTests : IDisposable
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 10, 21, 12, 0);
@@ -89,8 +84,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
     private Task<ConsentReview?> RowAsync(Guid userId) =>
         _db.ConsentReviews.AsNoTracking().SingleOrDefaultAsync(r => r.UserId == userId, Ct);
 
-    // ─── Read ────────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Read_FallsBackToTheLegacyProfileReview_UntilARowExists()
     {
@@ -134,7 +127,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     [HumansFact]
     public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsRejectedEverywhere()
     {
-        // A profile rejected before commit 12 whose users.State never recorded Rejected: every
+        // A legacy profile rejection whose users.State never recorded Rejected: every
         // reader that gated on profiles.RejectedAt must still see the rejection.
         var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Flagged, rejectedAt: Earlier, reason: "dup"));
         user.State.Should().NotBe(UserState.Rejected);
@@ -157,8 +150,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         await _userWrite.Received(1).SetRejectedAsync(user.Id, Arg.Any<CancellationToken>());
         (await RowAsync(user.Id))!.RejectedAt.Should().Be(Earlier);
     }
-
-    // ─── IConsentWrite ───────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task RecordConsentCheck_Cleared_ApprovesAndStamps()
@@ -242,8 +233,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         (await RowAsync(id)).Should().BeNull();
     }
 
-    // ─── consent.profile-review ──────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Copy_ListsEveryUncopiedLegacyReview_IncludingTombstones_ThenIsIdempotent()
     {
@@ -287,8 +276,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         (await migration.Status(services, Ct)).Pending.Should().Be(0);
     }
 
-    // ─── Export, erasure ─────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Export_CarriesTheRows_OrNothing()
     {
@@ -322,8 +309,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         }, o => o.ExcludingMissingMembers());
     }
 
-    // ─── Predicates ──────────────────────────────────────────────────────────────
-
     [HumansFact]
     public void Predicates_GateOnTheReview_TheStateAndTombstones()
     {
@@ -342,8 +327,6 @@ public sealed class ConsentReviewServiceTests : IDisposable
         active.IsConsentCheckFlagged(flagged with { RejectedAt = Earlier }).Should().BeFalse();
         tombstone.IsConsentCheckFlagged(flagged).Should().BeFalse();
     }
-
-    // ─── User parts ──────────────────────────────────────────────────────────────
 
     [HumansFact]
     public void UserParts_ContributeTheReviewCardAndTheRejectionReason()

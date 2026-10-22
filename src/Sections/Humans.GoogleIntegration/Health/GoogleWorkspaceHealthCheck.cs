@@ -7,10 +7,6 @@ using Humans.Base.Configuration;
 
 namespace Humans.GoogleIntegration.Health;
 
-/// <summary>
-/// Health check that validates Google service account credentials and API access.
-/// Verifies the service account can authenticate and access the Cloud Identity Groups API.
-/// </summary>
 internal sealed class GoogleWorkspaceHealthCheck(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleWorkspaceHealthCheck> logger) : IHealthCheck
@@ -38,7 +34,6 @@ internal sealed class GoogleWorkspaceHealthCheck(
                 ApplicationName = "Humans Health Check"
             });
 
-            // List groups with max 1 result — validates credential + Cloud Identity API access
             var request = cloudIdentityService.Groups.List();
             request.Parent = $"customers/{_settings.CustomerId}";
             request.PageSize = 1;

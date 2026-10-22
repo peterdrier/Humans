@@ -6,17 +6,9 @@ using Xunit;
 namespace Humans.Governance.Tests.Enums;
 
 /// <summary>
-/// Governance's half of the string-stored-enum guard. The rest live in the test project of the
-/// section that owns each enum; these two moved out with the
-/// section because <c>ApplicationStatus</c> now sits on Governance's contracts leaf and
-/// <c>VoteChoice</c> turned internal in the section, neither of which
-/// <c>Humans.Domain.Tests</c> can name (nobodies-collective/Humans#866).
+/// All three are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the
+/// OLD string in the column. A rename needs a migration that UPDATEs the stored values.
 /// </summary>
-/// <remarks>
-/// Both are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the
-/// OLD string in <c>applications.status</c> / <c>board_votes.vote</c>. A rename needs a
-/// migration that UPDATEs the stored values.
-/// </remarks>
 public class EnumStringStabilityTests
 {
     [HumansTheory]
@@ -43,7 +35,7 @@ public class EnumStringStabilityTests
             typeof(VoteChoice), ["Yay", "Maybe", "No", "Abstain"]
         },
         {
-            // applications.MembershipTier and governance_membership_tiers.Tier (Users decomposition commit 11).
+            // applications.MembershipTier and governance_membership_tiers.Tier.
             typeof(MembershipTier), ["Volunteer", "Colaborador", "Asociado"]
         }
     };

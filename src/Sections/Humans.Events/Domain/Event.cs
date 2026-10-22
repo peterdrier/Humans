@@ -6,9 +6,7 @@ using Humans.Events.Contracts;
 namespace Humans.Events.Domain;
 
 /// <summary>
-/// A single event submission for the event guide. Exactly one of
-/// <see cref="CampId"/> or <see cref="GuideSharedVenueId"/> must be set.
-/// State transitions are enforced by domain methods with <see cref="IClock"/>.
+/// Exactly one of <see cref="CampId"/> or <see cref="GuideSharedVenueId"/> must be set.
 /// </summary>
 internal sealed class Event
 {
@@ -18,86 +16,55 @@ internal sealed class Event
     public Guid SubmitterUserId { get; set; }
     public Guid CategoryId { get; set; }
 
-    /// <summary>
-    /// Event title (≤ 80 chars).
-    /// </summary>
     public string Title { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Event description (≤ 450 chars).
-    /// </summary>
     [MarkdownContent]
     public string Description { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Optional free-text detail within the venue (e.g. "near the fire pit").
-    /// </summary>
+    /// <summary>Free-text detail within the venue, e.g. "near the fire pit".</summary>
     public string? LocationNote { get; set; }
 
-    /// <summary>
-    /// Optional display name for the person running this event (max 40 chars).
-    /// For individual events: shown in the guide instead of the submitter's name when set.
-    /// </summary>
+    /// <summary>For individual events, shown in the guide instead of the submitter's name when set.</summary>
     public string? Host { get; set; }
     public Instant StartAt { get; set; }
     public int DurationMinutes { get; set; }
     public bool IsRecurring { get; set; }
 
     /// <summary>
-    /// Comma-separated day offsets from gate opening for recurrence (e.g. "0,2,4").
-    /// Only meaningful when <see cref="IsRecurring"/> is true.
+    /// Comma-separated day offsets from gate opening, e.g. "0,2,4". Only meaningful when <see cref="IsRecurring"/>.
     /// </summary>
     public string? RecurrenceDays { get; set; }
 
-    /// <summary>
-    /// Submitter-assigned priority for print guide selection (1 = highest; null = unranked).
-    /// </summary>
+    /// <summary>For print guide selection: 1 = highest, null = unranked.</summary>
     public int? PriorityRank { get; set; }
     public EventStatus Status { get; set; }
 
-    /// <summary>
-    /// Internal moderator notes (not visible to submitter).
-    /// </summary>
+    /// <summary>Never shown to the submitter.</summary>
     public string? AdminNotes { get; set; }
     public Instant SubmittedAt { get; set; }
     public Instant LastUpdatedAt { get; set; }
 
-    // Navigation properties
     public EventVenue? EventVenue { get; set; }
     public EventCategory Category { get; set; } = null!;
     public ICollection<EventModerationAction> EventModerationActions { get; } = new List<EventModerationAction>();
     public ICollection<EventFavourite> EventFavourites { get; } = new List<EventFavourite>();
 
-    // Schedule encoding
-
     /// <summary>All-day events are stored as a midnight start + 1440-minute duration.</summary>
     public const int AllDayDurationMinutes = 1440;
 
-    /// <summary>
-    /// Resolves the form-level "all day" flag into the stored schedule encoding:
-    /// all-day ⇒ midnight start + <see cref="AllDayDurationMinutes"/>.
-    /// </summary>
+    /// <summary>All-day ⇒ midnight start + <see cref="AllDayDurationMinutes"/>.</summary>
     public static (TimeSpan StartTime, int DurationMinutes) ResolveAllDaySchedule(
         bool isAllDay, TimeSpan startTime, int durationMinutes) =>
         isAllDay ? (TimeSpan.Zero, AllDayDurationMinutes) : (startTime, durationMinutes);
 
-    /// <summary>True when the stored duration carries the all-day encoding.</summary>
     public bool IsAllDay => DurationMinutes == AllDayDurationMinutes;
 
-    // Submitter eligibility predicates
-
-    /// <summary>
-    /// Statuses the submitter may edit/resubmit from. Camp (barrio) events have
-    /// no Draft stage; individual events may also be edited while Draft.
-    /// </summary>
+    /// <summary>Camp events have no Draft stage; individual events may also be edited while Draft.</summary>
     public static bool IsEditableBySubmitter(EventStatus status, bool isCampEvent) =>
         status is EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested
         || (!isCampEvent && status is EventStatus.Draft);
 
-    /// <summary>
-    /// Statuses the submitter may withdraw from. Camp (barrio) events have no
-    /// Draft stage.
-    /// </summary>
+    /// <summary>Camp events have no Draft stage.</summary>
     public static bool IsWithdrawableBySubmitter(EventStatus status, bool isCampEvent) =>
         status is EventStatus.Pending or EventStatus.Approved
         || (!isCampEvent && status is EventStatus.Draft);
@@ -108,11 +75,6 @@ internal sealed class Event
     /// <inheritdoc cref="IsWithdrawableBySubmitter(EventStatus, bool)"/>
     public bool CanBeWithdrawnBySubmitter => IsWithdrawableBySubmitter(Status, CampId is not null);
 
-    // State transition methods
-
-    /// <summary>
-    /// Submit for moderation.
-    /// </summary>
     public void Submit(IClock clock)
     {
         if (Status is not (EventStatus.Draft or EventStatus.Rejected
@@ -144,10 +106,7 @@ internal sealed class Event
         }
     }
 
-    /// <summary>
-    /// Withdraw the submission. Available from Pending or Approved — plus Draft
-    /// for individual events (camp events have no Draft stage).
-    /// </summary>
+    /// <summary>From Pending or Approved, plus Draft for individual events.</summary>
     public void Withdraw(IClock clock)
     {
         if (!CanBeWithdrawnBySubmitter)
@@ -156,11 +115,7 @@ internal sealed class Event
         LastUpdatedAt = clock.GetCurrentInstant();
     }
 
-    /// <summary>
-    /// Applies submitter-edited fields to an individual (non-camp) event.
-    /// Shared by the submit-edit and resubmit flows; the caller persists via
-    /// <c>UpdateAndResubmitAsync</c>.
-    /// </summary>
+    /// <summary>The caller persists via <c>UpdateAndResubmitAsync</c>.</summary>
     public void ApplyIndividualEdit(
         Guid categoryId, Guid venueId, string title, string description,
         Instant startAt, int durationMinutes, string? locationNote, string? host,
@@ -178,11 +133,7 @@ internal sealed class Event
         RecurrenceDays = isRecurring ? recurrenceDays : null;
     }
 
-    /// <summary>
-    /// Applies submitter-edited fields to a camp (barrio) event. Shared by the
-    /// submit-edit and resubmit flows; the caller persists via
-    /// <c>UpdateAndResubmitAsync</c>.
-    /// </summary>
+    /// <summary>The caller persists via <c>UpdateAndResubmitAsync</c>.</summary>
     public void ApplyBarrioEdit(
         Guid categoryId, string title, string description,
         Instant startAt, int durationMinutes, string? locationNote, string? host,
@@ -200,9 +151,6 @@ internal sealed class Event
         PriorityRank = priorityRank;
     }
 
-    /// <summary>
-    /// Apply a moderation decision to this event.
-    /// </summary>
     public void ApplyModerationAction(EventModerationActionType actionType, IClock clock)
     {
         if (Status is not EventStatus.Pending)
@@ -219,9 +167,8 @@ internal sealed class Event
     }
 
     /// <summary>
-    /// Expands this event into concrete occurrence instants. A non-null
-    /// <paramref name="dayOffset"/> narrows a recurring event to the single
-    /// occurrence on that day offset (non-recurring events ignore it).
+    /// A non-null <paramref name="dayOffset"/> narrows a recurring event to that day's single occurrence;
+    /// non-recurring events ignore it.
     /// </summary>
     public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate? gateOpeningDate, DateTimeZone? timeZone, int? dayOffset = null) =>
         EventRecurrenceDays.GetOccurrenceInstants(

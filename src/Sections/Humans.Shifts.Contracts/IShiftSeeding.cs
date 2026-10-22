@@ -4,49 +4,22 @@ using NodaTime;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// The dev-fixture verbs <c>Humans.Development</c>'s dashboard seeder drives:
-/// stand up a demo burn with rotas, shifts and signups, and tear it back down.
+/// The dev seeder's verbs, over input records so the boundary never names <c>EventSettings</c> or <c>Rota</c>.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Nothing else outside the section calls any of these — every other
-/// <c>CreateAsync</c> / <c>UpdateAsync</c> hit in the repo is a different
-/// service's member of the same name; the burn other sections read is
-/// <see cref="IBurnSettingsService"/>, which returns
-/// <see cref="BurnSettingsInfo"/> rather than the entity.
-/// </para>
-///
-/// <para>
-/// The verbs take input records, never <c>EventSettings</c> / <c>Rota</c> rows.
-/// </para>
-/// </remarks>
 public interface IShiftSeeding
 {
     /// <summary>
-    /// Sets the shift-browsing switch for an event's Shifts knobs row, creating
-    /// the row on demand if it doesn't exist yet (nobodies-collective/Humans#1631 —
-    /// "active event" is Settings' concept now; seed it there first via
-    /// <c>Humans.Settings.Contracts.IEventSettingsSeeding</c>).
+    /// Creates the knobs row on demand. The event itself is Settings': seed it first via
+    /// <c>Humans.Settings.Contracts.IEventSettingsSeeding</c>.
     /// </summary>
     Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen);
 
-    /// <summary>
-    /// Creates a rota on a department team of the given event, optionally
-    /// tagging it. Returns the new rota's id.
-    /// </summary>
     Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null);
 
-    /// <summary>
-    /// Creates a new shift for a department rota. Validates rota ownership,
-    /// period DayOffset range, and volunteer counts.
-    /// </summary>
+    /// <summary>Validates rota ownership, the period's DayOffset range and the volunteer counts.</summary>
     Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input);
 
-    /// <summary>
-    /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
-    /// and shift signups. Requires the current authenticated user to hold the
-    /// full Admin role.
-    /// </summary>
+    /// <summary>Rotas, shifts and signups go too. Requires the current user to hold the full Admin role.</summary>
     Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 }
 

@@ -19,11 +19,9 @@ using NSubstitute;
 namespace Humans.Teams.Tests.Services;
 
 /// <summary>
-/// The real-graph half of <c>DependencyCycleResolutionTests</c>: <c>UserService</c> injects
-/// <see cref="ITeamManagement"/> and <c>TeamService</c> resolves <c>ISystemTeamSync</c> and the
-/// Google sync surface lazily through <c>IServiceProvider</c> to break the cycle back. The
-/// assertion needs the concrete <c>TeamService</c> in the graph, which is internal to this
-/// assembly, so the test lives here.
+/// The real-graph half of <c>DependencyCycleResolutionTests</c>, here because it needs the concrete
+/// <c>TeamService</c>, internal to this assembly. <c>TeamService</c> resolves <c>ISystemTeamSync</c>
+/// and the Google sync surface lazily through <c>IServiceProvider</c> to break the cycle back.
 /// </summary>
 public sealed class TeamsDependencyCycleTests
 {
@@ -42,19 +40,12 @@ public sealed class TeamsDependencyCycleTests
         services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 
-        // Users is another section; UserService, its DbContext and its two repository
-        // interfaces are internal to Humans.Users and its own graph is pinned by that
-        // section's own tests. Same call as IRoleAssignmentService below — the subject
-        // here is the Teams chain.
+        // Users, Auth and Shifts are other sections whose own tests pin their graphs; the
+        // subject here is the Teams chain.
         services.AddScoped<IUserService>(_ => Substitute.For<IUserService>());
 
-        // Auth is another section; RoleAssignmentService is internal to Humans.Auth and its
-        // own constructor shape is pinned by that section's AuthArchitectureTests. The
-        // subject here is the Teams chain.
         services.AddScoped<IRoleAssignmentService>(_ => Substitute.For<IRoleAssignmentService>());
 
-        // Shifts is another section; its concrete service and repository are internal to
-        // Humans.Shifts and its own graph is pinned by that section's own tests.
         services.AddScoped<IShiftManagement>(_ => Substitute.For<IShiftManagement>());
         services.AddScoped<IShiftService>(_ => Substitute.For<IShiftService>());
 

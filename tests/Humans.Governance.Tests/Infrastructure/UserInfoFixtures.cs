@@ -6,15 +6,6 @@ namespace Humans.Governance.Tests.Infrastructure;
 /// Builds the minimal <see cref="UserInfo"/> Governance's service tests hand to their
 /// <c>IUserService</c> substitutes.
 /// </summary>
-/// <remarks>
-/// The pure half of <c>Humans.Application.Tests</c>' <c>UserInfoStubHelpers</c>. That file
-/// also carries <c>StubGetUserInfosFromDb</c> overloads built on an in-memory
-/// <c>UsersDbContext</c>, so linking it into the shared test set would push
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — and a <c>Humans.Infrastructure</c>
-/// dependency — into every section test project, which is the boundary G5 exists to draw
-/// (nobodies-collective/Humans#866). Governance's tests stub the user reads themselves and
-/// need only the projection.
-/// </remarks>
 internal static class UserInfoFixtures
 {
     public static UserInfo ToUserInfo(this User user, ProfileInfo? profile = null)

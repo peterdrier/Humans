@@ -42,8 +42,6 @@ public class SepaPaymentFileBuilderTests
 
     private static XDocument Parse(string xml) => XDocument.Parse(xml);
 
-    // ─── The file itself ────────────────────────────────────────────────────────
-
     [HumansFact]
     public void Build_SingleTransfer_ProducesTheSabadellShape()
     {
@@ -133,8 +131,6 @@ public class SepaPaymentFileBuilderTests
         init.Element(Ns + "GrpHdr")!.Element(Ns + "CtrlSum")!.Value.Should().Be("32.35");
     }
 
-    // ─── Identifiers ────────────────────────────────────────────────────────────
-
     [HumansFact]
     public void Build_EveryIdCarriesTheAccountOrgTagAndName_WithinThirtyFive()
     {
@@ -185,8 +181,6 @@ public class SepaPaymentFileBuilderTests
             .Which.Descendants(Ns + "BICFI").Should().BeEmpty();
     }
 
-    // ─── Remittance information (nobodies-collective/Humans#1141) ───────────────
-
     [HumansFact]
     public void Build_RemittanceCarriesEachTransfersOwnAccountAndCreditorName()
     {
@@ -200,8 +194,6 @@ public class SepaPaymentFileBuilderTests
             "40000004 - NCA - Ana Ruiz",
             "40000007 - NCA - Bo Jansen");
     }
-
-    // ─── Character handling ─────────────────────────────────────────────────────
 
     [HumansFact]
     public void Build_NamesAreFoldedIntoTheSepaSubset()
@@ -234,8 +226,6 @@ public class SepaPaymentFileBuilderTests
             .Descendants(Ns + "Cdtr").Single().Element(Ns + "Nm")!.Value
             .Should().HaveLength(70);
     }
-
-    // ─── Refusals ───────────────────────────────────────────────────────────────
 
     [HumansFact]
     public void Build_AmountOverTheCap_RefusesTheWholeFile()

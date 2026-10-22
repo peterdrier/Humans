@@ -7,8 +7,7 @@ using Humans.MailerLite.Services.MailerLite;
 namespace Humans.MailerLite.Tests.Services;
 
 /// <summary>
-/// GDPR erasure deletes the person's MailerLite subscriber
-/// (nobodies-collective/Humans#853). The client's subscriber snapshot has no TTL,
+/// GDPR erasure deletes the person's MailerLite subscriber. The client's subscriber snapshot has no TTL,
 /// so the local eviction has to happen on every outcome the remote calls success —
 /// including the 404 that means "already gone there".
 /// </summary>

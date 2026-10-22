@@ -12,23 +12,13 @@ namespace Humans.Integration.Tests;
 /// controller/action pair that actually exists in the running app's routing table.
 /// </summary>
 /// <remarks>
-/// This is a silent failure with no other guard. <c>AdminSidebar</c>'s view renders each item
-/// through an anchor tag helper with <c>asp-controller</c>/<c>asp-action</c>; when the pair
-/// resolves to no endpoint, <c>IUrlHelper.Action</c> returns null, the tag helper omits the
-/// <c>href</c> entirely, and the page still returns 200 with a link-shaped element that goes
-/// nowhere. Build, suite and even the §15 step 12 HTML diff all pass.
+/// A silent failure with no other guard: when the pair resolves to no endpoint, the anchor tag helper omits the
+/// <c>href</c> and the page still returns 200 with a link that goes nowhere. Moving an action between controllers
+/// under one <c>[Route]</c> prefix changes no URL and does exactly this.
 /// <para>
-/// Written after A2 (peterdrier/Humans#1239) hit exactly that: splitting
-/// <c>FinanceController</c> moved its <c>Index</c> action into <c>BudgetAdminController</c> —
-/// same <c>[Route("Finance")]</c> prefix, so no URL changed — while this table still said
-/// controller "Finance", leaving finance admins with no way into the finance overview. Every
-/// G5 section move rehomes controllers, so this is a recurring shape, not a one-off.
-/// </para>
-/// <para>
-/// Reads <c>IActionDescriptorCollectionProvider</c> rather than reflecting over controller
-/// types, so it sees what MVC really routes — including section controllers, which are
-/// <c>internal</c> and reach the table only via <c>SectionControllerFeatureProvider</c>
-/// (memory/architecture/section-controllers-need-feature-provider.md).
+/// Reads <c>IActionDescriptorCollectionProvider</c> rather than reflecting over controllers, so it sees what MVC
+/// really routes, including internal section controllers that reach the table only via
+/// <c>SectionControllerFeatureProvider</c>.
 /// </para>
 /// </remarks>
 public class AdminNavTreeRoutingTests(HumansTestDatabase database) : IntegrationTestBase(database)

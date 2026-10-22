@@ -8,73 +8,53 @@ namespace Humans.Tickets.Services;
 internal interface ITicketTransferService : ITicketTransferQueue, IApplicationService
 {
     /// <summary>
-    /// Build the "My tickets" rows for a user from the holdings read, with the send rule
-    /// pre-computed: only `Valid`, not-checked-in tickets with no existing Pending transfer
-    /// can be sent. Voided holdings are dropped.
+    /// Only Valid, not-checked-in tickets with no Pending transfer can be sent. Voided holdings are dropped.
     /// </summary>
     Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Resolve the confirmation summary for a chosen (attendee, receiver) pair:
-    /// validates the Sender owns a Valid attendee and the Receiver is a distinct
-    /// resolvable user, and returns the ticket label + Receiver legal name and
-    /// primary email for the confirm step. Returns null if the pair is invalid.
+    /// Null unless the Sender owns a Valid attendee and the Receiver is a distinct resolvable user.
     /// </summary>
     Task<TicketTransferConfirmDto?> GetConfirmationAsync(
         Guid attendeeId, Guid receiverUserId, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Create a Pending TicketTransferRequest and email the Sender + the ticket
-    /// team. Validates: Sender owns the attendee, attendee is Valid, Receiver is
-    /// not the Sender, no existing Pending transfer for the attendee. Returns a
-    /// resource-key refusal for known rule failures; dependency exceptions propagate.
+    /// Known rule failures return a resource-key refusal; dependency exceptions propagate.
     /// </summary>
     Task<TicketTransferMutationResult> CreateRequestAsync(
         TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Cancel a Pending request. Only the original Sender may cancel. Returns a
-    /// resource-key refusal for known rule failures; dependency exceptions propagate.
+    /// Only the original Sender may cancel. Known rule failures return a resource-key refusal; dependency exceptions
+    /// propagate.
     /// </summary>
     Task<TicketTransferMutationResult> CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Mark a Pending request transferred ("transfer successful") WITHOUT calling the
-    /// vendor — the ticket team has already done the void+reissue by hand in TicketTailor
-    /// (or finished an automated attempt that partially failed). Records the decision,
-    /// audits, and emails the Sender + Receiver. The next ticket sync reconciles the local
-    /// attendee rows.
+    /// "Transfer successful" without calling the vendor: the team already did the void and reissue by hand. The next
+    /// ticket sync reconciles the local attendee rows.
     /// </summary>
     Task<TicketTransferMutationResult> ApproveAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>
-    /// Process a Pending request by performing the automated TicketTailor
-    /// void(-to-hold)+reissue, then marking it transferred and emailing the parties. On vendor
-    /// failure the request stays Pending (the diagnostic is recorded and surfaced) so the team
-    /// can finish in TicketTailor and fall back to <see cref="ApproveAsync"/>.
+    /// On vendor failure the request stays Pending with the diagnostic recorded, so the team can finish by hand and
+    /// fall back to <see cref="ApproveAsync"/>.
     /// </summary>
     [ExternalWrite]
     Task<TicketTransferMutationResult> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
     /// <summary>
-    /// Retry the reissue of a part-processed transfer (a Pending request whose
-    /// <see cref="TicketTransferVendorResult.VoidSucceededIssueFailed"/> recorded a
-    /// hold id): issues the replacement from that held seat, writes the new attendee row and marks
-    /// it transferred. One-click recovery — no manual TicketTailor step. Returns an operator refusal when the request is
-    /// not in that state or has no recorded hold id; on a repeated failure the request stays Pending
-    /// with the hold retained so it can be retried again.
+    /// Reissues from the hold a <see cref="TicketTransferVendorResult.VoidSucceededIssueFailed"/> recorded. An operator
+    /// refusal when the request is not in that state; on another failure it stays Pending with the hold kept.
     /// </summary>
     [ExternalWrite]
     Task<TicketTransferMutationResult> RetryReissueAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default);
 
-    /// <summary>
-    /// Cancel a Pending request with a required reason. Records the decision,
-    /// audits, and emails the Sender + Receiver with the reason.
-    /// </summary>
+    /// <summary>The reason is required and is emailed to the Sender and Receiver.</summary>
     Task<TicketTransferMutationResult> RejectAsync(
         Guid transferRequestId, Guid adminUserId, string reason, CancellationToken ct = default);
 
@@ -84,10 +64,6 @@ internal interface ITicketTransferService : ITicketTransferQueue, IApplicationSe
     Task<IReadOnlyList<TicketTransferRowDto>> GetBySenderAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Read-side composition for the admin Detail review screen. Returns null if
-    /// no transfer exists with that id.
-    /// </summary>
     Task<TicketTransferDetailDto?> GetDetailAsync(
         Guid transferRequestId, CancellationToken ct = default);
 }

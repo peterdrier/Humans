@@ -5,21 +5,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Humans.Analyzers.Internal.Rules;
 
 /// <summary>
-/// HUM0009 — Only repository classes (transitive implementers of
-/// <c>Humans.Base.Interfaces.Repositories.IRepository</c>) may use
-/// a section DbContext. Every other class must go through a repository or
-/// service. Existing pre-rule violators may carry
-/// <c>[Grandfathered("HUM0009", …)]</c> — the analyzer downgrades the
-/// diagnostic to <c>Warning</c> for those, but new violators (no attribute)
-/// fire <c>Error</c>.
+/// HUM0009 — only repository classes (transitive implementers of
+/// <c>Humans.Base.Interfaces.Repositories.IRepository</c>) may use a section DbContext.
+/// <c>[Grandfathered("HUM0009", …)]</c> downgrades to a Warning; new violators are an Error.
 /// </summary>
-/// <remarks>
-/// Runs in <c>Humans.Infrastructure</c> only. That's the only compilation
-/// where both the section DbContexts and every candidate user type are
-/// declared: Application has no project reference to Infrastructure so
-/// they are unresolvable there, and Web's analysis only sees
-/// types declared in Web (controllers).
-/// </remarks>
 internal static class DbContextOwnershipRule
 {
     public const string DiagnosticId = "HUM0009";
@@ -53,10 +42,8 @@ internal static class DbContextOwnershipRule
 
     public static void Register(CompilationStartAnalysisContext context)
     {
-        // Since the per-section split (nobodies-collective/Humans#858) the persistence
-        // boundary is every application context, matched structurally via
-        // SectionDbContexts (derives from EF's DbContext) rather than by name or
-        // namespace, so relocating the contexts cannot switch this rule off.
+        // Matched structurally via SectionDbContexts, not by name or namespace, so relocating the contexts cannot
+        // switch this rule off.
         var efDbContext = SectionDbContexts.ResolveEfDbContext(context.Compilation);
         if (efDbContext is null)
             return;
@@ -167,14 +154,9 @@ internal static class DbContextOwnershipRule
     }
 
     /// <summary>
-    /// Finds the first structural reference to a Humans persistence context on
-    /// the type — base type, implemented interface, field, property, or method
-    /// (parameter or return type). Recurses through generic type arguments
-    /// so <c>UserStore&lt;…, UsersDbContext, …&gt;</c> also matches. Returns
-    /// both the location and the actual context type that matched (e.g.
-    /// <c>ContainersDbContext</c>), so the diagnostic can name it instead of a
-    /// generic context name. Returns null if the type does not use a
-    /// context structurally.
+    /// The first structural reference to a persistence context on the type (base type, interface, field, property,
+    /// method signature, through generic arguments), with the matched context so the diagnostic can name it. Null if
+    /// none.
     /// </summary>
     private static (Location Location, INamedTypeSymbol ContextType)? FindFirstDbContextReference(
         INamedTypeSymbol type, INamedTypeSymbol efDbContext)

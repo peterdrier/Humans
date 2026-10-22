@@ -3,71 +3,15 @@ using NodaTime;
 namespace Humans.Cantina.Services.Dtos;
 
 /// <summary>
-/// Everything the Cantina Weekly Roster page needs for one event week in
-/// a single payload. Computed by <c>ICantinaRosterService</c> so the
-/// controller can render headers, aggregate cards and the per-day
-/// mini-summary — and hand <see cref="People"/> to the CSV writer — without
-/// further round-trips.
+/// The whole page in one payload. Aggregates are over unique humans: a person on site Mon and Wed counts once.
 /// </summary>
-/// <param name="WeekStartOffset">
-/// The day-offset (relative to <c>EventSettings.GateOpeningDate</c>) of the
-/// Monday of the week being viewed. Can be negative (build weeks) or
-/// positive (strike weeks). Echoed back so the view can label nav links
-/// without re-reading state.
-/// </param>
-/// <param name="WeekStartDate">
-/// Calendar date of the week's Monday in the event's timezone. Null when
-/// no active event exists.
-/// </param>
-/// <param name="WeekEndDate">
-/// Calendar date of the week's Sunday (<c>WeekStartDate + 6</c>). Null
-/// when no active event exists.
-/// </param>
-/// <param name="EventName">Active event name, or null when no active event exists.</param>
-/// <param name="TotalUniqueOnSite">
-/// Distinct on-site humans across the week (Mon–Sun). A person on-site
-/// multiple days is counted once.
-/// </param>
-/// <param name="UnansweredCount">
-/// Unique humans across the week whose <c>DietaryPreference</c> is empty.
-/// A missing profile row would count the same way, but every on-site human
-/// has one, so in practice this is the unanswered-form count. Coordinators
-/// use it to chase people who haven't filled the form yet.
-/// </param>
-/// <param name="DietaryBreakdown">
-/// Counts keyed by dietary preference, computed over the unique-humans
-/// cohort. Always includes the four canonical preferences plus
-/// <c>"Unanswered"</c>, even when the count is zero.
-/// </param>
-/// <param name="AllergyRollup">
-/// One row per canonical allergy chip, counted over unique humans. A
-/// person with "Peanut" on-site Mon+Wed contributes 1, not 2.
-/// </param>
-/// <param name="AllergyOtherEntries">
-/// Free-text follow-up entries from humans who picked the "Other" allergy
-/// chip, <strong>deduplicated</strong> across the week by trimmed text.
-/// </param>
-/// <param name="IntoleranceRollup">Same shape as <see cref="AllergyRollup"/> for intolerances.</param>
-/// <param name="IntoleranceOtherEntries">Same dedup rule as <see cref="AllergyOtherEntries"/>.</param>
-/// <param name="Days">
-/// Per-day mini-summary, 7 entries Mon..Sun. Each carries that day's
-/// distinct on-site count and "no dietary preference" count.
-/// </param>
-/// <param name="People">
-/// One row per unique on-site human across the week. Returned in unspecified
-/// order — the CSV action pipes them through <c>CantinaRosterAssembler</c>
-/// (first arrival → has-allergies → dietary priority → cultural-collation
-/// burner name). The weekly page renders none of them. The service builds rows for the whole on-site cohort
-/// regardless of profile state; in practice every on-site human has a profile
-/// row, so the empty-field path is defensive.
-/// </param>
-/// <param name="EventTodayDate">
-/// Today's calendar date in the active event's timezone
-/// (<c>EventSettings.TimeZoneId</c>). Null when no active event exists.
-/// Used by the view to highlight the "today" row in the per-day mini-table
-/// — must come from the service, not from view-side <c>DateTime.UtcNow</c>,
-/// so a Madrid coordinator viewing late evening doesn't see tomorrow.
-/// </param>
+/// <remarks>
+/// <paramref name="WeekStartOffset"/> can be negative (build weeks). Dates and <paramref name="EventName"/> are null with
+/// no active event. <paramref name="DietaryBreakdown"/> always has the four preferences plus "Unanswered".
+/// <paramref name="AllergyOtherEntries"/> are deduplicated by trimmed text. <paramref name="People"/> is unsorted (the
+/// CSV sorts; the page renders none). <paramref name="EventTodayDate"/> comes from the service, not view-side UTC, so a
+/// Madrid coordinator late in the evening doesn't see tomorrow highlighted.
+/// </remarks>
 internal sealed record WeeklyRosterDto(
     int WeekStartOffset,
     LocalDate? WeekStartDate,

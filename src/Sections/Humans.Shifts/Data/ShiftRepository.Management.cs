@@ -6,17 +6,8 @@ using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Data;
 
 /// <summary>
-/// EF-backed repository for the Shifts section. One concrete repository backs
-/// the management and signup repository interfaces so rota, shift, volunteer
-/// profile, tag preference, and signup access stays behind a single persistence
-/// adapter.
-///
-/// <para>
-/// Management methods create short-lived contexts through
-/// <see cref="IDbContextFactory{TContext}"/>. Signup mutation methods use the
-/// scoped <see cref="ShiftsDbContext"/> so multi-step load/mutate/save flows
-/// share one EF change tracker.
-/// </para>
+/// Management methods use short-lived contexts from the factory; signup mutations use the scoped
+/// <see cref="ShiftsDbContext"/> so load/mutate/save flows share one change tracker.
 /// </summary>
 internal sealed partial class ShiftRepository : IShiftManagementRepository
 {
@@ -111,9 +102,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
         if (rota is null) return false;
 
-        // Targeted property update: only TeamId + UpdatedAt are flagged as
-        // modified, so concurrent edits to other Rota columns (Name, Period,
-        // etc.) by other admins are not silently overwritten on SaveChanges.
+        // Only TeamId and UpdatedAt are flagged modified, so another admin's concurrent edit to other columns survives.
         rota.TeamId = newTeamId;
         rota.UpdatedAt = updatedAt;
         ctx.Entry(rota).Property(r => r.TeamId).IsModified = true;
@@ -152,7 +141,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
 
         if (rota is null) return;
 
-        // ShiftSignup→Shift FK is Restrict, so cascade won't handle them — delete explicitly.
+        // The signup FK is Restrict, so cascade won't remove them.
         foreach (var shift in rota.Shifts)
         {
             ctx.ShiftSignups.RemoveRange(shift.ShiftSignups);
@@ -374,11 +363,8 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         else if (teamIds is { Count: > 0 })
             query = query.Where(su => teamIds.Contains(su.Shift.Rota.TeamId));
 
-        // Project each confirmed signup's duration into memory and aggregate per
-        // user there: NodaTime Duration has no SQL Sum translation, and the scope
-        // is a single event (≤ a few thousand rows at Nobodies' scale). All-day
-        // (build/strike) rows store a 24h sentinel Duration, so their effective
-        // hours are the fixed window width instead (Shift.AllDayWindowHours).
+        // Aggregated in memory: NodaTime Duration has no SQL Sum, and one event is a few thousand rows. All-day rows
+        // store a 24h sentinel, so they count Shift.AllDayWindowHours instead.
         var rows = await query
             .Select(su => new { su.UserId, su.Shift.Duration, su.Shift.IsAllDay })
             .ToListAsync(ct);
@@ -512,8 +498,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // Project to shift-id, rota team-id, day-offset, and status in one query.
-        // Only Confirmed and NoShow statuses are relevant for post-event stats.
+        // Only Confirmed and NoShow matter for post-event stats.
         var statusValues = new[] { SignupStatus.Confirmed, SignupStatus.NoShow };
 
         var rows = await (
@@ -579,8 +564,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
 
         ctx.VolunteerTagPreferences.RemoveRange(existing);
 
-        // Dedupe: a duplicate id in the posted list would insert two rows for the
-        // same (UserId, ShiftTagId) and violate the unique index.
+        // A duplicate posted id would violate the (UserId, ShiftTagId) unique index.
         foreach (var tagId in tagIds.Distinct())
         {
             ctx.VolunteerTagPreferences.Add(new VolunteerTagPreference
@@ -652,8 +636,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // VolunteerEventProfile is 1:1 with User (unique index on UserId).
-        // Source has at most one row; target has at most one row.
+        // One profile per user (unique index on UserId).
         var sourceProfiles = await ctx.VolunteerEventProfiles
             .Where(p => p.UserId == sourceUserId)
             .ToListAsync(ct);
@@ -665,20 +648,18 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         {
             if (targetHasProfile)
             {
-                // Target already has a profile — target wins, drop source.
+                // Target wins.
                 ctx.VolunteerEventProfiles.Remove(src);
             }
             else
             {
                 src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
-                // After re-FK'ing the first (and only) source row, any
-                // additional source rows would now collide; defensive guard.
+                // Any further source row would now collide.
                 targetHasProfile = true;
             }
         }
 
-        // VolunteerTagPreference uniqueness is on (UserId, ShiftTagId).
         var sourceTagPrefs = await ctx.VolunteerTagPreferences
             .Where(v => v.UserId == sourceUserId)
             .ToListAsync(ct);
@@ -693,14 +674,13 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         {
             if (targetTagIdSet.Contains(src.ShiftTagId))
             {
-                // Target already prefers this tag — target wins, drop source.
+                // Target wins.
                 ctx.VolunteerTagPreferences.Remove(src);
             }
             else
             {
                 src.UserId = targetUserId;
-                // VolunteerTagPreference has no UpdatedAt; updatedAt is
-                // unused for this table.
+                // The table has no UpdatedAt to stamp.
                 targetTagIdSet.Add(src.ShiftTagId);
             }
         }

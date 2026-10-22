@@ -12,9 +12,8 @@ internal sealed class ManagesPreapprovalsRequirement : IAuthorizationRequirement
 internal sealed class PreapprovalsAccessRequirement : IAuthorizationRequirement;
 
 /// <summary>
-/// The two DB-backed policies, one handler: the role short-circuit avoids a query on the
-/// common admin path. Both policies resolve the live user id, so a merged-away id sees
-/// what the surviving account sees.
+/// The role short-circuit avoids a query on the common admin path. Both policies resolve the live user id, so a
+/// merged-away id sees what the surviving account sees.
 /// </summary>
 internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprovals) : IAuthorizationHandler
 {

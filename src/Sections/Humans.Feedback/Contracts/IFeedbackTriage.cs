@@ -3,16 +3,9 @@ using Humans.Base.Interfaces;
 namespace Humans.Feedback.Contracts;
 
 /// <summary>
-/// Feedback's triage surface for the machine API behind <c>/api/backdoor/feedback</c>
-/// (nobodies-collective/Humans#1128): read the queue, read one report, reply, and change
-/// status, assignment or the linked GitHub issue.
+/// The machine API surface behind <c>/api/backdoor/feedback</c>. Every mutation takes the acting user, so an API reply
+/// is attributed exactly like one typed in the admin UI. No create method: Feedback is closed to new reports.
 /// </summary>
-/// <remarks>
-/// Feedback is closed to new reports (nobodies-collective/Humans#977) — Issues superseded
-/// it — so there is deliberately no create method here either. Every mutation takes the
-/// acting user: the Backdoor filter resolves the presented key to its owner and passes that
-/// id, so an API reply is attributed exactly like one typed in the admin UI.
-/// </remarks>
 public interface IFeedbackTriage : IApplicationService
 {
     Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
@@ -24,7 +17,10 @@ public interface IFeedbackTriage : IApplicationService
 
     Task<FeedbackReportInfo?> GetFeedbackByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>Posts a durable admin reply, returning an explicit missing-report result when it is gone. Pending email handoff is exposed on the returned message and retried automatically.</summary>
+    /// <summary>
+    /// Returns a missing-report result when the report is gone. A pending email handoff shows on the returned message
+    /// and is retried automatically.
+    /// </summary>
     Task<FeedbackMutationResult> PostMessageAsync(
         Guid reportId, Guid? senderUserId, string content,
         CancellationToken cancellationToken = default);

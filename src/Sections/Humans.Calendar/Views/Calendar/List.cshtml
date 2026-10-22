@@ -2,8 +2,7 @@
 @{
     ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.ToInvariantYearMonth()}";
     ViewData["ActiveView"] = "list";
-    // Spans teams unless ?teamId narrows it, so each row names the owning team.
-    // Team.cshtml is scoped to one team and leaves it off.
+    // Spans teams, so each row names the owning team; Team.cshtml leaves it off.
     ViewData["ShowTeamName"] = true;
     var prev = Model.Month.PlusMonths(-1);
     var next = Model.Month.PlusMonths(1);

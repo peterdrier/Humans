@@ -6,12 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Tests.Middleware;
 
-/// <summary>
-/// Proves the Dev/QA response scanner (nobodies-collective/Humans#1055) actually fires on the
-/// exact failure shape it exists for — an unresolved <c>&lt;vc:...&gt;</c> element in the
-/// rendered HTML — and stays silent on a clean response, so it is neither a no-op nor a
-/// false-positive machine.
-/// </summary>
 public class ViewComponentTagSurvivalMiddlewareTests
 {
     private static async Task<CapturingLogger<ViewComponentTagSurvivalMiddleware>> RunAsync(
@@ -87,10 +81,8 @@ public class ViewComponentTagSurvivalMiddlewareTests
     [HumansFact]
     public async Task Download_StreamsStraightThrough_EvenThoughTheBrowserAsksForItWithANavigationAcceptHeader()
     {
-        // A click on a download link (e.g. SurveyAdmin's "Download CSV") is an ordinary GET
-        // carrying the same `Accept: text/html` a page navigation sends — the browser cannot
-        // know the response type in advance. Only the response's Content-Type separates them,
-        // so a large export must never be collected in memory here.
+        // A download link sends the same Accept: text/html as a navigation; only the response Content-Type tells them
+        // apart, so a large export must never be buffered here.
         var context = HtmlNavigationRequest();
         var client = (MemoryStream)context.Response.Body;
         const string csv = "id,answer\n1,yes\n";

@@ -90,10 +90,7 @@ public class TableColumnTests
     public void EnumBadge_wraps_value_in_registered_badge()
     {
         var col = Col(CellFormat.EnumBadge, r => r.Status);
-        // A Base enum, not a section's: a moved section's badge rows are registered from
-        // its Section.Register and are absent in a unit test (see EnumBadgeMapTests). This
-        // was SignupStatus until G5 lane 4b-i (nobodies-collective/Humans#866) moved Shifts'
-        // rows out of Base's literal — the comment was already true, the enum was not.
+        // A Base enum: section badge rows are registered by Section.Register, absent in a unit test.
         Render(col.Cell(new Row { Status = EmailOutboxStatus.Sent }))
             .Should().Be("""<span class="badge bg-success">Sent</span>""");
     }

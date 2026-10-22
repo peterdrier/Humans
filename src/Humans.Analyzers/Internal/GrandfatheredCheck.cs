@@ -4,9 +4,8 @@ using Microsoft.CodeAnalysis;
 namespace Humans.Analyzers.Internal;
 
 /// <summary>
-/// Shared helper for the project's `[Grandfathered("HUM####", ...)]` attribute
-/// — the only sanctioned suppression mechanism for HUM rules per
-/// <c>memory/architecture/analyzer-exceptions-via-attributes.md</c>.
+/// The only sanctioned suppression for HUM rules
+/// (<c>memory/architecture/analyzer-exceptions-via-attributes.md</c>).
 /// </summary>
 /// <remarks>
 /// Typical usage in an analyzer:
@@ -28,19 +27,11 @@ namespace Humans.Analyzers.Internal;
 internal static class GrandfatheredCheck
 {
     /// <summary>
-    /// Metadata name the attribute is resolved by, derived from the class
-    /// itself (linked into this project by <c>Humans.Analyzers.csproj</c>) so
-    /// a namespace move carries the constant with it. Never re-inline this as
-    /// a literal — see nobodies-collective/Humans#1057.
+    /// Derived from the class itself, so a namespace move carries the constant with it. Never re-inline it as a literal.
     /// </summary>
     public static readonly string AttributeFullName = typeof(GrandfatheredAttribute).FullName!;
 
-    /// <summary>
-    /// Resolves the <see cref="GrandfatheredAttribute"/> symbol from the
-    /// compilation. Returns <c>null</c> if the attribute type isn't reachable
-    /// — in that case every diagnostic should fall through to its default
-    /// severity (no grandfathering is possible).
-    /// </summary>
+    /// <summary>Null when the attribute type isn't reachable: every diagnostic then keeps its default severity.</summary>
     public static INamedTypeSymbol? Resolve(Compilation compilation) =>
         compilation.GetTypeByMetadataName(AttributeFullName);
 
@@ -76,11 +67,7 @@ internal static class GrandfatheredCheck
         return false;
     }
 
-    /// <summary>
-    /// Convenience: returns <see cref="DiagnosticSeverity.Warning"/> when
-    /// the symbol is grandfathered for <paramref name="ruleId"/>, otherwise
-    /// <see cref="DiagnosticSeverity.Error"/>.
-    /// </summary>
+    /// <summary>Warning when the symbol is grandfathered for <paramref name="ruleId"/>, otherwise Error.</summary>
     public static DiagnosticSeverity EffectiveSeverity(
         ISymbol symbol,
         INamedTypeSymbol? attributeSymbol,
@@ -129,12 +116,7 @@ internal static class GrandfatheredCheck
         return false;
     }
 
-    /// <summary>
-    /// Scoped counterpart of <see cref="EffectiveSeverity"/>: returns
-    /// <see cref="DiagnosticSeverity.Warning"/> when the type is grandfathered
-    /// for the (<paramref name="ruleId"/>, <paramref name="scope"/>) pair,
-    /// otherwise <see cref="DiagnosticSeverity.Error"/>.
-    /// </summary>
+    /// <summary>Scoped counterpart of <see cref="EffectiveSeverity"/>.</summary>
     public static DiagnosticSeverity EffectiveSeverityForScope(
         INamedTypeSymbol type,
         INamedTypeSymbol? attributeSymbol,

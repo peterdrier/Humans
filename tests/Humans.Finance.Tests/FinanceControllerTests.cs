@@ -25,8 +25,7 @@ namespace Humans.Finance.Tests;
 
 /// <summary>
 /// The controller owns everything /Finance/Creditors renders that the service does not: which
-/// column sorts, which way, the tie-break, and the one place Holded's balance sign is flipped for
-/// a human. None of it was covered before, so all of it is asserted here.
+/// column sorts, which way, the tie-break, and the one place Holded's balance sign is flipped.
 /// </summary>
 public class FinanceControllerTests
 {
@@ -230,8 +229,6 @@ public class FinanceControllerTests
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    // ─── Sorting ─────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Creditors_DefaultsToAccountNumberAscending()
     {
@@ -312,8 +309,6 @@ public class FinanceControllerTests
         page.Accounts.Select(a => a.SupplierAccountNum).Should().Equal(40000003, 40000006, 40000009);
     }
 
-    // ─── The one sign flip ───────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Creditors_ShowsTheBalanceFromTheMembersSide()
     {
@@ -325,8 +320,6 @@ public class FinanceControllerTests
         page.Accounts[1].Balance.Should().Be(-40m);   // Bo owes the org
         page.Accounts[2].Balance.Should().BeNull();   // no cached lines — not zero
     }
-
-    // ─── Members ─────────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Creditors_NamesEveryBoundMember_IncludingACollision()
@@ -363,8 +356,6 @@ public class FinanceControllerTests
         page.Accounts.Should().BeEmpty();
         page.Unresolved.Should().ContainSingle().Which.MemberName.Should().Be("Bo");
     }
-
-    // ─── SEPA generation cap ─────────────────────────────────────────────────────
 
     [HumansTheory]
     [InlineData("not-a-number")]
@@ -438,8 +429,6 @@ public class FinanceControllerTests
         await _connector.Received(1).GenerateSepaPayoutAsync(
             Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), 75.00m, Ana, Arg.Any<CancellationToken>());
     }
-
-    // ─── Statement ───────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task CreditorStatement_AccountWithNoCachedLedger_IsNotFound()
@@ -564,13 +553,11 @@ public class FinanceControllerTests
         Lines = [],
     };
 
-    // ─── Connector index ─────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Holded_RendersTheConnectorOverviewUnchanged()
     {
-        // The action is dispatch only — the read model is the service's, and the page has no
-        // controller-side assembly to get wrong (nobodies-collective/Humans#1000).
+        // The action is dispatch only: the read model is the service's, and the page has no
+        // controller-side assembly to get wrong.
         var vm = new HoldedConnectorVm(
             new HoldedDocSyncVm(null, "Idle", null, 0, null, IsStale: true), 3, [], [], []);
         _connector.GetConnectorOverviewAsync(Arg.Any<CancellationToken>()).Returns(vm);
@@ -579,8 +566,6 @@ public class FinanceControllerTests
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
     }
-
-    // ─── SEPA transfers screen ───────────────────────────────────────────────────
 
     [HumansFact]
     public async Task Sepa_GroupsByFileNewestFirst_AndOrdersTransfersByAccount()

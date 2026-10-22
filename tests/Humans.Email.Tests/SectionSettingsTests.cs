@@ -10,7 +10,7 @@ using NSubstitute;
 namespace Humans.Email.Tests;
 
 /// <summary>
-/// The /Settings#email tab (peterdrier/Humans#1634). <c>Policy = AdminOnly</c> means
+/// The /Settings#email tab. <c>Policy = AdminOnly</c> means
 /// <c>SettingsTabComposition</c> drops this tab for a non-admin before it ever reaches
 /// the view component — the negative case for who sees it.
 /// </summary>

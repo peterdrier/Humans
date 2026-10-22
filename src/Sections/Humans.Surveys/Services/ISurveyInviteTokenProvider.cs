@@ -1,14 +1,10 @@
 namespace Humans.Surveys.Services;
 
-/// <summary>
-/// Mints and resolves tokenised survey-invitation links via ASP.NET Data Protection. The token
-/// carries only the invitation id (time-limited).
-/// </summary>
+/// <summary>The token carries only the invitation id.</summary>
 internal interface ISurveyInviteTokenProvider
 {
-    /// <summary>Creates a time-limited token encoding the invitation id.</summary>
     string Create(Guid invitationId);
 
-    /// <summary>Resolves a token back to its invitation id, or null if invalid/tampered/expired.</summary>
+    /// <summary>Null if invalid, tampered or expired.</summary>
     Guid? Resolve(string token);
 }

@@ -3,11 +3,7 @@ using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>
-/// Classifies a build-period DayOffset into one of the four sub-periods
-/// defined on <see cref="IEventSettingsInfo"/>. Returns null for offsets outside
-/// the build window (≥ 0). Used by the shift dashboard's set-up sub-filter.
-/// </summary>
+/// <summary>Null outside the build window, and before the FirstCrew boundary.</summary>
 internal static class BuildSubPeriodClassifier
 {
     internal static BuildSubPeriod? Classify(int dayOffset, IEventSettingsInfo settings)
@@ -27,15 +23,10 @@ internal static class BuildSubPeriodClassifier
         if (dayOffset >= settings.FirstCrewStartOffset)
             return BuildSubPeriod.FirstCrew;
 
-        // Day predates the FirstCrew boundary — unclassified ("pre-build").
         return null;
     }
 
-    /// <summary>
-    /// Returns the inclusive start and exclusive end offsets that bracket the
-    /// given sub-period. End offset is the next sub-period's start, or 0 for
-    /// FinishingWeekend (the final sub-period before the event itself begins).
-    /// </summary>
+    /// <summary>FinishingWeekend ends at 0, when the event begins.</summary>
     internal static (int StartInclusive, int EndExclusive) BoundsFor(
         BuildSubPeriod subPeriod, IEventSettingsInfo settings) => subPeriod switch
         {

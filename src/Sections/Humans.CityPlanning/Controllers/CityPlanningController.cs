@@ -27,7 +27,6 @@ internal sealed class CityPlanningController(
     private async Task<bool> IsMapAdminAsync() =>
         (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
-    /// <summary>Resolves the current user and gates on the map-admin check.</summary>
     private async Task<(IActionResult? Error, UserInfo? User)> RequireMapAdminAsync(CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync(ct);
@@ -237,8 +236,7 @@ internal sealed class CityPlanningController(
         _ => "Invalid placement schedule.",
     };
 
-    /// <summary>Shared GeoJSON upload (LimitZone / OfficialZones); callers differ only by label and service method.
-    /// File read, size limit, and JSON validation are owned by the service's *FromUploadAsync method.</summary>
+    /// <summary>File read, size limit and JSON validation belong to the service's *FromUploadAsync method.</summary>
     private async Task<IActionResult> UploadGeoJsonAsync(
         IFormFile? file,
         string namePretty,
@@ -296,8 +294,6 @@ internal sealed class CityPlanningController(
         return RedirectToAction(nameof(Admin));
     }
 
-    // --- Containers ---
-
     [HttpGet("ContainerMap/{year:int}")]
     public async Task<IActionResult> ContainerMap(int year, CancellationToken cancellationToken)
     {
@@ -332,8 +328,6 @@ internal sealed class CityPlanningController(
 
     private async Task<CampInfo?> FindUserLeadCampAsync(Guid userId, int year, CancellationToken ct)
     {
-        // Lead status comes from the role system (Camp Lead special role on a season
-        // of this year).
         var camps = await campService.GetCampsForYearAsync(year, ct);
         return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue);
     }

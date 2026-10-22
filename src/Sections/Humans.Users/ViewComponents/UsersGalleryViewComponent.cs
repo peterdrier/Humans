@@ -5,19 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Users.ViewComponents;
 
-/// <summary>
-/// The widget gallery's Users-section samples, contributed to
-/// <see cref="Humans.Base.Interfaces.ChromeSlots.WidgetGallery"/> via <see cref="SectionChrome"/>:
-/// the two <see cref="ProfileSummaryViewModel"/> cards (<c>_ProfileCard</c>, <c>_HumanPopover</c>,
-/// whose sample type is internal to this section) plus &lt;vc:profile-card&gt;,
-/// &lt;vc:human-summary&gt;, &lt;vc:communication-preferences-panel&gt;
-/// and &lt;vc:nobodies-email-badge&gt; rendered against the signed-in admin.
-/// </summary>
+/// <summary>The widget gallery's Users-section samples, rendered against the signed-in admin.</summary>
 /// <remarks>
-/// A chrome-slot contribution takes no arguments (<c>ISectionChrome</c>'s
-/// <c>[ViewComponentSlot]</c> declares none), so this reads the current user from claims rather
-/// than a caller-supplied id — the page's own <c>CurrentUserId</c>/<c>CurrentUserDisplayName</c>
-/// are for the widgets it still renders itself.
+/// A chrome-slot contribution takes no arguments, so this reads the current user from claims.
 /// </remarks>
 internal sealed class UsersGalleryViewComponent(IUserService userService) : ViewComponent
 {

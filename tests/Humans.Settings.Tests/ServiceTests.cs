@@ -217,8 +217,7 @@ public sealed class ServiceTests
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // ── The at-most-one-Active invariant.
-    //    No DB constraint backs it, so the service is where it holds.
+    // At most one Active row: no DB constraint backs it, so the service is where it holds.
 
     private static EventSettingsInfo MakeDto(Guid id, EventSettingsStatus status, int? earlyEntryStartOffset = null) => new(
         Id: id,
@@ -297,7 +296,7 @@ public sealed class ServiceTests
         _listenerTwo.ReceivedCalls().Should().BeEmpty();
     }
 
-    // ── The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
+    // The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
 
     [HumansFact]
     public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_BeforeBuildStart()
@@ -359,8 +358,7 @@ public sealed class ServiceTests
     public async Task SaveEventSettingsAsync_TellsEveryChangeListener()
     {
         // The gate date, the offsets and the active-event flip move derived dates for every
-        // member at once. The consuming sections used to own this write and flush their own
-        // caches inline; the write moved here, so every one of them gets told.
+        // member at once, so every consuming section's listener gets told.
         var id = Guid.NewGuid();
 
         await BuildSut().SaveEventSettingsAsync(
@@ -470,9 +468,8 @@ public sealed class ServiceTests
             Arg.Any<EventSettings>(), Now, Arg.Any<CancellationToken>());
     }
 
-    // ── Id minting (nobodies-collective/Humans#1631): Settings mints ids for new
-    //    cycles now, with no existence check against Shifts — a Shifts knobs row
-    //    is created on demand later, the first time a rota or knob edit needs one.
+    // Settings mints ids for new cycles with no existence check against Shifts: a Shifts knobs
+    // row is created on demand, the first time a rota or knob edit needs one.
 
     [HumansFact]
     public async Task SaveEventSettingsAsync_CreatesABrandNewRowWithoutAskingShifts()

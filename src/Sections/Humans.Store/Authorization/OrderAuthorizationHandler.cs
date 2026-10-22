@@ -12,33 +12,9 @@ using NodaTime;
 namespace Humans.Store.Authorization;
 
 /// <summary>
-/// Resource-based authorization handler for Store order operations.
-///
-/// Authorization logic (applies to both <see cref="OrderDto"/> resources for
-/// View/AddLine/RemoveLine/EditCounterparty and <see cref="OrderCreateContext"/>
-/// resources for Create):
-/// - Store admins (Admin, FinanceAdmin, StoreAdmin): allow any operation regardless of order state,
-///   except billing operations on team orders, Refund (Admin/FinanceAdmin only) and DeletePayment (Admin only).
-/// - TeamsAdmin: View any order (camp or team); manage (Create/AddLine/RemoveLine/Delete)
-///   team orders only, for any department, not only the ones they coordinate. Camp orders
-///   are view-only. Departments buy from the collective too, and a TeamsAdmin opening the
-///   order is how that gets tracked. Additive — a TeamsAdmin who is also a camp lead still
-///   gets camp-edit rights through the lead path below.
-/// - IssueInvoice and RecordPayment are Store-admin-only on every order, and are additionally
-///   denied on team orders even for admins (team orders are non-billable). Refund is narrower
-///   still: Admin and FinanceAdmin only — a StoreAdmin is denied. DeletePayment is Admin only. Delete is Store-admin-only on
-///   camp orders; on team orders TeamsAdmin gets it too, per the line above.
-/// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow camp orders.
-/// - Coordinator (department-level management role holder) of the resource's Team:
-///   allow team orders for View/AddLine/RemoveLine; EditCounterparty and Pay are
-///   permanently denied on team orders regardless of role (team orders are non-billable).
-///   Mutating operations (AddLine, RemoveLine, EditCounterparty) are gated on
-///   order being Open (per Store invariant: "A Camp Lead cannot edit lines or
-///   counterparty on an order in InvoiceIssued state").
-/// - Product order deadline: when the resource is a <see cref="OrderLineContext"/>,
-///   non-admin line edits are denied past the product's OrderableUntil. Store admins are
-///   exempt — they may still add/remove lines past the deadline on an Open order.
-/// - Everyone else: deny.
+/// Store admins pass first, except billing on team orders, Refund (Admin/FinanceAdmin) and DeletePayment (Admin).
+/// The TeamsAdmin path is additive: one who is also a camp lead still gets camp rights through the lead path.
+/// Non-admin line edits are denied past the product's OrderableUntil (an <see cref="OrderLineContext"/> resource).
 /// </summary>
 internal sealed class OrderAuthorizationHandler(
     ICampService campService,
@@ -60,7 +36,7 @@ internal sealed class OrderAuthorizationHandler(
         {
             foreach (var req in pending)
             {
-                // Even admins can't Pay/EditCounterparty a team order — it has no billing.
+                // Even admins can't Pay or EditCounterparty a team order: it has no billing.
                 if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
                     continue;
                 if (req == OrderOperationRequirement.Refund && !RoleChecks.IsFinanceAdmin(context.User))
@@ -72,16 +48,11 @@ internal sealed class OrderAuthorizationHandler(
             return;
         }
 
-        // Non-admin paths below deny line edits once the product's order deadline has
-        // passed — only Store admins (handled above) may cross OrderableUntil.
         var pastDeadline = resource.ProductOrderableUntil is { } until
             && pending.Any(IsLineEdit)
             && await settingsService.TodayInEventZoneAsync(clock) > until;
 
-        // TeamsAdmin: read any order; manage team orders only (camp orders stay
-        // view-only) — including Create, for any department rather than only the ones
-        // they coordinate. Additive — fall through so a TeamsAdmin who is also a camp
-        // lead still picks up camp-edit rights in the lead/coordinator block below.
+        // Additive: fall through so a TeamsAdmin who is also a camp lead picks up camp rights below.
         if (RoleChecks.IsTeamsAdmin(context.User))
         {
             foreach (var req in pending)
@@ -91,7 +62,7 @@ internal sealed class OrderAuthorizationHandler(
                     context.Succeed(req);
                     continue;
                 }
-                if (!resource.IsTeamOrder) continue; // camp orders are view-only for TeamsAdmin
+                if (!resource.IsTeamOrder) continue;
                 if (!CanManageNonStoreAdminOrder(req, resource, pastDeadline, canDelete: true))
                     continue;
                 context.Succeed(req);
@@ -174,9 +145,8 @@ internal sealed class OrderAuthorizationHandler(
             || requirement == OrderOperationRequirement.Refund
             || requirement == OrderOperationRequirement.DeletePayment;
 
-    /// <summary>Operations no camp lead or coordinator ever gets. Consulted from the
-    /// lead/coordinator block only — the TeamsAdmin block above does not apply it, so a
-    /// TeamsAdmin still reaches Delete on a team order.</summary>
+    /// <summary>Only the lead/coordinator block applies this, so a TeamsAdmin still reaches Delete on a team
+    /// order.</summary>
     private static bool IsStoreAdminOnly(OrderOperationRequirement requirement)
         => requirement == OrderOperationRequirement.Delete
             || requirement == OrderOperationRequirement.IssueInvoice

@@ -14,14 +14,7 @@ using Humans.Users.Data;
 using Humans.Shifts.Contracts;
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
-/// <summary>
-/// Integration tests for
-/// <see cref="IShiftManagementRepository.GetConfirmedShiftsInRangeAsync"/>.
-/// Mirrors the existing <c>VolunteerTrackingRepositoryTests</c> style: the
-/// assembly-shared container-backed factory, scope per test, real PostgreSQL.
-/// Seeding helpers are inlined here (rather than shared) because the existing
-/// class keeps them <c>private</c>.
-/// </summary>
+/// <summary><see cref="IShiftManagementRepository.GetConfirmedShiftsInRangeAsync"/> against real PostgreSQL.</summary>
 public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDatabase database)
     : IntegrationTestBase(database)
 {
@@ -42,8 +35,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         var rows = await repo.GetConfirmedShiftsInRangeAsync(eventId, calendar, start, end, departmentId: null, ct: TestContext.Current.CancellationToken);
 
         rows.Should().OnlyContain(r => r.UserId != Guid.Empty);
-        // The seed creates 2 Confirmed signups total (one TeamA, one TeamB), plus a Pending
-        // and a Cancelled on TeamA shifts. Only the 2 Confirmed should appear.
+        // The seed has two Confirmed signups plus a Pending and a Cancelled; only the Confirmed appear.
         rows.Should().HaveCount(2);
     }
 
@@ -58,7 +50,6 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
 
         var (eventId, calendar, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
 
-        // Range entirely before the seeded shifts.
         var rows = await repo.GetConfirmedShiftsInRangeAsync(
             eventId,
             calendar,
@@ -102,8 +93,7 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
 
         var (eventId, calendar, _, _, _) = await SeedFixtureAsync(db, teamsDb, shiftsDb);
 
-        // The seed includes a confirmed shift that starts on 2026-07-07 morning.
-        // A range starting that same day must include it.
+        // A confirmed shift starts on the morning of 2026-07-07; a range starting that day must include it.
         var rows = await repo.GetConfirmedShiftsInRangeAsync(
             eventId,
             calendar,
@@ -116,14 +106,8 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
     }
 
     /// <summary>
-    /// Seeds a minimal fixture:
-    /// - One EventSettings ("Elsewhere 2026", Europe/Madrid, GateOpeningDate 2026-07-01).
-    /// - Two teams: TeamA, TeamB. One rota per team.
-    /// - Three shifts on 2026-07-07 (TeamA, DayOffset 6), 2026-07-08 (TeamB, DayOffset 7),
-    ///   2026-07-09 (TeamA, DayOffset 8).
-    /// - Three signups on the TeamA shifts: one Confirmed (the 7/7 shift), one Pending
-    ///   (a second user on 7/7), one Cancelled (the 7/9 shift).
-    /// - One Confirmed signup on the TeamB shift (7/8).
+    /// One event (gate opens 2026-07-01), teams A and B with a rota each, and shifts on 7/7 (A), 7/8 (B) and 7/9 (A).
+    /// Signups: A 7/7 Confirmed and Pending, A 7/9 Cancelled, B 7/8 Confirmed.
     /// </summary>
     private static async Task<(Guid eventId, EventSettingsInfo calendar, Guid teamAId, Guid teamBId, Guid userId)> SeedFixtureAsync(UsersDbContext db, TeamsDbContext teamsDb, ShiftsDbContext shiftsDb)
     {
@@ -172,7 +156,6 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         shiftsDb.Rotas.Add(rotaA);
         shiftsDb.Rotas.Add(rotaB);
 
-        // DayOffsets: GateOpeningDate = 2026-07-01, so 6 = 7/7, 7 = 7/8, 8 = 7/9.
         var shiftA77 = NewShift(rotaA.Id, dayOffset: 6, now);   // 2026-07-07
         var shiftA79 = NewShift(rotaA.Id, dayOffset: 8, now);   // 2026-07-09
         var shiftB78 = NewShift(rotaB.Id, dayOffset: 7, now);   // 2026-07-08
@@ -185,13 +168,9 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         db.Users.Add(user1);
         db.Users.Add(user2);
 
-        // TeamA 7/7: Confirmed (user1)
         shiftsDb.ShiftSignups.Add(NewSignup(user1.Id, shiftA77.Id, SignupStatus.Confirmed, now));
-        // TeamA 7/7: Pending  (user2) — should be excluded
         shiftsDb.ShiftSignups.Add(NewSignup(user2.Id, shiftA77.Id, SignupStatus.Pending, now));
-        // TeamA 7/9: Cancelled (user1) — should be excluded
         shiftsDb.ShiftSignups.Add(NewSignup(user1.Id, shiftA79.Id, SignupStatus.Cancelled, now));
-        // TeamB 7/8: Confirmed (user1)
         shiftsDb.ShiftSignups.Add(NewSignup(user1.Id, shiftB78.Id, SignupStatus.Confirmed, now));
 
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);

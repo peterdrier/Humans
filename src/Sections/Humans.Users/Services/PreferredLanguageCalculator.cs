@@ -3,9 +3,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;
 
-// Stateless helper for the admin dashboard's "Preferred language" card. Filters the UserInfo
-// snapshot to Active ∪ MissingConsents (pending-deletion split off earlier) before tallying —
-// moved out of the deleted admin-dashboard aggregator at nobodies-collective/Humans#1091.
+// Tallies Active ∪ MissingConsents only; pending deletion is split off earlier.
 internal static class PreferredLanguageCalculator
 {
     public static IReadOnlyList<PreferredLanguageCount> Build(

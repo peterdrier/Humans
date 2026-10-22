@@ -8,7 +8,6 @@ using NSubstitute;
 namespace Humans.Users.Tests.Contributions;
 
 /// <summary>
-/// Users' legacy-email data migration on <c>/Debug/DataMigrations</c>.
 /// Each status must list exactly what its apply will fix (or <c>done</c> never arrives), and each
 /// apply must carry the acting admin and be a no-op once nothing is pending.
 /// </summary>

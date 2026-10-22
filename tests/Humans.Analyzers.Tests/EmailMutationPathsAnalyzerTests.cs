@@ -84,7 +84,7 @@ public class EmailMutationPathsAnalyzerTests
     public async Task Fires_HUM0005_when_service_called_from_AccountController()
     {
         // The pin moved off AccountController when HUM0031 forced the OAuth
-        // decision ladder into ExternalLoginService (#857). The controller
+        // decision ladder into ExternalLoginService. The controller
         // reaching back for the primitive must now fail the build — otherwise
         // the logic could drift back into the controller unnoticed.
         var source = InterfaceStubs + """
@@ -191,7 +191,7 @@ public class EmailMutationPathsAnalyzerTests
     [HumansFact]
     public async Task Fires_HUM0005_when_concrete_service_class_called_from_non_allowed_caller()
     {
-        // Codex P2: a caller holding the concrete UserEmailService (rather than the
+        // A caller holding the concrete UserEmailService (rather than the
         // IUserEmailService interface) used to bypass the analyzer because the call's
         // ContainingType was the class, not the interface.
         var source = InterfaceStubs + """

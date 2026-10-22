@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Base.ViewComponents;
 
 /// <summary>
-/// Renders whatever the active sections contributed into a named chrome slot, so Shell no
-/// longer decides which section components appear in its layouts.
+/// Renders whatever the active sections contributed into a named chrome slot, so Shell never decides which section
+/// components appear in its layouts.
 /// </summary>
 /// <remarks>
 /// Both <see cref="ISectionChrome"/> (layout chrome) and <see cref="ISectionMemberDashboard"/>

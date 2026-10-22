@@ -366,7 +366,7 @@ internal sealed class ShiftAdminController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // Coordinator "email a rota" (mgmt scope, excludes NoInfoAdmin).
+    // Management scope, so NoInfoAdmin is excluded.
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId, CancellationToken ct = default)
     {
@@ -399,7 +399,7 @@ internal sealed class ShiftAdminController(
         var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
 
-        // Repopulate display fields before any return-with-error path.
+        // Before any return-with-error path.
         var recipientNames = await GetRotaRecipientNamesAsync(rota.Id);
         model.RotaId = rota.Id;
         model.RotaName = rota.Name;
@@ -441,9 +441,7 @@ internal sealed class ShiftAdminController(
             .ToList();
     }
 
-    // Team-level coordinator message — siblings of the per-rota EmailRota actions
-    // above. Same management gate, same Reply-To behaviour, audit attached to the
-    // Team entity.
+    // Same gate and Reply-To as the per-rota actions; the audit attaches to the Team.
     [HttpGet("Email")]
     public async Task<IActionResult> EmailTeamRotas(string slug, CancellationToken ct = default)
     {
@@ -473,18 +471,14 @@ internal sealed class ShiftAdminController(
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        // Repopulate display fields before any return-with-error path so the
-        // re-rendered form still shows the recipient list and counts — recomputed
-        // against the audience the coordinator has currently selected.
+        // Before any error return, against the audience currently selected, so the re-rendered form shows its list.
         var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id, model.Filter);
         var previewWasShown = string.Equals(
             model.PreviewedAudience, model.Filter.Key, StringComparison.Ordinal);
         model.TeamSlug = slug;
         model.TeamName = team.Name;
-        // The recipient list above is the one about to be rendered, so the model's key
-        // is the authoritative one. Drop the posted entry first: the hidden field's tag
-        // helper prefers ModelState's attempted value, so leaving it would re-render the
-        // stale key and turn every later send back through the guard below forever.
+        // The tag helper prefers ModelState's attempted value; leaving it would re-render the stale key and turn
+        // every later send back through the guard below forever.
         ModelState.Remove(nameof(EmailTeamRotasViewModel.PreviewedAudience));
         model.PreviewedAudience = model.Filter.Key;
         model.RotaCount = preview.RotaCount;
@@ -493,16 +487,14 @@ internal sealed class ShiftAdminController(
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // The audience controls re-render the form so the recipient preview tracks
-        // the selection; the half-written message is not a validation failure yet.
+        // A half-written message is not a validation failure yet.
         if (string.Equals(intent, EmailTeamRotasViewModel.RefreshIntent, StringComparison.Ordinal))
         {
             ModelState.Clear();
             return View(model);
         }
 
-        // Without the script the audience can move without a re-preview, so a send
-        // would mail a list the coordinator never saw. Show them this one instead.
+        // Without the script the audience can move unpreviewed; show this list rather than mail one never seen.
         if (!previewWasShown)
         {
             model.AudienceChanged = true;
@@ -880,15 +872,13 @@ internal sealed class ShiftAdminController(
 
     private async Task<bool> CanManageDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
     {
-        // Management: Admin + VolunteerCoordinator + dept coordinator
-        // Explicitly excludes NoInfoAdmin — they can approve signups but not manage rotas/shifts
+        // NoInfoAdmin can approve signups but not manage rotas or shifts.
         return RoleChecks.IsVolunteerManager(User) ||
                await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
     }
 
     private async Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
     {
-        // Approval: Admin + NoInfoAdmin + VolunteerCoordinator + dept coordinator
         return ShiftRoleChecks.CanManageDepartment(User) ||
                await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
     }

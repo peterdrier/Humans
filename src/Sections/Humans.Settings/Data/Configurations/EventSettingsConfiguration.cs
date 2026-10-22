@@ -6,11 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Settings.Data.Configurations;
 
-/// <summary>
-/// Maps <c>settings_event</c> — every table this section owns starts with
-/// <c>settings_</c>. The Shifts-owned <c>event_settings</c> is a different table
-/// and keeps its name; nothing here renames or drops it.
-/// </summary>
+/// <summary>The Shifts-owned <c>event_settings</c> is a different table.</summary>
 internal sealed class EventSettingsConfiguration : IEntityTypeConfiguration<EventSettings>
 {
     public void Configure(EntityTypeBuilder<EventSettings> builder)

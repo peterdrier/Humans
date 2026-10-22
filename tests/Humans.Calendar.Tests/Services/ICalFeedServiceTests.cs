@@ -36,7 +36,7 @@ public class ICalFeedServiceTests
             Url: "/Shifts/Mine");
 
     /// <summary>
-    /// Stubs the read the way Users answers it (#1704): <paramref name="requestedId"/> is the id
+    /// Stubs the read the way Users answers it: <paramref name="requestedId"/> is the id
     /// the caller asks for, and the row that comes back is <paramref name="resolvedId"/>'s — the
     /// same row for a live account, the survivor's for a merge tombstone.
     /// </summary>
@@ -50,7 +50,7 @@ public class ICalFeedServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
 
-        // The token is Calendar's own row now, keyed by the id asked for — not a field
+        // The token is Calendar's own row, keyed by the id asked for — not a field
         // that travels with the merge-resolved user row.
         _tokens.GetAsync(requestedId, Arg.Any<CancellationToken>()).Returns(icalToken);
         var info = UserInfo.Create(

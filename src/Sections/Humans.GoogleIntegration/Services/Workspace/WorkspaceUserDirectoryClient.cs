@@ -7,12 +7,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Real Google-backed implementation of <see cref="IWorkspaceUserDirectoryClient"/>.
-/// Talks to the Google Workspace Admin SDK (Directory API) using the configured
-/// service account. This is the only file that imports <c>Google.Apis.*</c> for
-/// user-account management.
-/// </summary>
 internal sealed class WorkspaceUserDirectoryClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<WorkspaceUserDirectoryClient> logger) : IWorkspaceUserDirectoryClient

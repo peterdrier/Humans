@@ -15,10 +15,8 @@ using Humans.Surveys.Contracts;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// Real form-POST coverage for the survey builder's datetime-local fields
-/// (nobodies-collective/Humans#932): browsers post OpensAt/ClosesAt WITHOUT
-/// seconds, which the default NodaTime TypeConverter rejects. These tests
-/// exercise the full MVC model-binding path via LocalDateTimeModelBinder.
+/// Browsers post datetime-local fields without seconds, which the default NodaTime TypeConverter rejects, so these run
+/// the full model-binding path through LocalDateTimeModelBinder.
 /// </summary>
 public class SurveyAdminControllerTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -29,14 +27,12 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // GET the builder to seed the antiforgery token + cookie.
         var createResp = await Client.GetAsync("/Survey/Admin/Create", Xunit.TestContext.Current.CancellationToken);
         createResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var token = ExtractAntiForgeryToken(await createResp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken));
         token.Should().NotBeNullOrEmpty();
 
-        // OpensAt uses the browser's seconds-less wire format; ClosesAt includes
-        // seconds (some pickers do). Both must bind.
+        // OpensAt uses the browser's seconds-less format; ClosesAt has seconds, as some pickers send. Both must bind.
         var saveResp = await Client.PostAsync("/Survey/Admin/Save", BuildForm(
             ("__RequestVerificationToken", token),
             ("Title[en]", $"Integration test survey {Guid.NewGuid():N}"),

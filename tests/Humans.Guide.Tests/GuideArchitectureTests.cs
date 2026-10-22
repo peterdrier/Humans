@@ -9,14 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Guide.Tests;
 
-/// <summary>
-/// Architecture tests enforcing the section shape for Guide
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
-/// <remarks>
-/// Guide had no architecture test file before the move — <c>docs/sections/Guide.md</c>'s
-/// touch-and-clean guidance asked for one at migration time, and this is it.
-/// </remarks>
 public class GuideArchitectureTests
 {
     [HumansFact]
@@ -25,23 +17,15 @@ public class GuideArchitectureTests
         var paramTypes = typeof(GuideRoleResolver).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
 
-        // The absence half — NotContain(ITeamService) — was retired on Peter's call
-        // (peterdrier/Humans#1655, N1); the split it guarded no longer exists.
         paramTypes.Should().Contain(typeof(ITeamService));
     }
 
     [HumansFact]
     public void ContentSourceStaysABaseAbstraction()
     {
-        // IGuideContentSource carries the section's name and is not the section's: its
-        // signatures name only string, and its consumers are elsewhere (the Agent section's
-        // AgentSectionDocReader, AgentFeatureSpecReader, CommunityFaqReader and
-        // AgentDocsHealthCheck, and Base's GitHubCommunityKbContentSource). Pinning the
-        // namespace here is what stops a later
-        // pass "tidying" it into Humans.Guide and forcing Base to reference a section.
-        // The absence assertion that sat here — the Guide assembly contains no type named
-        // IGuideContentSource — was retired on Peter's call (peterdrier/Humans#1655, N2). The
-        // positive assertion carries it: the type can only live in one assembly.
+        // IGuideContentSource carries the section's name but is not the section's: its consumers
+        // are elsewhere (Agent, Base). Pinning the namespace stops a later pass "tidying" it into
+        // Humans.Guide and forcing Base to reference a section.
         typeof(IGuideContentSource).Assembly.GetName().Name
             .Should().Be("Humans.Base");
     }
@@ -86,8 +70,7 @@ public class GuideArchitectureTests
     public void EveryRoleHeadingParentheticalResolvesToAPrivilege()
     {
         // An unmapped parenthetical is silent: the segment carries no privilege and reaches
-        // nobody it was written for. "(Camp Coordinator)" sat like that on Camps.md
-        // (nobodies-collective/Humans#1035) until someone read the map.
+        // nobody it was written for.
         var unmapped = new List<string>();
 
         foreach (var file in Directory.GetFiles(Path.Combine(LocateRepoRoot(), "docs", "guide"), "*.md"))

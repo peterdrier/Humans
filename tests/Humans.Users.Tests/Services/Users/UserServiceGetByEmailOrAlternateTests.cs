@@ -10,11 +10,6 @@ using Xunit;
 
 namespace Humans.Users.Tests.Services.Users;
 
-/// <summary>
-/// Covers <see cref="UserService.GetByEmailOrAlternateAsync"/>: resolution through the
-/// canonical verified <c>user_emails</c> query (nobodies-collective/Humans#1102), including
-/// the gmail/googlemail alternate form and the verified-only gate.
-/// </summary>
 public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
 {
     private readonly IUserRepository _repo = Substitute.For<IUserRepository>();

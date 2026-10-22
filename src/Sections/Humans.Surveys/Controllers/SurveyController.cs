@@ -13,13 +13,9 @@ using Humans.Users.Contracts;
 namespace Humans.Surveys.Controllers;
 
 /// <summary>
-/// Survey answering wizard. Two entry paths share one page flow: the tokenised invite link
-/// (<c>/Survey/Answer?t=…</c>), where identity comes from the token's invitation (never the current
-/// principal); and the shareable slug link (<c>/Survey/{slug}</c>). Anonymous-enabled surveys retain
-/// the public representation choice; identified surveys require sign-in and current audience access.
-/// All flow decisions live in
-/// <see cref="ISurveyService.AdvanceWizardAsync"/>; the controller persists the session per
-/// <see cref="WizardRoute"/> and renders/redirects per the outcome.
+/// Two entry paths share one page flow: the invite link (<c>/Survey/Answer?t=…</c>), where identity comes from the
+/// token's invitation, never the current principal; and the public slug (<c>/Survey/{slug}</c>). Flow decisions live
+/// in <see cref="ISurveyService.AdvanceWizardAsync"/>.
 /// </summary>
 [AllowAnonymous]
 [Route("Survey")]
@@ -147,10 +143,10 @@ internal sealed class SurveyController(
                 SurveyInputMethod.UserSpecificLink, culture, ct);
         }
 
-        // First advance past the intro flips the invitation's funnel Started flag (all invited tiers).
+        // Flips the invitation's funnel Started flag (all invited tiers).
         await surveyService.MarkInvitationStartedAsync(ctx.InvitationId, ct);
 
-        // Enter at the first page that has a visible question (0 ⇒ no questions / nothing visible).
+        // 0 ⇒ no questions or nothing visible.
         state.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
             editable.Questions, SurveyWizardFlow.ToAnswerStates(state.Answers)) ?? 0;
 
@@ -281,8 +277,8 @@ internal sealed class SurveyController(
             Answers = stateAnswers,
         };
 
-        // Mirror the invited Start action: record the public start at intro advance (not the first page
-        // POST) so the SlugStarted funnel counts visitors who click Start and abandon on the first page.
+        // Record the public start at intro advance, not the first page POST, so SlugStarted counts visitors who
+        // abandon on the first page.
         state.Started = true;
         await surveyService.IncrementPublicStartedAsync(ctx.SurveyId, ct);
 
@@ -375,10 +371,9 @@ internal sealed class SurveyController(
     [HttpGet("Answer/ThankYou")]
     public async Task<IActionResult> ThankYou(string t, CancellationToken ct)
     {
-        // Submit flips Invitation.Completed, and a completed invitation no longer resolves — so the
-        // token cannot re-derive the survey here. The completion marker written at submit carries the
-        // survey and the language the respondent actually answered in; re-resolving the token is only
-        // the fallback for a thank-you link opened without one (bookmark, new session).
+        // A completed invitation no longer resolves, so the token cannot re-derive the survey here. The completion
+        // marker written at submit carries the survey and the answered language; the token is only the fallback (a
+        // bookmark, a new session).
         if (SurveyWizardSession.LoadCompleted(HttpContext.Session, t) is { } done)
         {
             return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
@@ -389,9 +384,8 @@ internal sealed class SurveyController(
     }
 
     /// <summary>
-    /// Routing/side-effect differences between the two entry paths, so the shared page flow stays
-    /// path-agnostic. The invited path saves session by token and redirects to <c>Page</c>/<c>ThankYou</c>;
-    /// the public path saves by slug and redirects to <c>PublicPage</c>/<c>PublicThankYou</c>.
+    /// What differs between the entry paths: the invited path keys the session by token and redirects to
+    /// <c>Page</c>/<c>ThankYou</c>; the public path keys by slug and redirects to <c>PublicPage</c>/<c>PublicThankYou</c>.
     /// </summary>
     private sealed record WizardRoute(bool IsPublic, string Key)
     {
@@ -452,16 +446,13 @@ internal sealed class SurveyController(
         };
     }
 
-    /// <summary>Entry/page UX gate (the service re-enforces the same rule authoritatively at submit).</summary>
+    /// <summary>The service re-enforces the same rule at submit.</summary>
     private bool IsAnswerable(SurveyDetail definition)
         => SurveyWizardFlow.IsAnswerable(
             definition.Status, definition.Editable.OpensAt, definition.Editable.ClosesAt,
             clock.GetCurrentInstant());
 
-    /// <summary>
-    /// Shared GET page render for both entry paths. Re-gates Open/closes-at, skips a now-all-hidden page,
-    /// and renders <c>Page.cshtml</c>; <paramref name="route"/> carries the token-vs-slug differences.
-    /// </summary>
+    /// <summary>Re-gates Open/closes-at and skips a now-all-hidden page.</summary>
     private async Task<IActionResult> RenderPage(SurveyWizardState state, WizardRoute route, CancellationToken ct)
     {
         var definition = await surveyService.GetForEditAsync(state.SurveyId, ct);
@@ -488,9 +479,8 @@ internal sealed class SurveyController(
             var next = SurveyWizardFlow.NextVisiblePage(editable.Questions, state.CurrentPage, answerStates);
             if (next is null)
             {
-                // Not thank-you: the respondent has submitted nothing, and telling them otherwise
-                // hides the real problem — a survey whose questions are all hidden (or that has none
-                // at all) should be visible as such rather than reported to them as completed.
+                // Not thank-you: the respondent submitted nothing, and a survey whose questions are all hidden (or
+                // has none) should show as such rather than as completed.
                 return View("Closed", new SurveyClosedViewModel { Reason = "empty" });
             }
 
@@ -507,10 +497,6 @@ internal sealed class SurveyController(
         return View("Page", vm);
     }
 
-    /// <summary>
-    /// Shared POST page processor for both entry paths: parse the posted answers, let the service
-    /// advance the wizard, persist the session, and render/redirect per the outcome.
-    /// </summary>
     private async Task<IActionResult> ProcessPage(
         SurveyWizardState state, SurveyPageInputModel model, WizardRoute route, CancellationToken ct)
     {
@@ -606,10 +592,8 @@ internal sealed class SurveyController(
     }
 
     /// <summary>
-    /// Builds the wizard session state from the answer context. The token's invitation id and user id
-    /// are carried for ALL invited tiers — they drive the funnel flags <c>Invitation.Started</c> (on
-    /// first advance) and <c>Invitation.Completed</c> (at submit, Identified + CompletionTracked).
-    /// Writing those identity columns onto the RESPONSE is Identified-only — that happens at submit.
+    /// The invitation and user ids are carried for all invited tiers: they drive the <c>Started</c> and
+    /// <c>Completed</c> funnel flags. Only an Identified response gets them written onto it, at submit.
     /// </summary>
     private static SurveyWizardState BuildState(SurveyAnswerContext ctx, ResponseAnonymity anonymity, string culture)
         => new()
@@ -624,10 +608,8 @@ internal sealed class SurveyController(
         };
 
     /// <summary>
-    /// Resolves the thank-you copy (survey's own text, else the localized fallback).
-    /// <paramref name="answeredCulture"/> is the language the respondent chose at the intro and answered
-    /// in, which is not necessarily their site UI culture; without it the closing copy would come back
-    /// in a different language from the questions they just read.
+    /// <paramref name="answeredCulture"/> is the language chosen at the intro, not necessarily the site culture;
+    /// without it the closing copy could differ from the questions just read.
     /// </summary>
     private SurveyThankYouViewModel BuildThankYou(SurveyDetail? definition, string? answeredCulture = null)
     {
@@ -647,7 +629,7 @@ internal sealed class SurveyController(
         };
     }
 
-    /// <summary>Picks a supported display culture, defaulting to the current UI culture then the survey's default.</summary>
+    /// <summary>The current UI culture if supported, else the survey's default.</summary>
     private static string ResolveCulture(string surveyDefault)
         => SurveyPageViewModelFactory.ResolveCulture(
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,

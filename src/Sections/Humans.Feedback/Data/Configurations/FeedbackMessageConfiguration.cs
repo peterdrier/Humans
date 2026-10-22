@@ -23,9 +23,6 @@ internal sealed class FeedbackMessageConfiguration : IEntityTypeConfiguration<Fe
             .HasForeignKey(m => m.FeedbackReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // SenderUserId is a bare cross-section Guid column — no FK constraint, no nav.
-        // Resolve senders via IUserService.
-
         builder.HasIndex(m => m.FeedbackReportId);
         builder.HasIndex(m => m.CreatedAt);
     }

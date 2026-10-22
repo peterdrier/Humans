@@ -4,9 +4,6 @@ using Humans.Agent.ViewComponents;
 
 namespace Humans.Agent;
 
-/// <summary>
-/// Agent's /Settings tab (peterdrier/Humans#1634).
-/// </summary>
 internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>

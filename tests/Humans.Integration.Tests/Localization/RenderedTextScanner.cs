@@ -5,10 +5,8 @@ using AngleSharp.Html.Parser;
 namespace Humans.Integration.Tests.Localization;
 
 /// <summary>
-/// Extracts user-visible text runs from rendered HTML — both text nodes and a whitelist of
-/// visible attributes (placeholder/title/alt/aria-label) — and tests them for the pseudo-localizer
-/// marker. Script/style/etc. containers are skipped, whitespace is collapsed, and runs with no
-/// letters (pure digits/punctuation) are dropped — they are never localizable prose.
+/// Extracts visible text runs (text nodes plus placeholder/title/alt/aria-label) from rendered HTML and tests them for
+/// the pseudo-localizer marker. Script and style are skipped, and letterless runs are dropped.
 /// </summary>
 internal static class RenderedTextScanner
 {
@@ -19,15 +17,11 @@ internal static class RenderedTextScanner
         "SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "SVG",
     };
 
-    // User-visible attribute text (labels/hints) that should be localized just like body text.
     private static readonly string[] VisibleTextAttributes = ["placeholder", "title", "alt", "aria-label"];
 
     /// <summary>
-    /// One run per visible text node — enough granularity to test each for the marker. Scanning
-    /// is scoped to the page's <c>&lt;main&gt;</c> content region so the shared layout shell
-    /// (nav, sidebar, language switcher, footer, feedback modal) — which is identical on every
-    /// page and is its own concern — does not drown the per-page signal. Falls back to the whole
-    /// body if a page has no <c>&lt;main&gt;</c>.
+    /// One run per visible text node, scoped to <c>&lt;main&gt;</c> (or the body, without one) so the layout shell,
+    /// identical on every page, doesn't drown the per-page signal.
     /// </summary>
     public static IReadOnlyList<string> ExtractTextRuns(string html)
     {

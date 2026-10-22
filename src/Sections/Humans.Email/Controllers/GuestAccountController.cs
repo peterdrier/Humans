@@ -12,13 +12,7 @@ using NodaTime;
 
 namespace Humans.Email.Controllers;
 
-/// <summary>
-/// Self-service communication preferences for profileless accounts (authenticated users without
-/// a Profile) and for anyone arriving from an unsubscribe link. The dashboard frame itself lives
-/// in Humans.Onboarding; the guest data export and deletion actions live in Humans.Gdpr
-/// (<c>GuestDataController</c>). Moved from Users in Users decomposition commit 14; served at
-/// <c>/Email/Guest/CommunicationPreferences</c>.
-/// </summary>
+/// <summary>For profileless accounts and for anyone arriving from an unsubscribe link.</summary>
 [Authorize]
 internal sealed class GuestAccountController(
     IUserService userService,

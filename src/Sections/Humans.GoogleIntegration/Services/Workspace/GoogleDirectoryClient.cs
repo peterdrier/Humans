@@ -6,13 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.GoogleIntegration.Services.Workspace;
 
-/// <summary>
-/// Real Google-backed implementation of <see cref="IGoogleDirectoryClient"/>.
-/// Talks to the Google Workspace Admin Directory API (Users.List and
-/// Groups.List) using the configured service account. This is the only file
-/// that imports <c>Google.Apis.*</c> for domain-wide enumeration performed
-/// by <c>GoogleWorkspaceSyncService</c>.
-/// </summary>
 internal sealed class GoogleDirectoryClient(
     IOptions<GoogleWorkspaceSettings> settings,
     ILogger<GoogleDirectoryClient> logger) : IGoogleDirectoryClient
@@ -94,9 +87,7 @@ internal sealed class GoogleDirectoryClient(
                 {
                     foreach (var g in response.GroupsValue)
                     {
-                        // Require both Id and Email to be populated so downstream
-                        // callers can treat them as non-nullable. Defensive —
-                        // in practice Google always returns both on list.
+                        // Downstream treats both as non-nullable; Google always returns them on list in practice.
                         if (string.IsNullOrEmpty(g.Email) || string.IsNullOrEmpty(g.Id))
                         {
                             continue;

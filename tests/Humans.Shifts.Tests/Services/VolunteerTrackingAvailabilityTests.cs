@@ -62,10 +62,8 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         var esId = SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // First set
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2]);
 
-        // Update
         await _service.SetAvailabilityAsync(userId, esId, [0, 1, 2]);
 
         var records = await ShiftsDb.GeneralAvailability
@@ -109,7 +107,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await _service.SetAvailabilityAsync(user2Id, esId, [-2, 0, 1]);
         await _service.SetAvailabilityAsync(user3Id, esId, [0, 1, 2]);
 
-        // Query for day -2: should return user1 and user2
         var available = await _service.GetAvailableForDayAsync(esId, -2);
         available.Should().HaveCount(2);
         available.Select(a => a.UserId).Should().BeEquivalentTo([user1Id, user2Id]);

@@ -23,7 +23,6 @@ internal sealed class UserService(
     ILogger<UserService> logger,
     IAuditLogService audit) : IUserManagement, IUserDataContributor
 {
-    /// <summary>GDPR export JSON keys for this contributor's data.</summary>
     internal const string Account = "Account";
     internal const string Profile = "Profile";
     internal const string MergedProfiles = "MergedProfiles";
@@ -44,12 +43,9 @@ internal sealed class UserService(
     private static TrackedLock ProfileStubLockFor(Guid userId) =>
         ProfileStubLocks[(uint)userId.GetHashCode() % (uint)ProfileStubLocks.Length];
 
-    // --- User reads ---
-
     /// <summary>
-    /// The inner service reads rows, it does not resolve merge chains — only
-    /// <c>CachingUserService</c> sees the whole graph. So raw and redirecting reads
-    /// are the same thing here, and the redirect is tested through the decorator.
+    /// Only <c>CachingUserService</c> sees the whole graph, so here raw and redirecting reads are
+    /// the same; the redirect is tested through the decorator.
     /// </summary>
     public ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default) =>
         GetUserInfoAsync(userId, ct);
@@ -177,7 +173,7 @@ internal sealed class UserService(
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Own-data only — cross-section cascade lives in IAccountDeletionService.
+        // Own data only; the cross-section cascade is IAccountDeletionService's.
         if (await repo.GetByIdAsync(userId, ct) is null)
             return null;
 
@@ -185,30 +181,19 @@ internal sealed class UserService(
         return await repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
 
-    /// <summary>
-    /// Resolves a user by a verified <c>user_emails</c> address (and its gmail/googlemail
-    /// alternate form), returning the matching <see cref="UserInfo"/> or null.
-    /// </summary>
+    /// <summary>Verified rows only, matching the address or its gmail/googlemail alternate.</summary>
     /// <remarks>
-    /// Verified-only is deliberate and load-bearing: this method answers "which account owns
-    /// this address" for Google sync, and an unverified address must never resolve to an account.
-    /// The warmed-snapshot match that logically precedes it is owned by <c>CachingUserService</c>,
-    /// which scans its <see cref="UserInfo"/> snapshot and only delegates here on a miss — same
-    /// division of labour as <see cref="SearchUsersAsync"/>. Doing the match here too would
-    /// re-derive that entire snapshot (<see cref="GetAllUserInfosAsync"/> = six bulk repository
-    /// reads) on every miss, once per address, which is what a Google sync run with unknown
-    /// recipients actually hits. Callers resolve <c>IUserManagement</c> to the decorator; reaching
-    /// the inner service directly is a DI registration mistake.
-    /// See nobodies-collective/Humans#1102.
+    /// Verified-only is load-bearing: Google sync asks which account owns an address, and an
+    /// unverified address must never resolve. The snapshot match is <c>CachingUserService</c>'s;
+    /// repeating it here would re-derive the whole snapshot on every miss.
     /// </remarks>
     public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);
         var alternate = EmailLookupAliases.GetAlternate(normalized);
 
-        // The alternate is passed to the query because its ILIKE matches the literal stored
-        // string; the in-memory re-check needs only one pass, since EmailsMatch folds
-        // gmail/googlemail on both sides (same reasoning as UserEmailService.FindByAddressAsync).
+        // The query needs the alternate (ILIKE matches the literal string); the in-memory re-check
+        // doesn't, since EmailsMatch folds gmail/googlemail on both sides.
         var rows = await repo.GetUserEmailsByAddressAsync(normalized, alternate, ct);
 
         var match = rows
@@ -222,8 +207,6 @@ internal sealed class UserService(
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
         repo.GetAccountsDueForAnonymizationAsync(now, ct);
-
-    // --- User writes ---
 
     public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
@@ -268,12 +251,8 @@ internal sealed class UserService(
             return false;
         }
 
-        // OAuth/import creation seeds User.BurnerName directly (before any Profile exists),
-        // so a caller that passes no burnerName still gets the one already on the User row —
-        // otherwise this stub write would wipe it via the #1097 Profile->User mirror below.
-        // User.FirstName/LastName can't have a value yet at this point (they're only ever
-        // set by that same mirror, which requires a Profile to exist), so there's nothing to
-        // inherit for those.
+        // OAuth/import creation seeds User.BurnerName before any Profile exists; inherit it, or
+        // the Profile->User mirror below would wipe it. User legal names can't be set yet.
         var user = await repo.GetByIdAsync(userId, ct);
         var resolvedBurnerName = burnerName ?? user?.BurnerName;
 
@@ -289,10 +268,8 @@ internal sealed class UserService(
             LastName = (lastName ?? string.Empty).Trim(),
         };
 
-        // Seeded names (magic-link signup) promote straight to Active, mirroring
-        // SaveProfileAsync; import/OAuth paths inherit BurnerName above but still pass no
-        // FirstName/LastName, so they stay Bare. The repository derives User.State from the
-        // row it persists.
+        // Seeded names (magic-link signup) promote straight to Active; import/OAuth stubs carry no
+        // legal names and stay Bare. The repository derives User.State.
         await repo.AddAsync(profile, ct);
         if (actorUserId.HasValue)
             await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
@@ -306,8 +283,7 @@ internal sealed class UserService(
         if (await repo.GetByUserIdAsync(userId, ct) is null)
             return new OnboardingResult(false, "NotFound");
 
-        // Nothing on the profile: suspension is users.State alone. The reason goes to the audit
-        // log and the notification via HumanLifecycleService, not onto the row.
+        // users.State alone: the reason goes to the audit log and the notification, not the row.
         await repo.SetSuspensionAsync(userId, suspended, adminSuspension, ct);
         return new OnboardingResult(true);
     }
@@ -368,7 +344,7 @@ internal sealed class UserService(
 
         profile.UpdatedAt = now;
 
-        // LocalDate year=4 lets Feb 29 validate.
+        // Year 4 is a leap year, so Feb 29 validates.
         if (command.BirthdayMonth is >= 1 and <= 12 && command.BirthdayDay is >= 1 and <= 31)
         {
             try
@@ -419,8 +395,7 @@ internal sealed class UserService(
                 break;
         }
 
-        // Bare->Active promotion happens in the repository, which re-derives User.State from the
-        // saved names and carries any existing suspension forward.
+        // The repository re-derives User.State (Bare->Active) and carries a suspension forward.
         try
         {
             await repo.UpdateAsync(profile, ct, volunteerHistory);
@@ -618,8 +593,7 @@ internal sealed class UserService(
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
             await repo.UpdateUserEmailAsync(email, ct);
-            // Verification has committed; primary repair is part of completing it. The Google
-            // identity is resolved on read by GoogleIntegration (Users decomposition commit 15).
+            // Verification has committed; primary repair is part of completing it.
             await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
             changed = true;
         }
@@ -716,8 +690,6 @@ internal sealed class UserService(
         return new UserEmailReconcilePlanResult(mutatedUserIds);
     }
 
-    // --- IUserDataContributor — GDPR export ---
-
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var allUsers = (await repo.GetAllAsync(ct)).ToDictionary(u => u.Id);
@@ -737,8 +709,7 @@ internal sealed class UserService(
         }
         userId = user.Id;
 
-        // The Google Workspace identity is exported by GoogleIntegration's WorkspaceIdentity slice
-        // (Users decomposition commit 15); the legacy per-row flags stay in the UserEmails slice.
+        // The Workspace identity is GoogleIntegration's export slice; the legacy per-row flags stay here.
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         var effectiveEmail = userEmails
             .Where(e => e.IsVerified)
@@ -746,8 +717,8 @@ internal sealed class UserService(
             .Select(e => e.Email)
             .FirstOrDefault() ?? user.IdentityEmailColumn;
 
-        // The two dead legacy flags stay in the Art. 15 export while the columns exist (debt ledger
-        // USERS-12/13 remove these lines with the drop). Scoped suppression: this is their only reader.
+        // The dead legacy flags stay in the Art. 15 export while the columns exist; this is their
+        // only reader.
 #pragma warning disable CS0618
         var unsubscribedFromCampaigns = user.UnsubscribedFromCampaigns;
         var suppressScheduleChangeEmails = user.SuppressScheduleChangeEmails;
@@ -793,8 +764,8 @@ internal sealed class UserService(
             : new UserDataSlice(Profile, ShapeProfileForExport(profile,
                 user.State is UserState.Suspended or UserState.AdminSuspended));
 
-        // Profile folds deliberately retain health data on archived rows.
-        // Walk backwards from the survivor so every retained profile follows it into the export.
+        // Folds keep health data on archived rows, so walk back from the survivor and export every
+        // retained profile.
         var sourcesByTarget = allUsers.Values.Where(u => u.MergedToUserId is not null)
             .ToLookup(u => u.MergedToUserId!.Value);
         var mergedIds = new HashSet<Guid> { userId };
@@ -809,8 +780,8 @@ internal sealed class UserService(
         }
         mergedIds.Remove(userId);
 
-        // The frozen legacy table (Users decomposition commit 13; Tickets exports the live
-        // participation). Rows stay keyed to archived ids since merges stopped folding this table.
+        // Frozen legacy table (Tickets exports live participation); rows stay on archived ids
+        // because merges stopped folding it.
         var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync([userId, .. mergedIds], ct);
         var participationsShaped = participationsByUser.Values
             .SelectMany(rows => rows)
@@ -847,7 +818,7 @@ internal sealed class UserService(
         {
             e.Email,
             e.IsVerified,
-            // JSON keys pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
+            // JSON keys pinned: GDPR export stability.
             IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
             e.IsGoogle,
@@ -913,11 +884,10 @@ internal sealed class UserService(
             profile.Pronouns,
             profile.ContributionInterests,
             profile.BoardNotes,
-            // Frozen legacy column, still held here until the governance.profile-tier retirement drops
-            // it; the live tier is Governance's MembershipTier slice (Users decomposition commit 11).
+            // Frozen legacy column; Governance exports the live tier.
             profile.MembershipTier,
             profile.IsApproved,
-            // JSON key pinned per memory/code/no-rename-serialized-fields.md (GDPR export stability).
+            // JSON key pinned: GDPR export stability.
             IsSuspended = isSuspended,
             profile.NoPriorBurnExperience,
             ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
@@ -928,9 +898,8 @@ internal sealed class UserService(
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,
             profile.EmergencyContactRelationship,
-            // Legacy food columns: still held here (incl. archived merge rows) until the
-            // cantina.profile-dietary retirement drops them, so they stay in the export. The live
-            // answers are Cantina's DietaryProfile slice (Users decomposition commit 10).
+            // Legacy food columns (incl. archived merge rows) stay in the export until their drop;
+            // Cantina exports the live answers.
             profile.DietaryPreference,
             profile.Allergies,
             profile.AllergyOtherText,
@@ -941,8 +910,6 @@ internal sealed class UserService(
             CreatedAt = profile.CreatedAt.ToIso8601(),
             UpdatedAt = profile.UpdatedAt.ToIso8601()
         };
-
-    // --- IUserDataContributor — GDPR erasure ---
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
@@ -971,12 +938,6 @@ internal sealed class UserService(
     /// <summary>Owns the account record: erased after every other contributor.</summary>
     public bool ErasesLast => true;
 
-    /// <summary>
-    /// Anonymizes the profile (contact fields and volunteer history go with it),
-    /// removes the profile-picture bytes, clears the Article 9 health/diet fields
-    /// and the language + communication-preference rows, then collapses the User
-    /// aggregate's identity and drops every UserEmail and external login.
-    /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
@@ -1077,8 +1038,6 @@ internal sealed class UserService(
             await repo.UpdateUserEmailsAsync(changed, ct);
     }
 
-    // --- Account merge: fold-into-target primitives ---
-
     public async Task<bool> AnonymizeForMergeAsync(
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default)
@@ -1089,7 +1048,6 @@ internal sealed class UserService(
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
-        // `actorUserId` unused — kept for IUserMerge contract.
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
         var previousPicture = await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);

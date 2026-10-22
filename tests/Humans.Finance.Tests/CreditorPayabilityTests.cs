@@ -23,9 +23,9 @@ using Xunit;
 namespace Humans.Finance.Tests;
 
 /// <summary>
-/// The two payability gates added after the 2026-10-18 double payment: a row already in an
-/// unbooked payout file, and a row whose member has duplicate documents in Holded. Both render as
-/// reasons on /Finance/Creditors and both are re-derived by the payout generation.
+/// Two payability gates against double payment: a row already in an unbooked payout file, and a
+/// member with duplicate documents in Holded. Both render on /Finance/Creditors and both are
+/// re-derived by payout generation.
 /// </summary>
 public class CreditorPayabilityTests
 {

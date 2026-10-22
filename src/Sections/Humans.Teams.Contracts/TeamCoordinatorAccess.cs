@@ -1,14 +1,8 @@
 namespace Humans.Teams.Contracts;
 
-/// <summary>
-/// Shared coordinator-access rule over the Teams read model.
-/// </summary>
 public static class TeamCoordinatorAccess
 {
-    /// <summary>
-    /// Returns true when the user can coordinate the active team through direct
-    /// coordinator membership, a management role, or parent-team coordinator inheritance.
-    /// </summary>
+    /// <summary>Direct coordinator membership, a management role, or coordinator of the parent team.</summary>
     public static bool IsCoordinatorOfActiveTeam(
         IReadOnlyDictionary<Guid, TeamInfo> teamsById,
         Guid teamId,

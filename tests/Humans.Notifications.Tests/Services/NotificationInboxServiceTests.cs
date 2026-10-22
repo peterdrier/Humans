@@ -35,8 +35,7 @@ public class NotificationInboxServiceTests : IDisposable
         _cache = new MemoryCache(new MemoryCacheOptions());
         _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
 
-        // The inbox stitches display names from users, which stay in Base. No test here
-        // seeds a user, so an empty lookup is enough.
+        // No test here seeds a user, so an empty display-name lookup is enough.
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -127,8 +126,6 @@ public class NotificationInboxServiceTests : IDisposable
 
         _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(_userId), out _).Should().BeFalse();
     }
-
-    // --- ResolveAsync ---
 
     [HumansFact]
     public async Task ResolveAsync_RejectsInformationalWithoutResolvingIt()
@@ -261,8 +258,6 @@ public class NotificationInboxServiceTests : IDisposable
         result.Success.Should().BeTrue();
     }
 
-    // --- DismissAsync ---
-
     [HumansFact]
     public async Task DismissAsync_DismissesInformationalNotification()
     {
@@ -309,8 +304,6 @@ public class NotificationInboxServiceTests : IDisposable
         result.NotFound.Should().BeTrue();
     }
 
-    // --- MarkReadAsync ---
-
     [HumansFact]
     public async Task MarkReadAsync_SetsReadAt()
     {
@@ -337,8 +330,6 @@ public class NotificationInboxServiceTests : IDisposable
         result.NotFound.Should().BeTrue();
     }
 
-    // --- MarkAllReadAsync ---
-
     [HumansFact]
     public async Task MarkAllReadAsync_MarksAllUnreadAsRead()
     {
@@ -353,8 +344,6 @@ public class NotificationInboxServiceTests : IDisposable
             .CountAsync(Xunit.TestContext.Current.CancellationToken);
         unread.Should().Be(0);
     }
-
-    // --- BulkResolveAsync ---
 
     [HumansFact]
     public async Task BulkResolveAsync_ResolvesMultipleActionableNotifications()
@@ -397,8 +386,6 @@ public class NotificationInboxServiceTests : IDisposable
         unchanged.ResolvedAt.Should().BeNull();
     }
 
-    // --- BulkDismissAsync ---
-
     [HumansFact]
     public async Task BulkDismissAsync_DismissesMultipleInformationalNotifications()
     {
@@ -440,8 +427,6 @@ public class NotificationInboxServiceTests : IDisposable
         unchanged.ResolvedAt.Should().BeNull();
     }
 
-    // --- ClickThroughAsync ---
-
     [HumansFact]
     public async Task ClickThroughAsync_MarksReadAndReturnsUrl()
     {
@@ -467,8 +452,6 @@ public class NotificationInboxServiceTests : IDisposable
         url.Should().BeNull();
     }
 
-    // --- GetPopupAsync ---
-
     [HumansFact]
     public async Task GetPopupAsync_ReturnsUnresolvedNotificationsSplitByClass()
     {
@@ -484,8 +467,6 @@ public class NotificationInboxServiceTests : IDisposable
         result.Actionable.Should().HaveCount(1);
         result.Informational.Should().HaveCount(1);
     }
-
-    // --- Cache invalidation ---
 
     [HumansFact]
     public async Task ResolveAsync_InvalidatesBadgeCache()

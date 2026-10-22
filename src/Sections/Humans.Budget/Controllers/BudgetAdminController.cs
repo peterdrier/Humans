@@ -16,15 +16,8 @@ using Humans.Users.Contracts;
 namespace Humans.Budget.Controllers;
 
 /// <summary>
-/// Budget's admin surface: years, groups, categories, line items, the ticketing projection
-/// and the audit log, under the <c>/Finance</c> route prefix it shares with
-/// <c>Humans.Finance.Controllers.FinanceController</c> — the action templates are disjoint.
+/// Shares the <c>/Finance</c> route prefix with Finance's <c>FinanceController</c>; the action templates are disjoint.
 /// </summary>
-/// <remarks>
-/// It still calls <c>IHoldedFinanceService</c> for one thing: the per-category actuals shown on
-/// the year overview. That is an ordinary cross-section service call through the Finance
-/// section's read contract, not a reason to keep the controllers merged.
-/// </remarks>
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 internal sealed class BudgetAdminController(
@@ -588,7 +581,6 @@ internal sealed class BudgetAdminController(
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
     }
 
-    /// <summary>FinanceOverviewViewModel via shared summary + actual tickets in ViewBag.</summary>
     private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears, CancellationToken ct)
     {
         var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);

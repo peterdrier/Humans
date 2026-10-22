@@ -12,18 +12,6 @@ namespace Humans.Analyzers;
 /// <c>IUserService.ApplyUserEmailReconcilePlanAsync</c> ->
 /// <c>IUserRepository.ApplyUserEmailReconcilePlanAsync</c>. Any other call site is forbidden.
 /// </summary>
-/// <remarks>
-/// See <c>memory/architecture/email-mutation-paths.md</c>. The atom names this
-/// analyzer as the build-time enforcement and instructs not to add a parallel
-/// IL-scan test.
-/// <para>
-/// The service-caller pin moved off <c>AccountController</c> when HUM0031
-/// forced the OAuth decision ladder out of the controller
-/// (nobodies-collective/Humans#857). <c>ExternalLoginService</c> exists solely
-/// to serve <c>AccountController.ExternalLoginCallback</c>, so the allowlist is
-/// still exactly one type wide and still names the OAuth-callback moment.
-/// </para>
-/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
 {
@@ -81,11 +69,8 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        // Scope: Application + Web + Infrastructure. The repository implementation lives in
-        // Infrastructure; the services / controllers live in Application + Web. Both
-        // allowlisted callers are in Application — neither is excluded from the scope,
-        // instead the type-name guard below admits them. Web stays in scope so a
-        // controller reaching for the primitive directly still fails the build.
+        // The allowlisted callers pass through the type-name guard below, not a scope exclusion, so a controller
+        // reaching for the primitive directly still fails the build.
         context.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
     }
 

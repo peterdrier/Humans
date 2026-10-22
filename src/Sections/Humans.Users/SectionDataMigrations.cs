@@ -5,10 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Users;
 
 /// <summary>
-/// Users' data migrations, run from <c>/Debug/DataMigrations</c>. Each one resolves Users' own
-/// services, so the copy stays inside the section; the Debug host only lists, applies and
-/// audits the run. The remaining copy replaces the Temp screen that used to live at
-/// <c>/Profile/Admin/EmailProblems/BackfillLegacyEmails</c>.
+/// Each migration resolves Users' own services, so the copy stays inside the section; the Debug
+/// host only lists, applies and audits the run.
 /// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
@@ -24,8 +22,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
     ];
 
-    // --- users.legacy-identity-emails ---
-
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],
             [.. (await sp.GetRequiredService<IEmailProblemsService>().ScanAsync(ct)).Problems
@@ -36,6 +32,5 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
                 ])]);
 
     private static async Task<int> ApplyLegacyEmailsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        // Audits LegacyIdentityEmailBackfilled per created row.
         (await sp.GetRequiredService<IEmailProblemsService>().BackfillLegacyIdentityEmailsAsync(actorUserId, ct)).Count;
 }

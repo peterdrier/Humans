@@ -2,11 +2,7 @@ using NodaTime;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Storage-level request to add a <c>UserEmail</c> row to the Users-owned
-/// <see cref="UserInfo"/> payload. Token generation, email delivery, OAuth
-/// handshakes, and merge-request orchestration live outside this command.
-/// </summary>
+/// <summary>Storage only: tokens, delivery, OAuth and merge requests are the caller's.</summary>
 public sealed record UserEmailAddCommand(
     string Email,
     bool IsVerified = false,
@@ -28,11 +24,7 @@ public enum UserEmailPrimaryChange
     ClearDuplicatePrimary,
 }
 
-/// <summary>
-/// Consolidated storage-level update for the mutable flags on a UserEmail row.
-/// Commands are intentionally invariant-aware so the Users boundary does not
-/// grow one public method per flag transition.
-/// </summary>
+/// <summary>One invariant-aware update, so the boundary doesn't grow a method per flag transition.</summary>
 public sealed record UserEmailUpdateCommand(
     bool MarkVerified = false,
     UserEmailPrimaryChange Primary = UserEmailPrimaryChange.None,
@@ -52,9 +44,8 @@ public sealed record UserEmailRemoveCommand(
     bool RepairInvariants = true);
 
 /// <summary>
-/// Storage-level OAuth reconcile mutation plan. The caller decides OAuth
-/// policy, conflict handling, and audit text; Users applies the row mutation
-/// atomically and repairs UserInfo-visible email invariants.
+/// The caller decides OAuth policy, conflicts and audit text; Users applies the rows atomically and repairs the
+/// email invariants.
 /// </summary>
 public sealed record UserEmailReconcilePlanCommand(
     UserEmail? DisplacedRowToDelete,

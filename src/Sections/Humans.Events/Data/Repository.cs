@@ -8,8 +8,6 @@ namespace Humans.Events.Data;
 
 internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> factory) : IEventRepository
 {
-    // ── Settings ─────────────────────────────────────────────────────────
-
     public async Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -35,8 +33,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         }
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Categories ────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default)
     {
@@ -121,8 +117,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Venues ────────────────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -198,8 +192,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Events (submitter) ────────────────────────────────────────────────
-
     public async Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -250,8 +242,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    // ── Events (browse / export / API) ────────────────────────────────────
-
     public async Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
@@ -300,8 +290,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .ToListAsync(ct);
     }
 
-    // ── Events (moderation) ───────────────────────────────────────────────
-
     public async Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -349,9 +337,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(e => e.Id == eventId, ct);
     }
 
-    // Read-only point reads project to EventInfo, which carries category, venue and
-    // moderation history. Write loads (GetEventForModerationAsync) stay nav-free so
-    // Attach on save never drags a stale Category/EventVenue graph along.
+    // Write loads stay nav-free so Attach on save never drags a stale Category/EventVenue graph along.
     private static IQueryable<Event> WithDetails(IQueryable<Event> query) => query
         .Include(e => e.Category)
         .Include(e => e.EventVenue)
@@ -379,8 +365,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         ctx.EventModerationActions.Add(action);
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── Favourites ────────────────────────────────────────────────────────
 
     public async Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
     {
@@ -438,16 +422,13 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
     }
 
     /// <summary>
-    /// Favourites that overlap a (user, event, dayOffset) reference: a whole-event
-    /// reference (null dayOffset) matches every row for the event; a day reference
-    /// matches the same-day row plus any whole-event row.
+    /// A whole-event reference (null dayOffset) matches every row for the event; a day reference matches the same-day
+    /// row plus any whole-event row.
     /// </summary>
     private static IQueryable<EventFavourite> MatchingFavourites(EventGuideDbContext ctx, Guid userId, Guid eventId, int? dayOffset) =>
         ctx.EventFavourites
             .Where(f => f.UserId == userId && f.GuideEventId == eventId)
             .Where(f => dayOffset == null || f.DayOffset == null || f.DayOffset == dayOffset);
-
-    // ── Preferences ───────────────────────────────────────────────────────
 
     public async Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
     {
@@ -476,8 +457,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         }
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ── GDPR contributor ──────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default)
     {
@@ -518,8 +497,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         return submissions.Count;
     }
 
-    // ── Account merge ─────────────────────────────────────────────────────
-
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
     {
@@ -532,9 +509,8 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             submission.LastUpdatedAt = updatedAt;
         }
 
-        // Replays the source's favourites through the add-if-absent rule (MatchingFavourites):
-        // one the target already covers — same day, or either side whole-event — is a
-        // duplicate and goes; the target's own rows are never changed.
+        // Replays the source's favourites through the add-if-absent rule: one the target already covers is a duplicate
+        // and goes; the target's own rows never change.
         var favourites = await ctx.EventFavourites
             .Where(f => f.UserId == sourceUserId || f.UserId == targetUserId)
             .ToListAsync(ct);
@@ -552,8 +528,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             held.Add(favourite);
         }
 
-        // One preference row per user: the survivor's wins; the source's moves only when the
-        // target has none, otherwise it stays on the archived account as history.
+        // The survivor's preference wins; the source's moves only when the target has none.
         var sourcePreference = await ctx.EventPreferences.FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
         if (sourcePreference is not null
             && !await ctx.EventPreferences.AnyAsync(p => p.UserId == targetUserId, ct))

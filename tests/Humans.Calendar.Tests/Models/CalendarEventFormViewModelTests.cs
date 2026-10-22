@@ -20,8 +20,7 @@ namespace Humans.Calendar.Tests.Models;
 public sealed class CalendarEventFormViewModelTests
 {
     // Model binding turns a cleared box into null, and NodaTime's GetZoneOrNull throws on null
-    // rather than returning it — so before this guard, clearing the field and submitting Create
-    // or Edit answered 500. Reproduced against the PR preview at 1578.n.burn.camp.
+    // rather than returning it; unguarded, clearing the field and submitting answered 500.
     [HumansTheory]
     [InlineData(null)]
     [InlineData("")]

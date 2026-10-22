@@ -57,7 +57,7 @@ public class OnboardingWidgetControllerConsentsTests
     {
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
-        // Default: user has a non-Stub profile so the new pre-flight gate
+        // Default: user has a non-Stub profile so the pre-flight gate
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
@@ -218,7 +218,7 @@ public class OnboardingWidgetControllerConsentsTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
         // Localizer stub returns the key as the value, so this verifies that
-        // the controller now goes through `_localizer["Consent_MustCheck"]`
+        // the controller goes through `_localizer["Consent_MustCheck"]`
         // (matches ConsentController.Submit) rather than emitting the raw key.
         Assert.Equal("Consent_MustCheck", ctrl.TempData[TempDataKeys.ErrorMessage]);
         await _consents.DidNotReceive().SubmitConsentAsync(

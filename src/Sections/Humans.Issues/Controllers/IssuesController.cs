@@ -23,16 +23,15 @@ internal sealed class IssuesController(
     IStringLocalizer<IssuesResource> localizer,
     ILogger<IssuesController> logger) : HumansControllerBase(users)
 {
-    // Roles from claims (RoleAssignment → claims-transformation), NOT UserManager.GetRolesAsync (misses CampAdmin etc.).
+    // Roles from claims, not UserManager.GetRolesAsync, which misses CampAdmin etc.
     private List<string> ClaimsRoles() => User.Claims
         .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
         .Select(c => c.Value)
         .ToList();
 
     /// <summary>
-    /// The browsing user as the service scopes them. The service refuses anything out of
-    /// their reach on its own; the <see cref="IAuthorizationService"/> checks below stay
-    /// because they shape the page and answer 403 where the service would answer 404.
+    /// The service refuses anything out of reach on its own; the authorization checks below stay because they shape
+    /// the page and answer 403 where the service would answer 404.
     /// </summary>
     private IssueViewer ViewerFor(Guid userId) => new(userId, ClaimsRoles());
 
@@ -51,8 +50,7 @@ internal sealed class IssuesController(
         var viewer = ViewerFor(user.Id);
         var viewMode = view ?? IssueViewMode.All;
 
-        // Open = non-terminal; Closed = terminal; Mine = ReporterUserId == current user.
-        // Wider than the nav badge, which counts Open + Triage only.
+        // "Open" is every non-terminal status: wider than the nav badge, which counts Open + Triage only.
         var statuses = viewMode switch
         {
             IssueViewMode.Open => Enum.GetValues<IssueStatus>().Where(s => !s.IsTerminal()).ToArray(),
@@ -76,8 +74,6 @@ internal sealed class IssuesController(
 
         var matches = await issues.GetIssueListAsync(filter, viewer, HttpContext.RequestAborted);
 
-        // Section dropdown: Admin sees all known sections; non-admins see the
-        // sections their roles own (so they only filter inside their own queue).
         var allowedSections = viewer.IsAdmin
             ? routing.AllKnownSections
             : routing.SectionsForRoles(viewer.Roles).ToList();
@@ -204,8 +200,7 @@ internal sealed class IssuesController(
         var viewer = ViewerFor(user.Id);
         var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
 
-        // "Not found" and "no access" indistinguishable (the service returns null for both).
-        // Partial → inline notice; full nav → redirect to Index.
+        // Not found and no access look the same. Partial → inline notice; full nav → redirect to Index.
         if (issue is null)
         {
             return isPartial
@@ -233,10 +228,7 @@ internal sealed class IssuesController(
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    /// <summary>
-    /// The issue's screenshot, behind the same reach as <see cref="Detail"/>: a handler of its
-    /// section, or its reporter. Missing and out-of-reach answer alike.
-    /// </summary>
+    /// <summary>Same reach as <see cref="Detail"/>; missing and out of reach answer alike.</summary>
     [HttpGet("{id}/Screenshot")]
     public async Task<IActionResult> Screenshot(Guid id)
     {

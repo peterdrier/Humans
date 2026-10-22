@@ -2,98 +2,49 @@ using NodaTime;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// An email address associated with a user account.
-/// Supports OAuth login email, additional verified emails, notification targeting, and profile visibility.
-/// </summary>
 public class UserEmail
 {
-    /// <summary>
-    /// Unique identifier for this email record.
-    /// </summary>
     public Guid Id { get; init; }
 
-    /// <summary>
-    /// Foreign key to the user.
-    /// </summary>
     public Guid UserId { get; init; }
 
     /// <summary>
-    /// The email address.
-    ///
-    /// MUTATION: see <c>memory/architecture/email-mutation-paths.md</c>. The only
-    /// path that rewrites this field on an existing row is
-    /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>, matched on
-    /// <see cref="Provider"/>+<see cref="ProviderKey"/>, called only by the
-    /// OAuth sign-in callback in <c>AccountController</c>. Admin flows, sync
-    /// jobs, and profile UI never rewrite an existing row's address — renames
-    /// self-heal on the user's next OAuth sign-in. Rows can be added or removed,
-    /// not edited.
+    /// Only <c>UserEmailService.ReconcileOAuthIdentityAsync</c>, matched on <see cref="Provider"/> and
+    /// <see cref="ProviderKey"/> from the OAuth callback, rewrites an existing row's address. Everything else adds or
+    /// removes rows (<c>memory/architecture/email-mutation-paths.md</c>).
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether this email has been verified.
-    /// </summary>
     public bool IsVerified { get; set; }
 
     /// <summary>
-    /// OAuth provider that owns this email row, when the user is signed in via OIDC.
-    /// "Google" today; future "Apple", "Microsoft". Null when no OAuth identity is
-    /// linked to this row. Single-row-per-(Provider, ProviderKey) is service-enforced
-    /// inside <c>UserEmailService</c> per <c>feedback_db_enforcement_minimal</c>.
+    /// The OAuth provider owning this row ("Google"); null when none is linked. One row per (Provider, ProviderKey),
+    /// enforced in <c>UserEmailService</c>, not the database.
     /// </summary>
     public string? Provider { get; set; }
 
-    /// <summary>
-    /// OAuth subject/key (OIDC <c>sub</c>) for the linked OAuth identity. Stable
-    /// across Google Workspace email renames. <see cref="Provider"/>+
-    /// <c>ProviderKey</c> is the only legitimate match key for rewriting
-    /// <see cref="Email"/> — see <c>memory/architecture/email-mutation-paths.md</c>.
-    /// </summary>
+    /// <summary>OIDC <c>sub</c>: stable across Workspace renames, so the only legitimate key for rewriting <see cref="Email"/>.</summary>
     public string? ProviderKey { get; set; }
 
     /// <summary>
-    /// FROZEN (Users decomposition commit 15): the Google Workspace identity now lives in
-    /// GoogleIntegration's <c>google_workspace_identities</c>. Users no longer writes this flag
-    /// except to clear it on rows an account merge moves; it is read only through the obsolete
-    /// <see cref="UserEmailInfo.IsGoogle"/> by the <c>google.workspace-identities</c> copy and
-    /// fallback, and the column is dropped once that copy is done in production.
+    /// Frozen: the Workspace identity is GoogleIntegration's. Written only to clear it on rows a merge moves; read
+    /// only by the <c>google.workspace-identities</c> copy and fallback. Dropped once that copy is done.
     /// </summary>
     public bool IsGoogle { get; set; }
 
-    /// <summary>
-    /// FROZEN (Users decomposition commit 15): the per-address Google sync verdict, now
-    /// GoogleIntegration's status on <c>google_workspace_identities</c>. Read only by the
-    /// <c>google.workspace-identities</c> copy and fallback; no longer written.
-    /// </summary>
+    /// <summary>Frozen: read only by the <c>google.workspace-identities</c> copy and fallback.</summary>
     public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
 
-    /// <summary>
-    /// True when this row is the canonical recipient for system notifications
-    /// to this user. Exactly-one-true-per-UserId is service-enforced inside
-    /// UserEmailService — no DB partial unique index per
-    /// feedback_db_enforcement_minimal.
-    /// </summary>
+    /// <summary>The notification target. Exactly one per user, enforced in <c>UserEmailService</c>, not the database.</summary>
     public bool IsPrimary { get; set; }
 
-    /// <summary>
-    /// Profile visibility for this email. Null means hidden from profile.
-    /// </summary>
+    /// <summary>Null hides it from the profile.</summary>
     public ContactFieldVisibility? Visibility { get; set; }
 
-    /// <summary>
-    /// When the last verification email was sent (for rate limiting).
-    /// </summary>
+    /// <summary>For the resend cooldown.</summary>
     public Instant? VerificationSentAt { get; set; }
 
-    /// <summary>
-    /// When this email record was created.
-    /// </summary>
     public Instant CreatedAt { get; init; }
 
-    /// <summary>
-    /// When this email record was last updated.
-    /// </summary>
     public Instant UpdatedAt { get; set; }
 }

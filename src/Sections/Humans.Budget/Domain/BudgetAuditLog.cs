@@ -2,9 +2,7 @@ using NodaTime;
 
 namespace Humans.Budget.Domain;
 
-/// <summary>
-/// Append-only audit log for budget changes. No UPDATE or DELETE allowed.
-/// </summary>
+/// <summary>Append-only: never update or delete a row.</summary>
 internal sealed class BudgetAuditLog
 {
     public Guid Id { get; init; }
@@ -17,7 +15,7 @@ internal sealed class BudgetAuditLog
     public string? NewValue { get; init; }
     public string Description { get; init; } = string.Empty;
 
-    /// <summary>Null when the change was made by automation (the nightly ticketing sync job).</summary>
+    /// <summary>Null for automation (the nightly ticketing sync).</summary>
     public Guid? ActorUserId { get; init; }
 
     public Instant OccurredAt { get; init; }

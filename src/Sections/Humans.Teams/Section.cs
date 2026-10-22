@@ -18,12 +18,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Teams;
 
-/// <summary>
-/// Teams' DI entry point, at the project root by convention. Discovered by Shell — nothing
-/// names it, so it needs no section prefix. The caching decorator is a Singleton that warms
-/// the whole team graph at startup and clears it wholesale on every write; the keyed inner
-/// service is Scoped because it owns the repository's unit of work.
-/// </summary>
 public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -32,7 +26,6 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddSingleton<ITeamRepository, TeamRepository>();
 
-        // Keyed-Scoped inner + Singleton decorator.
         services.AddKeyedScoped<ITeamManagementService, TeamService>(CachingTeamService.InnerServiceKey);
         services.AddKeyedScoped<IUserMerge, TeamService>(CachingTeamService.InnerServiceKey);
         services.AddScoped<TeamService>(sp =>
@@ -49,7 +42,6 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<ITeamSeeding>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTeamService>());
-        // Guid → display-name fan-out (nobodies-collective/Humans#1059).
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
@@ -58,29 +50,20 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<ITeamPageService, TeamPageService>();
 
-        // Who may send a facilitated message as which team; the profile-page buttons
-        // (TeamMessageButtonsViewComponent) and TeamMessageController both inject it.
         services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
 
-        // Teams owns its email copy and its gallery samples; Email keeps the mechanics
-        // (memory/architecture/email-templates-live-in-sender.md).
         services.AddScoped<TeamsEmails>();
         services.AddScoped<IEmailPreviewContributor, TeamsEmailPreviews>();
 
-        // The system-team reconciler; Hangfire resolves it from DI at execution time.
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
-        // Resource-based handler; the policies it backs stay in Shell's
-        // AuthorizationPolicyExtensions.
+        // The policies this handler backs stay in Shell's AuthorizationPolicyExtensions.
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
-        // Gauge-refresh loop split out of HumansMetricsService (nobodies-collective/Humans#1091).
         services.AddSingleton<TeamsMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
     }
 
-    // This section owns the issue queue its members' reports land in; Issues discovers
-    // the seam rather than holding a list of sections (memory/architecture/section-contribution-seams.md).
     string IIssueQueueOwner.QueueKey => "Teams";
 
     string IIssueQueueOwner.AreaLabelResourceKey => "Issues_Area_Teams";

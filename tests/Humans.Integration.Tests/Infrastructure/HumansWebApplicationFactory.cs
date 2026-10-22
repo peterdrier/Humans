@@ -33,47 +33,23 @@ using Humans.Users.Data;
 namespace Humans.Integration.Tests.Infrastructure;
 
 /// <summary>
-/// An app host bound to one database. <see cref="IntegrationTestBase"/> builds one
-/// per test against a freshly cloned database, which is what isolates the suite
-/// (nobodies-collective/Humans#983).
+/// An app host bound to one freshly cloned database, built per test: no other test's rows, and no Singleton cache
+/// still holding them.
 /// </summary>
-/// <remarks>
-/// <para>
-/// A test therefore starts from the migrated schema and nothing else: no rows from
-/// any other test, and — because the app is fresh too — no Singleton cache still
-/// holding another test's rows. Scoping assertions to self-seeded keys is no longer
-/// load-bearing, though existing tests that do it are not wrong.
-/// </para>
-/// <para>
-/// The Postgres container lives on <see cref="HumansTestDatabase"/>, which outlives
-/// every one of these.
-/// </para>
-/// </remarks>
 public class HumansWebApplicationFactory(string connectionString)
     : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    /// <summary>Test-only Stripe Store webhook signing secret. Used by webhook integration tests to compute valid Stripe-Signature headers.</summary>
     public const string TestStripeWebhookSecret = "whsec_test_humans_integration_secret_do_not_use_in_prod";
 
-    /// <summary>Stub IStripeService for integration tests (replaces real Stripe network calls).</summary>
     public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
 
-    /// <summary>
-    /// Stub IBackgroundJobClient for integration tests. Program.cs skips
-    /// AddHangfire entirely in Testing (see comment there), so anything in
-    /// src/ that injects IBackgroundJobClient gets this no-op substitute.
-    /// Tests can assert against ReceivedCalls() to verify enqueue behavior.
-    /// </summary>
+    /// <summary>Program.cs skips Hangfire in Testing; assert enqueues against ReceivedCalls().</summary>
     public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
-    /// <summary>
-    /// In-memory MailerLite so the /MailerLite/Admin pages render without reaching
-    /// connect.mailerlite.com. Same call as <see cref="StripeServiceStub"/>; hand-written
-    /// rather than substituted because the interface yields an IAsyncEnumerable.
-    /// </summary>
+    /// <summary>Hand-written rather than substituted because the interface yields an IAsyncEnumerable.</summary>
     internal StubMailerLiteService MailerLiteServiceStub { get; } = new();
 
-    /// <summary>The host-local Serilog buffer, isolated from parallel factories.</summary>
+    /// <summary>Isolated from parallel factories.</summary>
     internal Humans.Base.Logging.InMemoryLogSink LogSink { get; } = new();
 
     public IReadOnlyList<ServiceDescriptor> RegisteredServices { get; private set; } = [];
@@ -82,22 +58,13 @@ public class HumansWebApplicationFactory(string connectionString)
     {
         builder.UseEnvironment("Testing");
 
-        // Compose the static-web-assets manifest into WebRootFileProvider. WebApplicationBuilder
-        // only does this for Development, so without it every /_content/<Rcl>/… URL 404s under
-        // the test host and — the silent half — asp-append-version emits the bare href with no
-        // ?v= hash rather than failing. Agent is the first section to move wwwroot assets into
-        // its own project (nobodies-collective/Humans#866), so it is the first
-        // time that gap is observable. Published output copies the files physically under
-        // wwwroot/_content/, so this is a test-host gap only.
+        // WebApplicationBuilder composes static web assets only in Development; without this every /_content/<Rcl>/ URL
+        // 404s here and asp-append-version silently drops the ?v= hash.
         builder.UseStaticWebAssets();
 
-        // A test host must not hold file watchers. Each one is an inotify instance, a disposed
-        // host does not release them (nothing disposes the PhysicalFileProviders behind them),
-        // and Linux caps a user at 128 — so a few hundred hosts exhausted the cap and every host
-        // after that failed to boot. Two sources: the appsettings JSON sources reload on change
-        // by default (this setting reaches WebApplication.CreateBuilder as a host argument, so
-        // it is read before the sources are added), and asp-append-version watches every
-        // versioned file under the web root, which the wrapper below answers without a watcher.
+        // No file watchers: each is an inotify instance a disposed host never releases, and Linux caps a user at 128,
+        // so a few hundred hosts stopped booting. This setting is read before the JSON sources are added;
+        // asp-append-version is answered by the non-watching wrapper below.
         builder.UseSetting("hostBuilder:reloadConfigOnChange", "false");
         builder.ConfigureAppConfiguration((context, _) =>
             context.HostingEnvironment.WebRootFileProvider =
@@ -105,9 +72,6 @@ public class HumansWebApplicationFactory(string connectionString)
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            // Override connection string and provide required config keys.
-            // Program.cs reads ConnectionStrings:DefaultConnection to build the
-            // NpgsqlDataSource and DbContext, so overriding here is sufficient.
             config.AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
                 ["ConnectionStrings:DefaultConnection"] = connectionString,
@@ -129,51 +93,36 @@ public class HumansWebApplicationFactory(string connectionString)
             services.RemoveAll<Humans.Base.Logging.InMemoryLogSink>();
             services.AddSingleton(LogSink);
 
-            // Replace email service with a no-op stub
-            // so integration tests don't depend on Hangfire's job-storage
-            // globals, which are intentionally disabled in Testing.
+            // No-op email: Hangfire's job-storage globals are disabled in Testing.
             var emailDescriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(IEmailService));
             if (emailDescriptor != null)
                 services.Remove(emailDescriptor);
             services.AddScoped(_ => Substitute.For<IEmailService>());
 
-            // TestServer serves over http://localhost; production config sets
-            // CookieSecurePolicy.Always which would strip the auth cookie on
-            // insecure requests. Relax that for integration tests so the dev
-            // login flow actually establishes a session.
+            // TestServer is plain http; CookieSecurePolicy.Always would strip the dev-login auth cookie.
             services.ConfigureApplicationCookie(options =>
             {
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             });
 
-            // Provide a deterministic Stripe Store webhook secret so the integration
-            // tests can sign synthetic events. Production runs read this from an env var.
             services.Configure<StripeSettings>(opts =>
             {
                 opts.StoreWebhookSecret = TestStripeWebhookSecret;
             });
 
-            // Replace IStripeService with a stub so integration tests don't hit
-            // api.stripe.com. Per-test setup configures behavior on StripeServiceStub.
-            // Baseline defaults (webhook parsing + IsStoreWebhookConfigured) are seeded
-            // here and re-seeded per test by ResetSharedSubstitutes.
+            // Defaults are re-seeded per test by ResetSharedSubstitutes.
             ConfigureStripeStubDefaults();
 
             var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
             if (stripeDescriptor != null) services.Remove(stripeDescriptor);
             services.AddScoped(_ => StripeServiceStub);
 
-            // Replace IMailerLiteService with the in-memory stub so /MailerLite/Admin renders
-            // against a deterministic account instead of the live MailerLite API. The real
-            // client is a Singleton registered from Humans.MailerLite's Section.Register.
             var mailerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMailerLiteService));
             if (mailerDescriptor != null) services.Remove(mailerDescriptor);
             services.AddSingleton<IMailerLiteService>(MailerLiteServiceStub);
 
-            // Bind IBackgroundJobClient — Hangfire's own registration is skipped in
-            // Testing (Program.cs), so injecting consumers like
-            // HangfireImmediateOutboxProcessor need this stub or DI graph build fails.
+            // Hangfire's registration is skipped in Testing, so consumers like HangfireImmediateOutboxProcessor need this.
             services.AddSingleton(BackgroundJobClientStub);
 
             RegisteredServices = services.ToList();
@@ -182,12 +131,8 @@ public class HumansWebApplicationFactory(string connectionString)
     }
 
     /// <summary>
-    /// Seeds the baseline behavior every test relies on for <see cref="StripeServiceStub"/>:
-    /// webhook parsing is pure CPU (HMAC-SHA256 + JSON) — no network — so we delegate
-    /// <c>ParseStoreCheckoutEvent</c> and the <c>IsStoreWebhookConfigured</c> flag to a
-    /// real <see cref="StripeService"/> built with the test secret. This lets the webhook
-    /// integration tests exercise real signature verification while the network-touching
-    /// methods stay stubbed.
+    /// Webhook parsing is pure CPU, so it goes to a real <see cref="StripeService"/> with the test secret: signature
+    /// verification is real while network calls stay stubbed.
     /// </summary>
     private void ConfigureStripeStubDefaults()
     {
@@ -200,37 +145,15 @@ public class HumansWebApplicationFactory(string connectionString)
                 (string)call[0], (string)call[1]));
     }
 
-    // xUnit v3 IAsyncLifetime: InitializeAsync returns ValueTask.
-    // DisposeAsync is inherited from IAsyncDisposable — the base
-    // WebApplicationFactory<TEntryPoint> already provides a virtual
-    // ValueTask DisposeAsync(), so override that to tear down the
-    // Testcontainers Postgres container.
     public ValueTask InitializeAsync()
     {
-        // Force the host to build now: that runs DatabaseMigrationHostedService
-        // and warms every Singleton cache. Paying it here rather than inside
-        // whichever test first calls CreateClient keeps a slow boot from eating
-        // that test's 30s timeout.
+        // Build now (migrations, cache warm-up) so a slow boot doesn't eat the first test's 30s timeout.
         _ = Services;
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Signs the given <see cref="HttpClient"/> in as a fully-onboarded persona.
-    ///
-    /// "Fully onboarded" here matches what <see cref="Program"/>'s onboarding
-    /// pipeline treats as complete for route-level access:
-    /// <list type="bullet">
-    ///   <item>User + Profile exist (seeded by <c>/dev/login/{persona}</c>).</item>
-    ///   <item>Profile is approved and the consent-check is Cleared (seeded by the
-    ///     dev-login controller — the bare persona is already
-    ///     <c>IsApproved = true</c>, <c>ConsentCheckStatus = Cleared</c>).</item>
-    ///   <item>A <see cref="ConsentRecord"/> exists for every published
-    ///     <see cref="DocumentVersion"/> whose <see cref="LegalDocument"/> is
-    ///     active and required. Integration-test DBs are fresh and have no
-    ///     legal documents by default, so this is usually a no-op; tests that
-    ///     pre-seed legal docs are covered.</item>
-    /// </list>
+    /// Dev login seeds an approved, consent-cleared persona; this adds consent to every required document version.
     /// </summary>
     /// <returns>The persona's user id.</returns>
     public Task<Guid> SignInAsFullyOnboardedAsync(HttpClient client, DevPersona persona) =>
@@ -242,18 +165,11 @@ public class HumansWebApplicationFactory(string connectionString)
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrEmpty(personaSlug);
 
-        // Normalize slug to lowercase: DevLoginController matches personas
-        // case-insensitively, but we query the seeded user below by the
-        // case-sensitive Postgres varchar email column. Mirror the email
-        // convention used by DevLoginController ($"dev-{slug}@localhost", all
-        // lowercase) so "Volunteer"/"ADMIN"/etc. still resolve.
+        // Dev login matches personas case-insensitively, but the email lookup below is case-sensitive.
         var slug = personaSlug.ToLowerInvariant();
 
-        // 1) Hit the dev-login endpoint. This seeds the User + Profile +
-        //    RoleAssignments + TeamMembers for the persona (idempotent) and
-        //    issues the Identity auth cookie on the 302 response. Cookies are
-        //    captured by WebApplicationFactory's default CookieContainer even
-        //    with AllowAutoRedirect=false.
+        // Seeds the persona (idempotent) and issues the auth cookie on the 302; the cookie is captured even with
+        // AllowAutoRedirect=false.
         var loginResp = await client.GetAsync($"/dev/login/{slug}", TestContext.Current.CancellationToken);
         if (loginResp.StatusCode is not (HttpStatusCode.Redirect
             or HttpStatusCode.OK))
@@ -262,7 +178,6 @@ public class HumansWebApplicationFactory(string connectionString)
                 $"Dev login for persona '{slug}' failed: {(int)loginResp.StatusCode} {loginResp.StatusCode}");
         }
 
-        // 2) Resolve the seeded user id by email convention used in DevLoginController.
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
@@ -276,10 +191,7 @@ public class HumansWebApplicationFactory(string connectionString)
             .AsNoTracking()
             .FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
 
-        // 3) Seed ConsentRecord for every current required document version the
-        //    user hasn't already consented to. ConsentRecord is append-only
-        //    (DB triggers block UPDATE/DELETE) — INSERT is the only mutation
-        //    allowed here.
+        // ConsentRecord is append-only (DB triggers block UPDATE/DELETE): insert only.
         await SeedMissingConsentsAsync(
             scope.ServiceProvider.GetRequiredService<LegalDbContext>(), user.Id);
 
@@ -287,40 +199,13 @@ public class HumansWebApplicationFactory(string connectionString)
     }
 
     /// <summary>
-    /// Signs the given <see cref="HttpClient"/> in as a persona who is <i>part-way</i> through
-    /// onboarding, so anything gated on "still onboarding" actually renders.
+    /// Signs in a persona held on the Consents step, so anything gated on "still onboarding" renders. Against a complete
+    /// user a "banner must not show a raw key" assertion passes on an empty string; two misbound keys shipped that way.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Every other sign-in helper lands on a complete user, which quietly makes some assertions
-    /// unfalsifiable: <c>OnboardingProgressBannerViewComponent</c> returns
-    /// <c>Show: false</c> for a complete user, so a "banner must not render a raw key" assertion
-    /// against a fully-onboarded persona inspects an empty string and passes no matter what the
-    /// banner would have said. Two misbound keys shipped to production behind exactly that.
-    /// </para>
-    /// <para>
-    /// Incomplete has to be <i>manufactured</i>, not merely left alone. A fresh integration DB has
-    /// no legal documents, so <c>HasAllRequiredConsentsForTeamAsync</c> is vacuously true and the
-    /// persona is <c>Complete</c> the moment it is seeded.
-    /// </para>
-    /// <para>
-    /// <b>Order is load-bearing: sign in first, seed the document second.</b> Dev login runs
-    /// <c>DevPersonaSeeder.EnsureActiveAsync</c> on every request — on the create path and on the
-    /// already-exists path alike — and that method walks
-    /// <c>MissingConsentVersionIds</c> and submits every one of them, so any required document
-    /// present at login time is auto-signed and the persona lands on <c>Complete</c>. Seeding
-    /// first therefore cannot work; it produces the very state the guard below rejects.
-    /// </para>
-    /// <para>
-    /// The document is also created fresh on each call rather than reused when one already
-    /// exists. Reuse has the same defect one step removed: a document seeded by an earlier call
-    /// is signed by this call's login, leaving nothing outstanding. A document the persona
-    /// cannot have consented to is the only thing that reliably holds them on the Consents step.
-    /// </para>
-    /// <para>
-    /// Both caches are invalidated because each is warmed on startup and has already snapshotted
-    /// an empty document set (Calendar's rule — see <c>ConsentPageRenderTests</c>).
-    /// </para>
+    /// Order matters: sign in first, then seed a fresh required document. Dev login auto-consents to every required
+    /// document present at login, so seeding first, or reusing an earlier document, leaves nothing outstanding. Both
+    /// consent caches are invalidated because they snapshotted the empty document set at startup.
     /// </remarks>
     /// <returns>The persona's user id.</returns>
     public async Task<Guid> SignInAsMidOnboardingAsync(HttpClient client, DevPersona persona)
@@ -330,9 +215,7 @@ public class HumansWebApplicationFactory(string connectionString)
 
         var now = SystemClock.Instance.GetCurrentInstant();
 
-        // Step 1 — sign in while there is nothing outstanding to sign. Anything required that
-        // exists at this moment is consented to on our behalf by DevPersonaSeeder; see the
-        // remarks. Whatever state this leaves behind, it is a state we can then make incomplete.
+        // Sign in while nothing is outstanding; see the remarks.
         var slug = persona.Slug.ToLowerInvariant();
         var loginResp = await client.GetAsync($"/dev/login/{slug}", TestContext.Current.CancellationToken);
         if (loginResp.StatusCode is not (HttpStatusCode.Redirect or HttpStatusCode.OK))
@@ -341,8 +224,7 @@ public class HumansWebApplicationFactory(string connectionString)
                 $"Dev login for persona '{slug}' failed: {(int)loginResp.StatusCode} {loginResp.StatusCode}");
         }
 
-        // Step 2 — introduce a required document the signed-in persona demonstrably has not
-        // consented to, because it did not exist when they signed in.
+        // A required document that did not exist when the persona signed in.
         var documentId = Guid.NewGuid();
         using (var scope = Services.CreateScope())
         {
@@ -392,9 +274,7 @@ public class HumansWebApplicationFactory(string connectionString)
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
 
-        // Prove the fixture is in the state the caller asked for. Without this the helper can
-        // silently regress to "fully onboarded" — the exact failure it exists to prevent — and
-        // every test built on it goes quietly vacuous again.
+        // Without this check the helper can silently regress to fully onboarded and every test on it goes vacuous.
         var step = await idScope.ServiceProvider
             .GetRequiredService<IOnboardingWidgetState>()
             .GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
@@ -416,10 +296,8 @@ public class HumansWebApplicationFactory(string connectionString)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
 
-        // Match LegalDocumentSyncService.GetRequiredVersionsAsync: one row per
-        // required+active document, picking the latest already-effective version
-        // (EffectiveFrom <= now). Seeding *every* version would give the user
-        // consent to future-effective docs and hide re-consent regressions.
+        // As LegalDocumentSyncService does: the latest already-effective version per required document. Seeding every
+        // version would consent to future ones and hide re-consent regressions.
         var documentGroups = await db.DocumentVersions
             .AsNoTracking()
             .Where(v => v.LegalDocument.IsRequired
@@ -448,8 +326,7 @@ public class HumansWebApplicationFactory(string connectionString)
             if (alreadyConsented.Contains(version.Id))
                 continue;
 
-            // Mirror ConsentService.SubmitConsentAsync: hash the canonical ("es")
-            // content so ContentHash matches what production would produce.
+            // Hash the canonical ("es") content, as ConsentService does.
             var canonical = version.Content.GetValueOrDefault("es", string.Empty);
             var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)))
                 .ToLowerInvariant();
@@ -471,10 +348,7 @@ public class HumansWebApplicationFactory(string connectionString)
     }
 }
 
-/// <summary>
-/// Serves files from <paramref name="inner"/> but never watches them: a test host's files do
-/// not change under it, and every watch would cost an inotify instance it never gives back.
-/// </summary>
+/// <summary>A test host's files never change, and each watch costs an inotify instance it never gives back.</summary>
 internal sealed class NonWatchingFileProvider(IFileProvider inner) : IFileProvider
 {
     public IFileInfo GetFileInfo(string subpath) => inner.GetFileInfo(subpath);
@@ -484,21 +358,18 @@ internal sealed class NonWatchingFileProvider(IFileProvider inner) : IFileProvid
     public IChangeToken Watch(string filter) => NullChangeToken.Singleton;
 }
 
-/// <summary>
-/// Named dev-login personas used by integration-test fixtures. The slug
-/// matches the route segment consumed by <c>DevLoginController.SignIn</c>.
-/// </summary>
+/// <summary>The slug is the <c>/dev/login/{slug}</c> route segment.</summary>
 public sealed record DevPersona(string Slug)
 {
-    /// <summary>Bare volunteer: approved, consent-check cleared, Volunteers team.</summary>
+    /// <summary>Approved, consent-check cleared, Volunteers team.</summary>
     public static readonly DevPersona Volunteer = new("volunteer");
 
-    /// <summary>Admin persona (RoleNames.Admin). Volunteers team + Admin role.</summary>
+    /// <summary>Volunteers team plus the Admin role.</summary>
     public static readonly DevPersona Admin = new("admin");
 
-    /// <summary>Board member persona (RoleNames.Board). Volunteers + Board teams.</summary>
+    /// <summary>Volunteers and Board teams.</summary>
     public static readonly DevPersona Board = new("board");
 
-    /// <summary>Coordinator persona with a seeded test department and sub-team.</summary>
+    /// <summary>Has a seeded test department and sub-team.</summary>
     public static readonly DevPersona Coordinator = new("coordinator");
 }

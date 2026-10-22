@@ -6,23 +6,14 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// GoogleIntegration's own email templates: one method per template, each returning a
-/// ready <see cref="EmailMessage"/> (content plus the routing policy this section
-/// chooses — template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in the section's own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
-/// </summary>
+/// <summary>Pure: no I/O. Renders in the recipient's culture inside a <see cref="CultureScope"/>.</summary>
 internal sealed class GoogleIntegrationEmails(
     IStringLocalizer<GoogleIntegrationResource> localizer,
     ILogger<GoogleIntegrationEmails> logger)
 {
     /// <summary>
-    /// Workspace account credentials to the member's recovery address. Always-send and
-    /// time-sensitive: <see cref="TimeSensitiveTemplates.WorkspaceCredentials"/> is what
-    /// makes the outbox drain it immediately, so the template name is load-bearing.
+    /// The template name is load-bearing: <see cref="TimeSensitiveTemplates.WorkspaceCredentials"/> makes the outbox
+    /// drain it immediately.
     /// </summary>
     public EmailMessage WorkspaceCredentials(string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
         => Localized(culture, () => new EmailMessage(

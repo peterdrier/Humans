@@ -6,106 +6,42 @@ using NodaTime;
 
 namespace Humans.Email.Data;
 
-/// <summary>
-/// Repository for the <c>email_outbox_messages</c> table — the only
-/// non-test file that writes to the outbox DbSet. The email pause flag
-/// (<c>IsEmailSendingPaused</c>) now lives in the Settings section,
-/// accessed via <c>IEmailOutboxManagement.IsEmailPausedAsync</c>.
-/// </summary>
-/// <remarks>
-/// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
-/// so the repository can be registered as Singleton while
-/// <c>EmailDbContext</c> remains Scoped. Each method creates and disposes
-/// its own short-lived context.
-/// </remarks>
 internal interface IEmailOutboxRepository : IRepository
 {
-    // ==========================================================================
-    // Reads — admin dashboard and profile views
-    // ==========================================================================
-
-    /// <summary>
-    /// Returns the total number of outbox rows.
-    /// </summary>
     Task<int> GetTotalCountAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the number of rows with a given <see cref="EmailOutboxStatus"/>.
-    /// </summary>
     Task<int> GetCountByStatusAsync(EmailOutboxStatus status, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the number of messages sent after <paramref name="since"/>.
-    /// </summary>
     Task<int> GetSentCountSinceAsync(Instant since, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the newest outbox messages for the admin dashboard. This is a
-    /// bounded operational-history read; the ordering/window stay DB-side so
-    /// dashboard rendering never loads the full outbox table.
-    /// </summary>
+    /// <summary>Newest first. Ordering and take stay in the database so the dashboard never loads the whole outbox.</summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(int take, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns all outbox messages for a user, newest first, read-only.
-    /// </summary>
+    /// <summary>Newest first.</summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the outbox-row count for a single user.
-    /// </summary>
     Task<int> GetCountForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the number of messages that are not yet <c>Sent</c> and are
-    /// still below the retry cap — used to populate the Prometheus outbox
-    /// gauge after each processor batch.
-    /// </summary>
+    /// <summary>Messages not yet sent and still below the retry cap.</summary>
     Task<int> GetPendingCountAsync(int maxRetries, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Writes — admin operations
-    // ==========================================================================
-
     /// <summary>
-    /// Enqueues a new message. The caller builds the entity (including
-    /// <see cref="EmailOutboxMessage.Status"/> and <see cref="EmailOutboxMessage.CreatedAt"/>);
-    /// the repository is just the persistence gate. With idempotent=true, an existing primary
-    /// key is a successful prior handoff: returns false without replacing its payload.
-    /// Returns true only for a new row; unrelated persistence failures propagate.
+    /// Returns true only for a new row. With <paramref name="idempotent"/>, an existing primary key
+    /// counts as an earlier successful handoff: returns false and keeps the stored payload.
     /// </summary>
     Task<bool> AddAsync(EmailOutboxMessage message, CancellationToken ct = default, bool idempotent = false);
 
-    /// <summary>
-    /// Resets a message back to <see cref="EmailOutboxStatus.Queued"/> so the
-    /// processor will pick it up again. Returns the message's recipient email
-    /// on success, or <c>null</c> if the message does not exist.
-    /// </summary>
+    /// <summary>Requeues the message. Returns its recipient address, or null when it doesn't exist.</summary>
     Task<string?> RetryAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes a single outbox message. Returns the message's recipient email
-    /// on success, or <c>null</c> if the message does not exist.
-    /// </summary>
+    /// <summary>Returns the deleted message's recipient address, or null when it doesn't exist.</summary>
     Task<string?> DiscardAsync(Guid id, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Processor — used by ProcessEmailOutboxJob
-    // ==========================================================================
-
     /// <summary>
-    /// Returns up to <paramref name="batchSize"/> messages ready for the
-    /// processor: not yet sent, below the retry cap, past
-    /// <see cref="EmailOutboxMessage.NextRetryAt"/>, and either never
-    /// picked up or stale (older than <paramref name="staleThreshold"/>).
-    /// Rows whose <see cref="EmailOutboxMessage.TemplateName"/> is in
-    /// <see cref="TimeSensitiveTemplates.Names"/> are ordered ahead of all others
-    /// so they are not stuck behind a bulk backlog; ordering within each class is
-    /// FIFO by <see cref="EmailOutboxMessage.CreatedAt"/>.
-    /// Returned entities are detached; to update, use
-    /// <see cref="MarkPickedUpAsync"/> / <see cref="MarkSentAsync"/> /
-    /// <see cref="MarkFailedAsync"/>.
+    /// Unsent rows below the retry cap, past <see cref="EmailOutboxMessage.NextRetryAt"/>, and never picked up
+    /// or picked up before <paramref name="staleThreshold"/>. <see cref="TimeSensitiveTemplates.Names"/> go first
+    /// so a bulk backlog can't delay them; FIFO otherwise. Rows are detached: update them through the Mark methods.
     /// </summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetProcessingBatchAsync(
         Instant now,
@@ -114,24 +50,13 @@ internal interface IEmailOutboxRepository : IRepository
         int batchSize,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks the given message ids as picked up (sets
-    /// <see cref="EmailOutboxMessage.PickedUpAt"/>) in a single round-trip.
-    /// </summary>
     Task MarkPickedUpAsync(
         IReadOnlyCollection<Guid> messageIds, Instant pickedUpAt, CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks a single message as sent (Status=Sent, SentAt=now, PickedUpAt=null).
-    /// Returns <c>true</c> if the message existed.
-    /// </summary>
+    /// <summary>Returns false when the message doesn't exist.</summary>
     Task<bool> MarkSentAsync(Guid messageId, Instant sentAt, CancellationToken ct = default);
 
-    /// <summary>
-    /// Marks a single message as failed, incrementing <c>RetryCount</c> and
-    /// setting <c>NextRetryAt</c> / <c>LastError</c> / <c>PickedUpAt=null</c>.
-    /// Returns <c>true</c> if the message existed.
-    /// </summary>
+    /// <summary>Returns false when the message doesn't exist.</summary>
     Task<bool> MarkFailedAsync(
         Guid messageId,
         Instant now,
@@ -139,77 +64,34 @@ internal interface IEmailOutboxRepository : IRepository
         Instant nextRetryAt,
         CancellationToken ct = default);
 
-    // ==========================================================================
-    // Cleanup — used by CleanupEmailOutboxJob
-    // ==========================================================================
-
-    /// <summary>
-    /// Deletes every <see cref="EmailOutboxStatus.Sent"/> message with a
-    /// <see cref="EmailOutboxMessage.SentAt"/> strictly earlier than
-    /// <paramref name="cutoff"/>. Returns the number of rows deleted.
-    /// </summary>
     Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default);
 
-    // ==========================================================================
-    // GDPR Article 17 — used by EmailOutboxService.EraseForUserAsync
-    // ==========================================================================
-
-    /// <summary>
-    /// Deletes every outbox row attributed to <paramref name="userId"/>, whatever
-    /// its status — the rows carry the recipient's address, name and the rendered
-    /// message body. Returns the number of rows deleted.
-    /// </summary>
+    /// <summary>GDPR erasure: every status goes, since each row holds the address, name and rendered body.</summary>
     Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Reassigns all outbox rows from a merged user to the survivor, regardless
-    /// of delivery status. Repeating the operation is safe.
-    /// </summary>
+    /// <summary>Moves every row, whatever its status. Safe to repeat.</summary>
     Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Daily send counts — durable denominator for spam-rate spikes (#1195).
-    // Never purged by CleanupEmailOutboxJob.
-    // ==========================================================================
+    // Daily send counts outlive the outbox rows: CleanupEmailOutboxJob never purges them,
+    // so they stay the denominator for spam-rate spikes.
 
-    /// <summary>
-    /// Increments the sent or failed counter for (<paramref name="date"/>,
-    /// <paramref name="templateName"/>), creating the row if it doesn't exist
-    /// yet. Called once per outbox send attempt from <c>EmailOutboxProcessor</c>,
-    /// after test addresses are excluded.
-    /// </summary>
     Task IncrementDailySendCountAsync(
         LocalDate date, string templateName, bool succeeded, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every daily-count row with <c>Date >= since</c>, for the admin
-    /// dashboard's rolling window. Read-only.
-    /// </summary>
     Task<IReadOnlyList<EmailDailySendCount>> GetDailySendCountsSinceAsync(
         LocalDate since, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every existing (Date, TemplateName) key already recorded, so the
-    /// backfill can skip any combination the processor (or an earlier backfill)
-    /// has already written — it must never overwrite existing data.
-    /// </summary>
+    /// <summary>The backfill skips these keys: it must never overwrite counts the processor recorded.</summary>
     Task<IReadOnlySet<(LocalDate Date, string TemplateName)>> GetDailySendCountKeysAsync(
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Inserts new daily-count rows. The caller has already filtered out any
-    /// (Date, TemplateName) that already exists.
-    /// </summary>
+    /// <summary>The caller has already removed keys that exist.</summary>
     Task AddDailySendCountsAsync(
         IReadOnlyList<EmailDailySendCount> rows, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <c>Sent</c> row sent at or after <paramref name="since"/>,
-    /// read-only — the backfill's source data. Rows are filtered by
-    /// <see cref="EmailOutboxMessage.SentAt"/> so this matches the retention cutoff
-    /// (which deletes by <c>SentAt</c>), not <see cref="EmailOutboxMessage.CreatedAt"/>.
-    /// Failed and queued rows are excluded: the backfill reconstructs deliveries, and
-    /// a failure day is only ever counted by the live processor.
+    /// Sent rows only, filtered on <see cref="EmailOutboxMessage.SentAt"/> to match the retention cutoff.
+    /// Failures are counted only by the live processor.
     /// </summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetSentSinceAsync(
         Instant since, CancellationToken ct = default);

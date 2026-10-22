@@ -54,7 +54,6 @@ internal sealed class ShiftsController(
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                            (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
 
-        // Cached ShiftUserView, already event-scoped.
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var userSignups = userView.Signups;
         var hasSignups = userSignups.Count > 0;
@@ -87,7 +86,7 @@ internal sealed class ShiftsController(
         return View(model);
     }
 
-    // No legal name → bounce to onboarding widget (Names step); signup needs it for the rota report.
+    // Signup needs the legal name for the rota report.
     private IActionResult? RedirectIfNameMissing(UserInfo user)
     {
         if (user.HasRequiredNameFields) return null;
@@ -95,14 +94,7 @@ internal sealed class ShiftsController(
         return RedirectToAction("Index", "OnboardingWidget");
     }
 
-    // ── Shift Summary by Camp (read-only) ─────────────────────────────────────
-    // One view at three scopes: global (all teams), team-set, single rota. Same
-    // service method + view partial; the route just narrows the scope.
-
-    // Gated by ShiftDepartmentManager — the canonical "shift role OR coordinator
-    // of any team" policy (IsAnyTeamManagerOrCoordinatorHandler) that also gates
-    // the sibling shift dashboard. One coherent rule across all three scopes (§7):
-    // the global page exposes the superset, so the narrower pages share it.
+    // One policy across all three scopes: the global page exposes the superset, so the narrower ones share it.
     [HttpGet("Summary")]
     [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
     public Task<IActionResult> Summary() => RenderSummaryAsync(null, null);
@@ -132,12 +124,11 @@ internal sealed class ShiftsController(
             TeamSlug = summary.TeamSlug,
             RotaName = summary.RotaName,
             RotaId = summary.RotaId,
-            // Table 1: most hours first, then name.
             Humans = summary.Humans
                 .OrderByDescending(h => h.Hours)
                 .ThenBy(h => h.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
-            // Table 2: most hours first, with the campless ("no camp") row last.
+            // Most hours first; the campless row last.
             Camps = summary.Camps
                 .OrderBy(c => c.CampId is null)
                 .ThenByDescending(c => c.Hours)
@@ -154,11 +145,8 @@ internal sealed class ShiftsController(
         return View("Summary", model);
     }
 
-    // AJAX per-day toggle: signs up or bails a single shift for the current user
-    // and returns the re-rendered row partial. Signup/bail outcome and the new
-    // active-signup count travel back as response headers (X-Signed-Up,
-    // X-My-Signup-Count, X-Toast-*); the name gate short-circuits to a
-    // 204 with X-Redirect so the client navigates instead of swapping a row.
+    // The outcome and new signup count travel back as headers (X-Signed-Up, X-My-Signup-Count, X-Toast-*);
+    // the name gate returns 204 with X-Redirect so the client navigates instead of swapping a row.
     [HttpPost("ToggleDay")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
@@ -174,17 +162,14 @@ internal sealed class ShiftsController(
         if (es is null)
             return RedirectHeader(Url.Action(nameof(Index)));
 
-        // Narrow flag drives SignUpAsync's auto-confirm path (admin/approver only); also
-        // folded into the service's broader CanViewRestricted (matches the browse page)
-        // so a department coordinator's row for an admin-only/hidden shift still renders
-        // instead of falling out of the browse set and 500-ing after the write committed.
+        // Narrow flag for auto-confirm. The service widens it to CanViewRestricted, as the browse page does, so a
+        // coordinator's row for a hidden shift still renders instead of 500-ing after the write committed.
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var outcome = await signupService.ToggleDayAsync(user.Id, shiftId, es.Id, privileged, ct);
 
         var result = outcome.Result;
         var row = await browsePageBuilder.BuildRowAsync(shiftId, outcome.SignupsAfter, outcome.CanViewRestricted, ct);
-        // Rare race (shift just closed/deleted between write and re-read): resync the
-        // whole page rather than swap a missing row.
+        // The shift closed or vanished between write and re-read: resync the page rather than swap a missing row.
         if (row is null)
             return RedirectHeader(Url.Action(nameof(Index)));
 
@@ -226,8 +211,7 @@ internal sealed class ShiftsController(
         });
     }
 
-    // 204 + X-Redirect header; the client navigates. url may be null under unit
-    // tests (no routing), in which case only the status code is emitted.
+    // url is null under unit tests (no routing); then only the status code goes out.
     private IActionResult RedirectHeader(string? url)
     {
         if (!string.IsNullOrEmpty(url)) Response.Headers["X-Redirect"] = url;
@@ -297,7 +281,6 @@ internal sealed class ShiftsController(
 
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
 
-        // Cached ShiftUserView, event-scoped (empty when no active event).
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var signups = userView.Signups;
 
@@ -310,10 +293,8 @@ internal sealed class ShiftsController(
 
         var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
 
-        // After early-entry close, the bail lock is per-team: the service gate
-        // (ShiftSignupService.BailAsync/BailRangeAsync) only exempts users who can
-        // approve signups for the signup's own department, so the UI mirrors that
-        // via the same CanApproveSignupsAsync check — once per distinct team, not per row.
+        // Mirrors the per-team bail gate in ShiftSignupService: after early-entry close only those who can approve
+        // for the signup's own department may bail. Checked once per distinct team, not per row.
         var bailLockedTeamIds = new HashSet<Guid>();
         if (es is not null && es.IsEarlyEntryClosed(now))
         {
@@ -401,9 +382,6 @@ internal sealed class ShiftsController(
         return RedirectToAction(nameof(Index));
     }
 
-    // GET removed (peterdrier/Humans#1634) — superseded by the /Settings#shifts tab,
-    // whose data assembly lives in ShiftsSettingsTabViewComponent now. No redirect kept:
-    // redirecting a retired URL is tech debt here, not a feature.
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -415,8 +393,7 @@ internal sealed class ShiftsController(
             return Redirect("/Settings#shifts");
         }
 
-        // "Active event" is Settings' concept now (nobodies-collective/Humans#1631);
-        // Shifts only keeps its own knobs, created on demand for that id.
+        // Shifts keeps only its own knobs, created on demand for Settings' active event.
         var active = await burnSettings.GetActiveAsync();
         if (active is null)
         {
@@ -431,10 +408,8 @@ internal sealed class ShiftsController(
         return Redirect("/Settings#shifts");
     }
 
-    // A user's signups are not scoped to the active burn — they can span cycles — so
-    // each row is rendered against its OWN rota's burn, never the active one. The
-    // distinct burn ids are resolved once up front and joined in memory; a lookup
-    // inside the projection would be an N+1.
+    // Signups can span cycles, so each renders against its own rota's burn, resolved once up front: a lookup in
+    // the projection would be an N+1.
     private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
     {
         var ct = HttpContext.RequestAborted;
@@ -452,8 +427,7 @@ internal sealed class ShiftsController(
         var items = new List<UserSignupConflictItem>(active.Count);
         foreach (var s in active)
         {
-            // Unresolvable burn → skip, matching the old "no EventSettings on the
-            // graph → drop the row" guard rather than rendering a bogus time.
+            // No burn: drop the row rather than render a bogus time.
             if (!burns.TryGetValue(s.EventSettingsId, out var sEs))
                 continue;
 
@@ -474,9 +448,7 @@ internal sealed class ShiftsController(
         return items;
     }
 
-    // Admin diagnostic: signups with no Created/Voluntold/Confirmed audit row
-    // (legacy Pending self-signups that bypassed Confirm before Bail/Refuse/Cancel).
-
+    // Signups with no Created/Voluntold/Confirmed audit row: Pending self-signups that skipped Confirm.
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> OrphanSignups(CancellationToken ct)
@@ -501,7 +473,6 @@ internal sealed class ShiftsController(
     private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
         IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
     {
-        // §2c: names via IUserService (this isn't a render-the-audit-log view).
         var userIds = orphans
             .Select(s => s.UserId)
             .Distinct()

@@ -6,13 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Issues.Authorization;
 
 /// <summary>
-/// The rule itself is <see cref="IssueSectionRouting.CanHandle"/>, which the service also
-/// enforces on every per-item read and mutation. This handler is the browser's copy of the
-/// same answer, used to shape the page (which controls render, whether a comment may resolve)
-/// and to answer 403 before the service would answer 404.
-///
-/// Reads from claims only (RoleAssignmentClaimsTransformation populates them per-request
-/// from in-memory caches) — no DB hit.
+/// The browser's copy of <see cref="IssueSectionRouting.CanHandle"/>, which the service also enforces. Used to shape
+/// the page and to answer 403 before the service would answer 404. Reads claims only.
 /// </summary>
 internal sealed class IssuesAuthorizationHandler(IssueSectionRouting routing)
     : AuthorizationHandler<IssuesOperationRequirement, IssueDetail>

@@ -6,15 +6,7 @@ using Humans.Email.Contracts;
 
 namespace Humans.Campaigns.Services;
 
-/// <summary>
-/// Campaigns' own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Campaigns chooses —
-/// template name and opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. The subject
-/// and markdown body are the campaign's own copy, carried on the request
-/// (memory/architecture/email-templates-live-in-sender.md).
-/// Pure — no I/O, no persistence.
-/// </summary>
+/// <summary>Pure: no I/O, no persistence.</summary>
 internal sealed class CampaignsEmails
 {
     public EmailMessage CampaignCode(CampaignCodeEmailRequest request)
@@ -32,7 +24,6 @@ internal sealed class CampaignsEmails
         var html = SanitizedMarkdownRenderer.Render(markdown,
             transformHtml: rendered => Substitute(rendered, encodedCode, encodedName, codeMarker, nameMarker));
 
-        // Subject is a plain-text field; no HTML encoding required.
         var subject = Substitute(request.Subject, request.Code, request.RecipientName);
         var subjectRunes = subject.EnumerateRunes().Take(Campaign.EmailSubjectMaxLength + 1).ToArray();
         if (subjectRunes.Length > Campaign.EmailSubjectMaxLength)

@@ -6,10 +6,7 @@ using Humans.Base.Configuration;
 
 namespace Humans.Email.Health;
 
-/// <summary>
-/// Health check that validates SMTP connectivity and authentication.
-/// Connects and authenticates without sending any email.
-/// </summary>
+/// <summary>Connects and authenticates without sending mail.</summary>
 internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<SmtpHealthCheck> logger) : IHealthCheck
 {
     private readonly EmailSettings _settings = settings.Value;
@@ -18,7 +15,6 @@ internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        // Skip check if SMTP is not configured
         if (string.IsNullOrEmpty(_settings.SmtpHost))
         {
             return HealthCheckResult.Degraded("SMTP not configured");
@@ -29,14 +25,12 @@ internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<
             cancellationToken.ThrowIfCancellationRequested();
             using var client = new SmtpClient();
 
-            // Connect to SMTP server
             await client.ConnectAsync(
                 _settings.SmtpHost,
                 _settings.SmtpPort,
                 _settings.UseSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None,
                 cancellationToken);
 
-            // Authenticate if credentials provided
             if (!string.IsNullOrEmpty(_settings.Username))
             {
                 await client.AuthenticateAsync(
@@ -45,7 +39,6 @@ internal sealed class SmtpHealthCheck(IOptions<EmailSettings> settings, ILogger<
                     cancellationToken);
             }
 
-            // Disconnect cleanly
             await client.DisconnectAsync(true, cancellationToken);
 
             return HealthCheckResult.Healthy("SMTP connection and authentication successful");

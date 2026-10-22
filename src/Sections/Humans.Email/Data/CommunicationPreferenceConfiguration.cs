@@ -27,7 +27,6 @@ internal sealed class CommunicationPreferenceConfiguration : IEntityTypeConfigur
             .HasMaxLength(100)
             .IsRequired();
 
-        // UserId is a bare reference to Users' users table: no FK across sections.
         builder.HasIndex(cp => new { cp.UserId, cp.Category })
             .IsUnique();
     }

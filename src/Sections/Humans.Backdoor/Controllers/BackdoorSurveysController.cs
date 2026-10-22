@@ -12,14 +12,9 @@ using NodaTime.Text;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// Read-only survey analysis for agents.
+/// Identity columns surface only for <see cref="ResponseAnonymity.Identified"/> rows, guaranteed by
+/// <see cref="ISurveyAnalysisRead.GetResponseExportAsync"/> and never re-derived here.
 /// </summary>
-/// <remarks>
-/// Every endpoint reuses an <see cref="ISurveyAnalysisRead"/> method; the controller only
-/// parses, filters, sorts, pages and formats (hard rule). Identity columns surface only for
-/// <see cref="ResponseAnonymity.Identified"/> rows — guaranteed server-side by
-/// <see cref="ISurveyAnalysisRead.GetResponseExportAsync"/>, never re-derived here.
-/// </remarks>
 [ApiController]
 [Route("api/backdoor/surveys")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]

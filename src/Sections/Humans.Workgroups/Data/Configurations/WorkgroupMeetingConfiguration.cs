@@ -17,10 +17,9 @@ internal sealed class WorkgroupMeetingConfiguration : IEntityTypeConfiguration<W
         b.Property(m => m.EndUtc).IsRequired();
         b.Property(m => m.Location).HasMaxLength(500);
         b.Property(m => m.LocationUrl).HasMaxLength(2000);
-        // Bool defaulting to false: IsRequired only — HasDefaultValue(false) is the sentinel trap.
+        // IsRequired only: HasDefaultValue(false) is the sentinel trap.
         b.Property(m => m.IsPublic).IsRequired();
         b.Property(m => m.Minutes).HasColumnType("text");
-        // CreatedByUserId is a bare cross-section reference: no FK, no navigation.
         b.Property(m => m.CreatedAt).IsRequired();
         b.Property(m => m.UpdatedAt).IsRequired();
 

@@ -4,10 +4,7 @@ using NodaTime;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Domain;
 
-/// <summary>
-/// A shift container belonging to a department (parent team) and event.
-/// Groups related shifts under a named rota with shared priority and signup policy.
-/// </summary>
+/// <summary>Belongs to a department (parent team) and an event.</summary>
 internal sealed class Rota
 {
     public Guid Id { get; init; }
@@ -25,23 +22,15 @@ internal sealed class Rota
 
     public SignupPolicy Policy { get; set; }
 
-    /// <summary>
-    /// Explicit period set by the coordinator. Drives creation UX (all-day vs time-slotted)
-    /// and signup UX (date-range vs individual).
-    /// </summary>
+    /// <summary>Drives creation (all-day vs time-slotted) and signup (date range vs individual).</summary>
     public RotaPeriod Period { get; set; } = RotaPeriod.Event;
 
-    /// <summary>
-    /// Meeting point, pre-shift instructions, what to bring. Shared by all shifts in the rota.
-    /// </summary>
+    /// <summary>Meeting point, instructions, what to bring; shared by all the rota's shifts.</summary>
     [MarkdownContent]
     [System.ComponentModel.DataAnnotations.MaxLength(2000)]
     public string? PracticalInfo { get; set; }
 
-    /// <summary>
-    /// Whether this rota is visible to volunteers on the browse page.
-    /// Coordinators can disable to stage rollout of signup.
-    /// </summary>
+    /// <summary>Coordinators clear it to stage a signup rollout.</summary>
     public bool IsVisibleToVolunteers { get; set; } = true;
 
     public Instant CreatedAt { get; init; }

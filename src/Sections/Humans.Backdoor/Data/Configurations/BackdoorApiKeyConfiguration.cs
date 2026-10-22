@@ -21,9 +21,6 @@ internal sealed class BackdoorApiKeyConfiguration : IEntityTypeConfiguration<Bac
 
         builder.Property(k => k.CreatedAt).IsRequired();
 
-        // UserId / CreatedByUserId / RevokedByUserId are bare cross-section Guid columns —
-        // no FK constraint, no nav (memory/architecture/no-cross-section-ef-joins.md).
-
         builder.HasIndex(k => k.UserId);
 
         builder.Ignore(k => k.IsActive);

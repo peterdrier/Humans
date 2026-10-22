@@ -2,9 +2,7 @@ using Humans.Base.Authorization;
 
 namespace Humans.Users.Models;
 
-/// <summary>
-/// Compact profile summary for inline display ("baseball card").
-/// </summary>
+/// <summary>Compact profile summary for inline display ("baseball card").</summary>
 internal sealed class ProfileSummaryViewModel
 {
     public Guid UserId { get; set; }
@@ -22,27 +20,19 @@ internal sealed class ProfileSummaryViewModel
     public List<string> Teams { get; set; } = [];
 
     /// <summary>
-    /// Teams the subject belongs to that are flagged <c>IsHidden</c>. Only populated
-    /// in the popover render path when the viewer is TeamsAdmin/Board/Admin — kept
-    /// separate from <see cref="Teams"/> so the popover can render an admin-only
-    /// section below a separator.
+    /// Hidden teams, popover only and only for TeamsAdmin/Board/Admin viewers; kept apart from
+    /// <see cref="Teams"/> so they render below a separator.
     /// </summary>
     public List<string> HiddenTeams { get; set; } = [];
 
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     /// <summary>
-    /// The subject's camp for the active season, if they're an active member of one.
-    /// Only rendered in the popover when the viewer holds an admin-shaped role
-    /// (<see cref="PolicyNames.AnyAdminRole"/>). Null when not in a camp this year.
+    /// Active-season camp, rendered only for <see cref="PolicyNames.AnyAdminRole"/> viewers.
     /// </summary>
     public string? CampName { get; set; }
 
-    /// <summary>
-    /// Named camp roles the subject holds in <see cref="CampName"/> (e.g. "Camp Lead",
-    /// "Greeter"), ordered by role sort order. Empty when none. Same admin-only gate as
-    /// <see cref="CampName"/>.
-    /// </summary>
+    /// <summary>Ordered by role sort order; same admin-only gate as <see cref="CampName"/>.</summary>
     public IReadOnlyList<string> CampRoles { get; set; } = [];
 
     /// <summary>

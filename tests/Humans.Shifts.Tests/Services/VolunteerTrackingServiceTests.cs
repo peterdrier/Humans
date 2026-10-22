@@ -193,10 +193,9 @@ public class VolunteerTrackingServiceTests
     [HumansFact]
     public async Task MainCohort_future_unfilled_day_renders_as_gap_for_planning()
     {
-        // Today (offset -1 in this fixture) is one day before gate-open. Volunteer
-        // has confirmed -5 only; -4..-1 are all unfilled and must render as gaps
-        // (not "Expected") so coordinators can voluntell ahead of time.
-        // Locks in spec src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md step 3.
+        // Today (offset -1 in this fixture) is one day before gate-open. The volunteer
+        // has confirmed -5 only; -4..-1 must render as gaps (not "Expected") so
+        // coordinators can voluntell ahead of time.
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var signups = new List<EligibleBuildSignup>
@@ -375,10 +374,6 @@ public class VolunteerTrackingServiceTests
         stored.SetAt.Should().BeNull();
     }
 
-    // ----------------------------------------------------------------------
-    // SetDayOff / ClearDayOff
-    // ----------------------------------------------------------------------
-
     [HumansFact]
     public async Task SetDayOffAsync_rejects_offset_outside_build_window()
     {
@@ -499,10 +494,8 @@ public class VolunteerTrackingServiceTests
     [HumansFact]
     public async Task SetDayOffAsync_does_not_validate_camp_setup_overlap()
     {
-        // Regression guard: earlier drafts of the spec validated camp-setup
-        // overlap server-side. The redesign removed it — the UI prevents it
-        // by hiding the action on CampSetup cells; defense-in-depth is the
-        // auto-cleanup that runs when camp-setup is moved.
+        // Camp-setup overlap is not validated server-side: the UI hides the action on
+        // CampSetup cells, and moving camp-setup auto-cleans the days off it covers.
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
         var bs = new VolunteerBuildStatus
@@ -561,10 +554,6 @@ public class VolunteerTrackingServiceTests
 
         result.Removed.Should().BeFalse();
     }
-
-    // ----------------------------------------------------------------------
-    // GetUserBuildStripAsync
-    // ----------------------------------------------------------------------
 
     [HumansFact]
     public async Task GetUserBuildStrip_returns_null_when_no_active_event()
@@ -714,10 +703,6 @@ public class VolunteerTrackingServiceTests
         bs.DayOffs.Should().HaveCount(1);
     }
 
-    // ----------------------------------------------------------------------
-    // Coordinator writes audit themselves
-    // ----------------------------------------------------------------------
-
     [HumansFact]
     public async Task SetCampSetupAsync_audits_the_change_and_each_auto_cleared_day_off()
     {
@@ -849,10 +834,6 @@ public class VolunteerTrackingServiceTests
     private static EventParticipationInfo Participation(Guid userId, ParticipationStatus status, int year)
         => new(userId, year, status, ParticipationSource.UserDeclared, null, null);
 
-    // ----------------------------------------------------------------------
-    // Test SUT builder with fakes
-    // ----------------------------------------------------------------------
-
     private static VolunteerTrackingService BuildSut(
         EventSettings? activeEvent,
         IReadOnlyList<EligibleBuildSignup>? signups = null,
@@ -948,10 +929,6 @@ public class VolunteerTrackingServiceTests
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
-
-    // ----------------------------------------------------------------------
-    // Fake repository that captures mutations
-    // ----------------------------------------------------------------------
 
     private sealed class FakeVolunteerTrackingRepository(
         IReadOnlyList<VolunteerBuildStatus> buildStatuses,

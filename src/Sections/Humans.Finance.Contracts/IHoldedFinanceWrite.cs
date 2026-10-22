@@ -3,42 +3,33 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Finance.Contracts;
 
-/// <summary>
-/// The writes other sections make on Finance, alongside the read-only
-/// <see cref="IHoldedFinanceService"/>: expense-account resolution and retirement for workgroups,
-/// and creditor-contact binding for expense payouts. Everything else the section's service does —
-/// the purchase-doc sync included — is internal to <c>Humans.Finance</c>.
-/// </summary>
+/// <summary>Cross-section writes: expense-account resolution for workgroups and creditor-contact binding for expense
+/// payouts.</summary>
 public interface IHoldedFinanceWrite : IApplicationService
 {
-    /// <summary>Resolves an expense account for a caller that has no budget category: an explicit
-    /// <paramref name="existingAccountNum"/> is verified against the live chart and returned; else an
-    /// account whose name normalizes equal to <paramref name="name"/> is returned; else one is created
-    /// at the next free number of the <c>62900100</c> block. Accounts outside the budget map are
-    /// recorded in Finance's managed registry so the doc sync attributes their docs.
-    /// Throws <see cref="InvalidOperationException"/> when the explicit number is not in Holded.</summary>
+    /// <summary>For a caller with no budget category: an explicit <paramref name="existingAccountNum"/> is verified
+    /// against the live chart; else an account whose normalized name equals <paramref name="name"/>; else a new one at
+    /// the next free number of the <c>62900100</c> block. Non-budget accounts go into Finance's managed registry so the
+    /// doc sync attributes their docs. Throws <see cref="InvalidOperationException"/> when the explicit number is not
+    /// in Holded.</summary>
     [ExternalWrite]
     Task<HoldedExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
         string name, int? existingAccountNum, CancellationToken ct = default);
 
-    /// <summary>Retires or restores a managed account so it drops out of, or returns to, the active
-    /// pickers. No-op for a budget-category account or a number Finance does not manage — the
-    /// account itself is never touched in Holded.</summary>
+    /// <summary>Only affects the pickers; the account is never touched in Holded. No-op for an account Finance does not
+    /// manage.</summary>
     Task SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken ct = default);
 
-    /// <summary>Ensures the member has a Holded creditor contact and binding, returning the contact id.
-    /// Reuses the existing binding, else the seed from a prior report, else creates a new contact. A
-    /// linked contact is never updated in Holded (its PUT is a full replacement that resets the
-    /// creditor account). A Manual binding is never downgraded to Auto. A contact this call creates and
-    /// then retracts, because a concurrent push bound the member first, is audited under
-    /// <paramref name="jobName"/>, the background job making the call.</summary>
+    /// <summary>Reuses the existing binding, else the seed from a prior report, else creates a contact. A linked contact
+    /// is never updated in Holded: its PUT is a full replacement that resets the creditor account. A Manual binding is
+    /// never downgraded to Auto. <paramref name="jobName"/> is the audit actor when a concurrent push forces this call
+    /// to retract a contact it created.</summary>
     [ExternalWrite]
     Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
         string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct = default);
 
-    /// <summary>Records the resolved 400000xx number on the member's binding (once the payable exists).
-    /// A number that differs from the binding's is audited under <paramref name="jobName"/>, the
-    /// background job making the call.</summary>
+    /// <summary>Called once the payable exists. A number that differs from the binding's is audited under
+    /// <paramref name="jobName"/>.</summary>
     Task SetCreditorAccountNumAsync(Guid userId, int supplierAccountNum, string jobName, CancellationToken ct = default);
 }

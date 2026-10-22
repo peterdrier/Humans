@@ -7,11 +7,6 @@ using NodaTime;
 
 namespace Humans.Governance.Services;
 
-/// <summary>
-/// Governance's observable gauges: asociado count, pending tier applications, and the two
-/// consent-completeness gauges (pending_consents also needs the total user count, read
-/// cross-section via <see cref="IUserService"/>).
-/// </summary>
 internal sealed class GovernanceMetricsService : PolledGaugeService
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");

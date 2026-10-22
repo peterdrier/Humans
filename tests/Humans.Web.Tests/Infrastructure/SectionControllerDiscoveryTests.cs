@@ -9,24 +9,10 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// Proves that a G5 section's <c>internal</c> controllers are actually discovered by MVC
-/// (nobodies-collective/Humans#866).
+/// MVC's stock <c>IsController</c> requires <c>IsPublic</c>, so an internal section controller builds green and 404s
+/// at runtime. Type sweeps like <c>EndpointAuthorizationTests</c> never ask MVC, so this is the only guard. It proves
+/// the provider, not that <c>Program.cs</c> registers it.
 /// </summary>
-/// <remarks>
-/// This is the one failure mode in the section split with no other guard: MVC's stock
-/// <c>ControllerFeatureProvider.IsController</c> requires <c>IsPublic</c>, so an internal
-/// section controller builds green, has its <c>[Route]</c> sitting right there, and 404s at
-/// runtime — see <c>memory/architecture/section-controllers-need-feature-provider.md</c>.
-/// Store was covered only incidentally, by its 20 controller integration tests; Events has
-/// none, so nothing in the suite would have caught a regression here. Sweeps that enumerate
-/// controller <em>types</em> (EndpointAuthorizationTests) do not help — they see internal
-/// types fine and never ask MVC whether it agrees.
-///
-/// Runs the real <see cref="SectionControllerFeatureProvider"/> over the real section
-/// assemblies, so it covers every section present and future without a per-section edit.
-/// It proves the mechanism, not the wiring: that Shell still registers the provider in
-/// <c>Program.cs</c> is covered by Store's controller integration tests, which boot the app.
-/// </remarks>
 public sealed class SectionControllerDiscoveryTests
 {
     [HumansFact]
@@ -54,9 +40,8 @@ public sealed class SectionControllerDiscoveryTests
     [HumansFact]
     public void InternalControllersOutsideASectionAreStillNotDiscovered()
     {
-        // The provider relaxes IsPublic *only* for assemblies declaring an ISection entry
-        // point. If that narrowing ever regressed, every internal class ending in
-        // "Controller" anywhere would become routable.
+        // The provider relaxes IsPublic only for assemblies with an ISection entry point; otherwise every internal
+        // "*Controller" class anywhere would become routable.
         var provider = new SectionControllerFeatureProvider();
         var feature = new ControllerFeature();
 

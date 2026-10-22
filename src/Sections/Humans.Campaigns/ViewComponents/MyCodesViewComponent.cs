@@ -5,12 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Campaigns.ViewComponents;
 
-/// <summary>
-/// The "My Codes" card, contributed to <c>UserPartSlots.Profile</c>. Own profile only: renders
-/// for <see cref="ProfileCardViewMode.Self"/> when the signed-in user is the target, and nothing
-/// for anyone else. Shows the viewer's grants from Active or Completed campaigns; nothing when
-/// there are none.
-/// </summary>
+/// <summary>Renders only on the viewer's own profile: grants from Active or Completed campaigns.</summary>
 public sealed class MyCodesViewComponent(ICampaignService campaigns) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)

@@ -94,7 +94,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         result.SlotCount.Should().Be(1);
         result.MinimumRequired.Should().Be(0);
 
-        // Audit happens AFTER save (I1 fix)
+        // Audit happens AFTER save.
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
@@ -608,10 +608,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         (await CampsDb.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
-    // ==========================================================================
-    // IGoogleGroupMembershipSource.GetExpectedAsync — issue #740
-    // ==========================================================================
-
     [HumansFact]
     public async Task GetExpected_returns_one_key_per_active_role_and_in_scope_year_with_assignees()
     {
@@ -819,10 +815,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
-
-    // ==========================================================================
-    // System role immutability + seeding (issue nobodies-collective/Humans#753)
-    // ==========================================================================
 
     [HumansFact]
     public async Task UpdateDefinition_rejects_rename_of_system_role()

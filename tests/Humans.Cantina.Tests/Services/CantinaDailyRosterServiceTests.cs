@@ -15,7 +15,7 @@ namespace Humans.Cantina.Tests.Services;
 /// <summary>
 /// Unit tests for <see cref="CantinaRosterService.GetDailyRosterAsync"/> —
 /// the per-day matrix payload that powers the drill-down view linked from
-/// each row of the Cantina Weekly Roster's per-day mini-table (feature #36).
+/// each row of the Cantina Weekly Roster's per-day mini-table.
 /// Companion to <see cref="CantinaRosterServiceTests"/>. On-site cohort comes
 /// from the shift service; dietary from the cached UserInfo (Profile).
 /// </summary>
@@ -228,11 +228,9 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_BurnerName_ComesFromTheResolvedUserName()
     {
-        // nobodies-collective/Humans#1097 moved the burner name onto the user row and
-        // made UserInfo.BurnerName the resolved value (User.BurnerName →
-        // Profile.BurnerName → legacy display name). Reading ProfileInfo.BurnerName
-        // instead renders "(unknown)" for a human whose name only ever landed on the
-        // user row.
+        // UserInfo.BurnerName is the resolved name (User.BurnerName → Profile.BurnerName → legacy
+        // display name). Reading ProfileInfo.BurnerName instead renders "(unknown)" for a human
+        // whose name only ever landed on the user row.
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
 
         var userId = Guid.NewGuid();
@@ -266,7 +264,7 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_MedicalConditionsNeverInDto()
     {
         // The cantina output DTO must not expose MedicalConditions, even though
-        // medical now lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
+        // medical lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
         typeof(Humans.Cantina.Services.Dtos.DailyPersonRowDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
@@ -364,8 +362,6 @@ public class CantinaDailyRosterServiceTests
         result.EventTodayDate.Should().Be(GateOpening.PlusDays(1));
     }
 
-    // ---- helpers ----
-
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
@@ -376,8 +372,7 @@ public class CantinaDailyRosterServiceTests
         var dict = profiles.ToDictionary(
             p => p.UserId,
             p => UserInfo.Create(
-                // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-                // UserInfo.BurnerName reads User.BurnerName only (#1098).
+                // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 eventParticipations: [],

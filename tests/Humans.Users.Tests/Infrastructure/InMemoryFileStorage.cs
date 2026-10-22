@@ -3,11 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Users.Tests.Infrastructure;
 
-/// <summary>
-/// In-memory <see cref="IFileStorage"/> for tests. Thread-safe via
-/// <see cref="ConcurrentDictionary{TKey,TValue}"/>; exposes the backing
-/// store via <see cref="Files"/> for assertions.
-/// </summary>
 public sealed class InMemoryFileStorage : IFileStorage
 {
     public ConcurrentDictionary<string, byte[]> Files { get; } = new(StringComparer.Ordinal);

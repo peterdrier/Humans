@@ -1,8 +1,6 @@
 @using Humans.Settings.Contracts
 @model IReadOnlyList<SettingsTab>
-@* TabsLocalizer, not the section's own Localizer (SettingsResource, injected by
-   _ViewImports): a tab label is a SharedResource key because the contributing section's
-   own resource set is private to it (see SettingsTab.Label). *@
+@* A tab label is a SharedResource key: the contributing section's own resource set is private to it. *@
 @inject IStringLocalizer<Humans.Base.SharedResource> TabsLocalizer
 
 @if (Model.Count == 0)
@@ -39,9 +37,8 @@ else
         }
     </div>
 
-    @* Settings POSTs redirect back to /Settings#<key>; Bootstrap does not read the
-       fragment, so without this the save lands on the first tab. Nonce is injected by
-       NonceTagHelper, which claims every <script>. *@
+    @* Settings POSTs redirect back to /Settings#key; Bootstrap does not read the fragment, so without this the
+       save lands on the first tab. *@
     <script>
         (function () {
             var strip = document.getElementById('settingsTabs');

@@ -4,12 +4,7 @@ namespace Humans.Issues.Models;
 
 internal static class IssuePresentation
 {
-    /// <summary>
-    /// Bootstrap badge color classes for each status. Use as
-    /// <c>&lt;span class="badge @IssuePresentation.StatusPillClass(s)"&gt;</c>.
-    /// Pairs background with explicit foreground so contrast is guaranteed
-    /// regardless of the page's color scheme.
-    /// </summary>
+    /// <summary>Pairs background with explicit foreground so contrast holds in any color scheme.</summary>
     public static string StatusPillClass(IssueStatus s) => s switch
     {
         IssueStatus.Triage => "bg-warning text-dark",

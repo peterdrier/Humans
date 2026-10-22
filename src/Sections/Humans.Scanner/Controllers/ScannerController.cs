@@ -85,10 +85,8 @@ internal sealed class ScannerController(
     }
 
     /// <summary>
-    /// What this human signed up to provide: shift commitments plus events they are
-    /// offering, sorted by start. The iCal feed's Events half is favourites — the wrong
-    /// signal at the door — so only its Shifts items are kept; offered events are the
-    /// member's own non-camp submissions, one item per occurrence.
+    /// Shift commitments plus the member's own non-camp offered events (one per occurrence), sorted by start. The iCal
+    /// feed's Events half is favourites, the wrong signal at the door, so only its Shifts items are kept.
     /// </summary>
     private async Task<IReadOnlyList<CalendarFeedItem>> GetProvideItemsAsync(
         Guid userId, EventSettingsInfo? burn, DateTimeZone? tz, CancellationToken ct)

@@ -59,13 +59,9 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         }
         catch
         {
-            // A failed append leaves the message Added (and any MessageCount bump Modified) on
-            // this scoped context, so the NEXT save through it would flush this half-written
-            // append on top of its own work. AgentService answers a failed turn by appending an
-            // "error" trace (nobodies-collective/Humans#963) — without this the transcript would
-            // get both the original assistant reply and the trace, plus a double MessageCount
-            // increment. Cancellation is the likely trigger: it can land on either the
-            // conversation read or SaveChangesAsync, so both are inside the try.
+            // A failed append leaves the message Added on this scoped context, so the next save (AgentService's
+            // "error" trace) would flush it too: a double reply and a double MessageCount bump. Cancellation can land
+            // on the read or on SaveChangesAsync, so both are inside the try.
             db.ChangeTracker.Clear();
             throw;
         }
@@ -122,11 +118,8 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         if (!handoffsOnly)
             return await ordered.Skip(skip).Take(take).ToListAsync(cancellationToken);
 
-        // Handoff = legacy server-side FeedbackReport link, or a successful
-        // route_to_issue recorded in the jsonb FetchedDocs array (propose-only flow,
-        // nobodies-collective/Humans#931). The FetchedDocs value converter blocks
-        // SQL translation of the array Contains, so materialize first and page in
-        // memory — fine at this scale (see CLAUDE.md scale notes).
+        // The FetchedDocs value converter blocks SQL translation of the array Contains, so materialize and page in
+        // memory: fine at this scale.
         var all = await ordered.ToListAsync(cancellationToken);
         return all
             .Where(c => c.Messages.Any(m => m.HandedOffToFeedbackId != null

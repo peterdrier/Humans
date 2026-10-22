@@ -2,11 +2,7 @@ using NodaTime;
 
 namespace Humans.Holded.Domain;
 
-/// <summary>
-/// One recorded call to the Holded API, drained here from the in-memory call log so the admin
-/// screen can show consumption per month and endpoint. Holded's own GET /usage stays the
-/// authoritative counter — this is the breakdown it does not give us.
-/// </summary>
+/// <summary>The per-month, per-endpoint breakdown GET /usage doesn't give. /usage stays the authoritative count.</summary>
 internal sealed class HoldedApiCall
 {
     public Guid Id { get; init; }

@@ -3,10 +3,7 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>
-/// Preapprovals' contribution to the template gallery at <c>/Email/EmailPreview</c>: one sample
-/// per notice kind, built through the same builder the real send path uses. Sample data only.
-/// </summary>
+/// <summary>Built through the same builder the real send path uses.</summary>
 internal sealed class PreapprovalsEmailPreviews(PreapprovalsEmails emails) : IEmailPreviewContributor
 {
     private static readonly Dictionary<PreapprovalNoticeKind, string?> Details = new()

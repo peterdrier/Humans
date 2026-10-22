@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace Humans.Gdpr.Contracts;
 
-/// <summary>Serializes the shared Article 15 download document.</summary>
 public static class GdprExportSerializer
 {
     private static readonly JsonSerializerOptions Options = new()
@@ -14,7 +13,7 @@ public static class GdprExportSerializer
         Converters = { new JsonStringEnumConverter() }
     };
 
-    /// <summary>Returns indented UTF-8 JSON with envelope fields followed by section slices.</summary>
+    /// <summary>Envelope fields first, then section slices.</summary>
     public static byte[] Serialize(GdprExport export)
     {
         var payload = new Dictionary<string, object?>(StringComparer.Ordinal)

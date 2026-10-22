@@ -23,9 +23,8 @@ internal interface IContainerRepository : IRepository
     Task UpsertPlacementAsync(ContainerPlacement placement, CancellationToken ct = default);
 
     /// <summary>
-    /// Verifies the container exists and upserts the placement's geometry in a
-    /// single DbContext, preserving notes/image metadata on the existing row.
-    /// Throws <see cref="InvalidOperationException"/> if the container is missing.
+    /// Keeps the notes and image on an existing row. Throws <see cref="InvalidOperationException"/> when the
+    /// container is missing.
     /// </summary>
     Task<ContainerPlacement> SavePlacementGeometryAsync(
         Guid containerId, int year, string geoJson, Instant now, CancellationToken ct = default);

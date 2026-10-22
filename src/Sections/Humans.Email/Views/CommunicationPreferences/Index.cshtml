@@ -32,7 +32,6 @@
             var channel = this.dataset.channel;
             var value = this.checked;
 
-            // Find both checkboxes in this row to send current state
             var emailCb = row.querySelector('[data-channel="email"]');
             var alertCb = row.querySelector('[data-channel="alert"]');
 
@@ -53,11 +52,9 @@
                 body: body.toString()
             }).then(function (resp) {
                 if (!resp.ok) throw new Error(resp.statusText);
-                // Brief flash on the row to confirm save
                 row.classList.add('table-success');
                 setTimeout(function () { row.classList.remove('table-success'); }, 600);
             }).catch(function () {
-                // Revert on failure
                 self.checked = !value;
                 row.classList.add('table-danger');
                 setTimeout(function () { row.classList.remove('table-danger'); }, 1500);

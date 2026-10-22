@@ -3,32 +3,25 @@ using Humans.Base.Interfaces;
 namespace Humans.Surveys.Contracts;
 
 /// <summary>
-/// Surveys' read-only analysis surface for the machine API behind
-/// <c>/api/backdoor/surveys</c> (nobodies-collective/Humans#1128): the survey list, one
-/// survey's question graph, the raw per-response export, and the per-question aggregates.
+/// Read-only by design: a survey is authored in the admin UI, never over the API. The definition is a resolved
+/// question graph with the stable option values an agent joins on, not the editor's write shape.
 /// </summary>
-/// <remarks>
-/// Read-only by design — a survey is authored in the admin UI, never over the API. The
-/// definition comes back as <see cref="SurveyDefinitionSnapshot"/> rather than the editor
-/// model behind <c>GetForEditAsync</c>: an agent needs the resolved question graph and the
-/// stable option values it joins on, not the section's write shape.
-/// </remarks>
 public interface ISurveyAnalysisRead : IApplicationService
 {
-    /// <summary>All surveys with participation counts.</summary>
     Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// One survey's question graph, resolved in its default culture, or null. Option and
-    /// grid-row <c>Value</c>s are the stable join keys against the response export.
+    /// Resolved in the default culture; null when missing. Option and grid-row <c>Value</c>s are the stable join keys
+    /// against the response export.
     /// </summary>
     Task<SurveyDefinitionSnapshot?> GetDefinitionAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>Raw per-response export, or null. Ordinary surveys order by submission time;
-    /// Asociado votes order by response id and suppress identity and timestamps.</summary>
-    /// <remarks>Records the actor and response count in the audit log before returning an available export.</remarks>
+    /// <summary>
+    /// Null when unavailable. Ordinary surveys order by submission time; Asociado votes order by response id and
+    /// suppress identity and timestamps. Audits the actor and response count before returning.
+    /// </summary>
     Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Per-question aggregates plus the participation funnel, or null.</summary>
+    /// <summary>Null when missing.</summary>
     Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default);
 }

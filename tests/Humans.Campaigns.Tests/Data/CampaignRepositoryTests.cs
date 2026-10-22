@@ -35,10 +35,6 @@ public sealed class CampaignRepositoryTests
         _repository = new CampaignRepository(_factory);
     }
 
-    // ==========================================================================
-    // MarkGrantsRedeemedAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task MarkGrantsRedeemedAsync_MatchesCodesCaseInsensitively()
     {
@@ -132,10 +128,6 @@ public sealed class CampaignRepositoryTests
         count.Should().Be(0);
     }
 
-    // ==========================================================================
-    // ReassignGrantsToUserAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task ReassignGrantsToUserAsync_SecondSourceRowOnSameCampaign_Drops()
     {
@@ -158,10 +150,6 @@ public sealed class CampaignRepositoryTests
             .CountAsync(g => g.UserId == source, Xunit.TestContext.Current.CancellationToken))
             .Should().Be(0);
     }
-
-    // ==========================================================================
-    // Grant reads — campaign-status filtering
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetActiveOrCompletedGrantsForUserAsync_ExcludesDraftCampaignGrants()
@@ -215,10 +203,6 @@ public sealed class CampaignRepositoryTests
         codes.Select(c => c.Code).Should().Equal("FIRST", "SECOND");
         codes.Should().NotContain(c => c.Id == granted.CampaignCodeId);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private async Task<Campaign> SeedCampaignAsync(CampaignStatus status, Instant? createdAt = null)
     {

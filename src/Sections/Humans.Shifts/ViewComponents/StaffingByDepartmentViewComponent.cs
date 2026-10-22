@@ -4,17 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// The "Staffing by department" card — event-wide coverage plus the per-department
-/// breakdown. Contributed into the admin dashboard's <c>admin-dashboard</c> chrome slot
-/// (<see cref="Humans.Shifts.SectionChrome"/>).
+/// Internal: invoked by type through the chrome slot, not a tag helper. The department breakdown has no source
+/// yet, so <c>Departments</c> is always empty and the card shows its "no data yet" copy.
 /// </summary>
-/// <remarks>
-/// Internal — invoked by Type through <c>ChromeSlotViewComponent</c>'s
-/// <c>Component.InvokeAsync</c>, not a <c>&lt;vc:&gt;</c> tag helper, so it does not need to
-/// be public under <c>Contracts/</c>. The department breakdown has no source yet:
-/// <c>Departments</c> is always empty, so the card renders the "no data yet" copy and
-/// points at Shifts.
-/// </remarks>
 internal sealed class StaffingByDepartmentViewComponent(IShiftManagement shifts) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

@@ -7,9 +7,8 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Humans.Analyzers;
 
 /// <summary>
-/// HUM0030 -- date/time format-string literals may live only in the single sanctioned
-/// formatting home (Humans.Base.Extensions.DateFormattingExtensions). Anywhere else a
-/// hand-rolled custom format string is forbidden; call a named formatter on the home instead.
+/// HUM0030 -- date/time format-string literals live only in <c>Humans.Base.Extensions.DateFormattingExtensions</c>.
+/// Anywhere else, call a named formatter there instead.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DateTimeFormatStringAnalyzer : DiagnosticAnalyzer
@@ -57,9 +56,6 @@ public sealed class DateTimeFormatStringAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        // Section assemblies count as production (nobodies-collective/Humans#866). The
-        // hardcoded four-name set this replaced named none of them, so this rule went
-        // silent inside every section that moved.
         var targets = ImmutableHashSet.CreateBuilder<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         foreach (var name in TargetTypeMetadataNames)
         {

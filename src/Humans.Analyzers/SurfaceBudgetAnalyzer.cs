@@ -13,11 +13,8 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
     public const string SlackDiagnosticId = "HUM0016";
 
     /// <summary>
-    /// Derived from the attribute class (linked into this project by
-    /// <c>Humans.Analyzers.csproj</c>) rather than spelled as a literal: an
-    /// unresolved lookup makes <see cref="OnCompilationStart"/> register
-    /// nothing, so a stale literal would retire HUM0015/HUM0016 silently.
-    /// See nobodies-collective/Humans#1057.
+    /// Derived from the attribute class, never a literal: an unresolved lookup registers nothing, so a stale literal
+    /// would retire HUM0015/HUM0016 silently.
     /// </summary>
     private static readonly string SurfaceBudgetAttributeFullName =
         typeof(SurfaceBudgetAttribute).FullName!;
@@ -118,20 +115,8 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Counts directly-declared <b>public instance</b> ordinary methods on the
-    /// type. Private/internal/protected and static methods are not counted;
-    /// property accessors, indexers, events, and inherited members are not
-    /// counted.
-    ///
-    /// <para>
-    /// <c>INamedTypeSymbol.GetMembers()</c> returns only the members declared
-    /// directly on this symbol (analog of <c>BindingFlags.DeclaredOnly</c>).
-    /// Property/indexer/event accessors surface as <c>IMethodSymbol</c> with
-    /// a non-<c>Ordinary</c> <see cref="MethodKind"/>, so filtering on
-    /// <c>MethodKind == Ordinary</c> is the analog of <c>!IsSpecialName</c>.
-    /// For interfaces, every declared method is implicitly public-instance so
-    /// the accessibility filter is a no-op there.
-    /// </para>
+    /// Directly declared public instance ordinary methods only: static, non-public and inherited methods, property
+    /// accessors, indexers and events don't count.
     /// </summary>
     private static int CountDirectlyDeclaredPublicInstanceOrdinaryMethods(INamedTypeSymbol type)
     {

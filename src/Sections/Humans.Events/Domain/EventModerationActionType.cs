@@ -1,30 +1,23 @@
 namespace Humans.Events.Domain;
 
-/// <summary>
-/// Type of moderation action taken on a guide event submission.
-/// </summary>
 internal enum EventModerationActionType
 {
-    /// <summary>Event approved for publication.</summary>
     Approved = 0,
 
-    /// <summary>Event rejected — reason required.</summary>
+    /// <summary>Reason required.</summary>
     Rejected = 1,
 
-    /// <summary>Moderator requested edits — reason required.</summary>
+    /// <summary>Reason required.</summary>
     ResubmitRequested = 2,
 
     /// <summary>
-    /// An admin / moderator edited the event's fields in place without
-    /// changing its status (the "edit in a pinch" path). Recorded for audit;
-    /// not a state-transition decision, so it is appended directly rather than
-    /// through <see cref="Event.ApplyModerationAction"/>.
+    /// An in-place edit that kept the status. Not a state transition, so it is appended directly rather than through
+    /// <see cref="Event.ApplyModerationAction"/>.
     /// </summary>
     Edited = 3,
 
     /// <summary>
-    /// A moderator pulled an approved event from the programme. Recorded for
-    /// audit; the status change goes through <see cref="Event.Withdraw"/>.
+    /// A moderator pulled an approved event; the status change goes through <see cref="Event.Withdraw"/>.
     /// </summary>
     Withdrawn = 4
 }

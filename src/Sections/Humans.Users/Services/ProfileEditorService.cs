@@ -10,7 +10,7 @@ internal sealed class ProfileEditorService(
     /// <summary>Refusal key for a CV payload with no entries and no "no prior experience" tick.</summary>
     internal const string BurnerCvRequiredErrorKey = "Users_Profile_BurnerCVRequired";
 
-    // Serialize full save orchestration so DB picture metadata and file writes stay ordered per user.
+    // Serializes each user's save so picture metadata and file writes stay ordered.
     private static readonly TrackedLock[] UserLocks = CreateUserLocks(32);
 
     private static TrackedLock[] CreateUserLocks(int count)
@@ -53,12 +53,11 @@ internal sealed class ProfileEditorService(
         return new(true, profileId);
     }
 
-    // Cross-field invariants enforced server-side regardless of caller (P1/P2).
+    // Enforced server-side regardless of caller.
     private static string? ValidateSaveRequest(ProfileSaveRequest request)
     {
-        // Burner CV completeness: entries OR "no prior experience". Only checked
-        // when the request carries a CV payload — name-only saves leave history
-        // untouched and must not be blocked.
+        // Entries or "no prior experience", checked only when a CV payload is present: name-only
+        // saves leave history untouched and must not be blocked.
         if (request.VolunteerHistory is { Count: 0 } && !request.NoPriorBurnExperience)
         {
             return BurnerCvRequiredErrorKey;

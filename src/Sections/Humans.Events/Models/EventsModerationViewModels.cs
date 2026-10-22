@@ -87,22 +87,19 @@ internal sealed class ModerationActionFormModel
 }
 
 /// <summary>
-/// Admin / moderator in-place edit form for any event in any state. One form
-/// serves both individual events (venue) and camp events (priority rank);
-/// <see cref="IsCampEvent"/> drives which block renders. Saving preserves the
-/// event's status; the moderation service records the edit separately.
+/// One form for both kinds: individual events edit the venue, camp events the priority rank. Saving preserves the
+/// status; the moderation service records the edit separately.
 /// </summary>
 internal sealed class AdminEventFormViewModel
 {
     public Guid Id { get; set; }
 
-    /// <summary>True for camp/barrio events (priority rank shown, venue hidden).</summary>
     public bool IsCampEvent { get; set; }
 
-    /// <summary>Display-only camp name for camp events; not editable here.</summary>
+    /// <summary>Display only.</summary>
     public string? CampName { get; set; }
 
-    /// <summary>Display-only current status; preserved on save.</summary>
+    /// <summary>Display only; preserved on save.</summary>
     public EventStatus Status { get; set; }
 
     [Required]
@@ -117,7 +114,7 @@ internal sealed class AdminEventFormViewModel
     [Display(Name = "Category")]
     public Guid CategoryId { get; set; }
 
-    // Individual events only; presence validated in the controller when !IsCampEvent.
+    // Individual events only; the controller validates presence.
     [Display(Name = "Venue")]
     public Guid? VenueId { get; set; }
 
@@ -165,7 +162,6 @@ internal sealed class AdminEventFormViewModel
     [Display(Name = "Edit note (optional)")]
     public string? Note { get; set; }
 
-    // Dropdown data
     public List<CategoryOptionViewModel> Categories { get; set; } = [];
     public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> EventDays { get; set; } = [];

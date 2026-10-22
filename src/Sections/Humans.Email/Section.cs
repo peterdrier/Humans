@@ -16,26 +16,13 @@ using Microsoft.Extensions.Hosting;
 
 namespace Humans.Email;
 
-/// <summary>
-/// Email's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix. No caching decorator: the outbox is a
-/// sequential queue drain, not a hot-path read shape.
-/// </summary>
-/// <remarks>
-/// <c>EmailSettings</c> itself is bound in Shell, not here: Auth's magic-link URL builder,
-/// this section's unsubscribe token provider, <c>SendReConsentReminderJob</c> and Shell's
-/// <c>SmtpHealthCheck</c> all read it, so it is Base configuration this section happens to
-/// be named after (Governance's rule — the section that owns the file is not always the
-/// section that owns the line). The transport *choice* is Email's and lives here.
-/// </remarks>
+/// <summary><c>EmailSettings</c> is bound in Shell, not here: many sections read it.</summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<EmailDbContext>(sentinelTable: "email_outbox_messages");
 
-        // Singleton + IDbContextFactory so the repository can be injected into the
-        // Scoped services and the outbox drain alike (§15 repository pattern).
         services.AddSingleton<IEmailOutboxRepository, EmailOutboxRepository>();
 
         // Missing SMTP must not block boot or silently discard production mail through the
@@ -55,8 +42,8 @@ public sealed class Section : ISection
         services.AddScoped<IEmailService, OutboxEmailService>();
         services.AddScoped<ComposerSelfSendService>();
 
-        // The composer's "Send to me" is an open, authenticated send: cap it per human on top
-        // of the Shell's global limiter (peterdrier/Humans#1793).
+        // The composer's "Send to me" is an open, authenticated send: cap it per member on top of the
+        // Shell's global limiter.
         services.Configure<RateLimiterOptions>(options => options.AddPolicy(
             EmailPreviewController.SelfSendRateLimitPolicy,
             context => RateLimitPartition.GetFixedWindowLimiter(
@@ -72,12 +59,9 @@ public sealed class Section : ISection
         services.AddScoped<IEmailOutboxManagement>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IEmailOutboxRetention>(sp => sp.GetRequiredService<EmailOutboxService>());
-        // GDPR fan-out: outbox rows are user-scoped personal data (#853).
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EmailOutboxService>());
 
-        // Communication preferences (Users decomposition commit 14): public reads and MailerLite's
-        // writes, Email's own management surface, the GDPR slice and the merge fold, one instance.
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
         services.AddScoped<CommunicationPreferenceService>();

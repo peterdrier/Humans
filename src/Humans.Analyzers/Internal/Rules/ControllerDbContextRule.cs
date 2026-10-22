@@ -29,10 +29,8 @@ internal static class ControllerDbContextRule
 
     public static void Register(CompilationStartAnalysisContext context)
     {
-        // Since the per-section split (nobodies-collective/Humans#858) the persistence
-        // boundary is every application context, matched structurally via
-        // SectionDbContexts (derives from EF's DbContext) rather than by name or
-        // namespace, so relocating the contexts cannot switch this rule off.
+        // Matched structurally via SectionDbContexts, not by name or namespace, so relocating the contexts cannot
+        // switch this rule off.
         var efDbContext = SectionDbContexts.ResolveEfDbContext(context.Compilation);
         if (efDbContext is null)
             return;

@@ -5,9 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Tickets;
 
-/// <summary>
-/// Tickets' admin sidebar group (nobodies-collective/Humans#1077).
-/// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

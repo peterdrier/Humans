@@ -5,14 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Jobs;
 
-/// <summary>
-/// Hangfire recurring job that syncs ticket data from the vendor.
-/// Runs every 15 minutes by default. Can also be triggered manually.
-/// </summary>
-/// <remarks>
-/// It sits under <c>Jobs/</c> because Shell names the concrete type at registration and HUM0034
-/// makes every other public type in a section assembly an error.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class TicketSyncJob(
     ITicketSync syncService,

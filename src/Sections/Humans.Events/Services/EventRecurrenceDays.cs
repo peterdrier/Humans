@@ -4,16 +4,14 @@ using NodaTime;
 namespace Humans.Events.Services;
 
 /// <summary>
-/// Converts between the stored recurrence representation — comma-separated
-/// day-offsets from the burn gate date (e.g. <c>"0,2,4"</c>) — and the
-/// human-friendly day-name form (<c>"Mon Wed Fri"</c>) used in the barrio
-/// bulk-upload CSV, and concrete occurrence instants.
+/// Stored form: comma-separated day offsets from the gate date (<c>"0,2,4"</c>). The bulk-upload CSV uses day names
+/// (<c>"Mon Wed Fri"</c>).
 /// </summary>
 internal static class EventRecurrenceDays
 {
     private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-    /// <summary>Checks form offsets against the offered calendar, preserving the empty-selection fallback.</summary>
+    /// <summary>Preserves the empty-selection fallback.</summary>
     internal static bool HasOnlyEventOffsets(string? offsets, int eventEndOffset)
     {
         if (string.IsNullOrWhiteSpace(offsets)) return true;
@@ -42,7 +40,7 @@ internal static class EventRecurrenceDays
             .ToList();
     }
 
-    /// <summary>Offsets → space-separated day names, in offset order.</summary>
+    /// <summary>In offset order.</summary>
     public static string OffsetsToDisplayDays(string offsets, LocalDate gateOpeningDate)
     {
         var names = new List<string>();
@@ -54,10 +52,7 @@ internal static class EventRecurrenceDays
         return string.Join(" ", names);
     }
 
-    /// <summary>
-    /// Day names → every matching offset within <c>0..eventEndOffset</c>, as a
-    /// comma-separated string (null when nothing matches).
-    /// </summary>
+    /// <summary>Every matching offset within <c>0..eventEndOffset</c>; null when nothing matches.</summary>
     public static string? DisplayDaysToOffsets(string displayDays, LocalDate gateOpeningDate, int eventEndOffset)
     {
         var requested = displayDays.Split(' ', StringSplitOptions.RemoveEmptyEntries)
@@ -74,16 +69,13 @@ internal static class EventRecurrenceDays
         return offsets.Count > 0 ? string.Join(",", offsets) : null;
     }
 
-    /// <summary>Whether every supplied CSV day token is one of Mon through Sun.</summary>
     public static bool HasOnlyDisplayDays(string displayDays) =>
         displayDays.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Select(day => day.Trim())
             .All(day => DayNames.Contains(day, StringComparer.OrdinalIgnoreCase));
 
     /// <summary>
-    /// Case-insensitive set comparison of two space-separated day-name strings.
-    /// Used for change-detection so a lossless offsets→names→offsets round-trip
-    /// (e.g. a single Monday rendered as <c>"Mon"</c>) is not mistaken for an edit.
+    /// Case-insensitive set comparison, so a lossless offsets→names→offsets round-trip is not mistaken for an edit.
     /// </summary>
     public static bool SameDays(string a, string b)
     {

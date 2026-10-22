@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Shifts;
 
-/// <summary>Shifts' admin sidebar contribution — the "Shifts" group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

@@ -8,15 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>
-/// Workgroups' own email template: one method returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Workgroups chooses —
-/// template name per notice kind and the Governance opt-out category) for the single
-/// <see cref="IEmailService.SendAsync"/> path. Copy lives in Workgroups' own resx set
-/// and is rendered in the recipient's culture inside a <see cref="CultureScope"/>
-/// (memory/architecture/email-templates-live-in-sender.md, peterdrier/Humans#1651).
-/// Pure — no I/O, no persistence.
-/// </summary>
 internal sealed class WorkgroupsEmails(
     IOptions<EmailSettings> settings,
     IStringLocalizer<WorkgroupsResource> localizer,
@@ -33,14 +24,12 @@ internal sealed class WorkgroupsEmails(
             var greeting = string.IsNullOrEmpty(request.RecipientName)
                 ? L("Workgroups_Email_WorkgroupNotice_Greeting_Generic")
                 : Lf("Workgroups_Email_WorkgroupNotice_Greeting_Named", Encode(request.RecipientName));
-            // Two forms of the same name: subjects are plain text, bodies are HTML. Encoding
-            // once for both would put "Health &amp; Safety" in the subject line.
+            // Subjects are plain text, bodies HTML: encoding once for both would put "Health &amp; Safety" in the subject.
             var name = request.WorkgroupName;
             var nameHtml = Encode(request.WorkgroupName);
             var url = $"{_settings.BaseUrl}/Workgroups/{request.WorkgroupSlug}";
             var detail = Encode(request.Detail ?? "");
 
-            // The reasons line is omitted entirely rather than rendered empty.
             string ReasonLine() => string.IsNullOrEmpty(request.Detail)
                 ? ""
                 : Lf("Workgroups_Email_ReasonLine", detail);

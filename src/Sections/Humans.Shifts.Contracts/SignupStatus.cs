@@ -1,26 +1,20 @@
 namespace Humans.Shifts.Contracts;
 
-/// <summary>
-/// State machine for duty signup lifecycle.
-/// Stored as string in DB.
-/// </summary>
+/// <summary>Stored as a string.</summary>
 public enum SignupStatus
 {
-    /// <summary>Awaiting coordinator approval (RequireApproval policy).</summary>
+    /// <summary>Awaiting coordinator approval on a RequireApproval rota.</summary>
     Pending = 0,
 
-    /// <summary>Volunteer is confirmed for the shift.</summary>
     Confirmed = 1,
 
-    /// <summary>Coordinator refused the signup request.</summary>
     Refused = 2,
 
-    /// <summary>Volunteer or coordinator withdrew from confirmed/pending signup.</summary>
+    /// <summary>The volunteer or a coordinator withdrew it.</summary>
     Bailed = 3,
 
-    /// <summary>System-cancelled (e.g., shift deactivated, account deletion).</summary>
+    /// <summary>System-cancelled (shift removed, account deletion) or removed by a coordinator.</summary>
     Cancelled = 4,
 
-    /// <summary>Volunteer did not show up for a confirmed shift.</summary>
     NoShow = 5
 }

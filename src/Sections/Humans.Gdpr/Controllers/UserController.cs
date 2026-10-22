@@ -9,12 +9,8 @@ using Humans.Users.Contracts;
 namespace Humans.Gdpr.Controllers;
 
 /// <summary>
-/// Landing pages for non-Active users — the account-status wall (Suspended/Rejected/Deleted/Merged)
-/// and the pending-deletion cancel screen. Exempt from <c>MembershipRequiredFilter</c> (these
-/// ARE the redirect targets), so each action self-checks the caller's state. Lives in Gdpr
-/// because the deletion lifecycle (request, grace period, cancel) is a subject right;
-/// the deletion work itself is Users' <see cref="IAccountDeletionService"/>. Routed under <c>/Gdpr</c>
-/// (<c>/Gdpr/Status</c>, <c>/Gdpr/Deletion</c>, <c>/Gdpr/Deletion/Cancel</c>).
+/// Exempt from <c>MembershipRequiredFilter</c> (these are its redirect targets), so each action checks the
+/// caller's state itself.
 /// </summary>
 [Authorize]
 [Route("Gdpr")]
@@ -28,7 +24,6 @@ internal sealed class UserController(
     {
         var state = RoleChecks.GetUserState(User);
 
-        // Only the excluded states see the wall; anyone else belongs in the app/onboarding.
         if (state is not (UserState.Suspended or UserState.AdminSuspended or UserState.Rejected
             or UserState.Deleted or UserState.Merged))
         {

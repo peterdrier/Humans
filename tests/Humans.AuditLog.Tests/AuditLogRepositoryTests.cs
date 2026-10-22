@@ -7,17 +7,6 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Tests;
 
-/// <summary>
-/// Happy-path tests for <see cref="AuditLogRepository"/> at the repository
-/// boundary — exercises the real EF implementation against an in-memory
-/// database via <see cref="TestDbContextFactory{TContext}"/>.
-///
-/// The broader <c>AuditLogServiceTests</c> covers most query paths through
-/// the service → repo integration. These tests are here to satisfy the
-/// 1-to-1 production-class-to-test-file mapping invariant and to document
-/// <see cref="AuditLogRepository"/> as the sole writer of
-/// <c>ctx.AuditLogEntries</c>.
-/// </summary>
 public class AuditLogRepositoryTests
 {
     private readonly IDbContextFactory<AuditLogDbContext> _factory;

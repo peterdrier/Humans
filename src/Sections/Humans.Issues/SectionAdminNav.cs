@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Issues;
 
-/// <summary>Issues' admin sidebar group, which Feedback's legacy queue also joins.</summary>
+/// <summary>Feedback's legacy queue also joins this group.</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

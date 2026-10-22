@@ -7,10 +7,8 @@ namespace Humans.Users.Models;
 internal sealed class AdminHumanListViewModel : PagedListViewModel
 {
     /// <summary>
-    /// Page of admin humans, unprojected. <c>AdminList</c> renders its own rows:
-    /// the notification-target email, status, joined/last-login and detail link
-    /// are an admin directory's columns, not a search result's
-    /// (nobodies-collective/Humans#1062).
+    /// Unprojected: <c>AdminList</c> renders its own rows, because an admin directory's columns
+    /// are not a search result's.
     /// </summary>
     public List<AdminHumanRow> Humans { get; set; } = [];
     public string? SearchTerm { get; set; }
@@ -84,10 +82,7 @@ internal sealed class AccountMergeRowViewModel
     public DateTime? RequestedAt { get; set; }
 }
 
-/// <summary>
-/// Audience segmentation gauges for admin view.
-/// Shows total accounts, accounts with tickets, with profiles, both, or neither.
-/// </summary>
+/// <summary>Total accounts, with tickets, with profiles, both, or neither.</summary>
 internal sealed class AudienceSegmentationViewModel
 {
     public int TotalAccounts { get; set; }
@@ -96,9 +91,8 @@ internal sealed class AudienceSegmentationViewModel
     public int WithBoth { get; set; }
     public int WithNeither { get; set; }
 
-    /// <summary>Available event years for filtering (e.g. 2025, 2026).</summary>
     public List<int> AvailableYears { get; set; } = [];
 
-    /// <summary>Currently selected event year filter, or null for all time.</summary>
+    /// <summary>Null for all time.</summary>
     public int? SelectedYear { get; set; }
 }

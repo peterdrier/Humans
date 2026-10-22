@@ -28,8 +28,7 @@
     var dauLabel = Localizer["Shifts_ShiftDash_Trends_DAU"].Value;
     var dauNote = Localizer["Shifts_ShiftDash_Trends_DAUNote"].Value;
 
-    // TEMP: ticket figures are not shareable yet. Flip to true once ticket data is publishable.
-    // The underlying trend series still computes new-ticket-sales in ShiftManagementService.
+    // TEMP: ticket figures are not shareable yet; flip once they are. The series still computes them.
     var showTicketData = false;
 }
 
@@ -100,7 +99,7 @@
             { label: dauLabel, data: sliced.logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
         ];
         if (showTicketData) {
-            // Keep the tickets series wiring in place for when ticket data is shareable again.
+            // Kept wired for when ticket data is shareable again.
             datasets.splice(1, 0, { label: newTicketsLabel, data: sliced.tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 });
         }
         chartInstance = new Chart(ctx, {

@@ -13,7 +13,7 @@ using NSubstitute;
 namespace Humans.MailerLite.Tests.Services;
 
 /// <summary>
-/// MAILERLITE-3: two verified Website addresses of one human with conflicting statuses
+/// Two verified Website addresses of one human with conflicting statuses
 /// resolve to one Marketing decision — any opt-out wins — independent of enumeration order.
 /// </summary>
 public class MailerLiteImportServiceSameHumanTests

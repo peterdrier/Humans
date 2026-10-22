@@ -15,19 +15,15 @@ internal static class TelemetryInfrastructureExtensions
         services.Configure<GitHubSettings>(configuration.GetSection(GitHubSettings.SectionName));
 
         services.AddSingleton<IHumansMetrics, HumansMetricsService>();
-        // Hosted so the gauge-refresh timer is armed in StartAsync — i.e. after the host has run
-        // DatabaseMigrationHostedService.StartingAsync (which applies pending migrations). Previously
-        // the timer was armed in the constructor via an eager resolve before app.Run(), which raced
-        // schema migrations on deploy and could query not-yet-migrated tables.
+        // Hosted so the gauge-refresh timer is armed in StartAsync, after DatabaseMigrationHostedService has applied
+        // pending migrations; arming it earlier raced the schema on deploy.
         services.AddHostedService(sp => (HumansMetricsService)sp.GetRequiredService<IHumansMetrics>());
 
         // Process-local "who's online" registry — singleton so the dict survives across requests.
         services.AddSingleton<IUserActivityTracker, UserActivityTracker>();
 
-        // IMeters is a leaf singleton — only ILogger dep. Owns the
-        // System.Diagnostics.Metrics.Meter("Humans.Metrics") instrument under which
-        // every section-declared gauge is automatically exported via the existing
-        // AddMeter("Humans.Metrics") subscription.
+        // Owns the "Humans.Metrics" meter, so every section-declared gauge is exported through the existing
+        // AddMeter subscription.
         services.AddSingleton<IMeters, MetersService>();
 
         // Coarse client demographics (OS/browser/device + screen resolution) for /Admin/ClientStats.

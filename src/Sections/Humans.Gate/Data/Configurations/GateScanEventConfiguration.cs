@@ -28,14 +28,11 @@ internal sealed class GateScanEventConfiguration : IEntityTypeConfiguration<Gate
         builder.Property(x => x.Note).HasMaxLength(1000);
         builder.Property(x => x.AdmitDedupeKey).HasMaxLength(128);
 
-        // Atomic duplicate guard: at most one admit per barcode across all lanes.
-        // Postgres excludes NULLs from unique indexes, so reject/unresolved rows
-        // (AdmitDedupeKey == null) never collide.
+        // At most one admit per barcode across all lanes. Postgres excludes nulls, so non-admit rows never collide.
         builder.HasIndex(x => x.AdmitDedupeKey)
             .IsUnique()
             .HasDatabaseName("ix_gate_scan_events_admit_dedupe_key");
 
-        // Leaderboard / audit query paths.
         builder.HasIndex(x => x.OccurredAt);
         builder.HasIndex(x => x.ScannedByUserId);
     }

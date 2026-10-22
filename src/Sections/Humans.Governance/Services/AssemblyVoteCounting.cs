@@ -4,27 +4,15 @@ using Humans.Governance.Services.Dtos;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// The counting rules for assembly votes: YesNo majorities and instant-runoff rounds.
+/// Pure — no repository, clock or I/O — so the counting rules can be tested directly and checked
+/// by hand. Never resolves a tie: statutes Art. 10.2 gives the President the casting vote.
 /// </summary>
-/// <remarks>
-/// Deliberately pure — no repository, no clock, no I/O — so the association's counting
-/// rules can be tested directly and read by a member who wants to check a result by hand.
-/// The service calls this exactly twice: once at close, to compute the result it stores,
-/// and once behind the audited Admin peek.
-/// <para>
-/// Nothing here ever resolves a tie. Statutes Art. 10.2 gives the President of the Board
-/// the casting vote on a tie between opposing options, and the Secretary records it in the
-/// acta; a tie therefore leaves this code as <see cref="AssemblyVoteVerdict.Tie"/>.
-/// </para>
-/// </remarks>
 internal static class AssemblyVoteCounting
 {
     /// <summary>
     /// One ballot reduced to what counting needs. Keeps the counting rules independent of
     /// the EF entity, which never leaves the section.
     /// </summary>
-    /// <param name="Choice">The recorded answer.</param>
-    /// <param name="Ranking">Preference order, best first; RankedChoice only.</param>
     internal sealed record CountableBallot(AssemblyBallotChoice Choice, IReadOnlyList<string>? Ranking);
 
     /// <summary>
@@ -74,12 +62,9 @@ internal static class AssemblyVoteCounting
     /// disclosed elimination tie-break.
     /// </param>
     /// <remarks>
-    /// An option wins when it holds more than half of the continuing (non-exhausted)
-    /// ballots in a round. Otherwise the fewest-votes option is eliminated, breaking a tie
-    /// for elimination by fewest votes in the previous round and then by authored order.
-    /// A deciding round that is level is reported as a tie with no winner rather than
-    /// broken by authored order — with ~120 Asociados that is unlikely, and inventing a
-    /// winner is exactly what Art. 10.2 reserves for the President.
+    /// An option wins with more than half the continuing ballots in a round; otherwise the
+    /// fewest-votes option goes, ties broken by the previous round then authored order. A level
+    /// deciding round is a tie: inventing a winner is what Art. 10.2 reserves for the President.
     /// </remarks>
     public static (IReadOnlyList<InstantRunoffRound> Rounds, string? WinnerKey,
         AssemblyVoteVerdict Verdict, IReadOnlyList<AssemblyVoteNote> Notes) CountInstantRunoff(

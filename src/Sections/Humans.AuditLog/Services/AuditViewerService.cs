@@ -3,11 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.AuditLog.Services;
 
-/// <summary>Read-side wrapper over <see cref="IAuditLogReader"/> that resolves actor/subject/team names. No DB or caching.</summary>
-/// <remarks>
-/// Names come from the <see cref="IEntityNameContributor"/> fan-out, so this section reaches
-/// into none of the sections that own the ids it renders (nobodies-collective/Humans#1059).
-/// </remarks>
 internal sealed class AuditViewerService(
     IAuditLogReader auditLog,
     IEnumerable<IEntityNameContributor> nameContributors) : IAuditViewerService
@@ -37,8 +32,6 @@ internal sealed class AuditViewerService(
         return new AuditEventPage(events, totalCount, anomalyCount);
     }
 
-    // ─── Resolution ───
-
     private async Task<IReadOnlyList<AuditEvent>> ResolveAsync(
         IReadOnlyList<AuditLogEntrySnapshot> entries, CancellationToken ct)
     {
@@ -53,10 +46,7 @@ internal sealed class AuditViewerService(
         return result;
     }
 
-    /// <summary>
-    /// One pass over every registered contributor. Each answers for the ids it owns and
-    /// ignores the rest; first answer for an id wins.
-    /// </summary>
+    /// <summary>Each contributor answers for the ids it owns; the first answer for an id wins.</summary>
     private async Task<Dictionary<Guid, EntityName>> ResolveNamesAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken ct)
     {

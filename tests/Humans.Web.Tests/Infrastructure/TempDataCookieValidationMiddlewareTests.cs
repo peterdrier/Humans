@@ -49,12 +49,7 @@ public class TempDataCookieValidationMiddlewareTests
     private static IList<SetCookieHeaderValue> ParseSetCookies(HttpResponse response)
         => SetCookieHeaderValue.ParseList(response.Headers.SetCookie.Where(v => v is not null).ToList()!);
 
-    /// <summary>
-    /// Turns a response's Set-Cookie headers (as issued by a real
-    /// <see cref="CookieTempDataProvider.SaveTempData"/>) into the Cookie request header a
-    /// browser would send back — reused to build a "next request presents this cookie"
-    /// context for the round-trip tests.
-    /// </summary>
+    /// <summary>The Cookie request header a browser would send back for a real provider's Set-Cookie headers.</summary>
     private static string ToRequestCookieHeader(HttpResponse response)
         => string.Join("; ", ParseSetCookies(response).Select(c => $"{c.Name}={c.Value}"));
 
@@ -125,7 +120,7 @@ public class TempDataCookieValidationMiddlewareTests
     {
         var context = new DefaultHttpContext();
         context.Request.Headers.Cookie = $"{CookieName}=chunks-2; {CookieName}C1=AAAA";
-        // C2 deliberately missing — the loss this issue's cause #1 (chunking) describes.
+        // C2 deliberately missing: a lost chunk.
 
         var (_, logger) = await RunAsync(context);
 
@@ -198,7 +193,6 @@ public class TempDataCookieValidationMiddlewareTests
         var setCookies = ParseSetCookies(saveContext.Response);
         setCookies.Count.Should().BeGreaterThan(2, "need at least 3 pieces so dropping one still leaves siblings");
 
-        // Drop the last chunk cookie to simulate a lost sibling.
         var kept = setCookies.Take(setCookies.Count - 1);
         var loadContext = new DefaultHttpContext();
         loadContext.Request.Headers.Cookie = string.Join("; ", kept.Select(c => $"{c.Name}={c.Value}"));
@@ -220,9 +214,7 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task ChunkedCookie_MissingMiddleChunk_StillDeletesSiblingsAfterTheGap()
     {
         var context = new DefaultHttpContext();
-        // C2 lost out of order, C3 still present — a client dropping one cookie rather than
-        // truncating from the end. C3 must still be stripped and deleted, or it is re-sent
-        // on every request for the rest of the session.
+        // C2 lost out of order: C3 must still be stripped, or it is re-sent for the rest of the session.
         context.Request.Headers.Cookie =
             $"{CookieName}=chunks-3; {CookieName}C1=AAAA; {CookieName}C3=CCCC";
 
@@ -252,9 +244,7 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task ChunkedCookie_MissingFirstChunk_StillReportsHasChunkSiblingsTrue()
     {
         var context = new DefaultHttpContext();
-        // C1 is the lost chunk. Deriving HasChunkSiblings from C1's presence alone reported
-        // False here, misclassifying a chunk-loss as a stale-format or bot cookie — the one
-        // distinction the diagnostic exists to make.
+        // C1 is the lost chunk; HasChunkSiblings must not be derived from C1 alone, or chunk loss reads as a stale cookie.
         context.Request.Headers.Cookie = $"{CookieName}=chunks-2; {CookieName}C2=BBBB";
 
         var (_, logger) = await RunAsync(context);
@@ -268,10 +258,8 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task HostileChunkCount_IsBoundedByCookiesActuallySent()
     {
         var context = new DefaultHttpContext { RequestAborted = Xunit.TestContext.Current.CancellationToken };
-        // The chunk marker is client-supplied and this middleware runs on every dynamic request.
-        // Generating C1..C2147483647 names from it would burn billions of iterations (and wrap
-        // the counter), so the declared count must never drive the loop bound. The xUnit timeout
-        // is the assertion that matters here — the old shape would not return.
+        // The marker is client-supplied, so its declared count must never bound the loop. The xUnit timeout is the
+        // assertion here.
         context.Request.Headers.Cookie = $"{CookieName}=chunks-2147483647";
 
         var (nextCalled, logger) = await RunAsync(context);
@@ -286,8 +274,7 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task UnparseableMarker_WithSiblingsPresent_DeletesTheSiblingsToo()
     {
         var context = new DefaultHttpContext();
-        // Main value corrupted past carrying a "chunks-N" marker at all, siblings still attached.
-        // Deleting only the main cookie would leave multi-KB orphans on the client indefinitely.
+        // No "chunks-N" marker at all, siblings attached: deleting only the main cookie would orphan multi-KB siblings.
         context.Request.Headers.Cookie =
             $"{CookieName}=garbage-not-base64!!!; {CookieName}C1=AAAA; {CookieName}C2=BBBB";
 
@@ -320,8 +307,7 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task OrphanChunkSiblings_WithoutMainCookie_AreStrippedAndDeleted()
     {
         var context = new DefaultHttpContext();
-        // The marker cookie is the one that was lost; its siblings survive. CookieTempDataProvider
-        // can never reassemble them, so left alone they are re-sent on every request until expiry.
+        // The marker cookie is lost; the provider can never reassemble the siblings, so they'd be re-sent until expiry.
         context.Request.Headers.Cookie = $"{CookieName}C1=AAAA; {CookieName}C2=BBBB";
 
         HttpContext? seenByNext = null;
@@ -354,9 +340,8 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task NoncanonicalChunkSuffix_IsNotAcceptedAsAChunk()
     {
         var context = new DefaultHttpContext();
-        // "C01" is not the name the framework wrote, and it is the exact name it looks up. Parsing
-        // the suffix as index 1 reassembled a valid-looking value here and waved the request
-        // through — while CookieTempDataProvider still saw an incomplete chunked cookie and threw.
+        // "C01" is not a name the framework writes or reads; parsing it as index 1 would wave through a cookie the
+        // provider then throws on.
         context.Request.Headers.Cookie = $"{CookieName}=chunks-1; {CookieName}C01=AAAA";
 
         var (nextCalled, logger) = await RunAsync(context);
@@ -369,10 +354,8 @@ public class TempDataCookieValidationMiddlewareTests
     public async Task DifferentlyCasedCookie_IsDeletedUnderTheNameTheClientSent()
     {
         var context = new DefaultHttpContext();
-        // The request collection resolves cookie names case-insensitively, so the framework
-        // still finds — and still throws on — this one. A browser matches Set-Cookie
-        // case-sensitively though, so expiring the configured casing would leave the real
-        // cookie in place and re-log this warning on every subsequent request.
+        // The framework matches the name case-insensitively but a browser matches Set-Cookie case-sensitively, so the
+        // delete must use the casing the client sent.
         var sentName = CookieName.ToLowerInvariant();
         context.Request.Headers.Cookie = $"{sentName}=garbage-not-base64!!!";
 

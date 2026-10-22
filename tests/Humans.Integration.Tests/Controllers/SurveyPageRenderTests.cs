@@ -8,32 +8,11 @@ using Humans.Surveys.Contracts;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Surveys page through the real app after the section moved into
-/// <c>src/Sections/Humans.Surveys</c> (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Surveys page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// This is the standing form of the §15 step 12 check. The two failure modes a G5 move
-/// introduces both render as a <b>200 with degraded content</b>, which is why "the page loads"
-/// is not the assertion:
-/// </para>
-/// <list type="number">
-/// <item><description>
-/// A section RCL does not inherit the host's <c>Views/_ViewImports.cshtml</c>. A missing
-/// <c>@using</c> or <c>@addTagHelper</c> ships literal markup with a green build.
-/// </description></item>
-/// <item><description>
-/// A resource key that did not make it into the carved <c>SurveysResource</c> set falls back
-/// to rendering its own raw key — in every language, with no missing-key error, because the
-/// fallback <em>is</em> the designed behaviour.
-/// </description></item>
-/// </list>
-/// <para>
-/// Each case therefore asserts on resolved <c>Surveys_*</c> copy and on the absence of any raw
-/// <c>Surveys_</c> key in the response body, which catches both at once. A one-off pre/post HTML
-/// diff would too, but only for the person running it; this runs on every build.
-/// </para>
+/// Failures render as a 200 with degraded content: a missing <c>@using</c> or <c>@addTagHelper</c> ships literal
+/// markup, and a key missing from <c>SurveysResource</c> renders as its own name in every language. Asserting resolved
+/// <c>Surveys_*</c> copy and no raw <c>Surveys_</c> key catches both.
 /// </remarks>
 public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -49,8 +28,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // Resolved copy, not the key: proves SurveysResource.resx is reachable under the
-        // section's manifest prefix (the .cs namespace, not the folder path).
+        // Resolved copy proves the resx is reachable under the manifest prefix (the .cs namespace, not the folder path).
         html.Should().Contain("Start");
         html.Should().Contain("name=\"Anonymity\"");
         html.Should().Contain("value=\"Anonymous\"");
@@ -104,9 +82,8 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         var slug = $"render-test-{Guid.NewGuid():N}";
         await SeedOpenPublicSurveyAsync(slug, ct, status: SurveyStatus.Closed);
 
-        // The slug still resolves — the survey exists and still allows anonymous responding — so
-        // this is a 200 rendering Closed.cshtml, not a 404. That view is the one whose entire
-        // content is localized strings, which makes it the sharpest check on the resx carve.
+        // The survey still exists, so this is a 200 rendering Closed.cshtml, not a 404. That view is all localized
+        // strings, the sharpest check on the resx.
         var response = await Client.GetAsync($"/Survey/{slug}", ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -119,11 +96,8 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 60000)]
     public async Task Public_survey_intro_renders_in_Spanish_from_the_sections_satellite_assembly()
     {
-        // The non-English check the §15 step 12 HTML diff cannot do: a capture taken in English
-        // passes whether or not the section's satellite assemblies shipped, because the neutral
-        // set is embedded in the main assembly and the fallback is silent. This is the only
-        // assertion in the file that would catch SurveysResource.es.resx failing to build into
-        // a satellite, or the RCL's satellites failing to reach the host's probing path.
+        // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
+        // satellites reach the host's probing path.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var slug = $"render-test-{Guid.NewGuid():N}";
         await SeedOpenPublicSurveyAsync(slug, ct, status: SurveyStatus.Closed);
@@ -135,8 +109,7 @@ public class SurveyPageRenderTests(HumansTestDatabase database) : IntegrationTes
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        // Razor's default HtmlEncoder escapes non-ASCII to numeric entities ("está" renders as
-        // "est&#xE1;"), so the assertions stay on ASCII-only runs of the Spanish strings.
+        // HtmlEncoder escapes non-ASCII ("está" becomes "est&#xE1;"), so the checks stay on ASCII runs.
         html.Should().Contain("Encuesta no disponible");   // Surveys_Closed_Title
         html.Should().Contain("Esta encuesta est");        // Surveys_Closed_Heading
         html.Should().NotContain("This survey is closed");

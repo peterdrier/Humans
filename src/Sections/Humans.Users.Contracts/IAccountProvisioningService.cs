@@ -1,42 +1,28 @@
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Provides idempotent account creation for import jobs (ticket import, MailerLite import).
-/// Looks up existing accounts by email across all UserEmails for dedup,
-/// creates User + UserEmail when no match exists.
-/// </summary>
-// No marker interface — see Humans.Users.Contracts.csproj.
+/// <summary>Idempotent account creation for the import jobs.</summary>
 public interface IAccountProvisioningService
 {
     /// <summary>
-    /// Finds an existing User by email (checking both User.Email and all UserEmail records)
-    /// or creates a new User + UserEmail if no match exists. Idempotent.
+    /// Matches on <c>User.Email</c> and every <c>UserEmail</c> row. A blank <paramref name="displayName"/> falls
+    /// back to the email prefix.
     /// </summary>
-    /// <param name="email">The email address to look up or create an account for.</param>
-    /// <param name="displayName">Display name for the new account. Falls back to email prefix if null/empty.</param>
-    /// <param name="source">Where this contact was imported from.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The existing or newly created user's id, and whether a new account was created.</returns>
     Task<AccountProvisioningResult> FindOrCreateUserByEmailAsync(
         string email, string? displayName, ContactSource source,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Replaces the planned unverified, unlinked email row and provisions its verified
-    /// contact account atomically. Refuses stale plans; provisioning failures preserve
-    /// the original row. Retains the ordinary email-deletion guards.
+    /// Replaces the planned unverified, unlinked email row and provisions its contact account atomically. Refuses
+    /// stale plans; a failure keeps the original row.
     /// </summary>
     Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
         Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Completes a magic-link signup after the Auth section has verified the
-    /// signup token. Idempotently signs in the existing verified-email owner
-    /// on double submit, otherwise creates User + verified UserEmail + a stub
-    /// Profile seeded with the member's burner and legal names, rolling back
-    /// the User if the email row cannot be created.
+    /// After Auth has verified the token. A double submit signs in the existing owner; otherwise creates the user,
+    /// its verified email and a stub profile, rolling back the user if the email row fails.
     /// </summary>
     Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
         string email,
@@ -46,17 +32,9 @@ public interface IAccountProvisioningService
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Result of a find-or-create operation.
-/// </summary>
-/// <param name="UserId">The existing or newly created user's id.</param>
-/// <param name="Created">True if a new account was created; false if an existing one was found.</param>
 public record AccountProvisioningResult(Guid UserId, bool Created);
 
-/// <summary>
-/// Result of a magic-link signup. <paramref name="UserId"/> is the account to sign in,
-/// null when <paramref name="Outcome"/> is <see cref="MagicLinkSignupCompletionOutcome.Failed"/>.
-/// </summary>
+/// <summary><paramref name="UserId"/> is null when <paramref name="Outcome"/> is <see cref="MagicLinkSignupCompletionOutcome.Failed"/>.</summary>
 public sealed record MagicLinkSignupCompletionResult(
     MagicLinkSignupCompletionOutcome Outcome,
     Guid? UserId);

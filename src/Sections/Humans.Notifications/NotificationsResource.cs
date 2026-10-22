@@ -1,18 +1,8 @@
 namespace Humans.Notifications;
 
 /// <summary>
-/// Marker type for Notifications' resource set. The <c>.resx</c> files sit beside this
-/// file on purpose: the SDK derives the manifest name from the adjacent same-named
-/// <c>.cs</c> file's namespace, not from the folder path, so this must stay
-/// <c>namespace Humans.Notifications</c> — <c>Humans.Notifications.Resources</c> would
-/// make every notification string fall back to its raw key at runtime.
+/// The .resx files sit beside this file, so it must stay in <c>namespace Humans.Notifications</c>: the manifest name
+/// comes from this file's namespace, and any other makes every string fall back to its key. Public because the boot
+/// localization check finds markers through <c>GetExportedTypes()</c>.
 /// </summary>
-/// <remarks>
-/// Public because the boot localization diagnostic discovers section resource markers
-/// via <c>GetExportedTypes()</c>; an internal marker is skipped in silence. The set
-/// includes the keys the notification bell renders — the bell view component and its
-/// <c>Default.cshtml</c> live in this section so the whole <c>Notifications_*</c> set
-/// stays in one resource set. The section contributes the bell by <c>Type</c> to
-/// <c>ChromeSlots.HeaderRight</c> (<c>SectionChrome</c>), which the layout renders.
-/// </remarks>
 public class NotificationsResource;

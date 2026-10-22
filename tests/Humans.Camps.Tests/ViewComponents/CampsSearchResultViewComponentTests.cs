@@ -10,7 +10,7 @@ namespace Humans.Camps.Tests.ViewComponents;
 
 /// <summary>
 /// Covers <see cref="CampsSearchResultViewComponent"/>: the global-search row for a camp.
-/// Callers pass a camp id and nothing else (nobodies-collective/Humans#1062), so resolving the
+/// Callers pass a camp id and nothing else, so resolving the
 /// public-year season name is the behaviour.
 /// </summary>
 public class CampsSearchResultViewComponentTests

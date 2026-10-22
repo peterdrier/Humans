@@ -116,17 +116,11 @@ internal static class CachingDecoratorRule
     }
 
     /// <summary>
-    /// Finds the top-level type containing <paramref name="type"/> if it looks like a caching
-    /// decorator (name starts with <c>Caching</c> and ends with <c>Service</c>); otherwise
-    /// <see langword="null"/>.
+    /// The top-level <c>Caching…Service</c> type containing <paramref name="type"/>, or <see langword="null"/>.
     /// </summary>
     /// <remarks>
-    /// Matched on the <c>Caching…Service</c> name alone. The rule used to also require the
-    /// <c>Humans.Infrastructure.Services</c> namespace, which covered 0 of the 11 decorators once
-    /// G5 (nobodies-collective/Humans#866) moved every one of them into a section project — the
-    /// assembly gate already admits sections, so the namespace test alone was switching an
-    /// Error-severity rule off entirely. The §10 silent-drop shape: the rule kept passing while
-    /// covering nothing.
+    /// Matched on the name alone: an added namespace test once switched this Error rule off entirely, covering nothing
+    /// while it kept passing.
     /// </remarks>
     private static INamedTypeSymbol? FindContainingCachingDecorator(INamedTypeSymbol type)
     {

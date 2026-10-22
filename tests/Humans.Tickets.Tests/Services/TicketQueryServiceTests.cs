@@ -828,10 +828,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         types.Should().BeEquivalentTo("Full Week", "VIP", "Weekend");
     }
 
-    // ====================================================================
-    // GetOrdersPageAsync tests
-    // ====================================================================
-
     [HumansFact]
     public async Task GetOrdersPageAsync_ReturnsPagedResults()
     {
@@ -920,10 +916,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         paged.Should().Equal(ids.Order());
     }
-
-    // ====================================================================
-    // GetAttendeesPageAsync tests
-    // ====================================================================
 
     [HumansFact]
     public async Task GetAttendeesPageAsync_BreaksSortTiesById_SoPagesNeverRepeatOrSkip()
@@ -1030,10 +1022,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.TotalCount.Should().Be(1);
     }
 
-    // ====================================================================
-    // GetWhoHasntBoughtAsync tests
-    // ====================================================================
-
     [HumansFact]
     public async Task GetWhoHasntBoughtAsync_ReturnsActiveHumansWithTicketStatus()
     {
@@ -1137,10 +1125,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.TotalCount.Should().Be(0);
     }
-
-    // ====================================================================
-    // Export tests
-    // ====================================================================
 
     [HumansFact]
     public async Task GetAttendeeExportDataAsync_ReturnsAllAttendees()
@@ -1274,10 +1258,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             actor);
     }
 
-    // ====================================================================
-    // GetTicketOrdersAsync tests
-    // ====================================================================
-
     [HumansFact]
     public async Task Barcode_lookup_uses_the_synced_current_event()
     {
@@ -1365,10 +1345,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         attendeeInfo.TransferredToName.Should().Be("Alice Smith");
         attendeeInfo.TransferredAt.Should().Be(decidedAt);
     }
-
-    // ====================================================================
-    // Helpers
-    // ====================================================================
 
     private void SetCurrentEvent(string vendorEventId) =>
         TicketsDb.TicketSyncStates.Add(new TicketSyncState { Id = 1, VendorEventId = vendorEventId });

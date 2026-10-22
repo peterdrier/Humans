@@ -23,26 +23,9 @@ using Humans.Teams.Contracts;
 namespace Humans.Shifts.Tests.Infrastructure;
 
 /// <summary>
-/// Base class for the section's service and repository tests: the per-test in-memory
-/// <see cref="UsersDbContext"/>, <see cref="ShiftsDbContext"/> and
-/// <see cref="TeamsDbContext"/>, a deterministic <see cref="FakeClock"/>, an
-/// <see cref="IMemoryCache"/>, and the seeders and shared substitutes the moved tests use.
+/// Seeding the Users and Teams tables directly needs their <c>InternalsVisibleTo</c> entries;
+/// both go when these fixtures stop seeding other sections' tables.
 /// </summary>
-/// <remarks>
-/// A trimmed <em>copy</em> of <c>Humans.Application.Tests</c>' <c>ServiceTestHarness</c>,
-/// not a share: the moved tests make 169 <c>SaveAllAsync</c>, 56 <c>SeedUser</c> and 55
-/// <c>SeedTeam</c> calls, which is Teams' "copy the harness" rather than Budget's "own
-/// three members". The Google-integration and Camps section pairs are
-/// dropped — no Shifts test touches them.
-///
-/// <para>
-/// The two <c>InternalsVisibleTo</c> entries this needs —
-/// <c>Humans.Infrastructure</c> → <c>Humans.Shifts.Tests</c> for
-/// <see cref="UsersDbContext"/>, and <c>Humans.Teams</c> → <c>Humans.Shifts.Tests</c> for
-/// <see cref="TeamsDbContext"/> and <see cref="Team"/> — are Teams finding 36's shape and
-/// come out when these fixtures stop seeding other sections' tables directly.
-/// </para>
-/// </remarks>
 public abstract class ShiftsTestHarness : IDisposable
 {
     private static readonly System.Reflection.PropertyInfo LegacyDisplayNameProperty =
@@ -53,20 +36,14 @@ public abstract class ShiftsTestHarness : IDisposable
     private protected UsersDbContext Db { get; }
     private protected TestDbContextFactory<UsersDbContext> DbFactory { get; }
 
-    // Every pair is built on FIRST TOUCH, not in the constructor — see ServiceTestHarness'
-    // note: eager construction gives each test extra DbContextOptions, each with its own
-    // EF internal service provider, and that overhead alone pushed a 5s-budget test over
-    // its timeout on CI.
+    // Every pair is built on first touch: eager construction gives each test its own EF
+    // internal service provider, which alone pushed a 5s-budget test past its CI timeout.
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
-    /// <summary>Shifts: <c>event_settings</c>, <c>rotas</c>, <c>shifts</c>, <c>shift_signups</c>,
-    /// <c>shift_tags</c>, <c>rota_shift_tags</c>, <c>volunteer_event_profiles</c>,
-    /// <c>general_availability</c>, <c>volunteer_build_statuses</c>, <c>volunteer_tag_preferences</c>.</summary>
     private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
     private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
     private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
 
-    /// <summary>Teams: <c>teams</c>, <c>team_members</c>, <c>team_join_requests</c> and friends.</summary>
     private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
     private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
     private protected TestDbContextFactory<TeamsDbContext> TeamsDbFactory => _teamsDb.Value.Factory;
@@ -129,7 +106,6 @@ public abstract class ShiftsTestHarness : IDisposable
         }
     }
 
-    /// <summary>Synchronous <see cref="SaveAllAsync"/>.</summary>
     private protected void SaveAll()
     {
         Db.SaveChanges();
@@ -164,13 +140,8 @@ public abstract class ShiftsTestHarness : IDisposable
     }
 
     /// <summary>
-    /// A fresh <see cref="EventCalendarResolver"/> backed by a fake <see cref="ISettingsService"/>
-    /// that mirrors whichever <see cref="EventSettings"/> rows are seeded in <see cref="ShiftsDb"/>
-    /// at call time (nobodies-collective/Humans#1630) — tests seed the section's own
-    /// <c>EventSettings</c> row with its (still-present) app-wide columns, same as before, and this
-    /// resolver serves those same values back as the calendar every production caller now goes
-    /// through <c>ISettingsService</c> for. One resolver per <c>ShiftManagementService</c>-family
-    /// instance, matching the Scoped-per-request lifetime in production DI.
+    /// A resolver whose fake <see cref="ISettingsService"/> serves the <see cref="EventSettings"/>
+    /// rows seeded in <see cref="ShiftsDb"/> at call time.
     /// </summary>
     private protected EventCalendarResolver NewCalendarResolver()
     {
@@ -214,12 +185,7 @@ public abstract class ShiftsTestHarness : IDisposable
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose: src.EarlyEntryClose);
 
-    /// <summary>
-    /// An <see cref="IUserService"/> substitute whose batch read projects this
-    /// harness's in-memory users. The section's only consumer is
-    /// <c>WorkloadService</c>, which calls <c>GetUserInfosAsync</c> and reads display
-    /// names off the result — mapped via <see cref="UserInfoStubHelpers.ToUserInfo"/>.
-    /// </summary>
+    /// <summary>An <see cref="IUserService"/> whose batch read projects this harness's in-memory users.</summary>
     private protected IUserService NewDbBackedUserService()
     {
         var svc = Substitute.For<IUserService>();
@@ -246,9 +212,7 @@ public abstract class ShiftsTestHarness : IDisposable
         return svc;
     }
 
-    // ----- Common entity seeders ------------------------------------------------
-    // Add to the context but do not SaveChanges — callers stage multiple seeds, then
-    // await SaveAllAsync() once.
+    // Seeders add without saving: callers stage several, then await SaveAllAsync() once.
 
     protected User SeedUser(Guid? id = null, string displayName = "Test User")
     {
@@ -259,8 +223,7 @@ public abstract class ShiftsTestHarness : IDisposable
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
             PreferredLanguage = "en",
-            // Mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = displayName,
         };
         LegacyDisplayNameProperty.SetValue(user, displayName);
@@ -268,10 +231,8 @@ public abstract class ShiftsTestHarness : IDisposable
         return user;
     }
 
-    /// <summary>Positional-displayName overload — absorbs <c>SeedUser("Alice")</c> call sites.</summary>
     protected User SeedUser(string displayName) => SeedUser(null, displayName);
 
-    /// <summary>Id-first overload — absorbs <c>SeedTeam(teamId, "name")</c> call sites.</summary>
     private protected Team SeedTeam(Guid teamId, string name) =>
         SeedTeam(name, SystemTeamType.None, teamId);
 

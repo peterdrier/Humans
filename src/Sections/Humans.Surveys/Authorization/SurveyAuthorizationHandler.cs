@@ -7,10 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Surveys.Authorization;
 
 /// <summary>
-/// Resource-based authorization handler for survey operations (Workgroups design §11: Surveys is
-/// generically self-service with an approval gate). The rule itself is also enforced in
-/// <see cref="SurveyService"/> (state-machine + ownership checks) — this handler is the browser's
-/// copy, used to shape the page and answer 403 before the service would answer with an exception.
+/// The browser's copy of the rule <see cref="SurveyService"/> also enforces: it shapes the page and answers 403 before
+/// the service would throw.
 /// </summary>
 internal sealed class SurveyAuthorizationHandler : AuthorizationHandler<SurveyOperationRequirement, SurveyDetail>
 {

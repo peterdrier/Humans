@@ -7,38 +7,28 @@ using NodaTime;
 namespace Humans.Surveys.Data;
 
 /// <summary>
-/// Repository for the Survey aggregate: <c>surveys</c>, <c>survey_questions</c>,
-/// <c>survey_question_options</c>, <c>survey_invitations</c>, <c>survey_responses</c>,
-/// and <c>survey_answers</c>.
+/// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and save atomically in one context.
 /// </summary>
-/// <remarks>
-/// Reads are <c>AsNoTracking</c>. Mutating methods load tracked entities and save changes
-/// atomically inside a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{SurveysDbContext}"/>-owned
-/// context. Cross-domain references (<c>Survey.CreatedByUserId</c>, <c>SurveyInvitation.UserId</c>,
-/// <c>Survey.AudienceTeamId</c>) are bare <see cref="System.Guid"/> columns with no navigation — the
-/// application service stitches display data via <c>IUserService</c>/<c>ITeamService</c>.
-/// </remarks>
 internal interface ISurveyRepository : IRepository
 {
-    /// <summary>Loads a survey with its questions (ordered) and their options (ordered). Null if not found. Read-only.</summary>
+    /// <summary>Questions and options ordered. Null if not found.</summary>
     Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>All surveys (no question graph) for the admin index, newest first. Read-only.</summary>
+    /// <summary>No question graph; newest first.</summary>
     Task<IReadOnlyList<Survey>> GetAllSummariesAsync(CancellationToken ct = default);
 
-    /// <summary>Inserts a new survey and its authoring graph.</summary>
     Task AddAsync(Survey survey, CancellationToken ct = default);
 
-    /// <summary>Full-graph upsert: reconciles the survey's questions and options against the persisted graph by id.</summary>
+    /// <summary>Reconciles questions and options against the persisted graph by id.</summary>
     Task UpdateAsync(Survey survey, CancellationToken ct = default);
 
-    /// <summary>Current status of a survey, or null if it does not exist. Read-only.</summary>
+    /// <summary>Null if the survey does not exist.</summary>
     Task<SurveyStatus?> GetStatusAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>True when any draft or submitted answer has been saved for the survey.</summary>
+    /// <summary>Draft or submitted answers both count.</summary>
     Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>Sets a survey's status and stamps <c>UpdatedAt</c>. No-op if the survey does not exist.</summary>
+    /// <summary>Stamps <c>UpdatedAt</c>. No-op if the survey does not exist.</summary>
     Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default);
 
     /// <summary>Draft → PendingApproval: stamps <c>SubmittedAt</c> and clears any prior rejection note. No-op if the survey does not exist.</summary>
@@ -50,19 +40,19 @@ internal interface ISurveyRepository : IRepository
     /// <summary>PendingApproval → Draft: records the Board's rejection note and clears <c>SubmittedAt</c>. No-op if the survey does not exist.</summary>
     Task RejectAsync(Guid id, string note, Instant rejectedAt, CancellationToken ct = default);
 
-    /// <summary>Invitation count per survey id (for the admin index). Surveys with no invitations are absent. Read-only.</summary>
+    /// <summary>Surveys with no invitations are absent.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default);
 
-    /// <summary>Submitted-response count per survey id (for the admin index). Drafts (<c>SubmittedAt is null</c>) excluded. Read-only.</summary>
+    /// <summary>Drafts (<c>SubmittedAt is null</c>) excluded.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default);
 
-    /// <summary>User ids whose invitation email has already been prepared (<c>SentAt != null</c>). Public-link participation rows with no email are excluded. Read-only.</summary>
+    /// <summary>Only rows whose email was prepared (<c>SentAt != null</c>); public-link participation rows are excluded.</summary>
     Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>All invitations for a survey (for the admin Send status list). No display ordering — caller sorts. Read-only.</summary>
+    /// <summary>Unordered: the caller sorts.</summary>
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>Inserts a single invitation row and saves (per-invite commit so the send wave is restartable).</summary>
+    /// <summary>Commits per invite so the send wave is restartable.</summary>
     Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
 
     /// <summary>
@@ -73,43 +63,36 @@ internal interface ISurveyRepository : IRepository
         Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Invitations due for the one-time 7-day reminder: their survey is <c>Open</c>, not yet
-    /// <c>Completed</c>, no reminder sent yet, and sent on or before <paramref name="cutoff"/>. No
-    /// display ordering. Read-only.
+    /// Due for the one-time 7-day reminder: survey <c>Open</c>, not <c>Completed</c>, no reminder yet, and sent on or
+    /// before <paramref name="cutoff"/>.
     /// </summary>
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsDueForReminderAsync(Instant cutoff, CancellationToken ct = default);
 
-    /// <summary>Stamps an invitation's <c>ReminderSentAt</c> (the one-shot reminder ledger). No-op if the invitation is gone.</summary>
+    /// <summary>No-op if the invitation is gone.</summary>
     Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets an invitation's <c>LatestEmailStatus</c>. A first <c>Queued</c> transition also stamps
-    /// <c>SentAt</c>, upgrading a public-link participation row into an emailed invitation.
-    /// No-op if the invitation does not exist.
+    /// A first <c>Queued</c> also stamps <c>SentAt</c>, upgrading a public-link participation row into an emailed
+    /// invitation. No-op if the invitation does not exist.
     /// </summary>
     Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default);
 
-    // ── Answering (wizard entry) ────────────────────────────────────────────
-    /// <summary>A single invitation by id, or null if it does not exist. Read-only.</summary>
     Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default);
 
-    /// <summary>The id of the survey owning <paramref name="slug"/> (already normalised), or null if none. Read-only.</summary>
+    /// <summary><paramref name="slug"/> is already normalised. Null if none.</summary>
     Task<Guid?> GetIdByPublicSlugAsync(string slug, CancellationToken ct = default);
 
-    /// <summary>Increments a survey's <c>PublicStartedCount</c> by one. No-op if the survey does not exist.</summary>
+    /// <summary>No-op if the survey does not exist.</summary>
     Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>The invitee's in-progress Identified draft response (with answers), or null. No display ordering. Read-only.</summary>
+    /// <summary>The in-progress Identified draft, with answers, or null.</summary>
     Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Inserts a response row and saves.</summary>
     Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default);
 
-    // ── Answering (submit) ──────────────────────────────────────────────────
     /// <summary>
-    /// Replaces a draft response's answers with <paramref name="answers"/> (load tracked, remove
-    /// existing, add new), stamps the current entry path and culture, and saves. No-op if the response
-    /// has already been submitted.
+    /// Replaces the draft's answers and stamps the current entry path and culture. No-op if the response is already
+    /// submitted.
     /// </summary>
     Task SaveDraftAnswersAsync(
         Guid draftResponseId,
@@ -118,7 +101,7 @@ internal interface ISurveyRepository : IRepository
         string culture,
         CancellationToken ct = default);
 
-    /// <summary>Inserts a response together with its answer graph and saves (CompletionTracked/Anonymous final submit).</summary>
+    /// <summary>CompletionTracked/Anonymous final submit.</summary>
     Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default);
 
     /// <summary>
@@ -144,29 +127,23 @@ internal interface ISurveyRepository : IRepository
         SurveyResponse response,
         CancellationToken ct = default);
 
-    /// <summary>Sets an invitation's <c>Started</c> flag (no timestamp). No-op if the invitation is gone.</summary>
+    /// <summary>No timestamp. No-op if the invitation is gone.</summary>
     Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default);
 
-    // ── Results ────────────────────────────────────────────────────────────
-    /// <summary>All submitted responses (<c>SubmittedAt is not null</c>) for a survey, with their answer graph. No display ordering. Read-only.</summary>
+    /// <summary>Submitted only (<c>SubmittedAt is not null</c>), with answers. Unordered.</summary>
     Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default);
 
-    /// <summary>Count of a survey's invitations whose funnel <c>Started</c> flag is set. Read-only.</summary>
     Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default);
 
-    // ── GDPR export ────────────────────────────────────────────────────────
     /// <summary>
-    /// A user's submitted <see cref="ResponseAnonymity.Identified"/> responses (with answer graph) for
-    /// the GDPR Article 15 export. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are
-    /// excluded — they are not personal data linkable to the user. No display ordering. Read-only.
+    /// For the Article 15 export. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are not linkable
+    /// personal data, so they are excluded.
     /// </summary>
     Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// A user's invitation ledger rows for the Article 15 export. These are personal data keyed to
-    /// the person whatever anonymity their response carried, and for someone who was only invited —
-    /// or who answered CompletionTracked — they are the only record of theirs the section holds.
-    /// No display ordering. Read-only.
+    /// For the Article 15 export. Personal data whatever the response's anonymity: for someone only invited, or who
+    /// answered CompletionTracked, they are the only record of theirs the section holds.
     /// </summary>
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsForUserAsync(Guid userId, CancellationToken ct = default);
 
@@ -178,8 +155,7 @@ internal interface ISurveyRepository : IRepository
     Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// The surveys this person authored (<c>CreatedByUserId</c>), for the Article 15 export.
-    /// Any status: a Draft nobody else can see is still their personal data. No answer graph.
+    /// For the Article 15 export, in any status: a Draft nobody else can see is still personal data.
     /// </summary>
     Task<IReadOnlyList<Survey>> GetSurveysAuthoredByAsync(Guid userId, CancellationToken ct = default);
 
@@ -191,9 +167,8 @@ internal interface ISurveyRepository : IRepository
     Task<int> ClearAuthorshipForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Account merge: moves authorship of the eliminated account's surveys onto the survivor
-    /// (<c>CreatedByUserId</c>), stamping <paramref name="now"/> as <c>UpdatedAt</c>. Without it
-    /// the author-scoped index hides the surviving account's own surveys from them.
+    /// Moves authorship onto the survivor and stamps <paramref name="now"/>. Without it the author-scoped index hides
+    /// the survivor's own surveys.
     /// </summary>
     Task<int> ReassignAuthorshipAsync(
         Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default);

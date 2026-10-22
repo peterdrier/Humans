@@ -17,26 +17,9 @@ using Xunit;
 namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
-/// End-to-end regression coverage for the soft-deleted-team revocation path in
-/// <see cref="GoogleWorkspaceSyncService.SyncResourcesByTypeAsync"/>, per
-/// nobodies-collective/Humans#508. This file seeds a real (InMemory) <c>GoogleIntegrationDbContext</c>
-/// through the real <see cref="GoogleResourceRepository"/> and a real
-/// <see cref="TeamResourceService"/>, and drives the unified Drive engine against the
-/// existing dev/test <see cref="StubGoogleDrivePermissionsClient"/> fake — no
-/// new fake Google layer was needed; reuse-first applies to test
-/// infrastructure too (memory/process/reuse-first-change-discipline.md).
-///
-/// <para>
-/// Scope note: <see cref="GoogleResourceType.Group"/> is out of scope here —
-/// <c>SyncResourcesByTypeAsync</c> throws for <c>Group</c> and delegates all
-/// Group membership reconciliation to <c>IGoogleGroupSync</c> (see
-/// <c>RequestGoogleGroupSyncAsync</c> / <c>ReconcileGroupResourceAsync</c> /
-/// <c>EnsureTeamGroupAsync</c> — none of which run inside
-/// <c>SyncResourcesByTypeAsync</c>). That path is already pinned by
-/// <c>GoogleGroupSyncServiceTests</c>. Building an unused fake
-/// CloudIdentityService for a code path this method never calls would be
-/// speculative test infra the actual method can't exercise.
-/// </para>
+/// Seeds a real InMemory context through the real repository and TeamResourceService, and drives the
+/// Drive engine against the dev stub. Groups are out of scope: <c>SyncResourcesByTypeAsync</c> throws
+/// for them, and <c>GoogleGroupSyncServiceTests</c> covers that path.
 /// </summary>
 public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegrationTestHarness
 {
@@ -122,10 +105,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
             NullLogger<GoogleWorkspaceSyncService>.Instance);
     }
 
-    // ==========================================================================
-    // 1. Soft-deleted team revocation
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_SoftDeletedTeamWithExtraPermission_RevokesAccessAndDeactivatesResource()
     {
@@ -174,10 +153,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
             ct: Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // 2. Shared-GoogleId Drive groups: whole-group error blocks every row
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_SharedGoogleIdGroupErrors_NoRowInGroupIsDeactivated()
     {
@@ -209,10 +184,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
         rows.Should().OnlyContain(r => r.ErrorMessage != null);
     }
 
-    // ==========================================================================
-    // 3. Partial error within one team: neither row for that team deactivates
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_PartialErrorWithinTeam_DefersDeactivationForBothRows()
     {
@@ -236,10 +207,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
         rows.Should().OnlyContain(r => r.IsActive,
             "DeactivateResourcesForTeamAsync(team, type) is all-or-nothing; one errored resource must block the clean one too");
     }
-
-    // ==========================================================================
-    // 4. Type ordering: DriveFolder pass leaves Group/DriveFile rows alone
-    // ==========================================================================
 
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_DriveFolderPass_DoesNotDeactivateGroupOrDriveFileRowsForSameTeam()
@@ -267,20 +234,12 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
         fileRow.IsActive.Should().BeTrue("the DriveFile row must not be flipped by the DriveFolder pass");
     }
 
-    // ==========================================================================
-    // 5. DriveFile pass reconciles its own rows (nobodies-collective/Humans#508)
-    // ==========================================================================
-
     [HumansFact]
     public async Task SyncResourcesByTypeAsync_DriveFilePass_RevokesAccessAndDeactivatesResource()
     {
-        // Guard: SyncResourcesByTypeAsync(DriveFile, ...) must load rows via
-        // IGoogleResourceRepository.GetActiveByResourceTypeAsync (the exact
-        // requested type). A DriveFolder-only loader hard-filters at the DB
-        // level, so the DriveFile pass would load zero rows and silently
-        // no-op. GoogleResourceReconciliationJob runs exactly this pass every
-        // tick, so soft-deleted teams' linked Drive *files* must have their
-        // Google permissions revoked.
+        // The DriveFile pass must load rows of exactly the requested type: a DriveFolder-only
+        // loader filters at the DB, so this pass would load nothing and silently leave
+        // soft-deleted teams' linked files shared.
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
         var googleId = CreateGoogleFolder("Doomed File");
@@ -304,10 +263,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
         var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
         row.IsActive.Should().BeFalse("the soft-deleted team's DriveFile resource should be deactivated for this type");
     }
-
-    // ==========================================================================
-    // 6. Sync-mode gating: AddOnly / None never deactivate
-    // ==========================================================================
 
     [HumansTheory]
     [InlineData(SyncMode.AddOnly)]
@@ -387,10 +342,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
         await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(
             default!, default, default, default, default);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private string CreateGoogleFolder(string name) => _drivePermissions.SeedFolder(name);
 

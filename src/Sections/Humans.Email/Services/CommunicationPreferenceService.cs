@@ -11,16 +11,9 @@ using NodaTime;
 namespace Humans.Email.Services;
 
 /// <summary>
-/// Communication preferences, owned by Email since Users decomposition commit 14
-/// (<c>email_communication_preferences</c>): the reads every section makes, MailerLite's writes,
-/// the member's own toggles, unsubscribe tokens (delegated to <see cref="IUnsubscribeTokenProvider"/>),
-/// the Article 15/17 slice and the account-merge fold.
-/// <para>
-/// Until <c>email.communication-preferences</c> has run, a user and category with no row here reads the
-/// frozen legacy Users row through <see cref="UserInfo"/> (plan §3.1 step 4), and writes start from that
-/// row. Resetting a preference a legacy row backs leaves a cleared row (<c>OptedOut == null</c>) so the
-/// legacy value never comes back.
-/// </para>
+/// Until the <c>email.communication-preferences</c> data migration has run, a user and category with no row
+/// here reads the frozen legacy Users row, and writes start from it. Resetting a legacy-backed preference
+/// writes a cleared row (<c>OptedOut == null</c>) so the legacy value never comes back.
 /// </summary>
 internal sealed class CommunicationPreferenceService(
     ICommunicationPreferenceRepository repository,
@@ -33,8 +26,6 @@ internal sealed class CommunicationPreferenceService(
     : ICommunicationPreferenceManagement, IUserDataContributor, IUserMerge
 {
     internal const string CommunicationPreferencesSlice = "CommunicationPreferences";
-
-    // ─── Reads ───────────────────────────────────────────────────────────────────
 
     public async Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default) =>
@@ -113,8 +104,6 @@ internal sealed class CommunicationPreferenceService(
     private static CommunicationPreferenceSnapshot ToSnapshot(CommunicationPreference p) =>
         new(p.Category, p.OptedOut!.Value, p.InboxEnabled, p.UpdateSource, p.UpdatedAt, p.SubscribedAt);
 
-    // ─── Writes ──────────────────────────────────────────────────────────────────
-
     public Task UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, string source,
         CancellationToken cancellationToken = default) =>
@@ -137,10 +126,7 @@ internal sealed class CommunicationPreferenceService(
         return true;
     }
 
-    /// <summary>
-    /// The Ticketing row is locked on for a member holding a matched ticket order this year: the
-    /// member's toggle write refuses it, and the preference pages render it read-only from this same rule.
-    /// </summary>
+    /// <summary>Shared with the preference pages, which render the locked row read-only.</summary>
     internal static bool IsTicketingLocked(MessageCategory category, bool hasTicketOrder) =>
         category == MessageCategory.Ticketing && hasTicketOrder;
 
@@ -165,7 +151,6 @@ internal sealed class CommunicationPreferenceService(
                 UserId = userId,
                 Category = category,
                 OptedOut = optedOut,
-                // New rows keep the domain default unless the caller set the inbox.
                 InboxEnabled = inboxEnabled ?? true,
                 UpdatedAt = now,
                 UpdateSource = source,
@@ -174,7 +159,6 @@ internal sealed class CommunicationPreferenceService(
         }
         else
         {
-            // Email-only updates preserve the inbox setting.
             var nextInbox = inboxEnabled ?? current.InboxEnabled;
             if (current.OptedOut == optedOut && current.InboxEnabled == nextInbox)
                 return;
@@ -257,8 +241,7 @@ internal sealed class CommunicationPreferenceService(
             : auditLog.LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
                 description, nameof(CommunicationPreferenceService));
 
-    /// <summary>The recorded preference a write starts from, keyed by the id written for (no forward
-    /// resolution, as before the move): this table's row, else the legacy row it does not shadow.</summary>
+    /// <summary>Keyed by the raw id, without merge resolution: this table's row, else the unshadowed legacy row.</summary>
     private async Task<CommunicationPreference?> CurrentAsync(Guid userId, MessageCategory category, CancellationToken ct) =>
         Effective(
             (await repository.GetByUserIdAsync(userId, ct)).Where(r => r.Category == category).ToList(),
@@ -268,8 +251,6 @@ internal sealed class CommunicationPreferenceService(
     private async Task<CommunicationPreference?> LegacyRowAsync(Guid userId, MessageCategory category, CancellationToken ct) =>
         LegacyRows(await userService.GetRawUserInfoAsync(userId, ct)).FirstOrDefault(l => l.Category == category);
 
-    // ─── Tokens ──────────────────────────────────────────────────────────────────
-
     public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token) =>
         tokenProvider.ValidateToken(token);
 
@@ -278,8 +259,6 @@ internal sealed class CommunicationPreferenceService(
 
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
-
-    // ─── email.communication-preferences ─────────────────────────────────────────
 
     public async Task<IReadOnlyList<UncopiedPreference>> GetUncopiedLegacyPreferencesAsync(CancellationToken ct = default)
     {
@@ -313,12 +292,12 @@ internal sealed class CommunicationPreferenceService(
         return written;
     }
 
-    /// <summary>The one reader of the obsolete legacy slice: the read fallback, the write seed, the merge
-    /// and the copy above. Deleted with the migration once production reports it done. Categories map by name.</summary>
+    /// <summary>The only reader of the obsolete legacy slice; it goes when the data migration is retired.
+    /// Categories map by name.</summary>
     private static IReadOnlyList<CommunicationPreference> LegacyRows(UserInfo? info)
     {
         if (info is null) return [];
-#pragma warning disable HUM_USER_COMMPREFS // the fallback and copy the field is kept for (plan §3.1)
+#pragma warning disable HUM_USER_COMMPREFS // read fallback and copy, until the data migration is retired
         var legacy = info.CommunicationPreferences;
 #pragma warning restore HUM_USER_COMMPREFS
         return [.. legacy.Select(l => new CommunicationPreference
@@ -334,14 +313,10 @@ internal sealed class CommunicationPreferenceService(
         })];
     }
 
-    // ─── IUserMerge ──────────────────────────────────────────────────────────────
-
     /// <summary>
-    /// Folds the source's preferences onto the target, rule unchanged from Users' fold: per category the
-    /// row with the later <c>UpdatedAt</c> supplies OptedOut/InboxEnabled/UpdateSource, a category only
-    /// the source has moves across, and every row touched is stamped <paramref name="updatedAt"/>. Both
-    /// sides read through the legacy fallback. The source keeps a cleared row wherever a legacy row backs
-    /// it (so the copy does not resurrect it under the merged-away id) and no live row otherwise.
+    /// Per category the later <c>UpdatedAt</c> wins; a source-only category moves across; every row touched
+    /// is stamped <paramref name="updatedAt"/>. The source keeps a cleared row wherever a legacy row backs it,
+    /// so the copy can't bring it back under the merged-away id.
     /// </summary>
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
@@ -405,8 +380,6 @@ internal sealed class CommunicationPreferenceService(
         await repository.ReplaceForUsersAsync(
             [(sourceUserId, sourceCleared), (targetUserId, target.Values.ToList())], cancellationToken);
     }
-
-    // ─── IUserDataContributor ────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

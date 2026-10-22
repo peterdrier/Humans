@@ -2,7 +2,6 @@
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Localizer["Expenses_ReviewQueueTitle"].Value;
-    // Use the full window width so the columns fit on one line on wide screens.
     ViewData["BodyClass"] = "page-wide";
 }
 
@@ -17,9 +16,8 @@
     <h1>@Localizer["Expenses_ReviewQueue"]</h1>
 </div>
 
-@* Approved reports whose Holded push was written off look identical to healthy ones in every
-   other view, so without this they are only discoverable by reconciling Holded by hand
-   (nobodies-collective/Humans#1045). Finance admins are the only ones who can act on it. *@
+@* A written-off push looks healthy everywhere else, so without this it is only found by reconciling Holded by hand.
+   Finance admins are the only ones who can act on it. *@
 @if (Model.FailedHoldedPushReportIds.Count > 0)
 {
     var failedCount = Model.FailedHoldedPushReportIds.Count;

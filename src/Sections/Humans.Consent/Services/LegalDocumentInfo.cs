@@ -2,35 +2,13 @@ using NodaTime;
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// Cached projection record for the Legal section's global cache (T-04).
-/// Holds the active+required legal-document set in a shape suitable for
-/// the every-page consent-banner read served by
-/// <see cref="ILegalDocumentSyncManagement.GetActiveRequiredDocumentsForTeamsAsync"/>.
-/// One <c>LegalDocumentInfo</c> per active+required legal document.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Footprint: a handful of documents, each carrying its versions inline
-/// including full multilingual content — the whole cache is well under 1 MB.
-/// </para>
-/// <para>
-/// Built and held by <c>CachingLegalDocumentSyncService</c>. Invalidation
-/// is wholesale (<c>Clear</c>) — there is no per-document key, because
-/// the bag of "all active+required documents" is the unit consumed by
-/// every read. Writes (admin create/update/archive/sync, version add) go
-/// through <c>LegalDocumentSyncService</c>, the sole writer for
-/// <c>legal_documents</c>/<c>document_versions</c>, which calls
-/// <c>CachingLegalDocumentSyncService.InvalidateAll</c> directly after each
-/// successful write.
-/// </para>
-/// </remarks>
+/// <summary>One cached active, required document.</summary>
 /// <param name="Id">Document id.</param>
 /// <param name="Name">Display name.</param>
-/// <param name="TeamId">Owning Team id (cross-section FK).</param>
-/// <param name="TeamName">Cached team display name, captured at warm time.</param>
-/// <param name="LastSyncedAt">Last successful GitHub sync timestamp.</param>
-/// <param name="Versions">Every version row for the document, ordered by EffectiveFrom ascending.</param>
+/// <param name="TeamId">Owning team.</param>
+/// <param name="TeamName">Captured at warm time.</param>
+/// <param name="LastSyncedAt">Last successful GitHub sync.</param>
+/// <param name="Versions">Ordered by <c>EffectiveFrom</c> ascending.</param>
 internal sealed record LegalDocumentInfo(
     Guid Id,
     string Name,

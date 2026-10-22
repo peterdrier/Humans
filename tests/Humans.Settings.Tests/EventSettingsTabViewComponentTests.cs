@@ -12,7 +12,7 @@ using NSubstitute;
 namespace Humans.Settings.Tests;
 
 /// <summary>
-/// The /Settings#event tab (peterdrier/Humans#1628) never hides for a non-admin, but a
+/// The /Settings#event tab never hides for a non-admin, but a
 /// non-admin must get the read-only model — no form to POST from.
 /// </summary>
 public sealed class EventSettingsTabViewComponentTests
@@ -148,8 +148,8 @@ public sealed class EventSettingsTabViewComponentTests
     [HumansFact]
     public async Task InvokeAsync_NoActiveEvent_Admin_ReturnsABlankFormToStartACycle()
     {
-        // Settings mints event ids now (nobodies-collective/Humans#1631) — an admin
-        // with nothing configured gets a blank form, not a dead end.
+        // Settings mints event ids, so an admin with nothing configured gets a blank form, not
+        // a dead end.
         var model = await InvokeWithNoActiveEventAsync(authorized: true);
 
         model.Settings.Should().NotBeNull();

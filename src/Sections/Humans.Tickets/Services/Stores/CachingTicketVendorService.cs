@@ -7,14 +7,9 @@ using NodaTime;
 namespace Humans.Tickets.Services.Stores;
 
 /// <summary>
-/// Singleton caching decorator over <see cref="ITicketVendorService"/>. Caches only
-/// <see cref="GetEventSummaryAsync"/> — the one high-read, low-churn vendor call; every
-/// other member forwards straight through to the keyed inner, uncached.
+/// Caches only <see cref="GetEventSummaryAsync"/>. An order pull for an event evicts that event's summary, so it is
+/// never older than the orders the sync last pulled.
 /// </summary>
-/// <remarks>
-/// An order pull for an event (the ticket sync's first vendor read) evicts that event's
-/// cached summary, so the summary is never older than the orders the sync last pulled.
-/// </remarks>
 internal sealed class CachingTicketVendorService : ITicketVendorService
 {
     private static readonly Duration EventSummaryCacheTtl = Duration.FromMinutes(15);

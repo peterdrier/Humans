@@ -8,12 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Expenses.Authorization;
 
-/// <summary>
-/// Resource-based authorization handler for expense report operations.
-/// Encodes the actors-and-roles matrix from the spec (src/Sections/Humans.Expenses/Docs/2026-05-10-expense-reports-design.md):
-/// submitter / coordinator-of-the-report's-category / FinanceAdmin / Admin × operation.
-/// Deny-by-default: only explicit Succeed paths grant access.
-/// </summary>
+/// <summary>Deny by default: only explicit Succeed paths grant access.</summary>
 internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamService teamService, IUserService userService)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
@@ -34,9 +29,8 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
                 || (op is ExpenseReportOperation.Approve or ExpenseReportOperation.FinanceReject
                     && resource.Status is ExpenseReportStatus.Submitted
                         or ExpenseReportStatus.CoordinatorEndorsed)
-                // Filing and fixing a report for a member who cannot do it themselves. Editing a
-                // report already Submitted or CoordinatorEndorsed does not send it back a step —
-                // the endorsement stands. Approved and Withdrawn are closed to everyone.
+                // Filing and fixing a report for a member who cannot. Editing a Submitted or CoordinatorEndorsed
+                // report does not send it back a step: the endorsement stands.
                 || (op is ExpenseReportOperation.Edit
                     && resource.Status is ExpenseReportStatus.Draft
                         or ExpenseReportStatus.Submitted
@@ -45,10 +39,10 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
                     && resource.Status == ExpenseReportStatus.Draft)
                 || (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
                     && resource.Status == ExpenseReportStatus.Submitted)
-                // The push is queued at approval, so there is nothing to re-queue before it.
                 || (op is ExpenseReportOperation.DeclineLine
                     && resource.Status is ExpenseReportStatus.Submitted
                         or ExpenseReportStatus.CoordinatorEndorsed)
+                // The push is queued at approval, so there is nothing to re-queue before it.
                 || (op is ExpenseReportOperation.RequeueHoldedPush
                     && resource.Status == ExpenseReportStatus.Approved)))
         {

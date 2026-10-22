@@ -4,12 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Rideshare.Services.Routing;
 
-/// <summary>
-/// <see cref="IRouteProvider"/> over the OpenRouteService REST API (OSM-based: routing and
-/// geocoding in one place, geometry freely storable). Read-only outbound calls, so no
-/// <c>[ExternalWrite]</c>. Every failure — blank key, non-success HTTP, malformed body,
-/// transport error — logs a warning and returns <c>null</c>; routing never blocks a save.
-/// </summary>
+/// <summary>Every failure logs a warning and returns <c>null</c>: routing never blocks a save.</summary>
 internal sealed class OpenRouteServiceClient(
     HttpClient httpClient,
     IOptions<RouteProviderOptions> options,

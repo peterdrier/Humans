@@ -3,11 +3,7 @@ using Humans.Campaigns.ViewComponents;
 
 namespace Humans.Campaigns;
 
-/// <summary>
-/// Contributes the member's "My Codes" card to the profile page and the admin "Campaign Codes"
-/// card to the admin human-detail page. Discovered by <c>RegisterContributions</c>
-/// (parameterless ctor).
-/// </summary>
+/// <summary>Discovered by <c>RegisterContributions</c>, so it needs a parameterless ctor.</summary>
 internal sealed class SectionUserParts : IUserPart
 {
     public IEnumerable<UserPart> Parts() =>

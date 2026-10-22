@@ -15,14 +15,6 @@ using Humans.Users.Services;
 
 namespace Humans.Users.Tests.Jobs;
 
-/// <summary>
-/// Unit tests for <see cref="ProcessAccountDeletionsJob"/> after §15: the
-/// job is now a thin coordinator that delegates candidate enumeration and
-/// anonymization to <see cref="IUserManagement"/>. These tests exercise that
-/// coordination — which users are enumerated, what audit entries are
-/// written, when the confirmation email fires, and error handling for a
-/// failing anonymization.
-/// </summary>
 public class ProcessAccountDeletionsJobTests : IDisposable
 {
     private readonly IUserManagement _userService;
@@ -178,7 +170,6 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
 
-        // Audit should still fire.
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AccountAnonymized, nameof(User), userId,
             Arg.Any<string>(), nameof(ProcessAccountDeletionsJob),

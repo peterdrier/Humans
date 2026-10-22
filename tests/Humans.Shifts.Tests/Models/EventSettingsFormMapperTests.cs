@@ -4,10 +4,6 @@ using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Tests.Models;
 
-/// <summary>
-/// The form is knobs-only now — the calendar lives in Settings
-/// (nobodies-collective/Humans#1631).
-/// </summary>
 public sealed class EventSettingsFormMapperTests
 {
     [HumansFact]

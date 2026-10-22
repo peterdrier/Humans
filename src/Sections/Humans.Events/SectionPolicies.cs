@@ -5,10 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Events;
 
-/// <summary>
-/// Events' authorization policies, at the project root by convention. Discovered by Shell
-/// alongside <see cref="Section"/> — nothing names it.
-/// </summary>
 internal sealed class SectionPolicies : ISectionPolicies
 {
     public void AddPolicies(AuthorizationOptions options)

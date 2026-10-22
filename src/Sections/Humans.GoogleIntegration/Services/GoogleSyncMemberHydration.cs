@@ -32,9 +32,8 @@ internal static class GoogleSyncMemberHydration
             if (!CanReceiveAccess(user, identity))
                 continue;
 
-            // Both Google APIs reject Gmail "+tag" grants and report the canonical
-            // form. Other domains retain their exact address (#945). The stored identity
-            // address is kept too, so a verdict lands on the address that was attempted.
+            // Both Google APIs reject Gmail "+tag" grants and report the canonical form; other domains keep their
+            // exact address. The stored identity address is kept so a verdict lands on the address attempted.
             result[user.Id] = new GoogleSyncMember(
                 user.Id, EmailNormalization.CanonicalizeGmail(identity.Email), user.BurnerName, user.ProfilePictureUrl,
                 identity.Email);

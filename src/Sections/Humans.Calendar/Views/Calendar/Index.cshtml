@@ -6,13 +6,11 @@
     var prev = Model.Month.PlusMonths(-1);
     var next = Model.Month.PlusMonths(1);
 
-    // Same bounds the controller queried — see CalendarGridLayout.MonthGridBounds.
+    // Must match the bounds the controller queried.
     var (gridStart, gridEnd) = CalendarGridLayout.MonthGridBounds(Model.Month);
     var totalCells = Period.Between(gridStart, gridEnd.PlusDays(1), PeriodUnits.Days).Days;
     var weeks = totalCells / 7;
 
-    // Group occurrences by the weeks they touch. An occurrence spanning days 2..4
-    // appears in whatever week covers those days. We do an O(events * weeks) pass.
     var weekLayouts = new WeekLayout[weeks];
     for (var w = 0; w < weeks; w++)
     {
@@ -30,7 +28,7 @@
     }
 
     var culture = System.Globalization.CultureInfo.CurrentUICulture;
-    // Monday-first week; abbreviated day names come from culture data, not resources.
+    // Day names come from culture data, not resources.
     var dayHeaders = Enumerable.Range(0, 7)
         .Select(i => culture.DateTimeFormat.GetAbbreviatedDayName((DayOfWeek)((i + 1) % 7)))
         .ToArray();
@@ -73,9 +71,7 @@
                         var singleDay = layout.SingleDayOccurrencesByDow[dow];
                         var cellCls = inMonth ? "" : "bg-light text-muted";
 
-                        // How many "visible slots" does this cell have used by banners?
-                        // We render a placeholder for each slot index 0..slotCount-1 so single-day
-                        // events always line up below banners at the same vertical offset across cells.
+                        // A placeholder per banner slot keeps single-day events aligned below banners across cells.
                         var bannersCoveringThisDay = layout.Banners
                             .Where(b => dow >= b.StartDow && dow <= b.EndDow)
                             .ToDictionary(b => b.SlotIndex);

@@ -3,16 +3,9 @@ using Humans.Shifts.Domain;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>
-/// Cached per-rota projection: the rota row, its shifts, its tags, and every
-/// signup on those shifts. Bundles raw EF rows only — no computed fields,
-/// aggregates, or absolute-time resolution. Consumers compute what they need
-/// from the raw rows.
+/// Raw rows only: no computed fields or absolute times. A missing rota yields an empty view with a null
+/// <c>Rota</c>, never null.
 /// </summary>
-/// <remarks>
-/// Returned by <see cref="Humans.Shifts.Services.IShiftRowView.GetRotaAsync"/> /
-/// <see cref="Humans.Shifts.Services.IShiftRowView.GetRotasAsync"/>. Missing rotas yield an
-/// empty view with <c>Rota = null</c> — never <c>null</c>, never an exception.
-/// </remarks>
 internal sealed record ShiftRotaView(
     Guid RotaId,
     Rota? Rota,
@@ -20,9 +13,6 @@ internal sealed record ShiftRotaView(
     IReadOnlyList<ShiftTag> Tags,
     IReadOnlyList<ShiftSignup> Signups)
 {
-    /// <summary>
-    /// Empty view returned for unknown rota ids.
-    /// </summary>
     internal static ShiftRotaView Empty(Guid rotaId) => new(
         rotaId,
         Rota: null,

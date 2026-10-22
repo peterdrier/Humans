@@ -3,22 +3,18 @@ using Humans.Expenses.Contracts;
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// How the authorized cap distributes over the bookable lines: each line books in full, in
-/// <c>SortOrder</c>, until the payable runs out — the line the cap lands inside is trimmed, and
-/// every line after it is skipped. Where the reduction lands is presentation only (the whole
-/// report books to one category account), so greedy-in-order is as correct as anything and keeps
-/// each Holded doc matching its receipt. Declined lines take no part: they are out of the payable
-/// and never book. The push, the detail view, and the audit message all
-/// read this one allocation so they can never disagree.
+/// Greedy in <c>SortOrder</c>: each line books in full until the payable runs out. The whole report books to one
+/// account, so where the reduction lands is presentation only, and this keeps each Holded doc matching its receipt.
+/// The push, the detail view and the audit message all read this, so they never disagree.
 /// </summary>
 internal static class PayableAllocation
 {
     internal sealed record LineAllocation(ExpenseLineDto Line, decimal Booked)
     {
-        /// <summary>The cap landed inside this line: it books, but below the receipt amount.</summary>
+        /// <summary>Books, but below the receipt amount.</summary>
         internal bool Trimmed => Booked > 0m && Booked < Line.Amount;
 
-        /// <summary>The cap was spent before this line: no Holded doc, no attachment upload.</summary>
+        /// <summary>No Holded doc, no attachment upload.</summary>
         internal bool Skipped => Booked <= 0m && Line.Amount > 0m;
     }
 

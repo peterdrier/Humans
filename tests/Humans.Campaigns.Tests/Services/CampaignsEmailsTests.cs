@@ -7,12 +7,7 @@ using Humans.Email.Contracts;
 namespace Humans.Campaigns.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Campaigns stamps on its own messages — template name,
-/// opt-out category and the campaign ids the outbox row carries — plus the
-/// gallery-coverage gate: every template <see cref="CampaignsEmails"/> can build has a
-/// sample in <see cref="CampaignsEmailPreviews"/>, so a new template cannot ship invisible
-/// Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="CampaignsEmails"/> can build has a sample in <see cref="CampaignsEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class CampaignsEmailsTests
 {

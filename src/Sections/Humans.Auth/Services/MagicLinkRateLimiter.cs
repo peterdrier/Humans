@@ -7,13 +7,7 @@ using Humans.Base.Helpers;
 
 namespace Humans.Auth.Services;
 
-/// <summary>
-/// Implementation of <see cref="IMagicLinkRateLimiter"/>. Backed by
-/// <see cref="IMemoryCache"/> + the existing <c>TryReserveAsync</c> extension so
-/// Auth's short-TTL replay-protection and signup-cooldown state stays behind the
-/// interface. Survey and unsubscribe links are protected elsewhere and are
-/// deliberately reusable — nothing outside this section redeems through here.
-/// </summary>
+/// <summary>Only sign-in links redeem through here: survey and unsubscribe links are deliberately reusable.</summary>
 internal sealed class MagicLinkRateLimiter(IMemoryCache cache) : IMagicLinkRateLimiter
 {
     public Task<bool> TryConsumeTokenAsync(string token, TimeSpan lifetime)

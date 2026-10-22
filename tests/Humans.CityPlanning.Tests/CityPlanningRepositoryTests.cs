@@ -16,10 +16,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         _repo = new CityPlanningRepository(CityPlanningDbFactory);
     }
 
-    // ==========================================================================
-    // SavePolygonAndAppendHistoryAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task SavePolygonAndAppendHistoryAsync_FirstCall_CreatesPolygonAndHistory()
     {
@@ -62,10 +58,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         polygon.AreaSqm.Should().Be(200.0);
     }
-
-    // ==========================================================================
-    // Read operations
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetPolygonsByCampSeasonIdsAsync_ReturnsMatchingRowsOnly()
@@ -110,10 +102,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     [HumansFact(Timeout = 10000)]
     public async Task GetHistoryForCampSeasonAsync_ReturnsAllEntriesForCampSeason()
     {
-        // Display ordering (newest first) moved to the controller
-        // (CityPlanningApiController.GetCampPolygonHistory) per
-        // memory/architecture/display-sort-in-controllers.md, so the repository
-        // only guarantees membership, not order.
+        // Ordering is the controller's job, so the repository guarantees membership only.
         var campSeasonId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
@@ -152,10 +141,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
 
         result.Should().BeNull();
     }
-
-    // ==========================================================================
-    // DeletePolygonsForCampSeasonsAsync — the cross-section contract Camps calls
-    // ==========================================================================
 
     [HumansFact]
     public async Task DeletePolygonsForCampSeasonsAsync_RemovesPolygonAndHistory_ForNamedSeasonsOnly()
@@ -201,10 +186,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var removed = await _repo.DeletePolygonsForCampSeasonsAsync([Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
         removed.Should().Be(0);
     }
-
-    // ==========================================================================
-    // CityPlanningSettings operations
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetOrCreateSettingsAsync_CreatesRow_WhenNotFound()

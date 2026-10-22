@@ -1,6 +1,5 @@
 @model string
-@* The zone every time on the page is shown in. Changing it saves the choice as the
-   session's display zone (the same /api/timezone the browser reports to) and reloads. *@
+@* Changing the zone saves it as the session's display zone (the same /api/timezone the browser reports to). *@
 <div class="d-flex align-items-center gap-2 mb-3 small text-muted">
     <label for="calendar-timezone" class="mb-0">@Localizer["Calendar_TimeZoneLabel"]</label>
     <select id="calendar-timezone" class="form-select form-select-sm w-auto">

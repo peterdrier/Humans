@@ -13,19 +13,6 @@ using NodaTime;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// Drains the outbox: pause check, batch pick-up, per-message transport call, retry
-/// backoff, and the campaign-grant status mirror. Lifted out of
-/// <c>ProcessEmailOutboxJob</c> at the section's G5 move — the job kept
-/// <see cref="IEmailOutboxRepository"/> and <see cref="IEmailTransport"/> in Base, which
-/// is a job reaching past the service layer, and neither type is nameable from Base now.
-/// The job is the scheduler shim; the queue semantics are here (the G5 playbook, step 6b).
-/// </summary>
-/// <remarks>
-/// The grant mirror goes through <see cref="ICampaignWrite"/> so Campaigns owns
-/// <c>campaign_grants</c> (design-rules §2c); the pause flag routes to Settings
-/// through <see cref="IEmailOutboxManagement.IsEmailPausedAsync"/>.
-/// </remarks>
 internal sealed class EmailOutboxProcessor(
     IEmailOutboxRepository outboxRepo,
     IEmailOutboxManagement emailOutboxService,
@@ -130,16 +117,13 @@ internal sealed class EmailOutboxProcessor(
             metrics.RecordEmailSent(message.TemplateName);
             await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
 
-            // Update campaign grant status if applicable — routed via
-            // ICampaignWrite so the Campaigns section owns campaign_grants.
-            // Bookkeeping failure is logged without interrupting the batch.
             if (message.CampaignGrantId.HasValue)
             {
                 await TryUpdateGrantEmailStatusAsync(
                     message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
             }
 
-            // Throttle: 1 second delay between sends to avoid SMTP rate limits
+            // 1 second between sends to stay under SMTP rate limits.
             await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
         }
 
@@ -148,9 +132,8 @@ internal sealed class EmailOutboxProcessor(
     }
 
     /// <summary>
-    /// Grant mirroring is bookkeeping, not delivery state. Log its failure and
-    /// continue the batch after either delivery outcome; otherwise remaining
-    /// picked-up messages would wait for the stale window to release them.
+    /// Grant mirroring is bookkeeping, not delivery state: log and continue, or the rest of the picked-up batch
+    /// waits for the stale window.
     /// </summary>
     private async Task TryUpdateGrantEmailStatusAsync(
         Guid campaignGrantId, EmailOutboxStatus status, Instant now, Guid messageId, CancellationToken cancellationToken)
@@ -168,10 +151,7 @@ internal sealed class EmailOutboxProcessor(
         }
     }
 
-    /// <summary>
-    /// The daily tally is analytics, not delivery state. Log its write failure
-    /// without interrupting the batch or changing the recorded delivery outcome.
-    /// </summary>
+    /// <summary>Analytics, not delivery state: a failed write is logged and changes nothing else.</summary>
     private async Task TryIncrementDailySendCountAsync(
         EmailOutboxMessage message, Instant now, bool succeeded, CancellationToken cancellationToken)
     {

@@ -37,8 +37,8 @@ public sealed record SectionHelpEntry(string Key, int Order, string? Guide, stri
         }
 
         using var reader = new StreamReader(stream);
-        // File framing only: every text file ends with a newline, the string literal this
-        // replaced did not. Exactly one is removed so a body that genuinely ends blank survives.
+        // File framing only: every text file ends with a newline. Exactly one is removed so a body that genuinely
+        // ends blank survives.
         var text = reader.ReadToEnd().ReplaceLineEndings("\n");
         return text.EndsWith('\n') ? text[..^1] : text;
     }

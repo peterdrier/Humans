@@ -2,41 +2,20 @@ using NodaTime;
 
 namespace Humans.Users.Data.Repositories;
 
-/// <summary>
-/// Contact-field operations on <see cref="IUserRepository"/>.
-/// </summary>
 internal partial interface IUserRepository
 {
-    /// <summary>
-    /// Returns all contact fields for a profile, read-only, ordered by
-    /// <c>DisplayOrder</c> then <c>CreatedAt</c>.
-    /// </summary>
+    /// <summary>Read-only, ordered by <c>DisplayOrder</c> then <c>CreatedAt</c>.</summary>
     Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
         Guid profileId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every contact field row, read-only, with no ordering. Used by
-    /// person-search (<c>IUserService.SearchUsersAsync</c>) so the
-    /// matcher can scan public + non-public ContactField values without
-    /// per-profile round-trips. Trivial at our small scale; the row count
-    /// across all profiles is far smaller than the user count.
-    /// </summary>
+    /// <summary>Every row, read-only, unordered.</summary>
     Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns detached entities intended to be mutated in-memory and passed back
-    /// to <see cref="BatchSaveAsync"/> in the <c>toUpdate</c> list. The returned
-    /// entities are NOT tracked — callers must explicitly hand mutated entities
-    /// back to the batch save flow for persistence.
-    /// </summary>
+    /// <summary>Detached: mutated entities must go back to <see cref="BatchSaveAsync"/> as <c>toUpdate</c>.</summary>
     Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
         Guid profileId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Atomic batch write: adds new fields, updates mutated fields, removes
-    /// deleted fields, and persists all changes in one <c>SaveChangesAsync</c> call.
-    /// Callers must pass mutated entities back in <paramref name="toUpdate"/>.
-    /// </summary>
+    /// <summary>Adds, updates and removes in one save.</summary>
     Task BatchSaveAsync(
         IReadOnlyList<ContactField> toAdd,
         IReadOnlyList<ContactField> toUpdate,
@@ -44,14 +23,9 @@ internal partial interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Bulk-moves <c>contact_fields</c> rows from <paramref name="sourceUserId"/>'s
-    /// profile to <paramref name="targetUserId"/>'s profile for the
-    /// account-merge fold flow. Conflict rule per the fold spec: when source
-    /// and target both have a row with the same <c>(FieldType, Value)</c>
-    /// (case-insensitive on <c>Value</c>), the source row is dropped — target's
-    /// row wins on collision. Surviving source rows are re-FK'd to the target's
-    /// profile. <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on
-    /// every row touched. No-op if either user has no profile.
+    /// Account-merge fold: re-FKs the source profile's contact fields to the target's. A source row
+    /// matching a target row on <c>(FieldType, Value)</c> (case-insensitive) is dropped. No-op if
+    /// either user has no profile.
     /// </summary>
     Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,

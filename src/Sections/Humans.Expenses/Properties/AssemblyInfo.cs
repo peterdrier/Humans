@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// Castle DynamicProxy, behind NSubstitute in Humans.Expenses.Tests, needs to see the
-// internal IExpenseRepository to proxy it.
+// NSubstitute's proxy needs to see IExpenseRepository.
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

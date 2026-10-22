@@ -6,17 +6,10 @@ using Humans.Base.Enums;
 
 namespace Humans.Campaigns.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="ICampaignRepository"/>.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>CampaignsDbContext</c> remains Scoped.
-/// </summary>
 internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> factory) : ICampaignRepository
 {
     public async Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        // CampaignGrant carries a bare UserId — no User nav to include. Recipient
-        // display names come from IUserService, keyed on CampaignGrant.UserId.
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Campaigns
             .Include(c => c.Codes)
@@ -255,8 +248,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        // Load unredeemed grants on active/completed campaigns. Filter by code
-        // in memory so the DB query stays simple and collation-independent.
+        // Filter by code in memory so the query stays simple and collation-independent.
         var unredeemed = (await ctx.CampaignGrants
             .Include(g => g.Code)
             .Include(g => g.Campaign)
@@ -266,10 +258,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Where(g => codeStrings.Contains(g.Code.Code))
             .ToList();
 
-        // Iterate redemptions in input order, matching one grant per redemption
-        // so that N orders with the same code redeem N distinct grants. When a
-        // code matches grants in multiple campaigns, the most recently created
-        // campaign wins.
+        // One grant per redemption, so N orders with the same code redeem N distinct grants.
         var redeemedCount = 0;
         foreach (var redemption in redemptions)
         {
@@ -347,7 +336,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         {
             if (targetCampaignIdSet.Contains(src.CampaignId))
             {
-                // Target already has a grant on this campaign — target wins.
                 ctx.CampaignGrants.Remove(src);
             }
             else

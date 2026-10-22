@@ -1,9 +1,6 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error.
-   CityPlanningPageRenderTests exercises this set, but it lives in Humans.Integration.Tests,
-   which build.yml filters out by design — a local check, not a CI gate. The gate is
-   tests/e2e/tests/city-planning.spec.ts, which loads every map screen against QA; it runs
-   on push to main, so it catches a missing line after the merge, not on the PR. *@
+   here ships broken markup with a green build and no runtime error. CityPlanningPageRenderTests
+   is integration-only, not CI; the CI gate is tests/e2e/tests/city-planning.spec.ts, which runs after merge. *@
 @using Humans.Base.Extensions
 @using Humans.CityPlanning
 @using Humans.CityPlanning.Contracts
@@ -17,11 +14,8 @@
 @using Microsoft.Extensions.Localization
 @using NodaTime
 @inject IStringLocalizer<CityPlanningResource> Localizer
-@* Genuinely shared strings (Common_*) stay in SharedResource — copying them into each
-   section's .resx would duplicate them ~35 times. Containers_* keys are
-   Containers' vocabulary and stay in its set: the barrio container list and the container
-   map are City Planning's URLs over Containers' data, so both localizers are bound and
-   which set a key comes from is visible at the call site. *@
+@* Shared strings (Common_*) come from SharedLocalizer, and Containers_* keys from ContainersLocalizer (these pages
+   are City Planning's URLs over Containers' data), so the set a key comes from is visible at the call site. *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @inject IStringLocalizer<ContainersResource> ContainersLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers

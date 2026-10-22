@@ -3,40 +3,21 @@ using AwesomeAssertions;
 namespace Humans.Web.Tests.Architecture;
 
 /// <summary>
-/// Every call site of a tag helper or view component that lives in Base sits under a
-/// <c>_ViewImports.cshtml</c> chain that opens Base's tag helpers.
+/// Every call site of a Base tag helper or view component sits under a <c>_ViewImports.cshtml</c> chain that opens
+/// Base's tag helpers.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <c>@addTagHelper *, X</c> names an ASSEMBLY, not a namespace, so G5 lane 4b-iii B's move of
-/// <c>Humans.UI</c>'s Razor half into <c>Humans.Base</c> (nobodies-collective/Humans#866)
-/// had to rewrite 48 directives even though every namespace stayed <c>Humans.UI.*</c>. A missed
-/// directive is the worst failure shape in the repo: the element ships as inert literal markup
-/// on a green build, with no error, no log line, and a 200 — and the browser silently drops the
-/// unknown tag, so the page merely looks like the widget was never there.
-/// </para>
-/// <para>
-/// The render proofs in <c>MovedSharedPartialsRenderTests</c> cover the call sites reachable
-/// without fixtures. This covers the rest structurally, and covers whatever call site is added
-/// next. It is a test rather than an analyzer because inert <c>&lt;vc:&gt;</c> markup never
-/// reaches Roslyn (an analyzer only sees compiled Razor output, as HUM0036 does), and it lives here rather
-/// than in an integration project because it boots nothing and touches no database.
-/// </para>
-/// <para>
-/// <c>NonceTagHelper</c> is deliberately not in the literal list: it targets every
-/// <c>&lt;script&gt;</c> element, so a scan for its call sites would flag every view in the
-/// tree. Its binding is proved by the CSP nonce reaching rendered script tags instead.
-/// </para>
+/// <c>@addTagHelper *, X</c> names an assembly, not a namespace. A missed directive ships the element as inert markup
+/// on a green build with no error, which is also why this is a test: that markup never reaches an analyzer.
+/// <c>NonceTagHelper</c> is left out because it targets every <c>&lt;script&gt;</c>.
 /// </remarks>
 public class BaseRazorBindingTests
 {
     private const string BaseDirective = "@addTagHelper *, Humans.Base";
 
     /// <summary>
-    /// Literals that only bind through <see cref="BaseDirective"/>. <c>&lt;vc:human&gt;</c> is
-    /// spelled with its three possible terminators so it does not also match
-    /// <c>&lt;vc:human-search&gt;</c> (Base's too) or <c>&lt;vc:human-summary&gt;</c>
-    /// (Humans.Users').
+    /// <c>&lt;vc:human&gt;</c> is spelled with its three terminators so it doesn't also match
+    /// <c>&lt;vc:human-search&gt;</c> or <c>&lt;vc:human-summary&gt;</c>.
     /// </summary>
     private static readonly string[] BaseOwnedMarkup =
     [
@@ -72,12 +53,7 @@ public class BaseRazorBindingTests
     }
 
     /// <summary>
-    /// Every <c>@addTagHelper *, X</c> in the tree names an assembly that still exists. Razor
-    /// ignores a directive naming a missing assembly in silence, so the tag helpers it was
-    /// meant to open ship as inert markup on a green build — the same failure shape the test
-    /// above guards, arriving through a deleted project instead of a missed directive.
-    /// Generalized from a check that named <c>Humans.UI</c> specifically: the rule is that no
-    /// directive names a dead assembly, not that one particular dead name stays gone.
+    /// Razor silently ignores a directive naming a missing assembly, so its tag helpers ship as inert markup.
     /// </summary>
     [HumansFact]
     public void EveryAddTagHelperDirectiveNamesAnAssemblyThatExists()

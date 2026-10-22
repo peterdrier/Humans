@@ -8,10 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>
-/// Workload aggregations for the coordinator dashboard. Reads via cached <see cref="IShiftRowView"/>;
-/// no own cache (per-rota cache eviction already covers mutations).
-/// </summary>
+/// <summary>No cache of its own: reads go through the cached row view, whose eviction covers mutations.</summary>
 internal sealed class WorkloadService(
     IShiftManagementRepository repo,
     IShiftRowView view,
@@ -24,12 +21,10 @@ internal sealed class WorkloadService(
 
     public async Task<WorkloadReport?> GetForActiveEventAsync(CancellationToken ct = default)
     {
-        // "Active" is Settings' notion (nobodies-collective/Humans#1631) — no Shifts-local
-        // lookup needed for the id.
         var calendar = await calendarResolver.GetActiveAsync(ct);
         if (calendar is null) return null;
 
-        // Distinct rotaIds off the shared event-shift query avoids adding an interface method.
+        // Reuses the event-shift query for the rota ids rather than add an interface method.
         var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(calendar.Id), ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         if (rotaIds.Count == 0)
@@ -42,7 +37,7 @@ internal sealed class WorkloadService(
                 ByDepartment: []);
         }
 
-        // ShiftRotaView is unfiltered — workload view is admin-only and needs hidden rotas.
+        // Unfiltered: the workload view is admin-only and needs hidden rotas.
         var views = await view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
         var entries = views.Values
             .Where(v => v.Rota is not null)
@@ -56,8 +51,6 @@ internal sealed class WorkloadService(
             .Where(allTeams.ContainsKey)
             .ToDictionary(id => id, id => allTeams[id]);
 
-        // Role estimates come from the cached team projection (definitions carry
-        // EstimatedHours + RolePeriod; assignments carry the holder's user id).
         var rolePersonHours = BuildRolePersonHours(allTeams);
         var roleDeptHours = BuildRoleDeptHours(allTeams);
 
@@ -96,7 +89,7 @@ internal sealed class WorkloadService(
         return totals;
     }
 
-    // Unsorted; controller assembles display order (display-sort-in-controllers).
+    // Unsorted; the controller orders for display.
     private static List<WorkloadByRotaRow> BuildByRota(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup) =>
@@ -147,8 +140,7 @@ internal sealed class WorkloadService(
                     FilledHours: totals.FilledHours);
             });
 
-        // Fold role hours into the matching department; create rows for teams
-        // that own roles but no rotas in this event.
+        // Teams that own roles but no rotas in this event still get a row.
         foreach (var (teamId, role) in roleDeptHours)
         {
             rows[teamId] = rows.TryGetValue(teamId, out var existing)
@@ -178,8 +170,7 @@ internal sealed class WorkloadService(
         IReadOnlyDictionary<Guid, RolePersonHours> rolePersonHours,
         CancellationToken ct)
     {
-        // Confirmed → per-phase hours; Pending → count only (don't inflate
-        // burnout from queued work).
+        // Pending is a count only, so queued work doesn't inflate burnout.
         var perUser = new Dictionary<Guid, (int Confirmed, int Pending, decimal YearRound, decimal Build, decimal Event, decimal Strike)>();
         foreach (var (_, shift) in entries)
         {
@@ -208,7 +199,7 @@ internal sealed class WorkloadService(
             }
         }
 
-        // Fold role estimates in; a role-only holder (no signups) still gets a row.
+        // A role-only holder, with no signups, still gets a row.
         foreach (var (userId, role) in rolePersonHours)
         {
             perUser.TryGetValue(userId, out var totals);
@@ -244,22 +235,18 @@ internal sealed class WorkloadService(
             .ToList();
     }
 
-    // ── Role-hours aggregation off the cached TeamInfo projection ──────────────────
-
     private sealed record RolePersonHours(decimal YearRound, decimal Build, decimal Event, decimal Strike);
 
     private sealed record RoleDeptHours(string TeamName, string TeamSlug, decimal PlannedHours, decimal FilledHours);
 
-    // Roles on deactivated teams are excluded — deactivation doesn't clear role
-    // assignments, so a retired team's stale holders would otherwise leak in.
+    // Deactivation doesn't clear role assignments, so a retired team's stale holders would otherwise leak in.
     private static IEnumerable<TeamRoleDefinitionSnapshot> ActiveRoles(
         IReadOnlyDictionary<Guid, TeamInfo> allTeams) =>
         allTeams.Values
             .Where(t => t.IsActive)
             .SelectMany(t => t.RoleDefinitions ?? []);
 
-    // Per holder: each assigned user contributes the role's full annual estimate,
-    // bucketed by the role's period (year-round in its own bucket).
+    // Each holder gets the role's full annual estimate.
     private static Dictionary<Guid, RolePersonHours> BuildRolePersonHours(
         IReadOnlyDictionary<Guid, TeamInfo> allTeams)
     {
@@ -284,7 +271,6 @@ internal sealed class WorkloadService(
         return perUser;
     }
 
-    // Per department: planned = estimate × slots, filled = estimate × assigned slots.
     private static Dictionary<Guid, RoleDeptHours> BuildRoleDeptHours(
         IReadOnlyDictionary<Guid, TeamInfo> allTeams)
     {

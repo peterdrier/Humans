@@ -6,31 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>
-/// Renders every Audit Log page through the real app, as the standing form of the §15
-/// step 12 check for the section's move into <c>src/Sections/Humans.AuditLog</c>
-/// (nobodies-collective/Humans#866, G5).
-/// </summary>
+/// <summary>Renders every Audit Log page through the real app.</summary>
 /// <remarks>
-/// <para>
-/// The failure modes a G5 move introduces all render as a <b>200 with degraded content</b>,
-/// so "the page loads" is not the assertion. AuditLog carries no resource set at all — its
-/// pages are admin-only English — so the usual raw-key probe does not apply and the probe
-/// that replaces it is the <c>&lt;page-header&gt;</c> tag helper both pages open with: an
-/// unbound tag helper neither throws nor degrades, it survives into the response as its own
-/// start tag (G5-SECTION-TEMPLATE.md step 12, Debug's case).
-/// </para>
-/// <para>
-/// The other half this test exists for is the section's <em>controller</em>. Since G5 lane
-/// 4b-2h (nobodies-collective/Humans#866) it runs over <c>IAuditViewerService</c> in its own
-/// assembly, but its policy is still in Shell's <c>AuthorizationPolicyExtensions</c> (step 6's
-/// asymmetry): an internal controller routed by <c>SectionControllerFeatureProvider</c>, gated
-/// from Shell. One authorized GET and one unauthorized GET is what proves those halves meet.
-/// </para>
-/// <para>
-/// <c>Resource/{id}</c> and <c>Human/{id}</c> are GoogleIntegration's pages, covered by
-/// <c>GoogleSyncAuditPageRenderTests</c>; <c>CheckDriveActivity</c> is <c>Humans.Monitor</c>'s.
-/// </para>
+/// AuditLog ships no resource set, so instead of a raw-key probe the check is the <c>&lt;page-header&gt;</c> tag helper,
+/// which survives as its own start tag when unbound. One authorized and one unauthorized GET prove the section's
+/// internal controller meets Shell's policy.
 /// </remarks>
 public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
@@ -53,13 +33,9 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
             var html = await response.Content.ReadAsStringAsync(ct);
             html.Should().Contain("Audit Log", $"GET {url} must render its own copy");
 
-            // An unbound Humans.UI tag helper survives as its own start tag: 200, correct
-            // -looking source, missing widget. This is the section's only such probe,
-            // because it ships no resource set to assert raw keys against.
             html.Should().NotContain("<page-header", $"GET {url} left <page-header> unbound");
 
-            // ReSharper rewrites <vc:name> to <name-view-component> when it mistakes the
-            // element for a type reference; that also renders as inert markup.
+            // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
         }
     }
@@ -72,39 +48,23 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         var response = await Client.GetAsync("/AuditLog", ct);
 
-        // Cookie authentication redirects an authenticated-but-unauthorized request to
-        // Program.cs's AccessDeniedPath app-wide; BoardOrAdmin is not a 403 here.
+        // Cookie auth redirects an authenticated-but-unauthorized request to AccessDeniedPath: a 302, not a 403.
         response.StatusCode.Should().Be(HttpStatusCode.Redirect,
             "the BoardOrAdmin policy in Shell must still gate the section's controller");
     }
 
     /// <summary>
-    /// Every assembly that renders <c>&lt;vc:audit-log&gt;</c>, proved by seeded content
-    /// rather than by absence of a literal tag.
+    /// Every assembly rendering <c>&lt;vc:audit-log&gt;</c> needs its own <c>@addTagHelper *, Humans.AuditLog</c>. A
+    /// seeded marker reaching the HTML proves the tag bound and the component and its views resolved; an absent
+    /// <c>&lt;vc:</c> proves nothing.
     /// </summary>
-    /// <remarks>
-    /// <c>AuditLogViewComponent</c> moved from <c>Humans.UI</c> into <c>Humans.AuditLog</c> in
-    /// G5 lane 4b-2h (nobodies-collective/Humans#866), so each consuming assembly now needs
-    /// <c>@addTagHelper *, Humans.AuditLog</c> in its own <c>_ViewImports.cshtml</c>. Missing
-    /// that line is silent: the element ships as inert literal markup with a green build.
-    /// <para>
-    /// Asserting only <c>NotContain("&lt;vc:")</c> proves nothing — a page whose audit widget
-    /// never ran passes it too. So this seeds a real audit row whose description is a unique
-    /// marker and asserts the marker reaches the HTML, which can only happen if the tag helper
-    /// bound, the component resolved <c>IAuditViewerService</c> from the section's own
-    /// registration, and <c>Views/Shared/Components/AuditLog/*</c> resolved from the section
-    /// assembly.
-    /// </para>
-    /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_audit_log_view_component_binds_and_renders_in_every_consuming_assembly()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // ShiftSignupBailed is one of the few actions whose Description is rendered as a tail
-        // (AuditEventTextualizer.ShouldRenderDescriptionTail), which is what lets a unique
-        // marker travel all the way from the row to the HTML.
+        // ShiftSignupBailed renders its Description as a tail, which carries the marker into the HTML.
         var marker = $"vc-binding-probe-{Guid.NewGuid():N}";
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
@@ -117,9 +77,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
                 actorUserId: adminId);
         }
 
-        // Humans.Users — UsersAdmin/AdminDetail, the busiest call site — and Humans.Web —
-        // WidgetGallery, Shell's own. Both render the widget for the signed-in human with no
-        // extra fixtures, so both can carry the marker assertion.
+        // Both render the widget for the signed-in user with no extra fixtures.
         foreach (var url in new[] { $"/Users/Admin/{adminId}", "/Debug/WidgetGallery" })
         {
             var response = await Client.GetAsync(url, ct);
@@ -134,15 +92,9 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
     }
 
     /// <summary>
-    /// The Profile sent-messages panel renders through <c>layout="table"</c>, in
-    /// <c>Humans.Users</c>' <c>Views/Profile</c> folder — a different
-    /// <c>_ViewImports.cshtml</c> from <c>Views/UsersAdmin</c>'s.
+    /// <c>Views/Profile</c> has a different <c>_ViewImports.cshtml</c> from <c>Views/UsersAdmin</c>. The panel is
+    /// coordinator-gated and never shows on one's own profile, so this signs in twice.
     /// </summary>
-    /// <remarks>
-    /// The panel is coordinator-gated and never shows on one's own profile, so this signs in
-    /// twice: once as the volunteer whose profile is the subject, then as the admin who
-    /// satisfies <c>PolicyNames.PrivilegedSignupApprover</c>.
-    /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_profile_sent_messages_panel_renders_through_the_table_layout()
     {
@@ -172,17 +124,9 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
     }
 
     /// <summary>
-    /// The Profile panel's column headers are localized, in a section that ships no resource
-    /// set at all.
+    /// AuditLog ships no resource set, so the host passes localized headers through <c>column-labels</c>; otherwise a
+    /// translated member page gets three English headers.
     /// </summary>
-    /// <remarks>
-    /// <c>layout="table"</c> would otherwise punch three English holes ("When"/"Actor"/
-    /// "Description") into a member-facing page translated in six languages. The host passes
-    /// its own <c>Common_Date</c>/<c>Common_Sender</c>/<c>Common_Preview</c> through
-    /// <c>column-labels</c>, the same caller-localizes pattern as <c>title</c> and
-    /// <c>empty-text</c>, so <c>AuditLogArchitectureTests.SectionTypesTakeNoStringLocalizer</c>
-    /// stays green. The seeded-marker test above cannot catch this — the rows arrive either way.
-    /// </remarks>
     [HumansFact(Timeout = 120000)]
     public async Task The_profile_sent_messages_panel_localizes_its_column_headers()
     {
@@ -190,7 +134,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         var volunteerId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        // Headers only render when the table has rows; the empty state has no <thead>.
+        // Headers render only when the table has rows.
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
             var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
@@ -204,9 +148,8 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         var url = $"/Profile/{volunteerId}";
 
-        // Accept-Language does not reach a signed-in user: Program.cs's initial culture provider
-        // answers from the user's PreferredLanguage and short-circuits the chain. Switch the
-        // language the way the UI does.
+        // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
+        // the way the UI does.
         var token = ExtractAntiForgeryToken(await (await Client.GetAsync(url, ct)).Content.ReadAsStringAsync(ct));
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
@@ -238,17 +181,8 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
     }
 
     /// <summary>
-    /// Every <c>&lt;vc:audit-log&gt;</c> call site in the tree sits under a
-    /// <c>_ViewImports.cshtml</c> chain that binds <c>Humans.AuditLog</c>'s tag helpers.
+    /// The call sites that need seeded data to render, covered structurally, along with any added later.
     /// </summary>
-    /// <remarks>
-    /// The render test above covers the two call sites that need no fixtures. The other three
-    /// — Teams' <c>TeamAdmin/Members</c>, Store's <c>StoreAdmin/CatalogEdit</c> and Tickets'
-    /// <c>TicketTransferAdmin/Detail</c> — render the widget only for a seeded team, product or
-    /// transfer request, so this covers them structurally instead, and covers whatever call
-    /// site is added next. A Roslyn analyzer cannot see <c>.cshtml</c>, which is why this is a
-    /// test (peters-hard-rules.md prefers analyzers where they can reach).
-    /// </remarks>
     [HumansFact]
     public void Every_audit_log_call_site_sits_under_a_view_imports_that_binds_it()
     {
@@ -271,7 +205,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
             + "inert literal markup with a green build and no runtime error");
     }
 
-    // Razor applies every _ViewImports.cshtml from the project root down to the view's folder.
+    // Razor applies every _ViewImports.cshtml from the project root down.
     private static bool BindsAuditLog(string viewPath, string srcRoot, string directive)
     {
         for (var dir = new DirectoryInfo(Path.GetDirectoryName(viewPath)!);

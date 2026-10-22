@@ -11,7 +11,7 @@ using NSubstitute;
 namespace Humans.Consent.Tests.Services;
 
 /// <summary>
-/// Issue #747. Pins the bulk-bucket behavior of
+/// Pins the bulk-bucket behavior of
 /// <see cref="CachingConsentService.GetConsentMapForUsersAsync"/>: a
 /// cold-cache call must issue a single bulk inner call (not N per-id
 /// loads), and the result must be cached for the next call.
@@ -75,8 +75,7 @@ public sealed class CachingConsentServiceTests
         foreach (var id in userIds)
             result[id].Should().BeEquivalentTo(stub[id]);
 
-        // The acceptance criterion: a single bulk inner call, not a
-        // per-id loop.
+        // A single bulk inner call, not a per-id loop.
         await _inner.Received(1).GetConsentMapForUsersAsync(
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 50),
             Arg.Any<CancellationToken>());
@@ -175,8 +174,6 @@ public sealed class CachingConsentServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    // ── Account merge — entries rebuild against the new chain ────────────────
-
     /// <summary>
     /// The merge tombstone changes both humans' <c>AllUserIds</c>; the next read of either
     /// id rebuilds over the merged chain with no signal from Users. Until then (and when
@@ -238,8 +235,6 @@ public sealed class CachingConsentServiceTests
         await ReadBothAsync();
         _inner.ReceivedCalls().Should().BeEmpty("the rebuilt entries match the current chain");
     }
-
-    // ── SubmitConsentAsync — synchronous cache refresh ───────────────────────
 
     [HumansTheory]
     [InlineData(false)]

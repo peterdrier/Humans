@@ -15,10 +15,6 @@ using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Tests.Services;
 
-/// <summary>
-/// Unit tests for <see cref="TicketQueryService.GetUserTicketHoldingsAsync"/>.
-/// All dependencies are NSubstitute substitutes — no EF context required.
-/// </summary>
 public sealed class TicketQueryService_HoldingsTests
 {
     private static readonly Guid UserA = Guid.NewGuid();
@@ -81,7 +77,7 @@ public sealed class TicketQueryService_HoldingsTests
             .Returns([order1, order2]);
 
         // GetAttendeesVisibleToUserAsync returns only attendees where MatchedUserId == userId
-        // (the buyer never owns the attendee, nobodies-collective/Humans#856).
+        // (the buyer never owns the attendee).
         // Order 1: attendee matched to UserA (counts); unmatched attendee not returned by repo
         // Order 2: attendee matched to UserB (not returned for UserA)
         // Order 3 (UserB's order): attendee matched to UserA via MatchedUserId (counts for UserA)

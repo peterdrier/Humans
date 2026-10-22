@@ -4,10 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.GoogleIntegration;
 
-/// <summary>
-/// GoogleIntegration's data migrations, run from <c>/Debug/DataMigrations</c>. The copy resolves
-/// GoogleIntegration's own service; the Debug host lists, applies and audits the run.
-/// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     internal const string WorkspaceIdentitiesKey = "google.workspace-identities";

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Email;
 
-/// <summary>Email's own settings. Discovered by Shell — nothing names it.</summary>
 internal sealed class SectionConfiguration : ISectionConfiguration
 {
     public void DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)

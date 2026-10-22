@@ -2,9 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Humans.Guide.Services;
 
-/// <summary>
-/// The set of markdown files rendered at /Guide/{stem}. Order mirrors docs/guide/README.md.
-/// </summary>
+/// <summary>Order mirrors docs/guide/README.md.</summary>
 internal static class GuideFiles
 {
     public const string Readme = "README";
@@ -35,11 +33,7 @@ internal static class GuideFiles
         "Admin"
     ];
 
-    /// <summary>
-    /// Plain-language "Common questions" pages. Canonical home for the
-    /// volunteer-facing how-to that section pages link into. Rendered as their
-    /// own sidebar group; order mirrors docs/guide/README.md.
-    /// </summary>
+    /// <summary>The "Common questions" sidebar group; order mirrors docs/guide/README.md.</summary>
     public static readonly IReadOnlyList<string> CommonQuestions =
     [
         "EmailAccount",
@@ -54,10 +48,7 @@ internal static class GuideFiles
 
     public static IReadOnlySet<string> All => AllStems;
 
-    /// <summary>
-    /// Resolves any casing of a requested stem to the canonical spelling used in routes,
-    /// cache keys and GitHub paths. False when the stem is not one of ours.
-    /// </summary>
+    /// <summary>Maps any casing to the canonical stem. False when the stem is not one of ours.</summary>
     public static bool TryCanonical(string? requested, [NotNullWhen(true)] out string? canonical)
     {
         if (string.IsNullOrWhiteSpace(requested))

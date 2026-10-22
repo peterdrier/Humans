@@ -11,7 +11,6 @@ internal sealed class RideshareRequestConfiguration : IEntityTypeConfiguration<R
         builder.ToTable("rideshare_requests");
         builder.HasKey(r => r.Id);
 
-        // UserId is a bare cross-section reference: index for the per-user reads, no FK.
         builder.Property(r => r.UserId).IsRequired();
         builder.Property(r => r.Year).IsRequired();
         builder.Property(r => r.Direction).IsRequired().HasConversion<string>().HasMaxLength(50);

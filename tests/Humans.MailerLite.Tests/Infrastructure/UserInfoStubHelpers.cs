@@ -3,17 +3,10 @@ using Humans.Users.Contracts;
 namespace Humans.MailerLite.Tests.Infrastructure;
 
 /// <summary>
-/// The two pure <see cref="UserInfo"/> projections the audience tests use, copied out of
-/// <c>Humans.Application.Tests.Infrastructure.UserInfoStubHelpers</c> at MailerLite's G5 move
-/// (nobodies-collective/Humans#866).
+/// The two pure <see cref="UserInfo"/> projections the audience tests use. Copied rather than
+/// shared: the shared helper also builds on <c>UsersDbContext</c>, which would push
+/// <c>InternalsVisibleTo</c> on it into every section test project.
 /// </summary>
-/// <remarks>
-/// Copied rather than shared through <c>tests/Directory.Build.props</c>: the original file
-/// also carries <c>StubGetUserInfosFromDb</c> overloads built on an in-memory
-/// <c>UsersDbContext</c>, so linking it in would push an EF dependency — and
-/// <c>InternalsVisibleTo</c> on <c>UsersDbContext</c> — into a section test project that
-/// has neither (Governance's rule: split the helper before deciding).
-/// </remarks>
 internal static class UserInfoStubHelpers
 {
     public static UserInfo ToUserInfo(
@@ -34,8 +27,7 @@ internal static class UserInfoStubHelpers
             burnerName: displayName,
             isApproved: true);
         return UserInfo.Create(
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
             [],
             [],

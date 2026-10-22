@@ -4,8 +4,6 @@ namespace Humans.Camps.Contracts;
 
 internal interface ICampRoleService : IApplicationService
 {
-    // Definitions
-
     Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default);
 
     Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default);
@@ -33,70 +31,41 @@ internal interface ICampRoleService : IApplicationService
 
     Task<bool> ReactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
-    // Per-camp assignments
-
     Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default);
 
     Task<AssignCampRoleOutcome> AssignAsync(Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads a single assignment (including its season) so callers can verify
-    /// camp ownership before mutating it. Used by the per-camp UnassignRole
-    /// controller action for the C2 cross-camp ownership check.
-    /// </summary>
+    /// <summary>Includes its season, so callers can verify camp ownership before mutating it.</summary>
     Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default);
 
     Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Cascade hook — deletes every role assignment for the given camp member.
-    /// Called by <see cref="ICampManagement.LeaveCampAsync"/> and
-    /// <see cref="ICampManagement.WithdrawCampMembershipRequestAsync"/>.
-    /// </summary>
+    /// <summary>Cascade hook for leaving a camp or withdrawing a membership request.</summary>
     Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
 
-    // Reporting
-
-    /// <summary>
-    /// Per-season fill summary across ALL active role definitions, keyed by
-    /// <c>CampSeasonId</c>. Powers the /Barrios "show lead positions" pills.
-    /// Season enumeration comes from the cached camp read model via
-    /// <see cref="ICampRoleCampAccess.GetCampSeasonsForComplianceAsync"/>, so no
-    /// camp entities are loaded a second time.
-    /// </summary>
+    /// <summary>Per-season fill summary across all active role definitions, keyed by <c>CampSeasonId</c>.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Role-compliance matrix for one year: active definitions as columns, Active/Full
-    /// camp seasons as rows, assignees joined by <see cref="CampRoleAssignment.CampRoleDefinitionId"/>
-    /// (never by role name, which breaks silently on definition rename). Read-only;
-    /// caller authorizes. Powers <c>/Barrios/Admin/Compliance</c>.
+    /// Assignees join by <see cref="CampRoleAssignment.CampRoleDefinitionId"/>, never by role name, which breaks
+    /// silently on rename. Read-only; caller authorizes.
     /// </summary>
     Task<CampComplianceMatrixData> BuildComplianceMatrixAsync(int year, CancellationToken ct = default);
 
     /// <summary>
-    /// Idempotent admin action: ensures every non-<see cref="CampSpecialRole.None"/>
-    /// value of <see cref="CampSpecialRole"/> has a matching system role definition
-    /// (matched by <see cref="CampRoleDefinition.SpecialRole"/>). Returns the number
-    /// of definitions created. Safe to run multiple times — the second run is a no-op.
+    /// Idempotent: ensures every non-<see cref="CampSpecialRole.None"/> special role has a system role definition.
+    /// Returns the number created.
     /// </summary>
     Task<int> SeedSystemRolesAsync(Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the set of <see cref="CampSpecialRole"/> values (excluding
-    /// <see cref="CampSpecialRole.None"/>) that do NOT yet have a matching row in
-    /// <c>camp_role_definitions</c>. The admin "Seed system roles" button is hidden
-    /// on <c>/Camps/Admin</c> when this returns empty.
-    /// </summary>
+    /// <summary>The admin "Seed system roles" button hides when this is empty.</summary>
     Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default);
 }
 
 /// <summary>
-/// Well-known display defaults for system-managed camp role definitions.
-/// Rows are looked up by <see cref="CampRoleDefinition.SpecialRole"/>; the names
-/// and slugs here are seeding defaults only — admins may not rename or change
-/// the slug of a seeded special-role row (rejected by <c>CampRoleService</c>).
+/// Seeding defaults, looked up by <see cref="CampRoleDefinition.SpecialRole"/>. Admins may not rename or re-slug a
+/// seeded special-role row.
 /// </summary>
 internal static class CampSystemRoles
 {

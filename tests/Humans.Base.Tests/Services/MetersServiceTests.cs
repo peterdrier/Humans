@@ -6,9 +6,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Base.Tests.Services;
 
-/// <summary>
-/// Exercises <see cref="MetersService"/> — the leaf OpenTelemetry gauge registry.
-/// </summary>
 public sealed class MetersServiceTests
 {
     private static readonly MeterMetadata Meta = new("test gauge", "{x}");

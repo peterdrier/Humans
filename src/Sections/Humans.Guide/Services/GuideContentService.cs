@@ -39,11 +39,8 @@ internal sealed class GuideContentService(
         }
         catch (RegexMatchTimeoutException ex)
         {
-            // Rendering runs per request now, outside PopulateAsync's per-file catch, so the
-            // postprocessor's timeout-bounded regexes would otherwise surface as a raw 500.
-            // A page we cannot render is a page we cannot serve: say so in the terms the
-            // controller already handles, and leave the cached segments alone — the next
-            // reader's filter may produce markdown that renders fine.
+            // Outside PopulateAsync's per-file catch, a regex timeout would surface as a raw 500. Serve the
+            // unavailable page and keep the cached segments: the next reader's filter may render fine.
             logger.LogError(ex,
                 "Rendering guide file {FileStem} timed out; serving the unavailable page.",
                 canonical);

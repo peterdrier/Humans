@@ -4,15 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Grants.Data;
 
-/// <summary>
-/// Per-section database context for Grants: maps only <c>grant_programs</c>,
-/// <c>grant_program_managers</c> and <c>grants</c>, with its own
-/// <c>__EFMigrationsHistory_Grants</c> table and migrations under <c>Data/Migrations/</c>.
-/// </summary>
-/// <remarks>
-/// Internal-sealed like every section context: the repository is the only consumer.
-/// Cross-section references (<c>UserId</c> and the actor ids) are bare Guid columns, never FKs.
-/// </remarks>
 internal sealed class GrantsDbContext(DbContextOptions<GrantsDbContext> options) : DbContext(options)
 {
     public DbSet<GrantProgram> Programs => Set<GrantProgram>();

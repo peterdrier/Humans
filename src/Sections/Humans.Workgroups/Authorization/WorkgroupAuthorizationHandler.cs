@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Workgroups.Authorization;
 
-/// <summary>Group permissions used by controllers and page controls.</summary>
 internal sealed class WorkgroupAuthorizationHandler
     : AuthorizationHandler<WorkgroupOperationRequirement, WorkgroupInfo>
 {
@@ -25,7 +24,6 @@ internal sealed class WorkgroupAuthorizationHandler
 
         if (requirement == WorkgroupOperationRequirement.Read)
         {
-            // Every signed-in human browses the register; anonymous never gets this far.
             if (context.User.Identity?.IsAuthenticated == true)
                 context.Succeed(requirement);
             return Task.CompletedTask;

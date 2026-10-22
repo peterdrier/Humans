@@ -8,11 +8,8 @@ using Humans.Users.Services;
 namespace Humans.Shifts.Tests.Infrastructure;
 
 /// <summary>
-/// Helpers for stubbing the <see cref="IUserService.GetUserInfosAsync"/> reader on
-/// NSubstitute test doubles, reading from whatever in-memory DB the test
-/// owns. Builds a minimal UserInfo
-/// (the User + its UserEmails) — empty collections for the rest, which
-/// matches what existing legacy stubs covered.
+/// Stubs <see cref="IUserService.GetUserInfosAsync"/> from the test's in-memory DB: the User and
+/// its UserEmails, empty collections for the rest.
 /// </summary>
 internal static class UserInfoStubHelpers
 {
@@ -43,8 +40,7 @@ internal static class UserInfoStubHelpers
             IsApproved = true
         };
         return UserInfoFactory.Create(
-            // BurnerName mirrors CopyNamesToUser's dual-write from Profile onto User (#1097) —
-            // UserInfo.BurnerName reads User.BurnerName only (#1098).
+            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
             [],
             [],
@@ -56,10 +52,6 @@ internal static class UserInfoStubHelpers
             []);
     }
 
-    /// <summary>
-    /// Stubs GetUserInfosAsync to read from a long-lived DbContext (uses AsNoTracking but reuses
-    /// the same instance — fine for in-memory tests that share one ctx).
-    /// </summary>
     public static IUserService StubGetUserInfosFromContext(this IUserService userService, UsersDbContext dbContext)
     {
         userService

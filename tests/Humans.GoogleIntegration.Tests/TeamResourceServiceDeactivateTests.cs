@@ -13,13 +13,6 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 
-/// <summary>
-/// Coverage for <see cref="ITeamResourceManagement.DeactivateResourcesForTeamAsync"/> — the
-/// side of #494 that flips <c>IsActive</c> and writes audit entries. Drives
-/// <see cref="TeamResourceService"/> through the section test harness
-/// (<see cref="Infrastructure.GoogleIntegrationTestHarness"/>) and a stubbed
-/// <see cref="ITeamResourceGoogleClient"/>.
-/// </summary>
 public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIntegrationTestHarness
 {
     private const string TeamAuditEntityType = "Team";
@@ -211,10 +204,6 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
         await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
             Arg.Any<string>(), nameof(TeamResourceService), teamId, TeamAuditEntityType);
     }
-
-    // ==========================================================================
-    // GetResourceNamesByIdsAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task GetResourceNamesByIdsAsync_EmptyInput_ReturnsEmptyDict()

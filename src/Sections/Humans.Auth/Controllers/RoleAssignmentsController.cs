@@ -13,15 +13,9 @@ using NodaTime;
 namespace Humans.Auth.Controllers;
 
 /// <summary>
-/// The role-assignment admin pages: the system-wide roster at <c>/Auth/Admin/Roles</c> and
-/// assign / end on a member at <c>/Auth/Admin/{id}/Roles/...</c>. The per-member card on the
-/// admin human-detail page is this section's <c>RoleAssignmentsCardViewComponent</c> user part.
+/// <c>AddRole</c> and <c>EndRole</c> add the per-role <see cref="PolicyNames.RoleAssignmentManage"/> check on top
+/// of the class gate.
 /// </summary>
-/// <remarks>
-/// The class gate is <see cref="PolicyNames.HumanAdminBoardOrAdmin"/>; <c>AddRole</c> and
-/// <c>EndRole</c> add the resource-based <see cref="PolicyNames.RoleAssignmentManage"/> check per
-/// role name. The audit entries are written by <see cref="IRoleAssignmentManagement"/>.
-/// </remarks>
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 internal sealed class RoleAssignmentsController(
     IUserService userService,

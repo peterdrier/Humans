@@ -7,17 +7,9 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Auth's own email templates: one method per template, each returning a ready
-/// <see cref="EmailMessage"/> (content plus the routing policy Auth chooses — template
-/// name and opt-out category) for the single <see cref="IEmailService.SendAsync"/> path.
-/// Copy lives in Auth's own resx set and is rendered in the recipient's culture inside a
-/// <see cref="CultureScope"/> (memory/architecture/email-templates-live-in-sender.md).
-/// Pure — no I/O, no persistence.
+/// Both templates are <see cref="TimeSensitiveTemplates"/>: the outbox drains a sign-in link immediately
+/// instead of on the next sweep.
 /// </summary>
-/// <remarks>
-/// Both templates keep their <see cref="TimeSensitiveTemplates"/> names: the outbox reads
-/// those to drain a sign-in link immediately instead of on the next sweep.
-/// </remarks>
 internal sealed class AuthEmails(
     IStringLocalizer<AuthResource> localizer,
     ILogger<AuthEmails> logger)

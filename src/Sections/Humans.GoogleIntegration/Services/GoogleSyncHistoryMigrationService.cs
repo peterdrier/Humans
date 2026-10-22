@@ -5,11 +5,6 @@ using Humans.GoogleIntegration.Domain;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>
-/// <see cref="IGoogleSyncHistoryMigrationService"/> impl. Reads the legacy rows through
-/// AuditLog's contract and writes through this section's own repository — neither section
-/// touches the other's context.
-/// </summary>
 internal sealed class GoogleSyncHistoryMigrationService(
     ILegacyGoogleSyncAuditReader legacyAudit,
     IGoogleSyncLogRepository repo,

@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Onboarding;
 
-/// <summary>Onboarding's admin sidebar group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>
@@ -22,8 +21,6 @@ internal static class PillCounts
 {
     public static async ValueTask<int?> ReviewQueueAsync(IServiceProvider sp)
     {
-        // Pending-consent-review count: Users' UserInfo snapshot plus Consent's review map
-        // (ConsentReviewPredicates.NeedsConsentReview), read through their public surfaces.
         var users = sp.GetRequiredService<IUserService>();
         var reviews = await sp.GetRequiredService<IConsentService>().GetConsentReviewsAsync();
         var count = (await users.GetAllUserInfosAsync()).Count(u =>

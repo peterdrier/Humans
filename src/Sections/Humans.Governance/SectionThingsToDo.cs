@@ -10,11 +10,6 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Governance;
 
-/// <summary>
-/// Governance's entries on the member dashboard's things-to-do list: the required consents
-/// the membership snapshot says are still outstanding (no required documents, no entry), and
-/// one entry per open assembly vote the member is on the roster for.
-/// </summary>
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(

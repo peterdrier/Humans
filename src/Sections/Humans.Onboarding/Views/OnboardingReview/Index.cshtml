@@ -138,11 +138,8 @@
         }
 
         <div class="d-flex justify-content-end mb-4">
-            @* Rendered even with nothing selectable so the queue's shape is legible at a glance.
-               Branched rather than given a bool-valued disabled attribute: an HTML boolean
-               attribute is live whenever it is *present*, so the wrong version looks
-               identical to the right one. code-review-rules.md §"Razor Boolean Attributes"
-               bans that shape regardless of context — do not re-collapse it. *@
+            @* Branched, not a bool-valued disabled attribute: an HTML boolean attribute is live whenever it
+               is present (code-review-rules.md "Razor Boolean Attributes"). *@
             @if (hasSelectableReviews)
             {
                 <button type="submit" class="btn btn-success">

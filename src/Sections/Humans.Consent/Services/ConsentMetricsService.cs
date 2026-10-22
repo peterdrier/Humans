@@ -4,10 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// Owns the Consent-section observable gauge split out of <c>HumansMetricsService</c>
-/// (nobodies-collective/Humans#1091): count of active+required legal documents.
-/// </summary>
 internal sealed class ConsentMetricsService : PolledGaugeService
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");

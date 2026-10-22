@@ -1,8 +1,6 @@
 @model TeamMemberRole
-@* Profile_Coordinator and Teams_Member stayed in SharedResource — Teams' Localizer is
-   TeamsResource, so both call sites bind SharedLocalizer (nobodies-collective/Humans#866,
-   G5 lane 4b-i). Rendered by five Teams views, Users' ProfileCard and Shell's widget
-   gallery; partial lookup is by name across application parts. *@
+@* These keys live in SharedResource, so call sites bind SharedLocalizer. Rendered by other sections too: partial
+   lookup is by name across application parts. *@
 @if (Model == TeamMemberRole.Coordinator)
 {
     <span class="badge bg-warning text-dark">@SharedLocalizer["Profile_Coordinator"]</span>

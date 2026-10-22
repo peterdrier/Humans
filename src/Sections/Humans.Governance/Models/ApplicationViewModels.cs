@@ -59,14 +59,8 @@ internal sealed class ApplicationCreateViewModel
 
     public string? AdditionalInfo { get; set; }
 
-    /// <summary>
-    /// Asociado-only: significant contribution to Nowhere or another Burn.
-    /// </summary>
     public string? SignificantContribution { get; set; }
 
-    /// <summary>
-    /// Asociado-only: understanding of the asociado role and why they want it.
-    /// </summary>
     public string? RoleUnderstanding { get; set; }
 
     public bool ConfirmAccuracy { get; set; }

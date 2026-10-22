@@ -3,18 +3,13 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Humans.Gate.Services.Stores;
 
 /// <summary>
-/// Remembers which vendor ticket ids already have a check-in mirror enqueued — by the
-/// live gate path (<c>GateService.RecordDecisionAsync</c>) or by the backfill page — so the
-/// backfill's single-row test and bulk send can never re-post one while the vendor's
-/// check-in hasn't flowed back through the ticket sync yet (TicketTailor check-ins
-/// double-record on repeat). Single-server in-memory state, like
-/// <see cref="GatePinThrottle"/>; entries expire after <see cref="Retention"/> — by
-/// then the sync has long since moved the row out of pending (or the app restarted,
-/// in which case the page's "wait for the sync" copy is the guard).
+/// Vendor ticket ids with a check-in mirror already enqueued, live or by backfill, so the backfill never re-posts one
+/// before the ticket sync confirms it (check-ins double-record). In memory: after a restart the page's "wait for the
+/// sync" copy is the guard.
 /// </summary>
 internal sealed class GateVendorMirrorLedger(IMemoryCache cache)
 {
-    /// <summary>How long a sent id stays remembered — generously past any sync cadence.</summary>
+    /// <summary>Generously past any sync cadence.</summary>
     public static readonly TimeSpan Retention = TimeSpan.FromHours(24);
 
     private readonly Lock _lock = new();
@@ -22,9 +17,8 @@ internal sealed class GateVendorMirrorLedger(IMemoryCache cache)
     private static string Key(string vendorTicketId) => $"GateVendorMirrorSent:{vendorTicketId}";
 
     /// <summary>
-    /// Atomically claim an id: true when THIS call marked it (caller may enqueue), false
-    /// when it was already claimed. Check-then-act under one lock — two overlapping "Send
-    /// all" requests must not both enqueue the same non-idempotent vendor check-in.
+    /// True when this call claimed the id, so the caller may enqueue. Check-then-act under one lock: overlapping sends
+    /// must not both enqueue the same non-idempotent check-in.
     /// </summary>
     public bool TryMarkSent(string vendorTicketId)
     {

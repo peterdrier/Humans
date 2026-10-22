@@ -28,10 +28,8 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Language",         // Language switching
         "Guest",            // Profileless account dashboard
         "GovernanceApplications", // Tier application submission — any logged-in user
-        "Issues",           // In-app issue reporting — any logged-in user. Inherited from the
-                            // Feedback exemption when Issues replaced Feedback wholesale (#977):
-                            // someone stuck mid-onboarding or on the status wall still sees the
-                            // Help widget, and reporting that they are stuck must reach the queue.
+        "Issues",           // In-app issue reporting — any logged-in user: someone stuck mid-onboarding or on
+                            // the status wall still sees the Help widget, and that report must reach the queue.
         "Notifications",    // Notification inbox — any logged-in user
         "Survey",           // Tokenised survey answering — invited non-Active users must still reach it ([AllowAnonymous])
     };
@@ -76,10 +74,9 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        // A Backdoor API key authenticates a machine, not a browsing session
-        // (nobodies-collective/Humans#1128): there is no onboarding page to send a JSON
-        // client to, and the key's owner never passes through claims transformation, so the
-        // state claim this gate reads is absent by construction.
+        // A Backdoor API key authenticates a machine, not a browsing session: there is no onboarding page to send a
+        // JSON client to, and the key's owner never passes through claims transformation, so the state claim this
+        // gate reads is absent by construction.
         if (IsMachineRequest(user))
         {
             return next();

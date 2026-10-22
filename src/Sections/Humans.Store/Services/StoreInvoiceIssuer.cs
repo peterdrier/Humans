@@ -12,7 +12,6 @@ using NodaTime;
 
 namespace Humans.Store.Services;
 
-/// <summary>Creates, approves or recovers the invoice that freezes a billable Store order.</summary>
 internal sealed class StoreInvoiceIssuer(
     IStoreRepository repo,
     IAuditLogService audit,
@@ -23,35 +22,25 @@ internal sealed class StoreInvoiceIssuer(
     ILogger logger) : IApplicationService
 {
     /// <summary>
-    /// Issues the camp order's consolidated Holded sales document and freezes the order.
-    ///
-    /// Pipeline: freeze the line snapshots at today's catalog price (nobodies-collective/Humans#816) → resolve each
-    /// product's revenue account → build the lines (goods at the product's VAT rate, deposits
-    /// tax-0 to the fianzas liability account) → create the document and <b>approve</b> it (a
-    /// draft books nothing) → write <c>store_invoices</c> with both payloads and flip the order
-    /// to <see cref="OrderState.InvoiceIssued"/> in one save.
-    ///
-    /// Document kind: a full <i>factura</i> when counterparty details are on file, a
-    /// <i>factura simplificada</i> (sales receipt) otherwise. Above
-    /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt is not legal,
-    /// so a counterparty-less order that large is refused rather than downgraded.
-    ///
-    /// New issuance and draft approval require a zero balance. An already approved document
-    /// can be recovered after payments change, provided its line totals still match.
-    ///
-    /// Idempotent on both sides: an order that already carries an <c>IssuedInvoiceId</c> is refused
-    /// without calling Holded, and — because a document approved by an attempt that then failed
-    /// locally leaves no trace here — Holded is searched for a document already tagged with this
-    /// order before anything is created. A match is adopted, never re-issued: a second approved
-    /// factura is a real legal document, correctable only by a factura rectificativa. A recovered
-    /// document is checked against the order's current totals first (divergence refuses loudly)
-    /// and approved if the earlier attempt died between create and approve.
+    /// Freezes the line snapshots at today's catalog price, then creates and <b>approves</b> the Holded document (a draft
+    /// books nothing) and flips the order to <see cref="OrderState.InvoiceIssued"/> in one save.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A full factura when counterparty details are on file, else a factura simplificada. Above
+    /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt isn't legal, so a counterparty-less
+    /// order that large is refused rather than downgraded.
+    /// </para>
+    /// <para>
+    /// Idempotent on both sides: a document approved by an attempt that then failed locally leaves no trace here, so
+    /// Holded is searched for one tagged with this order first. A match is adopted, never re-issued: a second approved
+    /// factura is a real legal document, correctable only by a factura rectificativa.
+    /// </para>
+    /// </remarks>
     [ExternalWrite]
     public async Task<AdminMutationResult> IssueAsync(Order order, Guid actorUserId, CancellationToken ct = default)
     {
-        // Idempotency guard — deliberately before any Holded call, so a double-submit cannot
-        // create a second document.
+        // Before any Holded call, so a double-submit can't create a second document.
         if (order.IssuedInvoiceId is not null || order.State != OrderState.Open)
             return Refuse(order, actorUserId, "This order has already been invoiced.");
 
@@ -62,9 +51,7 @@ internal sealed class StoreInvoiceIssuer(
             return Refuse(order, actorUserId,
                 "Holded is not configured in this environment, so no invoice can be issued.");
 
-        // Freeze seam (nobodies-collective/Humans#816): rewrite each snapshot from the live catalog before issuing, so the
-        // document and the order agree forever after. BalanceCalculator already computed the
-        // effective prices for an Open order — reuse them rather than re-deriving.
+        // Freeze seam: rewrite each snapshot from the live catalog so the document and the order agree forever after.
         var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(ct));
         var balanceRefusal = totals.BalanceEur == 0m ? null
             : $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).";
@@ -77,24 +64,22 @@ internal sealed class StoreInvoiceIssuer(
             line.DepositAmountSnapshot = t.EffectiveDeposit;
         }
 
-        // Read-only recovery precedes balance and line-account gates: payments or catalog
-        // assignments can change after Holded approves a document whose local save failed.
+        // Recovery precedes the balance and line-account gates: payments or catalog assignments can change after Holded
+        // approves a document whose local save failed.
         var tag = OrderDocumentTag(order.Id);
         if (await FindAlreadyIssuedDocumentAsync(tag, ct) is { } alreadyIssued)
         {
             var (adoptedKind, adoptedDoc) = alreadyIssued;
-            // Before anything is written, and before the order is frozen against it: the order
-            // stayed Open, so it could have been edited or repriced since that document was
-            // created. Divergence is a human's problem, not something to reconcile silently.
+            // The order stayed Open, so it may have been edited or repriced since that document was created. Divergence
+            // is a human's problem, not something to reconcile silently.
             if (GetRecoveryRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
                 return Refuse(order, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
                 if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
 
-                // Creation succeeded and approval did not. A draft books no revenue and carries no
-                // sequential number, so freezing the order against it would leave the order
-                // invoiced with no legal invoice behind it — finish the issuance instead.
+                // Created but not approved. A draft books no revenue and carries no number, so freezing against it
+                // leaves the order invoiced with no legal invoice: finish the issuance instead.
                 await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
                 adoptedDoc = await holdedClient.GetSalesDocumentAsync(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
@@ -123,9 +108,7 @@ internal sealed class StoreInvoiceIssuer(
         var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
         if (lineRefusal is not null) return Refuse(order, actorUserId, lineRefusal);
 
-        // A receipt carries no counterparty, so it is only lawful below the simplified-invoice
-        // threshold. Above it the details are mandatory — refuse rather than silently issue the
-        // wrong document type.
+        // A receipt carries no counterparty, so it's only lawful below the simplified-invoice threshold.
         var counterparty = ResolveInvoiceCounterparty(order);
         var kind = counterparty is null
             ? HoldedSalesDocumentKind.SalesReceipt
@@ -139,8 +122,8 @@ internal sealed class StoreInvoiceIssuer(
         string? contactId = null;
         if (counterparty is not null)
         {
-            // Not the request token: everything from here on writes to Holded, and a half-created
-            // contact/document has no local compensation (memory/architecture/cancellation-token-propagation.md).
+            // Not the request token: everything from here writes to Holded, and a half-created contact or document has
+            // no local compensation.
             contactId = await holdedClient.UpsertContactAsync(
                 new HoldedContactInput
                 {
@@ -166,7 +149,7 @@ internal sealed class StoreInvoiceIssuer(
         };
 
         var docId = await holdedClient.CreateSalesDocumentAsync(kind, input, CancellationToken.None);
-        // A draft books no revenue, so approval is part of issuance, not a later step.
+        // A draft books no revenue, so approval is part of issuance.
         await holdedClient.ApproveSalesDocumentAsync(kind, docId, CancellationToken.None);
         var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
 
@@ -188,11 +171,9 @@ internal sealed class StoreInvoiceIssuer(
     }
 
     /// <summary>
-    /// Refuses adoption when the recovered document no longer describes this order. The order stays
-    /// <c>Open</c> after a failed attempt, so its lines can be edited and its catalog prices can
-    /// move before the retry — adopting on the tag alone would freeze the order against a document
-    /// that says something else, permanently. Correcting an issued document is a factura
-    /// rectificativa, which is a human decision, so this fails loudly rather than choosing a side.
+    /// The order stays Open after a failed attempt, so its lines and prices can move before the retry; adopting on the
+    /// tag alone would freeze it against a document that says something else. Correcting an issued document is a
+    /// factura rectificativa, a human decision, so this fails loudly.
     /// </summary>
     private static string? GetRecoveryRefusal(
         Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
@@ -215,21 +196,16 @@ internal sealed class StoreInvoiceIssuer(
             + "rectificativa, and no second document will be issued in the meantime.";
     }
 
-    /// <summary>The tag every store sales document carries. Holded's list endpoints return
-    /// <c>tags</c> but not <c>notes</c>, so this — not the human-readable note beside it — is what
-    /// makes a document findable by the order it was issued for.</summary>
+    /// <summary>Holded's list endpoints return <c>tags</c> but not <c>notes</c>, so the tag is what makes a document findable by its order.</summary>
     private static string OrderDocumentTag(Guid orderId) => $"humans-order-{orderId}";
 
     private static string DocumentKindName(HoldedSalesDocumentKind kind) =>
         kind == HoldedSalesDocumentKind.Invoice ? "factura" : "factura simplificada";
 
     /// <summary>
-    /// The sales document a previous attempt already created for this order, or null. Both kinds
-    /// are searched in full: the counterparty details decide the kind and can be filled in between
-    /// two attempts, so the earlier document may be of the other kind — and adopting it is still
-    /// right, because what must not happen is a second approved document. When several match, an
-    /// already-approved one wins over a draft: approving the draft beside it would book the revenue
-    /// twice and hand out a second legal number.
+    /// Both kinds are searched: counterparty details can be filled in between attempts, so the earlier document may be of
+    /// the other kind, and adopting it is still right. An approved match wins over a draft: approving the draft too would
+    /// book the revenue twice under a second legal number.
     /// </summary>
     private async Task<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)?>
         FindAlreadyIssuedDocumentAsync(string tag, CancellationToken ct)
@@ -242,8 +218,8 @@ internal sealed class StoreInvoiceIssuer(
         }
         if (found.Count == 0) return null;
         if (found.Count > 1)
-            // The duplicate this guard exists to prevent has already happened — only a factura
-            // rectificativa clears it. Adopting one still stops a third being issued.
+            // The duplicate this guard prevents already happened; only a factura rectificativa clears it. Adopting one
+            // still stops a third.
             logger.LogWarning(
                 "Holded holds {Count} documents tagged {Tag}: {Ids}. Adopting an approved one if there is any.",
                 found.Count, tag, string.Join(", ", found.Select(f => $"{f.Kind}:{f.Document.Id}")));
@@ -252,9 +228,7 @@ internal sealed class StoreInvoiceIssuer(
         return approved.Document is not null ? approved : found[0];
     }
 
-    /// <summary>Writes the <c>store_invoices</c> row and the frozen order in one save, then audits.
-    /// Shared by first issuance and by adoption of an already-issued document — the two differ only
-    /// in the request payload they can honestly record and in what the audit line says.</summary>
+    /// <summary>Shared by first issuance and adoption, which differ only in the request payload they can honestly record and the audit line.</summary>
     private async Task CommitInvoiceAsync(
         Order order,
         HoldedSalesDocumentDto document,
@@ -287,9 +261,8 @@ internal sealed class StoreInvoiceIssuer(
     }
 
     /// <summary>
-    /// One document line per order line, plus a separate VAT-free line for each line that carries
-    /// a deposit. Refundable deposits are a liability, not income, so they post tax-0 to the
-    /// configured fianzas account instead of the item's revenue account.
+    /// Refundable deposits are a liability, not income, so each gets its own tax-0 line to the fianzas account instead of
+    /// the item's revenue account.
     /// </summary>
     private async Task<(IReadOnlyList<HoldedSalesDocumentLineInput> Lines, string? Refusal)> BuildInvoiceLinesAsync(
         Order order,
@@ -317,9 +290,8 @@ internal sealed class StoreInvoiceIssuer(
                 + "configured (Store:DepositLiabilityAccountNum). Deposits are not income and "
                 + "must not be booked to a revenue account.");
 
-        // Holded's items[].account is the chart account's *id*, not its 8-digit number, so the
-        // numbers StoreAdmin holds are resolved against the live chart on every issue — a fresh
-        // read also picks up an account Acountax created minutes ago.
+        // items[].account is the chart account's id, not its 8-digit number, so resolve against the live chart on every
+        // issue; that also picks up an account Acountax created minutes ago.
         var wanted = order.Lines
             .Select(l => products[l.ProductId].HoldedRevenueAccountNum!.Value)
             .Concat(needsDepositAccount ? [depositAccountNum!.Value] : Array.Empty<int>())
@@ -362,18 +334,13 @@ internal sealed class StoreInvoiceIssuer(
         return (lines, null);
     }
 
-    /// <summary>
-    /// Holded's sales tax key for a VAT rate: 21 → <c>s_iva_21</c>, 7.5 → <c>s_iva_75</c>,
-    /// 0 → <c>s_iva_0</c> (the decimal separator is dropped, not rounded away).
-    /// </summary>
+    /// <summary>21 → <c>s_iva_21</c>, 7.5 → <c>s_iva_75</c>: the decimal separator is dropped, not rounded away.</summary>
     private static string SalesTaxKey(decimal vatRatePercent) =>
         "s_iva_" + vatRatePercent.ToString("0.##", CultureInfo.InvariantCulture).Replace(".", "", StringComparison.Ordinal);
 
     /// <summary>
-    /// The identified counterparty a full factura needs, or null when the order does not carry
-    /// enough to identify one. Spanish law wants name + address + a tax id; a foreign camp's
-    /// home-country tax id or passport number stands in for a NIF, so the field is only ever
-    /// checked for presence.
+    /// Null when the order can't identify a counterparty for a full factura (name, address, tax id). A foreign camp's tax
+    /// id or passport stands in for a NIF, so the field is only checked for presence.
     /// </summary>
     private static InvoiceCounterparty? ResolveInvoiceCounterparty(Order order) =>
         string.IsNullOrWhiteSpace(order.CounterpartyName)

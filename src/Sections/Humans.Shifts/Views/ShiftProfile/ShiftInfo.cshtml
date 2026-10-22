@@ -240,7 +240,6 @@
             cb.checked = !cb.checked;
             chip.classList.toggle('selected', cb.checked);
             chip.setAttribute('aria-checked', cb.checked ? 'true' : 'false');
-            // Show/hide "Other" text input if this chip is the Other option
             var otherInput = chip.closest('.step-pane')?.querySelector('.other-text-input');
             if (otherInput && cb.value === 'Other') {
                 otherInput.style.display = cb.checked ? 'block' : 'none';

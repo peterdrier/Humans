@@ -5,34 +5,21 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Humans.Base.Hosting;
 
-/// <summary>
-/// Migrates a per-section DbContext with real-up baseline detection
-/// (nobodies-collective/Humans#858).
-/// </summary>
+/// <summary>Migrates a per-section DbContext with real-up baseline detection.</summary>
 /// <remarks>
 /// <para>
-/// Each section context carries a baseline migration containing the full
-/// <c>CreateTable</c>/index/FK operations for its tables. On databases
-/// provisioned by the historical root (<c>HumansDbContext</c>) chain — deleted
-/// at #858 peel 15 — the section's tables already exist by the time the section
-/// context migrates, so executing the baseline would fail. This runner decides
-/// per context:
+/// Each section context's baseline migration creates all its tables. On a database the deleted root
+/// <c>HumansDbContext</c> chain provisioned they already exist, so executing the baseline would fail. Per context:
 /// </para>
 /// <list type="bullet">
-/// <item>Section history table has rows → plain <c>MigrateAsync</c> (no-op or
-/// pending post-baseline migrations).</item>
-/// <item>History empty and the sentinel table exists → record the baseline as
-/// applied WITHOUT executing it (using EF's own <see cref="IHistoryRepository"/>
-/// script generation — the same mechanism <c>MigrateAsync</c> uses to record
-/// migrations), then <c>MigrateAsync</c> for anything after the baseline.</item>
-/// <item>History empty and the sentinel table absent (genuinely fresh database —
-/// with the root chain deleted, every fresh database is provisioned this way) →
-/// plain <c>MigrateAsync</c>, which executes the baseline for real.</item>
+/// <item>History has rows → plain <c>MigrateAsync</c>.</item>
+/// <item>History empty, sentinel table exists → record the baseline as applied WITHOUT executing it (through EF's own
+/// <see cref="IHistoryRepository"/> script), then <c>MigrateAsync</c> for anything after it.</item>
+/// <item>History empty, sentinel absent (a fresh database) → plain <c>MigrateAsync</c>, executing the baseline.</item>
 /// </list>
 /// <para>
-/// Idempotent by construction: once the baseline history row exists the first
-/// branch is taken forever. Only the baseline (the earliest migration of the
-/// section context) is ever fake-applied; later section migrations always run.
+/// Idempotent: once the baseline row exists the first branch is taken forever. Only the baseline is ever
+/// fake-applied.
 /// </para>
 /// </remarks>
 internal static class SectionMigrationRunner
@@ -46,9 +33,8 @@ internal static class SectionMigrationRunner
     /// <param name="logger">Records migration decisions and failures.</param>
     /// <param name="ct">Cancels migration work.</param>
     /// <param name="beforeSchemaChange">
-    /// Invoked immediately before anything writes to the schema — including the baseline
-    /// bookkeeping, which creates the section's history table (nobodies-collective/Humans#845).
-    /// Idempotent across contexts: one snapshot per boot, not one per section.
+    /// Invoked immediately before anything writes to the schema, including the baseline bookkeeping that creates the
+    /// history table. Idempotent across contexts: one snapshot per boot.
     /// </param>
     public static async Task MigrateAsync(
         DbContext db,
@@ -63,12 +49,9 @@ internal static class SectionMigrationRunner
             var historyTable = SectionMigrationsHistory.TableFor(db.GetType());
             var historyTableExists = await TableExistsAsync(db, historyTable, ct);
 
-            // Reads through GetAppliedMigrationsAsync/GetPendingMigrationsAsync issue a SELECT
-            // against the history table and log it as an Error if the table doesn't exist yet
-            // (EF swallows the failure and reports "nothing applied", but the log noise reads
-            // like an outage on every first boot after a section is peeled - #1022). The
-            // information_schema probe above is the only way to ask "does it exist" without
-            // that failing SELECT, so skip the EF reads entirely when it says no.
+            // EF's applied/pending reads SELECT from the history table and log an Error when it doesn't exist yet,
+            // which reads like an outage on a new section's first boot. The information_schema probe above asks
+            // without that failing SELECT, so skip the EF reads when it says no.
             var applied = historyTableExists
                 ? (await db.Database.GetAppliedMigrationsAsync(ct)).ToList()
                 : [];
@@ -89,8 +72,7 @@ internal static class SectionMigrationRunner
                 ? (await db.Database.GetPendingMigrationsAsync(ct)).ToList()
                 : db.Database.GetMigrations().ToList();
 
-            // Warning level so the per-boot migration breadcrumb survives production's
-            // default log filtering (nobodies-collective/Humans#960).
+            // Warning level so the per-boot migration breadcrumb survives production's default log filtering.
             logger.LogWarning(
                 "{Context}: {AppliedCount} applied migrations, {PendingCount} pending",
                 contextName, applied.Count, pending.Count);
@@ -121,10 +103,8 @@ internal static class SectionMigrationRunner
     }
 
     /// <summary>
-    /// Whether <paramref name="tableName"/> exists in the <c>public</c> schema. Used both for
-    /// the section's sentinel table (baseline-branch detection) and its own migrations-history
-    /// table (nobodies-collective/Humans#1022) - an information_schema probe, never the EF
-    /// history read itself, which logs an Error if the table is missing.
+    /// Whether <paramref name="tableName"/> exists in the <c>public</c> schema: an information_schema probe, never the
+    /// EF history read, which logs an Error when the table is missing.
     /// </summary>
     internal static async Task<bool> TableExistsAsync(DbContext db, string tableName, CancellationToken ct)
     {

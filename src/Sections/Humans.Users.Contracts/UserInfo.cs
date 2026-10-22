@@ -2,7 +2,6 @@ using NodaTime;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>Compact projection of <see cref="UserEmail"/> carried inside <see cref="UserInfo"/>.</summary>
 public sealed record UserEmailInfo(
     Guid Id,
     string Email,
@@ -19,7 +18,6 @@ public sealed record UserEmailInfo(
     [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
     LegacyGoogleEmailStatus GoogleEmailStatus);
 
-/// <summary>Compact projection of <c>ContactField</c> carried inside <see cref="ProfileInfo"/>.</summary>
 public sealed record ContactFieldInfo(
     Guid Id,
     ContactFieldType FieldType,
@@ -28,21 +26,18 @@ public sealed record ContactFieldInfo(
     ContactFieldVisibility Visibility,
     int DisplayOrder);
 
-/// <summary>Compact projection of <c>ProfileLanguage</c>.</summary>
 public sealed record ProfileLanguageInfo(
     Guid Id,
     string LanguageCode,
     LanguageProficiency Proficiency);
 
-/// <summary>Compact projection of <c>VolunteerHistoryEntry</c>.</summary>
 public sealed record VolunteerHistoryInfo(
     Guid Id,
     LocalDate Date,
     string EventName,
     string? Description);
 
-/// <summary>Compact projection of the frozen legacy <c>communication_preferences</c> row
-/// (Users decomposition commit 14; the live record is Email's <c>email_communication_preferences</c>).</summary>
+/// <summary>The frozen legacy <c>communication_preferences</c> row; the live one is Email's.</summary>
 public sealed record LegacyCommunicationPreferenceInfo(
     Guid Id,
     LegacyMessageCategory Category,
@@ -52,8 +47,7 @@ public sealed record LegacyCommunicationPreferenceInfo(
     string UpdateSource,
     Instant? SubscribedAt);
 
-/// <summary>Compact projection of the frozen legacy <see cref="EventParticipation"/> row
-/// (Users decomposition commit 13; the live record is Tickets' <c>EventParticipationInfo</c>).</summary>
+/// <summary>The frozen legacy row; the live one is Tickets' <c>EventParticipationInfo</c>.</summary>
 public sealed record LegacyEventParticipationInfo(
     Guid Id,
     int Year,
@@ -62,15 +56,11 @@ public sealed record LegacyEventParticipationInfo(
     Instant? DeclaredAt,
     Instant? CheckedInAt);
 
-/// <summary>Compact projection of an <c>AspNetUserLogins</c> row.</summary>
 public sealed record UserExternalLoginInfo(
     string Provider,
     string ProviderKey);
 
-/// <summary>
-/// Immutable projection of <c>Profile</c> carried inside <see cref="UserInfo"/>. Picture bytes excluded
-/// (served via ProfileViewController.Picture); only birthday day+month carried (no year).
-/// </summary>
+/// <summary>No picture bytes, and the birthday carries day and month only (no year).</summary>
 public sealed record ProfileInfo(
     Guid Id,
     string BurnerName,
@@ -98,8 +88,7 @@ public sealed record ProfileInfo(
     IReadOnlyList<string> Intolerances,
     [property: Obsolete("Moved to Cantina's cantina_dietary_profiles (Users decomposition commit 10). Read ICantinaService; the one reader left is Cantina's legacy fallback and the cantina.profile-dietary copy.", DiagnosticId = "HUM_PROFILE_DIETARY")]
     string? IntoleranceOtherText,
-    // GDPR Art. 9 — present on the cached read-model, but every render/serialize
-    // surface MUST gate this behind the MedicalDataViewer policy. Never expose unscoped.
+    // GDPR Art. 9: every render or serialize surface must gate this behind the MedicalDataViewer policy.
     string? MedicalConditions,
     bool HasCustomPicture,
     string? ProfilePictureContentType,
@@ -133,10 +122,9 @@ public sealed record ProfileInfo(
     IReadOnlyList<ProfileLanguageInfo> Languages,
     IReadOnlyList<VolunteerHistoryInfo> VolunteerHistory)
 {
-    /// <summary>Full name (FirstName + " " + LastName, trimmed).</summary>
     public string FullName => $"{FirstName} {LastName}".Trim();
 
-    /// <summary>Email greeting name: BurnerName > FirstName > "there".</summary>
+    /// <summary>BurnerName, else FirstName, else "there".</summary>
     public string EmailGreetingName =>
         !string.IsNullOrWhiteSpace(BurnerName) ? BurnerName :
         !string.IsNullOrWhiteSpace(FirstName) ? FirstName : "there";
@@ -144,10 +132,7 @@ public sealed record ProfileInfo(
 }
 
 
-/// <summary>
-/// Canonical "everything-about-a-person" cached read-model spanning User + Profile sections — see #703.
-/// Built by <see cref="Create"/> from the contributing tables. Sensitive fields ride along; visibility filtering is view-layer.
-/// </summary>
+/// <summary>Everything about a person, cached. Sensitive fields ride along: visibility filtering is the view's job.</summary>
 public sealed record UserInfo(
     Guid Id,
     string BurnerName,
@@ -172,51 +157,32 @@ public sealed record UserInfo(
     [property: Obsolete("Moved to Email's email_communication_preferences (Users decomposition commit 14). Read ICommunicationPreferenceService; the one reader left is Email's legacy fallback and the email.communication-preferences copy.", DiagnosticId = "HUM_USER_COMMPREFS")]
     IReadOnlyList<LegacyCommunicationPreferenceInfo> CommunicationPreferences)
 {
-    /// <summary>
-    /// Stored lifecycle/access state (the <c>users.State</c> column) — the single source of truth
-    /// for access; <see cref="UserState.Active"/> is the only state with full app access.
-    /// </summary>
+    /// <summary>The single source of truth for access; only <see cref="UserState.Active"/> has full access.</summary>
     public UserState State { get; init; }
 
     /// <summary>
-    /// Every id whose <see cref="MergedToUserId"/> chain passes through this row,
-    /// transitively, sorted by id. In an A→B→C merge chain, C carries <c>[A, B]</c>.
-    /// Empty for a row nothing was merged into.
-    /// <para>
-    /// This is the single answer to "which archived accounts are this human" — the
-    /// rows AuditLog, Consent, Budget, Expenses and Governance's assembly-vote rosters
-    /// deliberately keep keyed to the archived id. Callers union by these ids; nobody
-    /// walks a chain.
-    /// </para>
-    /// <para>
-    /// Stamped by the Users caching decorator, the only thing that sees the whole graph.
-    /// A record built straight from one row (<see cref="Create"/>) always has <c>[]</c>.
-    /// </para>
+    /// Every id whose merge chain passes through this row, transitively, sorted: in A→B→C, C carries <c>[A, B]</c>.
+    /// Callers union by these ids; nobody walks a chain. Stamped by the caching decorator, the only thing that sees
+    /// the whole graph, so a record built by <see cref="Create"/> always has <c>[]</c>.
     /// </summary>
     public IReadOnlyList<Guid> MergedUserIds { get; init; } = [];
 
     /// <summary>
-    /// Every id this human has held: <see cref="Id"/> first, then <see cref="MergedUserIds"/>.
-    /// The list a per-user read of an append-only table queries by (audit rows, consent
-    /// records, roster rows and ballots stay keyed to the archived id on purpose). Seeded from
-    /// this record's own id, never from the id the caller asked with: the cross-section reads
-    /// resolve a tombstone forward, so the id asked with may be one of the archived ones and
-    /// the survivor's own rows would otherwise be the ones left out.
+    /// <see cref="Id"/> first, then <see cref="MergedUserIds"/>: what a per-user read of an append-only table queries
+    /// by. Seeded from this record's id, never the id asked with, which may be an archived one.
     /// </summary>
     public IReadOnlyList<Guid> AllUserIds => MergedUserIds.Count == 0 ? [Id] : [Id, .. MergedUserIds];
 
     /// <summary>
-    /// Canonical profile picture URL. Custom upload served from the file share via
-    /// <c>/Profile/Picture?id={ProfileId}&amp;v={ticks}</c> when present, otherwise the
-    /// legacy <see cref="User.ProfilePictureUrl"/> column as a fallback. This is the ONLY
-    /// place profile picture URLs come from across the application.
+    /// The only source of picture URLs: the custom upload when present, else the legacy
+    /// <see cref="User.ProfilePictureUrl"/>.
     /// </summary>
     public string? ProfilePictureUrl =>
         Profile is { HasCustomPicture: true }
             ? $"/Profile/Picture?id={Profile.Id}&v={Profile.UpdatedAt.ToUnixTimeTicks()}"
             : FallbackPictureUrl;
 
-    /// <summary>Effective email — first verified UserEmail (primary-preferred), falling back to Identity column. Mirrors <see cref="User.Email"/>.</summary>
+    /// <summary>Mirrors <see cref="User.Email"/>.</summary>
     public string? Email
     {
         get
@@ -232,78 +198,58 @@ public sealed record UserInfo(
         }
     }
 
-    /// <summary>Any UserEmails row verified — mirrors <see cref="User.EmailConfirmed"/>.</summary>
     public bool EmailConfirmed => UserEmails.Any(e => e.IsVerified);
 
-    /// <summary>Deletion request pending — mirrors <see cref="User.IsDeletionPending"/>.</summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
-    /// <summary>Earliest deletion eligibility: the grace deadline, extended by any later ticket hold.</summary>
+    /// <summary>The grace deadline, extended by any later ticket hold.</summary>
     public Instant? EffectiveDeletionDate =>
         DeletionScheduledFor is { } scheduled && DeletionEligibleAfter is { } hold && hold > scheduled
             ? hold : DeletionScheduledFor;
 
-    /// <summary>Account was merged into another account — the row is a merge-source tombstone.</summary>
     public bool IsMerged => MergedAt is not null;
 
-    /// <summary>
-    /// Burner name written by <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
-    /// for GDPR-deleted users. Erasure recognition uses the minted email, never this name.
-    /// </summary>
     public const string GdprAnonymizedBurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
 
     /// <summary>
-    /// True when the user row is a tombstone — a merge-source
-    /// (<see cref="MergedAt"/> set), a GDPR-anonymized record (minted tombstone email),
-    /// or a legacy tombstone whose <see cref="Email"/> still ends in the
-    /// sentinel <c>.local</c> suffix (pre-<c>MergedAt</c>-column merges and
-    /// historic purges wrote <c>@merged.local</c> / <c>@deleted.local</c>
-    /// addresses — those rows survive in production with neither
-    /// <see cref="MergedAt"/> nor the <see cref="GdprAnonymizedBurnerName"/>
-    /// marker set).
-    /// Callers that materialize new per-user rows (Stub Profile, etc.) MUST
-    /// short-circuit on this so they don't resurrect the tombstone.
+    /// A merge source, a GDPR-erased row, or a legacy tombstone whose address still ends in <c>.local</c> (older
+    /// merges and purges). Callers that create per-user rows (Stub Profile and the like) must short-circuit on it so
+    /// they don't resurrect the tombstone.
     /// </summary>
     public bool IsTombstone =>
         MergedAt is not null
         || IsGdprAnonymized
         || (Email is { } email && email.EndsWith(".local", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>First verified primary email; null when none loaded.</summary>
     public string? PrimaryEmail => UserEmails
         .Where(e => e.IsPrimary && e.IsVerified)
         .Select(e => e.Email)
         .FirstOrDefault();
 
-    /// <summary>All verified addresses, primary first.</summary>
+    /// <summary>Primary first.</summary>
     public IReadOnlyList<string> AllVerifiedEmails => UserEmails
         .Where(e => e.IsVerified)
         .OrderByDescending(e => e.IsPrimary)
         .Select(e => e.Email)
         .ToList();
 
-    /// <summary>Stub: hasn't entered their name yet (<see cref="UserState.Bare"/>) — no profile row
-    /// or blank required names. Callers writing consents must block on this.</summary>
+    /// <summary>No profile or blank required names. Callers writing consents must block on it.</summary>
     public bool IsStub => State == UserState.Bare;
 
-    /// <summary>Has a profile, is not rejected, and is not a merge/deletion tombstone (a tombstone
-    /// keeps its anonymized Profile row, so that check alone isn't enough — peterdrier/Humans#1707).
-    /// Does NOT consult the Consent Coordinator review (Consent's annotation, not a gate).
-    /// Reads rejection off the stored <see cref="State"/>.</summary>
+    /// <summary>
+    /// Excludes tombstones explicitly: a tombstone keeps its anonymized profile, so "has a profile" isn't enough.
+    /// Doesn't consult the Consent Coordinator review, which is an annotation, not a gate.
+    /// </summary>
     public bool IsActive =>
         Profile is not null && State != UserState.Rejected && !IsTombstone;
 
-    /// <summary>Canonical "suspended" predicate — see memory/code/no-issuspended.md. Derives from the
-    /// stored <see cref="State"/>, which is where suspension itself lives.</summary>
+    /// <summary>The canonical suspended predicate (memory/code/no-issuspended.md).</summary>
     public bool IsSuspended =>
         State is UserState.Suspended or UserState.AdminSuspended;
 
     /// <summary>
-    /// The signup was rejected: the stored <see cref="State"/> is <see cref="UserState.Rejected"/>,
-    /// or (legacy arm, until the <c>consent.profile-review</c> copy is done in production) the
-    /// frozen profile still carries a rejection time. Exact for live accounts; a merged or deleted
-    /// tombstone reads its final state instead — Consent's review (<c>IConsentService</c>) keeps the
-    /// rejection record itself.
+    /// Stored <see cref="UserState.Rejected"/>, or (until the <c>consent.profile-review</c> copy is done) a legacy
+    /// profile rejection time. A tombstone reads its final state instead; Consent keeps the rejection record.
     /// </summary>
     public bool IsRejected =>
         State == UserState.Rejected
@@ -311,18 +257,14 @@ public sealed record UserInfo(
         || Profile?.RejectedAt is not null;
 #pragma warning restore HUM_PROFILE_REVIEW
 
-    /// <summary>
-    /// Has a profile and is not <see cref="IsRejected"/>: the population person search
-    /// (<see cref="IUserService.SearchUsersAsync"/>) and the single-person lookups resolve.
-    /// </summary>
+    /// <summary>The population person search and the single-person lookups resolve.</summary>
     public bool IsSearchable => Profile is not null && !IsRejected;
 
-    /// <summary>Canonical "has profile" predicate.</summary>
     public bool HasProfile => Profile is not null;
 
     /// <summary>
-    /// Has profile with non-blank BurnerName + FirstName + LastName. Gates Stub→Active, CC review queue, consents, transfers, signup.
-    /// Ignores State so legacy null-State rows behave like Active rows.
+    /// Non-blank BurnerName, FirstName and LastName. Gates Stub→Active, the review queue, consents, transfers and
+    /// signup. Ignores State, so legacy null-State rows behave like Active ones.
     /// </summary>
     public bool HasRequiredNameFields =>
         Profile is not null
@@ -331,13 +273,8 @@ public sealed record UserInfo(
         && !string.IsNullOrWhiteSpace(Profile.LastName);
 
     /// <summary>
-    /// Builds <see cref="UserInfo"/> from the projections of the contributing tables;
-    /// snapshotting + ordering happen here so the cached payload is immutable. The six
-    /// Profile-side entities are internal to <c>Humans.Users</c>, so the entity-taking factory is
-    /// <c>Humans.Users.Services.UserInfoFactory</c> and this overload names none of them — it
-    /// stays public because thirty section test projects build a <see cref="UserInfo"/> through
-    /// it and internalising it would trade six <c>InternalsVisibleTo</c> grants for thirty
-    /// (nobodies-collective/Humans#1051).
+    /// Snapshots and orders here, so the cached payload is immutable. Takes projections because the Profile-side
+    /// entities are internal to <c>Humans.Users</c>; public because the section test projects build UserInfo with it.
     /// </summary>
     public static UserInfo Create(
         User user,
@@ -371,7 +308,7 @@ public sealed record UserInfo(
             .ToList();
 
         var isGdprAnonymized = IsGdprTombstone(user);
-        // Erasures between the tombstone email and #1098 minted the email but left BurnerName blank.
+        // Some erased rows carry the minted email with a blank BurnerName.
         var burnerName = !string.IsNullOrWhiteSpace(user.BurnerName) ? user.BurnerName
             : isGdprAnonymized ? GdprAnonymizedBurnerName
             : string.Empty;
@@ -405,19 +342,9 @@ public sealed record UserInfo(
     }
 
     /// <summary>
-    /// A row erased via GDPR Article 17. Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c>
-    /// address <c>IUserRepository.ApplyExpiredDeletionAnonymizationAsync</c>
-    /// mints, never on a name a member can type (nobodies-collective/Humans#1742: a member whose
-    /// burner name is literally "Deleted User" was read as erased, which made
-    /// <see cref="IsTombstone"/> true and dropped them out of every listing and search).
-    /// Reads <see cref="User.IdentityEmailColumn"/> rather than <see cref="User.Email"/>: erasure
-    /// removes the <c>UserEmail</c> rows first, so the raw Identity column is the only place the
-    /// tombstone survives. Null there means a live user whose address lives only in
-    /// <c>UserEmail</c> rows, never an erased one.
-    ///
-    /// Deliberate twin of <c>Humans.Users.Domain.UserStateEvaluator.IsGdprTombstoned</c>: that
-    /// type is internal to the section and this project may not grow public surface (see the
-    /// csproj), so the rule is stated twice rather than exported. Change both together.
+    /// Keyed on the <c>deleted-&lt;id&gt;@deleted.local</c> address erasure mints, never on a name a member can type.
+    /// Reads <see cref="User.IdentityEmailColumn"/>: erasure removes the <c>UserEmail</c> rows first. Twin of
+    /// <c>UserStateEvaluator.IsGdprTombstoned</c>, which is internal to the section: change both together.
     /// </summary>
     private static bool IsGdprTombstone(User user) =>
         user.IdentityEmailColumn is { } email

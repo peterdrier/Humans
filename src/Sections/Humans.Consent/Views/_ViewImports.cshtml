@@ -1,12 +1,7 @@
 ﻿@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error.
-   None of these views carries a `<vc:` element, so no view component had to move; the
-   `_TabbedMarkdownDocuments` partial they render lives in Humans.UI and resolves by path
-   across application parts. Guarded by ConsentPageRenderTests (step 12).
-
-   Two localizers by design: the section owns
-   its Consent_* keys, and `Nav_Consents` stays in
-   SharedResource because Humans.UI's login partial renders it too. *@
+   Two localizers: the section's Consent_* keys, and Nav_Consents in SharedResource because Humans.UI's login
+   partial renders it too. *@
 @using Humans.Base.Extensions
 @using Humans.Consent
 @using Humans.Consent.Contracts

@@ -88,8 +88,6 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         return version;
     }
 
-    // ── Reads ────────────────────────────────────────────────────────────────
-
     [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenMissing()
     {
@@ -162,8 +160,6 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         result.LegalDocument.Should().NotBeNull();
         result.LegalDocument.Name.Should().Be("Privacy");
     }
-
-    // ── Writes ───────────────────────────────────────────────────────────────
 
     [HumansFact(Timeout = 10000)]
     public async Task AddAsync_PersistsNewDocument()

@@ -2,28 +2,19 @@ using NodaTime;
 
 namespace Humans.Workgroups.Domain;
 
-/// <summary>
-/// One entry in the register of association-level working groups the Board resolution
-/// obliges the Secretary to keep. Intentionally time-bound: a recurring subject is a
-/// new instance per year ("Finance 2027"), never a long-lived group.
-/// </summary>
+/// <summary>Time-bound: a recurring subject is a new instance per year ("Finance 2027"), never a long-lived group.</summary>
 internal sealed class Workgroup
 {
     public Guid Id { get; init; }
 
-    /// <summary>Register name; year instances carry the year in the name.</summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Generated from <see cref="Name"/>, admin-editable. The index is plain: uniqueness is
-    /// the service's reservation loop, not a constraint.
-    /// </summary>
+    /// <summary>The index is plain: uniqueness is the service's reservation loop, not a constraint.</summary>
     public string Slug { get; set; } = string.Empty;
 
     /// <summary>Markdown, sanitized on render.</summary>
     public string Purpose { get; set; } = string.Empty;
 
-    /// <summary>One line: the artefact the group will deliver.</summary>
     public string Deliverable { get; set; } = string.Empty;
 
     public WorkgroupDeliverableKind DeliverableKind { get; set; }
@@ -35,33 +26,28 @@ internal sealed class Workgroup
 
     public WorkgroupStatus Status { get; set; }
 
-    /// <summary>Null unless <see cref="Status"/> is <see cref="WorkgroupStatus.Dormant"/>.</summary>
     public WorkgroupDormantReason? DormantReason { get; set; }
 
-    /// <summary>Google file id of the group's Drive subfolder; null until Active.</summary>
+    /// <summary>Null until Active.</summary>
     public string? DriveFolderId { get; set; }
 
     public string? DiscordChannelUrl { get; set; }
 
-    /// <summary>Roster, documents and history are visible to members and Board/Admin only.
-    /// Nullable so the column adds no physical default; null reads as not sensitive.</summary>
+    /// <summary>Nullable so the column adds no physical default; null reads as not sensitive.</summary>
     public bool? IsSensitive { get; set; }
 
-    /// <summary>Allocated budget in EUR; null means the group has no budget. Shown on the register
-    /// to association members. Finance and Expenses never read it.</summary>
+    /// <summary>EUR; null means no budget. Finance and Expenses never read it.</summary>
     public decimal? BudgetAmount { get; set; }
 
-    /// <summary>The Holded expense account the group's spending books to — created or linked
-    /// through Finance. Same posture as <see cref="DriveFolderId"/>: an opaque external reference
-    /// with no FK. Kept when the budget is cleared; Holded accounts are never deleted.</summary>
+    /// <summary>Opaque external reference, no FK. Kept when the budget is cleared: Holded accounts are never deleted.</summary>
     public int? HoldedAccountNumber { get; set; }
 
     public string? HoldedAccountId { get; set; }
 
-    /// <summary>Refusal or withdrawal reasons; required for Refused, Withdrawn and a Quiet close.</summary>
+    /// <summary>Required for Refused, Withdrawn and a Quiet close.</summary>
     public string? Reasons { get; set; }
 
-    /// <summary>Who applied. Bare cross-section reference — no FK; nulled on erasure.</summary>
+    /// <summary>Nulled on erasure.</summary>
     public Guid? AppliedByUserId { get; set; }
 
     public Instant AppliedAt { get; set; }
@@ -73,8 +59,6 @@ internal sealed class Workgroup
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }
-
-    // Navigation properties (intra-section).
 
     public ICollection<WorkgroupMember> Members { get; set; } = new List<WorkgroupMember>();
 

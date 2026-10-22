@@ -3,9 +3,6 @@ using NodaTime;
 
 namespace Humans.Users.Domain;
 
-/// <summary>
-/// A volunteer history entry documenting a member's involvement in events, roles, or camps.
-/// </summary>
 internal sealed class VolunteerHistoryEntry
 {
     public Guid Id { get; init; }
@@ -14,10 +11,7 @@ internal sealed class VolunteerHistoryEntry
 
     public Profile Profile { get; set; } = null!;
 
-    /// <summary>
-    /// Date of the event/involvement. Users can enter full date or just use first of month.
-    /// Displayed as "Mar'25" format.
-    /// </summary>
+    /// <summary>Full date, or the first of the month; displayed as "Mar'25".</summary>
     public LocalDate Date { get; set; }
 
     public string EventName { get; set; } = string.Empty;

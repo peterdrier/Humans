@@ -5,22 +5,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// One rota-search result row, keyed by rota id. Callers hold the id their own search
-/// produced; Shifts owns what a rota row looks like, including the owning
-/// team's name and the department-filtered link the row points at.
+/// Public because Razor discovery filters on public: an internal view component ships <c>&lt;vc:…&gt;</c> as inert
+/// markup on a green build. Both reads are cache-served.
 /// </summary>
-/// <remarks>
-/// Public because Razor's compile-time discovery filters on public — an internal
-/// view component ships <c>&lt;vc:…&gt;</c> as inert markup on a green build
-/// (HUM0034's framework exception). Both reads are cache-served, so a bucket of
-/// rows costs no query once warm.
-/// </remarks>
 public sealed class ShiftsSearchResultViewComponent(
     IShiftService shifts,
     ITeamService teams) : ViewComponent
 {
-    /// <summary>Renders the row, or nothing when the rota no longer resolves.</summary>
-    /// <param name="rotaId">The matched rota.</param>
+    /// <summary>Nothing when the rota no longer resolves.</summary>
     public async Task<IViewComponentResult> InvokeAsync(Guid rotaId)
     {
         var ct = HttpContext.RequestAborted;

@@ -16,8 +16,6 @@
     </form>
 </div>
 
-
-@* =====================  By counterparty  ===================== *@
 <section class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">By counterparty</h2>
@@ -57,8 +55,7 @@
                 .Column("Paid (€)", r => IsTeam(r) ? null : r.PaymentsTotalEur, c => c.Currency().End())
                 .Column("Balance (€)", r => IsTeam(r) ? null : r.BalanceEur, c => c.Currency().End())
                 .Id("by-camp-table")
-                // Totals cover camps only: teams never pay (paid/balance hardcoded to 0),
-                // so including their due would make Total due ≠ Paid + Balance.
+                // Camps only: teams never pay, so including their due would break Total due = Paid + Balance.
                 .Footer(new TableFooterCell("Total"),
                         new TableFooterCell($"{camps.Count} camps"),
                         new TableFooterCell(""),
@@ -72,7 +69,6 @@
     </div>
 </section>
 
-@* =====================  By item  ===================== *@
 <section class="card mb-4">
     <div class="card-header"><h2 class="h5 mb-0">By item</h2></div>
     <div class="card-body p-0">
@@ -92,7 +88,6 @@
     </div>
 </section>
 
-@* =====================  Cross-tab  ===================== *@
 <section class="card mb-4">
     <div class="card-header"><h2 class="h5 mb-0">Counterparties × products (qty)</h2></div>
     <div class="card-body p-0 table-responsive">

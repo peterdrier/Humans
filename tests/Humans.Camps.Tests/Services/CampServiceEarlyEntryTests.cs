@@ -56,10 +56,6 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             NullLogger<CampService>.Instance);
     }
 
-    // ==========================================================================
-    // SetCampSeasonEeSlotCountAsync
-    // ==========================================================================
-
     [HumansFact]
     public async Task SetCampSeasonEeSlotCountAsync_SetsValue_AndAuditsChange()
     {
@@ -101,10 +97,6 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
                           && m.Status == CampMemberStatus.Active, Xunit.TestContext.Current.CancellationToken);
         grantedCount.Should().Be(5);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private async Task SeedSettingsAsync()
     {
@@ -196,10 +188,6 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         return member;
     }
-
-    // ==========================================================================
-    // SetEarlyEntryAsync
-    // ==========================================================================
 
     [HumansFact]
     public async Task SetEarlyEntryAsync_Grant_SetsFlagAndAudits()
@@ -327,10 +315,6 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // Removal-path HasEarlyEntry cascade (issue nobodies-collective#490)
-    // ==========================================================================
-
     [HumansFact]
     public async Task RemoveCampMemberAsync_ClearsHasEarlyEntry()
     {
@@ -360,10 +344,8 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
-    // ==========================================================================
-    // Entered-event guard — a grant is consumed once its holder is through the
-    // gate; it can no longer be revoked or freed by removal/leave.
-    // ==========================================================================
+    // A grant is consumed once its holder is through the gate: it can no longer be revoked
+    // or freed by removal/leave.
 
     private void SetUserParticipation(Guid userId, int year, ParticipationStatus status) =>
         _tickets.GetParticipationsAsync(userId, Arg.Any<CancellationToken>())

@@ -7,12 +7,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Calendar.Controllers;
 
-/// <summary>
-/// Anonymous personal iCal feed. The secret is the member's row in this section's
-/// <c>calendar_feed_tokens</c>; uid-in-URL makes validation a keyed load + compare
-/// (no lookup-by-token query). All failure modes are a plain 404 — no oracle
-/// distinguishing unknown user from wrong token.
-/// </summary>
+/// <summary>Every failure is a plain 404: no oracle telling an unknown user from a wrong token.</summary>
 [ApiController]
 [Route("api/ical")]
 internal sealed class ICalFeedApiController(

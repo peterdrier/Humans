@@ -2,48 +2,43 @@ using NodaTime;
 
 namespace Humans.Budget.Domain;
 
-/// <summary>
-/// Projection parameters for a ticketing budget group.
-/// Configures revenue, fee, and VAT projections for ticket sales.
-/// One-to-one with BudgetGroup where IsTicketingGroup = true.
-/// </summary>
+/// <summary>One-to-one with a BudgetGroup whose IsTicketingGroup is true.</summary>
 internal sealed class TicketingProjection
 {
     public Guid Id { get; init; }
     public Guid BudgetGroupId { get; init; }
     public BudgetGroup? BudgetGroup { get; set; }
 
-    /// <summary>First day of ticket sales.</summary>
     public LocalDate? StartDate { get; set; }
 
-    /// <summary>Event date (end of sales period). Projections run from StartDate to EventDate.</summary>
+    /// <summary>End of the sales period.</summary>
     public LocalDate? EventDate { get; set; }
 
-    /// <summary>Pre-sale / first-day burst ticket count.</summary>
+    /// <summary>Pre-sale / first-day burst.</summary>
     public int InitialSalesCount { get; set; }
 
-    /// <summary>Projected tickets sold per day after initial burst.</summary>
+    /// <summary>Tickets per day after the initial burst.</summary>
     public decimal DailySalesRate { get; set; }
 
-    /// <summary>Average ticket price in euros (gross, VAT-inclusive).</summary>
+    /// <summary>Euros, gross (VAT-inclusive).</summary>
     public decimal AverageTicketPrice { get; set; }
 
-    /// <summary>VAT rate percentage on ticket revenue (typically 10% in Spain).</summary>
+    /// <summary>Percent; typically 10 in Spain.</summary>
     public int VatRate { get; set; }
 
-    /// <summary>Stripe percentage fee (e.g. 1.5 for 1.5%).</summary>
+    /// <summary>1.5 means 1.5%.</summary>
     public decimal StripeFeePercent { get; set; }
 
-    /// <summary>Stripe fixed fee per transaction in euros (e.g. 0.25).</summary>
+    /// <summary>Euros per transaction.</summary>
     public decimal StripeFeeFixed { get; set; }
 
-    /// <summary>TicketTailor percentage fee (e.g. 3.0 for 3%).</summary>
+    /// <summary>3.0 means 3%.</summary>
     public decimal TicketTailorFeePercent { get; set; }
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 
-    // Preview and persisted budget lines share the same sales and fee policy.
+    // Previews and persisted lines both use this, so they share one sales and fee policy.
     internal IEnumerable<(LocalDate Start, LocalDate End, int Tickets, decimal Revenue,
         decimal StripeFees, decimal TicketTailorFees)> CalculateWeeks(LocalDate today)
     {

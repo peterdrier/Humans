@@ -11,15 +11,9 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Email.Controllers;
 
 /// <summary>
-/// Facilitated messaging: one member sends another a one-off email relayed through Humans, at
-/// <c>/Email/SendMessage/{id}</c>. A conduit, not a mailbox: nothing is stored beyond the
-/// outbox row and the audit entry, and the recipient's address is never shown to the sender.
+/// A relay, not a mailbox: nothing is stored beyond the outbox row and the audit entry, and the sender never sees the
+/// recipient's address.
 /// </summary>
-/// <remarks>
-/// The link that leads here is Users' profile-card button. Sending on behalf of a team is
-/// Teams' (<c>/Teams/{teamId}/SendMessage/{id}</c>), through the same
-/// <see cref="IEmailMessageFactory.FacilitatedMessage"/> with the team's group as reply-to.
-/// </remarks>
 [Authorize]
 internal sealed class FacilitatedMessageController(
     IUserService userService,
@@ -77,7 +71,6 @@ internal sealed class FacilitatedMessageController(
         if (currentUser.Id == id)
             return RedirectToProfile(id);
 
-        // Bulk-fetch via section service, not cross-domain nav.
         var participants = await UserService.GetUserInfosAsync([id, currentUser.Id], ct);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();

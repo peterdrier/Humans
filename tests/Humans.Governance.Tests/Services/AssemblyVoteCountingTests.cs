@@ -15,10 +15,6 @@ using CountableBallot = AssemblyVoteCounting.CountableBallot;
 /// </summary>
 public sealed class AssemblyVoteCountingTests
 {
-    // ==========================================================================
-    // YesNo — Simple majority
-    // ==========================================================================
-
     [HumansFact]
     public void CountYesNo_Simple_MoreYesThanNo_Passes()
     {
@@ -50,10 +46,6 @@ public sealed class AssemblyVoteCountingTests
         tally.Should().Be(new YesNoTally(2, 2, 1));
         verdict.Should().Be(AssemblyVoteVerdict.Tie);
     }
-
-    // ==========================================================================
-    // YesNo — Two-thirds majority, exact boundaries
-    // ==========================================================================
 
     // xUnit needs the test class and its signatures public, and AssemblyVoteVerdict is
     // internal to the section, so the expectation travels as a bool rather than the enum.
@@ -88,10 +80,6 @@ public sealed class AssemblyVoteCountingTests
         verdict.Should().Be(AssemblyVoteVerdict.Passed);
     }
 
-    // ==========================================================================
-    // Zero ballots
-    // ==========================================================================
-
     [HumansFact]
     public void CountYesNo_ZeroBallots_Simple_IsTie()
     {
@@ -107,10 +95,6 @@ public sealed class AssemblyVoteCountingTests
 
         verdict.Should().Be(AssemblyVoteVerdict.Failed);
     }
-
-    // ==========================================================================
-    // Instant-runoff
-    // ==========================================================================
 
     [HumansFact]
     public void CountInstantRunoff_OutrightMajority_WinsInOneRound()
@@ -223,10 +207,6 @@ public sealed class AssemblyVoteCountingTests
         winner.Should().Be("a");
         verdict.Should().Be(AssemblyVoteVerdict.Passed);
     }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
 
     private const AssemblyBallotChoice Yes = AssemblyBallotChoice.Yes;
     private const AssemblyBallotChoice No = AssemblyBallotChoice.No;

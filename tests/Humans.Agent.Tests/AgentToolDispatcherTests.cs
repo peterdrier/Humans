@@ -380,7 +380,7 @@ public class AgentToolDispatcherTests
     /// <summary>
     /// A miss must name the accepted keys. A bare "Unknown section: X" left the model nothing to
     /// correct with: 20 out-of-whitelist lookups across 9 production conversations, three of which
-    /// ended in an empty reply to the user (nobodies-collective/Humans#949).
+    /// ended in an empty reply to the user.
     /// </summary>
     [HumansFact]
     public async Task FetchSectionGuide_miss_lists_the_valid_section_keys()

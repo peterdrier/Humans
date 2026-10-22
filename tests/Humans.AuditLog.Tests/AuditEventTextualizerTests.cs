@@ -4,12 +4,6 @@ using Humans.AuditLog.Services;
 
 namespace Humans.AuditLog.Tests;
 
-/// <summary>
-/// Tests for the internal <c>AuditEventTextualizer</c> verb-table class.
-/// These exercise the verb-lookup logic in isolation — independent of the
-/// full <see cref="AuditEvent.RenderPlainText"/> rendering pipeline tested
-/// in <see cref="AuditEventTests"/>.
-/// </summary>
 public class AuditEventTextualizerTests
 {
     [HumansFact]

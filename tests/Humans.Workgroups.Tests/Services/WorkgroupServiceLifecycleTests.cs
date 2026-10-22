@@ -202,8 +202,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             stored.Reasons.Should().Be(detail);
     }
 
-    // ── Register: Applied/Referred → Active ─────────────────────────────────
-
     [HumansTheory]
     [InlineData(nameof(WorkgroupStatus.Applied))]
     [InlineData(nameof(WorkgroupStatus.Referred))]
@@ -239,8 +237,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.WrongStatus);
     }
 
-    // ── Refer: Applied only ──────────────────────────────────────────────────
-
     [HumansFact]
     public async Task Refer_FromApplied_Succeeds()
     {
@@ -267,8 +263,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         (await act()).Refusal.Should().NotBeNull();
     }
-
-    // ── Refuse: Applied/Referred, reasons required ──────────────────────────
 
     [HumansTheory]
     [InlineData(nameof(WorkgroupStatus.Applied), "en", "en")]
@@ -324,8 +318,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await act()).Refusal.Should().NotBeNull();
     }
 
-    // ── Withdraw: Active/Dormant, reasons required ──────────────────────────
-
     [HumansTheory]
     [InlineData(nameof(WorkgroupStatus.Active))]
     [InlineData(nameof(WorkgroupStatus.Dormant))]
@@ -370,8 +362,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await act()).Refusal.Should().NotBeNull();
     }
 
-    // ── Close: Active only, reasons required, always Quiet ──────────────────
-
     [HumansFact]
     public async Task Close_FromActive_WithReasons_EndsAsDormantQuiet()
     {
@@ -411,8 +401,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await act()).Refusal.Should().NotBeNull();
     }
 
-    // ── Reactivate: Dormant only ─────────────────────────────────────────────
-
     [HumansFact]
     public async Task Reactivate_FromDormant_RestoresActive()
     {
@@ -442,8 +430,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         (await act()).Refusal.Should().NotBeNull();
     }
-
-    // ── MarkDone: members only, Quiet never allowed ──────────────────────────
 
     [HumansTheory]
     [InlineData(nameof(WorkgroupDormantReason.Delivered))]
@@ -493,8 +479,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await act()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.CommentsStillOpen);
     }
-
-    // ── Dormant freezes every member mutation ────────────────────────────────
 
     [HumansFact]
     public async Task DormantGroup_RejectsAddingALogEntry()
@@ -594,8 +578,6 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await ctx.LogEntries.CountAsync(e => e.WorkgroupId == workgroup.Id && e.Kind == WorkgroupLogKind.Note, Ct))
             .Should().Be(1);
     }
-
-    // ── The Dormant freeze reaches comments too ──────────────────────────────
 
     /// <summary>
     /// Design §5 lists comments among the member mutations a Dormant group rejects. Close and

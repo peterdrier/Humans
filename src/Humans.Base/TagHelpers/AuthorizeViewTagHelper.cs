@@ -66,7 +66,6 @@ public class AuthorizeViewTagHelper(
             return;
         }
 
-        // Remove the attribute from rendered HTML
         output.Attributes.RemoveAll("authorize-policy");
     }
 }

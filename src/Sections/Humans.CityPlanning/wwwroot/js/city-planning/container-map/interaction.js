@@ -99,8 +99,6 @@ export function deactivate() {
     rotationHandle.style.display = 'none';
 }
 
-// ── Move drag ──────────────────────────────────────────────────────────────
-
 function onContainerMouseDown(e) {
     // Only move the active container
     if (!_activeContainer) return;
@@ -182,8 +180,6 @@ async function onMapMouseUp() {
     }
 }
 
-// ── Rotate drag ────────────────────────────────────────────────────────────
-
 function onHandleMouseDown(e) {
     if (!_activeContainer) return;
     _isRotating = true;
@@ -213,8 +209,6 @@ async function onDocumentMouseUp() {
         await _onSave?.(_activeContainer, _activeFeature);
     }
 }
-
-// ── Handle positioning ─────────────────────────────────────────────────────
 
 function repositionHandle() {
     if (!_activeFeature || !_map) return;

@@ -6,124 +6,73 @@ using NodaTime;
 
 namespace Humans.Campaigns.Data;
 
-/// <summary>
-/// Repository for the Campaigns section's tables: <c>campaigns</c>,
-/// <c>campaign_codes</c>, and <c>campaign_grants</c> — the only non-test
-/// reader/writer of these DbSets.
-/// </summary>
 internal interface ICampaignRepository : IRepository
 {
-    /// <summary>
-    /// Loads a campaign with its codes and grants for display. Read-only.
-    /// </summary>
+    /// <summary>With codes and grants. Read-only.</summary>
     Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load a campaign for update via <see cref="UpdateCampaignAsync"/> —
-    /// no navigation. Returns a detached entity.
-    /// </summary>
+    /// <summary>Detached, without navigations, for <see cref="UpdateCampaignAsync"/>.</summary>
     Task<Campaign?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Load a campaign for update with its codes loaded (used during
-    /// activation and code import). Returns a detached entity.
-    /// </summary>
+    /// <summary>Detached, with codes, for <see cref="UpdateCampaignAsync"/>.</summary>
     Task<Campaign?> FindForMutationWithCodesAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>All campaigns with their codes and grants. Unordered — the view sorts.</summary>
+    /// <summary>With codes and grants. Unordered.</summary>
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the summary header (id/title) for every
-    /// Active or Completed campaign. Used together
-    /// with <see cref="GetCodeTrackingGrantRowsAsync"/> to build the Tickets
-    /// admin code-tracking dashboard (so campaigns with zero grants still
-    /// surface a row).
+    /// Active and Completed campaigns, read apart from <see cref="GetCodeTrackingGrantRowsAsync"/> so a campaign with
+    /// no grants still gets a row.
     /// </summary>
     Task<IReadOnlyList<CampaignCodeTrackingSummaryRow>> GetCodeTrackingSummariesAsync(
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns one row per grant (campaign id, code string, redemption,
-    /// email status, user id) for every grant on an Active or Completed
-    /// campaign. Recipient display names are resolved by the caller via
-    /// <c>IUserService.GetUserInfosAsync</c>; grant rows carry only the user id.
-    /// </summary>
+    /// <summary>Every grant on an Active or Completed campaign. Rows carry the user id only.</summary>
     Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Persists a new campaign. Commits immediately.</summary>
     Task AddCampaignAsync(Campaign campaign, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists changes to a mutated campaign (obtained via
-    /// <see cref="FindForMutationAsync"/> or <see cref="FindForMutationWithCodesAsync"/>).
-    /// Commits immediately.
+    /// Takes an entity from <see cref="FindForMutationAsync"/> or <see cref="FindForMutationWithCodesAsync"/>.
     /// </summary>
     Task UpdateCampaignAsync(Campaign campaign, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persists a batch of new campaign codes atomically. No-op when the list
-    /// is empty.
-    /// </summary>
+    /// <summary>Atomic. No-op when the list is empty.</summary>
     Task AddCampaignCodesAsync(IReadOnlyList<CampaignCode> codes, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns available codes (not yet granted) for a campaign, ordered by
-    /// import order, up to <paramref name="limit"/>.
-    /// </summary>
+    /// <summary>Not yet granted, in import order, up to <paramref name="limit"/>.</summary>
     Task<IReadOnlyList<CampaignCode>> GetAvailableCodesAsync(
         Guid campaignId, int limit, CancellationToken ct = default);
 
-    /// <summary>Counts available codes (not yet granted) for a campaign.</summary>
+    /// <summary>Not yet granted.</summary>
     Task<int> CountAvailableCodesAsync(Guid campaignId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns active/completed campaign grants for a user, with campaign
-    /// and code included. Unordered — callers sort. Read-only.
-    /// </summary>
+    /// <summary>With campaign and code. Unordered. Read-only.</summary>
     Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every campaign grant for a user with campaign + code included.
-    /// Read-only.
-    /// </summary>
+    /// <summary>With campaign and code. Read-only.</summary>
     Task<IReadOnlyList<CampaignGrant>> GetAllGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a single grant with the campaign's email template fields and
-    /// the code string, for building a resend request. Read-only — service
-    /// calls <see cref="UpdateGrantStatusAsync"/> for status updates.
-    /// </summary>
+    /// <summary>Read-only; status changes go through <see cref="UpdateGrantStatusAsync"/>.</summary>
     Task<GrantWithSendContext?> GetGrantForResendAsync(Guid grantId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns failed grants for a campaign with the campaign's email template
-    /// fields and code strings. Read-only — service calls <see cref="UpdateGrantStatusAsync"/>.
-    /// </summary>
+    /// <summary>Read-only; status changes go through <see cref="UpdateGrantStatusAsync"/>.</summary>
     Task<IReadOnlyList<GrantWithSendContext>> GetFailedGrantsForRetryAsync(
         Guid campaignId, CancellationToken ct = default);
 
-    /// <summary>Returns the campaign id for a given grant, or null if not found.</summary>
+    /// <summary>Null when the grant does not exist.</summary>
     Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the set of user IDs who have already received a grant in the
-    /// given campaign.
-    /// </summary>
     Task<HashSet<Guid>> GetAlreadyGrantedUserIdsAsync(
         Guid campaignId, CancellationToken ct = default);
 
-    /// <summary>Stages a new grant and commits immediately (per-grant save pattern).</summary>
+    /// <summary>Commits immediately, one grant at a time.</summary>
     Task AddGrantAndSaveAsync(CampaignGrant grant, CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates a grant's email-status and last-email timestamp and commits
-    /// immediately (per-grant save pattern during wave send / retry).
-    /// Returns true if the grant was found and updated, false otherwise.
-    /// </summary>
+    /// <summary>Commits immediately, one grant at a time. False when the grant does not exist.</summary>
     Task<bool> UpdateGrantStatusAsync(
         Guid grantId,
         EmailOutboxStatus? status,
@@ -131,27 +80,21 @@ internal interface ICampaignRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Marks the first unredeemed grant matching a given code string (across
-    /// any Active/Completed campaign; most recent campaign wins). Returns the
-    /// number of grants marked.
+    /// One grant per redemption, so N orders with the same code redeem N grants. Active and Completed campaigns only;
+    /// the newest campaign wins. Returns grants marked.
     /// </summary>
     Task<int> MarkGrantsRedeemedAsync(
         IReadOnlyCollection<DiscountCodeRedemption> redemptions,
         CancellationToken ct = default);
 
-    /// <summary>Returns grants for a user's GDPR export.</summary>
     Task<IReadOnlyList<GrantExportRow>> GetGrantsForUserExportAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>GDPR Art. 17: removes every grant held by the user.</summary>
     Task<int> DeleteGrantsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold: re-FKs <c>campaign_grants.UserId</c> from source to
-    /// target; on a same-campaign collision the target's grant wins and the
-    /// source's is dropped. <paramref name="updatedAt"/> is discarded —
-    /// <c>CampaignGrant</c> has no <c>UpdatedAt</c>; the parameter exists for
-    /// <c>IUserMerge</c> signature parity.
+    /// On a same-campaign collision the target's grant wins and the source's is dropped. <paramref name="updatedAt"/>
+    /// is ignored: grants have no <c>UpdatedAt</c>.
     /// </summary>
     Task ReassignGrantsToUserAsync(
         Guid sourceUserId,
@@ -160,11 +103,7 @@ internal interface ICampaignRepository : IRepository
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// A grant plus the minimum surface the service needs to build a resend
-/// request. The service fetches the recipient user/email via
-/// <c>IUserEmailService</c> composition.
-/// </summary>
+/// <summary>The recipient's address comes from <c>IUserEmailService</c>, not from here.</summary>
 internal sealed record GrantWithSendContext(
     Guid GrantId,
     Guid UserId,
@@ -174,21 +113,12 @@ internal sealed record GrantWithSendContext(
     string CampaignEmailBodyTemplate,
     string? CampaignReplyToAddress);
 
-/// <summary>
-/// Campaign header used by <see cref="ICampaignRepository.GetCodeTrackingSummariesAsync"/>.
-/// Grant totals are aggregated in the service from
-/// <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
-/// </summary>
+/// <summary>Grant totals are aggregated in the service from <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.</summary>
 internal sealed record CampaignCodeTrackingSummaryRow(
     Guid CampaignId,
     string CampaignTitle,
     Instant CreatedAt);
 
-/// <summary>
-/// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
-/// The owning service stitches recipient display names via <c>IUserService</c>
-/// so no cross-domain navigation is read at the repository layer.
-/// </summary>
 internal sealed record CampaignCodeTrackingGrantRow(
     Guid CampaignId,
     string CampaignTitle,
@@ -198,7 +128,6 @@ internal sealed record CampaignCodeTrackingGrantRow(
     Instant? RedeemedAt,
     EmailOutboxStatus? LatestEmailStatus);
 
-/// <summary>Flat row for the GDPR grant export.</summary>
 internal sealed record GrantExportRow(
     string CampaignTitle,
     string Code,

@@ -7,9 +7,7 @@ using Humans.Users.Contracts;
 namespace Humans.Debug.Services;
 
 /// <summary>
-/// 4-dimensional set partition of the UserInfo cache for the admin dashboard's Venn + UpSet
-/// diagrams. Each user is placed into exactly one of 16 disjoint buckets indexed by a
-/// bitmask over four boolean dimensions:
+/// Places each user in exactly one of 16 disjoint buckets, a bitmask over four dimensions:
 /// <list type="bullet">
 ///   <item><description>bit 0 — <c>Profile</c>: <c>UserInfo.HasRequiredNameFields</c></description></item>
 ///   <item><description>bit 1 — <c>Ticket</c>: Ticketed/Attended participation for the active year (<c>ITicketService</c>)</description></item>

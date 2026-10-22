@@ -14,8 +14,8 @@ using NSubstitute;
 namespace Humans.Email.Tests.ViewComponents;
 
 /// <summary>
-/// The "Email Outbox" card Email contributes to the admin human-detail page (Users decomposition
-/// commit 3): who sees it, and what it shows.
+/// The "Email Outbox" card Email contributes to the admin human-detail page: who sees it, and
+/// what it shows.
 /// </summary>
 public sealed class OutboxCardViewComponentTests
 {

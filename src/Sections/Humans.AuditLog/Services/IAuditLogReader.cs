@@ -3,28 +3,15 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Services;
 
-/// <summary>
-/// Section-internal audit reads, implemented by <see cref="AuditLogService"/> and consumed
-/// only by <see cref="AuditViewerService"/>. Kept off <see cref="IAuditLogService"/> so the
-/// cross-section contract stays the write path plus its two justified reads.
-/// </summary>
+/// <summary>Kept off <see cref="IAuditLogService"/> so the cross-section contract stays narrow.</summary>
 internal interface IAuditLogReader : IApplicationService
 {
-    /// <summary>
-    /// Gets filtered audit log entries with pagination.
-    /// </summary>
     Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets audit entries where the user is either the primary or related entity.
-    /// </summary>
     Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
 
-    /// <summary>
-    /// Also on <see cref="IAuditLogService"/> — the viewer needs it and takes one injection
-    /// rather than two. Same method on <see cref="AuditLogService"/>.
-    /// </summary>
+    /// <summary>Repeats <see cref="IAuditLogService"/>'s, so the viewer takes one injection.</summary>
     Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,

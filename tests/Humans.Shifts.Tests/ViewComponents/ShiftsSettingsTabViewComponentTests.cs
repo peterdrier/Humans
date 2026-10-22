@@ -12,7 +12,6 @@ using NSubstitute;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
-/// <summary>The /Settings#shifts tab (peterdrier/Humans#1634).</summary>
 public sealed class ShiftsSettingsTabViewComponentTests
 {
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();

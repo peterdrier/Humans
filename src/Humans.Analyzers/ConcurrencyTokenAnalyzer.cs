@@ -55,9 +55,6 @@ public sealed class ConcurrencyTokenAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        // Section assemblies count as production (nobodies-collective/Humans#866). The
-        // hardcoded four-name set this replaced named none of them, so this rule went
-        // silent inside every section that moved.
         var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
         context.RegisterOperationAction(

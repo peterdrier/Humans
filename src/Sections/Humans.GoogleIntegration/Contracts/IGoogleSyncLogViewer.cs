@@ -4,25 +4,17 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Contracts;
 
-/// <summary>
-/// Read side of the section's Google sync trail, for the pages that render it.
-/// </summary>
-/// <remarks>
-/// Public because <c>GoogleSyncLogViewComponent</c> is — the write path
-/// (<c>IGoogleSyncLogService</c>) stays internal. Same arrangement AuditLog uses for
-/// <c>IAuditViewerService</c>.
-/// </remarks>
 public interface IGoogleSyncLogViewer : IApplicationService
 {
-    /// <summary>Sync trail for one Google resource, newest first.</summary>
+    /// <summary>Newest first.</summary>
     Task<IReadOnlyList<GoogleSyncLogView>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default);
 
-    /// <summary>Sync trail for one human, newest first, following merge tombstones.</summary>
+    /// <summary>Newest first, following merge tombstones.</summary>
     Task<IReadOnlyList<GoogleSyncLogView>> GetForUserAsync(Guid userId, CancellationToken ct = default);
 
 }
 
-/// <summary>Rendered shape of a <c>google_sync_log</c> row, with the resource name resolved.</summary>
+/// <summary>The resource name is resolved.</summary>
 public sealed record GoogleSyncLogView(
     GoogleSyncLogAction Action,
     Instant OccurredAt,
@@ -35,7 +27,6 @@ public sealed record GoogleSyncLogView(
     string? ErrorMessage,
     Guid? UserId = null);
 
-/// <summary>What a Google sync did to a resource.</summary>
 public enum GoogleSyncLogAction
 {
     AccessGranted,

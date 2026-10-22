@@ -7,13 +7,6 @@ using Npgsql;
 
 namespace Humans.Email.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IEmailOutboxRepository"/>. The only
-/// non-test file that touches <c>DbContext.EmailOutboxMessages</c> after the
-/// Email §15 migration lands.
-/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository is
-/// registered as Singleton while <c>EmailDbContext</c> stays Scoped.
-/// </summary>
 internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> factory) : IEmailOutboxRepository
 {
     public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
@@ -131,9 +124,8 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
                 && m.RetryCount < maxRetries
                 && (m.NextRetryAt == null || m.NextRetryAt <= now)
                 && (m.PickedUpAt == null || m.PickedUpAt < staleThreshold))
-            // Time-sensitive mail jumps the queue: a human is blocked on it, and the
-            // bulk mail it would otherwise queue behind drains at 1 send/second
-            // (nobodies-collective/Humans#1122). FIFO still holds within each class.
+            // Time-sensitive mail jumps the queue: a member is waiting on it, and bulk mail drains at
+            // one send per second. FIFO still holds within each class.
             .OrderBy(m => TimeSensitiveTemplates.Names.Contains(m.TemplateName) ? 0 : 1) // arch:db-sort-ok outbox priority claim batch (Take)
             .ThenBy(m => m.CreatedAt) // arch:db-sort-ok outbox FIFO within priority class (Take)
             .Take(batchSize)
@@ -146,9 +138,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         if (messageIds.Count == 0) return;
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Load-mutate-save rather than ExecuteUpdateAsync so unit tests using
-        // the EF InMemory provider still see the update. At our small scale the
-        // batch is at most OutboxBatchSize rows.
+        // Load-mutate-save rather than ExecuteUpdateAsync so the EF InMemory tests see the update.
         var messages = await ctx.EmailOutboxMessages
             .Where(m => messageIds.Contains(m.Id))
             .ToListAsync(ct);
@@ -202,9 +192,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
     public async Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Load-then-RemoveRange so unit tests using the EF InMemory provider
-        // still cover the path. ExecuteDeleteAsync would be cheaper at scale
-        // but is not supported by the InMemory provider.
+        // Load-then-RemoveRange: the EF InMemory provider used by the tests has no ExecuteDeleteAsync.
         var toDelete = await ctx.EmailOutboxMessages
             .Where(m => m.Status == EmailOutboxStatus.Sent && m.SentAt < cutoff)
             .ToListAsync(ct);
@@ -217,7 +205,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
     public async Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Load-then-RemoveRange for the same InMemory-provider reason as above.
+        // Load-then-RemoveRange for the same InMemory reason.
         var toDelete = await ctx.EmailOutboxMessages
             .Where(m => m.UserId == userId)
             .ToListAsync(ct);
@@ -242,10 +230,6 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ==========================================================================
-    // Daily send counts (#1195)
-    // ==========================================================================
 
     public async Task IncrementDailySendCountAsync(
         LocalDate date, string templateName, bool succeeded, CancellationToken ct = default)

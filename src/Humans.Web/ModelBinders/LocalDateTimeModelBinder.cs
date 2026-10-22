@@ -6,14 +6,9 @@ using NodaTime.Text;
 namespace Humans.Web.ModelBinders;
 
 /// <summary>
-/// Binds NodaTime <see cref="LocalDateTime"/> (and <c>LocalDateTime?</c>) from
-/// <c>&lt;input type="datetime-local"&gt;</c> form posts. Browsers post the wire value
-/// WITHOUT seconds (<c>2026-07-14T10:30</c>) unless the user's picker happens to include
-/// them, while NodaTime's built-in <c>TypeConverter</c> (used by MVC's
-/// <c>SimpleTypeModelBinder</c>) requires seconds — so without this binder every
-/// non-empty datetime-local submit fails model binding (nobodies-collective/Humans#932).
-/// Accepts both <c>yyyy-MM-ddTHH:mm</c> and ISO with seconds/fractions.
-/// <c>LocalDate</c> is untouched: its TypeConverter parses <c>yyyy-MM-dd</c> fine.
+/// Binds NodaTime <see cref="LocalDateTime"/> from <c>&lt;input type="datetime-local"&gt;</c>. Browsers post it
+/// without seconds (<c>2026-07-14T10:30</c>), and NodaTime's <c>TypeConverter</c> requires them, so every non-empty
+/// submit would otherwise fail binding. Accepts both, plus fractions.
 /// </summary>
 public sealed class LocalDateTimeModelBinder : IModelBinder
 {

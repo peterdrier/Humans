@@ -5,9 +5,7 @@ namespace Humans.Agent.Services.Stores;
 
 internal sealed class AgentSettingsStore : IAgentSettingsStore
 {
-    // Singleton store; readers (request threads) and the writer (settings save +
-    // warmup hosted service) race on the snapshot reference. Interlocked.Exchange
-    // gives us atomic publish + visibility without a lock.
+    // Request threads read while the settings save and warmup write: Interlocked.Exchange publishes atomically.
     private AgentSettings _current = new()
     {
         Id = 1,

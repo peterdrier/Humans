@@ -10,11 +10,7 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Controllers;
 
-/// <summary>
-/// Member pages: my pre-approvals, and the programs open for applications. Gated by the
-/// section's <see cref="PreapprovalsPolicies.Access"/> policy so a person with nothing here
-/// never sees an empty page.
-/// </summary>
+/// <summary>The policy keeps a person with nothing here from ever seeing an empty page.</summary>
 [Authorize(Policy = PreapprovalsPolicies.Access)]
 [Route("Preapprovals")]
 internal sealed class PreapprovalsController(

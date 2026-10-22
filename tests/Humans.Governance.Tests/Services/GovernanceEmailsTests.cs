@@ -12,12 +12,7 @@ using NodaTime;
 namespace Humans.Governance.Tests.Services;
 
 /// <summary>
-/// The per-template routing policy Governance stamps on its own messages — template name
-/// and opt-out category — plus the gallery-coverage gate: every template
-/// <see cref="GovernanceEmails"/> can build has a sample in
-/// <see cref="GovernanceEmailPreviews"/>, so a new template cannot ship invisible
-/// (peterdrier/Humans#1651). Transport (opt-out, unsubscribe, wrapping, enqueue) stays
-/// Email's, covered there.
+/// Includes the gallery-coverage gate: every template <see cref="GovernanceEmails"/> can build has a sample in <see cref="GovernanceEmailPreviews"/>, so a new template cannot ship invisible.
 /// </summary>
 public sealed class GovernanceEmailsTests
 {

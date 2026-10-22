@@ -63,7 +63,7 @@
             <tbody>
                 @foreach (var row in Model.Rows)
                 {
-                    // BurnerName-resolved name for tooltips/aria — see _VolunteerHeatmap.cshtml.
+                    // For tooltips and aria; see _VolunteerHeatmap.cshtml.
                     var displayName = Model.DisplayNameByUserId.GetValueOrDefault(row.UserId, "");
                     if (string.IsNullOrEmpty(displayName))
                     {

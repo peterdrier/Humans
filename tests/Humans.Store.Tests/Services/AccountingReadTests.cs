@@ -19,7 +19,7 @@ using NSubstitute;
 namespace Humans.Store.Tests.Services;
 
 /// <summary>
-/// The accounting export behind <c>/api/backdoor/store</c> (peterdrier/Humans#1719): every
+/// The accounting export behind <c>/api/backdoor/store</c>: every
 /// line of the year's camp and team orders priced as the admin summary prices them, and
 /// every settled camp payment. Camp and team labels are stitched here, not by the caller.
 /// </summary>

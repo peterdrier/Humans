@@ -4,11 +4,7 @@ using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.Services;
 
-/// <summary>
-/// One expanded occurrence of an approved event for the Browse page: a
-/// recurring event yields one entry per matching day, a non-recurring (or
-/// unexpanded) event yields itself.
-/// </summary>
+/// <summary>A recurring event yields one per matching day; a non-recurring or unexpanded event yields itself.</summary>
 internal sealed record EventOccurrence(
     ApprovedEventView Event,
     Instant StartAt,
@@ -16,11 +12,6 @@ internal sealed record EventOccurrence(
     int? FavouriteDayOffset,
     bool IsFavourited);
 
-/// <summary>
-/// Single owner of the Browse-page occurrence rules: expanding recurring
-/// events into per-day occurrences, resolving each occurrence's gate-relative
-/// day offset, applying the day filter, and resolving favourite state.
-/// </summary>
 internal static class EventOccurrenceExpander
 {
     public static IReadOnlyList<EventOccurrence> Expand(

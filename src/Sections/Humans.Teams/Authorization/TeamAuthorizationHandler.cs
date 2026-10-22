@@ -7,13 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Teams.Authorization;
 
 /// <summary>
-/// Resource-based authorization handler for team management operations.
-/// - Admin / TeamsAdmin / Board: allow any team, any requirement
-/// - EETeamAdmin: allow any team for ManageEarlyEntry only (cross-team EE management)
-/// - Team coordinator (or parent department coordinator): allow only their team
-///   (covers both ManageCoordinators and ManageEarlyEntry — coordinators manage their
-///   own team's early entry de facto)
-/// - Everyone else: deny
+/// Admin, TeamsAdmin and Board: any team, any requirement. EETeamAdmin: any team, ManageEarlyEntry only. A coordinator
+/// of the team or its parent department: that team, both requirements. Everyone else: deny.
 /// </summary>
 internal sealed class TeamAuthorizationHandler(ITeamService teamService)
     : AuthorizationHandler<TeamOperationRequirement, TeamInfo>

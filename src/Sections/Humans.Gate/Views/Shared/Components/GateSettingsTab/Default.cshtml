@@ -1,8 +1,7 @@
 @model GateSettingsViewModel
 
-@* Explicit asp-controller/asp-action: this view renders inside /Settings, so ambient
-   route data would otherwise resolve "Admin" against the wrong controller (Settings'
-   own _EventSettingsForm.cshtml documents the same gotcha). *@
+@* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve "Admin" against the wrong
+   controller. *@
 <form method="post" asp-controller="Gate" asp-action="Admin" style="max-width: 540px;">
     <div class="mb-3">
         <label class="form-label" asp-for="GeneralEntryOpensAtUtc">General entry opens at (UTC, ISO instant)</label>

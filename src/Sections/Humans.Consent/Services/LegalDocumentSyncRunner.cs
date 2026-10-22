@@ -8,11 +8,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// The body of <c>SyncLegalDocumentsJob</c>. It names <see cref="LegalDocument"/> and
-/// <see cref="IConsentRepository"/> to decide who still owes a signature, and both are
-/// internal here — so what crosses the boundary is the call, not the rows.
-/// </summary>
 internal sealed class LegalDocumentSyncRunner(
     ILegalDocumentSyncManagement syncService,
     IEmailService emailService,
@@ -40,10 +35,7 @@ internal sealed class LegalDocumentSyncRunner(
         await SendReConsentNotificationsAsync(updatedDocs, cancellationToken);
     }
 
-    /// <summary>
-    /// Sends re-consent notifications to members who need to consent to updated documents.
-    /// Only notifies members of the teams that the updated documents belong to.
-    /// </summary>
+    /// <summary>Only members of the teams the updated documents belong to.</summary>
     private async Task SendReConsentNotificationsAsync(
         IReadOnlyList<LegalDocument> updatedDocs,
         CancellationToken cancellationToken)
@@ -73,7 +65,7 @@ internal sealed class LegalDocumentSyncRunner(
             return;
         }
 
-        // Consent check runs against the LATEST version of each updated doc.
+        // Checked against the latest version of each updated document.
         var updatedDocVersionIds = requiredDocs
             .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
             .ToList();
@@ -100,9 +92,6 @@ internal sealed class LegalDocumentSyncRunner(
             return;
         }
 
-        // Batch load UserInfo snapshots via IUserService so we resolve the
-        // verified notification-target address (UserInfo.Email mirrors
-        // User.GetEffectiveEmail).
         var users = await userService.GetUserInfosAsync(usersToNotify, cancellationToken);
 
         var notificationCount = 0;

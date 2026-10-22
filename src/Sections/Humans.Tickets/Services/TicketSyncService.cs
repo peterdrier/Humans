@@ -11,10 +11,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>
-/// Tickets sync pipeline: upsert vendor orders/attendees, match users by email,
-/// compute VAT, enrich Stripe fees, reconcile event participation.
-/// </summary>
 internal sealed class TicketSyncService(
     ITicketRepository ticketRepository,
     ITicketTransferRepository transferRepository,
@@ -52,8 +48,7 @@ internal sealed class TicketSyncService(
 
         try
         {
-            // nobodies-collective/Humans#946: a sync finishes or defers to the next run — it is never abandoned
-            // mid-pagination just because the caller who triggered it went away.
+            // A sync finishes or defers to the next run; it is never abandoned mid-pagination because the caller left.
             var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
             var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
             var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
@@ -101,7 +96,7 @@ internal sealed class TicketSyncService(
                 }
                 else
                 {
-                    // API-issued ticket (e.g. transfer reissue) — use existing local parent, else skip.
+                    // API-issued ticket (e.g. transfer reissue): use the existing local parent, else skip.
                     var localExisting = existingAttendeesByVendorId.GetValueOrDefault(dto.VendorTicketId);
                     if (localExisting is null)
                     {
@@ -123,10 +118,7 @@ internal sealed class TicketSyncService(
             await ticketRepository.UpsertAttendeesAsync(attendeesToUpsert, ct);
             var attendeesSynced = attendeesToUpsert.Count;
 
-            // Apply gate check-ins onto the (now-upserted) attendee rows. Done as a
-            // standalone pass keyed by VendorTicketId — a check-in can arrive in a
-            // delta whose issued ticket was not itself updated, so it must not depend
-            // on the attendee being part of this run's issued-ticket batch.
+            // Standalone pass: a check-in can arrive in a delta whose issued ticket was not itself updated.
             await ticketRepository.ApplyCheckInsAsync(checkIns, ct);
 
             await ComputeVatForOrdersAsync(ct);
@@ -154,7 +146,6 @@ internal sealed class TicketSyncService(
         }
         catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
         {
-            // Transient: preserve LastSyncAt, retry next run.
             logger.LogWarning(
                 "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run: {Reason}",
                 (int?)ex.StatusCode, eventId, ex.Message);
@@ -163,10 +154,8 @@ internal sealed class TicketSyncService(
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            // Transient: HttpClient.Timeout fired on a vendor call (nobodies-collective/Humans#946). An inner TimeoutException
-            // is HttpClient's own signal for this — a genuine cancellation (e.g. Hangfire shutdown)
-            // carries no such inner exception and falls through to the generic handler below, where
-            // it is logged at Error, not mistaken for a slow vendor.
+            // Transient: an inner TimeoutException is HttpClient's own timeout signal. A genuine cancellation carries
+            // none and falls through to the Error handler below.
             logger.LogWarning(
                 "Ticket sync: TicketTailor request timed out for event {EventId}, will retry next run",
                 eventId);
@@ -195,7 +184,7 @@ internal sealed class TicketSyncService(
         }
     }
 
-    /// <summary>Shared transient-failure tail (nobodies-collective/Humans#946): leave sync Idle, preserve LastSyncAt, retry next run.</summary>
+    /// <summary>Leave sync Idle and keep LastSyncAt, so the next run retries.</summary>
     private async Task<TicketSyncResult> DeferSyncAsync(TicketSyncState syncState)
     {
         syncState.SyncStatus = TicketSyncStatus.Idle;
@@ -219,7 +208,7 @@ internal sealed class TicketSyncService(
 
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
-        // Verified emails only (#645); gmail/googlemail-normalized; verified-collision = LogError, unmatched.
+        // Verified emails only, gmail/googlemail-normalized; a verified collision is logged and left unmatched.
         var users = await userService.GetAllUserInfosAsync(ct);
         var (lookup, collisions) = VerifiedEmailLookup.Build(users);
         foreach (var (email, userCount) in collisions)
@@ -241,8 +230,7 @@ internal sealed class TicketSyncService(
     {
         var id = existing?.Id ?? Guid.NewGuid();
 
-        // Preserve Stripe-enrichment fields on existing rows (they're filled in
-        // by a separate pass and the vendor DTO doesn't carry them).
+        // Keep Stripe-enrichment fields on existing rows: a separate pass fills them and the vendor DTO lacks them.
         return new TicketOrder
         {
             Id = id,
@@ -261,7 +249,6 @@ internal sealed class TicketSyncService(
             StripePaymentIntentId = dto.StripePaymentIntentId,
             DiscountAmount = dto.DiscountAmount,
             DonationAmount = dto.DonationAmount,
-            // Stripe + VAT enriched later; preserve prior values.
             PaymentMethod = existing?.PaymentMethod,
             PaymentMethodDetail = existing?.PaymentMethodDetail,
             StripeFee = existing?.StripeFee,
@@ -285,11 +272,8 @@ internal sealed class TicketSyncService(
             ? LookupUserId(emailLookup, dto.AttendeeEmail)
             : null;
 
-        // API-issued tickets (transfer reissues) carry no real order at TT and their
-        // listed_price drifts to the ticket type's *current* price. Keep the price we
-        // snapshotted locally at reissue time so revenue/VAT stay anchored to the original
-        // order — the "like-for-like, no $ drift" transfer guarantee. (Identified by a null
-        // vendor order id matched to an existing local row; see the orphan re-link above.)
+        // API-issued tickets (transfer reissues) have no real vendor order, and their listed price drifts to the
+        // ticket type's current price. Keep the price snapshotted at reissue so revenue and VAT stay anchored.
         var price = string.IsNullOrEmpty(dto.VendorOrderId) && existing is not null
             ? existing.Price
             : dto.Price;
@@ -341,7 +325,7 @@ internal sealed class TicketSyncService(
         var updated = new List<TicketOrder>(ordersToEnrich.Count);
         foreach (var order in ordersToEnrich)
         {
-            // Defensive: skip placeholder/whitespace PI ids the repo filter should exclude.
+            // Defensive: the repository filter should already exclude placeholder ids.
             var trimmedPi = order.StripePaymentIntentId?.Trim();
             if (trimmedPi is null or "" or "--")
             {
@@ -373,10 +357,7 @@ internal sealed class TicketSyncService(
     }
 
     /// <summary>
-    /// Compute VAT for all orders using VIP split logic.
-    /// For each attendee: ticket revenue up to VipThresholdEuros is taxable at VatRate,
-    /// any amount above is a VIP donation (VAT-free). Standalone donations are always VAT-free.
-    /// We ignore TT's own tax line item because TT incorrectly applies 10% to the full ticket price.
+    /// The vendor's own tax line is ignored: it applies 10% to the full ticket price.
     /// </summary>
     private async Task ComputeVatForOrdersAsync(CancellationToken ct)
     {
@@ -389,11 +370,8 @@ internal sealed class TicketSyncService(
     }
 
     /// <summary>
-    /// Compute VAT for a single order based on its attendees' prices.
-    /// Ticket base = sum of min(Price, VipThreshold) over live attendees, minus the order's
-    /// discount (codes reduce the ticket part, never the VIP donation), floored at zero.
-    /// VAT = base * VatRate / (1 + VatRate) (VAT-inclusive), rounded once per order.
-    /// VIP premiums (price above threshold) and standalone donations are VAT-free.
+    /// Base = Σ min(Price, VipThreshold) over live attendees, minus the order discount (codes reduce the ticket part,
+    /// never the VIP donation), floored at zero. VAT-inclusive, rounded once per order.
     /// </summary>
     internal static decimal ComputeOrderVat(TicketOrder order)
     {
@@ -406,7 +384,6 @@ internal sealed class TicketSyncService(
 
         var taxableAmount = Math.Max(0m, ticketBase - (order.DiscountAmount ?? 0m));
 
-        // VAT-inclusive: VAT = taxableAmount * rate / (1 + rate)
         return Math.Round(taxableAmount * TicketConstants.VatRate / (1 + TicketConstants.VatRate), 2);
     }
 
@@ -417,19 +394,8 @@ internal sealed class TicketSyncService(
     }
 
     /// <summary>
-    /// Derive event-participation records from current ticket data.
-    /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.
-    /// If user had Ticketed from TicketSync but now has 0 valid tickets → remove record.
-    /// <para>
-    /// Check-in is read from the persisted per-ticket
-    /// <see cref="TicketAttendee.CheckedInAt"/> (populated from the vendor's
-    /// check-in resource by <see cref="ITicketRepository.ApplyCheckInsAsync"/>),
-    /// NOT inferred from <see cref="TicketAttendeeStatus"/> — TicketTailor keeps a
-    /// scanned ticket's status "valid". The earliest scan across a user's tickets
-    /// is passed to <see cref="ITicketWrite.RecordParticipationAsync"/>;
-    /// the repo's "never overwrite non-null CheckedInAt" rule keeps the first value.
-    /// Issue nobodies-collective/Humans#736.
-    /// </para>
+    /// Check-in is read from the persisted <see cref="TicketAttendee.CheckedInAt"/>, not inferred from
+    /// <see cref="TicketAttendeeStatus"/>: TicketTailor keeps a scanned ticket "valid".
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
@@ -442,10 +408,8 @@ internal sealed class TicketSyncService(
         var matchedAttendees = await ticketRepository
             .GetMatchedAttendeesForEventAsync(_settings.EventId, ct);
 
-        // Per matched user: their ticket statuses plus the earliest gate scan
-        // across those tickets (null if none checked in). Sourced entirely from the
-        // persisted attendee rows, so it's correct regardless of which tickets were
-        // in this sync's delta and self-heals on a full resync.
+        // From the persisted attendee rows, so it's right whatever this sync's delta held and self-heals on a full
+        // resync.
         var userTickets = matchedAttendees
             .GroupBy(a => a.MatchedUserId)
             .ToDictionary(
@@ -460,9 +424,7 @@ internal sealed class TicketSyncService(
                     return (Statuses: statuses, CheckedInAt: earliestScan);
                 });
 
-        // Current participation state for the year, read once. Diffing against it lets us
-        // skip the per-user upsert for the vast majority of ticket-holders whose status
-        // hasn't changed since the last 15-minute sync.
+        // Read once and diffed, to skip the upsert for the many holders whose status hasn't changed.
         var current = (await participations.GetAllParticipationsAsync(ct))
             .Where(ep => ep.Year == year)
             .ToDictionary(ep => ep.UserId);
@@ -477,8 +439,7 @@ internal sealed class TicketSyncService(
 
             if (hasCheckedIn)
             {
-                // Already Attended with the timestamp settled: the upsert would
-                // no-op. Attended is permanent and CheckedInAt is write-once.
+                // Attended with the timestamp settled: the upsert would no-op.
                 if (existing is { Status: ParticipationStatus.Attended }
                     && existing.CheckedInAt is not null)
                     continue;
@@ -488,8 +449,7 @@ internal sealed class TicketSyncService(
             }
             else if (hasValidTicket)
             {
-                // Already Attended (Ticketed can't downgrade it) or already the
-                // same Ticketed-from-sync state: the upsert would no-op.
+                // Already Attended, or already Ticketed from sync: the upsert would no-op.
                 if (existing is { Status: ParticipationStatus.Attended }
                     or { Status: ParticipationStatus.Ticketed, Source: ParticipationSource.TicketSync })
                     continue;

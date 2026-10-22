@@ -24,7 +24,6 @@ internal sealed class TicketSyncStateConfiguration : IEntityTypeConfiguration<Ti
         builder.Property(s => s.LastError)
             .HasMaxLength(2000);
 
-        // Seed the singleton row
         builder.HasData(new
         {
             Id = 1,

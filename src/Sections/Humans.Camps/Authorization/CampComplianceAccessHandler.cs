@@ -5,12 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Camps.Authorization;
 
-/// <summary>
-/// Handler for <see cref="CampComplianceAccessRequirement"/>. Short-circuits for
-/// CampAdmin/Admin, otherwise admits any team/sub-team coordinator via the cached
-/// <see cref="IShiftService.GetCoordinatorTeamIdsAsync"/> lookup —
-/// a cross-section read through Shifts' contracts leaf.
-/// </summary>
 internal sealed class CampComplianceAccessHandler(IShiftService shiftManagement)
     : AuthorizationHandler<CampComplianceAccessRequirement>
 {

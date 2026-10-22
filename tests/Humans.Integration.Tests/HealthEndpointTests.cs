@@ -19,9 +19,8 @@ public class HealthEndpointTests(HumansTestDatabase database) : IntegrationTestB
     {
         var response = await Client.GetAsync("/health/ready", Xunit.TestContext.Current.CancellationToken);
 
-        // Readiness checks external dependencies (SMTP, GitHub, Google Workspace).
-        // In the test environment these are unavailable, so the endpoint returns 503.
-        // The important thing is that the endpoint exists and responds.
+        // Readiness checks SMTP, GitHub and Google Workspace, which tests can't reach, so 503 is fine; the endpoint
+        // existing and responding is the point.
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable);
     }
 

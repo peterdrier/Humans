@@ -10,30 +10,18 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Holded;
 
-/// <summary>
-/// Holded's DI entry point, at the project root by convention. Discovered by Shell —
-/// nothing names it, so it needs no section prefix.
-/// </summary>
-/// <remarks>
-/// No GDPR contributor: the mirror has no user-scoped table. The member→creditor-account
-/// binding stays in Finance, which owns that meaning and exports it.
-/// </remarks>
+/// <summary>No GDPR contributor: no table is user-scoped. The member-to-creditor binding is Finance's, and Finance
+/// exports it.</summary>
 public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        // Sentinel choice is load-bearing: "the sentinel exists" must PROVE this baseline already
-        // ran. holded_ledger_lines cannot carry that proof — the historical root migration chain
-        // and Finance's pre-split model both created it, so on existing databases it exists while
-        // holded_accounts/holded_api_calls/holded_sync_states do not, and a sentinel hit would
-        // record the baseline as applied with three tables missing. holded_accounts is created by
-        // this baseline alone. Ordering still matters once per boot: sections migrate in name
-        // order, so Finance's drop of its holded_ledger_lines/holded_sync_states runs before this
-        // baseline recreates them under Holded ownership.
+        // The sentinel must prove this baseline ran. holded_ledger_lines can't: the old root chain and Finance's
+        // pre-split model both created it. holded_accounts is created by this baseline alone. Sections migrate in
+        // name order, so Finance's drop of its old Holded tables runs before this baseline recreates them.
         services.AddSectionDbContext<HoldedDbContext>(sentinelTable: "holded_accounts");
 
-        // The plan-tier call allowance, which no Holded endpoint reports (GET /usage's `limit`
-        // is the billable-overage ceiling). Left at the default when unset or unparseable.
+        // The plan-tier allowance, which no endpoint reports. Left at the default when unset or unparseable.
         services.Configure<HoldedSectionOptions>(opts =>
         {
             if (int.TryParse(configuration["Holded:MonthlyCallBudget"],
@@ -41,13 +29,9 @@ public sealed class Section : ISection
                 opts.MonthlyCallBudget = budget;
         });
 
-        // The Holded API connector — typed HttpClient, its options, and the in-memory call log the
-        // mirror drains into holded_api_calls.
         services.Configure<HoldedClientOptions>(opts =>
         {
-            // HOLDED_API_KEY_V2, not HOLDED_API_KEY: a v2-generated key is rejected by the v1 API
-            // (400 Invalid key), so the two names must stay distinct — renaming this to the plain
-            // HOLDED_API_KEY would hand a v2 key to anything still speaking v1.
+            // HOLDED_API_KEY_V2, not HOLDED_API_KEY: the v1 API rejects a v2 key, so the names must stay distinct.
             opts.ApiKey = Environment.GetEnvironmentVariable("HOLDED_API_KEY_V2") ?? "";
             opts.BaseUrl = configuration["Holded:BaseUrl"] ?? "https://api.holded.com";
         });
@@ -66,7 +50,6 @@ public sealed class Section : ISection
         services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
-        // The nightly pull's body; its Hangfire target is HoldedSyncJob, in this project's Jobs/.
         services.AddScoped<IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();

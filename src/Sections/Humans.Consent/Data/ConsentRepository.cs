@@ -3,34 +3,14 @@ using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;
 
-/// <summary>
-/// EF-backed implementation of <see cref="IConsentRepository"/>. The only
-/// non-test file that touches <c>DbContext.ConsentRecords</c>. Uses
-/// <see cref="IDbContextFactory{TContext}"/> so the repository can be
-/// registered as Singleton while <c>LegalDbContext</c> remains Scoped.
-/// </summary>
-/// <remarks>
-/// <c>consent_records</c> is append-only per design-rules §12 — only
-/// <see cref="AddAsync"/> is exposed; there are no <c>UpdateAsync</c> or
-/// <c>DeleteAsync</c>. Database triggers reject any UPDATE/DELETE at the
-/// storage layer as a secondary defense.
-/// </remarks>
 internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factory) : IConsentRepository
 {
-    // ==========================================================================
-    // Writes — append-only
-    // ==========================================================================
-
     public async Task AddAsync(ConsentRecord record, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.ConsentRecords.Add(record);
         await ctx.SaveChangesAsync(ct);
     }
-
-    // ==========================================================================
-    // Reads
-    // ==========================================================================
 
     public async Task<bool> ExistsForUserIdsAndVersionAsync(
         IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default)

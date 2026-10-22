@@ -26,9 +26,8 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly IWorkspaceIdentityManagement _identities;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly Dictionary<Guid, ProfileInfo> _profilesByUserId = new();
-    // nobodies-collective/Humans#1098: the resolver now reads only User.BurnerName, so
-    // StubProfiles (which post-dates StubUsers in some tests) must be able to reach back
-    // and update the already-built User, mirroring the production CopyNamesToUser dual-write.
+    // The resolver reads only User.BurnerName, so StubProfiles must reach back and update the
+    // already-built User, as the production CopyNamesToUser dual-write does.
     private readonly Dictionary<Guid, User> _usersByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -567,10 +566,8 @@ public sealed class GoogleGroupSyncServiceTests
     [HumansFact]
     public async Task ReconcileOneAsync_UserRejectedByGoogle400Precondition_MarksGoogleEmailRejected()
     {
-        // Issue nobodies-collective/Humans#677 — Cloud Identity returns HTTP
-        // 400 / Error(4002) "Membership cannot be created since precondition
-        // check failed" when the target email has no Google identity. Must
-        // be treated as a permanent target rejection, same as the 403 path.
+        // Cloud Identity returns 400 / Error(4002) "precondition check failed" when the target
+        // email has no Google identity: a permanent target rejection, like the 403 path.
         var userId = Guid.NewGuid();
         var service = CreateService(new StaticSource("team@nobodies.team", userId));
         StubUsers((userId, "Alice", "alice@external.test"));
@@ -602,10 +599,8 @@ public sealed class GoogleGroupSyncServiceTests
     [HumansFact]
     public async Task ReconcileOneAsync_GenericGoogle400_DoesNotMarkGoogleEmailRejected()
     {
-        // Issue nobodies-collective/Humans#677 — make sure the 400 branch only
-        // marks Rejected when the message text matches a target-rejection
-        // pattern. A generic 400 (e.g. malformed payload) must not flip the
-        // user's GoogleEmailStatus.
+        // The 400 branch marks Rejected only when the message matches a target-rejection
+        // pattern; a generic 400 (e.g. malformed payload) must not flip GoogleEmailStatus.
         var userId = Guid.NewGuid();
         var service = CreateService(new StaticSource("team@nobodies.team", userId));
         StubUsers((userId, "Alice", "alice@nobodies.team"));
@@ -652,10 +647,8 @@ public sealed class GoogleGroupSyncServiceTests
     [HumansFact]
     public async Task ReconcileOneAsync_GroupNotFound_AutoProvisionsAndReconciles()
     {
-        // Issue nobodies-collective/Humans#740: when a membership source claims
-        // a group that doesn't exist in Cloud Identity (HTTP 404), the
-        // orchestrator auto-provisions it via CreateGroupAsync then re-runs
-        // the lookup to proceed with the reconcile pass in the same call.
+        // A membership source claiming a group missing from Cloud Identity (404) auto-provisions
+        // it, then re-runs the lookup and reconciles in the same call.
         var userId = Guid.NewGuid();
         var service = CreateService(new StaticSource("new-group@nobodies.team", userId));
         StubUsers((userId, "Alice", "alice@nobodies.team"));
@@ -921,7 +914,7 @@ public sealed class GoogleGroupSyncServiceTests
     [HumansFact]
     public async Task ReconcileOneAsync_Revoke_ResolvesTheExtraMemberFromAGmailAliasRow()
     {
-        // nobodies-collective/Humans#1101: Google reports the canonical address, but the
+        // Google reports the canonical address, but the
         // only user_emails row is a dotted "+tag" alias of it. The alias match is worthless
         // unless the owner lookup is keyed by the same Gmail identity Google reports.
         var departed = Guid.NewGuid();
@@ -977,7 +970,7 @@ public sealed class GoogleGroupSyncServiceTests
     [HumansFact]
     public async Task ReconcileOneAsync_ClaimOnAMergedAwayId_IsSkippedRatherThanPairedWithTheSurvivor()
     {
-        // #1704: the resolving read hands a claimed archived id its survivor, but the email rows
+        // The resolving read hands a claimed archived id its survivor, but the email rows
         // fetched here are the archived id's own (raw), so the pair is dropped. A survivor a
         // source claims by its live id is still added.
         var archived = Guid.NewGuid();
@@ -1004,9 +997,8 @@ public sealed class GoogleGroupSyncServiceTests
     {
         foreach (var u in users)
         {
-            // nobodies-collective/Humans#1098: BurnerName is the sole resolver source; default
-            // it to DisplayName here (mirroring the production CopyNamesToUser dual-write) so
-            // existing callers that only pass a DisplayName keep resolving to that name.
+            // BurnerName is the sole resolver source; default it to DisplayName (as CopyNamesToUser
+            // does) so callers that only pass a DisplayName still resolve to that name.
             _usersByUserId[u.UserId] = new User
             {
                 Id = u.UserId,
@@ -1054,8 +1046,8 @@ public sealed class GoogleGroupSyncServiceTests
                 burnerName: p.BurnerName ?? string.Empty,
                 createdAt: _clock.GetCurrentInstant());
 
-            // nobodies-collective/Humans#1098: mirror CopyNamesToUser — a Profile save
-            // keeps User.BurnerName in sync, and the resolver reads only that field now.
+            // Mirror CopyNamesToUser: a Profile save keeps User.BurnerName in sync, and the
+            // resolver reads only that field.
             if (_usersByUserId.TryGetValue(p.UserId, out var user))
             {
                 user.BurnerName = p.BurnerName ?? string.Empty;

@@ -5,27 +5,9 @@ using Humans.Web.Tests.Architecture.Ratchet;
 namespace Humans.Web.Tests.Architecture.Rules;
 
 /// <summary>
-/// Ratcheted rule: no destructive operations in EF migration <c>Up()</c>
-/// methods (DropColumn / DropTable / DropIndex / DropForeignKey /
-/// DropUniqueConstraint / DropCheckConstraint / DropPrimaryKey).
-///
-/// Source rule: <c>memory/architecture/no-drops-until-prod-verified.md</c>.
-/// Destructive ops are allowed, and this rule is what makes the approval visible: a drop
-/// ships once its locator is in the baseline alongside a comment naming what was removed,
-/// the evidence it held nothing in use, and Peter's per-case approval. A bare locator with
-/// no such comment is the failure mode the baseline header warns about.
-///
-/// Detection: scan <c>src/Humans.Infrastructure/Migrations/*.cs</c> and each G5 section's
-/// <c>src/Sections/Humans.&lt;Section&gt;/Data/Migrations/*.cs</c>
-/// (excluding <c>.Designer.cs</c> and <c>*DbContextModelSnapshot.cs</c>),
-/// find every <c>migrationBuilder.Drop*</c> call inside the <c>Up</c> method
-/// body, emit one locator per call. The <c>name: "X"</c> and (where present)
-/// <c>table: "Y"</c> arguments are captured so the same drop op on different
-/// objects — including same-named columns on different tables — produces
-/// distinct keys without using line numbers.
-///
-/// The <c>Down()</c> method legitimately mirrors <c>Up()</c> Adds with Drops,
-/// so we strip <c>Down()</c> bodies before scanning.
+/// Drops in a migration's <c>Up()</c> ship only once the baseline carries their approval
+/// (<c>memory/architecture/no-drops-until-prod-verified.md</c>). Keys include the <c>name:</c> and <c>table:</c>
+/// arguments, so same-named columns on different tables stay distinct without line numbers.
 /// </summary>
 public class NoDestructiveMigrationOpsRule
 {
@@ -66,28 +48,10 @@ public class NoDestructiveMigrationOpsRule
     }
 
     /// <summary>
-    /// Every baseline entry carries its approval in the comment block above it.
+    /// <c>ReadBaseline</c> drops comments, so without this a bare locator would pass. Each block needs
+    /// <c>Approval:</c> plus <c>Evidence:</c> (or <c>Pre-existing:</c>) and must name every identifier in its locators,
+    /// on token boundaries, so a new entry can't borrow a neighbour's approval. Judging the evidence is for review.
     /// </summary>
-    /// <remarks>
-    /// Without this, the ledger is a convention rather than a guardrail: <c>ReadBaseline</c>
-    /// discards comments and diffs locators only, so a bare locator with no description, no
-    /// evidence and no approval would pass silently — which is the whole gate the rule rewrite
-    /// of 2026-08-18 depends on. An <c>Approval:</c> block must also carry an <c>Evidence:</c>
-    /// line (<c>Pre-existing:</c> is exempt — shipped history has nothing to prove). This does
-    /// not try to judge whether the evidence is *good*; a human does that. It only refuses an
-    /// entry that never claimed any. Deliberate deception — fake keywords, false claims — is
-    /// out of scope: that is what human review of the baseline diff is for.
-    ///
-    /// The block must also *name* each dropped object it covers — every identifier in the
-    /// locator, the table included, not just the column. Coverage alone is inheritable: a bare
-    /// locator appended directly under an approved group (no blank line) would sit inside that
-    /// group's comment block and borrow its Approval line, and a column-name-only check would
-    /// still let an approval for one table's column cover a same-named column on any other
-    /// table. Identifiers match on token boundaries, not substrings, so a block naming
-    /// <c>RawPayloadBackup</c> does not cover <c>RawPayload</c>. Requiring every identifier in
-    /// the block forces each new entry to put its own names into the approval text — a visible,
-    /// deliberate edit — instead of free-riding on a neighbour's.
-    /// </remarks>
     [HumansFact]
     public void Every_baseline_entry_is_covered_by_an_approval_note()
     {
@@ -139,22 +103,9 @@ public class NoDestructiveMigrationOpsRule
             BaselinePath, string.Join(", ", unapproved));
     }
 
-    /// <summary>
-    /// The host's migrations folder plus each G5 section's own <c>Data/Migrations</c>.
-    /// </summary>
-    /// <remarks>
-    /// The section half is not cosmetic. Scanning only the Base folder means a section's
-    /// migrations silently leave the sweep on the day the section moves, and the rule then
-    /// reports success by finding nothing — the same failure
-    /// <c>DisplaySortInControllersRule</c> hit at Campaigns, on a second path-keyed rule
-    /// (nobodies-collective/Humans#866, G5 template step 11: widen the sweep, never shrink
-    /// the expectation).
-    /// </remarks>
+    /// <summary>The host's migrations plus each section's; a path-keyed sweep must follow every move.</summary>
     internal static IEnumerable<string> MigrationDirectories(string repoRoot)
     {
-        // Migrations/System followed SystemDbContext to Humans.Web when G5 lane 5b-6 deleted
-        // Humans.Infrastructure. Leaving the old path here would drop it from the sweep
-        // silently, which is the exact failure the remark above describes.
         var hostMigrations = Path.Combine(repoRoot, "src", "Humans.Web", "Migrations");
         if (Directory.Exists(hostMigrations)) yield return hostMigrations;
 
@@ -171,9 +122,6 @@ public class NoDestructiveMigrationOpsRule
 
     internal static IEnumerable<string> ScanMigrations(string repoRoot, IEnumerable<string> migrationDirs)
     {
-        // AllDirectories: per-section migration folders (Migrations/<Section>/,
-        // nobodies-collective/Humans#858) are in scope too. Every context's
-        // snapshot (<Context>ModelSnapshot.cs) is excluded by suffix.
         foreach (var path in migrationDirs
                      .SelectMany(d => Directory.EnumerateFiles(d, "*.cs", SearchOption.AllDirectories)))
         {
@@ -187,8 +135,6 @@ public class NoDestructiveMigrationOpsRule
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             var upBodyStart = content.IndexOf(upBody, StringComparison.Ordinal);
-            // Per-key ordinal so multiple drops with the same op+name shape
-            // (rare, but possible across schemas) remain distinct.
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
             foreach (var match in DropOpRegex.Matches(upBody).Cast<Match>())
@@ -210,15 +156,9 @@ public class NoDestructiveMigrationOpsRule
         }
     }
 
-    /// <summary>
-    /// Extract the body (between matched braces) of the named method from
-    /// a migration <c>.cs</c> file. Returns null if the method isn't found.
-    /// Migration files are simple enough that brace-matching from the
-    /// method declaration is reliable.
-    /// </summary>
+    /// <summary>Brace-matches from the declaration; migration files are simple enough for that. Null if absent.</summary>
     private static string? ExtractMethodBody(string source, string methodName)
     {
-        // Find "void <methodName>(MigrationBuilder ...".
         var declRegex = new Regex(
             @"\bvoid\s+" + Regex.Escape(methodName) + @"\s*\(\s*MigrationBuilder\b",
             RegexOptions.Compiled | RegexOptions.ExplicitCapture,
@@ -226,7 +166,6 @@ public class NoDestructiveMigrationOpsRule
         var declMatch = declRegex.Match(source);
         if (!declMatch.Success) return null;
 
-        // From end of declaration, find the opening '{' and balance braces.
         var openBrace = source.IndexOf('{', declMatch.Index);
         if (openBrace < 0) return null;
 

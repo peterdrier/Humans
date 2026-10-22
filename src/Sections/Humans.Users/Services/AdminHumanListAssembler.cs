@@ -4,17 +4,13 @@ using Humans.Users.Models;
 
 namespace Humans.Users.Services;
 
-// Stateless helper for the admin humans-list endpoint. Caller pre-filters via searchUserIds (null when no search).
-// Status buckets are derived from the canonical UserState enum; consent-aware membership partitions
-// belong to the Board dashboard.
+// Status buckets come from UserState; consent-aware membership partitions belong to the Board dashboard.
 internal static class AdminHumanListAssembler
 {
-    /// <summary>The filter key for members whose Google identity sync rejected
-    /// (nobodies-collective/Humans#847).</summary>
+    /// <summary>Members whose Google identity sync was rejected.</summary>
     public const string GoogleRejectedFilter = "googlerejected";
 
-    // googleRejectedUserIds: members whose Google identity is Rejected, read from GoogleIntegration
-    // by the caller when statusFilter is GoogleRejectedFilter; null (no match) otherwise.
+    // googleRejectedUserIds is read from GoogleIntegration by the caller only for GoogleRejectedFilter.
     public static IReadOnlyList<AdminHumanRow> Assemble(
         IReadOnlyCollection<UserInfo> allUsers,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,
@@ -59,7 +55,6 @@ internal static class AdminHumanListAssembler
             "deleting" or "deletepending" => u => u.State == UserState.DeletePending,
             "merged" => u => u.State == UserState.Merged,
             "deleted" => u => u.State == UserState.Deleted,
-            // nobodies-collective/Humans#847: humans whose Google identity sync rejected.
             GoogleRejectedFilter => u => googleRejected.Contains(u.Id),
             _ => null,
         };

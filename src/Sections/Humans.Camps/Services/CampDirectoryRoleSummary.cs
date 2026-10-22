@@ -1,9 +1,8 @@
 namespace Humans.Camps.Services;
 
 /// <summary>
-/// Per-season fill count for a single role definition, used by the /Barrios
-/// directory "show lead positions" pills. Covers ALL active definitions (not just
-/// <c>MinimumRequired &gt; 0</c>) and uses <see cref="SlotCount"/> as the denominator.
+/// Covers all active definitions (not just <c>MinimumRequired &gt; 0</c>) and uses <see cref="SlotCount"/> as the
+/// denominator.
 /// </summary>
 internal sealed record CampDirectoryRoleSummary(
     string Name,

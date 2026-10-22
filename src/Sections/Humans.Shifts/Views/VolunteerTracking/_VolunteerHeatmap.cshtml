@@ -40,10 +40,8 @@
     };
 }
 
-@* Heatmap CSS lives in the partial so the table renders correctly anywhere the
-   partial is hosted (Volunteer Tracking dashboard AND profile build strip via
-   VolunteerBuildStripViewComponent). Duplicating <style> tags across multiple
-   partial renders on one page is harmless. *@
+@* The CSS and script live in the partial so it renders right wherever it is hosted (dashboard and profile build
+   strip). Repeated style tags on one page are harmless. *@
 <style>
     /* Day-off cell: striped grey, signals "we know about this, intentionally
        not-here" without competing with the green/red/blue signals. */
@@ -112,7 +110,6 @@
             <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["Shifts_VolTrack_Main_Title"]</strong>
             <span class="text-muted small ms-2">@string.Format(Localizer["Shifts_VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
         }
-        @* Scroll arrows: hidden until JS detects horizontal overflow. *@
         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["Shifts_VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["Shifts_VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
@@ -136,23 +133,16 @@
             <tbody>
                 @foreach (var row in Model.Rows)
                 {
-                    // BurnerName-resolved name for tooltips/aria — resolved
-                    // by the controller in a single batch (see
-                    // VolunteerTrackingController.Index); the partial never
-                    // makes per-row service calls. The <vc:human> below
-                    // renders the avatar+name itself; this string is only
-                    // for the row search/tooltip data attribute.
+                    // Batch-resolved by the controller, for the row search and tooltip only; no per-row calls.
                     var displayName = Model.DisplayNameByUserId.GetValueOrDefault(row.UserId, "");
                     if (string.IsNullOrEmpty(displayName))
                     {
                         displayName = Localizer["Shifts_VolTrack_UnknownUser"].Value;
                     }
 
-                    // Build the day-off tooltip ("Wed 24 Jun — doctor; Fri 26 Jun") for the row badge.
                     var dayOffTooltip = string.Join("; ", row.DayOffs
                         .Select(d => Model.GateOpeningDate.PlusDays(d.DayOffset).ToDate()
                             + (string.IsNullOrWhiteSpace(d.Reason) ? "" : " — " + d.Reason)));
-                    // Lookup map: cell DayOffset → reason (for popover render).
                     var reasonByDay = row.DayOffs.ToDictionary(d => d.DayOffset, d => d.Reason);
                     <tr data-vt-search-name="@displayName.ToLowerInvariant()">
                         <td class="vt-sticky-cell">
@@ -215,7 +205,6 @@
                                     @if (canWrite)
                                     {
                                         <hr class="my-2" />
-                                        @* State-driven: Mark / Move / Clear camp set-up. *@
                                         @if (cell.State != VolunteerCellState.CampSetup)
                                         {
                                             <form method="post" asp-controller="VolunteerTracking" asp-action="SetCampSetup" class="mb-2">
@@ -255,7 +244,7 @@
                                             </form>
                                         }
 
-                                        @* Day-off section: state-driven render. CampSetup cells render nothing. *@
+                                        @* CampSetup cells render nothing here. *@
                                         @if (cell.State == VolunteerCellState.DayOff)
                                         {
                                             var existingReason = reasonByDay.TryGetValue(cell.DayOffset, out var r) ? r : null;
@@ -343,12 +332,8 @@
     </div>
 </div>
 
-@* Scroll-arrow + Bootstrap-popover wiring. Lives in the partial so it travels
-   with the view wherever it renders (Volunteer Tracking dashboard AND profile
-   build strip). DOMContentLoaded gate ensures wiring runs after sibling
-   partials (e.g. _VolunteerUnbookedHeatmap on the dashboard) are in the DOM.
-   Per-element guards (data-vt-wired / Popover.getInstance) make it safe if the
-   partial ever renders multiple times. *@
+@* DOMContentLoaded waits for sibling partials (e.g. _VolunteerUnbookedHeatmap); the data-vt-wired and
+   Popover.getInstance guards make repeat renders safe. *@
 <script>
 (function () {
     function initScrollArrows() {

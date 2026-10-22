@@ -3,9 +3,7 @@
     var isEdit = Model.Id.HasValue;
 }
 
-@* Shared by the (now form-invalid-only) /Events/Admin/Settings view and the
-   /Settings#event-guide tab (peterdrier/Humans#1634) — explicit asp-controller/asp-action
-   so the tab (served from /Settings) still submits to EventsAdminController. *@
+@* Explicit asp-controller/asp-action so the /Settings tab still submits to EventsAdminController. *@
 <div class="card">
     <div class="card-header">
         @(isEdit ? "Edit Guide Settings" : "Create Guide Settings")

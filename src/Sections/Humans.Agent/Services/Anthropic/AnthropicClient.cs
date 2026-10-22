@@ -9,8 +9,6 @@ using Humans.Agent.Models;
 
 namespace Humans.Agent.Services.Anthropic;
 
-/// <summary>Thin wrapper around the Anthropic .NET SDK. Adapts <see cref="AnthropicRequest"/>
-/// to the SDK surface and re-emits streaming events as <see cref="AgentTurnToken"/> records.</summary>
 internal sealed class AnthropicClient : IAnthropicClient
 {
     private readonly SdkAnthropicClient _sdk;
@@ -200,11 +198,8 @@ internal sealed class AnthropicClient : IAnthropicClient
     public async Task<int> CountTokensAsync(
         string model, string text, CancellationToken cancellationToken = default)
     {
-        // Mirror the real request shape: the prompt is sent as the cached System block (see
-        // StreamAsync), so count it there — counting it as a user turn would add user-role
-        // framing and disagree with the actual cached system block. count_tokens still requires
-        // a non-empty messages array, so a minimal placeholder rides along; its handful of
-        // framing tokens are why the figure is ≈, not exact.
+        // Counted as the cached System block, the way it is sent. count_tokens needs a non-empty messages array, so a
+        // placeholder rides along: hence ≈, not exact.
         var request = new MessageCountTokensParams
         {
             Model = model,

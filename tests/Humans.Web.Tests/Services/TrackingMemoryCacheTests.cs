@@ -109,12 +109,10 @@ public class TrackingMemoryCacheTests : IDisposable
     [HumansFact]
     public void GetSnapshot_OrderedByTotalAccessCountDescending()
     {
-        // Profile: 3 accesses
         _tracker.TryGetValue("Profile:a", out _);
         _tracker.TryGetValue("Profile:b", out _);
         _tracker.TryGetValue("Profile:c", out _);
 
-        // Teams: 1 access
         _tracker.TryGetValue("Teams:x", out _);
 
         var stats = _tracker.GetSnapshot();

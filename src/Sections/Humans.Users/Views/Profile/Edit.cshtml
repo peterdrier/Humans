@@ -1,6 +1,4 @@
 @model Humans.Users.Models.ProfileViewModel
-@* The shift-preference card below links to /Shifts/ShiftInfo and renders two Shifts_ keys
-   from the section's own set. *@
 @inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["Users_ProfileEdit_Title"].Value;
@@ -25,13 +23,11 @@
                 </div>
             }
 
-            @* Private first when fields empty (new user) *@
             @if (Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
             }
 
-            @* --- Section 1: General --- *@
             <div class="card mb-4">
                 <div class="card-body">
                     <h3>@Localizer["Users_ProfileEdit_SectionGeneral"]</h3>
@@ -318,15 +314,13 @@
 
                     <hr />
 
-                    @* Dietary preference, allergies and intolerances are Cantina's, edited on
-                       /Cantina/Dietary (Users decomposition commit 10). *@
+                    @* Dietary preference, allergies and intolerances are Cantina's, edited on /Cantina/Dietary. *@
                     <div class="mb-3">
                         <a asp-controller="CantinaProfile" asp-action="Dietary" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-utensils me-1"></i> @Localizer["Users_Profile_DietaryLink"]</a>
                     </div>
                 </div>
             </div>
 
-            @* --- Section 2: Contributor --- *@
             <div class="card mb-4">
                 <div class="card-body">
                     <h3>@Localizer["Users_ProfileEdit_SectionContributor"]</h3>
@@ -400,10 +394,7 @@
                 </div>
             </div>
 
-            @* --- Section 3: Membership tier --- *@
-            @* Tier applications are Governance's: this card explains the tiers and links to
-               /Governance/Applications/Create (Users decomposition commit 11). Volunteer
-               admission never waits on it. *@
+            @* Tier applications are Governance's; Volunteer admission never waits on them. *@
             @if (Model.IsInitialSetup)
             {
                 <div class="card mb-4">
@@ -427,7 +418,6 @@
                 </div>
             }
 
-            @* --- Section 4: Private --- *@
             @if (!Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
@@ -462,7 +452,6 @@
         <script nonce="@Context.Items["CspNonce"]">
             async function initPlacesAutocomplete() {
                 try {
-                    // Load the places library
                     await google.maps.importLibrary("places");
 
                     const autocomplete = document.getElementById('locationSearch');
@@ -474,7 +463,6 @@
                     console.log('Autocomplete element found:', autocomplete);
                     console.log('Autocomplete tagName:', autocomplete.tagName);
 
-                    // Listen for place selection - event is 'gmp-select' with { placePrediction }
                     autocomplete.addEventListener('gmp-select', async ({ placePrediction }) => {
                         console.log('gmp-select event, placePrediction:', placePrediction);
 
@@ -483,7 +471,6 @@
                             return;
                         }
 
-                        // Convert prediction to Place and fetch details
                         const place = placePrediction.toPlace();
                         await place.fetchFields({
                             fields: ['location', 'addressComponents', 'id', 'displayName']
@@ -491,7 +478,6 @@
 
                         console.log('Place after fetchFields:', place);
 
-                        // Extract city and country
                         let city = '';
                         let countryCode = '';
 
@@ -509,7 +495,6 @@
                             }
                         }
 
-                        // Populate hidden fields
                         document.getElementById('City').value = city;
                         document.getElementById('CountryCode').value = countryCode;
                         document.getElementById('Latitude').value = place.location?.lat() || '';
@@ -698,10 +683,8 @@
                 });
             }
 
-            // Setup existing rows
             container.querySelectorAll('.contact-field-row').forEach(setupRow);
 
-            // Add new row
             addButton.addEventListener('click', function() {
                 const index = getNextIndex();
                 const row = createContactFieldRow(index);
@@ -795,10 +778,8 @@
                 });
             }
 
-            // Setup existing rows
             container.querySelectorAll('.volunteer-history-row').forEach(setupHistoryRow);
 
-            // Add new row
             addButton.addEventListener('click', function() {
                 const index = getNextIndex();
                 const row = createVolunteerHistoryRow(index);
@@ -898,10 +879,8 @@
                 });
             }
 
-            // Setup existing rows
             container.querySelectorAll('.language-row').forEach(setupLanguageRow);
 
-            // Add new row
             addButton.addEventListener('click', function() {
                 const index = getNextIndex();
                 const row = createLanguageRow(index);
@@ -961,12 +940,10 @@
             let dirty = false;
             const markDirty = () => { dirty = true; };
 
-            // Standard input changes (text, select, date, textarea, checkbox, file)
             form.addEventListener('input', markDirty);
             form.addEventListener('change', markDirty);
 
-            // Google Places autocomplete sets hidden fields programmatically;
-            // .value = ... doesn't fire input/change, so watch the gmp-select event.
+            // Places autocomplete sets hidden fields without firing input/change.
             const locationSearch = document.getElementById('locationSearch');
             if (locationSearch) {
                 locationSearch.addEventListener('gmp-select', markDirty);
@@ -1058,10 +1035,8 @@
                 firstError?.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
-            // Clear on submit so saving doesn't trigger warning
             form.addEventListener('submit', () => { dirty = false; });
 
-            // Browser-native "unsaved changes" dialog
             window.addEventListener('beforeunload', (e) => {
                 if (dirty) {
                     e.preventDefault();

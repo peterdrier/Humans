@@ -1,12 +1,8 @@
 namespace Humans.Preapprovals;
 
 /// <summary>
-/// Marker type for Preapprovals' resource set. The <c>.resx</c> files sit beside this file
-/// on purpose: the SDK derives the manifest name from the adjacent same-named <c>.cs</c>
-/// file's namespace, so this must stay <c>namespace Humans.Preapprovals</c>.
+/// Must stay <c>namespace Humans.Preapprovals</c>: the SDK derives the adjacent .resx manifest name from this file's
+/// namespace.
 /// </summary>
-/// <remarks>
-/// Public because the boot localization diagnostic discovers section resource markers via
-/// <c>GetExportedTypes()</c>; an internal marker is skipped in silence.
-/// </remarks>
+/// <remarks>Public because the boot localization diagnostic finds markers via <c>GetExportedTypes()</c>.</remarks>
 public class PreapprovalsResource;

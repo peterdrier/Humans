@@ -5,7 +5,6 @@ using Humans.GoogleIntegration.Data;
 
 namespace Humans.GoogleIntegration.Services;
 
-/// <summary>Per-service sync-mode settings (Drive/Groups/Discord). Owns sync_service_settings via repository.</summary>
 internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IClock clock, IAuditLogService audit) : ISyncSettingsService
 {
     public async Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)

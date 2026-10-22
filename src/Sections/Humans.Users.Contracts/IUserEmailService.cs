@@ -2,40 +2,26 @@ using NodaTime;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>
-/// Service for managing user email addresses.
-/// </summary>
-// No marker interface — see Humans.Users.Contracts.csproj.
 public interface IUserEmailService
 {
-    /// <summary>
-    /// Gets all emails for a user, ordered by display order.
-    /// </summary>
+    /// <summary>In display order.</summary>
     Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns whether the verification resend cooldown has elapsed for a
-    /// pending UserEmail row.
-    /// </summary>
+    /// <summary>Whether the verification resend cooldown has elapsed for a pending row.</summary>
     Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets emails visible on a user's profile based on viewer access level.
-    /// </summary>
+    /// <summary>Filtered by the viewer's access level.</summary>
     Task<IReadOnlyList<UserEmailDto>> GetVisibleEmailsAsync(
         Guid userId,
         ContactFieldVisibility accessLevel,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a new email address and initiates verification.
-    /// Returns a result containing the verification token and whether the email conflicts
-    /// with another account (which will trigger a merge request on verification),
-    /// or an ErrorKey for invalid format, an existing account address, or a pending merge.
-    /// Expected refusals create no email row or verification token.
+    /// Returns the verification token and whether the address belongs to another account (verifying then opens a
+    /// merge request), or an ErrorKey. A refusal creates no row and no token.
     /// </summary>
     Task<AddEmailResult> AddEmailAsync(
         Guid userId,
@@ -43,15 +29,9 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Verifies an email address using a token. <paramref name="emailId"/>
-    /// identifies the specific pending row the verification link was issued
-    /// for — the token is bound to this row's Id via the token's purpose
-    /// suffix, so passing it here disambiguates when the same user has
-    /// multiple pending plain rows (issue nobodies-collective/Humans#611).
-    /// If the email is already verified on another account, creates a merge
-    /// request instead of completing verification. Returns a result
-    /// indicating the email and whether a merge request was created, or an
-    /// ErrorKey for an invalid link. Dependency faults propagate.
+    /// <paramref name="emailId"/> is the pending row the link was issued for: the token is bound to it, which
+    /// disambiguates several pending rows. An address verified on another account opens a merge request instead.
+    /// Dependency faults propagate.
     /// </summary>
     Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
@@ -60,19 +40,10 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Admin-only: marks a pending plain (non-OAuth) UserEmail row verified
-    /// without consuming a verification token. Used when the user can't
-    /// complete the token flow themselves (mailbox unreachable, lost link,
-    /// expired link) but the admin has confirmed ownership through other
-    /// means. Mirrors <see cref="VerifyEmailAsync"/>'s duplicate-email
-    /// branch — if the address is already verified on another account, a
-    /// merge request is created instead of completing verification.
-    /// Writes an audit entry attributing the action to
-    /// <paramref name="actorUserId"/>. Throws
-    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>
-    /// when the row is not found, already verified, or has a non-null
-    /// <see cref="UserEmail.Provider"/> (provider-attached rows are verified
-    /// through the OAuth callback, not this path).
+    /// Verifies a pending plain row without a token, when the admin confirmed ownership another way. Same
+    /// duplicate branch as <see cref="VerifyEmailAsync"/>; audited to <paramref name="actorUserId"/>. Throws
+    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/> when the row is missing, already
+    /// verified or provider-attached (those verify through the OAuth callback).
     /// </summary>
     Task<VerifyEmailResult> AdminMarkVerifiedAsync(
         Guid userId,
@@ -80,18 +51,13 @@ public interface IUserEmailService
         Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Sets which email is the notification target.
-    /// Returns a refusal when the row is missing or unverified.
-    /// </summary>
+    /// <summary>Sets the notification target. Refuses a missing or unverified row.</summary>
     Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId,
         Guid emailId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Updates the profile visibility for an email; returns a refusal when the row is missing.
-    /// </summary>
+    /// <summary>Refuses a missing row.</summary>
     Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId,
         Guid emailId,
@@ -99,25 +65,9 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a UserEmail row. Returns a successful result when the row was removed,
-    /// or an expected refusal key when a precondition rejected the delete:
-    ///
-    /// rows with a non-empty <see cref="UserEmail.Provider"/> must go through
-    /// <see cref="UnlinkAsync"/>, which removes the AspNetUserLogins row and
-    /// the UserEmail row in one step. Also refuses deletion when:
-    /// <list type="bullet">
-    /// <item>the row is the primary email (issue nobodies-collective/Humans#758)
-    /// — the user must promote another verified email to primary first; or</item>
-    /// <item>removing a verified row would leave the user with zero verified
-    /// UserEmail rows; or</item>
-    /// <item>the row's address is linked to the user's event ticket
-    /// (issue nobodies-collective/Humans#758) — removing it could disconnect
-    /// the ticket on the next vendor re-sync.</item>
-    /// </list>
-    /// Unverified rows are always deletable since they can't be used for
-    /// sign-in (subject to the primary / ticket-linked guards above). See
-    /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>
-    /// PRs 1 and 4 for the original design rationale.
+    /// Provider-attached rows must go through <see cref="UnlinkAsync"/>. Also refuses the primary row, the last
+    /// verified row, and a row whose address is linked to the user's event ticket (a vendor re-sync could
+    /// disconnect the ticket).
     /// </summary>
     Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId,
@@ -125,10 +75,8 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
-    /// If the email is @nobodies.team, it's automatically set as the notification target.
-    /// Idempotent: if the email already exists for this user, skips the insert
-    /// and returns <c>false</c>. Returns <c>true</c> when a row was actually inserted.
+    /// No verification flow. A @nobodies.team address becomes the notification target. Returns false when the
+    /// address already exists for this user.
     /// </summary>
     Task<bool> AddVerifiedEmailAsync(
         Guid userId,
@@ -136,13 +84,8 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Idempotent verified-email add for the import-flow account-creation path
-    /// (<c>AccountProvisioningService</c>): on a freshly created User the row
-    /// is added through <c>UserEmailService</c> rather than the
-    /// repository directly so it goes through the same orchestrator
-    /// (Primary invariant, UserInfo invalidation) as every
-    /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
-    /// Skips if the email already exists for this user (idempotent).
+    /// For freshly provisioned accounts, so the row goes through the same primary invariant and cache invalidation
+    /// as every other add. Skips an address the user already has.
     /// </summary>
     Task AddProvisionedEmailAsync(
         Guid userId,
@@ -150,14 +93,9 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The one address→rows lookup: every <c>UserEmail</c> row, across all users, whose
-    /// address matches <paramref name="email"/>. <paramref name="aliased"/> widens the
-    /// match to the gmail/googlemail twin (<c>EmailNormalization.EmailsMatch</c>);
-    /// otherwise it is an exact, case-insensitive comparison. <paramref name="verifiedOnly"/>
-    /// drops unverified rows. Callers pick the cardinality they need (first owner, distinct
-    /// owners, "exactly one", "any other user"); a caller that mutates state must treat
-    /// more than one distinct owner as ambiguous, since verified-address uniqueness is a
-    /// service invariant that can drift. Read from the cached UserInfo snapshot.
+    /// Every row across all users matching <paramref name="email"/>; <paramref name="aliased"/> adds the
+    /// gmail/googlemail twin. A caller that mutates state must treat more than one distinct owner as ambiguous:
+    /// verified-address uniqueness can drift. Served from the <c>UserInfo</c> cache.
     /// </summary>
     Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddressAsync(
         string email,
@@ -165,149 +103,68 @@ public interface IUserEmailService
         bool verifiedOnly,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the verified @nobodies.team email for a user, or null if none exists.
-    /// </summary>
+    /// <summary>Null if none.</summary>
     Task<string?> GetNobodiesTeamEmailAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Resolves the notification-target email for each requested user. The
-    /// result is <c>UserEmail.Email</c> where <c>IsPrimary</c> is
-    /// true and the email is verified, falling back to <c>User.Email</c> when
-    /// no notification-target email exists. Users for whom no email can be
-    /// resolved are omitted from the result. Used by cross-section callers
-    /// (Feedback, Campaigns, future mass-mail pipelines) so they never navigate
-    /// <c>User.UserEmails</c> directly.
-    /// <para>
-    /// Keyed by the <b>requested</b> id; the address is the <b>resolved</b> human's.
-    /// An id that was merged away resolves forward to the surviving account
-    /// (<see cref="IUserService.GetUserInfoAsync"/>), so asking for an archived id
-    /// returns the survivor's address under that archived key — "where do I mail this
-    /// person" has one right answer and it is never the merge sentinel.
-    /// </para>
+    /// The verified primary row, else <c>User.Email</c>; users with neither are absent. Keyed by the requested id,
+    /// with the resolved human's address: a merged-away id gets the survivor's.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns distinct user ids whose email rows match the supplied prefix
-    /// and suffix. Used by Admin-only maintenance flows that resolve marked
-    /// account sets through the Profile-owned email table.
-    /// </summary>
     Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the notification-target (IsPrimary=true, verified) email address for the user,
-    /// falling back to <c>User.Email</c> when no primary row exists. Returns <c>null</c> when
-    /// no email can be resolved. Used by transfer-request creation to snapshot the recipient's
-    /// preferred contact address.
-    /// </summary>
+    /// <summary>The verified primary row, else <c>User.Email</c>; null when neither exists.</summary>
     Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns every verified email address belonging to the user. Used by
-    /// cross-section callers (Tickets, matching) that need to compare incoming
-    /// addresses against a user's verified set without reading
-    /// <c>user_emails</c> directly.
-    /// </summary>
     Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns every <see cref="UserEmail"/> entity belonging to
-    /// <paramref name="userId"/>, including the per-row metadata
-    /// (<c>IsVerified</c>, <c>IsPrimary</c>,
-    /// <c>Provider</c>, etc.). Used by cross-section callers
-    /// (GoogleAdmin / GoogleWorkspaceSync) that need the row-level metadata
-    /// to compute Google-rename detection or sync flags. Returns an empty
-    /// list when the user has no emails. The return type is the raw
-    /// entity rather than a DTO because the callers genuinely need the
-    /// per-row flags — projecting to a DTO would just rename them.
-    /// </summary>
+    /// <summary>Empty when the user has no emails.</summary>
     Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the notification-target email for each of the given user ids
-    /// (batch query). Users with no notification target are absent from the
-    /// returned dictionary. Used by cross-section callers (Tickets "who
-    /// hasn't bought" admin list) that need to resolve display emails in
-    /// memory without reading <c>user_emails</c> directly.
-    /// </summary>
+    /// <summary>Users with no notification target are absent.</summary>
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns every <see cref="UserEmailMatch"/> whose address matches one of
-    /// <paramref name="emails"/> (case-insensitive). Used by the Google admin
-    /// workspace-accounts list to match Google-side accounts to humans without
-    /// loading the full <c>user_emails</c> table.
-    /// </summary>
+    /// <summary>Case-insensitive.</summary>
     Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
         IReadOnlyCollection<string> emails,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears <see cref="UserEmail.IsPrimary"/> on a single row without
-    /// promoting any sibling — admin recovery path for cases where multiple
-    /// rows are flagged primary or where the admin needs to deliberately
-    /// pick a new primary after dropping the current one. Leaves the user
-    /// in the temporarily-no-primary state; the admin is expected to call
-    /// <see cref="SetPrimaryAsync"/> afterward (or
-    /// <c>EnsurePrimaryInvariantAsync</c> will fire on the next mutating
-    /// path). Returns <c>false</c> when the row is not found for this user
-    /// or is already cleared.
+    /// Admin recovery: clears the flag without promoting a sibling, leaving the user without a primary until
+    /// <see cref="SetPrimaryAsync"/> or the next mutating path. False when not found or already cleared.
     /// </summary>
     Task<bool> ClearPrimaryAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns one entry per user whose UserEmail rows currently violate the
-    /// admin-visible flag invariants:
-    /// <list type="bullet">
-    /// <item>verified rows present but the count of <c>IsPrimary = true</c>
-    /// verified rows is not exactly 1.</item>
-    /// </list>
-    /// The Google identity is no longer a per-row flag (GoogleIntegration's
-    /// <c>google_workspace_identities</c>, one row per user), so it has no violations here.
-    /// Used by the Google admin "email flag violations" remediation screen.
-    /// </summary>
+    /// <summary>Users whose verified rows don't have exactly one primary.</summary>
     Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns UserEmail rows whose UserId points to a non-existent or tombstoned
-    /// User (User row absent OR <c>MergedToUserId</c> set). Used by the EmailProblems
-    /// admin scan. With a small user base, a full-table scan is trivial.
-    /// </summary>
+    /// <summary>Rows whose user is missing or a merge tombstone.</summary>
     Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes a single UserEmail row by id. Used by EmailProblems orphan cleanup.
-    /// Idempotent — returns false if the row no longer exists.
-    /// </summary>
+    /// <summary>False if the row no longer exists.</summary>
     Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Removes both the AspNetUserLogins row and the UserEmail row for a
-    /// Provider-attached email. Owner-gated. Returns an unsuccessful result if the row
-    /// is not found for this user or has no <see cref="UserEmail.Provider"/>/
-    /// <see cref="UserEmail.ProviderKey"/>. Returns a typed refusal
-    /// when unlinking a row would leave the user with zero verified
-    /// emails (auth-method invariant, nobodies-collective/Humans#731 — magic
-    /// link needs a verified address too, so this would be a full lockout).
-    /// <paramref name="userId"/> is the <b>target</b> user;
-    /// <paramref name="actorUserId"/> is the actor.
+    /// Removes the login row and the email row of a provider-attached address. Refuses when it would leave
+    /// <paramref name="userId"/> (the target, not <paramref name="actorUserId"/>) with no verified email: magic
+    /// link needs one too, so that would be a full lockout.
     /// </summary>
     Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId,
@@ -316,39 +173,19 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Issue nobodies-collective/Humans#697. The single OAuth-callback entry
-    /// point that mutates <see cref="UserEmail"/> rows. Called
-    /// once per OAuth-success path in <c>AccountController</c> after Identity's
-    /// <c>AspNetUserLogins</c> row points at <paramref name="userId"/>. Policy
-    /// ladder (all inside a single transaction):
+    /// The one OAuth-callback path that mutates email rows, after the login row points at <paramref name="userId"/>.
+    /// In one transaction:
     /// <list type="number">
     /// <item>Tagged row at <paramref name="claimEmail"/> → <see cref="ReconcileOutcome.NoChange"/>.</item>
-    /// <item>Tagged row at a different email + another row of this user holds
-    /// the claim email → tag-move (union <c>IsPrimary</c>,
-    /// force verify, delete old) → <see cref="ReconcileOutcome.TagMoved"/>.</item>
-    /// <item>Tagged row at a different email + no other row of this user holds
-    /// the claim email → rewrite → <see cref="ReconcileOutcome.EmailRewritten"/>.</item>
-    /// <item>No tagged row + another row of this user holds the claim email →
-    /// tag-move → <see cref="ReconcileOutcome.TagMoved"/>.</item>
-    /// <item>No tagged row + no row of this user holds the claim email → insert
-    /// a verified tagged row → <see cref="ReconcileOutcome.NewRowCreated"/>.</item>
+    /// <item>Another row of this user holds the claim email → tag-move (union <c>IsPrimary</c>, force verify, delete
+    /// the old row) → <see cref="ReconcileOutcome.TagMoved"/>.</item>
+    /// <item>Tagged row elsewhere, no row holds the claim email → rewrite → <see cref="ReconcileOutcome.EmailRewritten"/>.</item>
+    /// <item>No tagged row and no row holds it → insert a verified tagged row → <see cref="ReconcileOutcome.NewRowCreated"/>.</item>
     /// </list>
-    /// Before any insert/rewrite that would place a verified row at
-    /// <paramref name="claimEmail"/>, a cross-user collision check runs. If
-    /// another user already verified-holds the claim email:
-    /// <list type="bullet">
-    /// <item>When <paramref name="claimEmailVerified"/> is <c>true</c> → Google
-    /// wins. Delete the other user's row, write paired audits, proceed →
-    /// <see cref="ReconcileOutcome.CrossUserDisplaced"/>.</item>
-    /// <item>When <paramref name="claimEmailVerified"/> is <c>false</c> →
-    /// block. No mutation. Audit the attempt →
-    /// <see cref="ReconcileOutcome.CrossUserBlocked"/>.</item>
-    /// </list>
-    /// Audit rows for every outcome are written by this method inside the same
-    /// transaction as the data change; callers must not write their own audit
-    /// rows on the OAuth path. Sign-in must NEVER block on this call —
-    /// exceptions propagate but the caller is required to swallow them and
-    /// continue the sign-in.
+    /// If another user already verified-holds the claim email, a verified claim displaces their row
+    /// (<see cref="ReconcileOutcome.CrossUserDisplaced"/>) and an unverified one changes nothing
+    /// (<see cref="ReconcileOutcome.CrossUserBlocked"/>). This writes every audit row itself, so callers must not.
+    /// Sign-in must never block on it: the caller swallows its exceptions.
     /// </summary>
     Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
         Guid userId,
@@ -360,12 +197,8 @@ public interface IUserEmailService
 }
 
 /// <summary>
-/// Thrown by <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>
-/// (via the underlying repository) when the verified-email partial unique
-/// index catches a concurrent cross-user collision past the in-service
-/// pre-check — the race backstop. Surfaced as a domain exception so the
-/// Web layer never imports Postgres / Npgsql types
-/// (<c>docs/architecture/design-rules.md §1</c>: clean architecture).
+/// The verified-email unique index caught a concurrent cross-user collision past the pre-check. A domain type so
+/// Web never imports Npgsql.
 /// </summary>
 public sealed class OAuthReconcileConcurrencyException : Exception
 {
@@ -375,55 +208,27 @@ public sealed class OAuthReconcileConcurrencyException : Exception
         : base(message, inner) { }
 }
 
-/// <summary>
-/// Outcome of <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
-/// </summary>
 public enum ReconcileOutcome
 {
-    /// <summary>User's tagged row already holds the claim email.</summary>
     NoChange,
-    /// <summary>Tagged row's email was rewritten in place.</summary>
     EmailRewritten,
-    /// <summary>Provider tag moved onto another row of the same user holding
-    /// the claim email; flags unioned, old row deleted.</summary>
+    /// <summary>Flags unioned, old row deleted.</summary>
     TagMoved,
-    /// <summary>No tagged row existed; created a new verified tagged row.</summary>
     NewRowCreated,
-    /// <summary>Another user already verified-held the claim email; that
-    /// user's row was deleted (Google wins) because the provider's claim
-    /// asserted email verification.</summary>
+    /// <summary>The other user's row was deleted because the provider asserted verification.</summary>
     CrossUserDisplaced,
-    /// <summary>Another user already verified-held the claim email and the
-    /// provider's claim did not assert email verification. No mutation
-    /// performed.</summary>
+    /// <summary>The provider didn't assert verification. Nothing changed.</summary>
     CrossUserBlocked,
 }
 
-/// <summary>
-/// Informational record describing the reconcile outcome. Audit rows are
-/// written by the service itself; this record exists for tests, admin
-/// diagnostics, and any non-audit observers in the caller.
-/// </summary>
-/// <param name="Outcome">The reconcile outcome that occurred.</param>
-/// <param name="PreviousEmail">For <see cref="ReconcileOutcome.EmailRewritten"/>
-/// or <see cref="ReconcileOutcome.TagMoved"/>, the email value previously
-/// held by the signing user's tagged row. <c>null</c> otherwise.</param>
-/// <param name="AffectedRowId">The <see cref="UserEmail.Id"/> of the signing
-/// user's row that now carries the tag at the claim email, or that was
-/// determined to already be in the correct state. <c>null</c> for
-/// <see cref="ReconcileOutcome.CrossUserBlocked"/>.</param>
-/// <param name="DisplacedUserId">For <see cref="ReconcileOutcome.CrossUserDisplaced"/>
-/// or <see cref="ReconcileOutcome.CrossUserBlocked"/>, the id of the other
-/// user that held / holds the claim email.</param>
-/// <param name="DisplacedRowId">For <see cref="ReconcileOutcome.CrossUserDisplaced"/>,
-/// the id of the row that was deleted. For
-/// <see cref="ReconcileOutcome.CrossUserBlocked"/>, the id of the row that
-/// blocked the mutation.</param>
-/// <param name="DisplacedEmail">The email value on the displaced (or blocking)
-/// row.</param>
-/// <param name="DisplacedUserLeftWithoutVerifiedEmail"><c>true</c> when
-/// <see cref="ReconcileOutcome.CrossUserDisplaced"/> deleted the displaced
-/// user's only remaining verified email row.</param>
+/// <summary>Informational: the service writes the audit rows itself.</summary>
+/// <param name="Outcome">What happened.</param>
+/// <param name="PreviousEmail">The tagged row's old address, for EmailRewritten or TagMoved; null otherwise.</param>
+/// <param name="AffectedRowId">The signing user's row now carrying the tag; null for CrossUserBlocked.</param>
+/// <param name="DisplacedUserId">The other user, for CrossUserDisplaced or CrossUserBlocked.</param>
+/// <param name="DisplacedRowId">The deleted row (CrossUserDisplaced) or the blocking row (CrossUserBlocked).</param>
+/// <param name="DisplacedEmail">The address on that row.</param>
+/// <param name="DisplacedUserLeftWithoutVerifiedEmail">The displacement deleted the other user's last verified row.</param>
 public record OAuthReconcileResult(
     ReconcileOutcome Outcome,
     string? PreviousEmail,
@@ -433,11 +238,6 @@ public record OAuthReconcileResult(
     string? DisplacedEmail,
     bool DisplacedUserLeftWithoutVerifiedEmail);
 
-/// <summary>
-/// Narrow projection describing a <see cref="UserEmail"/>
-/// row used by admin cross-section matching. Avoids leaking the full entity
-/// outside the owning section.
-/// </summary>
 public record UserEmailMatch(
     string Email,
     Guid UserId,
@@ -445,18 +245,11 @@ public record UserEmailMatch(
     bool IsVerified,
     Instant UpdatedAt);
 
-/// <summary>
-/// Per-user summary of UserEmail flag-invariant violations. Returned by
-/// <see cref="IUserEmailService.GetEmailFlagViolationsAsync"/> for the
-/// admin remediation screen.
-/// </summary>
-/// <param name="UserId">The user with the violation.</param>
-/// <param name="VerifiedCount">How many rows are verified.</param>
-/// <param name="VerifiedPrimaryCount">How many verified rows have
-/// <c>IsPrimary = true</c>. A healthy value is 1 (when verified rows exist)
-/// or 0 (when no verified rows exist).</param>
-/// <param name="HasPrimaryProblem">Convenience flag — true when verified
-/// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
+/// <summary>For the admin remediation screen.</summary>
+/// <param name="UserId">The user.</param>
+/// <param name="VerifiedCount">Verified rows.</param>
+/// <param name="VerifiedPrimaryCount">Verified primary rows; healthy is 1, or 0 with no verified rows.</param>
+/// <param name="HasPrimaryProblem">Verified rows exist and <see cref="VerifiedPrimaryCount"/> isn't 1.</param>
 public record UserEmailFlagViolation(
     Guid UserId,
     int VerifiedCount,

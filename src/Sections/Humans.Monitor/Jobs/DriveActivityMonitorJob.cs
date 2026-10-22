@@ -5,14 +5,6 @@ using Humans.Monitor.Contracts;
 
 namespace Humans.Monitor.Jobs;
 
-/// <summary>
-/// Periodic job that checks Google Drive Activity API for permission changes
-/// not initiated by the system's service account and logs anomalies to the audit log.
-/// </summary>
-/// <remarks>
-/// Public and under <c>Jobs/</c>: <c>Section.cs</c> and <c>SectionJobs.cs</c> name the
-/// concrete type, and HUM0034 allows a section's public types there.
-/// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class DriveActivityMonitorJob(
     IDriveActivityMonitorService monitorService,

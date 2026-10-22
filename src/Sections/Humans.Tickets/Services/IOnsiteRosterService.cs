@@ -3,20 +3,9 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Tickets.Services;
 
-/// <summary>
-/// Orchestrates the "Who's onsite" view (#736). Joins the cached set of
-/// Attended+CheckedInAt humans for the active year with their camp / team /
-/// governance-role names and applies the requested filters. Used by the
-/// <c>/Tickets/Admin/Onsite</c> admin view.
-/// </summary>
 internal interface IOnsiteRosterService : IApplicationService
 {
-    /// <summary>
-    /// Returns the filtered, enriched onsite roster for <paramref name="year"/>.
-    /// Filter strings match camp / team / governance-role names case-insensitively
-    /// (Ordinal). Rows are returned in unspecified order — caller sorts at the
-    /// presentation layer per <c>memory/architecture/display-sort-in-controllers.md</c>.
-    /// </summary>
+    /// <summary>Filters match names case-insensitively. Rows are unordered: the caller sorts.</summary>
     Task<OnsiteRosterResult> GetRosterAsync(
         int year,
         string? campFilter,
@@ -25,11 +14,7 @@ internal interface IOnsiteRosterService : IApplicationService
         CancellationToken ct = default);
 }
 
-/// <summary>
-/// Outcome of <see cref="IOnsiteRosterService.GetRosterAsync"/>: the filtered
-/// rows plus the full set of camp / team / role names known to be onsite
-/// (drives the filter dropdowns in the view).
-/// </summary>
+/// <summary>The name sets drive the filter dropdowns.</summary>
 internal sealed record OnsiteRosterResult(
     IReadOnlyList<OnsiteRosterRow> Rows,
     IReadOnlyList<string> AvailableCamps,

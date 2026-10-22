@@ -1,7 +1,6 @@
 @model Humans.Email.ViewComponents.EmailPauseSettingsTabViewModel
 
-@* Moved from the /Email/EmailOutbox dashboard header (peterdrier/Humans#1634). Explicit
-   asp-controller/asp-action so this form posts to EmailController from /Settings. *@
+@* Explicit asp-controller/asp-action: this renders on /Settings but posts to EmailController. *@
 <div class="d-flex justify-content-between align-items-center">
     <div>
         @if (Model.IsPaused)

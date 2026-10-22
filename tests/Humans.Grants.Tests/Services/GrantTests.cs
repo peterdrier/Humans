@@ -143,8 +143,6 @@ public sealed class GrantTests : GrantsTestHarness
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
     }
 
-    // ── The source write ──────────────────────────────────────────────────
-
     [HumansFact]
     public async Task SourceIssue_FindsTheOpenProgramByKey_IsIdempotentPerPerson()
     {
@@ -206,8 +204,6 @@ public sealed class GrantTests : GrantsTestHarness
         (await ReadGrantAsync(grant.Id)).RevokeReason.Should().Be("Withdrew");
         await ReceivedNoticeAsync(NotificationSource.GrantRevoked, person);
     }
-
-    // ── Expiry ────────────────────────────────────────────────────────────
 
     [HumansFact]
     public async Task State_GrantDateOverridesProgramDate_ExpiresTheDayAfter()

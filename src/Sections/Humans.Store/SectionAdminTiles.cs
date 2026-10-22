@@ -7,10 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Store;
 
-/// <summary>
-/// The admin dashboard's store tile. Policy-gated below /Admin's AnyAdminRole, mirroring the
-/// store pages' own tighter policy; the summary is not read for roles that cannot see it.
-/// </summary>
+/// <summary>Gated by the store pages' own policy, tighter than /Admin's AnyAdminRole; the summary isn't read for roles that can't see it.</summary>
 internal sealed class SectionAdminTiles : ISectionAdminTiles
 {
     public IEnumerable<AdminTile> Tiles() =>

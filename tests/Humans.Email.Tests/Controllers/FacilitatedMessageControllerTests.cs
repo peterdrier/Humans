@@ -19,7 +19,7 @@ using NSubstitute;
 namespace Humans.Email.Tests.Controllers;
 
 /// <summary>
-/// Facilitated messaging served by Email (Users decomposition commit 7) at
+/// Facilitated messaging at
 /// <c>/Email/SendMessage/{id}</c>: the opt-out and self guards, the Reply-To rule and the audit
 /// entry. Sending as a team is Teams' (<c>TeamMessageControllerTests</c>).
 /// </summary>

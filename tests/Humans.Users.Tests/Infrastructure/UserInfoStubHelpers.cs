@@ -7,11 +7,8 @@ using Humans.Users.Services;
 namespace Humans.Users.Tests.Infrastructure;
 
 /// <summary>
-/// Helpers for stubbing the <see cref="IUserService.GetUserInfosAsync"/> reader on
-/// NSubstitute test doubles, reading from whatever in-memory DB the test
-/// owns. Builds a minimal UserInfo
-/// (the User + its UserEmails) — empty collections for the rest, which
-/// matches what existing legacy stubs covered.
+/// Stubs the user-info readers from the test's in-memory DB: the User and its UserEmails,
+/// empty collections for the rest.
 /// </summary>
 internal static class UserInfoStubHelpers
 {

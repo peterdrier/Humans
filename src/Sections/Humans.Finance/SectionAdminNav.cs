@@ -3,12 +3,10 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Finance;
 
-/// <summary>Finance's admin sidebar group (nobodies-collective/Humans#1077).</summary>
-/// <remarks>
-/// One link, deliberately: <c>/Finance/Holded</c> is the index for this section's Holded surface and
-/// carries the way into HoldedAccounts, HoldedUnmatched and Creditors, which have no sidebar entry of
-/// their own.
-/// </remarks>
+/// <summary>
+/// One link on purpose: <c>/Finance/Holded</c> is the index that leads to HoldedAccounts, HoldedUnmatched and
+/// Creditors.
+/// </summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

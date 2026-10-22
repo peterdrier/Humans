@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Email;
 
-/// <summary>Email's admin sidebar group (nobodies-collective/Humans#1077).</summary>
 internal sealed class SectionAdminNav : ISectionAdminNav
 {
     public IEnumerable<AdminNavGroup> Groups() =>

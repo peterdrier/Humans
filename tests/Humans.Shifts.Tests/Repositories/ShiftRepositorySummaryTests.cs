@@ -8,11 +8,6 @@ using NodaTime.Testing;
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Repositories;
 
-/// <summary>
-/// Unit tests for <see cref="ShiftRepository"/>'s Shift Summary aggregation read
-/// (<c>GetConfirmedUserShiftTotalsAsync</c>): confirmed-only filtering, hours =
-/// Σ duration, count = # signups, and the global / team-set / single-rota scopes.
-/// </summary>
 public class ShiftRepositorySummaryTests : IDisposable
 {
     private readonly ShiftsDbContext _shiftsDbContext;
@@ -20,7 +15,6 @@ public class ShiftRepositorySummaryTests : IDisposable
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    // Shared scenario ids.
     private readonly Guid _event = Guid.NewGuid();
     private readonly Guid _otherEvent = Guid.NewGuid();
     private readonly Guid _team1 = Guid.NewGuid();
@@ -127,8 +121,6 @@ public class ShiftRepositorySummaryTests : IDisposable
 
         totals.Should().BeEmpty();
     }
-
-    // ── seed ────────────────────────────────────────────────────────────────
 
     private void SeedScenario()
     {

@@ -1,46 +1,10 @@
 
 namespace Humans.Consent.Services;
 
-/// <summary>
-/// Cached per-user projection for the Consent section (T-04). Holds the
-/// flat set of <c>DocumentVersionId</c> values the user (and any merged
-/// source-id chain-follow tombstones) has explicitly consented to.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Footprint: one entry per user, each a small <see cref="HashSet{T}"/>
-/// of Guids — well under 1 MB at full population.
-/// </para>
-/// <para>
-/// The chain-follow merge resolution (<see
-/// cref="Users.Contracts.UserInfo.MergedUserIds"/>) is applied at
-/// warm/refresh time, not at read time — every cache entry already
-/// represents the union of the target user's explicit consents plus
-/// those of any merged source tombstones. The entry carries the id list it
-/// was built over (<see cref="UserIds"/>); the caching decorator reloads an
-/// entry whose list no longer matches the human's current one, which is how
-/// an account merge reaches this cache without a signal from Users.
-/// </para>
-/// <para>
-/// Synchronous invalidation on <see
-/// cref="Humans.Consent.Contracts.IConsentSubmission.SubmitConsentAsync"/> is the load-bearing
-/// invariant of this cache: the controller redirects immediately after
-/// the submit returns, and the next-page consent-banner check must not
-/// observe a stale "still required" entry. The caching decorator refreshes
-/// the user's entry (and each merged-source key) via <c>ReplaceAsync</c>
-/// before returning from <c>SubmitConsentAsync</c>.
-/// </para>
-/// </remarks>
-/// <param name="UserId">The target user id this entry was keyed under.</param>
-/// <param name="ConsentedVersionIds">
-/// Document version ids the user has explicitly consented to, unioned
-/// across merged-source-id tombstones if any. Read-only set; safe to
-/// share across requests.
-/// </param>
-/// <param name="UserIds">
-/// Every id of the human the set was built over (<c>UserInfo.AllUserIds</c>,
-/// read before the load). A different current list means a merge since.
-/// </param>
+/// <summary>One user's cached consented version ids.</summary>
+/// <param name="UserId">The cache key.</param>
+/// <param name="ConsentedVersionIds">Unioned across the merge chain. Read-only; safe to share across requests.</param>
+/// <param name="UserIds">The id list the set was built over, read before the load. A different current list means a merge since.</param>
 internal sealed record UserConsentInfo(
     Guid UserId,
     IReadOnlySet<Guid> ConsentedVersionIds,

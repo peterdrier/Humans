@@ -6,14 +6,9 @@ namespace Humans.Web.Services;
 
 /// <inheritdoc cref="IHttpStatusTracker"/>
 /// <remarks>
-/// Runs a <see cref="MeterListener"/> over ASP.NET Core's built-in
-/// <c>Microsoft.AspNetCore.Hosting</c> meter, observing the
-/// <c>http.server.request.duration</c> histogram. We ignore the duration value
-/// and tally one event per request, keyed by the <c>http.response.status_code</c>
-/// tag. This is a passive, parallel observer — it never touches or resets the
-/// instrument and does not interfere with the OpenTelemetry/Prometheus export.
-/// Registered as an <see cref="IHostedService"/> so the listener attaches at
-/// startup and counts from the very first request.
+/// A passive <see cref="MeterListener"/> over ASP.NET Core's <c>http.server.request.duration</c> histogram, tallying
+/// one event per request by <c>http.response.status_code</c>. It never resets the instrument, so the
+/// OpenTelemetry/Prometheus export is unaffected.
 /// </remarks>
 public sealed class HttpStatusTracker : IHttpStatusTracker, IHostedService, IDisposable
 {

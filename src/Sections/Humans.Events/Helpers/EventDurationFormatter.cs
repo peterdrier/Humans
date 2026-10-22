@@ -2,7 +2,6 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Events.Helpers;
 
-/// <summary>Formats event durations with the active culture's short units.</summary>
 internal static class EventDurationFormatter
 {
     public static string Format(int minutes, IStringLocalizer<EventsResource> localizer)

@@ -24,7 +24,7 @@ internal static class AnalyzerTestHarness
     /// into <paramref name="source"/>'s own compilation. For rules that key off a
     /// symbol's own accessibility (e.g. HUM0034), a marker/base type the test needs to
     /// implement or derive from must live outside the assembly under test — exactly
-    /// as it does in production (<c>ISection</c> in <c>Humans.Interfaces</c>,
+    /// as it does in production (<c>ISection</c> in <c>Humans.Base</c>,
     /// <c>Migration</c> in <c>Microsoft.EntityFrameworkCore</c>) — or the marker itself
     /// would also be a symbol declared in, and analyzed as part of, the compilation
     /// under test.
@@ -77,7 +77,7 @@ internal static class AnalyzerTestHarness
     /// <summary>
     /// No Humans.* assembly may be a reference of an analyzed compilation. The
     /// analyzer assembly carries linked copies of the architecture attributes
-    /// (its name oracle — see nobodies-collective/Humans#1057), and the tests
+    /// (its name oracle), and the tests
     /// declare their own stubs for production markers (ISection, IRecurringJob,
     /// the attributes) — a real Humans assembly alongside them makes every such
     /// name ambiguous: CS0433 in the snippet, and <c>GetTypeByMetadataName</c>

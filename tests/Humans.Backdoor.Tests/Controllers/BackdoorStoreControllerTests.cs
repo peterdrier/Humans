@@ -11,7 +11,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The parsing and formatting the machine Store accounting API does on top of
-/// <see cref="IStoreAccountingRead"/> (peterdrier/Humans#1719). Everything below is controller
+/// <see cref="IStoreAccountingRead"/>. Everything below is controller
 /// work: the service is a substitute throughout.
 /// </summary>
 public class BackdoorStoreControllerTests
