@@ -118,6 +118,7 @@ public class TicketTransferControllerTests
                 var view = result.Should().BeOfType<ViewResult>().Subject;
                 var model = view.Model.Should().BeOfType<TicketTransferWizardViewModel>().Subject;
                 model.Error.Should().Be(localizer["Tickets_TicketTransfer_AlreadyPending"].Value);
+                model.Reason.Should().Be("Reason");
             }
         }
         finally
