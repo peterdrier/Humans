@@ -102,6 +102,10 @@ public static class DateFormattingExtensions
 
     // --- Invariant / machine / interchange ---
 
+    /// <summary>Invariant year-month label, "yyyy-MM".</summary>
+    public static string ToInvariantYearMonth(this YearMonth value) =>
+        value.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+
     /// <summary>Invariant abbreviated weekday for export headers, e.g. "Tue".</summary>
     public static string ToInvariantWeekdayAbbrev(this LocalDate value) =>
         value.ToString("ddd", CultureInfo.InvariantCulture);

@@ -1,6 +1,6 @@
 @model Humans.Calendar.Models.CalendarMonthViewModel
 @{
-    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.Year}-{Model.Month.Month:D2}";
+    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.ToInvariantYearMonth()}";
     ViewData["ActiveView"] = "list";
     // Spans teams unless ?teamId narrows it, so each row names the owning team.
     // Team.cshtml is scoped to one team and leaves it off.
