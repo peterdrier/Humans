@@ -41,10 +41,12 @@ public sealed class AnonymousRequestTests : IClassFixture<NoDatabaseFactory>
         response.Headers.Location!.PathAndQuery.Should().StartWith("/Account/Login");
     }
 
-    [HumansFact]
-    public async Task Unknown_url_is_a_not_found_rather_than_a_challenge()
+    [HumansTheory]
+    [InlineData("/no-such-page")]
+    [InlineData("/assets/no-such-file.js")]
+    public async Task Unknown_url_is_a_not_found_rather_than_a_challenge(string path)
     {
-        var response = await _client.GetAsync("/no-such-page");
+        var response = await _client.GetAsync(path);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
