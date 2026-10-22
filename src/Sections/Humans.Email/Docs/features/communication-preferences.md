@@ -80,11 +80,11 @@ Until the legacy table is dropped, a (user, category) with no row here falls bac
 
 ## Migration History
 
-- `SplitCommunicationCategories` — data migration splitting EventOperations → VolunteerUpdates + TeamUpdates, renaming CommunityUpdates → FacilitatedMessages
+- Category split (EventOperations → VolunteerUpdates + TeamUpdates, CommunityUpdates → FacilitatedMessages) — applied before the Email baseline; the deprecated values stay in the enum because rows store categories by name
 - `AddEmailCommunicationPreferences` + data migration `email.communication-preferences` — Users decomposition commit 14 moves the table to Email
 
 ## Related Features
 
-- [Notification Inbox (#292-295)](../../../Humans.Notifications/Docs/features/notification-inbox.md) — in-app alerts controlled by the Alert column
+- [Notification Inbox (nobodies-collective/Humans#292–#295)](../../../Humans.Notifications/Docs/features/notification-inbox.md) — in-app alerts controlled by the Alert column
 - Unsubscribe flow — RFC 8058 one-click + browser-based unsubscribe using category-aware tokens
 - Facilitated Messaging — user-to-user email via Humans, gated by FacilitatedMessages preference
