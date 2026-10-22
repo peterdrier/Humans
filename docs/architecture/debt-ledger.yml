@@ -166,10 +166,6 @@ themes:
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-10-21
-    id: CENTRAL-99
-    what: "VAT math lives twice: Finance's CashFlowService (VatPortion, VatSettlementDate — the Spanish quarter-end + 45 days rule) copies BudgetService.ComputeVatPortion / ComputeVatSettlementDate, which Budget still needs for ComputeBudgetSummary (the /Finance and /Budget/Summary VAT totals) and VatProjection.ForLineItems (category VAT projections). Budget cannot call Finance (Finance -> Budget), so the copy stays until those VAT views move into Finance too (peterdrier/Humans#2105 direction: budget math belongs in Finance)."
-    review: panel
-  - added: 2026-10-21
     id: CENTRAL-89
     what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel

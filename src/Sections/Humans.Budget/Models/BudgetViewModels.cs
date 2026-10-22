@@ -86,7 +86,7 @@ internal sealed class VatProjection
 
     /// <summary>
     /// View-model shaping only — the tax math (VAT portion, settlement date) is
-    /// <c>BudgetService</c>'s, called statically. Ordered by settlement date.
+    /// Finance's <see cref="VatCalculation"/>. Ordered by settlement date.
     /// </summary>
     public static List<VatProjection> ForLineItems(IEnumerable<BudgetCategoryLineItemSnapshot> lineItems) =>
         [.. lineItems
@@ -94,8 +94,8 @@ internal sealed class VatProjection
             .Select(li => new VatProjection
             {
                 SourceDescription = li.Description,
-                VatAmount = BudgetService.ComputeVatPortion(li.Amount, li.VatRate),
-                SettlementDate = BudgetService.ComputeVatSettlementDate(li.ExpectedDate!.Value),
+                VatAmount = VatCalculation.ComputePortion(li.Amount, li.VatRate),
+                SettlementDate = VatCalculation.ComputeSettlementDate(li.ExpectedDate!.Value),
                 VatRate = li.VatRate,
                 IsExpense = li.Amount > 0
             })

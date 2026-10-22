@@ -2,6 +2,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Finance.Models;
+using Humans.Finance.Contracts;
 using Humans.Tickets.Contracts;
 using NodaTime;
 
@@ -125,29 +126,12 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li =>
             {
-                var vatAmount = VatPortion(li.Amount, li.VatRate);
+                var vatAmount = VatCalculation.ComputePortion(li.Amount, li.VatRate);
                 return li.Amount > 0
-                    ? new CashFlowEntry("VAT", "VAT Liability", -vatAmount, VatSettlementDate(li.ExpectedDate!.Value))
-                    : new CashFlowEntry("VAT", "VAT Credits", vatAmount, VatSettlementDate(li.ExpectedDate!.Value));
+                    ? new CashFlowEntry("VAT", "VAT Liability", -vatAmount, VatCalculation.ComputeSettlementDate(li.ExpectedDate!.Value))
+                    : new CashFlowEntry("VAT", "VAT Credits", vatAmount, VatCalculation.ComputeSettlementDate(li.ExpectedDate!.Value));
             })
             .ToList();
-
-    /// <summary>The VAT portion of a VAT-inclusive amount: |amount| × rate / (100 + rate).</summary>
-    private static decimal VatPortion(decimal amount, int vatRate) =>
-        Math.Abs(amount) * vatRate / (100m + vatRate);
-
-    /// <summary>Spanish quarterly VAT: settlement lands 45 days after the quarter-end of the expected date.</summary>
-    private static LocalDate VatSettlementDate(LocalDate expectedDate)
-    {
-        var quarterEnd = expectedDate.Month switch
-        {
-            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
-            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
-            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
-            _ => new LocalDate(expectedDate.Year, 12, 31)
-        };
-        return quarterEnd.PlusDays(45);
-    }
 
     private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowEntry> items)
     {
