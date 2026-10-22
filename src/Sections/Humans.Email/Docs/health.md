@@ -91,10 +91,9 @@ The preference lane is **preference service** (rows here, legacy fallback, ticke
   columns on the admin-detail card. The section's own admin pages carry none.
 - **`Docs/`**: invariants, authorization, data access, two feature specs, this file.
 
-The shape the code does not yet have: **one builder for the preference table.** The
-member panel and the no-login page each turn the same rows into the same per-category
-items; the no-login page adds the inbox column and the highlighted row. Today that loop is
-written twice.
+**One builder for the preference table:** `CategoryPreferenceItem.ForActiveCategories` turns
+the rows into per-category items for both the member panel and the no-login page; the
+no-login page adds the inbox column and the highlighted row.
 
 ## 4. Invariants
 
@@ -226,3 +225,4 @@ written twice.
 |---|---|---|---|
 | section-doctor | 2026-09-04 | First doctoring: unsanitized markdown in the feedback-response and issue-comment bodies, dead resource keys retired, doc set corrected against deleted projects | peterdrier/Humans#1587 |
 | section-doctor | 2026-09-22 | Failure-path grant mirror guarded, dead backfill query arm cut, stale comments and the four section docs realigned after the template move | peterdrier/Humans#1790 |
+| section-doctor | 2026-10-22 | Outbox interfaces moved off the contracts leaf, one preference-table builder, backfill audited in its service, read-only panel columns translated | pending |
