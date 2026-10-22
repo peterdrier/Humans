@@ -7,19 +7,6 @@ using NodaTime;
 
 namespace Humans.Email.ViewComponents;
 
-/// <summary>
-/// Renders the communication-preferences matrix for a given user.
-/// Two modes:
-///   - <c>readonly: false</c> (self-service, default): toggle checkboxes that POST to
-///     <c>/Email/CommunicationPreferences/Update</c>.
-///   - <c>readonly: true</c> (admin view on <c>/Users/Admin/{id}</c>): values only,
-///     plus per-category <c>UpdateSource</c> and <c>UpdatedAt</c> for attribution.
-///     No POST forms, no anti-forgery, no submit buttons.
-///
-/// Public, not internal: Razor's build-time tag-helper discovery only sees public view
-/// components (design; HUM0034 exempts view components), used in-assembly via
-/// <c>&lt;vc:communication-preferences-panel&gt;</c>.
-/// </summary>
 public sealed class CommunicationPreferencesPanelViewComponent(
     ICommunicationPreferenceService commPrefService,
     ITicketService ticketQueryService,
@@ -44,9 +31,7 @@ public sealed class CommunicationPreferencesPanelViewComponent(
             categories.Add(new CategoryPreferenceItem
             {
                 Category = category,
-                // No row → fall back to the category's domain default (Marketing is
-                // opt-out-by-default, so a missing row renders unchecked, matching what
-                // the send path treats null as). Other categories default on.
+                // No row: the category's default, the same rule the send path applies.
                 EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,

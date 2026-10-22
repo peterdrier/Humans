@@ -147,6 +147,7 @@ Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven
 - Surgical changes. Every changed line traces to the request. Don't improve adjacent code; mention dead code, don't delete it.
 - Define success criteria, loop until verified. "Fix the bug" means "write a test that reproduces it, then make it pass" — strong criteria let you work independently; weak ones ("make it work") mean constant clarification.
 - Prefer in-memory data over clever queries. The whole dataset fits in RAM; act like it.
+- A comment says what the code can't: why, a warning, or a contract. Never what the code does or how it got here ([`comments-earn-their-place`](memory/code/comments-earn-their-place.md)).
 - Brevity in everything you write — replies, commits, PR bodies, comments, docs. Never use 15 words where 5 will do. Lead with the answer, and write it short the first time.
 
 Humans is licensed under **AGPL-3.0** (`LICENSE` at repo root).

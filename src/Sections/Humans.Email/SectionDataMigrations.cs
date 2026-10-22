@@ -5,10 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Email;
 
-/// <summary>
-/// Email's data migrations, run from <c>/Debug/DataMigrations</c>. The copy resolves Email's own
-/// service; the Debug host lists, applies and audits the run.
-/// </summary>
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     internal const string CommunicationPreferencesKey = "email.communication-preferences";

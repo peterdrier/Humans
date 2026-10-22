@@ -29,12 +29,7 @@ internal static class EmailInlineStyler
         ["pre"] = "background:#f0e2c8;padding:12px;border-radius:4px;overflow-x:auto;font-family:Consolas,Monaco,monospace;font-size:0.9em;",
     };
 
-    /// <summary>
-    /// Parses <paramref name="html"/> as a fragment and stamps a <c>style</c> attribute onto
-    /// every element in <see cref="TagStyles"/>, prepending the palette to any style the element
-    /// already carries so the element's own declarations still win. Returns the original string
-    /// unchanged if it is empty or fails to parse.
-    /// </summary>
+    /// <summary>Returns the input unchanged when it is empty or fails to parse.</summary>
     public static string Apply(string html)
     {
         if (string.IsNullOrEmpty(html))

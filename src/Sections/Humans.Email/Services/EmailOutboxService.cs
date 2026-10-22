@@ -13,16 +13,6 @@ using NodaTime;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// The implementation of <see cref="IEmailOutboxManagement"/>:
-/// admin-dashboard reads (stats, recent messages, per-user history) and admin
-/// writes (retry, discard, pause/resume) over <see cref="IEmailOutboxRepository"/>.
-/// Authoritative gateway for the <c>IsEmailSendingPaused</c> flag; the background
-/// processor job reads it through <see cref="IsEmailPausedAsync"/>. Also owns the
-/// retention cutoff <c>CleanupEmailOutboxJob</c> drives through
-/// <see cref="IEmailOutboxRetention"/>. Also the section's GDPR fan-out member:
-/// outbox rows are user-scoped personal data (address, name, rendered body).
-/// </summary>
 internal sealed class EmailOutboxService(
     IEmailOutboxRepository repo,
     ISettingsService settingsStore,
@@ -110,8 +100,6 @@ internal sealed class EmailOutboxService(
             "EmailSending", Guid.Empty, paused ? "Paused email sending." : "Resumed email sending.", actorUserId);
     }
 
-    // --- Daily send counts (#1195) ---
-
     public async Task<DailySendCountsDto> GetDailySendCountsAsync(
         int days = 90, CancellationToken cancellationToken = default)
     {
@@ -157,15 +145,9 @@ internal sealed class EmailOutboxService(
     }
 
     /// <summary>
-    /// Aggregates retained <c>Sent</c> outbox rows into (Date, TemplateName) daily
-    /// <c>SentCount</c>s. Per the issue #1195 spec, failed sends are never
-    /// reconstructed here — the outbox keeps only a message's final state, not a
-    /// per-attempt history, so a failed message's actual failure day (and how many
-    /// attempts it took) cannot be recovered; <c>FailedCount</c> stays 0 for every
-    /// backfilled row. Drops today's UTC date entirely (not just existing keys for
-    /// it) and any (Date, TemplateName) combination that already has a row, so a
-    /// day the live processor has started — or finished — counting is never
-    /// double-touched or left permanently short by a partial-day merge.
+    /// Rebuilds sent counts from retained Sent rows. Failures can't be rebuilt: the outbox keeps only each
+    /// message's final state, so FailedCount stays 0. Today and any key that already has a row are skipped,
+    /// so a day the live processor has counted is never touched or left short.
     /// </summary>
     private async Task<IReadOnlyList<EmailDailySendCount>> ComputeMissingBackfillRowsAsync(
         CancellationToken cancellationToken)
@@ -190,12 +172,7 @@ internal sealed class EmailOutboxService(
             .ToList();
     }
 
-    // --- IUserDataContributor ---
-
-    /// <summary>
-    /// GDPR Article 15 slice — the same per-user outbox history the human already
-    /// reads at <c>/Email/Outbox</c>, uncapped.
-    /// </summary>
+    /// <summary>Uncapped: the same history the member sees at <c>/Email/Outbox</c>.</summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var messages = await repo.GetForUserAsync(userId, ct);
@@ -203,10 +180,8 @@ internal sealed class EmailOutboxService(
     }
 
     /// <summary>
-    /// Outbox rows still keyed to an archived account merged into the survivor. Merges
-    /// since peterdrier/Humans#1999 move them in <see cref="ReassignAsync"/>; older ones
-    /// left them behind, and Email may not call Users to find them itself. The survivor's
-    /// own rows come from <see cref="ContributeForUserAsync"/>.
+    /// Rows still keyed to archived accounts. Older merges left them behind, and Email may not call Users to
+    /// find them itself.
     /// </summary>
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForIdentityChainAsync(
         Guid userId, IReadOnlyList<Guid> allUserIds, CancellationToken ct)
@@ -247,9 +222,8 @@ internal sealed class EmailOutboxService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>
-    /// GDPR Article 17: drops every outbox row attributed to the human, whatever
-    /// its status. The retention sweep only reaches <c>Sent</c> rows past the
-    /// cutoff, so failed and queued rows would otherwise outlive the erasure.
+    /// Every status goes: the retention sweep only reaches old Sent rows, so failed and queued rows would
+    /// outlive the erasure.
     /// </summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repo.DeleteForUserAsync(userId, ct);

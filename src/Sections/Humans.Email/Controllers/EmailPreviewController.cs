@@ -9,10 +9,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Humans.Email.Controllers;
 
 /// <summary>
-/// Backs the shared <c>_EmailComposer</c> component's "Preview" and "Send to me" buttons. Open to any
-/// authenticated human — every compose form (profile message, camp contact, rota
-/// messages, survey invitation, feedback reply, issue comment, campaign) needs it, not
-/// just admins, unlike the rest of <see cref="EmailController"/>.
+/// Open to any signed-in member, unlike the admin-only <see cref="EmailController"/>: every compose form uses its
+/// Preview and Send to me buttons.
 /// </summary>
 [Authorize]
 [Route("Email")]
@@ -21,7 +19,6 @@ internal sealed class EmailPreviewController(
     IEmailPreviewManagement emailPreviews,
     ComposerSelfSendService selfSend) : ApiControllerBase(userService)
 {
-    /// <summary>Named rate-limit policy for <see cref="SendMarkdownToSelf"/>, registered in <c>Section</c>.</summary>
     public const string SelfSendRateLimitPolicy = "EmailComposerSelfSend";
     public const int SelfSendPermitsPerMinute = 5;
 
@@ -38,10 +35,7 @@ internal sealed class EmailPreviewController(
         return new JsonResult(new { subject = preview.Subject, html = preview.HtmlBody });
     }
 
-    /// <summary>
-    /// Queues the composer's current subject/body to the signed-in human's own address — never to
-    /// anyone else — so they can see the real branded send in their inbox. Rate-limited per human.
-    /// </summary>
+    /// <summary>Only ever to the signed-in member's own address. Rate-limited per member.</summary>
     [HttpPost("SendMarkdownToSelf", Name = "EmailSendMarkdownToSelf")]
     [ValidateAntiForgeryToken]
     [EnableRateLimiting(SelfSendRateLimitPolicy)]

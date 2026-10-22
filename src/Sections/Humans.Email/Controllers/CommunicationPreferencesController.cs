@@ -9,11 +9,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Email.Controllers;
 
-/// <summary>
-/// A member's own communication preferences, <c>/Email/CommunicationPreferences</c>. Moved
-/// from Users' <c>ProfileController</c> in Users decomposition commit 14. Acts on the
-/// signed-in member only and never takes a user id.
-/// </summary>
+/// <summary>The signed-in member's own preferences only; never takes a user id.</summary>
 [Authorize]
 [Route("Email")]
 internal sealed class CommunicationPreferencesController(

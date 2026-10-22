@@ -9,10 +9,8 @@ internal sealed class SendMessageViewModel
     public Guid RecipientId { get; set; }
     public string RecipientDisplayName { get; set; } = string.Empty;
 
-    // Browsers submit textarea line breaks as \r\n regardless of how the user (or a
-    // client-side character counter) perceives them, which would otherwise inflate the
-    // bound string past what the user counted. Normalise on bind so the length check
-    // below — and the stored/relayed message — agree with what the user sees.
+    // Browsers submit line breaks as \r\n, which would push the bound string past what the member counted.
+    // Normalising on bind keeps the length check and the relayed message in line with what they see.
     [Required(ErrorMessage = "Validation_Required")]
     [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message

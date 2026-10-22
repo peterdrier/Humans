@@ -83,7 +83,7 @@ internal sealed class EmailController(
         return RedirectToAction(nameof(EmailOutbox));
     }
 
-    /// <summary>Posted from the /Settings#email tab (peterdrier/Humans#1634).</summary>
+    /// <summary>Posted from the /Settings#email tab.</summary>
     [HttpPost("EmailOutbox/Pause")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PauseEmailSending()
@@ -97,7 +97,7 @@ internal sealed class EmailController(
         return Redirect("/Settings#email");
     }
 
-    /// <summary>Posted from the /Settings#email tab (peterdrier/Humans#1634).</summary>
+    /// <summary>Posted from the /Settings#email tab.</summary>
     [HttpPost("EmailOutbox/Resume")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeEmailSending()
@@ -149,11 +149,6 @@ internal sealed class EmailController(
         ["ca"] = ("Jordi Puig", "jordi@example.com"),
     };
 
-    /// <summary>
-    /// The template gallery: every sending section contributes its own samples through
-    /// <see cref="IEmailPreviewContributor"/>, so the gallery cannot drift from what the
-    /// sections actually send (peterdrier/Humans#1651). Ordinal by sample id.
-    /// </summary>
     [HttpGet("EmailPreview")]
     public IActionResult EmailPreview(
         [FromServices] IEmailBodyComposer bodyComposer,

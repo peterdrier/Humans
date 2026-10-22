@@ -116,6 +116,9 @@ the PR introduces it; cite the atom or doc named.
   NodaTime `Instant`/`LocalDate` (`nodatime-for-dates`).
 - **Migrations.** A migration in the wrong section's context, a hand-edited
   or `migrationBuilder.Sql()` migration, or an edited/removed shipped one.
+- **Comments that add nothing.** A new or edited comment that restates the
+  code, tells history (moved from, used to, issue numbers), repeats a fact
+  stated elsewhere, or is wrong (`comments-earn-their-place`).
 - **Copying debt.** New code modelled on something carrying
   `[Grandfathered]`, `[Obsolete]` or a baseline entry — debt is never
   precedent. A new `[DontFix]` from anyone but Peter (`dontfix-attribute`).

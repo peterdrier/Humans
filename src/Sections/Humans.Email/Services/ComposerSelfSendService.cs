@@ -7,12 +7,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// Backs the shared <c>_EmailComposer</c> "Send to me" button: queues the composer's current
-/// subject/Markdown body, sanitized and branded exactly like a real send, to the signed-in human's
-/// own notification address. Never takes a recipient from the caller. Internal — its only consumer
-/// is <c>EmailPreviewController</c>.
-/// </summary>
+/// <summary>Never takes a recipient from the caller.</summary>
 internal sealed class ComposerSelfSendService(
     IUserEmailService userEmailService,
     IUserService userService,
@@ -23,10 +18,7 @@ internal sealed class ComposerSelfSendService(
 {
     public const string TemplateName = "composer_self_test";
 
-    /// <summary>
-    /// Queues one outbox row to <paramref name="userId"/> and audits it. Returns the address it was
-    /// queued to, or null when the human has no notification address (nothing is queued).
-    /// </summary>
+    /// <summary>Returns the address queued to, or null (nothing queued) when the member has no notification address.</summary>
     public async Task<string?> SendToSelfAsync(
         Guid userId, string? subject, string? markdownBody, CancellationToken ct = default)
     {

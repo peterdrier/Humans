@@ -3,12 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Email.ViewComponents;
 
-/// <summary>
-/// The /Settings#email tab (peterdrier/Humans#1634): the send-pause toggle.
-/// <see cref="SectionSettings"/>
-/// contributes this tab with <c>PolicyNames.AdminOnly</c>, so composition already keeps
-/// a non-admin from seeing it — no further check needed here.
-/// </summary>
+/// <summary>No admin check here: the tab is contributed under <c>PolicyNames.AdminOnly</c>, so non-admins never get it.</summary>
 internal sealed class EmailPauseSettingsTabViewComponent(IEmailOutboxManagement outboxService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

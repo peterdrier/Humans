@@ -4,9 +4,6 @@ using Humans.Email.ViewComponents;
 
 namespace Humans.Email;
 
-/// <summary>
-/// Email's /Settings tab (peterdrier/Humans#1634): the send-pause toggle.
-/// </summary>
 internal sealed class SectionSettings : ISectionSettings
 {
     public IEnumerable<SettingsTab> Tabs() =>

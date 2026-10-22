@@ -4,10 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Email.Data;
 
-/// <summary>
-/// EF-backed <see cref="ICommunicationPreferenceRepository"/>. Singleton over
-/// <see cref="IDbContextFactory{TContext}"/>, like <see cref="EmailOutboxRepository"/>.
-/// </summary>
 internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailDbContext> factory)
     : ICommunicationPreferenceRepository
 {

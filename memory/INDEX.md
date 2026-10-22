@@ -94,7 +94,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`audit-pii-subject-allowed`](code/audit-pii-subject-allowed.md) — An audit entry may show PII unmasked only when the PII belongs to that entry's own subject.
 - [`data-exports-are-audited`](code/data-exports-are-audited.md) — HARD RULE. Every bulk export/download of personal data writes an audit entry (actor, what, row count) and carries the narrowest role; adding one is a decision for Peter first.
 - [`controller-base-conventions`](code/controller-base-conventions.md) — MVC controllers extend `HumansControllerBase`; API controllers extend `ApiControllerBase` — never direct `_userManager.GetUserAsync` or `TempData[...]` calls.
-- [`comments-stay-short`](code/comments-stay-short.md) — Code comments and doc blocks get 1-3 lines stating what's true now and why — never a history of the decision.
+- [`comments-earn-their-place`](code/comments-earn-their-place.md) — Writing or editing any code comment or XML doc block: a comment says what the code can't (why, a warning, a contract), never what the code does or how it got here.
 - [`clamp-page-size`](code/clamp-page-size.md) — Use `ClampPageSize()` for page-size clamping instead of scattering inline `Math.Clamp(pageSize, ...)` calls.
 - [`csv-use-csvhelper`](code/csv-use-csvhelper.md) — ALL CSV reads/writes go through CsvHelper via the shared `HumansCsv` config — never hand-rolled splitting/quoting/escaping or `string.Split(',')`.
 - [`file-metadata-commit-order`](code/file-metadata-commit-order.md) — When changing file uploads or removals, save new bytes before publishing metadata and clean old files only after commit.
