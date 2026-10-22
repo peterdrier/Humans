@@ -57,7 +57,7 @@ surviving account on a merge.
 | **Relay one volunteer's words** | `/Email/SendMessage/{id}` | The member-facing composer for the relay. Sending as a team is Teams'. |
 | **Show me a message without sending it** | `IEmailPreviewService.RenderSystemMessage`; `/Email/PreviewMarkdown`; `/Email/SendMarkdownToSelf` | A finished always-send message; a half-typed Markdown body; that body sent to its author only. |
 | **Put my templates in the gallery** | `IEmailPreviewContributor`, `/Email/EmailPreview` | The fan-out keeps the gallery from naming other sections. |
-| **Which templates cannot wait?** | `TimeSensitiveTemplates` | One list, read by the immediate drain and the batch order. |
+| **This message cannot wait** | `EmailMessage.Urgent` | Set by the sender; stored on the row, read by the immediate drain and the batch order. |
 | **What have we sent this person?** | `/Email/Outbox`, `/Email/Admin/{id}/Outbox`, the admin-detail outbox card | All inside Email. |
 | **Drain and prune the queue** | `ProcessEmailOutboxJob`, `CleanupEmailOutboxJob`, `IImmediateOutboxProcessor` | Shell registers the immediate trigger. |
 | **Which categories may this person not change?** | `ICommunicationPreferenceLock` | The fan-out Tickets implements to lock Ticketing for a ticket holder. |
@@ -111,12 +111,12 @@ no-login page adds the inbox column and the highlighted row.
   `src/Sections/Humans.Email/Services/OutboxEmailService.cs:48`).
 - The pause flag stops the drain and nothing else
   (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:37`).
-- Time-sensitive templates are picked up first, FIFO within each class
-  (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:129`), and the same list starts
-  an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:111`).
+- Urgent messages are picked up first, FIFO within each class
+  (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:128`), and the same flag starts
+  an immediate drain (`src/Sections/Humans.Email/Services/OutboxEmailService.cs:110`).
 - A failed message is retried with exponential backoff
   (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:90`) until a fixed attempt
-  count, then waits for an admin (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:124`).
+  count, then waits for an admin (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:123`).
 - Delivery is at-least-once: a row picked up and not marked is re-claimed after the stale
   window (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:44`).
 - A test-domain address is marked sent without a transport call
@@ -125,7 +125,7 @@ no-login page adds the inbox column and the highlighted row.
   (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:137`) nor the tally
   (`src/Sections/Humans.Email/Services/EmailOutboxProcessor.cs:154`) can throw out of the batch.
 - The tally outlives the send log: retention deletes only old sent rows
-  (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:197`), and the backfill inserts
+  (`src/Sections/Humans.Email/Data/EmailOutboxRepository.cs:196`), and the backfill inserts
   only day/template keys with no row yet
   (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:164`).
 - Only `AdminOnly` reaches the outbox dashboard, the gallery and the backfill

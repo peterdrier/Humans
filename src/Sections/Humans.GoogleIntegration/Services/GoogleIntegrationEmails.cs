@@ -11,16 +11,15 @@ internal sealed class GoogleIntegrationEmails(
     IStringLocalizer<GoogleIntegrationResource> localizer,
     ILogger<GoogleIntegrationEmails> logger)
 {
-    /// <summary>
-    /// The template name is load-bearing: <see cref="TimeSensitiveTemplates.WorkspaceCredentials"/> makes the outbox
-    /// drain it immediately.
-    /// </summary>
+    internal const string WorkspaceCredentialsTemplate = "workspace_credentials";
+
+    /// <summary>Urgent: the member cannot sign in to the new account until it arrives.</summary>
     public EmailMessage WorkspaceCredentials(Guid userId, string recoveryEmail, string userName, string workspaceEmail, string tempPassword, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             recoveryEmail, userName, userId,
             L("GoogleIntegration_Email_WorkspaceCredentials_Subject"),
             Lf("GoogleIntegration_Email_WorkspaceCredentials_Body", Encode(userName), Encode(workspaceEmail), Encode(tempPassword)),
-            TimeSensitiveTemplates.WorkspaceCredentials));
+            WorkspaceCredentialsTemplate, Urgent: true));
 
     public EmailMessage GoogleGroupRemovalLossOfAccess(Guid userId, string removedEmail, string userName, string groupName, string groupEmail, string? culture = null)
         => Localized(culture, () => new EmailMessage(

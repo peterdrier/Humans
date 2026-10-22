@@ -302,16 +302,14 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _metrics.Received(1).RecordEmailQueued("access_suspended");
     }
 
-    [HumansTheory]
-    [MemberData(nameof(TimeSensitiveTemplateNames))]
-    public async Task SendAsync_TimeSensitiveTemplate_RunsImmediateProcessor(string template)
+    [HumansFact]
+    public async Task SendAsync_Urgent_RunsImmediateProcessorAndPersistsTheFlag()
     {
-        await _service.SendAsync(Message(template: template), TestContext.Current.CancellationToken);
-        _immediate.Received(1).TriggerImmediate();
-    }
+        await _service.SendAsync(Message() with { Urgent = true }, TestContext.Current.CancellationToken);
 
-    public static TheoryData<string> TimeSensitiveTemplateNames() =>
-        [.. TimeSensitiveTemplates.Names];
+        _immediate.Received(1).TriggerImmediate();
+        (await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken)).Urgent.Should().BeTrue();
+    }
 
     [HumansFact]
     public async Task SendAsync_ImmediateTriggerFailure_KeepsSuccessfullyQueuedMessage()
@@ -319,7 +317,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _immediate.When(processor => processor.TriggerImmediate())
             .Do(_ => throw new InvalidOperationException("Hangfire unavailable"));
 
-        await _service.SendAsync(Message(template: "magic_link_login"), TestContext.Current.CancellationToken);
+        await _service.SendAsync(Message(template: "magic_link_login") with { Urgent = true }, TestContext.Current.CancellationToken);
 
         var queued = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         queued.TemplateName.Should().Be("magic_link_login");
@@ -331,10 +329,13 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_OrdinaryTemplate_DoesNotRunImmediateProcessor()
+    public async Task SendAsync_NotUrgent_DoesNotRunImmediateProcessor()
     {
-        await _service.SendAsync(Message(template: "access_suspended"), TestContext.Current.CancellationToken);
+        // The template name alone no longer decides it.
+        await _service.SendAsync(Message(template: "magic_link_login"), TestContext.Current.CancellationToken);
+
         _immediate.DidNotReceive().TriggerImmediate();
+        (await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken)).Urgent.Should().BeFalse();
     }
 
     [HumansFact]

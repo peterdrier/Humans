@@ -29,8 +29,8 @@ public sealed class UsersEmailsTests
         var msg = Create().EmailVerification(Guid.NewGuid(), "a@x.com", "Alice", "https://verify", isConflict: false, "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
-        msg.TemplateName.Should().Be(TimeSensitiveTemplates.EmailVerification);
-        TimeSensitiveTemplates.Names.Should().Contain(msg.TemplateName);
+        msg.TemplateName.Should().Be(UsersEmails.EmailVerificationTemplate);
+        msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
         msg.ReplyTo.Should().BeNull();
     }

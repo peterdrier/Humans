@@ -21,8 +21,8 @@ public sealed class GoogleIntegrationEmailsTests
 
         msg.RecipientEmail.Should().Be("recovery@x.com");
         msg.RecipientName.Should().Be("Alice");
-        msg.TemplateName.Should().Be(TimeSensitiveTemplates.WorkspaceCredentials);
-        TimeSensitiveTemplates.Names.Should().Contain(msg.TemplateName);
+        msg.TemplateName.Should().Be(GoogleIntegrationEmails.WorkspaceCredentialsTemplate);
+        msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
         msg.HtmlBody.Should().Contain("alice@nobodies.team").And.Contain("hunter2");
     }

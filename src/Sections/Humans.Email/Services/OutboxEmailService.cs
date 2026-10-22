@@ -96,6 +96,7 @@ internal sealed class OutboxEmailService(
             CampaignGrantId = message.CampaignGrantId,
             ReplyTo = message.ReplyTo,
             ExtraHeaders = extraHeadersJson,
+            Urgent = message.Urgent,
             Status = EmailOutboxStatus.Queued,
             CreatedAt = clock.GetCurrentInstant()
         };
@@ -106,9 +107,7 @@ internal sealed class OutboxEmailService(
         metrics.RecordEmailQueued(message.TemplateName);
         logger.LogInformation("Email queued: {TemplateName} to {Recipient}", message.TemplateName, message.RecipientEmail);
 
-        // Derived from the template name, not a message field: the same list the
-        // repository orders the batch by, so drain and queue order cannot drift.
-        if (TimeSensitiveTemplates.Names.Contains(message.TemplateName, StringComparer.Ordinal))
+        if (message.Urgent)
         {
             try
             {

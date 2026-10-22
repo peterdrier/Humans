@@ -18,6 +18,9 @@ internal sealed class EmailOutboxMessage
     public Guid? CampaignGrantId { get; set; }
     public string? ReplyTo { get; set; }
     public string? ExtraHeaders { get; set; }
+
+    /// <summary>Null on rows queued before the column existed; null and false both mean not urgent.</summary>
+    public bool? Urgent { get; set; }
     public EmailOutboxStatus Status { get; set; }
     public Instant CreatedAt { get; set; }
     public Instant? SentAt { get; set; }

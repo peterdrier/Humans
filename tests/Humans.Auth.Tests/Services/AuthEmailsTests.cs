@@ -22,7 +22,8 @@ public sealed class AuthEmailsTests
         msg.UserId.Should().Be(userId);
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
-        msg.TemplateName.Should().Be(TimeSensitiveTemplates.MagicLinkLogin);
+        msg.TemplateName.Should().Be(AuthEmails.MagicLinkLoginTemplate);
+        msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
         msg.ReplyTo.Should().BeNull();
         msg.HtmlBody.Should().Contain("https://link");
@@ -36,7 +37,8 @@ public sealed class AuthEmailsTests
         msg.RecipientEmail.Should().Be("new@x.com");
         msg.RecipientName.Should().Be("new@x.com");
         msg.UserId.Should().BeNull("no account stands behind a signup address yet");
-        msg.TemplateName.Should().Be(TimeSensitiveTemplates.MagicLinkSignup);
+        msg.TemplateName.Should().Be(AuthEmails.MagicLinkSignupTemplate);
+        msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
     }
 
