@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
-using Humans.Teams.Domain;
 using Humans.Base.Enums;
 using NodaTime;
 
@@ -365,51 +364,6 @@ internal sealed class TeamRoleDefinitionViewModel
     /// IDs of members already assigned to this role (for filtering dropdowns).
     /// </summary>
     public HashSet<Guid> AssignedUserIds { get; set; } = [];
-
-    public static TeamRoleDefinitionViewModel FromEntity(TeamRoleDefinition d)
-    {
-        var slots = new List<TeamRoleSlotViewModel>();
-        var assignedUserIds = new HashSet<Guid>();
-
-        for (var i = 0; i < d.SlotCount; i++)
-        {
-            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
-            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
-            slots.Add(new TeamRoleSlotViewModel
-            {
-                SlotIndex = i,
-                Priority = priority,
-                PriorityBadgeClass = priority switch
-                {
-                    SlotPriority.Critical => "bg-danger",
-                    SlotPriority.Important => "bg-warning text-dark",
-                    SlotPriority.NiceToHave => "bg-secondary",
-                    _ => "bg-light text-dark"
-                },
-                IsFilled = assignment is not null,
-                AssignedUserId = assignment?.TeamMember?.UserId,
-                TeamMemberId = assignment?.TeamMemberId
-            });
-
-            if (assignment?.TeamMember?.UserId is not null)
-                assignedUserIds.Add(assignment.TeamMember.UserId);
-        }
-
-        return new TeamRoleDefinitionViewModel
-        {
-            Id = d.Id,
-            Name = d.Name,
-            Description = d.Description,
-            SlotCount = d.SlotCount,
-            EstimatedHours = d.EstimatedHours,
-            Slots = slots,
-            SortOrder = d.SortOrder,
-            IsPublic = d.IsPublic,
-            IsManagement = d.IsManagement,
-            Period = d.Period,
-            AssignedUserIds = assignedUserIds
-        };
-    }
 
     public static TeamRoleDefinitionViewModel FromSnapshot(
         TeamRoleDefinitionSnapshot d,
