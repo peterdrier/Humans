@@ -87,7 +87,8 @@ The preference lane is **preference service** (rows here, legacy fallback, ticke
   and guest preference pages, the unsubscribe pages, the member outbox, the relay composer,
   the preview endpoints, the settings tab and the admin-detail cards.
 - **`EmailResource.resx`** and its five language variants: the copy of the relay, the footer,
-  the self-test subject, and every member-facing page. The admin views carry none.
+  the self-test subject, every member-facing page, and the preference panel's read-only
+  columns on the admin-detail card. The section's own admin pages carry none.
 - **`Docs/`**: invariants, authorization, data access, two feature specs, this file.
 
 The shape the code does not yet have: **one builder for the preference table.** The
@@ -188,7 +189,7 @@ written twice.
 - **No FK constraints or navigation properties on cross-section ids.**
 - **No second `IEmailService` implementation.**
 - **No method per template on the contracts leaf.**
-- **No localized copy on the admin views.**
+- **No localized copy on the section's own admin pages.**
 - **No inbox switch on the member's own preference page.** The member page changes email
   only and carries the stored inbox value through unchanged.
 
