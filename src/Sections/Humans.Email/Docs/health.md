@@ -225,4 +225,4 @@ no-login page adds the inbox column and the highlighted row.
 |---|---|---|---|
 | section-doctor | 2026-09-04 | First doctoring: unsanitized markdown in the feedback-response and issue-comment bodies, dead resource keys retired, doc set corrected against deleted projects | peterdrier/Humans#1587 |
 | section-doctor | 2026-09-22 | Failure-path grant mirror guarded, dead backfill query arm cut, stale comments and the four section docs realigned after the template move | peterdrier/Humans#1790 |
-| section-doctor | 2026-10-22 | Outbox interfaces moved off the contracts leaf, one preference-table builder, backfill audited in its service, read-only panel columns translated | pending |
+| section-doctor | 2026-10-22 | Outbox interfaces moved off the contracts leaf, one preference-table builder, backfill audited in its service, read-only panel columns translated | peterdrier/Humans#2138 |
