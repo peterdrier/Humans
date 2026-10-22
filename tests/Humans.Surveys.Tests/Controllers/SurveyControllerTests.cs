@@ -32,6 +32,33 @@ public sealed class SurveyControllerTests
     private const string Token = "invite-token";
 
     [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task InvitedStart_RejectsInvalidAnonymityBeforeStartingWizard(bool bindingFailed)
+    {
+        var surveys = Substitute.For<ISurveyService>();
+        var surveyId = Guid.NewGuid();
+        surveys.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
+            .Returns(new SurveyAnswerContext(surveyId, Guid.NewGuid(), Guid.NewGuid(),
+                Detail(surveyId, "Thanks!", allowAnonymous: true), [], DraftResponseId: null));
+        var sut = CreateController(surveys, out var session);
+        if (bindingFailed) sut.ModelState.AddModelError("Anonymity", "Invalid anonymity choice.");
+
+        var result = await sut.Start(new SurveyStartViewModel
+        {
+            Token = Token,
+            Culture = "en",
+            Anonymity = bindingFailed ? ResponseAnonymity.Identified : (ResponseAnonymity)999,
+        }, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestResult>();
+        SurveyWizardSession.Load(session, Token).Should().BeNull();
+        await surveys.DidNotReceive().MarkInvitationStartedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await surveys.DidNotReceive().StartIdentifiedDraftAsync(Arg.Any<Guid>(), Arg.Any<Guid>(),
+            Arg.Any<Guid>(), Arg.Any<SurveyInputMethod>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(true, true, false, null, null)]
     [Xunit.InlineData(true, true, false, "Identified", ResponseAnonymity.Identified)]
     [Xunit.InlineData(true, true, false, "CompletionTracked", ResponseAnonymity.CompletionTracked)]

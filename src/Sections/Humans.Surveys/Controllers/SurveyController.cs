@@ -111,6 +111,8 @@ internal sealed class SurveyController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(SurveyStartViewModel model, CancellationToken ct)
     {
+        if (!ModelState.IsValid || !Enum.IsDefined(model.Anonymity)) return BadRequest();
+
         var ctx = await surveyService.ResolveAnswerContextAsync(model.Token, ct);
         if (ctx is null)
         {

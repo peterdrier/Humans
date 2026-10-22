@@ -180,6 +180,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
+- Invited wizard starts reject invalid model binding and undefined anonymity values with HTTP 400 before creating drafts, marking an invitation started or storing wizard state. A malformed privacy choice never silently uses the model’s Identified default.
+
 - UI resource keys use the section prefix `Surveys_` in all six cultures; reflection-resolved `Enum_` keys retain their type-based names.
 
 - Survey create and update share the editable-field mapping, including normalized invitation copy, prepared questions and public slug. Creation identity/status/timestamps and each path’s validation and upload lifecycle remain owned by that path.
