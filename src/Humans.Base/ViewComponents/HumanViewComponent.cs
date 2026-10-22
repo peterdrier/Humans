@@ -34,14 +34,7 @@ public class HumanViewComponent(
             if (info is not null)
             {
                 displayName = info.BurnerName;
-                if (info.Profile is { HasCustomPicture: true } profile)
-                {
-                    var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
-                    profilePictureUrl = urlHelper.Action(
-                        action: "Picture",
-                        controller: "ProfileView",
-                        values: new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() });
-                }
+                profilePictureUrl = info.ProfilePictureUrl;
             }
         }
 

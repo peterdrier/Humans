@@ -184,6 +184,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Base’s shared Human component reads `UserInfo.ProfilePictureUrl`, matching profile summaries: uploaded pictures use the canonical versioned route and humans without uploads retain their fallback picture.
+
 - Section-owned UI resource keys use `Users_` in all six cultures, including dynamically selected phone labels; reflection-resolved `Enum_` keys retain their type-based names.
 
 - GDPR-erased accounts cannot use current or legacy unsubscribe tokens, or a lingering Guest session, to read or recreate communication preferences. Live merge survivors remain eligible.
