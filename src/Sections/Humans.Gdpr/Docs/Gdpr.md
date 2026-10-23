@@ -46,7 +46,7 @@
 
 ## Routing
 
-Three controllers and two views (`Views/User/Status`, `Views/User/Deletion`), so the project is
+Controllers and views (`Views/User/Status`, `Views/User/Deletion`), so the project is
 `Microsoft.NET.Sdk.Razor`. Every route here is under `/Gdpr/*`; the account-deletion confirmation
 email links `/Gdpr/Deletion`.
 
@@ -61,7 +61,7 @@ email links `/Gdpr/Deletion`.
 | `GET /Gdpr/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
 | `POST /Gdpr/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
-The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record (Users decomposition commit 12). Users keeps its own copies of the suspension keys its notification text reads; its deletion flash copies went with the guest deletion actions (Users decomposition commit 14).
+The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record. Users keeps its own copies of the suspension keys its notification text reads.
 
 The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from
@@ -78,7 +78,7 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 | Actor | Capabilities |
 |-------|-------------|
-| Any authenticated human | Downloads **their own** export, and only their own — both actions resolve the caller's own user id and never take one from the request |
+| Any authenticated human | Downloads **their own** export, and only their own — both export actions resolve the caller's own user id and never take one from the request |
 | Admin / Board | Nothing extra. There is no admin route that exports someone else's data |
 
 ## Invariants
@@ -94,8 +94,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   then every archived id merged into it (`UserInfo.AllUserIds`). The default
   returns nothing; a contributor that cannot resolve the chain itself (Email, a
   crosscut barred from Users) overrides it. Its slices join the same section bag
-  under the same rules — one section name from both methods is a duplicate and
-  fails the export.
+  under the same rules — one non-null section name from both methods is a
+  duplicate and fails the export (a null slice is dropped before the check).
 - **The export is complete or it fails.** A contributor that throws is logged
   and the exception is re-thrown: omitting a category silently is worse than
   failing the download. Erasure holds the same rule — a contributor that throws
@@ -115,8 +115,8 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   id as it completes — so Gdpr keeps no dependency on the Users merge primitive
   or its caches, and a mid-chain failure still leaves the already-erased ids'
   caches dropped.
-- **Section names are unique across contributors and both calls.** A duplicate is a
-  programming error and throws `InvalidOperationException` naming the section —
+- **Non-null section names are unique across contributors and both calls.** A
+  duplicate among non-null slices is a programming error and throws `InvalidOperationException` naming the section —
   it is not last-writer-wins.
 - **A `null` slice is dropped; an empty collection is not.** `Data is null`
   means the entity does not exist for this user (a profileless account has no
@@ -135,7 +135,7 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 ## Negative Access Rules
 
-- No endpoint exports another human's data. Neither controller action accepts a
+- No endpoint exports another human's data. No controller action accepts a
   user id.
 - Gdpr must not acquire a repository, a `DbContext` or a table. The moment it
   reads a table directly it is duplicating a contributor and the "no
@@ -170,14 +170,14 @@ stamp the envelope with the surviving account id and the merged-away ids,
 and pass that surviving id (and, to the chain-aware call, the whole chain) to every
 export contributor;
 the controllers' base class `HumansControllerBase` also takes
-`IUserService`, and `MemberDataController`/`UserController` inject Users.Contracts'
+`IUserService`, and `GuestDataController`, `MemberDataController` and `UserController` inject Users.Contracts'
 `IAccountDeletionService` (the deletion work stays in Users; the deletion timestamps stay on
-`users` behind `IUserWrite`).
+`users` behind `IUserWrite`); the download controllers (`GuestDataController`,
+`MemberDataController`) also inject `IGdprService`.
 
 **Inbound:** wide, and all of it through the public `Contracts/` folder. Every section owning
 user-scoped tables references `Humans.Gdpr` to implement
-`IUserDataContributor`; Users also references it for `ProfileController` (the
-other download route) and `AccountDeletionService` (the erasure caller).
+`IUserDataContributor`; Users also references it for `AccountDeletionService` (the erasure caller).
 `Humans.Web` references Gdpr only to compose sections.
 
 ## Architecture
@@ -186,13 +186,16 @@ other download route) and `AccountDeletionService` (the erasure caller).
 sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
 `ExportForUserAsync` and `EraseForUserAsync`.
 **Owned tables:** none.
-- `src/Sections/Humans.Gdpr` — one internal service, one `Section.cs`, this
-  doc. No `Data/`, no migrations, no `Humans.Infrastructure` reference and no
-  `Humans.UI` reference: nothing to persist and nothing to render.
+- `src/Sections/Humans.Gdpr` — one internal service, the internal controllers
+  (`GuestDataController`, `MemberDataController`, `UserController`), the views
+  (`Views/User/Status`, `Views/User/Deletion`) rendering over Base's shared view
+  layer, `Section.cs`, this doc. No `Data/`, no migrations, no
+  `Humans.Infrastructure` reference and no `Humans.UI` reference: nothing to
+  persist.
 - `src/Sections/Humans.Gdpr/Contracts` — the whole outward surface (namespace
   `Humans.Gdpr.Contracts`). Every section owning user-scoped tables implements
   `IUserDataContributor` from it, so each references `Humans.Gdpr`; the
-  orchestrator and controller stay `internal`.
+  orchestrator and controllers stay `internal`.
 - `GdprResource` (section root, six cultures) holds the section's page copy and
   flash messages; its controllers take `IStringLocalizer<GdprResource>`.
 - The contributor forwarding factories deliberately do **not** live in
@@ -205,5 +208,4 @@ sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
 - **Known gap:** the contributor-coverage tests are reflection-based, so a new
   user-scoped section whose owning service never implements
   `IUserDataContributor` at all leaves nothing to enumerate and the suite
-  passes vacuously. The guardrail is prose in `design-rules.md` §8a. Tracked
-  as CENTRAL-67 in docs/architecture/debt-ledger.yml.
+  passes vacuously. The guardrail is prose in `design-rules.md` §8a.
