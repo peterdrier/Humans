@@ -159,4 +159,4 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 | 1 | 2026-08-27 | Prose across the section describes a layout two moves stale — a deleted project, a deleted `DbContext`, a controller the section has | peterdrier/Humans#1540 |
 | 2 | 2026-09-17 | The section's own rationale for its shape was false, and the target shape had not caught up with erasure moving in | peterdrier/Humans#1723 |
 | 3 | 2026-09-23 | The envelope learned whose account it is and the prose did not; a "logged" check was documented as "enforced" | peterdrier/Humans#1811 |
-| 4 | 2026-10-23 | The section took over the member's subject-rights pages and its docs still said it renders nothing | pending |
+| 4 | 2026-10-23 | The section took over the member's subject-rights pages and its docs still said it renders nothing | peterdrier/Humans#2148 |
