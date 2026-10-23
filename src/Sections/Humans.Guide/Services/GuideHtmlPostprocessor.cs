@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AngleSharp.Html.Parser;
 using Humans.Base.Configuration;
 
 namespace Humans.Guide.Services;
@@ -63,13 +64,26 @@ internal sealed class GuideHtmlPostprocessor
             return $"<img {before}src=\"{rewritten}\"{after}>";
         });
 
-        html = AppPathCodePattern.Replace(html, match =>
-        {
-            var path = match.Groups["path"].Value;
-            return $"""<a href="{path}" class="guide-app-path"><code>{path}</code></a>""";
-        });
+        using var document = new HtmlParser().ParseDocument(html);
+        if (document.Body is not { } body)
+            return html;
 
-        return html;
+        var linked = false;
+        foreach (var code in body.QuerySelectorAll("code"))
+        {
+            // Existing links own their destination; block examples are not navigation.
+            if (code.Closest("a, pre") is not null || !AppPathCodePattern.IsMatch(code.OuterHtml))
+                continue;
+
+            var anchor = document.CreateElement("a");
+            anchor.SetAttribute("href", code.TextContent);
+            anchor.ClassName = "guide-app-path";
+            code.Parent?.ReplaceChild(anchor, code);
+            anchor.AppendChild(code);
+            linked = true;
+        }
+
+        return linked ? body.InnerHtml : html;
     }
 
     private static (string Href, bool IsExternal) RewriteHref(

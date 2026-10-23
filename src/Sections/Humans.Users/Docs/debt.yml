@@ -47,7 +47,3 @@ inbox:
     id: USERS-22
     what: "Drop users.LastConsentReminderSentAt (Users) and delete the User.LastConsentReminderSentAt entity property. Replaced by data migration consent.reminder-stamps; blocked on CENTRAL-97 (the retirement PR) merged and deployed. The production done reading of consent.reminder-stamps (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
     review: panel
-  - added: 2026-10-22
-    id: USERS-23
-    what: "Users.md says the profile communication-preferences panel uses the Users resource set; it is Email's CommunicationPreferencesPanelViewComponent on Email_CommPrefs_* keys. The same passage's user-admin-detail contributor list omits Email's CommunicationPreferencesCardViewComponent (registered in Email's SectionUserParts). Found by section-doctor on Email."
-    review: light
