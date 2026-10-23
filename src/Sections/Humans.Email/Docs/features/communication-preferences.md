@@ -37,6 +37,8 @@ Guest updates serialize per row by disabling both editable channels and the matc
 
 GDPR erasure invalidates preference access through both current and legacy unsubscribe tokens, even while their cryptographic lifetime remains valid. Guest access also refuses an erased signed-in account. These paths cannot recreate the preference rows erasure deleted.
 
+Guest preferences and unsubscribe actions use the same token validator for account resolution and erasure refusal. Legacy campaign tokens authorize Marketing unsubscribe only, never the Guest preference editor.
+
 Tokens minted before an account merge resolve to the surviving account for both Guest preference reads and writes, as in the one-click unsubscribe flow.
 
 Signed-in Profile and Guest updates audit the authenticated actor. Magic-link, one-click and imported changes keep service attribution; a stale token on a signed-in Guest request does not change its source or actor. Both channel-update overloads share one service write path, preserving the inbox channel on email-only writes, the first subscription date and no-op metadata.
