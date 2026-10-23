@@ -72,26 +72,26 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 ## 4. Invariants
 
 - **Complete or fail.** A contributor that throws is logged and re-thrown, in both halves:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:51` (export) and
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:114` (erasure).
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:50` (export) and
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:111` (erasure).
 - **Portion names are unique in one document**, across contributors and across a
   contributor's two calls. A duplicate throws, naming the portion:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:75`. The declaration-level counterpart,
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:74`. The declaration-level counterpart,
   across every registered contributor, is
   `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:44`.
 - **An exported portion with no erasure declaration is logged, not dropped**:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:58`.
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:57`.
 - **A `null` portion is dropped; an empty collection is not:**
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:66`.
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:65`.
 - **Contributors are asked under the surviving account.** The id asked with is resolved once;
   every contributor, the chain-aware call and the envelope get the survivor, and an unknown id
   falls back to the id asked with: `src/Sections/Humans.Gdpr/Services/GdprService.cs:18`.
 - **Erasure runs the identity holder last, and the order comes from the declarations**,
-  never a pinned type list: `src/Sections/Humans.Gdpr/Services/GdprService.cs:100`. Exactly
+  never a pinned type list: `src/Sections/Humans.Gdpr/Services/GdprService.cs:97`. Exactly
   one contributor claims it: `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:69`.
-- **The fan-out is sequential**: `src/Sections/Humans.Gdpr/Services/GdprService.cs:24`.
+- **The fan-out is sequential**: `src/Sections/Humans.Gdpr/Services/GdprService.cs:23`.
 - **`ExportedAt` is an ISO-8601 UTC instant off the injected clock**:
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:89`.
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:88`.
 - **The file is the envelope first, then the portions in contributor order:**
   `src/Sections/Humans.Gdpr/Contracts/GdprExportSerializer.cs:19`.
 - **No route acts on another person.** No action takes a user id; each resolves the caller:
