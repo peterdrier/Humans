@@ -24,8 +24,7 @@ internal sealed class UserController(
     {
         var state = RoleChecks.GetUserState(User);
 
-        if (state is not (UserState.Suspended or UserState.AdminSuspended or UserState.Rejected
-            or UserState.Deleted or UserState.Merged))
+        if (state is not { } walled || !walled.IsWalled())
         {
             return RedirectToAction("Index", "Home");
         }
@@ -33,7 +32,7 @@ internal sealed class UserController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         var viewModel = new AccountStatusViewModel
         {
-            State = state.Value,
+            State = walled,
             UserId = user?.Id ?? Guid.Empty,
             ContactEmail = "humans@nobodies.team",
         };

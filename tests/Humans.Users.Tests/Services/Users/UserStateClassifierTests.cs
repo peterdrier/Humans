@@ -156,6 +156,21 @@ public class UserStateClassifierTests
         UserStateEvaluator.Classify(user, profile).Should().Be(UserState.Active);
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Bare, false)]
+    [InlineData(UserState.Active, false)]
+    [InlineData(UserState.DeletePending, false)]
+    [InlineData(UserState.Suspended, true)]
+    [InlineData(UserState.AdminSuspended, true)]
+    [InlineData(UserState.Rejected, true)]
+    [InlineData(UserState.Deleted, true)]
+    [InlineData(UserState.Merged, true)]
+    public void IsWalled_is_exactly_the_status_wall_states(UserState state, bool walled)
+    {
+        state.IsWalled().Should().Be(walled);
+        Enum.GetValues<UserState>().Should().HaveCount(8, "a new state needs a row here and a walled-or-not decision");
+    }
+
     private static User NewUser(string displayName) => new()
     {
         Id = Guid.NewGuid(),

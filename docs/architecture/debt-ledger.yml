@@ -190,7 +190,3 @@ inbox:
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
-  - added: 2026-10-23
-    id: CENTRAL-101
-    what: "The set of walled UserStates (Suspended, AdminSuspended, Rejected, Deleted, Merged) is written twice: Gdpr's UserController.Status decides who may see the status wall, and Humans.Web's MembershipRequiredFilter decides who is redirected to it. A state added to one and not the other either loops a user between the two or shows the wall to someone the filter lets through. One owner for the predicate (Base, beside UserState / RoleChecks) would make them agree; that is new public surface, so it needs approval. Found by /section-doctor on Gdpr."
-    review: panel
