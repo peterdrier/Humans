@@ -95,7 +95,7 @@ public class DataMigrationsTests
     [HumansFact]
     public void Screen_is_admin_only_and_apply_is_an_antiforgery_post()
     {
-        typeof(DataMigrationsController).GetCustomAttribute<AuthorizeAttribute>()!.Policy
+        typeof(DataMigrationsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
             .Should().Be(PolicyNames.AdminOnly);
         typeof(DataMigrationsController).GetCustomAttribute<AllowAnonymousAttribute>().Should().BeNull();
 

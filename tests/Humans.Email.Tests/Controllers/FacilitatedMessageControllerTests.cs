@@ -183,7 +183,7 @@ public sealed class FacilitatedMessageControllerTests
     [HumansFact]
     public void Controller_IsAuthorizedAndUsesTheEmailRoute()
     {
-        typeof(FacilitatedMessageController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(FacilitatedMessageController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         foreach (var method in typeof(FacilitatedMessageController).GetMethods()
                      .Where(m => string.Equals(m.Name, nameof(FacilitatedMessageController.SendMessage), StringComparison.Ordinal)))
         {

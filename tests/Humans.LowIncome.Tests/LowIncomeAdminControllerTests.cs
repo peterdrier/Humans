@@ -53,7 +53,7 @@ public sealed class LowIncomeAdminControllerTests
     public void EveryAction_IsAdminOnly()
     {
         var type = typeof(LowIncomeAdminController);
-        type.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()
+        type.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).Cast<AuthorizeAttribute>()
             .Select(a => a.Policy).Should().Equal(PolicyNames.AdminOnly);
         foreach (var name in new[] { nameof(LowIncomeAdminController.Grant), nameof(LowIncomeAdminController.Remove) })
             type.GetMethod(name)!.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()

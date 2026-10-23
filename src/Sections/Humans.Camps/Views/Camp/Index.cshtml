@@ -21,12 +21,9 @@
             <i class="fa-solid fa-book me-1"></i> @Localizer["Camps_Index_BarrioGuide"]
             <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
         </a>
-        @if (RoleChecks.IsActiveMember(User))
-        {
-            <a asp-action="Register" class="btn btn-primary">
-                <i class="fa-solid fa-plus me-1"></i> @Localizer["Camps_Register_Submit", Localizer["Camps_Singular"]]
-            </a>
-        }
+        <a asp-action="Register" class="btn btn-primary" authorize-policy="AppAccess">
+            <i class="fa-solid fa-plus me-1"></i> @Localizer["Camps_Register_Submit", Localizer["Camps_Singular"]]
+        </a>
     </div>
 </div>
 

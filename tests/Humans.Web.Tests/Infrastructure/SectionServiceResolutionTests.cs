@@ -3,6 +3,7 @@ using Hangfire;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,24 +54,30 @@ public sealed class SectionServiceResolutionTests
         failure.Should().BeNull();
         resolved.Should().NotBeNull();
     }
+}
 
-    private sealed class NoDatabaseFactory : WebApplicationFactory<Program>
+/// <summary>Boots the real app without a database or background jobs; HTTP smoke tests and service-resolution checks share it.</summary>
+public sealed class NoDatabaseFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        // Testing skips Hangfire; the connection string is never opened.
+        builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:DefaultConnection",
+            "Host=localhost;Database=stub;Username=stub;Password=stub");
+        builder.UseSetting("Email:SmtpHost", "localhost");
+        builder.UseSetting("Email:FromAddress", "test@example.com");
+        builder.UseSetting("Email:BaseUrl", "https://localhost");
+        builder.UseSetting("GoogleMaps:ApiKey", "stub");
+        // The Google sign-in handler validates its options on the first request through the pipeline.
+        builder.UseSetting("Authentication:Google:ClientId", "stub");
+        builder.UseSetting("Authentication:Google:ClientSecret", "stub");
+        builder.ConfigureTestServices(services =>
         {
-            // Testing skips Hangfire; the connection string is never opened.
-            builder.UseEnvironment("Testing");
-            builder.UseSetting("ConnectionStrings:DefaultConnection",
-                "Host=localhost;Database=stub;Username=stub;Password=stub");
-            builder.UseSetting("Email:SmtpHost", "localhost");
-            builder.UseSetting("Email:FromAddress", "test@example.com");
-            builder.UseSetting("Email:BaseUrl", "https://localhost");
-            builder.UseSetting("GoogleMaps:ApiKey", "stub");
-            builder.ConfigureTestServices(services =>
-            {
-                services.RemoveAll<IHostedService>();
-                services.AddSingleton(Substitute.For<IBackgroundJobClient>());
-            });
-        }
+            services.RemoveAll<IHostedService>();
+            services.AddSingleton(Substitute.For<IBackgroundJobClient>());
+            // Key storage is the system DbContext; antiforgery and auth cookies need a provider that works without it.
+            services.AddDataProtection().UseEphemeralDataProtectionProvider();
+        });
     }
 }

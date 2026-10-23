@@ -37,9 +37,9 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     [HumansFact]
     public void AdminController_IsGatedByTheManagePolicy_MemberByAccess()
     {
-        typeof(PreapprovalsAdminController).GetCustomAttributes(typeof(AuthorizeAttribute), true)
+        typeof(PreapprovalsAdminController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Cast<AuthorizeAttribute>().Single().Policy.Should().Be(PreapprovalsPolicies.Manage);
-        typeof(PreapprovalsController).GetCustomAttributes(typeof(AuthorizeAttribute), true)
+        typeof(PreapprovalsController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Cast<AuthorizeAttribute>().Single().Policy.Should().Be(PreapprovalsPolicies.Access);
         typeof(PreapprovalsAdminController).GetCustomAttributes(typeof(RouteAttribute), true)
             .Cast<RouteAttribute>().Single().Template.Should().Be("Preapprovals/Admin");

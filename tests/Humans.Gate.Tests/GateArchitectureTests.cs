@@ -47,7 +47,7 @@ public class GateArchitectureTests
     public void WriteAndAdminActions_NeverRideOnTheClassLevelReadPolicy()
     {
         // The kiosk read surface is the class-level ScannerAccess policy…
-        typeof(GateController).GetCustomAttribute<AuthorizeAttribute>()!
+        typeof(GateController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(PolicyNames.ScannerAccess);
 
         // …and every POST must carry its own stricter policy: GateAdmit for the
@@ -65,7 +65,7 @@ public class GateArchitectureTests
                     or nameof(GateController.SetStaffPin) or nameof(GateController.ResetStaffPin)
                 ? PolicyNames.TicketAdminOrAdmin
                 : PolicyNames.GateAdmit;
-            var attribute = post.GetCustomAttribute<AuthorizeAttribute>();
+            var attribute = post.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             attribute.Should().NotBeNull(
                 because: $"POST {post.Name} must not inherit only the class-level read policy");
             attribute.Policy.Should().Be(expected,
@@ -73,7 +73,7 @@ public class GateArchitectureTests
         }
 
         // The one-off vendor backfill page is admin-only at the class level.
-        typeof(GateVendorBackfillAdminController).GetCustomAttribute<AuthorizeAttribute>()!
+        typeof(GateVendorBackfillAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(PolicyNames.AdminOnly);
     }
 

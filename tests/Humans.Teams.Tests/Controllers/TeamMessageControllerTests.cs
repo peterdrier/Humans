@@ -211,7 +211,7 @@ public sealed class TeamMessageControllerTests
     [HumansFact]
     public void Controller_IsAuthorizedAndUsesTheTeamsRoute()
     {
-        typeof(TeamMessageController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(TeamMessageController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         typeof(TeamMessageController).GetCustomAttribute<RouteAttribute>()!.Template.Should().Be("Teams");
         var actions = typeof(TeamMessageController).GetMethods()
             .Where(m => string.Equals(m.Name, nameof(TeamMessageController.SendMessage), StringComparison.Ordinal))

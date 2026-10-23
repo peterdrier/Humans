@@ -339,7 +339,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     public void Declaration_IsAnAuthorizedAntiforgeryPost_AtTheTicketsUrl(string action, string template)
     {
         var type = typeof(TicketParticipationController);
-        type.GetCustomAttributes(typeof(AuthorizeAttribute), true).Should().ContainSingle();
+        type.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).Should().ContainSingle();
         ((RouteAttribute)type.GetCustomAttributes(typeof(RouteAttribute), true).Single()).Template.Should().Be("Tickets");
         var method = type.GetMethod(action)!;
         method.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), true).Should().ContainSingle();

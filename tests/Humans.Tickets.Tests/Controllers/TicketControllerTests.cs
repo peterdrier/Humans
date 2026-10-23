@@ -255,7 +255,7 @@ public class TicketControllerTests
     [HumansFact]
     public void Class_admits_TicketAdmin_Board_and_Admin()
     {
-        typeof(TicketController).GetCustomAttribute<AuthorizeAttribute>()!.Policy
+        typeof(TicketController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
             .Should().Be(PolicyNames.TicketAdminBoardOrAdmin);
     }
 
@@ -266,7 +266,7 @@ public class TicketControllerTests
             .Single(m => string.Equals(m.Name, nameof(TicketController.ExportDonations), StringComparison.Ordinal));
 
         action.GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("Export/Donations");
-        action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.AdminOnly,
+        action.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(PolicyNames.AdminOnly,
             because: "the class policy admits Board and TicketAdmin; the donor list carries buyer PII and is admin-only");
     }
 
@@ -284,13 +284,13 @@ public class TicketControllerTests
             .ToList();
 
         actions.Should().NotBeEmpty();
-        actions.Should().AllSatisfy(a => a.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(policy));
+        actions.Should().AllSatisfy(a => a.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(policy));
     }
 
     [HumansFact]
     public void TransferAdmin_class_admits_TicketAdmin_and_Admin_only()
     {
-        typeof(TicketTransferAdminController).GetCustomAttribute<AuthorizeAttribute>()!.Policy
+        typeof(TicketTransferAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
             .Should().Be(PolicyNames.TicketAdminOrAdmin);
     }
 }

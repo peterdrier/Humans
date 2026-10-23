@@ -8,7 +8,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Consent", [
-            new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly)
+            new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.BoardOrAdmin)
         ])
     ];
 }
