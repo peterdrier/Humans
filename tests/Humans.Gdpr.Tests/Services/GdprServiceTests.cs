@@ -412,8 +412,6 @@ public class GdprServiceTests
     public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
     {
         // A throwing contributor aborts the run before the identity collapse.
-        // What the caller then does with its deletion markers is Users' concern, not this
-        // orchestrator's, and nothing here observes it.
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
         var account = new RecordingContributor("Account") { ErasesLast = true };
         var logger = new CapturingLogger<GdprService>();

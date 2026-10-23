@@ -2,7 +2,6 @@
   src/Sections/Humans.Governance/**
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr/Contracts/**
-  src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Services/AccountDeletionService.cs
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Users/Services/UserService.cs
@@ -165,7 +164,7 @@ archived account and the survivor.
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
 | `LegacyCommunicationPreferences` | `UserService` | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the frozen Users `communication_preferences` rows (live record: the `CommunicationPreferences` slice). Deleted on erasure. |
-| `CommunicationPreferences` | `CommunicationPreferenceService` (Email) | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the effective preferences, the legacy Users row answering until the `email.communication-preferences` copy or a write replaces it (Users decomposition commit 14). Deleted on erasure. |
+| `CommunicationPreferences` | `CommunicationPreferenceService` (Email) | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the effective preferences, the legacy Users row answering until the `email.communication-preferences` copy or a write replaces it. Deleted on erasure. |
 | `WorkspaceIdentity` | `WorkspaceIdentityService` (GoogleIntegration) | Single object `{ Email, Status }` — the member's effective Google Workspace identity (the legacy `UserEmails` flags answering until the `google.workspace-identities` copy runs); null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
 | `EventParticipations` | `EventParticipationService` (Tickets) | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation record for (Ticketed / Attended / NoShow / NotAttending), the legacy Users row answering until the `tickets.event-participations` copy has run; requests under an archived ID resolve to the survivor. Retained on erasure. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |

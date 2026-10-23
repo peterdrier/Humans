@@ -46,7 +46,7 @@ public class MemberDataControllerTests
 
         var file = result.Should().BeOfType<FileContentResult>().Subject;
         file.ContentType.Should().Be("application/json");
-        file.FileDownloadName.StartsWith("nobodies-profiles-export-", StringComparison.Ordinal).Should().BeTrue();
+        file.FileDownloadName.Should().Be("nobodies-data-export-2026-10-03.json");
         await _gdpr.Received(1).ExportForUserAsync(_userId, Arg.Any<CancellationToken>());
     }
 
@@ -112,6 +112,37 @@ public class MemberDataControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Gdpr_Deletion_AlreadyPending");
+    }
+
+    [HumansFact]
+    public async Task RequestDeletion_held_for_a_ticket_flashes_the_hold()
+    {
+        _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new DeletionRequestResult(true, EffectiveDeletionDate: Instant.FromUtc(2026, 11, 2, 0, 0), IsHeldForTicket: true));
+        var ctrl = Create();
+
+        await ctrl.RequestDeletion();
+
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("Gdpr_Deletion_HeldForTicket");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RequestDeletion_any_other_failure_flashes_an_error_and_returns_to_privacy(bool throws)
+    {
+        if (throws)
+            _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<DeletionRequestResult>(new InvalidOperationException("boom")));
+        else
+            _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
+                .Returns(new DeletionRequestResult(false, "NotFound"));
+        var ctrl = Create();
+
+        var result = await ctrl.RequestDeletion();
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ControllerName.Should().Be("MyData");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Gdpr_Deletion_RequestFailed");
     }
 
     [HumansFact]

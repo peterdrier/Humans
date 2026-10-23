@@ -18,10 +18,6 @@
     <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
-  <!--
-    No EF Core package: Gdpr owns no tables, which is why tests/Directory.Build.props
-    excludes this project from the shared TestDbContextFactory compile item — see the
-    comment there.
-  -->
+  <!-- No EF Core package: Gdpr owns no tables. -->
 
 </Project>
