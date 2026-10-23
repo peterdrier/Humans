@@ -57,7 +57,7 @@
   <data name="Gdpr_AccountDeletion_Unscheduled" xml:space="preserve"><value>Es wird endgültig gelöscht, sofern du nicht abbrichst.</value></data>
   <data name="Gdpr_AccountDeletion_CancelButton" xml:space="preserve"><value>Löschanforderung abbrechen</value></data>
   <data name="Gdpr_Deletion_Requested" xml:space="preserve">
-    <value>Kontolöschung beantragt. Ihr Konto wird am {0} gelöscht, sofern Sie nicht widerrufen.</value>
+    <value>Kontolöschung beantragt. Dein Konto wird am {0} gelöscht, sofern du nicht widerrufst.</value>
     <comment>{0} = deletion date</comment>
   </data>
   <data name="Gdpr_Deletion_AlreadyPending" xml:space="preserve">

@@ -57,7 +57,7 @@
   <data name="Gdpr_AccountDeletion_Unscheduled" xml:space="preserve"><value>Se eliminará permanentemente a menos que la canceles.</value></data>
   <data name="Gdpr_AccountDeletion_CancelButton" xml:space="preserve"><value>Cancelar solicitud de eliminación</value></data>
   <data name="Gdpr_Deletion_Requested" xml:space="preserve">
-    <value>Se ha solicitado la eliminación de la cuenta. Su cuenta será eliminada el {0} a menos que cancele la solicitud.</value>
+    <value>Se ha solicitado la eliminación de la cuenta. Tu cuenta será eliminada el {0} a menos que canceles la solicitud.</value>
     <comment>{0} = deletion date</comment>
   </data>
   <data name="Gdpr_Deletion_AlreadyPending" xml:space="preserve">
