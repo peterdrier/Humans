@@ -9,8 +9,8 @@ import sys
 import time
 
 
-def quota_stop_reason(result, now):
-    """Return a stop reason, or None while cumulative weekly allowance remains."""
+def quota_stop_reason(result, now, policy=None):
+    """Check live usage against the run's fixed allowance, renewed on weekly reset."""
     buckets = result.get("rateLimitsByLimitId") or {}
     bucket = buckets.get("codex") or result.get("rateLimits") or {}
     windows = [bucket.get(key) for key in ("primary", "secondary")]
@@ -25,7 +25,11 @@ def quota_stop_reason(result, now):
             not math.isfinite(reset) or not 0 < reset - now <= 7 * 86400):
         return "weekly quota invalid or stale"
     elapsed_days = 7 - (reset - now) / 86400
-    minimum = 100 - 12 * elapsed_days
+    if policy is None:
+        policy = {}
+    if policy.get("reset") != reset:
+        policy.update(reset=reset, minimum=max(16, 100 - 12 * (elapsed_days + 1)))
+    minimum = policy["minimum"]
     remaining = 100 - used
     print(f"Weekly quota: {remaining:g}% remaining; cutoff {minimum:.2f}%; "
           f"reset {reset}; elapsed {elapsed_days:.3f} days", flush=True)
@@ -81,6 +85,7 @@ def run(prompt_file, report_file, deadline, repair=False):
     quota_enabled = not repair and os.environ.get("IGNORE_QUOTA_CUTOFF", "0") != "1"
     quota_request = None
     quota_phase = None
+    quota_policy = {}
 
     def send(method, params, request_id=None):
         message = {"method": method, "params": params}
@@ -101,7 +106,7 @@ def run(prompt_file, report_file, deadline, repair=False):
             if quota_request is not None and event.get("id") == quota_request:
                 quota_request = None
                 reason = ("weekly quota read failed" if "error" in event else
-                          quota_stop_reason(event.get("result", {}), time.time()))
+                          quota_stop_reason(event.get("result", {}), time.time(), quota_policy))
                 if reason:
                     print(f"Stopping new work: {reason}", flush=True)
                     if quota_phase == "round":
