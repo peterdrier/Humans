@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 13
-inbox:
-  - added: 2026-10-22
-    id: EMAIL-12
-    what: "Views/FacilitatedMessage/SendMessage.cshtml labels its first breadcrumb with SharedLocalizer Teams_Title and links it to Team/Index, on the personal relay page reached from a profile card. Found by section-doctor's prose-surface thread."
-    review: light
+inbox: []

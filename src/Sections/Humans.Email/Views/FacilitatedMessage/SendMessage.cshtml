@@ -5,7 +5,6 @@
 
 <nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="ProfileView" asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_SendMessage_Breadcrumb"]</li>
     </ol>
