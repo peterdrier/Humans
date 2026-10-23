@@ -16,7 +16,6 @@ internal sealed class GdprService(
         // Resolve once: contributors get the survivor, which owns any moved rows.
         var info = await users.GetUserInfoAsync(userId, ct);
         var resolvedUserId = info?.Id ?? userId;
-        // For contributors that can't resolve the chain themselves.
         var allUserIds = info?.AllUserIds ?? [userId];
 
         var sections = new Dictionary<string, object?>(StringComparer.Ordinal);
@@ -87,15 +86,13 @@ internal sealed class GdprService(
 
         return new GdprExport(
             ExportedAt: clock.GetCurrentInstant().ToIso8601(),
-            UserId: info?.Id ?? userId,
+            UserId: resolvedUserId,
             MergedFromUserIds: info?.MergedUserIds ?? [],
             Sections: sections);
     }
 
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        // The ErasesLast contributor (the identity owner) runs after everything that
-        // still needs the person's addresses.
         var ordered = contributors
             .OrderBy(c => c.ErasesLast ? 1 : 0);
 
