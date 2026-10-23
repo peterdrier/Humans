@@ -14,7 +14,7 @@ namespace Humans.Gdpr.Controllers;
 [Authorize]
 internal sealed class MemberDataController(
     IUserService userService,
-    IGdprService gdprExportService,
+    IGdprService gdprService,
     IAccountDeletionService accountDeletionService,
     IClock clock,
     ILogger<MemberDataController> logger,
@@ -53,7 +53,7 @@ internal sealed class MemberDataController(
 
         try
         {
-            var export = await gdprExportService.ExportForUserAsync(user.Id, ct);
+            var export = await gdprService.ExportForUserAsync(user.Id, ct);
 
             var bytes = GdprExportSerializer.Serialize(export);
             var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
