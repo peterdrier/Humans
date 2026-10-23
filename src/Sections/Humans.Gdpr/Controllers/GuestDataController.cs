@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Base;
@@ -61,17 +60,16 @@ internal sealed class GuestDataController(
 
         try
         {
-            var result = await accountDeletionService.RequestDeletionAsync(user.Id);
-            var flash = GuestDeletionRequestFlash.From(result);
+            var flash = DeletionRequestFlash.From(await accountDeletionService.RequestDeletionAsync(user.Id));
             if (flash.Success)
-                SetSuccess(FormatDeletionFlash(flash));
+                SetSuccess(flash.Format(localizer));
             else
-                SetError(FormatDeletionFlash(flash));
+                SetError(flash.Format(localizer));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
-            SetError(localizer["Gdpr_Guest_DeletionRequestFailed"].Value);
+            SetError(localizer["Gdpr_Deletion_RequestFailed"].Value);
         }
 
         return RedirectToAction("Index", "Guest");
@@ -97,7 +95,4 @@ internal sealed class GuestDataController(
         SetSuccess(localizer["Gdpr_Deletion_Cancelled"].Value);
         return RedirectToAction("Index", "Guest");
     }
-
-    private string FormatDeletionFlash(GuestDeletionRequestFlash flash) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[flash.ResourceKey].Value, flash.EffectiveDeletionDate.ToDate());
 }

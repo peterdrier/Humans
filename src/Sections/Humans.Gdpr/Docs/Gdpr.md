@@ -53,7 +53,7 @@ email links `/Gdpr/Deletion`.
 | Route | Controller action | Notes |
 |-------|------------------|-------|
 | `GET /Gdpr/DownloadData` | `MemberDataController.DownloadData` | For a human who has completed onboarding; own data only |
-| `POST /Gdpr/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync`; redirects back to `/Consent/MyData` |
+| `POST /Gdpr/RequestDeletion` | `MemberDataController.RequestDeletion` | Starts the deletion countdown via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects back to `/Consent/MyData` |
 | `GET /Gdpr/Guest/DownloadData` | `GuestDataController` | For an authenticated account with no profile yet |
 | `POST /Gdpr/Guest/RequestDeletion` | `GuestDataController.RequestDeletion` | Profileless deletion request via `IAccountDeletionService.RequestDeletionAsync` (ticket hold shown in the flash); redirects to `/Guest` |
 | `POST /Gdpr/Guest/CancelDeletion` | `GuestDataController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync`; redirects to `/Guest` |

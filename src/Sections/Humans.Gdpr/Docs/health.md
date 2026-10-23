@@ -66,7 +66,7 @@ The shapes imply these and no more:
 - **One `Section.cs`** registering exactly the orchestrator.
 
 Off-target: the member and profileless download actions are one flow written twice, differing
-in how a missing user is answered, the file name and the redirect back; and the two
+in how a missing user is answered and the redirect back; and the two
 cancel-deletion actions map the same failure differently (finding-level, see the run file).
 
 ## 4. Invariants

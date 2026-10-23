@@ -35,7 +35,7 @@ public sealed class GuestDataControllerTests
             var key = call.ArgAt<string>(0);
             return new LocalizedString(key, key switch
             {
-                "Gdpr_Guest_DeletionRequested" => "Your account will be permanently deleted on {0}.",
+                "Gdpr_Deletion_Requested" => "Your account will be deleted on {0} unless you cancel.",
                 _ => key,
             });
         });
@@ -114,7 +114,7 @@ public sealed class GuestDataControllerTests
         var redirect = (await ctrl.RequestDeletion()).Should().BeOfType<RedirectToActionResult>().Subject;
 
         (redirect.ActionName, redirect.ControllerName).Should().Be(("Index", "Guest"));
-        ((string)ctrl.TempData[TempDataKeys.SuccessMessage]!).Should().Contain("permanently deleted");
+        ((string)ctrl.TempData[TempDataKeys.SuccessMessage]!).Should().Contain("unless you cancel");
     }
 
     [HumansFact]

@@ -1,8 +1,8 @@
-using System.Globalization;
 using Humans.Base;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
+using Humans.Gdpr.Models;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,17 +29,20 @@ internal sealed class MemberDataController(
         if (user is null)
             return NotFound();
 
-        var result = await accountDeletionService.RequestDeletionAsync(user.Id);
-        if (!result.Success)
+        try
         {
-            if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                SetError(localizer["Gdpr_Deletion_AlreadyPending"].Value);
-            return RedirectToAction("Index", "MyData");
+            var flash = DeletionRequestFlash.From(await accountDeletionService.RequestDeletionAsync(user.Id));
+            if (flash.Success)
+                SetSuccess(flash.Format(localizer));
+            else
+                SetError(flash.Format(localizer));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
+            SetError(localizer["Gdpr_Deletion_RequestFailed"].Value);
         }
 
-        SetSuccess(string.Format(CultureInfo.CurrentCulture,
-            localizer["Gdpr_Deletion_Requested"].Value,
-            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDate() ?? ""));
         return RedirectToAction("Index", "MyData");
     }
 
@@ -56,7 +59,7 @@ internal sealed class MemberDataController(
             var export = await gdprService.ExportForUserAsync(user.Id, ct);
 
             var bytes = GdprExportSerializer.Serialize(export);
-            var fileName = $"nobodies-profiles-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
+            var fileName = $"nobodies-data-export-{clock.GetCurrentInstant().ToDateTimeUtc().ToInvariantDate()}.json";
 
             return File(bytes, "application/json", fileName);
         }
