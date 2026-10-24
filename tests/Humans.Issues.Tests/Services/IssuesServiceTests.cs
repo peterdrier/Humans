@@ -2194,15 +2194,37 @@ public sealed class IssuesServiceTests
         (await ScreenshotController(stranger.Id).Screenshot(Guid.NewGuid())).Should().BeOfType<NotFoundResult>();
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ScreenshotCleanupFailure_AfterCommittedErasure_DoesNotReverseSuccess(bool gdprErasure)
+    [HumansFact]
+    public async Task EraseForUserAsync_ScreenshotFailure_RetainsTheIssueForRetry()
+    {
+        const string key = "uploads/issues/retry/shot.png";
+        var issueId = await SeedIssueWithResolvedAtAsync(
+            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
+        var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
+        var attempts = 0;
+        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(_ =>
+            ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
+        var service = new IssuesApplicationService(
+            _repository, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+        var erase = () => service.EraseForUserAsync(reporterId, Ct);
+        await erase.Should().ThrowAsync<IOException>();
+
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, Ct))
+            .ScreenshotStoragePath.Should().Be(key);
+        await erase();
+        (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
+        await _fileStorage.Received(2).DeleteAsync(key, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task ScreenshotCleanupFailure_AfterCommittedRetention_DoesNotReverseSuccess()
     {
         const string key = "uploads/issues/cleanup/shot.png";
         var issueId = await SeedIssueWithResolvedAtAsync(
             IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
-        var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
         var rowRemovedAtCleanup = false;
         CancellationToken? cleanupToken = null;
         _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(async call =>
@@ -2216,8 +2238,7 @@ public sealed class IssuesServiceTests
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
-        if (gdprErasure) await service.EraseForUserAsync(reporterId, Ct);
-        else (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
+        (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
 
         (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
         rowRemovedAtCleanup.Should().BeTrue();

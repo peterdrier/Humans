@@ -392,4 +392,15 @@
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Le mode de vote des Asociados ne peut pas être modifié après l’ouverture du questionnaire.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer le questionnaire. Réessayez.</value></data>
   <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Les valeurs des options doivent comporter au maximum {0} caractères.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Choix unique</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Choix multiple</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Texte court</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Texte long</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Évaluation</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Grille</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Choix par ordre de préférence</value></data>
+  <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Chaque question à choix doit comporter au moins une option.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Les valeurs des options d’une question à choix ne doivent pas être vides.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Les valeurs des options de chaque question à choix doivent être uniques.</value></data>
 </root>

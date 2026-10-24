@@ -77,7 +77,7 @@ public sealed class DashboardShiftsViewComponent(
     {
         try
         {
-            return await shiftMgmt.GetUrgentShiftsAsync(eventSettingsId, limit: 3);
+            return await shiftMgmt.GetUrgentShiftsAsync(eventSettingsId, limit: 3, ct: ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

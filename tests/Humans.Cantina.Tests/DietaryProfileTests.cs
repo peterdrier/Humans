@@ -267,6 +267,36 @@ public class DietaryProfileTests
         (await _repo.GetAsync(to, Ct))!.DietaryPreference.Should().Be("Vegetarian");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false, false)]
+    [Xunit.InlineData(true, false, false)]
+    [Xunit.InlineData(false, true, false)]
+    [Xunit.InlineData(true, false, true)]
+    [Xunit.InlineData(false, true, true)]
+    public async Task Merge_PreservesLegacySourceAnswers_WithoutRevivingClearedOrDeclinedAnswers(
+        bool sourceHasRow, bool survivorHasRow, bool declined)
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        SeedUser(source, legacyPreference: "Vegan", legacyAllergies: ["Soy"]);
+        SeedUser(target);
+        if (sourceHasRow || survivorHasRow)
+        {
+            var answeredId = sourceHasRow ? source : target;
+            if (declined) await _sut.DeclineAsync(answeredId, Ct);
+            else await _sut.SaveAsync(answeredId, Answers(answeredId, preference: null), Ct);
+        }
+
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+
+        var expected = sourceHasRow || survivorHasRow
+            ? Answers(target, preference: null) with { DeclinedToAnswer = declined }
+            : Answers(target, preference: "Vegan", allergies: ["Soy"]);
+        (await _sut.GetDietaryProfileAsync(target, Ct)).Should().BeEquivalentTo(expected);
+        (await _repo.GetAsync(source, Ct)).Should().BeNull();
+    }
+
     [HumansFact]
     public async Task Merge_TheSurvivorWins_IncludingAnswersStillOnItsLegacyProfile()
     {
@@ -344,6 +374,34 @@ public class DietaryProfileTests
             NudgeServices(Substitute.For<IShiftService>()), Principal(id));
 
         entries.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Nudge_PropagatesCancellationFromDietaryAndSignupReads(bool signupRead)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var shifts = Substitute.For<IShiftService>();
+        if (signupRead)
+            shifts.HasQualifyingCantinaSignupAsync(id, aborted.Token)
+                .Returns(Task.FromCanceled<bool>(aborted.Token));
+        var services = NudgeServices(shifts);
+        // Keep the first read successful when exercising the second boundary.
+        if (signupRead)
+        {
+            var cantina = Substitute.For<ICantinaService>();
+            services = new ServiceCollection()
+                .AddSingleton(cantina).AddSingleton(shifts)
+                .AddSingleton(Substitute.For<IStringLocalizer<SharedResource>>())
+                .BuildServiceProvider();
+        }
+        var load = () => new SectionThingsToDo().EntriesAsync(services, Principal(id), aborted.Token).AsTask();
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
     }
 
     private IServiceProvider NudgeServices(IShiftService shifts)

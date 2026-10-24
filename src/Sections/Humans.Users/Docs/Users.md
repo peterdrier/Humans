@@ -60,10 +60,10 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | ProfilePictureUrl | string? | Google profile picture URL (max 2048) |
 | CreatedAt | Instant | Set on insert; immutable (`init`) |
 | LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
-| LastConsentReminderSentAt | Instant? | **Legacy, no longer written** (GDPR erasure clears it). The re-consent reminder cooldown stamp moved to Consent's `consent_reminders`. The copy and legacy read were retired after production reported `consent.reminder-stamps` done on 2026-10-22; no longer projected on `UserInfo`. Column kept until its drop PR (`Docs/debt.yml` USERS-22). |
-| SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-13). |
-| UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-12). |
-| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; shadow column with no CLR property, kept until its drop PR (`Docs/debt.yml` USERS-14). |
+| LastConsentReminderSentAt | Instant? | **Legacy, no longer written** (GDPR erasure clears it). The re-consent reminder cooldown stamp moved to Consent's `consent_reminders`. The copy and legacy read were retired after production reported `consent.reminder-stamps` done on 2026-10-22; no longer projected on `UserInfo`. Column kept until its drop PR (peterdrier/Humans#2156). |
+| SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
+| UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
+| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; shadow column with no CLR property, kept until its drop PR (peterdrier/Humans#2156). |
 | ContactSource | ContactSource? | Where imported from (`Manual`, `MailerLite`, `TicketTailor`); null for self-registered users. |
 | ExternalSourceId | string? (256) | ID in the external source system (e.g., MailerLite subscriber ID). |
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
@@ -347,7 +347,7 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 `User` has no `GoogleEmail` property; the `users.GoogleEmail` column is an EF shadow property (`UserConfiguration.cs`) kept pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserInfo.GoogleEmail` is gone (Users decomposition commit 15): the Google Workspace address is `IGoogleIntegrationService.GetWorkspaceIdentityAsync`; `UserInfo.PrimaryEmail` is the contact address.
 
-Google sync status is GoogleIntegration's (`google_workspace_identities.Status`, Users decomposition commit 15). The per-address `UserEmail.GoogleEmailStatus` (`LegacyGoogleEmailStatus`) column is frozen until the `google.workspace-identities` drop PR; the user-level `User.GoogleEmailStatus` column is dead (USERS-14). Neither has a live writer.
+Google sync status is GoogleIntegration's (`google_workspace_identities.Status`, Users decomposition commit 15). The per-address `UserEmail.GoogleEmailStatus` (`LegacyGoogleEmailStatus`) column is frozen until the `google.workspace-identities` drop PR; the user-level `User.GoogleEmailStatus` column is dead (drop tracked in peterdrier/Humans#2156). Neither has a live writer.
 
 #### Contact-import properties
 
@@ -360,7 +360,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 #### Dead columns
 
-`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them (`GoogleEmailStatus` as a shadow column, so no code can reach it; `[Obsolete]` guards the other two), and `Docs/debt.yml` USERS-12 to USERS-14 track their drop.
+`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them (`GoogleEmailStatus` as a shadow column, so no code can reach it; `[Obsolete]` guards the other two), and peterdrier/Humans#2156 tracks their drop.
 
 ### Profile
 
@@ -547,19 +547,19 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-Nothing here is written. Each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 to CENTRAL-95; CENTRAL-97 retired 2026-10-22), drops in `Docs/debt.yml`.
+Nothing here is written. Each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 to CENTRAL-95; CENTRAL-97 retired 2026-10-22), schema drops are separate feature work under policy D9, outside the debt ledger.
 
-| Legacy object | Replaced by | Migration key | Drop row |
-|---|---|---|---|
-| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` | USERS-15 |
-| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` | USERS-16 |
-| `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` | USERS-17 |
-| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` | USERS-18 |
-| `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` | USERS-19 |
-| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` | USERS-20 |
-| `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` | USERS-21 |
-| `users.LastConsentReminderSentAt` | Consent `consent_reminders` | `consent.reminder-stamps` | USERS-22 |
-| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none | USERS-12 to USERS-14 (per-case approval) |
+| Legacy object | Replaced by | Migration key |
+|---|---|---|
+| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` |
+| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` |
+| `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` |
+| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` |
+| `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` |
+| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` |
+| `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` |
+| `users.LastConsentReminderSentAt` | Consent `consent_reminders` | `consent.reminder-stamps` |
+| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none |
 
 The `Legacy*` enums (`LegacyMembershipTier`, `LegacyConsentCheckStatus`, `LegacyParticipationStatus`, `LegacyParticipationSource`, `LegacyMessageCategory`, `LegacyGoogleEmailStatus`) die with their retirement PRs.
 
@@ -658,6 +658,10 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ## Invariants
 
+- Profile summaries and duplicate-account cards derive active/pending status from the account state, never consent-review approval. The member profile does not present Board approval as a prerequisite for Volunteer access.
+
+- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
+
 - The `UserEmails` GDPR export includes each owned address’s Google-selection flag, Google sync status, and UTC creation, update and nullable last-verification-email timestamps. Existing export keys retain their names; other users’ addresses are excluded.
 
 - The live burner-name collision warning invalidates pending responses and hides the previous name’s warning on every input, before debounce; clearing the field cannot revive an older result.
@@ -679,7 +683,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - Facilitated member messages use the recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences. Team reply-to, contact sharing, opt-out checks and audit behavior are unchanged.
 - Profile contact rows require an explicit supported contact type and visibility before any profile save. Missing visibility cannot default a private contact to AllActiveProfiles, and the retired email contact type cannot be authored. Historical email contacts appear read-only in the owner editor and survive ordinary contact replacement, including stale attempts to relabel their IDs. Only explicitly selected legacy IDs on that owner's profile are removed; other profiles' IDs cannot be deleted. Validation failures reload these rows from the owner's cached profile. Existing visibility, GDPR export and account-deletion paths still apply.
 - Contact field visibility is enforced per-field: a human viewing their own profile sees everything. Board members see everything. Coordinators see CoordinatorsAndBoard-level and below. Shared-team members see MyTeams-level and below. Other active members see only AllActiveProfiles fields. Each call derives permissions for its supplied viewer; a reused service cannot carry another viewer’s roles or team membership into the result.
-- Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth". The editor’s month names follow the selected UI language; numeric option values and English input parsing stay unchanged. Displayed location coordinates also follow the UI culture; hidden coordinate form values retain English input formatting.
+- Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth". Profile birthday displays contain only the localized month and day, with no weekday derived from the storage year; February 29 remains valid. The editor’s month names follow the selected UI language; numeric option values and English input parsing stay unchanged. Displayed location coordinates also follow the UI culture; hidden coordinate form values retain English input formatting.
 - Membership tier (Volunteer, Colaborador, Asociado) is owned by Governance, not the profile and not a role assignment. Initial profile setup shows the tier descriptions and links to `/Governance/Applications/Create` (new tab); the profile form carries no tier fields and submits no application.
 - The Consent Coordinator review (status, approval, rejection record) is Consent's (`consent_reviews`, Users decomposition commit 12) and gates nothing here: Volunteer admission is name + required consents. Users holds only the resulting `UserState.Rejected`. The admin detail page's consent-check badge and rejection alert are Consent's `AdminDetail` user part.
 - App access is gated by the stored `User.State` (`UserState`: Bare/Active/DeletePending/Suspended/Rejected/Deleted/Merged/AdminSuspended). `Profile` carries no state column.
@@ -694,8 +698,8 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - `AccountMergeService` writes and `DuplicateAccountService` reads go through this section's repositories and `IUserService` — never through cross-section `DbSet` reads.
 - `AccountMergeService.AcceptAsync` is the **fold-into-target** orchestrator: it re-FKs every owning section's user-scoped rows from source to target via per-section `Reassign…ToUserAsync` methods, then tombstones the source User row (sets `MergedToUserId` + `MergedAt` via `IUserManagement.AnonymizeForMergeAsync`) — it does NOT delete or wipe the source. Append-only history (audit log, consent records, budget audit log) stays at source by design and is surfaced via chain-follow reads.
 - Public profile cards hide hidden team memberships and hidden parent-name prefixes on visible child memberships. Self/admin cards retain both, including the existing self-profile exception for hidden memberships.
-- Spoken-language proficiency badges on profile cards and hover/inline popovers use the existing six-culture `Enum_LanguageProficiency_*` resources, matching the profile editor instead of exposing raw enum names.
-- The preferred-language flag (rendered next to a person's name on `ProfileCard` and `_HumanPopover`) is visible only to `HumanAdmin` / `Board` / `Admin` viewers — general active humans see other people's profile cards and popovers without it. Self-view is unaffected (the flag isn't shown there in the first place; preferred language is editable on `/Profile/Me/Edit`). `ProfileCard`'s `nobodies.team` account badge and public email label use the Users resource set. Its profile, permissions, contact fields, email, team, membership, and messaging-preference reads all receive `HttpContext.RequestAborted`; the standalone membership-tier and `nobodies.team` badges do too. The admin-only Users widget gallery passes it to its current-user lookup as well.
+- Spoken-language proficiency badges on profile cards and hover/inline popovers use the existing six-culture `Enum_LanguageProficiency_*` resources, matching the profile editor instead of exposing raw enum names. The initial-setup tier explanation also localizes its Volunteer label in all six cultures; Colaborador and Asociado retain their legal names.
+- The preferred-language flag (rendered next to a person's name on `ProfileCard` and `_HumanPopover`) is visible only to `HumanAdmin` / `Board` / `Admin` viewers — general active humans see other people's profile cards and popovers without it. Self-view is unaffected (the flag isn't shown there in the first place; preferred language is editable on `/Profile/Me/Edit`). `ProfileCard`'s `nobodies.team` account badge and public email label use the Users resource set. Its profile, permissions, contact fields, email, team, and messaging-preference reads all receive `HttpContext.RequestAborted`; the standalone membership-tier and `nobodies.team` badges do too. The admin-only Users widget gallery passes it to its current-user lookup as well. Profile cards render identity and contact details without loading membership snapshots or consent-review annotations; those do not contribute to the card.
 - Public coordinator popovers use the shared coordinator label in all six cultures, preserving the team name and the existing public-coordinator gate. Profile popover requests reject redirects, so an expired session’s login page is never embedded or cached as profile content. Network/HTTP failures dispose the loading spinner and allow a later hover to retry; 404 continues to suppress the popover without another probe.
 - The authenticated `_HumanPopover` (`GET /Profile/{id}/Popover`) also renders the person's active-season camp name + camp roles, sourced from `ICampService.GetCampUserInfoAsync`. This block is gated to `AnyAdminRole` viewers (admin-only) and is omitted when the person is not an Active member of any camp this season.
 - `GET /Profile/{id}/Popover` requires a Profile row and returns 404 for an unknown user or a known user without one. The temporary sparse hover-card fallback retired with the completed `users.stub-profiles` copy. Inline `HumanSummary` cards retain their handling for unavailable historical user/profile references.
@@ -781,6 +785,8 @@ sends this section's stored issues to the Admin-only queue. The key is `Profiles
 `Users`: Profiles merged into this section at nobodies-collective/Humans#866 and stored
 rows still carry the old string, so the queue keeps its name (and `/Debug/Sections` lists
 it as an unmatched annotation, which is the rename showing rather than hiding).
+
+GDPR profile erasure deletes the resolved legacy or versioned picture file before clearing its metadata. File-deletion failures propagate and retain that metadata for retry; they cannot silently finish the cascade with an orphaned picture.
 
 Deletion confirmations use the no-persistence email path. Delivery failures are terminal and logged by exception type only, without the erased address/name/subject or transport exception contents; they do not turn a completed erasure into a failed deletion.
 

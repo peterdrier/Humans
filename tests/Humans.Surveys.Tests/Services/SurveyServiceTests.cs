@@ -268,6 +268,45 @@ public class SurveyServiceTests
         }
     }
 
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.SingleChoice, false, "Empty")]
+    [InlineData(SurveyQuestionType.SingleChoice, false, "Blank")]
+    [InlineData(SurveyQuestionType.SingleChoice, false, "Unique")]
+    [InlineData(SurveyQuestionType.SingleChoice, true, "Empty")]
+    [InlineData(SurveyQuestionType.SingleChoice, true, "Blank")]
+    [InlineData(SurveyQuestionType.SingleChoice, true, "Unique")]
+    [InlineData(SurveyQuestionType.MultiChoice, false, "Empty")]
+    [InlineData(SurveyQuestionType.MultiChoice, false, "Blank")]
+    [InlineData(SurveyQuestionType.MultiChoice, false, "Unique")]
+    [InlineData(SurveyQuestionType.MultiChoice, true, "Empty")]
+    [InlineData(SurveyQuestionType.MultiChoice, true, "Blank")]
+    [InlineData(SurveyQuestionType.MultiChoice, true, "Unique")]
+    public async Task Authoring_rejects_unanswerable_or_ambiguous_choice_options(
+        SurveyQuestionType type, bool editing, string defect)
+    {
+        var actor = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: actor);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        OptionInput[] options = defect switch
+        {
+            "Empty" => [],
+            "Blank" => [Opt(" ", "Blank", 1)],
+            _ => [Opt("same", "First", 1), Opt("same", "Second", 2)]
+        };
+        var input = Input(Q("Choose", type, 1, 1, options));
+        var service = CreateService();
+
+        var result = editing
+            ? await service.UpdateAsync(survey.Id, input, new SurveyViewer(actor, false), TestContext.Current.CancellationToken)
+            : await service.CreateAsync(input, actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be("Surveys_Validation_ChoiceOption" + defect);
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateAsync_persists_grid_configuration()
     {
@@ -4024,6 +4063,30 @@ public class SurveyServiceTests
 
         var text = result.Questions.Single(q => q.QuestionId == textId);
         text.FreeTextAnswers.Should().BeEquivalentTo(new[] { "great", "ok" });
+    }
+
+    [HumansTheory]
+    [InlineData(int.MaxValue - 1, int.MaxValue)]
+    [InlineData(int.MinValue, int.MinValue + 1)]
+    public async Task GetResultsAsync_handles_rating_scales_at_integer_boundaries(int min, int max)
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        var questionId = Guid.NewGuid();
+        survey.Questions = [RatingQuestion(questionId, survey.Id, 1, min, max)];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(
+            new List<SurveyResponse>
+            {
+                SubmittedResponse(survey.Id, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug,
+                    _clock.GetCurrentInstant(), null, RatingAnswer(questionId, max))
+            });
+
+        var result = await CreateService().GetResultsAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        var rating = result!.Questions.Should().ContainSingle().Which;
+        rating.RatingDistribution.Select(bucket => bucket.Value).Should().Equal(min, max);
+        rating.RatingDistribution.Select(bucket => bucket.Count).Should().Equal(0, 1);
+        rating.RatingAverage.Should().Be(max);
     }
 
     [HumansFact]

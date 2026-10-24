@@ -111,15 +111,15 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-`MembershipStatus` is not stored on `Profile`; Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`) computes it from RoleAssignments and ConsentRecords:
+`MembershipStatus` is not stored on `Profile`; Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`) computes it from the account state, active roles or Volunteers-team membership, and consent deadlines. The Consent Coordinator review is an independent annotation and does not affect this status or require an approval banner on the profile.
 
 | Status | Description | Visual |
 |--------|-------------|--------|
-| **Active** | Has roles + all consents signed | Green badge |
-| **Pending** | Pending approval or incomplete requirements | — |
-| **Inactive** | Has roles but missing consents | Yellow badge |
-| **Suspended** | Admin-suspended | Red badge |
-| **None** | No active roles | Gray badge |
+| **Active** | Active account with an active role or Volunteers membership and no overdue required consents | Green badge |
+| **Pending** | Bare account with a profile | — |
+| **Inactive** | Active account with an affiliation but overdue required consents | Yellow badge |
+| **Suspended** | Suspended or AdminSuspended account with a profile | Red badge |
+| **None** | No profile, no active affiliation, or another non-active account state | Gray badge |
 
 ## Privacy Model
 

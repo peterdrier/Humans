@@ -58,9 +58,6 @@ internal interface IGateService : IApplicationService
 
     /// <summary>They re-enrol on the next claim.</summary>
     Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
-
-    /// <summary>Supervisors with an admin-enrolled PIN; authority is re-checked by <see cref="AuthorizeOverrideAsync"/>.</summary>
-    Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default);
 }
 
 internal sealed record GateRosterEntry(Guid UserId, string DisplayName);

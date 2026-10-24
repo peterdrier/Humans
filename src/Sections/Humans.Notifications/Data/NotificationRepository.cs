@@ -142,18 +142,19 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         return new ClickThroughOutcome(recipient.Notification.ActionUrl, NotFound: false, MarkedRead: markedRead);
     }
 
-    public async Task<bool> ResolveBySourceAsync(
+    public async Task<IReadOnlyList<Guid>> ResolveBySourceAsync(
         Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var notifications = await ctx.Notifications
+            .Include(n => n.Recipients)
             .Where(n => n.Source == source
                         && (sourceKey == null || n.SourceKey == sourceKey)
                         && n.ResolvedAt == null
                         && n.Recipients.Any(r => r.UserId == userId))
             .ToListAsync(ct);
 
-        if (notifications.Count == 0) return false;
+        if (notifications.Count == 0) return [];
 
         foreach (var notification in notifications)
         {
@@ -162,7 +163,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         }
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return notifications.SelectMany(n => n.Recipients).Select(r => r.UserId).Distinct().ToList();
     }
 
     public async Task<IReadOnlyList<Guid>> ResolveBySourceKeyAsync(

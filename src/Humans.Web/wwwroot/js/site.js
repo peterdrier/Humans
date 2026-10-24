@@ -667,6 +667,7 @@ function showToast(message, type) {
         btn.disabled = true;
         fetch(url, {
             method: favourited ? 'DELETE' : 'POST',
+            redirect: 'error',
             headers: { RequestVerificationToken: token }
         })
             .then(function (r) {

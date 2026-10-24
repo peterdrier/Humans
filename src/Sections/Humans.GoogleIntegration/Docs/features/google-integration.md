@@ -416,7 +416,7 @@ Instead of creating resources with domain-wide delegation, admins can link exist
 ### ITeamResourceService / ITeamResourceManagement
 Separate from the IGoogleSync* interfaces: linking/validation, not provisioning.
 - `ITeamResourceService` (public reads): `GetTeamResourcesAsync`, `GetResourcesByTeamIdsAsync`, `GetTeamResourceSummariesAsync`, `GetActiveDriveFoldersAsync`, `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`, `GetResourceByIdAsync`.
-- `ITeamResourceManagement : ITeamResourceService` (internal): `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync`, `GetActiveResourceCountsByTeamAsync`, `MarkResourceSyncedAsync`, `RecordResourceErrorAsync`, `GetUserTeamResourcesAsync`, `GetResourceCountAsync`, `DeactivateResourcesForTeamAsync`, `GetResourceNamesByIdsAsync`.
+- `ITeamResourceManagement : ITeamResourceService` (internal): `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync`, `GetActiveResourceCountsByTeamAsync`, `MarkResourceSyncedAsync`, `RecordResourceErrorAsync`, `GetResourceCountAsync`, `DeactivateResourcesForTeamAsync`, `GetResourceNamesByIdsAsync`.
 
 ### Resource Linking Flow
 ```

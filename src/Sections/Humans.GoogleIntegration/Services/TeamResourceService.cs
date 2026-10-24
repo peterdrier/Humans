@@ -79,48 +79,6 @@ internal sealed partial class TeamResourceService(
     public Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default)
         => repository.SetErrorMessageManyAsync([resourceId], errorMessage, ct);
 
-    public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamResourcesAsync(
-        Guid userId,
-        CancellationToken ct = default)
-    {
-        var memberships = await teamService.GetUserTeamMembershipsAsync(userId, ct);
-        if (memberships.Count == 0)
-        {
-            return [];
-        }
-
-        var teamIds = memberships
-            .Select(m => m.TeamId)
-            .Distinct()
-            .ToList();
-        if (teamIds.Count == 0)
-        {
-            return [];
-        }
-
-        var resourcesByTeam = await repository.GetActiveByTeamIdsAsync(teamIds, ct);
-
-        // The membership rows already carry the team's name and slug (Teams stitches them
-        // on its own side of the boundary), so there is nothing left to look up here.
-        var teamByMembership = memberships
-            .GroupBy(m => m.TeamId)
-            .ToDictionary(g => g.Key, g => g.First());
-
-        var rows = new List<UserTeamGoogleResource>();
-        foreach (var (teamId, team) in teamByMembership.OrderBy(kvp => kvp.Value.TeamName, StringComparer.Ordinal))
-        {
-            if (!resourcesByTeam.TryGetValue(teamId, out var resources) || resources.Count == 0)
-            {
-                continue;
-            }
-            foreach (var r in resources.OrderBy(r => r.Name, StringComparer.Ordinal))
-            {
-                rows.Add(new UserTeamGoogleResource(team.TeamName, team.TeamSlug, r.Name, r.ResourceType, r.Url));
-            }
-        }
-        return rows;
-    }
-
     public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
     {
         var resources = await repository.GetActiveDriveFoldersAsync(ct);

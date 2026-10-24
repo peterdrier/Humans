@@ -825,15 +825,18 @@ internal sealed class IssuesService(
             badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
         }
 
-        var screenshotKeys = await repo.EraseForUserAsync(userId, ct);
-        EvictBadgeCounts(badgeUserIds);
+        var screenshotKeys = ownIssues.Where(i => i.ReporterUserId == userId)
+            .Select(i => i.ScreenshotStoragePath).OfType<string>().Distinct(StringComparer.Ordinal);
+        ct = CancellationToken.None;
+        foreach (var key in screenshotKeys)
+            await fileStorage.DeleteAsync(key, ct);
 
-        await DeleteScreenshotsAsync(screenshotKeys);
+        await repo.EraseForUserAsync(userId, ct);
+        EvictBadgeCounts(badgeUserIds);
     }
 
     /// <summary>
-    /// For rows already committed. Failures are logged, never thrown: cancellation must not strand files, and a
-    /// stranded file must not abort the cascade.
+    /// Best-effort screenshot cleanup after retention has committed its row removal.
     /// </summary>
     private async Task DeleteScreenshotsAsync(IReadOnlyList<string> keys)
     {

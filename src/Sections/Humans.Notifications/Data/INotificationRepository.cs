@@ -35,7 +35,8 @@ internal interface INotificationRepository : IRepository
     Task<ClickThroughOutcome> ClickThroughAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default);
 
-    Task<bool> ResolveBySourceAsync(
+    /// <summary>Resolves matching notifications shared with the user; returns every affected recipient id.</summary>
+    Task<IReadOnlyList<Guid>> ResolveBySourceAsync(
         Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null);
 
     /// <summary>

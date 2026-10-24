@@ -1870,9 +1870,9 @@ internal sealed class SurveyService(
                     var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
                     var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
                     var distribution = new List<RatingBucket>();
-                    for (var v = min; v <= max; v++)
+                    for (long v = min; v <= max; v++)
                     {
-                        distribution.Add(new RatingBucket(v, values.Count(rv => rv == v)));
+                        distribution.Add(new RatingBucket((int)v, values.Count(rv => rv == v)));
                     }
 
                     double? average = values.Count > 0 ? values.Average() : null;
@@ -2649,6 +2649,7 @@ internal sealed class SurveyService(
 
             var error = question.Type switch
             {
+                SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice => ValidateChoiceQuestion(question),
                 SurveyQuestionType.Information => ValidateInformationQuestion(question),
                 SurveyQuestionType.RankedChoice => ValidateRankedQuestion(question),
                 SurveyQuestionType.Grid => ValidateGridQuestion(question),
@@ -2657,6 +2658,16 @@ internal sealed class SurveyService(
             if (error is not null) return error;
         }
         return null;
+
+        static SurveyAuthoringError? ValidateChoiceQuestion(SurveyQuestion question)
+        {
+            if (question.Options.Count == 0)
+                return new("Surveys_Validation_ChoiceOptionEmpty",
+                    $"Choice question {question.Id} must have at least one option.", question.Id);
+
+            return ValidateStableValues(question.Options.Select(option => option.Value),
+                $"Choice question {question.Id} option", question.Id, "Surveys_Validation_ChoiceOption");
+        }
 
         static SurveyAuthoringError? ValidateInformationQuestion(SurveyQuestion question)
         {

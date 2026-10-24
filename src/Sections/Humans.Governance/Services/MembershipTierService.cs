@@ -133,7 +133,7 @@ internal sealed class MembershipTierService(
             .MaxBy(a => a.ResolvedAt);
 
     /// <summary>The one reader of the obsolete legacy field: the read fallback, the copy and the
-    /// merge-survivor check. Deleted with the migration once production reports it done.
+    /// merge fallback. Deleted with the migration once production reports it done.
     /// The legacy enum maps by name (same members, same stored strings).</summary>
     private static MembershipTier LegacyTier(UserInfo? info)
     {
@@ -153,12 +153,18 @@ internal sealed class MembershipTierService(
     {
         _ = actorUserId;
         _ = now;
-        // The survivor's tier wins. A tier still only on its legacy profile counts as its own, so
-        // it is copied first rather than overwritten by the source's row.
-        if (await repo.GetAsync(mergedToUserId, ct) is null
-            && LegacyTier(await users.GetRawUserInfoAsync(mergedToUserId, ct)) is var legacy and not MembershipTier.Volunteer)
+        // A recorded tier (including a Volunteer downgrade) beats that account's legacy tier.
+        if (await repo.GetAsync(mergedToUserId, ct) is null)
         {
-            await repo.TryInsertAsync(await LegacyRecordAsync(mergedToUserId, legacy, ct), ct);
+            var legacyOwner = mergedToUserId;
+            var legacy = LegacyTier(await users.GetRawUserInfoAsync(mergedToUserId, ct));
+            if (legacy == MembershipTier.Volunteer && await repo.GetAsync(mergedFromUserId, ct) is null)
+            {
+                legacyOwner = mergedFromUserId;
+                legacy = LegacyTier(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
+            }
+            if (legacy != MembershipTier.Volunteer)
+                await repo.TryInsertAsync(await LegacyRecordAsync(legacyOwner, legacy, ct), ct);
         }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
     }

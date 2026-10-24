@@ -160,9 +160,9 @@ internal sealed class NotificationInboxService(
         Guid userId, NotificationSource source,
         CancellationToken ct = default, string? sourceKey = null)
     {
-        var updated = await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct, sourceKey);
-        if (updated)
-            InvalidateBadgeCaches([userId]);
+        var affected = await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct, sourceKey);
+        if (affected.Count > 0)
+            InvalidateBadgeCaches(affected);
     }
 
     public async Task ResolveBySourceKeyAsync(

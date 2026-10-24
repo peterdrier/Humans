@@ -208,6 +208,71 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         result.ErrorKey.Should().Be("InvalidGeoJson");
     }
 
+    [HumansTheory]
+    [InlineData("null")]
+    [InlineData("true")]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("""{"type":"Unknown","coordinates":[]}""")]
+    [InlineData("""{"type":"FeatureCollection","features":null}""")]
+    [InlineData("""{"type":"FeatureCollection","features":[null]}""")]
+    [InlineData("""{"type":"Feature","properties":{}}""")]
+    [InlineData("""{"type":"Feature","geometry":{"type":"Point","coordinates":[0]}}""")]
+    [InlineData("""{"type":"Point","coordinates":[181,0]}""")]
+    [InlineData("""{"type":"Point","coordinates":[0,91]}""")]
+    [InlineData("""{"type":"Point","coordinates":[0,1e999]}""")]
+    [InlineData("""{"type":"LineString","coordinates":[[0,0]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1]]]}""")]
+    [InlineData("""{"type":"MultiPolygon","coordinates":[null]}""")]
+    [InlineData("""{"type":"GeometryCollection","geometries":[{"type":"Feature","geometry":null}]}""")]
+    public async Task OverlayUploads_RejectMalformedGeoJsonWithoutReplacingSettingsOrAuditing(string json)
+    {
+        var existing = await SeedMapSettingsAsync();
+        const string original = """{"type":"FeatureCollection","features":[]}""";
+        existing.LimitZoneGeoJson = original;
+        existing.OfficialZonesGeoJson = original;
+        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        foreach (var official in new[] { false, true })
+        {
+            var result = official
+                ? await _sut.UpdateOfficialZonesFromUploadAsync(CreateUpload(json), NewUserId(), TestContext.Current.CancellationToken)
+                : await _sut.UpdateLimitZoneFromUploadAsync(CreateUpload(json), NewUserId(), TestContext.Current.CancellationToken);
+            result.Success.Should().BeFalse();
+            result.ErrorKey.Should().Be("InvalidGeoJson");
+        }
+
+        var stored = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        stored.LimitZoneGeoJson.Should().Be(original);
+        stored.OfficialZonesGeoJson.Should().Be(original);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("""{"type":"FeatureCollection","features":[]}""")]
+    [InlineData("""{"type":"Feature","geometry":null,"properties":null}""")]
+    [InlineData("""{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Zone"},"geometry":{"type":"Point","coordinates":[0,0,10]}}]}""")]
+    [InlineData("""{"type":"MultiPoint","coordinates":[[0,0],[1,1]]}""")]
+    [InlineData("""{"type":"LineString","coordinates":[[0,0],[1,1]]}""")]
+    [InlineData("""{"type":"MultiLineString","coordinates":[[[0,0],[1,1]]]}""")]
+    [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}""")]
+    [InlineData("""{"type":"MultiPolygon","coordinates":[[[[0,0],[1,0],[1,1],[0,0]]]]}""")]
+    [InlineData("""{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[0,0]},{"type":"LineString","coordinates":[[0,0],[1,1]]}]}""")]
+    [InlineData("""{"type":"GeometryCollection","geometries":[]}""")]
+    [InlineData("""{"type":"Point","coordinates":[]}""")]
+    public async Task OverlayUploads_KeepSupportedGeometryAndMetadataUnchanged(string json)
+    {
+        await SeedMapSettingsAsync();
+        var boundary = await _sut.UpdateLimitZoneFromUploadAsync(CreateUpload(json), NewUserId(), TestContext.Current.CancellationToken);
+        var official = await _sut.UpdateOfficialZonesFromUploadAsync(CreateUpload(json), NewUserId(), TestContext.Current.CancellationToken);
+
+        boundary.Success.Should().BeTrue();
+        official.Success.Should().BeTrue();
+        var stored = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        stored.LimitZoneGeoJson.Should().Be(json);
+        stored.OfficialZonesGeoJson.Should().Be(json);
+    }
+
     [HumansFact]
     public async Task UpdateLimitZoneFromUploadAsync_NoFile_ReturnsMissingFile()
     {

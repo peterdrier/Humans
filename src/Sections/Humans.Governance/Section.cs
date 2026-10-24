@@ -33,6 +33,7 @@ public sealed class Section : ISection, IIssueQueueOwner
         services.AddSingleton<IMembershipTierRepository, MembershipTierRepository>();
         services.AddScoped<MembershipTierService>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MembershipTierService>());
+        // Snapshot legacy tier grants before ApplicationDecisionService moves their applications.
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<MembershipTierService>());
 
         services.AddScoped<ApplicationDecisionService>();

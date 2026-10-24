@@ -25,17 +25,18 @@ internal sealed class ShiftProfileController(
     [HttpGet("ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(ct);
             if (user is null)
                 return NotFound();
-            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id);
+            var profile = await shiftMgmt.GetShiftProfileAsync(user.Id, ct);
             var model = ShiftInfoViewModel.FromProfile(profile);
-            await PopulateTagsAsync(model, user.Id);
+            await PopulateTagsAsync(model, user.Id, ct);
             return View(model);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to load shift info for user");
             SetError(shiftsLocalizer["Shifts_ShiftProfile_LoadFailed"].Value);
@@ -83,15 +84,15 @@ internal sealed class ShiftProfileController(
         }
     }
 
-    private async Task PopulateTagsAsync(ShiftInfoViewModel model, Guid userId)
+    private async Task PopulateTagsAsync(ShiftInfoViewModel model, Guid userId, CancellationToken ct)
     {
-        await PopulateCatalogAsync(model);
-        var summary = await shiftView.GetUserAsync(userId);
+        await PopulateCatalogAsync(model, ct);
+        var summary = await shiftView.GetUserAsync(userId, ct);
         model.EditableShiftTagIds = summary.TagPreferences.Select(t => t.ShiftTagId).ToList();
     }
 
-    private async Task PopulateCatalogAsync(ShiftInfoViewModel model) =>
-        model.AllShiftTags = (await shiftProfiles.GetTagsAsync())
+    private async Task PopulateCatalogAsync(ShiftInfoViewModel model, CancellationToken ct = default) =>
+        model.AllShiftTags = (await shiftProfiles.GetTagsAsync(ct: ct))
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 }

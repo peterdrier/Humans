@@ -71,26 +71,29 @@ public class MailerLiteImportServiceWebsiteScopeTests
         plan.Counts.ResetMarketingFlag.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task BuildPlan_NoReset_ForUnsubscribedWebsiteSubscriber()
+    [HumansTheory]
+    [Xunit.InlineData("lapsed@x.com", "lapsed@x.com")]
+    [Xunit.InlineData("lapsed@gmail.com", "lapsed@googlemail.com")]
+    [Xunit.InlineData("lapsed@googlemail.com", "lapsed@gmail.com")]
+    public async Task BuildPlan_NoReset_ForUnsubscribedWebsiteSubscriber(string storedEmail, string websiteEmail)
     {
         // In the Website group but unsubscribed in ML. The import loop owns them
         // (flips to opt-out, honouring the explicit unsubscribe), so the reset pass
         // must NOT also null them — no double decision, no erasing an unsubscribe.
         var harness = new WebsiteScopeHarness();
-        harness.SetSubscribers(WebsiteScopeHarness.Unsubscribed("lapsed@x.com", inWebsite: true));
+        harness.SetSubscribers(WebsiteScopeHarness.Unsubscribed(websiteEmail, inWebsite: true));
 
         var id = Guid.NewGuid();
-        harness.SetUsers(harness.Human(id, "lapsed@x.com",
+        harness.SetUsers(harness.Human(id, storedEmail,
             optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
-        harness.MatchVerified("lapsed@x.com", id);
+        harness.MatchVerified(websiteEmail, id);
 
         var plan = await harness.Service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
 
         plan.Counts.ResetMarketingFlag.Should().Be(0);
         plan.Decisions.Should().NotContain(d => d.Outcome == SubscriberOutcome.ResetMarketingFlag);
         // They're still handled by the import's verified-match path, not dropped.
-        plan.Decisions.Should().Contain(d => d.Email == "lapsed@x.com");
+        plan.Decisions.Should().Contain(d => d.Email == websiteEmail);
     }
 
     [HumansFact]
@@ -157,6 +160,27 @@ public class MailerLiteImportServiceWebsiteScopeTests
         result.MarketingFlagsReset.Should().Be(1);
         await harness.PrefWrite.Received(1).ResetPreferenceAsync(
             ghostId, MessageCategory.Marketing, "MailerLiteSyncReset", Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("person@gmail.com", "person@googlemail.com")]
+    [Xunit.InlineData("person@googlemail.com", "person@gmail.com")]
+    public async Task Apply_ResetDecision_PreservesWebsiteMembersUnderAnAlias(string storedEmail, string websiteEmail)
+    {
+        var harness = new WebsiteScopeHarness();
+        harness.SetSubscribers(WebsiteScopeHarness.Active(websiteEmail, inWebsite: true));
+        var id = Guid.NewGuid();
+        harness.SetUserInfo(id, harness.Human(id, storedEmail,
+            optedOut: false, source: "MailerLiteSync", subscribedAt: AfterCutoff));
+        var plan = new ImportPlan(
+            [new SubscriberDecision(storedEmail, "n/a", SubscriberOutcome.ResetMarketingFlag, id, null, null)],
+            TotalPulled: 1);
+
+        var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.MarketingFlagsReset.Should().Be(0);
+        await harness.PrefWrite.DidNotReceive().ResetPreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

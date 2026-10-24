@@ -354,4 +354,7 @@
   <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} té {1} sol·licitud(s) d'ingrés.</value></data>
   <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Revisar les sol·licituds</value></data>
   <data name="Workgroups_Error_DiscordUrlInvalid" xml:space="preserve"><value>Introdueix un URL absolut HTTP o HTTPS per a l’enllaç de Discord.</value></data>
+  <data name="Enum_MembershipTier_Volunteer" xml:space="preserve"><value>Voluntari</value></data>
+  <data name="Enum_MembershipTier_Colaborador" xml:space="preserve"><value>Colaborador</value></data>
+  <data name="Enum_MembershipTier_Asociado" xml:space="preserve"><value>Asociado</value></data>
 </root>

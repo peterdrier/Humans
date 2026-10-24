@@ -216,6 +216,35 @@ public sealed class MembershipTierServiceTests : IDisposable
         (await RowAsync(target))!.Tier.Should().Be(MembershipTier.Asociado);
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Merge_PreservesTheLegacySourceTierAndGrant_WithoutRevivingExpiredTiers(
+        bool sourceDowngraded, bool survivorDowngraded)
+    {
+        var source = SeedUser(LegacyMembershipTier.Asociado);
+        var target = SeedUser();
+        var granting = await SeedApprovedAsync(source, MembershipTier.Asociado, Today.PlusDays(600));
+        if (sourceDowngraded) await SeedRowAsync(source, MembershipTier.Volunteer);
+        if (survivorDowngraded) await SeedRowAsync(target, MembershipTier.Volunteer);
+
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+
+        var row = await RowAsync(target);
+        row.Should().NotBeNull();
+        row!.Tier.Should().Be(sourceDowngraded || survivorDowngraded
+            ? MembershipTier.Volunteer : MembershipTier.Asociado);
+        if (!sourceDowngraded && !survivorDowngraded)
+        {
+            row.GrantedByApplicationId.Should().Be(granting.Id);
+            row.GrantedAt.Should().Be(granting.ResolvedAt!.Value);
+            row.ExpiresAt.Should().Be(granting.TermExpiresAt);
+        }
+        (await RowAsync(source)).Should().BeNull();
+    }
+
     [HumansFact]
     public async Task Merge_TheSurvivorWins_IncludingALegacyOnlyTier()
     {

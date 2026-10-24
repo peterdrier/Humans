@@ -46,8 +46,8 @@ internal interface IIssuesRepository : IRepository
 
     /// <summary>
     /// GDPR Art. 17: hard-deletes the user's reported issues and detaches them from comments and triage fields on
-    /// other people's. Returns the deleted issues' screenshot keys, for the caller to delete.
+    /// other people's.
     /// </summary>
-    Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
+    Task EraseForUserAsync(Guid userId, CancellationToken ct = default);
 }
 

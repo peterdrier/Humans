@@ -49,6 +49,7 @@
     fd.append('shiftId', btn.dataset.shiftId);
     fetch('/Shifts/ToggleDay', {
       method: 'POST',
+      redirect: 'error',
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
       body: fd
     }).then(function (r) {

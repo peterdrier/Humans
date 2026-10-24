@@ -35,5 +35,5 @@ public sealed record ThingsToDoEntry(
 /// </summary>
 public interface ISectionThingsToDo : ISectionContribution
 {
-    ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(IServiceProvider services, ClaimsPrincipal user);
+    ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(IServiceProvider services, ClaimsPrincipal user, CancellationToken ct = default);
 }

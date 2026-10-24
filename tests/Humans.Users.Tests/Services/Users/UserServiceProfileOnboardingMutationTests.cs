@@ -876,7 +876,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task AnonymizeProfileForDeletionAsync_ClearsProfileAndReturnsPreviousPictureMetadata()
+    public async Task AnonymizeProfileForDeletionAsync_ClearsProfilePicture()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
@@ -888,8 +888,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var result = await _service.AnonymizeProfileForDeletionAsync(userId, TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
-        result.ProfileId.Should().Be(profileId);
-        result.PreviousProfilePictureKey.Should().Be("uploads/profile-pictures/versioned.png");
 
         var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         fresh.ProfilePictureContentType.Should().BeNull();

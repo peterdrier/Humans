@@ -71,7 +71,6 @@ internal sealed class ProfileController(
 
         var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
-        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -79,7 +78,6 @@ internal sealed class ProfileController(
             UserId = info.Id,
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
-            IsApproved = profile is not null && review.IsApproved,
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
         };

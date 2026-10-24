@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const script = fs.readFileSync(path.resolve(__dirname,
     '../../../src/Sections/Humans.Shifts/wwwroot/js/shifts.js'), 'utf8');
 
-async function toggle(status, headers = {}, reject = false) {
+async function toggle(status, headers = {}, reject = false, redirected = false) {
     let click;
     const state = { removed: false, descriptionRemoved: false, inserted: null, focused: false, toasts: [], reads: 0 };
     const description = { querySelector: () => ({}), remove: () => state.descriptionRemoved = true };
@@ -31,7 +31,8 @@ async function toggle(status, headers = {}, reject = false) {
     };
     vm.runInNewContext(script, {
         document, window, FormData: class { append() {} }, setTimeout() {},
-        fetch: () => reject ? Promise.reject(new Error('Network down')) : Promise.resolve({
+        fetch: (_, options) => reject || (redirected && options.redirect === 'error')
+            ? Promise.reject(new Error('Request failed')) : Promise.resolve({
             ok: status >= 200 && status < 300, status,
             headers: { get: name => headers[name] ?? null },
             text: () => { state.reads++; return Promise.resolve('<tr>server fragment</tr>'); },
@@ -80,6 +81,18 @@ test('redirect header navigates without consuming or replacing the row', async (
 test('network rejection keeps the row and allows retry', async () => {
     const { state, button } = await toggle(0, {}, true);
     assert.equal(state.removed, false);
+    assert.equal(button.disabled, false);
+    assert.equal(button.innerHTML, 'Sign up');
+    assert.deepEqual(state.toasts, ['Localized network error']);
+});
+
+test('HTTP redirect keeps the row instead of inserting an account-status page', async () => {
+    const { state, button, window } = await toggle(200, {}, false, true);
+    assert.equal(state.removed, false);
+    assert.equal(state.descriptionRemoved, false);
+    assert.equal(state.inserted, null);
+    assert.equal(state.reads, 0);
+    assert.equal(window.location, null);
     assert.equal(button.disabled, false);
     assert.equal(button.innerHTML, 'Sign up');
     assert.deepEqual(state.toasts, ['Localized network error']);

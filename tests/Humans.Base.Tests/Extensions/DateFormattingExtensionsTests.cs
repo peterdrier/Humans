@@ -30,6 +30,7 @@ public sealed class DateFormattingExtensionsTests
         var fullDate = dayFirst ? $"{dayMonth} 2026" : $"{dayMonth}, 2026";
         var weekdayDate = $"{ui.DateTimeFormat.GetAbbreviatedDayName(DayOfWeek.Friday)} {dayMonth}";
 
+        localDate.ToMonthDay().Should().Be(dayMonth);
         date.ToDate().Should().Be(fullDate);
         localDate.ToDate().Should().Be(fullDate);
         instant.ToDate(zone).Should().Be(fullDate);

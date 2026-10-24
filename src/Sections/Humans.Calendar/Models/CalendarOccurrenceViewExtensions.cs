@@ -1,5 +1,6 @@
 using Humans.Calendar.Services.Dtos;
 using NodaTime;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Calendar.Models;
 
@@ -36,6 +37,12 @@ internal static class CalendarOccurrenceViewExtensions
         occ.StartLocalDate(zone) != day ? OccurrenceTimeLabel.Continues
         : occ.IsAllDay ? OccurrenceTimeLabel.AllDay
         : OccurrenceTimeLabel.StartTime;
+
+    public static string LocalizedSource(this CalendarOccurrence occ, IStringLocalizer<CalendarResource> localizer)
+    {
+        var label = localizer[$"Calendar_Source_{occ.Source}"];
+        return label.ResourceNotFound ? occ.Source : label.Value;
+    }
 
     /// <summary>True for an item from an <c>ICalendarFeedContributor</c>, not Calendar's own events.</summary>
     public static bool IsCommunityContribution(this CalendarOccurrence occ) =>

@@ -256,6 +256,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Interest and posting mutations are serialized.** Interest creation, acceptance, decline, and withdrawal share a boundary through persistence with offer/request edits and cancellations. Concurrent requests cannot create duplicate pending interests, exceed capacity while reducing seats, overwrite a completed response, or restore a cancelled posting through a stale edit. Notifications run after the boundary.
 - **Interest messages are limited to 1000 characters after trimming.** Longer messages receive a localized refusal before persistence or notification; messages at the limit remain valid.
 - **Withdraw is available to the author or the posting owner**, from `Pending` or `Accepted`.
+- **Offer travel spans must fit within the supported date range.** Creation validates both the posted departure and the seeded inverse departure; edits validate the new departure and duration before persistence. Invalid spans return the localized invalid-date refusal.
 - **Creating an inbound (or outbound) offer auto-seeds the inverse leg.** `LinkedTripId` is a soft, display-only link — the two legs are not otherwise coupled and are edited/cancelled independently.
 
 ## Negative Access Rules
