@@ -4065,6 +4065,30 @@ public class SurveyServiceTests
         text.FreeTextAnswers.Should().BeEquivalentTo(new[] { "great", "ok" });
     }
 
+    [HumansTheory]
+    [InlineData(int.MaxValue - 1, int.MaxValue)]
+    [InlineData(int.MinValue, int.MinValue + 1)]
+    public async Task GetResultsAsync_handles_rating_scales_at_integer_boundaries(int min, int max)
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        var questionId = Guid.NewGuid();
+        survey.Questions = [RatingQuestion(questionId, survey.Id, 1, min, max)];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(
+            new List<SurveyResponse>
+            {
+                SubmittedResponse(survey.Id, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug,
+                    _clock.GetCurrentInstant(), null, RatingAnswer(questionId, max))
+            });
+
+        var result = await CreateService().GetResultsAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        var rating = result!.Questions.Should().ContainSingle().Which;
+        rating.RatingDistribution.Select(bucket => bucket.Value).Should().Equal(min, max);
+        rating.RatingDistribution.Select(bucket => bucket.Count).Should().Equal(0, 1);
+        rating.RatingAverage.Should().Be(max);
+    }
+
     [HumansFact]
     public async Task GetResultsAsync_aggregates_grid_cells_per_row()
     {

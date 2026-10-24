@@ -1870,9 +1870,9 @@ internal sealed class SurveyService(
                     var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
                     var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
                     var distribution = new List<RatingBucket>();
-                    for (var v = min; v <= max; v++)
+                    for (long v = min; v <= max; v++)
                     {
-                        distribution.Add(new RatingBucket(v, values.Count(rv => rv == v)));
+                        distribution.Add(new RatingBucket((int)v, values.Count(rv => rv == v)));
                     }
 
                     double? average = values.Count > 0 ? values.Average() : null;
