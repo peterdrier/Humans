@@ -376,6 +376,34 @@ public class DietaryProfileTests
         entries.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Nudge_PropagatesCancellationFromDietaryAndSignupReads(bool signupRead)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var shifts = Substitute.For<IShiftService>();
+        if (signupRead)
+            shifts.HasQualifyingCantinaSignupAsync(id, aborted.Token)
+                .Returns(Task.FromCanceled<bool>(aborted.Token));
+        var services = NudgeServices(shifts);
+        // Keep the first read successful when exercising the second boundary.
+        if (signupRead)
+        {
+            var cantina = Substitute.For<ICantinaService>();
+            services = new ServiceCollection()
+                .AddSingleton(cantina).AddSingleton(shifts)
+                .AddSingleton(Substitute.For<IStringLocalizer<SharedResource>>())
+                .BuildServiceProvider();
+        }
+        var load = () => new SectionThingsToDo().EntriesAsync(services, Principal(id), aborted.Token).AsTask();
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     private IServiceProvider NudgeServices(IShiftService shifts)
     {
         var localizer = Substitute.For<IStringLocalizer<SharedResource>>();

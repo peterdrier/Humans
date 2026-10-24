@@ -238,6 +238,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
+
 - Browse-page phase filters accept only defined Build/Event/Strike values, case-insensitively and without duplicates. Invalid values, including undefined numbers, are ignored; an empty multi-phase selection may use the valid single-phase fallback.
 
 - The shift-profile wizard serializes translated step labels, titles and subtitles as HTML-safe JSON so quotes, backslashes, line breaks and script delimiters cannot break navigation.

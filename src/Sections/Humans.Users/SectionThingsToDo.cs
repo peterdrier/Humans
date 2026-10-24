@@ -19,7 +19,7 @@ namespace Humans.Users;
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
-        IServiceProvider services, ClaimsPrincipal user)
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct = default)
     {
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
@@ -28,19 +28,19 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
 
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<SectionThingsToDo>>();
-        var profile = (await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId))?.Profile;
+        var profile = (await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct))?.Profile;
         var isVolunteerMember = (await services.GetRequiredService<IMembershipCalculator>()
-            .GetMembershipSnapshotAsync(userId)).IsVolunteerMember;
+            .GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
 
-        var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, profile, userId) };
+        var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, profile, userId, ct) };
 
         if (!isVolunteerMember)
         {
-            var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId);
+            var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId, ct);
             entries.Add(ConsentCheckEntry(localizer, profile is not null && review.Status == ConsentCheckStatus.Cleared));
         }
 
-        var medical = await MedicalEntryAsync(services, localizer, logger, profile, userId);
+        var medical = await MedicalEntryAsync(services, localizer, logger, profile, userId, ct);
         if (medical is not null)
         {
             entries.Add(medical);
@@ -53,9 +53,9 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         IServiceProvider services,
         IStringLocalizer<SharedResource> localizer,
         ProfileInfo? profile,
-        Guid userId)
+        Guid userId, CancellationToken ct)
     {
-        var shiftUser = await services.GetRequiredService<IShiftView>().GetUserAsync(userId);
+        var shiftUser = await services.GetRequiredService<IShiftView>().GetUserAsync(userId, ct);
         var percent = ProfileCompletion.ComputePercent(profile, shiftUser.TagPreferences.Count > 0);
 
         // Hidden or derived required fields can cap real completion around 90–95%, so 80% is
@@ -96,7 +96,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         IStringLocalizer<SharedResource> localizer,
         ILogger logger,
         ProfileInfo? profile,
-        Guid userId)
+        Guid userId, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(profile?.MedicalConditions))
         {
@@ -105,7 +105,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
 
         try
         {
-            var dietary = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId);
+            var dietary = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId, ct);
             if (dietary is { HasPreference: true } or { DeclinedToAnswer: true })
             {
                 return null;
@@ -118,7 +118,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
                 ActionText = localizer["Todo_DietaryMedical_Action"].Value,
             };
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to check the medical prompt for user {UserId}", userId);
             return null;

@@ -12,15 +12,15 @@ namespace Humans.Shifts;
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
-        IServiceProvider services, ClaimsPrincipal user)
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct = default)
     {
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
-            || !await HasSignupsAsync(services, userId))
+            || !await HasSignupsAsync(services, userId, ct))
         {
             return [];
         }
 
-        var needsShiftInfo = await NeedsShiftInfoAsync(services, userId);
+        var needsShiftInfo = await NeedsShiftInfoAsync(services, userId, ct);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
 
         return
@@ -41,29 +41,29 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
     /// A pending signup, or a confirmed one not yet ended, while browsing is open: the same commitment the
     /// dashboard's shift cards render.
     /// </summary>
-    private static async ValueTask<bool> HasSignupsAsync(IServiceProvider services, Guid userId)
+    private static async ValueTask<bool> HasSignupsAsync(IServiceProvider services, Guid userId, CancellationToken ct)
     {
-        var activeEvent = await services.GetRequiredService<IBurnSettingsService>().GetActiveAsync();
+        var activeEvent = await services.GetRequiredService<IBurnSettingsService>().GetActiveAsync(ct);
         if (activeEvent is null || !activeEvent.IsShiftBrowsingOpen)
         {
             return false;
         }
 
         var now = services.GetRequiredService<IClock>().GetCurrentInstant();
-        var signups = (await services.GetRequiredService<IShiftView>().GetUserAsync(userId)).Signups;
+        var signups = (await services.GetRequiredService<IShiftView>().GetUserAsync(userId, ct)).Signups;
 
         return signups.Any(s => s.Status == SignupStatus.Pending)
                || signups.Any(s => s.Status == SignupStatus.Confirmed && s.AbsoluteEnd > now);
     }
 
-    private static async ValueTask<bool> NeedsShiftInfoAsync(IServiceProvider services, Guid userId)
+    private static async ValueTask<bool> NeedsShiftInfoAsync(IServiceProvider services, Guid userId, CancellationToken ct)
     {
         try
         {
-            var profile = await services.GetRequiredService<IShiftVolunteerProfiles>().GetShiftProfileAsync(userId);
+            var profile = await services.GetRequiredService<IShiftVolunteerProfiles>().GetShiftProfileAsync(userId, ct);
             return profile is null || profile.IsEmpty;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             services.GetRequiredService<ILogger<SectionThingsToDo>>()
                 .LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);

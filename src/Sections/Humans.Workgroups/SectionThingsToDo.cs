@@ -12,13 +12,13 @@ namespace Humans.Workgroups;
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
-        IServiceProvider services, ClaimsPrincipal user)
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct = default)
     {
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return [];
 
         var now = services.GetRequiredService<IClock>().GetCurrentInstant();
-        var mine = await services.GetRequiredService<IWorkgroupService>().GetForMemberAsync(userId);
+        var mine = await services.GetRequiredService<IWorkgroupService>().GetForMemberAsync(userId, ct);
         var coordinated = mine.Where(w => w.CoordinatorUserIds().Contains(userId)).ToList();
         if (coordinated.Count == 0)
             return [];
