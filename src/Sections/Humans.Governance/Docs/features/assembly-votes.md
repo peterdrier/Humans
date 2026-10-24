@@ -137,7 +137,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 | Title | jsonb culture → text | max 200 chars per culture: it is copied into the email subject and the notification title, both bounded columns written after an irreversible transition |
 | OfficialText | jsonb culture → text | Markdown; rendered through the shared sanitizer |
 | OfficialCulture | string(10) | the culture whose text is binding; others are translations |
-| InfoUrl | string? (2000) | |
+| InfoUrl | string? (2000) | Optional absolute HTTP(S) link, trimmed on save. Unsafe stored legacy values are omitted from member detail but remain editable. |
 | Kind | AssemblyVoteKind | string-converted: YesNo / RankedChoice |
 | RequiredMajority | RequiredMajority | string-converted: Simple / TwoThirds |
 | IndicativeAudience | IndicativeAudience | string-converted: None / Colaboradores / AllMembers |

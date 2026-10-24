@@ -300,6 +300,44 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             "every culture's title is a subject line — the official one is not the only one sent");
     }
 
+    [HumansTheory]
+    [InlineData("javascript:alert(1)", false)]
+    [InlineData("//example.org/motion", false)]
+    [InlineData("https://example.org/motion?q=1#text", true)]
+    [InlineData("  http://example.org/motion  ", true)]
+    [InlineData(null, true)]
+    public async Task DraftInformationLinks_RequireAbsoluteWebUrls(string? url, bool accepted)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.YesNo, []) with { InfoUrl = url };
+        var created = await _fx.Service.CreateDraftAsync(draft, Guid.NewGuid(), ct);
+        created.HasValue.Should().Be(accepted);
+        var result = await _fx.Service.UpdateDraftAsync(vote.Id, draft, Guid.NewGuid(), ct);
+        result.Should().Be(accepted ? AssemblyVoteActionResult.Ok : AssemblyVoteActionResult.Invalid);
+        var stored = await _fx.Service.GetDraftAsync(vote.Id, ct);
+        stored!.InfoUrl.Should().Be(accepted ? url?.Trim() : null);
+    }
+
+    [HumansTheory]
+    [InlineData("javascript:alert(1)", null)]
+    [InlineData("data:text/html,test", null)]
+    [InlineData("https://example.org/motion", "https://example.org/motion")]
+    public async Task MemberInformationLinks_FilterUnsafeStoredUrlsWithoutChangingTheRecord(string url, string? expected)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync();
+        _fx.Db.AssemblyVotes.Attach(vote);
+        vote.InfoUrl = url;
+        await _fx.Db.SaveChangesAsync(ct);
+        _fx.Db.ChangeTracker.Clear();
+
+        var detail = await _fx.Service.GetVoteForMemberAsync(vote.Id, Guid.NewGuid(), ct);
+
+        detail!.InfoUrl.Should().Be(expected);
+        (await _fx.Service.GetDraftAsync(vote.Id, ct))!.InfoUrl.Should().Be(url);
+    }
+
     [HumansFact]
     public async Task CreateDraftAsync_WithAnOverlongInfoUrl_IsRejected()
     {

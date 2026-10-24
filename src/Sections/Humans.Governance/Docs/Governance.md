@@ -131,7 +131,7 @@ A binding vote of the association. Full design in [`features/assembly-votes.md`]
 | Title | jsonb culture → text | `GovernanceLocalizedText` |
 | OfficialText | jsonb culture → text | Markdown, rendered through the shared sanitizer |
 | OfficialCulture | string (10) | The culture whose text is binding; the rest are translations |
-| InfoUrl | string? (2000) | Optional information link |
+| InfoUrl | string? (2000) | Optional absolute HTTP(S) information link; trimmed on save. Member detail omits unsafe legacy values without changing the stored record. |
 | Kind | AssemblyVoteKind | YesNo / RankedChoice, stored as string |
 | RequiredMajority | RequiredMajority | Simple / TwoThirds, stored as string |
 | IndicativeAudience | IndicativeAudience | None / Colaboradores / AllMembers, stored as string |
