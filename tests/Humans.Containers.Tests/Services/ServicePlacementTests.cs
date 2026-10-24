@@ -253,9 +253,11 @@ public sealed class ServicePlacementTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task UpdatePlacementNotesAsync_CleanupFailureDoesNotUndoCommittedMetadata(bool removeImage)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task UpdatePlacementNotesAsync_CleanupFailureDoesNotUndoCommittedMetadata(bool removeImage, bool auditFails)
     {
         var container = await SeedPlacedContainerAsync();
         var first = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, null, Sketch(), false, ActorUserId, TestContext.Current.CancellationToken)).Value!;
@@ -263,8 +265,15 @@ public sealed class ServicePlacementTests
         _fileStorage.DeleteAsync(first.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("File locked"));
 
-        var result = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "updated notes",
-            removeImage ? null : Sketch("replacement.jpg"), removeImage, ActorUserId, TestContext.Current.CancellationToken)).Value!;
+        var auditFailure = new IOException("Audit unavailable");
+        if (auditFails) _auditLog.LogAsync(AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), container.Id,
+            Arg.Any<string>(), ActorUserId, container.Id, Arg.Any<string?>()).ThrowsAsync(auditFailure);
+        var act = () => _sut.UpdatePlacementNotesAsync(container.Id, Year, "updated notes",
+            removeImage ? null : Sketch("replacement.jpg"), removeImage, ActorUserId, TestContext.Current.CancellationToken);
+        if (auditFails) (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(auditFailure);
+        else await act();
+        var result = await GetPlacementAsync(container.Id);
+        await _fileStorage.Received(1).DeleteAsync(first.PlacementImageUrl.TrimStart('/'), CancellationToken.None);
 
         result.PlacementNotes.Should().Be("updated notes");
         if (removeImage)
