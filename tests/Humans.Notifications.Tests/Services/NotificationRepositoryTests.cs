@@ -298,7 +298,8 @@ public class NotificationRepositoryTests : IDisposable
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.AddRangeAsync([first, second, otherRecipient, otherSource], ct);
 
-        (await _repo.ResolveBySourceAsync(voter, NotificationSource.AssemblyVoteOpened, _now, ct, key)).Should().BeTrue();
+        (await _repo.ResolveBySourceAsync(voter, NotificationSource.AssemblyVoteOpened, _now, ct, key))
+            .Should().BeEquivalentTo([voter]);
 
         var stored = await _dbContext.Notifications.AsNoTracking().ToListAsync(ct);
         stored.Count(n => n.ResolvedAt == _now).Should().Be(expectedResolved);

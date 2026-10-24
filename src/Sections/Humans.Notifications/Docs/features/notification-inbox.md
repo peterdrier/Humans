@@ -66,7 +66,7 @@ Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informatio
 ## UI Components
 
 ### Bell Icon (Nav Bar)
-Three-state badge: no badge / success dot (informational only) / danger count (actionable). Counts cached 2 minutes per user inside `NotificationInboxService.GetUnreadBadgeCountsAsync`; `NotificationBellViewComponent` calls the service directly and does not own the cache.
+Three-state badge: no badge / success dot (informational only) / danger count (actionable). Counts cached 2 minutes per user inside `NotificationInboxService.GetUnreadBadgeCountsAsync`; `NotificationBellViewComponent` calls the service directly and does not own the cache. Auto-resolution by source evicts the badge counts of all recipients of each resolved notification, preserving shared-resolution semantics.
 
 ### Popup
 340px dropdown from bell, right-aligned. Sections: "Needs your attention" (actionable) then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."

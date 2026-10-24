@@ -80,6 +80,35 @@ public class NotificationInboxServiceTests : IDisposable
         return notification;
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("suspension")]
+    public async Task ResolveBySourceAsync_RefreshesBadgesForEveryRecipient(string? sourceKey)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var otherUserId = Guid.NewGuid();
+        var shared = await CreateNotificationAsync(NotificationClass.Actionable, NotificationSource.AccessSuspended);
+        shared.SourceKey = "suspension";
+        var unrelated = await CreateNotificationAsync();
+        foreach (var notification in new[] { shared, unrelated })
+        {
+            notification.Recipients.Add(new NotificationRecipient
+            {
+                NotificationId = notification.Id,
+                UserId = otherUserId,
+            });
+        }
+        await _dbContext.SaveChangesAsync(ct);
+
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((1, 1));
+        (await _service.GetUnreadBadgeCountsAsync(otherUserId, ct)).Should().Be((1, 1));
+
+        await _service.ResolveBySourceAsync(_userId, NotificationSource.AccessSuspended, ct, sourceKey);
+
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
+        (await _service.GetUnreadBadgeCountsAsync(otherUserId, ct)).Should().Be((0, 1));
+    }
+
     [HumansFact]
     public async Task PurgeExpiredAsync_InvalidatesAllRecipientsOfStaleAndRetiredNotifications()
     {
