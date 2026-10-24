@@ -228,6 +228,26 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task RecordDecision_MirrorEnqueueFails_PreservesDurableAdmit()
+    {
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent(year: 2026);
+        _config["Gate:VendorMirrorEnabled"] = "true";
+        _jobs.Create(Arg.Any<Job>(), Arg.Any<IState>())
+            .Throws(new InvalidOperationException("Job storage unavailable"));
+
+        var result = await RecordAsync(idConfirmed: true);
+
+        result.Verdict.Should().Be(GateVerdict.Admitted);
+        _ledger.WasSent("v1").Should().BeFalse();
+        await _users.Received(1).RecordParticipationAsync(
+            GuestId, 2026, ParticipationStatus.Attended,
+            Clock.GetCurrentInstant(), CancellationToken.None);
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.RejectedDuplicate);
+        _jobs.Received(1).Create(Arg.Any<Job>(), Arg.Any<IState>());
+    }
+
+    [HumansFact]
     public async Task RecordDecision_Rejected_DoesNotMirrorToTheVendor()
     {
         StubTicket();

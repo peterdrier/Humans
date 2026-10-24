@@ -142,9 +142,17 @@ internal sealed class GateService(
     /// </summary>
     private void MirrorVendorCheckIn(string vendorTicketId)
     {
-        backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
-        if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
-            mirrorLedger.TryMarkSent(vendorTicketId);
+        try
+        {
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
+                mirrorLedger.TryMarkSent(vendorTicketId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Vendor check-in mirror could not be enqueued for admitted ticket {VendorTicketId}", vendorTicketId);
+        }
     }
 
     /// <summary>

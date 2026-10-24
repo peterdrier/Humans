@@ -75,7 +75,9 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 - **Vendor check-in mirror** — on an admit `GateService.RecordDecisionAsync` enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
-  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority.
+  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority. Enqueue
+  failures are logged without failing the already-recorded admit response; the mirror ledger is
+  marked only after enqueue succeeds.
   **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
   with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
   AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
