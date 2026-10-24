@@ -32,10 +32,10 @@ internal sealed class ShiftAdminPageBuilder(
         var rotas = await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id, ct);
         var staffing = await BuildStaffingSummaryAsync(rotas, request.IncompleteOnboarding, ct);
         var allUserIds = GetRelevantUserIds(rotas, staffing.PendingSignups);
-        var profileDict = await LoadProfilesAsync(allUserIds, request.CanViewMedical, ct);
         var userLookup = allUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await userService.GetUserInfosAsync(allUserIds, ct);
+        var profileDict = await LoadProfilesAsync(allUserIds, userLookup, request.CanViewMedical, ct);
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department, ct);
         var allTags = await shiftManagement.GetTagsAsync(ct: ct);
         var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id, ct: ct);
@@ -106,13 +106,13 @@ internal sealed class ShiftAdminPageBuilder(
 
     private async Task<Dictionary<Guid, VolunteerBadgesViewModel>> LoadProfilesAsync(
         IReadOnlyList<Guid> userIds,
+        IReadOnlyDictionary<Guid, UserInfo> userInfos,
         bool canViewMedical, CancellationToken ct)
     {
         var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
         if (userIds.Count == 0) return result;
 
         // Skills from the shift profile, dietary from Cantina, medical from Profile, gated here on MedicalDataViewer.
-        var userInfos = await userService.GetUserInfosAsync(userIds, ct);
         var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
         foreach (var uid in userIds)
         {
