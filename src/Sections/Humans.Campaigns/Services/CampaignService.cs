@@ -464,9 +464,18 @@ internal sealed class CampaignService(
                 LatestEmailAt = now
             };
             await repository.AddGrantAndSaveAsync(grant, ct);
-            await audit.LogAsync(AuditAction.CampaignWaveSent, "Campaign", campaignId,
-                $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
-                relatedEntityId: userId, relatedEntityType: "User");
+            try
+            {
+                await audit.LogAsync(AuditAction.CampaignWaveSent, "Campaign", campaignId,
+                    $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
+                    relatedEntityId: userId, relatedEntityType: "User");
+            }
+            catch
+            {
+                // No email handoff occurred; keep the committed grant eligible for retry.
+                await repository.UpdateGrantStatusAsync(grant.Id, EmailOutboxStatus.Failed, now, CancellationToken.None);
+                throw;
+            }
             grantedUserIds.Add(userId);
 
             try
@@ -541,9 +550,18 @@ internal sealed class CampaignService(
         var now = clock.GetCurrentInstant();
         if (await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Queued, now, ct))
         {
-            await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grantId,
-                $"Started resend for campaign {grant.CampaignId}.", actorUserId,
-                relatedEntityId: grant.UserId, relatedEntityType: "User");
+            try
+            {
+                await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grantId,
+                    $"Started resend for campaign {grant.CampaignId}.", actorUserId,
+                    relatedEntityId: grant.UserId, relatedEntityType: "User");
+            }
+            catch
+            {
+                // No email handoff occurred; keep the committed grant eligible for retry.
+                await repository.UpdateGrantStatusAsync(grantId, EmailOutboxStatus.Failed, now, CancellationToken.None);
+                throw;
+            }
         }
 
         try
@@ -650,9 +668,18 @@ internal sealed class CampaignService(
         {
             if (await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Queued, now, ct))
             {
-                await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grant.GrantId,
-                    $"Started retry for campaign {campaignId}.", actorUserId,
-                    relatedEntityId: grant.UserId, relatedEntityType: "User");
+                try
+                {
+                    await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grant.GrantId,
+                        $"Started retry for campaign {campaignId}.", actorUserId,
+                        relatedEntityId: grant.UserId, relatedEntityType: "User");
+                }
+                catch
+                {
+                    // No email handoff occurred; keep the committed grant eligible for retry.
+                    await repository.UpdateGrantStatusAsync(grant.GrantId, EmailOutboxStatus.Failed, now, CancellationToken.None);
+                    throw;
+                }
             }
 
             if (!users.TryGetValue(grant.UserId, out var user))
