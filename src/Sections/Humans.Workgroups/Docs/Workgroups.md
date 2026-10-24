@@ -265,6 +265,8 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Roster membership-tier badges use localized enum labels in all six cultures.
+
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - Coordinator-picker prefills pair the resolved human’s name and ID, including when the form holds an archived account ID.
