@@ -60,10 +60,10 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | ProfilePictureUrl | string? | Google profile picture URL (max 2048) |
 | CreatedAt | Instant | Set on insert; immutable (`init`) |
 | LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
-| LastConsentReminderSentAt | Instant? | **Legacy, no longer written** (GDPR erasure clears it). The re-consent reminder cooldown stamp moved to Consent's `consent_reminders`. The copy and legacy read were retired after production reported `consent.reminder-stamps` done on 2026-10-22; no longer projected on `UserInfo`. Column kept until its drop PR (`Docs/debt.yml` USERS-22). |
-| SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-13). |
-| UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (`Docs/debt.yml` USERS-12). |
-| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; shadow column with no CLR property, kept until its drop PR (`Docs/debt.yml` USERS-14). |
+| LastConsentReminderSentAt | Instant? | **Legacy, no longer written** (GDPR erasure clears it). The re-consent reminder cooldown stamp moved to Consent's `consent_reminders`. The copy and legacy read were retired after production reported `consent.reminder-stamps` done on 2026-10-22; no longer projected on `UserInfo`. Column kept until its drop PR (peterdrier/Humans#2156). |
+| SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
+| UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
+| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; shadow column with no CLR property, kept until its drop PR (peterdrier/Humans#2156). |
 | ContactSource | ContactSource? | Where imported from (`Manual`, `MailerLite`, `TicketTailor`); null for self-registered users. |
 | ExternalSourceId | string? (256) | ID in the external source system (e.g., MailerLite subscriber ID). |
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
@@ -347,7 +347,7 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 `User` has no `GoogleEmail` property; the `users.GoogleEmail` column is an EF shadow property (`UserConfiguration.cs`) kept pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserInfo.GoogleEmail` is gone (Users decomposition commit 15): the Google Workspace address is `IGoogleIntegrationService.GetWorkspaceIdentityAsync`; `UserInfo.PrimaryEmail` is the contact address.
 
-Google sync status is GoogleIntegration's (`google_workspace_identities.Status`, Users decomposition commit 15). The per-address `UserEmail.GoogleEmailStatus` (`LegacyGoogleEmailStatus`) column is frozen until the `google.workspace-identities` drop PR; the user-level `User.GoogleEmailStatus` column is dead (USERS-14). Neither has a live writer.
+Google sync status is GoogleIntegration's (`google_workspace_identities.Status`, Users decomposition commit 15). The per-address `UserEmail.GoogleEmailStatus` (`LegacyGoogleEmailStatus`) column is frozen until the `google.workspace-identities` drop PR; the user-level `User.GoogleEmailStatus` column is dead (drop tracked in peterdrier/Humans#2156). Neither has a live writer.
 
 #### Contact-import properties
 
@@ -360,7 +360,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 #### Dead columns
 
-`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them (`GoogleEmailStatus` as a shadow column, so no code can reach it; `[Obsolete]` guards the other two), and `Docs/debt.yml` USERS-12 to USERS-14 track their drop.
+`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them (`GoogleEmailStatus` as a shadow column, so no code can reach it; `[Obsolete]` guards the other two), and peterdrier/Humans#2156 tracks their drop.
 
 ### Profile
 

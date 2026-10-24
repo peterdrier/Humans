@@ -118,7 +118,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
                 ActionText = localizer["Todo_DietaryMedical_Action"].Value,
             };
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to check the medical prompt for user {UserId}", userId);
             return null;

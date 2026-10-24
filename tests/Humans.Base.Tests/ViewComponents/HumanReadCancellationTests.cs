@@ -79,4 +79,25 @@ public class HumanReadCancellationTests
         await contributor.Received(1).EntriesAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), aborted.Token);
     }
 
+    [HumansFact]
+    public async Task ThingsToDo_IsolatesCancellationNotCausedByTheRequest()
+    {
+        var contributor = Substitute.For<ISectionThingsToDo>();
+        contributor.EntriesAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<IEnumerable<ThingsToDoEntry>>(new TaskCanceledException("Timed out")));
+        var healthy = Substitute.For<ISectionThingsToDo>();
+        healthy.EntriesAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { new ThingsToDoEntry("pending", "Pending", "icon", RawHref: "/") });
+        var component = new ThingsToDoViewComponent([contributor, healthy], Substitute.For<IServiceProvider>(),
+            NullLogger<ThingsToDoViewComponent>.Instance)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() },
+            },
+        };
+
+        (await component.InvokeAsync()).Should().BeOfType<ViewViewComponentResult>();
+    }
+
 }

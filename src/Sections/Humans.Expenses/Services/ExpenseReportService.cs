@@ -626,28 +626,23 @@ internal sealed class ExpenseReportService(
                 ?? throw new InvalidOperationException("Failed to remove line.");
 
             // The deletion has committed; its audit and file cleanup must finish even if the request ends.
-            try
+            await AuditOnBehalfEditAsync(report, actorUserId,
+                removed is null
+                    ? $"Removed line {lineId}"
+                    : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
+
+            foreach (var attachment in removedAttachments)
             {
-                await AuditOnBehalfEditAsync(report, actorUserId,
-                    removed is null
-                        ? $"Removed line {lineId}"
-                        : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
-            }
-            finally
-            {
-                foreach (var attachment in removedAttachments)
+                try
                 {
-                    try
-                    {
-                        await fileStorage.DeleteAsync(
-                            AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex,
-                            "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                            attachment.Id, lineId);
-                    }
+                    await fileStorage.DeleteAsync(
+                        AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "Could not delete attachment file {AttachmentId} while removing line {LineId}",
+                        attachment.Id, lineId);
                 }
             }
 
@@ -839,31 +834,26 @@ internal sealed class ExpenseReportService(
             var removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
             if (removed is null) return ExpenseMutationResult.Success;
 
+            await auditLogService.LogAsync(
+                AuditAction.ExpenseAttachmentRemoved,
+                AuditEntityTypes.Report, reportId,
+                $"Attachment removed from line {lineId}.",
+                actorUserId,
+                relatedEntityId: report.SubmitterUserId,
+                relatedEntityType: AuditEntityTypes.User);
+
+            // Post-commit cleanup: metadata and audit are written, so request cancellation
+            // must not strand the file.
             try
             {
-                await auditLogService.LogAsync(
-                    AuditAction.ExpenseAttachmentRemoved,
-                    AuditEntityTypes.Report, reportId,
-                    $"Attachment removed from line {lineId}.",
-                    actorUserId,
-                    relatedEntityId: report.SubmitterUserId,
-                    relatedEntityType: AuditEntityTypes.User);
+                await fileStorage.DeleteAsync(
+                    AttachmentKey(removed.Id, removed.Extension), CancellationToken.None);
             }
-            finally
+            catch (Exception ex)
             {
-                // The metadata removal committed; audit failure or request cancellation
-                // must not strand the file.
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(removed.Id, removed.Extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex,
-                        "Could not delete attachment file {AttachmentId} for line {LineId}",
-                        removed.Id, lineId);
-                }
+                logger.LogWarning(ex,
+                    "Could not delete attachment file {AttachmentId} for line {LineId}",
+                    removed.Id, lineId);
             }
 
             return ExpenseMutationResult.Success;

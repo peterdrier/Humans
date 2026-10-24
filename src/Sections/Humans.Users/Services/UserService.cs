@@ -484,15 +484,7 @@ internal sealed class UserService(
         Guid userId,
         CancellationToken ct = default)
     {
-        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
-        var anonymized = await repo.AnonymizeForDeletionByUserIdAsync(userId, ct);
-        return new UserProfileAnonymizeResult(
-            anonymized,
-            profile?.Id,
-            profile is null
-                ? null
-                : ProfilePictureKeys.Resolve(
-                    profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
+        return new UserProfileAnonymizeResult(await repo.AnonymizeForDeletionByUserIdAsync(userId, ct));
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(

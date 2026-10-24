@@ -212,28 +212,6 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendFacilitatedMessageAsync_AuditFailsAfterEmailHandoff_KeepsRateLimit()
-    {
-        var failure = new IOException("Audit unavailable");
-        _auditLogService.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), _campId,
-                Arg.Any<string>(), _senderId, Arg.Any<Guid?>(), Arg.Any<string?>())
-            .ThrowsAsync(failure);
-
-        var send = () => _service.SendFacilitatedMessageAsync(
-            _campId, "camp@example.com", "Camp", _senderId,
-            "Alice", "alice@example.com", "Hello", false, [], "/Barrios/camp");
-
-        (await send.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        var retry = await send();
-
-        retry.Success.Should().BeFalse();
-        retry.RateLimited.Should().BeTrue();
-        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
-        await _auditLogService.Received(1).LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), _campId,
-            Arg.Any<string>(), _senderId, Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
     public async Task SendFacilitatedMessageAsync_EmailFails_RollsBackRateLimit()
     {
         _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())

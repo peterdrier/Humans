@@ -920,28 +920,23 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             scope.Complete();
         }
 
-        try
+        await _auditLog.LogAsync(
+            AuditAction.CampDeleted, nameof(Camp), campId,
+            $"Camp {campId} permanently deleted",
+            actorUserId);
+
+        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        foreach (var path in deletedImagePaths)
         {
-            await _auditLog.LogAsync(
-                AuditAction.CampDeleted, nameof(Camp), campId,
-                $"Camp {campId} permanently deleted",
-                actorUserId);
-        }
-        finally
-        {
-            // Metadata removal committed; cleanup must finish even if auditing fails or the request ends.
-            foreach (var path in deletedImagePaths)
+            try
             {
-                try
-                {
-                    await _fileStorage.DeleteAsync(path, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
-                        path, campId);
-                }
+                await _fileStorage.DeleteAsync(path, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
+                    path, campId);
             }
         }
 
@@ -1092,27 +1087,22 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var result = await _repo.DeleteImageAsync(imageId, cancellationToken);
         if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
 
+        await _auditLog.LogAsync(
+            AuditAction.CampImageDeleted, nameof(CampImage), imageId,
+            $"Deleted image {imageId}",
+            actorUserId,
+            relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
+
+        // Metadata and audit have committed; file cleanup must finish independently of the request.
         try
         {
-            await _auditLog.LogAsync(
-                AuditAction.CampImageDeleted, nameof(CampImage), imageId,
-                $"Deleted image {imageId}",
-                actorUserId,
-                relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
+            await _fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);
         }
-        finally
+        catch (Exception ex)
         {
-            // Metadata removal committed; cleanup must finish even if auditing fails or the request ends.
-            try
-            {
-                await _fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
-                    result.Value.StoragePath, imageId);
-            }
+            _logger.LogWarning(ex,
+                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
+                result.Value.StoragePath, imageId);
         }
 
         return CampUpdateResult.Success();

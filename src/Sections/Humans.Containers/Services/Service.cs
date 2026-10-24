@@ -143,19 +143,12 @@ internal sealed class Service(
             await DeleteUnlinkedGalleryImagesAsync(id, images);
             throw;
         }
-        try
-        {
-            await auditLog.LogAsync(
-                AuditAction.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
-                $"Updated container '{updated.Name}'",
-                actorUserId,
-                relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        }
-        finally
-        {
-            await DeleteFilesAsync(obsoletePaths, id, "an update");
-        }
-
+        await auditLog.LogAsync(
+            AuditAction.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
+            $"Updated container '{updated.Name}'",
+            actorUserId,
+            relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
+        await DeleteFilesAsync(obsoletePaths, id, "an update");
         return new(ToDto(updated, await repo.GetImagesAsync([id], ct)));
     }
 
@@ -173,19 +166,13 @@ internal sealed class Service(
         // Orphaned placement-image files tolerated at this scale; see Docs/Containers.md.
         await repo.DeleteAsync(id, ct);
 
-        try
-        {
-            await auditLog.LogAsync(
-                AuditAction.ContainerDeleted, AuditEntityTypes.Container, container.Id,
-                $"Deleted container '{container.Name}'",
-                actorUserId,
-                relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        }
-        finally
-        {
-            await DeleteFilesAsync(imagePaths, id, "its deletion");
-        }
+        await auditLog.LogAsync(
+            AuditAction.ContainerDeleted, AuditEntityTypes.Container, container.Id,
+            $"Deleted container '{container.Name}'",
+            actorUserId,
+            relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
 
+        await DeleteFilesAsync(imagePaths, id, "its deletion");
     }
 
     // Best effort: request cancellation must not strand files, and a failure is logged, not thrown.
@@ -367,22 +354,17 @@ internal sealed class Service(
             throw;
         }
 
-        try
+        await auditLog.LogAsync(
+            AuditAction.ContainerPlacementNotesUpdated, AuditEntityTypes.ContainerPlacement, containerId,
+            $"Updated placement notes for {year}",
+            actorUserId,
+            relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
+
+        // The previous file remains usable until the new metadata is committed.
+        if (previousImagePath is not null
+            && !string.Equals(previousImagePath, placement.PlacementImageStoragePath, StringComparison.Ordinal))
         {
-            await auditLog.LogAsync(
-                AuditAction.ContainerPlacementNotesUpdated, AuditEntityTypes.ContainerPlacement, containerId,
-                $"Updated placement notes for {year}",
-                actorUserId,
-                relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
-        }
-        finally
-        {
-            // The previous file remains usable until the new metadata is committed.
-            if (previousImagePath is not null
-                && !string.Equals(previousImagePath, placement.PlacementImageStoragePath, StringComparison.Ordinal))
-            {
-                await DeleteFilesAsync([previousImagePath], containerId, "a placement image replacement", year);
-            }
+            await DeleteFilesAsync([previousImagePath], containerId, "a placement image replacement", year);
         }
 
         return new(ToPlacementDto(placement));

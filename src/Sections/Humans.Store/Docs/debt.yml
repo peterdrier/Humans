@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 9
-inbox:
-  - added: 2026-10-24
-    id: STORE-8
-    what: "StoreInvoiceIssuer.GetRecoveryRefusal compares only aggregate subtotal, tax and total before adopting a prior Holded document and freezing current catalog prices. Two quantity-one lines changing from EUR 10/10 to EUR 11/9 at the same VAT preserve every aggregate but leave the frozen order inconsistent with the issued invoice. Compare typed recovered line quantities, prices and tax details; HoldedSalesDocumentDto currently exposes only aggregate amounts and audit RawJson, so the connector needs a typed line projection first."
-    review: panel
+inbox: []

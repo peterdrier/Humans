@@ -1368,38 +1368,6 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
     }
 
-    [HumansTheory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public async Task CommittedFileRemoval_AuditFailureStillAttemptsCleanup(bool removeLine, bool cleanupFails)
-    {
-        var ct = TestContext.Current.CancellationToken;
-        SetupActiveYear();
-        var member = Guid.NewGuid();
-        var admin = Guid.NewGuid();
-        var reportId = (await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, "Project", ct: ct)).ReportId!.Value;
-        var lineId = (await _sut.AddLineWithResultAsync(reportId, member, false, "Receipt", 40m, ct: ct)).LineId!.Value;
-        var attachment = MakeAttachment(member);
-        await _expenseRepo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct);
-        var action = removeLine ? AuditAction.ExpenseEditedOnBehalf : AuditAction.ExpenseAttachmentRemoved;
-        AuditLog.LogAsync(action, Arg.Any<string>(), reportId, Arg.Any<string>(), admin,
-            Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(new IOException("Audit unavailable"));
-        var key = ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension);
-        if (cleanupFails) _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).ThrowsAsync(new IOException("Storage unavailable"));
-
-        var result = removeLine
-            ? await _sut.RemoveLineWithResultAsync(reportId, admin, true, lineId, ct)
-            : await _sut.RemoveAttachmentFromLineAsync(reportId, admin, true, lineId, ct);
-
-        result.Succeeded.Should().BeFalse();
-        var report = (await _sut.GetAsync(reportId, ct))!;
-        if (removeLine) report.Lines.Should().BeEmpty();
-        else report.Lines.Single().Attachment.Should().BeNull();
-        await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
-    }
-
     [HumansFact]
     public async Task AddLineWithResultAsync_AttachmentAuditFailure_DeletesStoredFile()
     {

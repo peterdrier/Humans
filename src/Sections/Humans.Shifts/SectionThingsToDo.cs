@@ -63,7 +63,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
             var profile = await services.GetRequiredService<IShiftVolunteerProfiles>().GetShiftProfileAsync(userId, ct);
             return profile is null || profile.IsEmpty;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             services.GetRequiredService<ILogger<SectionThingsToDo>>()
                 .LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);

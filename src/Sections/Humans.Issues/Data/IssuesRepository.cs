@@ -136,7 +136,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
 
@@ -167,7 +167,6 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         }
 
         await db.SaveChangesAsync(ct);
-        return ownIssues.Select(i => i.ScreenshotStoragePath).OfType<string>().ToList();
     }
 
     public async Task<IReadOnlyList<Guid>> GetExpiredTerminalAsync(

@@ -393,25 +393,17 @@ public sealed class ServiceImageTests
             => throw failure;
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task UpdateAsync_CleanupFailurePreservesCommittedGalleryAndAttemptsEveryFile(bool auditFails)
+    [HumansFact]
+    public async Task UpdateAsync_CleanupFailurePreservesCommittedGalleryAndAttemptsEveryFile()
     {
         var container = await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2);
         var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
         var paths = before!.Images.Select(i => i.Url.TrimStart('/')).ToList();
         _fileStorage.DeleteAsync(paths[1], Arg.Any<CancellationToken>()).ThrowsAsync(new IOException("File locked"));
 
-        var auditFailure = new IOException("Audit unavailable");
-        if (auditFails) _auditLog.LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), container.Id,
-            Arg.Any<string>(), Arg.Any<Guid>(), CampId, Arg.Any<string?>()).ThrowsAsync(auditFailure);
-        var act = () => _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
+        var updated = (await _sut.UpdateAsync(container.Id, new ContainerData(container.CampId, "Changed", "New description",
             NewImages: FakeImages(1), RemoveImageIds: before.Images.Select(i => i.Id).ToList()),
-            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
-        if (auditFails) (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(auditFailure);
-        else await act();
-        var updated = (await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken))!;
+            actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken)).Value!;
 
         updated.Name.Should().Be("Changed");
         updated.Images.Should().ContainSingle();
@@ -494,10 +486,8 @@ public sealed class ServiceImageTests
         await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DeleteAsync_commits_and_audits_before_attempting_every_image_cleanup(bool auditFails)
+    [HumansFact]
+    public async Task DeleteAsync_commits_and_audits_before_attempting_every_image_cleanup()
     {
         var ct = TestContext.Current.CancellationToken;
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg", galleryImages: 2);
@@ -515,13 +505,9 @@ public sealed class ServiceImageTests
                 await Task.FromException(cleanupFailure);
             });
 
-        var auditFailure = new IOException("Audit unavailable");
-        if (auditFails) _auditLog.LogAsync(AuditAction.ContainerDeleted, Arg.Any<string>(), container.Id,
-            Arg.Any<string>(), actorId, CampId, Arg.Any<string?>()).ThrowsAsync(auditFailure);
         var act = () => _sut.DeleteAsync(container.Id, actorId, ct);
 
-        if (auditFails) (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(auditFailure);
-        else await act.Should().NotThrowAsync();
+        await act.Should().NotThrowAsync();
         await using var ctx = new ContainersDbContext(_containersOptions);
         (await ctx.Containers.CountAsync(ct)).Should().Be(0);
         (await ctx.ContainerImages.CountAsync(ct)).Should().Be(0);

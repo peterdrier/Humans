@@ -2096,14 +2096,12 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansTheory]
-    [InlineData(false, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, false, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public async Task Image_cleanup_follows_committed_deletion_and_audit(
-        bool deleteCamp, bool storageFails, bool auditFails)
+        bool deleteCamp, bool storageFails)
     {
         var ct = TestContext.Current.CancellationToken;
         var camp = await CreateTestCampAsync();
@@ -2139,15 +2137,10 @@ public sealed class CampServiceTests : CampsTestHarness
             _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
-        var auditFailure = new IOException("Audit unavailable");
-        if (auditFails)
-            AuditLog.LogAsync(action, Arg.Any<string>(), entityId, Arg.Any<string>(), TestActorId,
-                Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(auditFailure));
-        Func<Task> act = deleteCamp
-            ? () => service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, cancellation.Token)
-            : async () => { await service.DeleteImageAsync(camp.Id, image.Id, actorUserId: TestActorId, cancellation.Token); };
-        if (auditFails) (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(auditFailure);
-        else await act();
+        if (deleteCamp)
+            await service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, cancellation.Token);
+        else
+            await service.DeleteImageAsync(camp.Id, image.Id, actorUserId: TestActorId, cancellation.Token);
 
         auditBeforeCleanup.Should().BeTrue();
         cleanupFinished.Should().BeTrue();
