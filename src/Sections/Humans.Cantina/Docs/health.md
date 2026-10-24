@@ -75,9 +75,9 @@ The layout matches.
 - **Arrival day** = the day before a human's first confirmed shift of the whole event. It feeds
   the person into the cohort, sets `ArrivesOn`, and is never listed under `NoShift`. The scan
   starts at the event's build start, so a human whose only relation to the visible week is their
-  arrival still appears (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:328`).
+  arrival still appears (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:309`).
 - **No clamp.** An arrival day before the event's first day is shown as-is, negative offset and
-  all (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:72`).
+  all (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:87`).
 - **Weekly aggregates count unique humans**, never a sum of days: the cohort is a dictionary keyed
   by user id before any total is taken
   (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:102`).
@@ -86,12 +86,12 @@ The layout matches.
   unanswered on the roster.
 - **`MedicalConditions` is never read, never mapped, never rendered** by any viewer role. The
   payload records have no such property, pinned by `RosterDtosCarryNoMedicalConditions`
-  (`tests/Humans.Cantina.Tests/CantinaArchitectureTests.cs:25`).
+  (`tests/Humans.Cantina.Tests/CantinaArchitectureTests.cs:28`).
 - **The roster writes nothing but its disclosure audit.** A weekly or daily CSV download appends
   `CantinaRosterExported` with actor, scope and person-row count; page reads append nothing
   (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:51`).
 - **A dietary write is the member's own.** The form takes the user from the principal
-  (`src/Sections/Humans.Cantina/Controllers/CantinaProfileController.cs:69`), unknown chips are
+  (`src/Sections/Humans.Cantina/Controllers/CantinaProfileController.cs:70`), unknown chips are
   dropped and "Other" without its text is refused
   (`src/Sections/Humans.Cantina/Services/DietaryProfileService.cs:51`). A save clears the decline;
   a decline clears every food field.
