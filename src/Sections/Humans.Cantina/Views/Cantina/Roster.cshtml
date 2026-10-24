@@ -12,7 +12,7 @@
     ViewData["Title"] = Localizer["Cantina_Roster_PageTitle"].Value;
 
     // Must include the "Unanswered" bucket CantinaRosterService always populates.
-    var dietaryOrder = new[] { "Omnivore", "Vegetarian", "Vegan", "Pescatarian", "Unanswered" };
+    var dietaryOrder = DietaryOptions.DietaryPreferences.Append("Unanswered");
 
     string subtitle;
     if (Model.EventName is null)
