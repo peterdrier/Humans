@@ -110,9 +110,9 @@ internal sealed class ShiftManagementService(
     public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
         TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
 
-    public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId)
+    public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
-        var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
         return entity is null
             ? null
             : new ShiftEventKnobs(entity.IsShiftBrowsingOpen, entity.GlobalVolunteerCap, entity.ReminderLeadTimeHours);

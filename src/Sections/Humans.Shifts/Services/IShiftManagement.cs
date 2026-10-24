@@ -34,7 +34,7 @@ internal interface IShiftManagement
     Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile);
 
     /// <summary>Null until a rota or knob edit creates the row. The active event is Settings' concept.</summary>
-    Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId);
+    Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>Inserts the row on demand.</summary>
     Task SaveKnobsAsync(
