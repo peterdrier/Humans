@@ -30,6 +30,7 @@ humans look at the map and reach out.
 
 **Acceptance Criteria:**
 - Offer form captures direction, place + coarse coordinates (pre-filled from profile, overridable), optional waypoints, dates/duration, vehicle type, seats offered, luggage capacity, cost-sharing expectation, and free-text notes
+- Departure plus duration must remain within the supported date range, including the seeded inverse leg; invalid spans are refused before saving.
 - On create, the route is geocoded and computed once through the year's destination and stored; a paired inverse-direction offer is auto-seeded (same driver/vehicle/seats/luggage/cost, waypoints reversed) and the two are linked for display
 - On an edit that changes the member point, waypoints, or direction, or of an offer saved without a route, the route is recomputed
 - Only the driver can edit or cancel their own offer; a cancelled offer cannot be edited

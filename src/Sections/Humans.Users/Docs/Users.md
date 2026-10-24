@@ -547,19 +547,19 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-Nothing here is written. Each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 to CENTRAL-95; CENTRAL-97 retired 2026-10-22), drops in `Docs/debt.yml`.
+Nothing here is written. Each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 to CENTRAL-95; CENTRAL-97 retired 2026-10-22), schema drops are separate feature work under policy D9, outside the debt ledger.
 
-| Legacy object | Replaced by | Migration key | Drop row |
-|---|---|---|---|
-| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` | USERS-15 |
-| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` | USERS-16 |
-| `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` | USERS-17 |
-| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` | USERS-18 |
-| `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` | USERS-19 |
-| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` | USERS-20 |
-| `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` | USERS-21 |
-| `users.LastConsentReminderSentAt` | Consent `consent_reminders` | `consent.reminder-stamps` | USERS-22 |
-| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none | USERS-12 to USERS-14 (per-case approval) |
+| Legacy object | Replaced by | Migration key |
+|---|---|---|
+| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` |
+| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` |
+| `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` |
+| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` |
+| `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` |
+| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` |
+| `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` |
+| `users.LastConsentReminderSentAt` | Consent `consent_reminders` | `consent.reminder-stamps` |
+| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none |
 
 The `Legacy*` enums (`LegacyMembershipTier`, `LegacyConsentCheckStatus`, `LegacyParticipationStatus`, `LegacyParticipationSource`, `LegacyMessageCategory`, `LegacyGoogleEmailStatus`) die with their retirement PRs.
 

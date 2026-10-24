@@ -24,6 +24,51 @@ namespace Humans.Rideshare.Tests.Services;
 /// </summary>
 public sealed class RideshareServiceTests : RideshareTestHarness
 {
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateOffer_RefusesAnUnrepresentableTravelEnd_OnEitherLeg(bool inverseLeg)
+    {
+        var settings = await SeedSettingsAsync();
+        if (inverseLeg)
+        {
+            settings.OutboundWindowStart = LocalDate.MaxIsoValue;
+            settings.OutboundWindowEnd = LocalDate.MaxIsoValue;
+            await Db.SaveChangesAsync(Ct);
+        }
+        var save = NewTripSave(departure: inverseLeg ? null : LocalDate.MaxIsoValue, durationDays: 2);
+
+        var result = await NewService().CreateOfferAsync(SeedUser(), Year, save, Ct);
+
+        result.Refusal!.Key.Should().Be("Rideshare_InvalidDate");
+        await using var ctx = OpenContext();
+        (await ctx.Trips.CountAsync(Ct)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task UpdateOffer_RequiresARepresentableTravelEnd(int durationDays)
+    {
+        var driver = SeedUser();
+        var trip = await SeedTripAsync(driver);
+        var result = await NewService().UpdateOfferAsync(trip.Id, driver,
+            NewTripSave(departure: LocalDate.MaxIsoValue, durationDays: durationDays), Ct);
+
+        await using var ctx = OpenContext();
+        var stored = await ctx.Trips.SingleAsync(Ct);
+        if (durationDays == 1)
+        {
+            result.Refusal.Should().BeNull();
+            stored.DepartureDate.Should().Be(LocalDate.MaxIsoValue);
+        }
+        else
+        {
+            result.Refusal!.Key.Should().Be("Rideshare_InvalidDate");
+            stored.DepartureDate.Should().Be(trip.DepartureDate);
+        }
+    }
+
     private static readonly GeoPoint Lyon = new(45.76, 4.84);
     private static readonly GeoPoint Bordeaux = new(44.84, -0.58);
 

@@ -71,6 +71,11 @@ internal sealed class RideshareService(
         if (ValidateTrip(save) is { } tripRefusal) return new(Refusal: tripRefusal);
         var settings = await repository.GetSettingsAsync(year, ct);
         if (settings is null) return new(Refusal: new("Rideshare_Error_NotSetUp", year));
+        var inverseDirection = Flip(save.Direction);
+        var inverseDeparture = save.Direction == RideshareDirection.Inbound
+            ? settings.OutboundWindowStart
+            : settings.InboundWindowStart;
+        if (ValidateTrip(save, inverseDeparture) is { } inverseRefusal) return new(Refusal: inverseRefusal);
         var (member, pointRefusal) = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
         var (waypoints, waypointRefusal) = await GeocodeWaypointsAsync(save.WaypointLabels, [], ct);
@@ -83,10 +88,6 @@ internal sealed class RideshareService(
         Apply(original, save, member, waypoints);
 
         // The inverse leg: same car, same people, opposite way, first day of the other window.
-        var inverseDirection = Flip(save.Direction);
-        var inverseDeparture = save.Direction == RideshareDirection.Inbound
-            ? settings.OutboundWindowStart
-            : settings.InboundWindowStart;
         var inverse = NewTrip(userId, year, inverseDirection, inverseDeparture, now);
         Apply(inverse, save, member, reversedWaypoints);
 
@@ -541,10 +542,13 @@ internal sealed class RideshareService(
         return null;
     }
 
-    private static RideshareRefusal? ValidateTrip(TripSave save)
+    private static RideshareRefusal? ValidateTrip(TripSave save, LocalDate? departure = null)
     {
         if (save.ExpectedDurationDays < 1)
             return new("Rideshare_Error_DurationMinimum");
+        if (Period.Between(departure ?? save.DepartureDate, LocalDate.MaxIsoValue, PeriodUnits.Days).Days
+            < save.ExpectedDurationDays - 1)
+            return new("Rideshare_InvalidDate");
         if (save.SeatsOffered < 1)
             return new("Rideshare_Error_OfferSeatsMinimum");
         return null;
