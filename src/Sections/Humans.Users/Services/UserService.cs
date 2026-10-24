@@ -940,23 +940,15 @@ internal sealed class UserService(
 
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
-        if (profileAnonymization.Anonymized &&
-            profileAnonymization.ProfileId is { } profileId &&
-            profileAnonymization.PreviousProfilePictureKey is { } pictureKey)
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
+        if (profile is not null && ProfilePictureKeys.Resolve(
+                profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey) is { } pictureKey)
         {
-            try
-            {
-                await fileStorage.DeleteAsync(pictureKey, ct);
-            }
-            catch (Exception ex)
-            {
-                // A stranded blob must not abort the cascade — the row it hangs off is already gone.
-                logger.LogError(ex,
-                    "Failed to delete profile picture during GDPR erasure for user {UserId}", userId);
-            }
+            // Retain the only retryable file reference until deletion succeeds.
+            await fileStorage.DeleteAsync(pictureKey, ct);
         }
 
+        await AnonymizeProfileForDeletionAsync(userId, ct);
         await repo.EraseProfileExtrasForUserAsync(userId, ct);
         await communicationPreferenceRepo.DeleteAllForUserAsync(userId, ct);
         await ApplyExpiredDeletionAnonymizationAsync(userId, ct);

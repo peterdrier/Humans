@@ -786,6 +786,8 @@ sends this section's stored issues to the Admin-only queue. The key is `Profiles
 rows still carry the old string, so the queue keeps its name (and `/Debug/Sections` lists
 it as an unmatched annotation, which is the rename showing rather than hiding).
 
+GDPR profile erasure deletes the resolved legacy or versioned picture file before clearing its metadata. File-deletion failures propagate and retain that metadata for retry; they cannot silently finish the cascade with an orphaned picture.
+
 Deletion confirmations use the no-persistence email path. Delivery failures are terminal and logged by exception type only, without the erased address/name/subject or transport exception contents; they do not turn a completed erasure into a failed deletion.
 
 - Verification links refuse a missing user, missing/already-verified/OAuth email row or invalid token through `VerifyEmailResult.ErrorKey`. All member-facing refusals use the existing six-culture invalid-link message; owner warnings identify only user/email row ids and a fixed reason, without token or address. Dependency failures propagate instead of being classified as invalid links or exposed as validation text. Row-bound token purposes, conflict merge requests and email update/provisioning behavior remain.

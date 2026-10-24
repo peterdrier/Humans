@@ -78,8 +78,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the old picture metadata so the caller deletes the file only after the DB read gate
-    /// is cleared.
+    /// Clears identifying profile fields and returns the previous picture metadata.
     /// </summary>
     Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
