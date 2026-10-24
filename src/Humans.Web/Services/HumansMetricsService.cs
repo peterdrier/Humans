@@ -2,7 +2,6 @@ using System.Diagnostics.Metrics;
 using NodaTime;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
-using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Services;
@@ -76,7 +75,7 @@ public sealed class HumansMetricsService : PolledGaugeService, IHumansMetrics
         HumansMeter.CreateObservableGauge(
             "humans.pending_volunteers",
             observeValue: () => _snapshot.PendingVolunteers,
-            description: "Volunteers awaiting board approval");
+            description: "Accounts awaiting required profile names");
 
         HumansMeter.CreateObservableGauge(
             "humans.pending_deletions",
@@ -146,27 +145,25 @@ public sealed class HumansMetricsService : PolledGaugeService, IHumansMetrics
 
         // Read off cached UserInfo snapshot — avoids full profile scan per scrape.
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
-        var reviews = await scope.ServiceProvider.GetRequiredService<IConsentService>()
-            .GetConsentReviewsAsync().ConfigureAwait(false);
 
         int activeCount = 0, suspendedCount = 0, pendingCount = 0, inactiveCount = 0;
         foreach (var userInfo in userInfos)
         {
-            if (userInfo.Profile is null)
+            if (userInfo.State == UserState.Active)
             {
-                inactiveCount++;
+                activeCount++;
             }
-            else if (userInfo.IsSuspended)
+            else if (userInfo.State is UserState.Suspended or UserState.AdminSuspended)
             {
                 suspendedCount++;
             }
-            else if (!(reviews.TryGetValue(userInfo.Id, out var review) && review.IsApproved))
+            else if (userInfo.State == UserState.Bare)
             {
                 pendingCount++;
             }
             else
             {
-                activeCount++;
+                inactiveCount++;
             }
         }
 
