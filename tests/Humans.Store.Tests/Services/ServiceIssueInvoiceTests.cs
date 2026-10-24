@@ -698,6 +698,47 @@ public class ServiceIssueInvoiceTests
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Unconfirmed_issuance_leaves_the_order_open_and_retries_the_same_document(bool recovery, bool stillDraft)
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        var id = recovery ? "doc-earlier" : "doc-1";
+        var unconfirmed = SalesDoc(docNumber: stillDraft ? "2026-0003" : " ", isDraft: stillDraft, id: id);
+        if (recovery)
+            ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice,
+                SalesDoc(docNumber: "", isDraft: true), unconfirmed);
+        else
+            _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, id, Arg.Any<CancellationToken>())
+                .Returns(unconfirmed);
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        order.State.Should().Be(OrderState.Open);
+        order.IssuedInvoiceId.Should().BeNull();
+        await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        _holded.FindSalesDocumentIdsByTagAsync(
+                HoldedSalesDocumentKind.Invoice, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
+            .Returns(new List<string> { id });
+        _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, id, Arg.Any<CancellationToken>())
+            .Returns(unconfirmed with { IsDraft = false, DocNumber = "2026-0003" });
+
+        var retry = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        retry.Succeeded.Should().BeTrue();
+        await _holded.Received(recovery ? 0 : 1).CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task A_recovered_draft_is_approved_before_it_is_adopted()
     {
