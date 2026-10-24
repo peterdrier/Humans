@@ -207,8 +207,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             ? Array.Empty<Guid>()
             : await GetOnSiteUserIdsAsync(burn.Id, dayOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
-        // Arrival-day feeding: anyone whose first confirmed shift is day N+1 arrives today. Union BEFORE the empty
-        // check: a day with zero shifts can still have arrivals.
+        // Arrival-day feeding: anyone whose first confirmed shift is day N+1 arrives today. A day with zero shifts can
+        // still have arrivals.
         var unionedUserIds = new HashSet<Guid>(shiftUserIds);
         if (burn is not null)
         {
@@ -224,20 +224,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var userIds = unionedUserIds.ToList();
 
-        if (userIds.Count == 0)
-        {
-            return new DailyMatrixDto(
-                DayOffset: dayOffset,
-                CalendarDate: calendarDate,
-                EventTodayDate: eventTodayDate,
-                EventName: eventName,
-                WeekStartOffset: weekStartOffset,
-                TotalOnSite: 0,
-                UnansweredCount: 0,
-                People: Array.Empty<DailyPersonRowDto>());
-        }
-
-        var userInfoById = await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
+        var userInfoById = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
         var dietById = await _dietary.GetDietaryProfilesAsync(userIds, ct).ConfigureAwait(false);
 
         var people = new List<DailyPersonRowDto>(userIds.Count);
