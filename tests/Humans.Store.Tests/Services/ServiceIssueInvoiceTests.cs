@@ -740,6 +740,29 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
+    public async Task A_recovered_draft_whose_totals_change_at_approval_is_not_adopted()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice,
+            SalesDoc(docNumber: "", isDraft: true),
+            SalesDoc(isDraft: false, subtotal: 110m, tax: 23.10m, total: 133.10m));
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*no longer matches*");
+        order.State.Should().Be(OrderState.Open);
+        order.IssuedInvoiceId.Should().BeNull();
+        await _holded.Received(1).ApproveSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-earlier", Arg.Any<CancellationToken>());
+        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task A_recovered_draft_is_approved_before_it_is_adopted()
     {
         // Creation succeeded, approval did not. A draft books no revenue and carries no sequential

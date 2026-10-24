@@ -83,6 +83,8 @@ internal sealed class StoreInvoiceIssuer(
                 await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
                 adoptedDoc = await holdedClient.GetSalesDocumentAsync(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
+                if (GetRecoveryRefusal(order, adoptedDoc, totals) is { } approvalRefusal)
+                    return Refuse(order, actorUserId, approvalRefusal);
             }
             return await CommitInvoiceAsync(
                 order, adoptedDoc,
@@ -189,8 +191,7 @@ internal sealed class StoreInvoiceIssuer(
         return $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
             + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
             + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
-            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. The order was changed after that "
-            + "document was created. Resolve it by hand — correcting an issued document is a factura "
+            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. Resolve it by hand — correcting an issued document is a factura "
             + "rectificativa, and no second document will be issued in the meantime.";
     }
 
