@@ -53,7 +53,7 @@ public sealed class HumanSummaryViewComponentTests
                 .ToDictionary(t => t.Id));
         var governance = Substitute.For<IGovernanceService>();
         governance.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Asociado);
-        var component = new HumanSummaryViewComponent(users, teams, governance, ConsentReviewStubs.Create())
+        var component = new HumanSummaryViewComponent(users, teams, governance)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -88,7 +88,7 @@ public sealed class HumanSummaryViewComponentTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
-        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(), ConsentReviewStubs.Create())
+        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>())
         {
             ViewComponentContext = new ViewComponentContext
             {

@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Revisar ara</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>Pendent d'aprovació:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>El teu compte està pendent d'aprovació per part de la Junta Directiva. Rebràs una notificació quan s'hagi processat.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>La teva sol·licitud de {0}:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>

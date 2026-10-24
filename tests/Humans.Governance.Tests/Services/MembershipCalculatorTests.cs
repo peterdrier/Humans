@@ -123,16 +123,46 @@ public class MembershipCalculatorTests
     }
 
 
-    [HumansFact]
-    public async Task ComputeStatusAsync_NotApprovedProfile_ReturnsPending()
+    [HumansTheory]
+    [Xunit.InlineData(null, false)]
+    [Xunit.InlineData(ConsentCheckStatus.Cleared, false)]
+    [Xunit.InlineData(ConsentCheckStatus.Flagged, false)]
+    [Xunit.InlineData(null, true)]
+    [Xunit.InlineData(ConsentCheckStatus.Cleared, true)]
+    [Xunit.InlineData(ConsentCheckStatus.Flagged, true)]
+    public async Task ComputeStatusAsync_ReviewAnnotationDoesNotGateMembership(ConsentCheckStatus? review, bool overdueConsent)
     {
         var userId = Guid.NewGuid();
-        SeedProfile(userId, isApproved: false, isSuspended: false);
+        SeedProfile(userId, isApproved: review == ConsentCheckStatus.Cleared, isSuspended: false);
+        _reviews[userId] = _reviews[userId] with { Status = review };
+        SeedVolunteersTeamMember(userId);
+        if (overdueConsent)
+            SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
+                effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
+
+        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().Be(overdueConsent ? MembershipStatus.Inactive : MembershipStatus.Active);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Bare, MembershipStatus.Pending)]
+    [Xunit.InlineData(UserState.DeletePending, MembershipStatus.None)]
+    [Xunit.InlineData(UserState.Rejected, MembershipStatus.None)]
+    [Xunit.InlineData(UserState.Deleted, MembershipStatus.None)]
+    [Xunit.InlineData(UserState.Merged, MembershipStatus.None)]
+    [Xunit.InlineData(UserState.AdminSuspended, MembershipStatus.Suspended)]
+    public async Task ComputeStatusAsync_StaleAffiliationsDoNotOverrideAccountState(UserState state, MembershipStatus expected)
+    {
+        var userId = Guid.NewGuid();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        _statesByUserId[userId] = state;
+        SeedVolunteersTeamMember(userId);
         SeedActiveRole(userId);
 
         var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().Be(MembershipStatus.Pending);
+        result.Should().Be(expected);
     }
 
     [HumansFact]

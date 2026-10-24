@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Revisar ahora</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>Pendiente de aprobación:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>Su cuenta está pendiente de aprobación por la Junta Directiva. Una vez aprobada, se le inscribirá en el equipo de Voluntarios y recibirá acceso a los recursos de la organización.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>Su solicitud de {0}:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>

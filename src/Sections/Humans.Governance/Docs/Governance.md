@@ -267,6 +267,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Membership status uses account state, active affiliations and consent deadlines; the Consent Coordinator review is an independent annotation. Bare accounts are pending, suspended accounts remain suspended, and other non-active states cannot become active through stale affiliations.
+
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - Consent deadline audiences use `GetUsersRequiringStatusUpdateAsync`: a zero horizon selects active-role holders already due, while reminder callers supply their look-ahead horizon. Both use the same deadline calculation.

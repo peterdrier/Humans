@@ -658,6 +658,8 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ## Invariants
 
+- Profile summaries and duplicate-account cards derive active/pending status from the account state, never consent-review approval. The member profile does not present Board approval as a prerequisite for Volunteer access.
+
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - The `UserEmails` GDPR export includes each owned address’s Google-selection flag, Google sync status, and UTC creation, update and nullable last-verification-email timestamps. Existing export keys retain their names; other users’ addresses are excluded.

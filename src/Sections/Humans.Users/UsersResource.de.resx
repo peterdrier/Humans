@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Jetzt prüfen</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>Genehmigung ausstehend:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>Ihr Konto wartet auf die Genehmigung durch den Vorstand. Nach der Genehmigung werden Sie dem Volunteers-Team zugewiesen und erhalten Zugang zu den Organisationsressourcen.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>Ihre {0}-Bewerbung:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>

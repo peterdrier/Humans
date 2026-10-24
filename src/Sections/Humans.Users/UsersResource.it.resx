@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Esamina ora</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>In attesa di approvazione:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>Il Suo account è in attesa di approvazione da parte del Consiglio. Una volta approvato, verrà inserito nel team Volunteers e riceverà l'accesso alle risorse dell'organizzazione.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>La Sua candidatura {0}:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>
