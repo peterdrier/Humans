@@ -142,6 +142,8 @@ The container entity CRUD for barrio leads is served by `ContainerController` at
 
 **SignalR — `CityPlanningHub` (`/hubs/city-planning`)**
 
+Negotiation and connection require both authentication and `AppAccess` (stored `UserState.Active`), including for admins. SignalR does not run the MVC membership filter, so the hub enforces that gate explicitly.
+
 Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` after every polygon save, and `CursorMoved(connectionId, displayName, lat, lng)` / `CursorLeft(connectionId)` to the other connected clients. Receives `UpdateCursor(lat, lng)` from clients.
 
 ## Actors & Roles
@@ -179,6 +181,8 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - The city-planning team slug is lower-cased on **both** sides before comparing — the configured `CityPlanningTeamSlug` and the stored `Team.Slug` / `Team.CustomSlug` — so case never decides the map-admin exemption. A blank configured slug matches nothing.
 
 ## Negative Access Rules
+
+- Anonymous and non-active accounts cannot negotiate or establish a new live map connection, even with an admin role; this includes rejected, deleted and merged accounts.
 
 - Regular humans **cannot** edit polygons for camps they do not lead.
 - Camp leads **cannot** edit their polygon when barrio placement is Closed, and **cannot** create one while it is Changeable.

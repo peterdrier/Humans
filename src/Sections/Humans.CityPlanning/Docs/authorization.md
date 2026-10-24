@@ -2,6 +2,7 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
+| `CityPlanningHub` | Class | Authentication plus `AppAccess` (`UserState.Active`), including negotiation and connection; no role bypass | — |
 | `CityPlanningController` | Class | `[Authorize]` (authenticated) | — |
 | `CityPlanningController` runtime guards | In-method | Map-admin gate = `AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)`; plus lead-of-camp and container-placement-phase checks | `CityPlanningMapAdmin` policy + `CityPlanningService` |
 | `CityPlanningApiController` | Class | `[Authorize]` (authenticated) | — |

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
@@ -11,6 +12,7 @@ namespace Humans.CityPlanning.Services;
 /// would force it public.
 /// </summary>
 [Authorize]
+[Authorize(Policy = PolicyNames.AppAccess)]
 internal sealed class CityPlanningHub(IUserService userService, UserManager<User> userManager) : Hub
 {
     private static readonly ConcurrentDictionary<string, string> _displayNames = new(StringComparer.Ordinal);
