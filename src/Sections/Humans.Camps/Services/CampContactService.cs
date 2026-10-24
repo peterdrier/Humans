@@ -46,54 +46,6 @@ internal sealed class CampContactService(
                 message,
                 includeContactInfo,
                 senderEmail));
-
-            await auditLogService.LogAsync(
-                AuditAction.FacilitatedMessageSent,
-                nameof(Camp), campId,
-                $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
-                senderUserId);
-
-            if (leadUserIds.Count > 0)
-            {
-                IReadOnlyDictionary<Guid, UserInfo> leadUsers = new Dictionary<Guid, UserInfo>();
-                try
-                {
-                    leadUsers = await users.GetUserInfosAsync(leadUserIds);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to resolve camp lead languages for camp {CampId}; using English", campId);
-                }
-
-                var languageGroups = leadUserIds.Distinct().GroupBy(id =>
-                {
-                    var language = leadUsers.GetValueOrDefault(id)?.PreferredLanguage;
-                    return language.IsSupportedCultureCode() ? language! : "en";
-                }, StringComparer.Ordinal);
-                foreach (var group in languageGroups)
-                {
-                    try
-                    {
-                        var culture = CultureInfo.GetCultureInfo(group.Key);
-                        var title = string.Format(culture,
-                            NoticeResources.GetString("Camps_Notification_MessageReceived", culture)!, campDisplayName);
-                        await notificationEmitter.SendAsync(
-                            NotificationSource.FacilitatedMessageReceived,
-                            NotificationClass.Informational,
-                            NotificationPriority.Normal,
-                            title,
-                            group.ToList(),
-                            actionUrl: campDetailsUrl,
-                            actionLabel: NoticeResources.GetString("Camps_Notification_ViewCamp", culture));
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId} in {Culture}", campId, group.Key);
-                    }
-                }
-            }
-
-            return new CampContactResult(Success: true, RateLimited: false);
         }
         catch (Exception ex)
         {
@@ -101,5 +53,54 @@ internal sealed class CampContactService(
             logger.LogError(ex, "Failed to send facilitated message to camp {CampId}", campId);
             throw;
         }
+
+        // The email is already queued; later failures must not permit a duplicate send.
+        await auditLogService.LogAsync(
+            AuditAction.FacilitatedMessageSent,
+            nameof(Camp), campId,
+            $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
+            senderUserId);
+
+        if (leadUserIds.Count > 0)
+        {
+            IReadOnlyDictionary<Guid, UserInfo> leadUsers = new Dictionary<Guid, UserInfo>();
+            try
+            {
+                leadUsers = await users.GetUserInfosAsync(leadUserIds);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to resolve camp lead languages for camp {CampId}; using English", campId);
+            }
+
+            var languageGroups = leadUserIds.Distinct().GroupBy(id =>
+            {
+                var language = leadUsers.GetValueOrDefault(id)?.PreferredLanguage;
+                return language.IsSupportedCultureCode() ? language! : "en";
+            }, StringComparer.Ordinal);
+            foreach (var group in languageGroups)
+            {
+                try
+                {
+                    var culture = CultureInfo.GetCultureInfo(group.Key);
+                    var title = string.Format(culture,
+                        NoticeResources.GetString("Camps_Notification_MessageReceived", culture)!, campDisplayName);
+                    await notificationEmitter.SendAsync(
+                        NotificationSource.FacilitatedMessageReceived,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        title,
+                        group.ToList(),
+                        actionUrl: campDetailsUrl,
+                        actionLabel: NoticeResources.GetString("Camps_Notification_ViewCamp", culture));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId} in {Culture}", campId, group.Key);
+                }
+            }
+        }
+
+        return new CampContactResult(Success: true, RateLimited: false);
     }
 }
