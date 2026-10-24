@@ -12,7 +12,7 @@
     ViewData["Title"] = Localizer["Cantina_Roster_PageTitle"].Value;
 
     // Must include the "Unanswered" bucket CantinaRosterService always populates.
-    var dietaryOrder = new[] { "Omnivore", "Vegetarian", "Vegan", "Pescatarian", "Unanswered" };
+    var dietaryOrder = DietaryOptions.DietaryPreferences.Append("Unanswered");
 
     string subtitle;
     if (Model.EventName is null)
@@ -42,10 +42,7 @@
 
 @section Styles {
     <style>
-        /* Whole-row hyperlink in the per-day mini-table — coordinators click
-           a day to drill into the per-person matrix. Cells wrap their own
-           <a> for cell-by-cell hyperlinkability (no JS); the <tr> hover +
-           pointer cursor signals affordance over the entire row. */
+        /* Whole row reads as a link; each cell wraps its own <a> (no JS). */
         .day-table tbody tr:hover { background-color: var(--bs-table-hover-bg); cursor: pointer; }
         .day-table tbody tr a { color: inherit; text-decoration: none; display: block; }
         @@media print {

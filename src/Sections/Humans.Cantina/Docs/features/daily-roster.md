@@ -15,7 +15,7 @@
 
 Cantina coordinators feed everyone on site during the build and event week. They need a week-at-a-glance view of who's on site so they can plan meals, batch-buy ingredients across multiple days, and account for dietary restrictions, allergies, and intolerances.
 
-Until now, the data was collected via the [Dietary Nudge](dietary-nudge.md) (#279) but had no aggregated read path — coordinators had to ask each volunteer individually, or chase down the data through per-profile badges. This feature surfaces a printable per-week roster behind a single URL, with a CSV download for offline planning, and tightens the GDPR boundary by excluding medical-condition data that the cantina doesn't need.
+The data is collected via the [Dietary Nudge](dietary-nudge.md) (nobodies-collective/Humans#279). This feature surfaces a printable per-week roster behind a single URL, with a CSV download for offline planning, and tightens the GDPR boundary by excluding medical-condition data that the cantina doesn't need.
 
 The two views split by the job in hand. The weekly view is **overview-only** — week-level aggregates plus a per-day mini-summary (counts only) — because shopping and batch-prep are planned on totals, not on names. The per-day drill-down carries the person-by-person detail, because cooking a specific meal means knowing who is at that meal. Each day's row in the mini-summary links straight into it.
 
@@ -103,10 +103,10 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - One row per unique human across the week; columns:
   ```
   Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
-  "Dev Human 007","Mon 27 May","Wed 29 May, Sat 1 Jun",Vegetarian,"Peanut, Tree nut","","Other","MSG"
+  "Dev Human 007","2024-05-27","2024-05-29, 2024-06-01",Vegetarian,"Peanut, Tree nut","","Other","MSG"
   ```
-- `ArrivesOn` is a single short calendar label (e.g. `Mon 27 May`) for the human's earliest on-site day within the week.
-- `NoShift` lists the calendar dates within the week on which the human had no scheduled shift — formatted as short weekday + day + short month (e.g. `Wed 29 May`), comma-and-space-separated, wrapped in double quotes. Empty when the human has a scheduled shift every day of the week.
+- `ArrivesOn` is an ISO date (e.g. `2024-05-27`) for the human's earliest on-site day within the week.
+- `NoShift` lists the calendar dates within the week on which the human had no scheduled shift — formatted as ISO dates (e.g. `2024-05-29`), comma-and-space-separated, wrapped in double quotes. Empty when the human has a scheduled shift every day of the week.
 - UTF-8 BOM (`﻿`) prepended for Excel-friendliness.
 - RFC 4180 quoting: fields containing commas, quotes, or newlines are wrapped in double quotes; embedded double quotes are escaped by doubling.
 - `Allergies` / `Intolerances` cells contain the chip values comma-and-space-separated.
@@ -219,11 +219,11 @@ Header:
 Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
 ```
 
-`ArrivesOn` is the human's earliest on-site day within the requested week, formatted with NodaTime pattern `ddd d MMM` (invariant culture), e.g. `Mon 27 May`. `NoShift` lists the calendar dates within the same week on which the human had no scheduled shift, same format, comma-and-space-separated, wrapped in double quotes whenever the cell contains a comma. `NoShift` is empty when the human has a scheduled shift every day of the week.
+`ArrivesOn` is the human's earliest on-site day within the requested week, formatted as an ISO `yyyy-MM-dd` date, e.g. `2024-05-27`. `NoShift` lists the calendar dates within the same week on which the human had no scheduled shift, same format, comma-and-space-separated, wrapped in double quotes whenever the cell contains a comma. `NoShift` is empty when the human has a scheduled shift every day of the week.
 
-(Note: "no shift" is the cantina semantic — the human could still be on-site that day, working informally or at barrio. The earlier "off-site / days off" wording was renamed to avoid that misread.)
+(Note: "no shift" is the cantina semantic — the human could still be on-site that day, working informally or at barrio.)
 
-One row per unique human. Otherwise the same RFC 4180 quoting rules, UTF-8 BOM, and chip-join behaviour as before.
+One row per unique human. Otherwise the same RFC 4180 quoting rules, UTF-8 BOM, and chip-join behaviour.
 
 Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv`, where `<yyyy-MM-dd>` is the ISO date of the week's Monday.
 
@@ -265,7 +265,7 @@ New / updated components:
 - **Per-meal granularity** (lunch vs. dinner vs. breakfast). Cantina plans per-day in v1.
 - **Historical export** (last year's data, multi-event archive). The freshness:flag-on-change covers shape changes; archival export is a separate concern.
 - **Multi-event scope.** Reads only the active event's signups.
-- **Editing dietary data from the roster.** Coordinators who need to correct an entry go through the volunteer's profile.
+- **Editing dietary data from the roster.** Nobody edits another member's answers; a member corrects their own at `/Cantina/Dietary`.
 - **Printable PDF layout.** The HTML view is browser-print-friendly; a dedicated PDF generator is not in scope.
 - **Real-time push updates.** The page is a normal request/response; coordinators refresh to pick up new signups.
 

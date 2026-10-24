@@ -45,7 +45,7 @@ internal static class CantinaRosterCsvWriter
                 csv.WriteRow(
                     p.BurnerName,
                     p.ArrivesOn.ToInvariantDate(),
-                    FormatDayList(p.NoShift),
+                    string.Join(", ", p.NoShift.Select(d => d.ToInvariantDate())),
                     p.DietaryPreference ?? string.Empty,
                     string.Join(", ", p.Allergies),
                     p.AllergyOtherText ?? string.Empty,
@@ -53,15 +53,5 @@ internal static class CantinaRosterCsvWriter
                     p.IntoleranceOtherText ?? string.Empty);
             }
         });
-    }
-
-    private static string FormatDayList(IReadOnlyList<NodaTime.LocalDate> days)
-    {
-        if (days.Count == 0)
-            return string.Empty;
-        var parts = new string[days.Count];
-        for (var i = 0; i < days.Count; i++)
-            parts[i] = days[i].ToInvariantDate();
-        return string.Join(", ", parts);
     }
 }
