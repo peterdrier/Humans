@@ -312,9 +312,22 @@ internal sealed class CalendarService(
                 rejection = CalendarEventMutationResult.Failed("Calendar_CannotChangeEventType");
                 return;
             }
+            var previous = CalendarOccurrenceExpander.ToInfo(ev);
+            var updated = CalendarOccurrenceExpander.ToInfo(candidate);
+            foreach (var exception in previous.Exceptions.Where(x => !x.IsCancelled))
+            {
+                var dtoOverride = new OverrideOccurrenceDto(exception.OverrideStartUtc, exception.OverrideEndUtc,
+                    exception.OverrideTitle, exception.OverrideDescription, exception.OverrideLocation, exception.OverrideLocationUrl,
+                    exception.OverrideStartDate, exception.OverrideEndDateExclusive);
+                if (GetOverrideRefusal(updated, exception.OriginalOccurrenceStartUtc,
+                        exception.OriginalOccurrenceDate, dtoOverride) is not null)
+                {
+                    rejection = CalendarEventMutationResult.Failed("Calendar_InvalidOccurrenceOverride");
+                    return;
+                }
+            }
             if (ev.IsAllDay)
             {
-                var previous = CalendarOccurrenceExpander.ToInfo(ev);
                 foreach (var exception in ev.Exceptions)
                 {
                     var dateException = previous.Exceptions.Single(x => x.Id == exception.Id);
@@ -519,8 +532,10 @@ internal sealed class CalendarService(
             LocalDate end;
             try
             {
-                end = dto.OverrideEndDateExclusive ?? start.PlusDays(
-                    NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days);
+                var days = NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days;
+                // Expansion reconstructs the original range before applying a moved override.
+                _ = originalDate!.Value.PlusDays(days);
+                end = dto.OverrideEndDateExclusive ?? start.PlusDays(days);
             }
             catch (OverflowException)
             {
@@ -532,8 +547,19 @@ internal sealed class CalendarService(
         {
             if (dto.OverrideStartDate is not null || dto.OverrideEndDateExclusive is not null)
                 return "A timed occurrence cannot have all-day dates.";
-            if (dto.OverrideEndUtc is { } end && end < (dto.OverrideStartUtc ?? originalUtc!.Value))
-                return "An occurrence cannot end before it starts.";
+            var start = dto.OverrideStartUtc ?? originalUtc!.Value;
+            Instant end;
+            try
+            {
+                var duration = (info.EndUtc ?? info.StartUtc!.Value) - info.StartUtc!.Value;
+                _ = originalUtc!.Value.Plus(duration);
+                end = dto.OverrideEndUtc ?? start.Plus(duration);
+            }
+            catch (OverflowException)
+            {
+                return "A timed occurrence requires a representable time range.";
+            }
+            if (end < start) return "An occurrence cannot end before it starts.";
         }
         return null;
     }
