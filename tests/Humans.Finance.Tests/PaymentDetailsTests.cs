@@ -224,6 +224,28 @@ public class PaymentDetailsTests
         (await _repo.GetAsync(source, Ct)).Should().BeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task Merge_PreservesTheSourcesLegacyIban_WithoutRevivingClearedDetails(
+        bool sourceCleared, bool survivorCleared)
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        SeedUser(source, Iban);
+        SeedUser(target);
+        if (sourceCleared) await _sut.SetIbanAsync(source, null, Ct);
+        if (survivorCleared) await _sut.SetIbanAsync(target, null, Ct);
+
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+
+        (await _repo.GetAsync(target, Ct)).Should().NotBeNull();
+        (await _sut.GetIbanAsync(target, Ct)).Should().Be(sourceCleared || survivorCleared ? null : Iban);
+        (await _repo.GetAsync(source, Ct)).Should().BeNull();
+    }
+
     [HumansFact]
     public async Task Merge_KeepsTheSurvivorsIban_IncludingOneStillOnItsLegacyProfile()
     {
