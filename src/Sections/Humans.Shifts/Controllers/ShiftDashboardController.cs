@@ -73,16 +73,16 @@ internal sealed class ShiftDashboardController(
 
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpGet("PostEventStats")]
-    public async Task<IActionResult> PostEventStats()
+    public async Task<IActionResult> PostEventStats(CancellationToken ct = default)
     {
-        var es = await burnSettings.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(ct);
         if (es is null)
         {
             SetError("No active event settings configured.");
             return RedirectToAction("Index", "Home");
         }
 
-        var stats = await shiftMgmt.GetPostEventStatsAsync(es.Id);
+        var stats = await shiftMgmt.GetPostEventStatsAsync(es.Id, ct);
         if (stats is null)
         {
             SetError("Could not load post-event statistics.");
@@ -102,14 +102,14 @@ internal sealed class ShiftDashboardController(
     // Narrower than the controller's policy: subteam managers can't reach it.
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpGet("SearchVolunteers")]
-    public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
+    public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query, CancellationToken ct = default)
     {
         try
         {
             var result = await volunteerSearchBuilder.BuildForShiftAsync(
-                await shiftMgmt.GetShiftByIdAsync(shiftId),
+                await shiftMgmt.GetShiftByIdAsync(shiftId, ct),
                 query,
-                ShiftRoleChecks.CanViewMedical(User));
+                ShiftRoleChecks.CanViewMedical(User), ct);
             return result.Status switch
             {
                 VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),
@@ -117,6 +117,10 @@ internal sealed class ShiftDashboardController(
                 VolunteerSearchBuildStatus.Success => Json(result.Results),
                 _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
             };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
