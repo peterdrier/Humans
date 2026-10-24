@@ -20,12 +20,11 @@ using Humans.Users.Contracts;
 namespace Humans.Cantina.Tests.Services;
 
 /// <summary>
-/// Unit tests for <see cref="CantinaRosterService"/>. The on-site cohort comes
-/// from <see cref="IShiftService.GetOnSiteUserIdsForDayAsync"/>;
-/// dietary data is read from <see cref="IUserService"/> (cached UserInfo —
-/// dietary lives on Profile). Tests exercise the "unique humans across the week"
-/// contract: a single human on-site multiple days contributes exactly once to
-/// every aggregate, while still showing up in the correct per-day counts.
+/// <see cref="CantinaRosterService"/> "unique humans across the week" contract: a single
+/// human on-site multiple days contributes exactly once to every aggregate, while still
+/// showing up in the correct per-day counts. The on-site cohort comes from
+/// <see cref="IShiftService.GetOnSiteUserIdsForDayAsync"/>, names from
+/// <see cref="IUserService"/>, dietary from <c>ICantinaService</c>.
 /// </summary>
 public class CantinaRosterServiceTests
 {
@@ -50,7 +49,6 @@ public class CantinaRosterServiceTests
         // care about EventTodayDate semantics override on a per-test basis.
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
-        // Default: no humans known (each test stubs its own via SetupHumans).
         _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -58,7 +56,6 @@ public class CantinaRosterServiceTests
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
-        // Default: every day returns an empty on-site cohort.
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
@@ -105,7 +102,7 @@ public class CantinaRosterServiceTests
         _audit.ReceivedCalls().Should().ContainSingle("page reads do not disclose a file");
     }
 
-    /// <summary>Builds a profile carrying burner name + dietary (dietary lives on the profile).</summary>
+    /// <summary>Builds a human: burner name on the profile, dietary as Cantina's own record.</summary>
     private static (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet) Human(
         Guid userId,
         string burner,
@@ -234,7 +231,6 @@ public class CantinaRosterServiceTests
 
         var userId = Guid.NewGuid();
 
-        // On-site Monday only (day 0 of the week).
         SetupDay(WeekStartOffset + 0, userId);
         SetupHumans(Human(userId, "AlicePrime", "Omnivore"));
 
@@ -275,7 +271,6 @@ public class CantinaRosterServiceTests
 
         var userId = Guid.NewGuid();
 
-        // On-site Mon, Wed, Fri.
         SetupDay(WeekStartOffset + 0, userId);
         SetupDay(WeekStartOffset + 2, userId);
         SetupDay(WeekStartOffset + 4, userId);
@@ -314,7 +309,7 @@ public class CantinaRosterServiceTests
 
         var userId = Guid.NewGuid();
 
-        // On-site Mon, Tue, Wed — no dietary preference recorded.
+        // No dietary preference recorded.
         SetupDay(WeekStartOffset + 0, userId);
         SetupDay(WeekStartOffset + 1, userId);
         SetupDay(WeekStartOffset + 2, userId);
@@ -432,7 +427,7 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_MedicalConditionsNeverInDto()
     {
         // The cantina output DTO must not expose MedicalConditions, even though
-        // medical lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
+        // medical rides on the cached UserInfo (its Profile). GDPR Art.9 boundary.
         typeof(Humans.Cantina.Services.Dtos.RosterPersonDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
@@ -459,14 +454,13 @@ public class CantinaRosterServiceTests
     public async Task GetWeeklyRoster_ArrivesOn_IsEarliestOnSiteDay_AndNoShift_IsComplement()
     {
         // Single human on-site Mon + Wed + Sat (days 0, 2, 5).
-        // Expected: ArrivesOn = Mon (earliest), NoShift = [Tue, Thu, Fri, Sun].
         // Also verifies the cohort-exclusion invariant: a known human with NO
         // signups all week does NOT appear in People.
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
 
         var onSiteUserId = Guid.NewGuid();
-        var excludedUserId = Guid.NewGuid(); // never appears on any day → must be excluded
+        var excludedUserId = Guid.NewGuid();
 
         SetupDay(WeekStartOffset + 0, onSiteUserId);
         SetupDay(WeekStartOffset + 2, onSiteUserId);
@@ -480,13 +474,13 @@ public class CantinaRosterServiceTests
 
         var p = result.People[0];
         p.UserId.Should().Be(onSiteUserId);
-        p.ArrivesOn.Should().Be(GateOpening); // Mon = week day 0
+        p.ArrivesOn.Should().Be(GateOpening);
         p.NoShift.Should().HaveCount(4);
         p.NoShift.Should().Equal(
-            GateOpening.PlusDays(1), // Tue
-            GateOpening.PlusDays(3), // Thu
-            GateOpening.PlusDays(4), // Fri
-            GateOpening.PlusDays(6)); // Sun
+            GateOpening.PlusDays(1),
+            GateOpening.PlusDays(3),
+            GateOpening.PlusDays(4),
+            GateOpening.PlusDays(6));
     }
 
     [HumansFact]
@@ -510,14 +504,9 @@ public class CantinaRosterServiceTests
         var person = result.People.Single(p => p.UserId == id);
         // Arrival = day before the first confirmed shift (offset 2 → offset 1).
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
-        // The arrival day is fed in as a real on-site day, so it is NOT in
-        // NoShift (NoShift is the complement of on-site days). The human is
-        // "present, no shift" on the arrival day in the sense that they have no
-        // confirmed signup there — but the day still counts as on-site for the
-        // cohort, which is what pulls an otherwise arrival-only human into the
-        // roster. Their only confirmed-shift day (offset 2) is likewise on-site.
-        person.NoShift.Should().NotContain(GateOpening.PlusDays(1)); // arrival is on-site
-        person.NoShift.Should().NotContain(GateOpening.PlusDays(2)); // confirmed shift is on-site
+        // NoShift is the complement of on-site days; the arrival day counts as on-site.
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(1));
+        person.NoShift.Should().NotContain(GateOpening.PlusDays(2));
         // The weekly per-day strip counts the arrival person on Tuesday (offset 1),
         // matching what the daily drill-down will show.
         result.Days[1].TotalOnSite.Should().Be(1);
@@ -566,7 +555,7 @@ public class CantinaRosterServiceTests
 
         var person = result.People.Single(p => p.UserId == id);
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
-        result.Days[6].TotalOnSite.Should().Be(1); // offset -1 is index 6 of the -7..-1 window
+        result.Days[6].TotalOnSite.Should().Be(1);
     }
 
     [HumansFact]
@@ -594,7 +583,7 @@ public class CantinaRosterServiceTests
         // ArrivesOn must be the first shift IN this week, not a spurious arrival
         // day derived from the prior-week global minimum.
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(8));
-        result.Days[0].TotalOnSite.Should().Be(0); // offset 7 — no shift and no arrival
+        result.Days[0].TotalOnSite.Should().Be(0);
     }
 
     /// <summary>Stubs the on-site cohort for a single day (dietary comes from SetupHumans).</summary>
@@ -605,7 +594,7 @@ public class CantinaRosterServiceTests
 
     /// <summary>
     /// Stubs <see cref="IUserService.GetUserInfosAsync"/> to return a
-    /// <c>UserInfo</c> per profile. Dietary + burner name are read off the Profile.
+    /// <c>UserInfo</c> per profile; names only, dietary is stubbed on <c>ICantinaService</c>.
     /// </summary>
     private void SetupHumans(params (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet)[] profiles)
     {

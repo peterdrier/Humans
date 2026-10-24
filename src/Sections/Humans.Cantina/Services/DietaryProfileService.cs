@@ -108,7 +108,7 @@ internal sealed class DietaryProfileService(
     private static DietaryProfileInfo? LegacyProfile(UserInfo? info)
     {
         if (info?.Profile is not { } p) return null;
-#pragma warning disable HUM_PROFILE_DIETARY // the fallback and copy the fields are kept for (plan §3.1)
+#pragma warning disable HUM_PROFILE_DIETARY // the legacy fallback, until CENTRAL-90 retires the columns
         var legacy = new DietaryProfileInfo(
             info.Id,
             string.IsNullOrWhiteSpace(p.DietaryPreference) ? null : p.DietaryPreference,

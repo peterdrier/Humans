@@ -25,8 +25,8 @@ public class CantinaArchitectureTests
     public void RosterDtosCarryNoMedicalConditions()
     {
         // GDPR Article 9 boundary, and the reason this section exists in the shape it does:
-        // the cantina plans around food, not medical history. MedicalConditions is on the
-        // cached ProfileInfo the service already holds for names, so nothing but this stops it
+        // the cantina plans around food, not medical history. MedicalConditions rides on the
+        // cached UserInfo (its Profile) the service already holds for names, so nothing but this stops it
         // being projected out (docs Cantina.md — Negative Access Rules).
         var offenders = typeof(Section).Assembly.GetTypes()
             .Where(t => string.Equals(t.Namespace, "Humans.Cantina.Services.Dtos", StringComparison.Ordinal))
