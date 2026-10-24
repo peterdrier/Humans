@@ -129,7 +129,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             p => p.IntoleranceOtherText,
             DietaryOptions.IntoleranceOptions);
 
-        var answeredCount = uniqueProfiles.Count(p => !string.IsNullOrEmpty(p.DietaryPreference));
+        var answeredCount = uniqueProfiles.Count(p => p.HasPreference);
         var unansweredTotal = uniqueUserIds.Count - answeredCount;
 
         return new WeeklyRosterDto(
@@ -155,9 +155,10 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         if (burn is null || GetEventTodayDate(burn) is not { } today)
             return 0;
 
-        var daysSinceMonday = ((int)today.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
-        return Period.Between(burn.GateOpeningDate, today.PlusDays(-daysSinceMonday), PeriodUnits.Days).Days;
+        return Period.Between(burn.GateOpeningDate, today.PlusDays(-DaysSinceMonday(today)), PeriodUnits.Days).Days;
     }
+
+    private static int DaysSinceMonday(LocalDate date) => (int)date.DayOfWeek - (int)IsoDayOfWeek.Monday;
 
     /// <summary>Zero without an active event.</summary>
     private int CurrentDayOffset(EventSettingsInfo? burn)
@@ -191,8 +192,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         int weekStartOffset;
         if (calendarDate is { } cd)
         {
-            var daysSinceMonday = ((int)cd.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
-            weekStartOffset = dayOffset - daysSinceMonday;
+            weekStartOffset = dayOffset - DaysSinceMonday(cd);
         }
         else
         {
@@ -235,20 +235,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             userInfoById.TryGetValue(id, out var info);
             dietById.TryGetValue(id, out var profile);
 
-            IReadOnlySet<string> allergies = profile?.Allergies is { Count: > 0 } a
-                ? new HashSet<string>(a, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-            IReadOnlySet<string> intolerances = profile?.Intolerances is { Count: > 0 } i
-                ? new HashSet<string>(i, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-
             people.Add(new DailyPersonRowDto(
                 UserId: id,
                 BurnerName: ResolveBurnerName(info),
                 DietaryPreference: profile?.DietaryPreference,
-                Allergies: allergies,
+                Allergies: new HashSet<string>(profile?.Allergies ?? [], StringComparer.Ordinal),
                 AllergyOtherText: profile?.AllergyOtherText,
-                Intolerances: intolerances,
+                Intolerances: new HashSet<string>(profile?.Intolerances ?? [], StringComparer.Ordinal),
                 IntoleranceOtherText: profile?.IntoleranceOtherText));
         }
 
@@ -430,9 +423,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 ArrivesOn: daysList[0],
                 NoShift: BuildNoShiftDays(daysList, weekDays),
                 DietaryPreference: profile?.DietaryPreference,
-                Allergies: profile?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
+                Allergies: profile?.Allergies ?? [],
                 AllergyOtherText: profile?.AllergyOtherText,
-                Intolerances: profile?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
+                Intolerances: profile?.Intolerances ?? [],
                 IntoleranceOtherText: profile?.IntoleranceOtherText));
         }
 
