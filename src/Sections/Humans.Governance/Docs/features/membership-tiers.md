@@ -107,7 +107,9 @@ MembershipTierRecord
 ├── GrantedByApplicationId: Guid?
 ```
 
-No row means Volunteer, except while the legacy `profiles.MembershipTier` column still holds an uncopied tier (read fallback until the `governance.profile-tier` data migration reports done). Tier is **not** a RoleAssignment. Roles (Admin, Board, ConsentCoordinator, VolunteerCoordinator) are tracked separately via RoleAssignment.
+No row means Volunteer, except while the legacy `profiles.MembershipTier` column still holds an uncopied tier (read fallback until the `governance.profile-tier` data migration reports done). Account merges keep the survivor's tier first, otherwise the source's, including uncopied legacy tiers and their grant/term metadata. Explicit Volunteer rows remain authoritative over legacy tiers.
+
+Tier is **not** a RoleAssignment. Roles (Admin, Board, ConsentCoordinator, VolunteerCoordinator) are tracked separately via RoleAssignment.
 
 ### Application Changes
 ```
