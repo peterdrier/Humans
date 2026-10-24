@@ -40,9 +40,10 @@ internal sealed class ShiftDashboardController(
         string? endDate,
         TrendWindow? trendWindow,
         ShiftPeriod? period,
-        BuildSubPeriod? subPeriod)
+        BuildSubPeriod? subPeriod,
+        CancellationToken ct = default)
     {
-        var es = await burnSettings.GetActiveAsync();
+        var es = await burnSettings.GetActiveAsync(ct);
         if (es is null)
         {
             SetError("No active event settings configured.");
@@ -65,7 +66,7 @@ internal sealed class ShiftDashboardController(
             activeEnd,
             trendWindow ?? TrendWindow.Last30Days,
             period,
-            subPeriod));
+            subPeriod), ct);
 
         return View(model);
     }
