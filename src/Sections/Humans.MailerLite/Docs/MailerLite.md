@@ -127,7 +127,7 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
   predicate they apply to `ShiftUserSummary` (`HasShift`, or `HasShiftInPeriod` for Build /
   Event / Strike; Setup = Build). `TicketNoShiftsAudience` reads the same view directly.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
-- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure deletes the MailerLite subscriber under every verified + primary email via `IMailerLiteService.DeleteSubscriberAsync`.
+- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure deletes the MailerLite subscriber under every verified + primary email, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`.
 
 ## Architecture
 
