@@ -268,6 +268,45 @@ public class SurveyServiceTests
         }
     }
 
+    [HumansTheory]
+    [InlineData(SurveyQuestionType.SingleChoice, false, "Empty")]
+    [InlineData(SurveyQuestionType.SingleChoice, false, "Blank")]
+    [InlineData(SurveyQuestionType.SingleChoice, false, "Unique")]
+    [InlineData(SurveyQuestionType.SingleChoice, true, "Empty")]
+    [InlineData(SurveyQuestionType.SingleChoice, true, "Blank")]
+    [InlineData(SurveyQuestionType.SingleChoice, true, "Unique")]
+    [InlineData(SurveyQuestionType.MultiChoice, false, "Empty")]
+    [InlineData(SurveyQuestionType.MultiChoice, false, "Blank")]
+    [InlineData(SurveyQuestionType.MultiChoice, false, "Unique")]
+    [InlineData(SurveyQuestionType.MultiChoice, true, "Empty")]
+    [InlineData(SurveyQuestionType.MultiChoice, true, "Blank")]
+    [InlineData(SurveyQuestionType.MultiChoice, true, "Unique")]
+    public async Task Authoring_rejects_unanswerable_or_ambiguous_choice_options(
+        SurveyQuestionType type, bool editing, string defect)
+    {
+        var actor = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: actor);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        OptionInput[] options = defect switch
+        {
+            "Empty" => [],
+            "Blank" => [Opt(" ", "Blank", 1)],
+            _ => [Opt("same", "First", 1), Opt("same", "Second", 2)]
+        };
+        var input = Input(Q("Choose", type, 1, 1, options));
+        var service = CreateService();
+
+        var result = editing
+            ? await service.UpdateAsync(survey.Id, input, new SurveyViewer(actor, false), TestContext.Current.CancellationToken)
+            : await service.CreateAsync(input, actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be("Surveys_Validation_ChoiceOption" + defect);
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateAsync_persists_grid_configuration()
     {

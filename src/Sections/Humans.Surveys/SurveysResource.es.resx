@@ -414,4 +414,7 @@
   <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Cuadrícula</value></data>
   <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Información</value></data>
   <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Voto por orden de preferencia</value></data>
+  <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Cada pregunta de selección debe tener al menos una opción.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Los valores de las opciones de una pregunta de selección no pueden estar vacíos.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Los valores de las opciones de cada pregunta de selección deben ser únicos.</value></data>
 </root>

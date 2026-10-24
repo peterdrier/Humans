@@ -400,4 +400,7 @@
   <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Griglia</value></data>
   <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informazioni</value></data>
   <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Scelta in ordine di preferenza</value></data>
+  <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Ogni domanda a scelta deve avere almeno un’opzione.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>I valori delle opzioni di una domanda a scelta non possono essere vuoti.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>I valori delle opzioni di ogni domanda a scelta devono essere univoci.</value></data>
 </root>

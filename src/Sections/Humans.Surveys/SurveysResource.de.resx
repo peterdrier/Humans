@@ -400,4 +400,7 @@
   <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Raster</value></data>
   <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
   <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Rangwahl</value></data>
+  <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Jede Auswahlfrage muss mindestens eine Option haben.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Die Optionswerte einer Auswahlfrage dürfen nicht leer sein.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Die Optionswerte innerhalb einer Auswahlfrage müssen eindeutig sein.</value></data>
 </root>

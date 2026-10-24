@@ -400,4 +400,7 @@
   <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Graella</value></data>
   <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informació</value></data>
   <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Vot per ordre de preferència</value></data>
+  <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Cada pregunta de selecció ha de tenir almenys una opció.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Els valors de les opcions d’una pregunta de selecció no poden estar buits.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Els valors de les opcions de cada pregunta de selecció han de ser únics.</value></data>
 </root>
