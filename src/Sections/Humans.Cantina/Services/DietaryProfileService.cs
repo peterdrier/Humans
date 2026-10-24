@@ -142,12 +142,15 @@ internal sealed class DietaryProfileService(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // Answers still only on the survivor's legacy profile count as its own, so copy them first rather than let the
-        // source's row overwrite them.
-        if (await repo.GetAsync(mergedToUserId, ct) is null
-            && LegacyProfile(await users.GetRawUserInfoAsync(mergedToUserId, ct)) is { } legacy)
+        // The survivor's legacy answers beat the source's row; a saved empty or declined
+        // row on either account suppresses that account's legacy answers.
+        if (await repo.GetAsync(mergedToUserId, ct) is null)
         {
-            await repo.TryInsertAsync(ToEntity(legacy with { UserId = mergedToUserId }, now), ct);
+            var legacy = LegacyProfile(await users.GetRawUserInfoAsync(mergedToUserId, ct));
+            if (legacy is null && await repo.GetAsync(mergedFromUserId, ct) is null)
+                legacy = LegacyProfile(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
+            if (legacy is not null)
+                await repo.TryInsertAsync(ToEntity(legacy with { UserId = mergedToUserId }, now), ct);
         }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }

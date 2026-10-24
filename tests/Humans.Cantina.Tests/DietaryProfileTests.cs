@@ -267,6 +267,36 @@ public class DietaryProfileTests
         (await _repo.GetAsync(to, Ct))!.DietaryPreference.Should().Be("Vegetarian");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false, false)]
+    [Xunit.InlineData(true, false, false)]
+    [Xunit.InlineData(false, true, false)]
+    [Xunit.InlineData(true, false, true)]
+    [Xunit.InlineData(false, true, true)]
+    public async Task Merge_PreservesLegacySourceAnswers_WithoutRevivingClearedOrDeclinedAnswers(
+        bool sourceHasRow, bool survivorHasRow, bool declined)
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        SeedUser(source, legacyPreference: "Vegan", legacyAllergies: ["Soy"]);
+        SeedUser(target);
+        if (sourceHasRow || survivorHasRow)
+        {
+            var answeredId = sourceHasRow ? source : target;
+            if (declined) await _sut.DeclineAsync(answeredId, Ct);
+            else await _sut.SaveAsync(answeredId, Answers(answeredId, preference: null), Ct);
+        }
+
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+
+        var expected = sourceHasRow || survivorHasRow
+            ? Answers(target, preference: null) with { DeclinedToAnswer = declined }
+            : Answers(target, preference: "Vegan", allergies: ["Soy"]);
+        (await _sut.GetDietaryProfileAsync(target, Ct)).Should().BeEquivalentTo(expected);
+        (await _repo.GetAsync(source, Ct)).Should().BeNull();
+    }
+
     [HumansFact]
     public async Task Merge_TheSurvivorWins_IncludingAnswersStillOnItsLegacyProfile()
     {
