@@ -387,4 +387,12 @@
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>Asociado vote mode cannot change after the survey has opened.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>Could not save the survey. Please try again.</value></data>
   <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Option values must be {0} characters or fewer.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Single choice</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Multiple choice</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Short text</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Long text</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Rating</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Grid</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Information</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Ranked choice</value></data>
 </root>

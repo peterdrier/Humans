@@ -392,4 +392,12 @@
   <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>El mode de votació d’Asociado no es pot canviar després d’obrir-se l’enquesta.</value></data>
   <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar l’enquesta. Torna-ho a provar.</value></data>
   <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Els valors de les opcions han de tenir com a màxim {0} caràcters.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Selecció única</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Selecció múltiple</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Text curt</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Text llarg</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Valoració</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Graella</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informació</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Vot per ordre de preferència</value></data>
 </root>
