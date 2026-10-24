@@ -1485,22 +1485,6 @@ internal sealed class ExpenseReportService(
 
         }, "Error re-queuing Holded push for expense report {ReportId}", reportId);
 
-    internal async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
-        Guid? categoryId, CancellationToken ct = default)
-    {
-        // A report booked to an account outside the budget has no category, so no coordinator.
-        if (categoryId is null) return false;
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
-        if (category is null || category.TeamId is null)
-            return false;
-
-        var team = await teamService.GetTeamAsync(category.TeamId.Value, ct);
-        if (team is null)
-            return false;
-
-        return team.Members.Any(m => m.Role == TeamMemberRole.Coordinator);
-    }
-
     /// <summary>
     /// The service half of the edit gate. A member edits only their own Draft. A finance admin edits on their behalf,
     /// so ownership is waived and the window is Draft, Submitted and CoordinatorEndorsed.
