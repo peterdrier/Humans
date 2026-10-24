@@ -3,7 +3,6 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
-using Humans.Governance.Contracts;
 namespace Humans.Users.Models;
 
 internal sealed class ProfileCardViewModel
@@ -15,8 +14,6 @@ internal sealed class ProfileCardViewModel
     public string? CustomProfilePictureUrl { get; set; }
     public string BurnerName { get; set; } = string.Empty;
     public string? Pronouns { get; set; }
-    public MembershipStatus MembershipStatus { get; set; }
-    public bool IsApproved { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
     public int? BirthdayMonth { get; set; }
@@ -29,8 +26,6 @@ internal sealed class ProfileCardViewModel
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? EmergencyContactRelationship { get; set; }
-    public bool HasPendingConsents { get; set; }
-    public int PendingConsentCount { get; set; }
     public bool HasNobodiesTeamEmail { get; set; }
     public ProfileCardViewMode ViewMode { get; set; }
     public bool CanViewLegalName { get; set; }
