@@ -156,7 +156,7 @@ internal sealed class ProfileViewModel
             if (parsed is null)
                 return null;
 
-            return parsed.Value.ToWeekdayDayMonth();
+            return parsed.Value.ToMonthDay();
         }
     }
 

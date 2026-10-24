@@ -54,7 +54,7 @@ internal sealed class ProfileCardViewModel
             try
             {
                 var date = new LocalDate(4, BirthdayMonth.Value, BirthdayDay.Value);
-                return date.ToWeekdayDayMonth();
+                return date.ToMonthDay();
             }
             catch (ArgumentOutOfRangeException)
             {

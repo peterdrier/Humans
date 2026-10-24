@@ -51,6 +51,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 **Acceptance Criteria:**
 - Date of birth field on profile edit page
 - Only month and day shown in the birthday calendar (privacy)
+- Profile cards likewise show only the localized month and day, without a weekday or year; February 29 is supported.
 - DOB only visible to the member themselves and board members
 - DOB included in GDPR data export
 - Field is optional

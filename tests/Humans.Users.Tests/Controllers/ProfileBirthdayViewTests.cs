@@ -39,6 +39,27 @@ public class ProfileBirthdayViewTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("en", false)]
+    [Xunit.InlineData("es", true)]
+    [Xunit.InlineData("de", true)]
+    [Xunit.InlineData("it", true)]
+    [Xunit.InlineData("fr", true)]
+    [Xunit.InlineData("ca", true)]
+    public void BirthdayDisplay_ContainsOnlyLocalizedMonthAndDay(string language, bool dayFirst)
+    {
+        using var culture = new CultureScope(language);
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
+        var month = CultureInfo.CurrentUICulture.DateTimeFormat.AbbreviatedMonthGenitiveNames[1];
+        var expected = dayFirst ? $"29 {month}" : $"{month} 29";
+
+        new ProfileCardViewModel { BirthdayMonth = 2, BirthdayDay = 29 }
+            .FormattedBirthday.Should().Be(expected);
+        new ProfileViewModel { BirthdayMonth = 2, BirthdayDay = 29 }
+            .FormattedBirthday.Should().Be(expected);
+        CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("en", "(41.2345, -1.2345)")]
     [Xunit.InlineData("es", "(41,2345, -1,2345)")]
     [Xunit.InlineData("de", "(41,2345, -1,2345)")]
