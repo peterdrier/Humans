@@ -106,6 +106,57 @@ public class ShiftProfileControllerTests
             userId, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == tagId));
     }
 
+    [HumansTheory]
+    [InlineData("viewer")]
+    [InlineData("profile")]
+    [InlineData("catalog")]
+    [InlineData("preferences")]
+    public async Task ShiftInfo_Get_PropagatesCancellationFromEveryRead(string boundary)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var shifts = Substitute.For<IShiftManagement>();
+        var profiles = Substitute.For<IShiftVolunteerProfiles>();
+        var view = Substitute.For<IShiftView>();
+        var users = Substitute.For<IUserService>();
+        var userId = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = userId }, [], [], [], null, []);
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "viewer", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(user);
+        });
+        shifts.GetShiftProfileAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "profile", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<ShiftVolunteerProfileInfo?>(null);
+        });
+        profiles.GetTagsAsync(null, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "catalog", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ShiftTagSummary>>([]);
+        });
+        view.GetUserAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "preferences", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(userId));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            RequestAborted = aborted.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+        };
+        var controller = Build(shifts, profiles, view, users,
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(),
+            services.GetRequiredService<IStringLocalizer<ShiftsResource>>(), http);
+
+        var load = () => controller.ShiftInfo();
+        await load.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+    }
+
     private static ShiftProfileController Build(
         IShiftManagement shifts, IShiftVolunteerProfiles profiles, IShiftView view, IUserService users,
         IStringLocalizer<SharedResource> shared, IStringLocalizer<ShiftsResource> shiftsLocalizer, DefaultHttpContext http) =>
