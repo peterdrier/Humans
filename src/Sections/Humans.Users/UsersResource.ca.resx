@@ -764,4 +764,5 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>S’ha desat la teva informació mèdica.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar la informació mèdica.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Sol·licitar ser col·laborador o associat</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Voluntari</value></data>
 </root>

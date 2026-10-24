@@ -764,4 +764,5 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Deine medizinischen Angaben wurden gespeichert.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht gespeichert werden.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Als Colaborador oder Asociado bewerben</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Freiwillige</value></data>
 </root>
