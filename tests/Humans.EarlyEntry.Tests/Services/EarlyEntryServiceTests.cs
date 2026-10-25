@@ -17,29 +17,6 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task Roster_groups_by_user_earliest_date_wins_both_sources_listed_HasMultiple_true()
-    {
-        var userId = Guid.NewGuid();
-        var campGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
-        var shiftGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 1), "Shift: Power");
-
-        var sut = new EarlyEntryService(new[]
-        {
-            ProviderReturning(campGrant),
-            ProviderReturning(shiftGrant),
-        });
-
-        var roster = await sut.GetRosterAsync(Xunit.TestContext.Current.CancellationToken);
-
-        roster.Should().ContainSingle();
-        var row = roster[0];
-        row.UserId.Should().Be(userId);
-        row.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
-        row.Sources.Should().Equal("Camp: Flags", "Shift: Power");
-        row.HasMultiple.Should().BeTrue();
-    }
-
-    [HumansFact]
     public async Task Roster_keeps_one_row_per_user()
     {
         var alice = Guid.NewGuid();
@@ -58,6 +35,7 @@ public class EarlyEntryServiceTests
         var aliceRow = roster.Single(r => r.UserId == alice);
         aliceRow.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 1));
         aliceRow.Sources.Should().Equal("Camp: Flags", "Shift: Power");
+        aliceRow.HasMultiple.Should().BeTrue();
         var bobRow = roster.Single(r => r.UserId == bob);
         bobRow.EarliestEntryDate.Should().Be(new LocalDate(2026, 7, 3));
         bobRow.Sources.Should().Equal("Camp: Flags");
