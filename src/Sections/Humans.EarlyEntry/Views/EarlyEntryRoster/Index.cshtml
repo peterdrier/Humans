@@ -22,7 +22,6 @@ else
         .Column("Enters", x => x.Row.EarliestEntryDate.ToWeekdayDayMonth())
         .Column("Source(s)", x => string.Join(", ", x.Row.Sources))
         .Template("", @<text>@if (item.Row.HasMultiple) { <span class="badge bg-warning text-dark">multiple</span> }</text>, c => c.NoSort())
-        .Empty("No early entry grants for the active event.")
         .Build();
     <partial name="_Table" model="rosterTable" />
 }
