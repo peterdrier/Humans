@@ -132,7 +132,7 @@ public class EarlyEntryServiceTests
     {
         // Nothing outlives the request scope, so a grant written or revoked shows on the
         // next request without the writing section telling this one; within one request
-        // (the home page asks twice) the providers are read once.
+        // the providers are read once.
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var grant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 1), "Camp: Flags");

@@ -14,5 +14,6 @@ Current providers: Camps (`CachingCampService` — camp-lead grants), Shifts
 (`VolunteerTrackingExportService` — confirmed build-shift grants), Teams
 (`TeamService` — role-gated team EE grants). Each reads through its own
 section; fan-out is sequential (`Docs/EarlyEntry.md` Invariants).
-No direct DB access, no cache: `GetRosterAsync` and `GetForUserAsync` both
-fan out on every call, so no section evicts anything here.
+No direct DB access, no cache: `GetRosterAsync` and `GetForUserAsync` share
+one provider pass gathered once per request scope; nothing outlives the
+request, so no section evicts anything here.
