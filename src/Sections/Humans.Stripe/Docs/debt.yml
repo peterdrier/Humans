@@ -1,4 +1,8 @@
 # Section debt ledger for Humans.Stripe. Shape: memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 2
-inbox: []
+next_id: 3
+inbox:
+  - added: 2026-10-26
+    id: STRIPE-2
+    what: "StoreWebhookRegistrationService's endpoint cleanup has no test: the owned-host and path filter, closed-PR deletions before the own-URL deletion, the skipped cross-PR half when the PR list is unknown, and the secret stamp. It builds WebhookEndpointService over new StripeClient(key) with no IHttpClient seam, so pinning it first needs the same optional http seam StripeService already takes. Found by section-doctor's Tests thread."
+    review: panel
