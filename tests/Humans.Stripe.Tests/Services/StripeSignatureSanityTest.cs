@@ -9,9 +9,9 @@ using Stripe;
 namespace Humans.Stripe.Tests.Services;
 
 /// <summary>
-/// Pure sanity check that our test-side webhook signing helper produces a header
-/// that Stripe.NET's EventUtility.ConstructEvent accepts. If this fails, the
-/// integration tests' "valid signature" assertions are testing the wrong thing.
+/// Proves the test-side webhook signing helper produces a header Stripe.NET's
+/// EventUtility.ConstructEvent accepts. If this fails, the signed-payload tests here and in
+/// Humans.Integration.Tests are testing the wrong thing.
 /// </summary>
 public class StripeSignatureSanityTest
 {
