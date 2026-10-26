@@ -9,9 +9,7 @@
 # Stripe — Section Invariants
 
 The payments connector. Wraps the Stripe.NET SDK behind `IStripeService` so no other
-assembly names a Stripe type. Owns no tables and no UI.
-
-Checkout Session creation is marked `[ExternalWrite]` on `IStripeService`; state-changing controllers must detach request cancellation at the call boundary. Stripe’s client honors the token supplied by its caller.
+production assembly names a Stripe type. Owns no tables and no UI.
 
 ## Concepts
 
@@ -25,10 +23,8 @@ Checkout Session creation is marked `[ExternalWrite]` on `IStripeService`; state
   the receipt and PI search.
 - A **checkout webhook event** is one of the four `checkout.session.*` events the Store
   subscribes to, projected to `StoreCheckoutWebhookEvent` after signature verification.
-  The connector categorizes; it does not decide.
 - The **webhook registrar** is a boot-time job that creates the Store webhook endpoint
   for ephemeral environments (PR previews) and sweeps endpoints belonging to closed PRs.
-  Gated on `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`, which is never set in QA or production.
 - The **startup smoke probe** makes one low-risk read per configured key at boot so a
   missing key or missing scope surfaces in the log rather than at the first real payment.
 
@@ -60,76 +56,71 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 ## Invariants
 
-- No Stripe.NET SDK type appears on `Contracts/` — verified by
+- No Stripe.NET SDK type appears on `Contracts/`; consumers see only `StripePaymentDetails`,
+  `StoreCheckoutWebhookEvent` and `StoreCheckoutSessionData` — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
 - `Humans.Stripe` is the only production project with a `Stripe.net` package reference —
-  convention only; no test enforces it (nobodies-collective/Humans#866 retired the one that did).
+  convention only; no test enforces it.
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
-- `ParseStoreCheckoutEvent` returns `null` for an invalid signature, unsupported session currency or an unset
-  signing secret; it never throws and never partially trusts a payload.
-- The network reads return `null` for exactly the cases this section checks, and for
-  nothing else. `GetPaymentDetailsAsync`: the Tickets key is unset, the key lacks the scope
-  (`permission_error`), or Stripe answered and the PaymentIntent has no charge or its balance
-  transaction is not available yet after asynchronous capture. A missing balance transaction
-  never becomes an explicit zero; a present transaction with no fee entries still reports zero.
-  `ListStoreCheckoutSessionsAsync`: the Store key is unset or lacks the read scope.
-  **Every other Stripe failure propagates** — an authentication error, a rate limit, a
-  transport failure, cancellation. `null` never means "the call failed": it means the section
-  checked and has nothing to hand back, either because the configuration says Stripe cannot be
-  asked or — `GetPaymentDetailsAsync` only — because Stripe was asked and the intent carries no
-  charge or balance transaction to report fees from.
-- `ListStoreCheckoutSessionsAsync`'s `null` is distinct from an empty list, so a caller cannot
-  mistake an unreadable account for an account with no sessions and false-flag recorded
-  payments as orphans.
+- Checkout Session creation is `[ExternalWrite]`; a state-changing caller detaches request
+  cancellation at the call boundary.
+- Reads return `null` only for what the section checks: the key is unset or lacks its scope
+  (`permission_error`); for `ParseStoreCheckoutEvent`, the signing secret is unset, the signature
+  is invalid or the session lacks EUR; for `GetPaymentDetailsAsync` alone, the PaymentIntent has
+  no charge or its balance transaction is not available yet after asynchronous capture. **Every
+  other Stripe failure propagates** — an authentication error, a rate limit, a transport failure,
+  cancellation — and `ParseStoreCheckoutEvent` never throws. An empty list means Stripe answered
+  with nothing, so reconciliation cannot mistake an unreadable account for one with no sessions
+  and false-flag recorded payments as orphans.
+- A missing balance transaction never becomes an explicit zero; a present transaction with no
+  fee entries reports zero.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
-- EUR ↔ minor units round half away from zero, both directions, in one place
-  (`ToStripeMinorUnits` / `FromStripeMinorUnits`).
-- Ticket fee reads require explicit EUR currency, case-insensitively, on the balance
-  transaction and every fee entry. The charge's currency cannot establish the settlement
-  currency. Missing or foreign currencies throw before returning any fee amounts.
-- Ticket fee reads keep every Stripe fee bucket: `stripe_fee` and `payment_method_passthrough_fee`
-  are `StripeFee` (processing cost), `application_fee` is `ApplicationFee`, `tax` (VAT Stripe
-  charges on its fees) is `FeeTax`, `withheld_tax` is `WithheldTax`. When the buckets do not sum
-  to the balance transaction's total fee (an unrecognised fee type), the read logs a Warning and
-  still returns the known buckets.
-- Store session reads require explicit EUR currency, case-insensitively, before projecting `AmountEur`. Webhooks reject foreign or missing currency; reconciliation rejects the whole list instead of silently dropping sessions. Adaptive Pricing's customer presentment currency does not replace the integration currency or amount.
-- The section references no other section. That is what makes `Humans.Store → Humans.Stripe`
-  and `Humans.Tickets → Humans.Stripe` acyclic and a `.Contracts` leaf unnecessary.
+- EUR → minor units rounds half away from zero; minor units → EUR is exact. Both conversions
+  live only in `ToStripeMinorUnits` / `FromStripeMinorUnits`.
+- Every amount read requires explicit EUR, case-insensitively. Ticket fee reads require it on
+  the balance transaction and every fee entry — the charge's currency cannot establish the
+  settlement currency — and throw before returning any amount. Store session reads require it
+  before projecting `AmountEur`: webhooks reject the event, reconciliation rejects the whole list
+  rather than silently dropping sessions. Adaptive Pricing's presentment currency never replaces
+  the integration currency or amount.
+- Ticket fee reads keep every Stripe fee bucket (the mapping is on `StripePaymentDetails`). When
+  the buckets do not sum to the balance transaction's total fee (an unrecognised fee type), the
+  read logs a Warning and still returns the known buckets.
 
 ## Negative Access Rules
 
-- A consumer **cannot** receive a Stripe SDK object: it sees only `StripePaymentDetails`,
-  `StoreCheckoutWebhookEvent` and `StoreCheckoutSessionData`.
 - This section **cannot** write any table — it holds no `DbContext` and no repository.
 - This section **cannot** decide what a payment means. Categorizing an event is its job;
   recording, transitioning and reconciling a payment is Store's.
 - The webhook registrar **cannot** run outside a `*.n.burn.camp` host, and **cannot** run
-  at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`.
-- The registrar's 15-second deadline includes the paged GitHub open-PR lookup. A pending read stops being awaited when the deadline expires; cancellation aborts registration rather than being treated as an unavailable PR list.
+  at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` (never set in QA or production).
 - Refunds, payouts and chargebacks **cannot** be issued from the app — they are
   dashboard-manual by design
   ([`memory/architecture/refunds-manual-via-dashboard.md`](../../../../memory/architecture/refunds-manual-via-dashboard.md)).
 
 ## Triggers
 
-- At boot, the smoke probe reads one PaymentIntent (Tickets key) and lists one Checkout
-  Session (Store key), logging a warning per unconfigured or under-scoped key. It never
-  blocks or fails startup.
+- At boot, the smoke probe lists one PaymentIntent (Tickets key) and one Checkout Session
+  (Store key), logging a warning per unconfigured or under-scoped key. It never blocks or
+  fails startup.
 - At boot in an ephemeral environment, the registrar lists the account's webhook endpoints
   once and, from that one listing, deletes any `{N}.n.burn.camp` endpoint whose PR `{N}` is no
   longer open and then any endpoint already pointing at this host's URL — then creates a fresh
   one and stamps its signing secret into `StripeSettings` in memory. The own-URL deletion is
   ordered last, immediately before the create, so an abort mid-cleanup cannot leave this host
   without an endpoint. The cross-PR half is skipped when the open-PR list cannot be fetched;
-  the own-URL half needs no PR list. The registrar deadline still aborts the whole sequence.
+  the own-URL half needs no PR list. A 15-second deadline, which includes the paged GitHub
+  open-PR lookup, aborts the whole sequence; cancellation is never read as an unavailable PR list.
 - On a `permission_error` from any call, the connector logs which key is missing which
   scope and either returns `null` (reads) or rethrows (checkout creation).
 
 ## Cross-Section Dependencies
 
-- **None outbound.** The section names no other section's types.
+- **None outbound.** The section references no other section, which is what keeps
+  `Humans.Store → Humans.Stripe` and `Humans.Tickets → Humans.Stripe` acyclic and a
+  `.Contracts` leaf unnecessary.
 - Inbound: **Store** injects `IStripeService` for checkout creation, webhook parsing and
   reconciliation (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
   fee enrichment on `TicketOrder` (`TicketSyncService`).
@@ -140,16 +131,18 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 **Owned tables:** None — connector section.
 **Status:** (A) Migrated (nobodies-collective/Humans#866).
 
-### Cross-section read interface
+### Public contract
 
-| Read interface | Methods | Notes |
+| Public interface | Methods | Notes |
 |---|---:|---|
-| `IStripeService` | 4 + 3 flags | The whole outward surface. Read/write is not split: the connector's "write" is a call to Stripe, not to a table, so there is no `I<Section>Write` to separate out. |
+| `IStripeService` | 4 + 3 flags | The whole outward surface. |
+| `I<Section>Write` | — | The connector's one write is a call to Stripe, not to a table. |
 
+- Services never import `Microsoft.EntityFrameworkCore`; there is no repository and no display stitching.
+- **Decorator decision** — no caching decorator: every call exists to see Stripe's current state.
 - The section is plain `Microsoft.NET.Sdk` plus a `FrameworkReference` (for `IHostedService`
   and `IOptions`); no Razor, no `Humans.UI`, no `Humans.Infrastructure`.
 - **Architecture test** — `tests/Humans.Stripe.Tests/Architecture/StripeConnectorArchitectureTests.cs`.
-- **Namespace hazard:** the section is named after the vendor, so inside
-  `Humans.Stripe.*` the bare name `Stripe` binds to the section, not to the SDK. `using
-  Stripe;` at compilation-unit level resolves against the global namespace and is safe;
-  an inline `Stripe.Xxx` qualification is not. Use simple type names, or `global::Stripe.Xxx`.
+- **Namespace hazard:** inside `Humans.Stripe.*` the bare name `Stripe` binds to the section,
+  not to the SDK. `using Stripe;` at compilation-unit level is safe; an inline `Stripe.Xxx`
+  qualification is not. Use simple type names, or `global::Stripe.Xxx`.
