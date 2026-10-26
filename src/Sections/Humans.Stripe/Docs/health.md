@@ -139,4 +139,4 @@ Docs/                         Stripe.md (invariants), data-access.md, health.md 
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-04 | First doctor pass — one real bug (the only read that threw where its siblings return `null`, unreachable today because its one caller guards), the registrar's duplicate endpoint listing collapsed, and the prose trimmed of a shipped-work TODO, a type that does not exist and the G5 migration's provenance | peterdrier/Humans#1588 |
-| 2 | 2026-10-26 | The null-versus-propagate rule pinned on every network call, the two smoke probes folded into one pipeline, the registrar on the SDK's event names, and Stripe.md's false rounding claim corrected | pending |
+| 2 | 2026-10-26 | The null-versus-propagate rule pinned on every network call, the two smoke probes folded into one pipeline, the registrar on the SDK's event names, and Stripe.md's false rounding claim corrected | peterdrier/Humans#2160 |
