@@ -170,13 +170,13 @@ internal interface ITeamManagementService : ITeamManagement
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    Task<TeamMember> ApproveJoinRequestAsync(
+    Task<TeamJoinReviewResult> ApproveJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string? notes,
         CancellationToken cancellationToken = default);
 
-    Task RejectJoinRequestAsync(
+    Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string reason,
@@ -347,3 +347,8 @@ internal sealed record TeamMembershipMutationResult(bool Succeeded, string? Erro
 internal sealed record TeamJoinResult(TeamJoinOutcome? Outcome = null, string? ErrorKey = null);
 internal sealed record TeamJoinRequestResult(TeamJoinRequest? Request = null, string? ErrorKey = null);
 internal sealed record TeamDirectJoinResult(TeamMember? Member = null, string? ErrorKey = null);
+
+internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}

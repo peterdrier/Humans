@@ -1583,19 +1583,20 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task RejectJoinRequestAsync_RequestNotFound_Throws()
+    public async Task RejectJoinRequestAsync_RequestNotFound_ReturnsRefusal()
     {
         var approver = SeedUser(displayName: "Approver");
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var act = () => _service.RejectJoinRequestAsync(Guid.NewGuid(), approver.Id, "reason", TestContext.Current.CancellationToken);
+        var result = await _service.RejectJoinRequestAsync(Guid.NewGuid(), approver.Id, "reason", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*not found*");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task RejectJoinRequestAsync_ApproverLacksPermission_Throws()
+    public async Task RejectJoinRequestAsync_ApproverLacksPermission_ReturnsRefusal()
     {
         var stranger = SeedUser(displayName: "Stranger");
         var requester = SeedUser(displayName: "Requester");
@@ -1603,14 +1604,15 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var request = SeedJoinRequest(team.Id, requester.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var act = () => _service.RejectJoinRequestAsync(request.Id, stranger.Id, "no thanks", TestContext.Current.CancellationToken);
+        var result = await _service.RejectJoinRequestAsync(request.Id, stranger.Id, "no thanks", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*permission*");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task RejectJoinRequestAsync_RequestAlreadyApproved_Throws()
+    public async Task RejectJoinRequestAsync_RequestAlreadyApproved_ReturnsRefusal()
     {
         var coordinator = SeedUser(displayName: "Coordinator");
         var requester = SeedUser(displayName: "Requester");
@@ -1619,10 +1621,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var request = SeedJoinRequest(team.Id, requester.Id, TeamJoinRequestStatus.Approved);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var act = () => _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "late", TestContext.Current.CancellationToken);
+        var result = await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "late", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*pending*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*pending*");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1635,8 +1638,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var request = SeedJoinRequest(team.Id, requester.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "out of capacity", TestContext.Current.CancellationToken);
+        var result = await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, "out of capacity", TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
         ClearAllTrackers();
         var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(TeamJoinRequestStatus.Rejected);
@@ -1794,7 +1798,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task ApproveJoinRequestAsync_ApproverLacksPermission_Throws()
+    public async Task ApproveJoinRequestAsync_ApproverLacksPermission_ReturnsRefusal()
     {
         var stranger = SeedUser(displayName: "Stranger");
         var requester = SeedUser(displayName: "Requester");
@@ -1802,10 +1806,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var request = SeedJoinRequest(team.Id, requester.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var act = () => _service.ApproveJoinRequestAsync(request.Id, stranger.Id, null, TestContext.Current.CancellationToken);
+        var result = await _service.ApproveJoinRequestAsync(request.Id, stranger.Id, null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*permission*");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
         (await TeamsDb.TeamMembers.AnyAsync(tm => tm.UserId == requester.Id, TestContext.Current.CancellationToken))
             .Should().BeFalse();
     }
@@ -1820,8 +1825,10 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var request = SeedJoinRequest(team.Id, requester.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var member = await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, "welcome", TestContext.Current.CancellationToken);
+        var result = await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, "welcome", TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
+        var member = result.Member!;
         member.UserId.Should().Be(requester.Id);
         member.Role.Should().Be(TeamMemberRole.Member);
 

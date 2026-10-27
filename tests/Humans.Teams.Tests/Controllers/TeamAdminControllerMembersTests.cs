@@ -69,6 +69,8 @@ public class TeamAdminControllerMembersTests
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>()
         };
+        teams.ApproveJoinRequestAsync(requestId, userId, Arg.Any<string?>()).Returns(new TeamJoinReviewResult());
+        teams.RejectJoinRequestAsync(requestId, userId, Arg.Any<string>()).Returns(new TeamJoinReviewResult());
         var form = new ApproveRejectRequestModel { Notes = new string('x', length) };
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
 
@@ -262,6 +264,8 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
+    [InlineData("approve", false)]
+    [InlineData("approve", true)]
     [InlineData("reject", false)]
     [InlineData("remove", false)]
     [InlineData("add", false)]
@@ -282,8 +286,15 @@ public class TeamAdminControllerMembersTests
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         const string reason = "The requested membership change is not permitted";
-        Exception failure = unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason);
-        teams.RejectJoinRequestAsync(targetId, actorId, "Reason").Returns(Task.FromException(failure));
+        Exception failure = unexpected
+            ? action is "approve" or "reject" ? new InvalidOperationException("Private dependency failure") : new IOException("Database unavailable")
+            : new InvalidOperationException(reason);
+        teams.ApproveJoinRequestAsync(targetId, actorId, "Reason").Returns(unexpected
+            ? Task.FromException<TeamJoinReviewResult>(failure)
+            : Task.FromResult(new TeamJoinReviewResult(Refusal: reason)));
+        teams.RejectJoinRequestAsync(targetId, actorId, "Reason").Returns(unexpected
+            ? Task.FromException<TeamJoinReviewResult>(failure)
+            : Task.FromResult(new TeamJoinReviewResult(Refusal: reason)));
         teams.RemoveMemberAsync(team.Id, targetId, actorId).Returns(unexpected
             ? Task.FromException<TeamMemberRemovalResult>(new InvalidOperationException("Private dependency failure"))
             : Task.FromResult(new TeamMemberRemovalResult("Teams_RemoveMember_Permission")));
@@ -308,6 +319,7 @@ public class TeamAdminControllerMembersTests
         };
         Task<IActionResult> ActAsync() => action switch
         {
+            "approve" => controller.ApproveRequest(team.Slug, targetId, new ApproveRejectRequestModel { Notes = "Reason" }),
             "reject" => controller.RejectRequest(team.Slug, targetId, new ApproveRejectRequestModel { Notes = "Reason" }),
             "remove" => controller.RemoveMember(team.Slug, targetId),
             _ => controller.AddMember(team.Slug, new AddMemberModel { UserId = targetId })
@@ -315,7 +327,7 @@ public class TeamAdminControllerMembersTests
         if (unexpected)
         {
             Func<Task> act = async () => await ActAsync();
-            if (string.Equals(action, "remove", StringComparison.Ordinal)) await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private dependency failure");
+            if (action is "remove" or "approve" or "reject") await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private dependency failure");
             else await act.Should().ThrowAsync<IOException>();
             logger.ReceivedCalls().Should().BeEmpty();
             return;

@@ -49,15 +49,16 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        try
+        var result = await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+        if (result.Succeeded)
         {
-            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(localizer["Teams_TeamAdmin_RequestApproved"].Value);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        else
         {
-            logger.LogWarning(ex, "Failed to approve join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to approve join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
+                requestId, team.Id, user.Id, result.Refusal);
+            SetError(result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -86,15 +87,16 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        try
+        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes!);
+        if (result.Succeeded)
         {
-            await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(localizer["Teams_TeamAdmin_RequestRejected"].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}", requestId, team.Id, user.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
+                requestId, team.Id, user.Id, result.Refusal);
+            SetError(result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });

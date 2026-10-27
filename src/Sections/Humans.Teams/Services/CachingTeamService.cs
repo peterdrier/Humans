@@ -222,7 +222,7 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.WithdrawJoinRequestAsync(requestId, userId, cancellationToken));
 
-    public Task<TeamMember> ApproveJoinRequestAsync(
+    public Task<TeamJoinReviewResult> ApproveJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string? notes,
@@ -230,7 +230,7 @@ internal sealed class CachingTeamService(
         MutateAsync(inner => inner.ApproveJoinRequestAsync(
             requestId, approverUserId, notes, cancellationToken));
 
-    public Task RejectJoinRequestAsync(
+    public Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string reason,

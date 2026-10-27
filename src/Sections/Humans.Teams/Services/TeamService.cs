@@ -899,21 +899,22 @@ internal sealed class TeamService(
         return new TeamMembershipMutationResult(true);
     }
 
-    public async Task<TeamMember> ApproveJoinRequestAsync(
+    public async Task<TeamJoinReviewResult> ApproveJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string? notes,
         CancellationToken cancellationToken = default)
     {
-        var request = await repo.FindRequestWithTeamForMutationAsync(requestId, cancellationToken)
-            ?? throw new InvalidOperationException("Join request not found");
+        var request = await repo.FindRequestWithTeamForMutationAsync(requestId, cancellationToken);
+        if (request is null)
+            return new(Refusal: "Join request not found");
 
         var canApprove = await CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
         if (!canApprove)
-            throw new InvalidOperationException("User does not have permission to approve requests for this team");
+            return new(Refusal: "User does not have permission to approve requests for this team");
 
         if (request.Status != TeamJoinRequestStatus.Pending)
-            throw new InvalidOperationException("Can only approve pending requests");
+            return new(Refusal: "Can only approve pending requests");
         request.Status = TeamJoinRequestStatus.Approved;
         request.ReviewedByUserId = approverUserId;
         request.ReviewNotes = notes;
@@ -947,7 +948,7 @@ internal sealed class TeamService(
         }
 
         if (!success)
-            throw new InvalidOperationException("User is already a member of this team");
+            return new(Refusal: "User is already a member of this team");
 
         // The mutation is committed; finish its notices even if the browser disconnects.
         cancellationToken = CancellationToken.None;
@@ -962,7 +963,7 @@ internal sealed class TeamService(
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
         await SendJoinRequestApprovedNotificationAsync(request.Team, member.UserId, cancellationToken);
 
-        return member;
+        return new(Member: member);
     }
 
     private async Task SendJoinRequestApprovedNotificationAsync(
@@ -991,23 +992,24 @@ internal sealed class TeamService(
         }
     }
 
-    public async Task RejectJoinRequestAsync(
+    public async Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string reason,
         CancellationToken cancellationToken = default)
     {
-        var request = await repo.FindRequestWithTeamForMutationAsync(requestId, cancellationToken)
-            ?? throw new InvalidOperationException("Join request not found");
+        var request = await repo.FindRequestWithTeamForMutationAsync(requestId, cancellationToken);
+        if (request is null)
+            return new(Refusal: "Join request not found");
 
         var canApprove = await CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
         if (!canApprove)
-            throw new InvalidOperationException("User does not have permission to reject requests for this team");
+            return new(Refusal: "User does not have permission to reject requests for this team");
 
         var now = clock.GetCurrentInstant();
         var rejected = await repo.RejectRequestAsync(requestId, approverUserId, reason, now, cancellationToken);
         if (!rejected)
-            throw new InvalidOperationException("Can only reject pending requests");
+            return new(Refusal: "Can only reject pending requests");
 
         // The mutation is committed; finish its notices even if the browser disconnects.
         cancellationToken = CancellationToken.None;
@@ -1019,6 +1021,7 @@ internal sealed class TeamService(
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
         await SendJoinRequestRejectedNotificationAsync(request.Team, request.UserId, cancellationToken);
+        return new();
     }
 
     private async Task SendJoinRequestRejectedNotificationAsync(
