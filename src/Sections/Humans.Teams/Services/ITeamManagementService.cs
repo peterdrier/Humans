@@ -216,7 +216,7 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Bypasses the join-request workflow.</summary>
-    Task<TeamMember> AddMemberToTeamAsync(
+    Task<TeamJoinReviewResult> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,

@@ -296,16 +296,14 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        try
+        var result = await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
+            logger.LogWarning("Refused member addition {MemberUserId} to team {TeamId} by user {UserId}: {Reason}", model.UserId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess(localizer["Teams_TeamAdmin_MemberAdded"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to add member {MemberUserId} to team {TeamId} by user {UserId}: {Reason}", model.UserId, team.Id, user.Id, ex.Message);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Members), new { slug });
     }

@@ -1140,8 +1140,12 @@ internal sealed class TeamService(
         {
             if (targetUserId == userId)
                 throw new InvalidOperationException("Cannot merge a membership into itself");
-            mergeTarget = await repo.FindActiveMemberForMutationAsync(teamId, targetUserId, cancellationToken)
-                ?? await AddMemberToTeamAsync(teamId, targetUserId, actorUserId, cancellationToken);
+            mergeTarget = await repo.FindActiveMemberForMutationAsync(teamId, targetUserId, cancellationToken);
+            if (mergeTarget is null)
+            {
+                var addition = await AddMemberToTeamAsync(teamId, targetUserId, actorUserId, cancellationToken);
+                mergeTarget = addition.Succeeded ? addition.Member! : throw new InvalidOperationException(addition.Refusal);
+            }
         }
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
@@ -1192,22 +1196,26 @@ internal sealed class TeamService(
         return new TeamMemberRemovalResult(key, message);
     }
 
-    public async Task<TeamMember> AddMemberToTeamAsync(
+    public async Task<TeamJoinReviewResult> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+        var team = await repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is null)
+            return new(Refusal: $"Team {teamId} not found");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot add members to system teams manually");
+            return new(Refusal: "Cannot add members to system teams manually");
 
-        targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
+        var target = await UserService.GetUserInfoAsync(targetUserId, cancellationToken);
+        if (target is null || target.IsTombstone)
+            return new(Refusal: "Cannot add a missing, deleted or merged account to a team.");
+        targetUserId = target.Id;
         var isExisting = await repo.IsActiveMemberAsync(teamId, targetUserId, cancellationToken);
         if (isExisting)
-            throw new InvalidOperationException("User is already a member of this team");
+            return new(Refusal: "User is already a member of this team");
 
         // A pending request is resolved by approving it with the membership.
         var pendingRequest = await repo.FindUserPendingRequestAsync(teamId, targetUserId, cancellationToken);
@@ -1258,7 +1266,7 @@ internal sealed class TeamService(
         }
 
         if (!success)
-            throw new InvalidOperationException("User is already a member of this team");
+            return new(Refusal: "User is already a member of this team");
 
         // The mutation is committed; finish its notices even if the browser disconnects.
         cancellationToken = CancellationToken.None;
@@ -1271,7 +1279,7 @@ internal sealed class TeamService(
 
         await SendAddedToTeamEmailAsync(targetUserId, team, cancellationToken);
 
-        return member;
+        return new(Member: member);
     }
 
     public async Task SetMemberRoleAsync(

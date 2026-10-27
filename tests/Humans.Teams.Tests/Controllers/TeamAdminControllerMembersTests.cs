@@ -332,7 +332,7 @@ public class TeamAdminControllerMembersTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         const string reason = "The requested membership change is not permitted";
         Exception failure = unexpected
-            ? action is "approve" or "reject" ? new InvalidOperationException("Private dependency failure") : new IOException("Database unavailable")
+            ? action is "approve" or "reject" or "add" ? new InvalidOperationException("Private dependency failure") : new IOException("Database unavailable")
             : new InvalidOperationException(reason);
         teams.ApproveJoinRequestAsync(targetId, actorId, "Reason").Returns(unexpected
             ? Task.FromException<TeamJoinReviewResult>(failure)
@@ -343,7 +343,9 @@ public class TeamAdminControllerMembersTests
         teams.RemoveMemberAsync(team.Id, targetId, actorId).Returns(unexpected
             ? Task.FromException<TeamMemberRemovalResult>(new InvalidOperationException("Private dependency failure"))
             : Task.FromResult(new TeamMemberRemovalResult("Teams_RemoveMember_Permission")));
-        teams.AddMemberToTeamAsync(team.Id, targetId, actorId).Returns(Task.FromException<TeamMember>(failure));
+        teams.AddMemberToTeamAsync(team.Id, targetId, actorId).Returns(unexpected
+            ? Task.FromException<TeamJoinReviewResult>(failure)
+            : Task.FromResult(new TeamJoinReviewResult(Refusal: reason)));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -372,7 +374,7 @@ public class TeamAdminControllerMembersTests
         if (unexpected)
         {
             Func<Task> act = async () => await ActAsync();
-            if (action is "remove" or "approve" or "reject") await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private dependency failure");
+            if (action is "remove" or "approve" or "reject" or "add") await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private dependency failure");
             else await act.Should().ThrowAsync<IOException>();
             logger.ReceivedCalls().Should().BeEmpty();
             return;

@@ -2845,11 +2845,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         {
             if (assignRole)
                 await _service.AssignToRoleAsync(definition.Id, targetId, actor.Id, TestContext.Current.CancellationToken);
-            else
-                await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken);
         };
 
-        await add.Should().ThrowAsync<InvalidOperationException>();
+        if (assignRole)
+            await add.Should().ThrowAsync<InvalidOperationException>();
+        else
+            (await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
+                .Refusal.Should().Contain("missing, deleted or merged");
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await TeamsDb.TeamRoleAssignments.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
@@ -2873,13 +2875,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         if (alreadyMember)
         {
-            var add = () => _service.AddMemberToTeamAsync(team.Id, sourceId, actor.Id, TestContext.Current.CancellationToken);
-            await add.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already a member*");
+            var result = await _service.AddMemberToTeamAsync(team.Id, sourceId, actor.Id, TestContext.Current.CancellationToken);
+            result.Refusal.Should().Contain("already a member");
             AuditLog.ReceivedCalls().Should().BeEmpty();
         }
         else
             (await _service.AddMemberToTeamAsync(team.Id, sourceId, actor.Id, TestContext.Current.CancellationToken))
-                .UserId.Should().Be(target.Id);
+                .Member!.UserId.Should().Be(target.Id);
 
         TeamsDb.ChangeTracker.Clear();
         var member = await TeamsDb.TeamMembers.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
@@ -2924,11 +2926,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var result = await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        result.Should().NotBeNull();
-        result.TeamId.Should().Be(team.Id);
-        result.UserId.Should().Be(target.Id);
-        result.Role.Should().Be(TeamMemberRole.Member);
-        result.LeftAt.Should().BeNull();
+        result.Succeeded.Should().BeTrue();
+        result.Member!.TeamId.Should().Be(team.Id);
+        result.Member!.UserId.Should().Be(target.Id);
+        result.Member!.Role.Should().Be(TeamMemberRole.Member);
+        result.Member!.LeftAt.Should().BeNull();
 
         var memberInDb = await TeamsDb.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == target.Id && tm.LeftAt == null, TestContext.Current.CancellationToken);
@@ -3009,7 +3011,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberToTeamAsync_AlreadyMember_Throws()
+    public async Task AddMemberToTeamAsync_AlreadyMember_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
@@ -3017,24 +3019,25 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var act = () => _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
+        var result = await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already a member*");
+        result.Refusal.Should().Contain("already a member");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task AddMemberToTeamAsync_SystemTeam_Throws()
+    public async Task AddMemberToTeamAsync_SystemTeam_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var act = () => _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
+        var result = await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
+        result.Refusal.Should().Contain("system team");
+        (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

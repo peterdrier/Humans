@@ -299,7 +299,7 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.GetAdminTeamListAsync(page, pageSize, cancellationToken));
 
-    public Task<TeamMember> AddMemberToTeamAsync(
+    public Task<TeamJoinReviewResult> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,
