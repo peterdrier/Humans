@@ -3,9 +3,9 @@ import {
   loginAsBoard,
   loginAsConsentCoordinator,
   loginAsFinanceAdmin,
-  loginAsHumanAdmin,
-  loginAsTicketAdmin,
-  loginAsVolunteerCoordinator,
+  loginAsUsersAdmin,
+  loginAsTicketsAdmin,
+  loginAsShiftsAdmin,
 } from '../helpers/auth';
 
 /**
@@ -52,14 +52,14 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'humanAdmin',
-    login: loginAsHumanAdmin,
+    login: loginAsUsersAdmin,
     groups: [
       { label: 'Users', items: ['Humans', 'Roles'] },
     ],
   },
   {
     name: 'ticketAdmin',
-    login: loginAsTicketAdmin,
+    login: loginAsTicketsAdmin,
     groups: [
       { label: 'Gate', items: ['Terminal'] },
       { label: 'Scanner', items: ['Scanner'] },
@@ -75,7 +75,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'volunteerCoordinator',
-    login: loginAsVolunteerCoordinator,
+    login: loginAsShiftsAdmin,
     groups: [
       { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Onboarding', items: ['Review'] },

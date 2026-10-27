@@ -47,7 +47,7 @@ test.describe('Profile (02-profiles)', () => {
   });
 
   // issue-659's positive case lives in EmailGridFlowTests instead: the Verify button and
-  // the action behind it are both AdminOnly, so HumanAdmin/Board reach the page without
+  // the action behind it are both AdminOnly, so UsersAdmin/Board reach the page without
   // them and there is no E2E persona left for it since #1332. The negative half stays —
   // a volunteer still serves.
   test('issue-659: non-admin POST to AdminVerifyEmail is blocked', async ({ page }) => {

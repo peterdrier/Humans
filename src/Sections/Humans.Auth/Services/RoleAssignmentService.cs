@@ -264,7 +264,7 @@ internal sealed class RoleAssignmentService(
         // when it throws.
         try
         {
-            await repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
+            await repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, catalog.Canonical, cancellationToken);
         }
         finally
         {

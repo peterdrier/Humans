@@ -76,11 +76,13 @@ internal interface IRoleAssignmentRepository : IRepository
 
     /// <summary>
     /// A source row active at <paramref name="updatedAt"/> for a role the target also holds then is dropped (the
-    /// target's row wins); every other source row moves, so history is kept. One SaveChanges.
+    /// target's row wins); every other source row moves, so history is kept. One SaveChanges. Roles compare by
+    /// <paramref name="canonicalName"/>, so a row still stored under a former role name matches the current one.
     /// </summary>
     Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,
+        Func<string, string> canonicalName,
         CancellationToken ct = default);
 }

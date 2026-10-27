@@ -12,10 +12,10 @@ const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-d
 // in-process instead, by tests/Humans.Integration.Tests (DevPersona.Admin).
 export const PERSONAS = [
   'volunteer', 'board', 'consent-coordinator', 'teams-admin',
-  'camp-admin', 'ticket-admin', 'no-info-admin', 'volunteer-coordinator',
-  'human-admin', 'finance-admin', 'feedback-admin', 'city-planning',
+  'camps-admin', 'tickets-admin', 'shifts-no-info', 'shifts-admin',
+  'users-admin', 'finance-admin', 'feedback-admin', 'city-planning',
   'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
-  'e-e-team-admin', 'barrio-1-lead',
+  'early-entry-admin', 'barrio-1-lead',
 ] as const;
 
 // Resolve relative to THIS file (not cwd): tests run via --config from a different cwd.
@@ -82,11 +82,11 @@ export const loginAsVolunteer = (page: Page) => loginAs(page, 'volunteer');
 export const loginAsBoard = (page: Page) => loginAs(page, 'board');
 export const loginAsConsentCoordinator = (page: Page) => loginAs(page, 'consent-coordinator');
 export const loginAsTeamsAdmin = (page: Page) => loginAs(page, 'teams-admin');
-export const loginAsCampAdmin = (page: Page) => loginAs(page, 'camp-admin');
-export const loginAsTicketAdmin = (page: Page) => loginAs(page, 'ticket-admin');
-export const loginAsNoInfoAdmin = (page: Page) => loginAs(page, 'no-info-admin');
-export const loginAsVolunteerCoordinator = (page: Page) => loginAs(page, 'volunteer-coordinator');
-export const loginAsHumanAdmin = (page: Page) => loginAs(page, 'human-admin');
+export const loginAsCampsAdmin = (page: Page) => loginAs(page, 'camps-admin');
+export const loginAsTicketsAdmin = (page: Page) => loginAs(page, 'tickets-admin');
+export const loginAsShiftsNoInfo = (page: Page) => loginAs(page, 'shifts-no-info');
+export const loginAsShiftsAdmin = (page: Page) => loginAs(page, 'shifts-admin');
+export const loginAsUsersAdmin = (page: Page) => loginAs(page, 'users-admin');
 export const loginAsFinanceAdmin = (page: Page) => loginAs(page, 'finance-admin');
 export const loginAsFeedbackAdmin = (page: Page) => loginAs(page, 'feedback-admin');
 export const loginAsCityPlanning = (page: Page) => loginAs(page, 'city-planning');
@@ -101,7 +101,7 @@ export const loginAsCoordinator = (page: Page) => loginAs(page, 'coordinator');
 export const loginAsEventsAdmin = (page: Page) => loginAs(page, 'events-admin');
 export const loginAsStoreAdmin = (page: Page) => loginAs(page, 'store-admin');
 export const loginAsCantinaAdmin = (page: Page) => loginAs(page, 'cantina-admin');
-export const loginAsEETeamAdmin = (page: Page) => loginAs(page, 'e-e-team-admin');
+export const loginAsEarlyEntryAdmin = (page: Page) => loginAs(page, 'early-entry-admin');
 export const loginAsBarrioLead = (page: Page) => loginAs(page, 'barrio-1-lead');
 
 /**

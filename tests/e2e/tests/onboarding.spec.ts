@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsConsentCoordinator, loginAsVolunteerCoordinator, loginAsVolunteer, expectBlocked } from '../helpers/auth';
+import { loginAsConsentCoordinator, loginAsShiftsAdmin, loginAsVolunteer, expectBlocked } from '../helpers/auth';
 
 test.describe('Onboarding (16-onboarding-pipeline + 17-coordinator-roles)', () => {
   test('US-17.2: consent coordinator sees review queue with filter tabs', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('Onboarding (16-onboarding-pipeline + 17-coordinator-roles)', () =
   });
 
   test('US-17.3: volunteer coordinator can view queue but no action buttons', async ({ page }) => {
-    await loginAsVolunteerCoordinator(page);
+    await loginAsShiftsAdmin(page);
     await page.goto('/OnboardingReview');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();

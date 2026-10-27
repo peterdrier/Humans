@@ -488,6 +488,26 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     [HumansFact]
+    public async Task ReassignAsync_DropsASourceRowThatMatchesTheSurvivorUnderAFormerName()
+    {
+        // A merge between deploy and the rename migration: the survivor already holds the role under its current
+        // name, the archived account under the former one. Comparing raw names would leave two active rows for one
+        // role, and ending one would not revoke the other.
+        var ct = TestContext.Current.CancellationToken;
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        await SeedUserAsync(archived, "Archived");
+        await SeedUserAsync(survivor, "Survivor");
+        await AddAssignmentAsync(archived, TestRoles.FormerCampsAdmin, Clock.GetCurrentInstant() - Duration.FromDays(3), null);
+        await AddAssignmentAsync(survivor, CampsRoles.CampsAdmin, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
+
+        await _service.ReassignAsync(archived, survivor, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+
+        (await _repository.GetByUserIdAsync(survivor, ct)).Select(r => r.RoleName).Should().Equal(CampsRoles.CampsAdmin);
+        (await _repository.GetByUserIdAsync(archived, ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_ReturnsRoleAssignmentsSlice()
     {
         var userId = Guid.NewGuid();

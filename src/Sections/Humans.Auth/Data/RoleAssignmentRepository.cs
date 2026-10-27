@@ -226,6 +226,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
 
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Func<string, string> canonicalName,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -243,13 +244,13 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
         {
             if (tgt.IsActive(updatedAt))
             {
-                targetActiveRoles.Add(tgt.RoleName);
+                targetActiveRoles.Add(canonicalName(tgt.RoleName));
             }
         }
 
         foreach (var src in sourceRows)
         {
-            if (src.IsActive(updatedAt) && targetActiveRoles.Contains(src.RoleName))
+            if (src.IsActive(updatedAt) && targetActiveRoles.Contains(canonicalName(src.RoleName)))
             {
                 // Target's active row already covers this role and its lifetime stands.
                 ctx.RoleAssignments.Remove(src);

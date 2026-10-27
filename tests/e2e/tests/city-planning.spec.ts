@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
   loginAsVolunteer,
-  loginAsCampAdmin,
+  loginAsCampsAdmin,
   loginAsBoard,
   loginAsCityPlanning,
   expectBlocked,
@@ -87,8 +87,8 @@ test.describe('City Planning (38-city-planning)', () => {
     // was meant to remove. The admin forms only exist on the real admin page.
     const adminForm = 'form[action*="/CityPlanning/BarrioMap/Admin/"]';
 
-    test('camp-admin can access /CityPlanning/BarrioMap/Admin', async ({ page }) => {
-      await loginAsCampAdmin(page);
+    test('camps-admin can access /CityPlanning/BarrioMap/Admin', async ({ page }) => {
+      await loginAsCampsAdmin(page);
       await page.goto('/CityPlanning/BarrioMap/Admin');
 
       expect(page.url()).toContain('/CityPlanning/BarrioMap/Admin');

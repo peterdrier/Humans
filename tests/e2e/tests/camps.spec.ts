@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsCampAdmin, expectBlocked } from '../helpers/auth';
+import { loginAsVolunteer, loginAsCampsAdmin, expectBlocked } from '../helpers/auth';
 
 test.describe('Camps (20-camps)', () => {
   test('US-20.1: anonymous can browse camps listing', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('Camps (20-camps)', () => {
   });
 
   test('US-20.6: camp admin can access admin dashboard', async ({ page }) => {
-    await loginAsCampAdmin(page);
+    await loginAsCampsAdmin(page);
     await page.goto('/Camps/Admin');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();

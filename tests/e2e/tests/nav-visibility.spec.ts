@@ -3,19 +3,19 @@ import {
   loginAsVolunteer,
   loginAsCoordinator,
   loginAsBoard,
-  loginAsCampAdmin,
+  loginAsCampsAdmin,
   loginAsConsentCoordinator,
   loginAsFeedbackAdmin,
   loginAsFinanceAdmin,
-  loginAsHumanAdmin,
-  loginAsNoInfoAdmin,
+  loginAsUsersAdmin,
+  loginAsShiftsNoInfo,
   loginAsTeamsAdmin,
-  loginAsTicketAdmin,
-  loginAsVolunteerCoordinator,
+  loginAsTicketsAdmin,
+  loginAsShiftsAdmin,
   loginAsEventsAdmin,
   loginAsStoreAdmin,
   loginAsCantinaAdmin,
-  loginAsEETeamAdmin,
+  loginAsEarlyEntryAdmin,
   loginAsBarrioLead,
 } from '../helpers/auth';
 
@@ -28,9 +28,9 @@ import {
  * Only two top-nav items are role/policy gated:
  *
  *   Volunteer  -> AppAccess (UserState == Active)
- *   Admin      → AnyAdminRole (composite: Admin, Board, HumanAdmin, TeamsAdmin,
- *                CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin,
- *                NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator)
+ *   Admin      → AnyAdminRole (composite: Admin, Board, UsersAdmin, TeamsAdmin,
+ *                CampsAdmin, TicketsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin,
+ *                ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator)
  *
  * Sidebar coverage for items inside `/Admin` lives in admin-shell.spec.ts.
  *
@@ -85,7 +85,7 @@ const roles: RoleTest[] = [
   },
   {
     name: 'humanAdmin',
-    login: loginAsHumanAdmin,
+    login: loginAsUsersAdmin,
     visible: ['volunteer', 'admin'],
   },
   {
@@ -95,12 +95,12 @@ const roles: RoleTest[] = [
   },
   {
     name: 'ticketAdmin',
-    login: loginAsTicketAdmin,
+    login: loginAsTicketsAdmin,
     visible: ['volunteer', 'admin'],
   },
   {
     name: 'campAdmin',
-    login: loginAsCampAdmin,
+    login: loginAsCampsAdmin,
     visible: ['volunteer', 'admin'],
   },
   {
@@ -115,7 +115,7 @@ const roles: RoleTest[] = [
   },
   {
     name: 'noInfoAdmin',
-    login: loginAsNoInfoAdmin,
+    login: loginAsShiftsNoInfo,
     visible: ['volunteer', 'admin'],
   },
   {
@@ -125,7 +125,7 @@ const roles: RoleTest[] = [
   },
   {
     name: 'volunteerCoordinator',
-    login: loginAsVolunteerCoordinator,
+    login: loginAsShiftsAdmin,
     visible: ['volunteer', 'admin'],
   },
   {
@@ -143,11 +143,11 @@ const roles: RoleTest[] = [
     login: loginAsCantinaAdmin,
     visible: ['volunteer', 'admin'],
   },
-  // EETeamAdmin is Active but is NOT in the AnyAdminRole composite, so it does
+  // EarlyEntryAdmin is Active but is NOT in the AnyAdminRole composite, so it does
   // NOT see the Admin top-nav.
   {
     name: 'eeTeamAdmin',
-    login: loginAsEETeamAdmin,
+    login: loginAsEarlyEntryAdmin,
     visible: ['volunteer'],
   },
   // Camp lead: no governance role; access via UserState.Active. Sees Volunteer, not Admin.

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsVolunteerCoordinator, expectBlocked } from '../helpers/auth';
+import { loginAsVolunteer, loginAsShiftsAdmin, expectBlocked } from '../helpers/auth';
 
 /**
  * Volunteer Tracking E2E (feature 47).
@@ -35,7 +35,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
   test('US-47.1 / US-47.3: VC marks camp set-up, blocks/unblocks day, sees unbooked cohort', async ({ page }) => {
     test.fixme(true, 'blocked on local Playwright/Docker setup + dev seeder extension');
 
-    await loginAsVolunteerCoordinator(page);
+    await loginAsShiftsAdmin(page);
 
     // 1. Navigate Shifts → Shift Dashboard → Volunteer Tracking.
     await page.goto('/Shifts');
@@ -100,7 +100,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
   test('Day-off: VC marks day off via popover, cell renders striped-grey, gap count drops', async ({ page }) => {
     test.fixme(true, 'blocked on dev seeder extension — needs a VolTrack-Gap volunteer with at least one Gap cell on the build window so the Mark-day-off form renders');
 
-    await loginAsVolunteerCoordinator(page);
+    await loginAsShiftsAdmin(page);
     await page.goto('/Shifts/Dashboard/VolunteerTracking');
     await expect(page.getByRole('heading', { name: /volunteer tracking/i })).toBeVisible();
 
@@ -129,7 +129,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
   test('Day-off: VC opens popover on confirmed signup cell, sees blocked message and no Mark button', async ({ page }) => {
     test.fixme(true, 'blocked on dev seeder extension — needs a VolTrack-Confirmed volunteer with at least one Confirmed signup on the build window');
 
-    await loginAsVolunteerCoordinator(page);
+    await loginAsShiftsAdmin(page);
     await page.goto('/Shifts/Dashboard/VolunteerTracking');
 
     const confirmedRow = page.locator('tr', { hasText: /VolTrack-Confirmed-Volunteer/i });
@@ -175,7 +175,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     // 4. Sign in as VC in a fresh context, navigate to tracking, confirm yellow cells.
     const vcContext = await browser.newContext();
     const vcPage = await vcContext.newPage();
-    await loginAsVolunteerCoordinator(vcPage);
+    await loginAsShiftsAdmin(vcPage);
     await vcPage.goto('/Shifts/Dashboard/VolunteerTracking');
 
     // The same volunteer should have yellow (blocked) cells for the two offsets.
