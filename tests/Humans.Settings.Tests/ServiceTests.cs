@@ -254,12 +254,18 @@ public sealed class ServiceTests
             StrikeEndOffset = endOverflow ? int.MaxValue : 9,
         };
         var sut = BuildSut();
-        var act = () => seed
-            ? sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken)
-            : sut.SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Event dates must stay within the supported calendar range.");
+        if (seed)
+        {
+            var act = () => sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Event dates must stay within the supported calendar range.");
+        }
+        else
+        {
+            var result = await sut.SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+            result.Succeeded.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Event dates must stay within the supported calendar range.");
+        }
         _repository.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(ISettingsRepository.UpsertEventSettingsAsync), StringComparison.Ordinal))
             .Should().BeEmpty();
         current.Status.Should().Be(EventSettingsStatus.Active);
@@ -283,11 +289,18 @@ public sealed class ServiceTests
             StrikeEndOffset = strikeEnd,
         };
         var sut = BuildSut();
-        var act = () => seed
-            ? sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken)
-            : sut.SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        const string error = "Event end must be on or after gate opening, and strike end must be on or after event end.";
+        if (seed)
+        {
+            var act = () => sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(error);
+        }
+        else
+        {
+            var result = await sut.SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+            result.Succeeded.Should().BeFalse();
+            result.ErrorMessage.Should().Be(error);
+        }
         _repository.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name,
             nameof(ISettingsRepository.UpsertEventSettingsAsync), StringComparison.Ordinal)).Should().BeEmpty();
         current.Status.Should().Be(EventSettingsStatus.Active);
@@ -304,12 +317,12 @@ public sealed class ServiceTests
         var id = Guid.NewGuid();
 
         // BuildStartOffset is -25 on MakeDto; -26 is earlier still.
-        var act = () => BuildSut().SaveEventSettingsAsync(
+        var result = await BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: -26),
             Actor, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Early entry start offset must be between build start and 0*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Early entry start offset must be between build start and 0 (exclusive).");
         await _repository.DidNotReceive().UpsertEventSettingsAsync(
             Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
@@ -319,12 +332,12 @@ public sealed class ServiceTests
     {
         var id = Guid.NewGuid();
 
-        var act = () => BuildSut().SaveEventSettingsAsync(
+        var result = await BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Inactive, earlyEntryStartOffset: 0),
             Actor, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Early entry start offset must be between build start and 0*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Early entry start offset must be between build start and 0 (exclusive).");
         await _repository.DidNotReceive().UpsertEventSettingsAsync(
             Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
@@ -412,10 +425,10 @@ public sealed class ServiceTests
         var id = Guid.NewGuid();
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
 
-        var act = () => BuildSut().SaveEventSettingsAsync(
+        var result = await BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
         _listenerOne.DidNotReceive().EventSettingsChanged(Arg.Any<Guid>());
         _listenerTwo.DidNotReceive().EventSettingsChanged(Arg.Any<Guid>());
     }
@@ -426,11 +439,11 @@ public sealed class ServiceTests
         var id = Guid.NewGuid();
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
 
-        var act = () => BuildSut().SaveEventSettingsAsync(
+        var result = await BuildSut().SaveEventSettingsAsync(
             MakeDto(id, EventSettingsStatus.Active), Actor, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Only one event settings row can be Active*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Only one event settings row can be Active at a time — deactivate the current one first.");
         await _repository.DidNotReceive().UpsertEventSettingsAsync(
             Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         // A refused save is not audited — nothing happened for the Board to see.
