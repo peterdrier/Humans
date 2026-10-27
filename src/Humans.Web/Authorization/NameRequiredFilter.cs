@@ -52,9 +52,7 @@ public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionF
             return;
         }
 
-        if (context.ActionDescriptor is ControllerActionDescriptor cad &&
-            (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true) ||
-             cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true)))
+        if (context.ActionDescriptor is ControllerActionDescriptor cad && MembershipRequiredFilter.IsPublicEndpoint(cad))
         {
             await next();
             return;

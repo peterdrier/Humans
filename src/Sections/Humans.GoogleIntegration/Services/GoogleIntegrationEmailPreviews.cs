@@ -18,13 +18,13 @@ internal sealed class GoogleIntegrationEmailPreviews(GoogleIntegrationEmails ema
         return
         [
             new EmailPreviewSample("workspace-credentials", "Workspace Credentials",
-                emails.WorkspaceCredentials(email, name, SampleWorkspaceEmail, "sample-temp-password", culture)),
+                emails.WorkspaceCredentials(Guid.Empty, email, name, SampleWorkspaceEmail, "sample-temp-password", culture)),
             new EmailPreviewSample("google-group-removal-loss", "Google Group Removal — Loss of Access",
-                emails.GoogleGroupRemovalLossOfAccess(email, name, SampleGroupName, SampleGroupEmail, culture)),
+                emails.GoogleGroupRemovalLossOfAccess(Guid.Empty, email, name, SampleGroupName, SampleGroupEmail, culture)),
             new EmailPreviewSample("google-drive-removal-loss", "Google Drive Removal — Loss of Access",
-                emails.GoogleDriveRemovalLossOfAccess(email, name, SampleFolderName, culture)),
+                emails.GoogleDriveRemovalLossOfAccess(Guid.Empty, email, name, SampleFolderName, culture)),
             new EmailPreviewSample("google-removal-secondary-cleanup", "Google Access Removal — Secondary Email Cleanup",
-                emails.GoogleAccessRemovalSecondaryCleanup("old-" + email, name, email, culture)),
+                emails.GoogleAccessRemovalSecondaryCleanup(Guid.Empty, "old-" + email, name, email, culture)),
         ];
     }
 }

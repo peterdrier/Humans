@@ -195,6 +195,7 @@ internal sealed class OnboardingService(
             var language = rejectUser?.PreferredLanguage;
             culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             await emailService.SendAsync(emailMessages.SignupRejected(
+                userId,
                 rejectUser?.Email ?? string.Empty,
                 rejectUser?.BurnerName ?? string.Empty,
                 reason,

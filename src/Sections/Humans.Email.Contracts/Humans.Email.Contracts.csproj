@@ -9,16 +9,14 @@
     another section's implementation project, so putting these types in a Contracts/
     *folder* inside Humans.Email would leave every one of those callers with no way to name
     them (memory/architecture/section-project-cycle-fix.md — split the upstream section's
-    contracts downward, never promote the shared type into Base). Shell consumes the leaf
-    too, composing the HangfireImmediateOutboxProcessor -> IImmediateOutboxProcessor ->
-    OutboxEmailService chain in EmailInfrastructureExtensions.
+    contracts downward, never promote the shared type into Base).
 
     Base is *not* among the consumers: its single ProjectReference is Humans.Users.Contracts
     and it names no type from this project.
 
     Everything with no consumer outside the section stays internal: the outbox interfaces
-    (IEmailOutboxService, IEmailOutboxProcessor, IEmailOutboxRetention, IEmailOutboxManagement),
-    the facilitated-message builder, the body composer, the SMTP
+    (IEmailOutboxService, IEmailOutboxProcessor, IEmailOutboxRetention, IEmailOutboxManagement,
+    IImmediateOutboxProcessor), the MessageCategory rules, the facilitated-message builder, the body composer, the SMTP
     transport, the repository and the entity.
 
     References Humans.Base only. Base references Humans.Users.Contracts, so nothing in that

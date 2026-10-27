@@ -18,10 +18,10 @@ internal sealed class ExpensesEmails(
 
     /// <summary><paramref name="ibanMasked"/> is already masked: the raw IBAN never leaves the section.</summary>
     public EmailMessage ReportApproved(
-        string userEmail, string userName, Guid reportId, decimal payable, string ibanMasked,
+        Guid userId, string userEmail, string userName, Guid reportId, decimal payable, string ibanMasked,
         string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Expenses_Email_Approved_Subject"),
             Lf("Expenses_Email_Approved_Body",
                 Encode(userName), payable.ToEuro(), Encode(ibanMasked), AbsoluteUrl($"/Expenses/{reportId}")),

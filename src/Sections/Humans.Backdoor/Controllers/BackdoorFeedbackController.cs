@@ -6,12 +6,14 @@ using Humans.Base.Extensions;
 using Humans.Feedback.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
 [ApiController]
 [Route("api/backdoor/feedback")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[AllowAnonymous]
 internal sealed class BackdoorFeedbackController(
     IFeedbackTriage feedback,
     IUserService users,

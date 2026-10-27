@@ -116,7 +116,7 @@ public sealed class ComposerSelfSendTests
     [HumansFact]
     public void SendMarkdownToSelf_RequiresAuthenticationAndIsRateLimited()
     {
-        typeof(EmailPreviewController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(EmailPreviewController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         typeof(EmailPreviewController).GetMethod(nameof(EmailPreviewController.SendMarkdownToSelf))!
             .GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName
             .Should().Be(EmailPreviewController.SelfSendRateLimitPolicy);

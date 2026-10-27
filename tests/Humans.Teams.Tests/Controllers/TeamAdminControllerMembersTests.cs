@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using AwesomeAssertions;
+using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
@@ -51,6 +52,7 @@ public class TeamAdminControllerMembersTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
+        StubTeamsAdminOrAdminPolicy(authorization);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -254,6 +256,7 @@ public class TeamAdminControllerMembersTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        StubTeamsAdminOrAdminPolicy(authorization);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -500,4 +503,15 @@ public class TeamAdminControllerMembersTests
         result.PageNumber.Should().Be(expectedPage);
         result.TotalCount.Should().Be(1);
     }
+
+    // The role-management toggle asks the TeamsAdminOrAdmin policy; answer it from the principal's role claims.
+    private static void StubTeamsAdminOrAdminPolicy(IAuthorizationService authorization) =>
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.TeamsAdminOrAdmin)
+            .Returns(call =>
+            {
+                var user = call.Arg<ClaimsPrincipal>();
+                return user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.TeamsAdmin)
+                    ? AuthorizationResult.Success()
+                    : AuthorizationResult.Failed();
+            });
 }

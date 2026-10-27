@@ -22,9 +22,11 @@ public sealed class EmailMessageFactoryTests
     [HumansFact]
     public void FacilitatedMessage_WithContactInfo_SetsReplyToSender()
     {
+        var recipientId = Guid.NewGuid();
         var msg = _factory.FacilitatedMessage(
-            "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo: true, senderEmail: "sender@x.com", "en");
+            recipientId, "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo: true, senderEmail: "sender@x.com", "en");
 
+        msg.UserId.Should().Be(recipientId);
         msg.TemplateName.Should().Be("facilitated_message");
         msg.Category.Should().Be(MessageCategory.FacilitatedMessages);
         msg.ReplyTo.Should().Be("sender@x.com");
@@ -35,7 +37,7 @@ public sealed class EmailMessageFactoryTests
     public void FacilitatedMessage_WithoutContactInfo_HasNoReplyTo()
     {
         var msg = _factory.FacilitatedMessage(
-            "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo: false, senderEmail: "sender@x.com", "en");
+            Guid.NewGuid(), "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo: false, senderEmail: "sender@x.com", "en");
 
         msg.ReplyTo.Should().BeNull();
         msg.HtmlBody.Should().Contain("Email_FacilitatedMessage_NoContactInfo");
@@ -47,7 +49,7 @@ public sealed class EmailMessageFactoryTests
     public void FacilitatedMessage_WithReplyTo_RoutesRepliesThereWhateverTheContactChoice(bool includeContactInfo)
     {
         var msg = _factory.FacilitatedMessage(
-            "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo, senderEmail: "sender@x.com", "en",
+            Guid.NewGuid(), "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo, senderEmail: "sender@x.com", "en",
             replyTo: "team@nobodies.team");
 
         msg.ReplyTo.Should().Be("team@nobodies.team");
@@ -57,7 +59,7 @@ public sealed class EmailMessageFactoryTests
     public void FacilitatedMessage_renders_markdown_instead_of_html_encoded_plain_text()
     {
         var msg = _factory.FacilitatedMessage(
-            "rcpt@x.com", "Recipient", "Sender",
+            Guid.NewGuid(), "rcpt@x.com", "Recipient", "Sender",
             "**Hi there** — see [this](https://example.com)\r\n\r\nSecond line",
             includeContactInfo: false, senderEmail: null);
 
@@ -79,7 +81,7 @@ public sealed class EmailMessageFactoryTests
     {
         using var callerCulture = new Humans.Base.Extensions.CultureScope("en");
 
-        var message = _factory.FacilitatedMessage("a@x.com", "Alice", "Bob", "Hi", false, null, culture);
+        var message = _factory.FacilitatedMessage(Guid.NewGuid(), "a@x.com", "Alice", "Bob", "Hi", false, null, culture);
 
         message.Culture.Should().Be(culture);
         System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("en");

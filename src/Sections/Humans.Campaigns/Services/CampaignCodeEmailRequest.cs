@@ -2,7 +2,6 @@ namespace Humans.Campaigns.Services;
 
 internal sealed record CampaignCodeEmailRequest(
     Guid UserId,
-    Guid CampaignGrantId,
     Guid CampaignId,
     string RecipientEmail,
     string RecipientName,

@@ -17,7 +17,7 @@ public sealed class TicketsEmailsTests
     [HumansFact]
     public void TicketTransferRequested_GoesToTheSender_System()
     {
-        var msg = Create().TicketTransferRequested("a@x.com", "Alice", "Receiver", "Ticket #1", "en");
+        var msg = Create().TicketTransferRequested(Guid.NewGuid(), "a@x.com", "Alice", "Receiver", "Ticket #1", "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
@@ -34,6 +34,7 @@ public sealed class TicketsEmailsTests
 
         msg.RecipientEmail.Should().Be(TicketConstants.TicketsTeamEmail);
         msg.RecipientName.Should().Be("Ticket team");
+        msg.UserId.Should().BeNull("an operator mailbox has no account behind it");
         msg.TemplateName.Should().Be("ticket_transfer_team");
         msg.Category.Should().Be(MessageCategory.System);
     }
@@ -52,10 +53,10 @@ public sealed class TicketsEmailsTests
     {
         var emails = Create();
 
-        emails.TicketTransferDecision("a@x.com", "A", successful: true, "T", "Rx", null, "en")
+        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "A", successful: true, "T", "Rx", null, "en")
             .TemplateName.Should().Be("ticket_transfer_completed");
 
-        emails.TicketTransferDecision("a@x.com", "A", successful: false, "T", "Rx", "why", "en")
+        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "A", successful: false, "T", "Rx", "why", "en")
             .TemplateName.Should().Be("ticket_transfer_cancelled");
     }
 
@@ -64,11 +65,11 @@ public sealed class TicketsEmailsTests
     {
         var emails = Create();
 
-        emails.TicketTransferDecision("a@x.com", "Ann <Admin>", successful: false, "Lights & sound", "Rx", null, "en")
+        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "Ann <Admin>", successful: false, "Lights & sound", "Rx", null, "en")
             .HtmlBody.Should().Contain("Ann &lt;Admin&gt;").And.Contain("Lights &amp; sound")
             .And.NotContain("<strong>Reason:</strong>");
 
-        emails.TicketTransferDecision("a@x.com", "Ann", successful: false, "T", "Rx", "sold out", "en")
+        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "Ann", successful: false, "T", "Rx", "sold out", "en")
             .HtmlBody.Should().Contain("<strong>Reason:</strong> sold out");
     }
 
@@ -114,6 +115,7 @@ public sealed class TicketsEmailsTests
     private static object SampleArgument(ParameterInfo parameter, bool flag)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(bool)) return flag;
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(

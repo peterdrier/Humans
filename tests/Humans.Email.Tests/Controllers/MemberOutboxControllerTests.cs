@@ -145,11 +145,11 @@ public sealed class MemberOutboxControllerTests
     {
         // Deny path: the admin page is policy-gated; the own-page action takes no id, so a member
         // cannot read another member's outbox through it.
-        typeof(MemberOutboxController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
-        Method(nameof(MemberOutboxController.AdminOutbox)).GetCustomAttribute<AuthorizeAttribute>()!
+        typeof(MemberOutboxController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
+        Method(nameof(MemberOutboxController.AdminOutbox)).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
         Method(nameof(MemberOutboxController.MyOutbox)).GetParameters().Should().BeEmpty();
-        Method(nameof(MemberOutboxController.MyOutbox)).GetCustomAttribute<AuthorizeAttribute>().Should().BeNull();
+        Method(nameof(MemberOutboxController.MyOutbox)).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().BeNull();
     }
 
     private static MethodInfo Method(string name) => typeof(MemberOutboxController).GetMethod(name)!;

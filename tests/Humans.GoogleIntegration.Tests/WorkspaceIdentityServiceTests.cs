@@ -399,7 +399,7 @@ public sealed class WorkspaceIdentityServiceTests
     public void Controller_SetRoutesAreAntiforgery_AndTheAdminRouteNeedsHumanAdminBoardOrAdmin()
     {
         var type = typeof(WorkspaceIdentityController);
-        type.GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        type.GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
 
         var set = type.GetMethod(nameof(WorkspaceIdentityController.Set))!;
         set.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
@@ -409,7 +409,7 @@ public sealed class WorkspaceIdentityServiceTests
         var adminSet = type.GetMethod(nameof(WorkspaceIdentityController.AdminSet))!;
         adminSet.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
         adminSet.GetCustomAttribute<HttpPostAttribute>()!.Template.Should().Be("Admin/{id:guid}/WorkspaceEmail");
-        adminSet.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
+        adminSet.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
     }
 
     private WorkspaceIdentityController Controller(IWorkspaceIdentityManagement identities, Guid currentUserId)

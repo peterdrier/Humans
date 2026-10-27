@@ -5,6 +5,7 @@ namespace Humans.Shifts.Services;
 /// <see cref="IncludeShifts"/> false drops the section, unlike an empty list, which prints the "no shifts yet" note.
 /// </summary>
 internal sealed record CoordinatorRotaMessageRequest(
+    Guid RecipientUserId,
     string RecipientEmail,
     string RecipientName,
     string SenderName,
@@ -20,6 +21,7 @@ internal sealed record CoordinatorRotaMessageRequest(
 /// drops the shift section.
 /// </summary>
 internal sealed record CoordinatorTeamRotasMessageRequest(
+    Guid RecipientUserId,
     string RecipientEmail,
     string RecipientName,
     string SenderName,

@@ -7,6 +7,7 @@ namespace Humans.Email.Contracts;
 public interface IEmailMessageFactory
 {
     /// <summary>Reply-to is <paramref name="replyTo"/> when given (a team's group address), else the sender when
-    /// contact info is shared.</summary>
-    EmailMessage FacilitatedMessage(string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null, string? replyTo = null);
+    /// contact info is shared. <paramref name="recipientUserId"/> is null only for an address no human owns
+    /// (a camp's contact address).</summary>
+    EmailMessage FacilitatedMessage(Guid? recipientUserId, string recipientEmail, string recipientName, string senderName, string messageText, bool includeContactInfo, string? senderEmail, string? culture = null, string? replyTo = null);
 }

@@ -16,6 +16,8 @@ public abstract class HumansTeamControllerBase(
     ITeamService teamService,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
+    protected IAuthorizationService AuthorizationService => authorizationService;
+
     protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)
     {
         return await ResolveTeamAccessAsync(

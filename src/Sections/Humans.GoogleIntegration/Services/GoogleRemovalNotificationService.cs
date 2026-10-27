@@ -69,6 +69,7 @@ internal sealed class GoogleRemovalNotificationService(
         if (otherGoogleEmail is not null)
         {
             await emailService.SendAsync(emailMessages.GoogleAccessRemovalSecondaryCleanup(
+                user.Id,
                 removedEmail,
                 userName,
                 otherGoogleEmail,
@@ -93,6 +94,7 @@ internal sealed class GoogleRemovalNotificationService(
                 ? resourceIdentifier
                 : displayName;
             await emailService.SendAsync(emailMessages.GoogleGroupRemovalLossOfAccess(
+                user.Id,
                 removedEmail,
                 userName,
                 displayName,
@@ -106,6 +108,7 @@ internal sealed class GoogleRemovalNotificationService(
         else
         {
             await emailService.SendAsync(emailMessages.GoogleDriveRemovalLossOfAccess(
+                user.Id,
                 removedEmail,
                 userName,
                 displayName,

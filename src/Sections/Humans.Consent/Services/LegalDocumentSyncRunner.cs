@@ -111,6 +111,7 @@ internal sealed class LegalDocumentSyncRunner(
 
             var language = user.PreferredLanguage;
             await emailService.SendAsync(emailMessages.ReConsentsRequired(
+                user.Id,
                 effectiveEmail,
                 user.BurnerName,
                 outstandingDocuments[userId].Select(d => d.Name).ToList(),

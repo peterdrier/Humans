@@ -25,7 +25,7 @@ public class UserPartsTests
 
     private CampaignGrantSummary Grant(string title) => new(
         Guid.NewGuid(), Guid.NewGuid(), title, Guid.NewGuid(), "CODE-" + title, _userId,
-        Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null);
+        Instant.FromUtc(2026, 1, 1, 0, 0), null);
 
     [HumansFact]
     public void Parts_ContributeMyCodesToProfile_AndCampaignCodesToAdminDetail()

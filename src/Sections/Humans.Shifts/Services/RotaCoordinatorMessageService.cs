@@ -56,6 +56,7 @@ internal sealed class RotaCoordinatorMessageService(
         var summary = await DispatchToRecipientsAsync(
             groups,
             buildRequest: (recipient, shiftGroups, language) => new CoordinatorRotaMessageRequest(
+                RecipientUserId: recipient.Id,
                 RecipientEmail: recipient.Email!,
                 RecipientName: recipient.BurnerName,
                 SenderName: sender.BurnerName,
@@ -118,6 +119,7 @@ internal sealed class RotaCoordinatorMessageService(
         var summary = await DispatchToRecipientsAsync(
             groups,
             buildRequest: (recipient, shiftGroups, language) => new CoordinatorTeamRotasMessageRequest(
+                RecipientUserId: recipient.Id,
                 RecipientEmail: recipient.Email!,
                 RecipientName: recipient.BurnerName,
                 SenderName: sender.BurnerName,

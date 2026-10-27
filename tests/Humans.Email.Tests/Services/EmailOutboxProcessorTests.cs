@@ -8,7 +8,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Humans.Campaigns.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Data;
 using Humans.Email.Domain;
@@ -27,7 +26,6 @@ public class EmailOutboxProcessorTests : IDisposable
     private readonly DbContextOptions<EmailDbContext> _options;
     private readonly EmailDbContext _dbContext;
     private readonly IEmailTransport _transport;
-    private readonly ICampaignWrite _campaignService;
     private readonly FakeClock _clock;
     // Substituted: the concrete HumansMetricsService lives in Humans.Web, which this section
     // may not reference. Nothing here asserts on metrics.
@@ -47,7 +45,6 @@ public class EmailOutboxProcessorTests : IDisposable
 
         _dbContext = new EmailDbContext(_options);
         _transport = Substitute.For<IEmailTransport>();
-        _campaignService = Substitute.For<ICampaignWrite>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
         _metrics = Substitute.For<IHumansMetrics>();
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
@@ -124,7 +121,7 @@ public class EmailOutboxProcessorTests : IDisposable
         var settings = Options.Create(new EmailSettings { SmtpHost = string.Empty });
         var transport = new SmtpEmailTransport(settings, NullLogger<SmtpEmailTransport>.Instance);
         var processor = WithoutThrottle(new EmailOutboxProcessor(
-            _repo, _outboxService, _campaignService, transport, _metrics, _meters, _clock, settings,
+            _repo, _outboxService, transport, _metrics, _meters, _clock, settings,
             NullLogger<EmailOutboxProcessor>.Instance));
 
         await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
@@ -251,61 +248,6 @@ public class EmailOutboxProcessorTests : IDisposable
         row.FailedCount.Should().Be(0);
     }
 
-    [HumansFact(Timeout = 10000)]
-    public async Task ProcessQueuedAsync_GrantStatusUpdateFailure_DoesNotDoubleTallyDelivery()
-    {
-        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
-        message.CampaignGrantId = Guid.NewGuid();
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        _campaignService.UpdateGrantEmailStatusAsync(
-            message.CampaignGrantId.Value, EmailOutboxStatus.Sent, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("grant update failed"));
-
-        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
-
-        // Transport delivered — the message stays Sent, not re-tallied as Failed
-        // just because the post-delivery grant mirror threw.
-        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
-        updated.Status.Should().Be(EmailOutboxStatus.Sent);
-
-        var row = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
-        row.SentCount.Should().Be(1);
-        row.FailedCount.Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task ProcessQueuedAsync_GrantStatusUpdateFailureAfterADeliveryFailure_DoesNotAbortTheDrain()
-    {
-        // The failure-path grant mirror runs inside the per-message catch, so an
-        // uncaught throw there has nowhere left to land: it escapes the loop and
-        // ProcessQueuedAsync itself, skipping the error log and leaving the rest of
-        // the batch stamped PickedUp until the stale window releases it.
-        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
-        message.CampaignGrantId = Guid.NewGuid();
-        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        _transport.SendAsync(
-            Arg.Any<string>(), Arg.Any<string?>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
-            Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("SMTP timeout"));
-
-        _campaignService.UpdateGrantEmailStatusAsync(
-            message.CampaignGrantId.Value, EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("grant update failed"));
-
-        await _job.ProcessQueuedAsync(TestContext.Current.CancellationToken);
-
-        var updated = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
-        updated.Status.Should().Be(EmailOutboxStatus.Failed);
-
-        var row = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
-        row.SentCount.Should().Be(0);
-        row.FailedCount.Should().Be(1);
-    }
-
     [HumansFact]
     public async Task ProcessQueuedAsync_IncrementsDailyFailedCountOnFailure()
     {
@@ -340,7 +282,7 @@ public class EmailOutboxProcessorTests : IDisposable
             .AddInterceptors(acknowledgement).Options;
         var repository = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
         var processor = WithoutThrottle(new EmailOutboxProcessor(
-            repository, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
+            repository, _outboxService, _transport, _metrics, _meters, _clock, _settings,
             NullLogger<EmailOutboxProcessor>.Instance));
 
         var failure = await Record.ExceptionAsync(() => processor.ProcessQueuedAsync(TestContext.Current.CancellationToken));
@@ -397,7 +339,7 @@ public class EmailOutboxProcessorTests : IDisposable
             .ThrowsAsync(new InvalidOperationException("daily count write failed"));
 
         var processor = WithoutThrottle(new EmailOutboxProcessor(
-            repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, _settings,
+            repo, _outboxService, _transport, _metrics, _meters, _clock, _settings,
             NullLogger<EmailOutboxProcessor>.Instance));
 
         await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
@@ -420,7 +362,7 @@ public class EmailOutboxProcessorTests : IDisposable
         };
         var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock, Substitute.For<IAuditLogService>());
         var processor = WithoutThrottle(new EmailOutboxProcessor(
-            _repo, outboxService, _campaignService, _transport, _metrics, _meters, clock, _settings,
+            _repo, outboxService, _transport, _metrics, _meters, clock, _settings,
             NullLogger<EmailOutboxProcessor>.Instance));
 
         var message1 = new EmailOutboxMessage
@@ -517,7 +459,7 @@ public class EmailOutboxProcessorTests : IDisposable
 
     private EmailOutboxProcessor NewProcessor(IOptions<EmailSettings> settings) =>
         WithoutThrottle(new EmailOutboxProcessor(
-            _repo, _outboxService, _campaignService, _transport, _metrics, _meters, _clock, settings,
+            _repo, _outboxService, _transport, _metrics, _meters, _clock, settings,
             NullLogger<EmailOutboxProcessor>.Instance));
 
     private static EmailOutboxProcessor WithoutThrottle(EmailOutboxProcessor processor)

@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces.Repositories;
-using Humans.Email.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using NodaTime;
@@ -40,8 +39,8 @@ internal interface IEmailOutboxRepository : IRepository
 
     /// <summary>
     /// Unsent rows below the retry cap, past <see cref="EmailOutboxMessage.NextRetryAt"/>, and never picked up
-    /// or picked up before <paramref name="staleThreshold"/>. <see cref="TimeSensitiveTemplates.Names"/> go first
-    /// so a bulk backlog can't delay them; FIFO otherwise. Rows are detached: update them through the Mark methods.
+    /// or picked up before <paramref name="staleThreshold"/>. Urgent rows go first so a bulk backlog can't delay
+    /// them; FIFO otherwise. Rows are detached: update them through the Mark methods.
     /// </summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetProcessingBatchAsync(
         Instant now,

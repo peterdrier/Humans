@@ -108,7 +108,7 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1353`);
+  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1354`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
   (`Services/ExpenseReportService.cs:968`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a

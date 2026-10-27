@@ -2140,6 +2140,7 @@ internal sealed class TeamService(
                 var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
                 await EmailService.SendAsync(EmailMessages.AddedToTeam(
+                    user.Id,
                     email, user.BurnerName, team.Name, team.Slug,
                     resources.Select(r => (r.Name, r.Url)),
                     culture.Name),

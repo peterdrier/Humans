@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Campaigns.Contracts;
@@ -7,7 +6,6 @@ namespace Humans.Campaigns.Contracts;
 /// <summary><paramref name="RedeemedAt"/> is when the redeeming ticket order was purchased.</summary>
 public record DiscountCodeRedemption(string Code, Instant RedeemedAt);
 
-/// <summary>Carries the denormalized delivery state of the grant's latest email.</summary>
 public sealed record CampaignGrantSummary(
     Guid Id,
     Guid CampaignId,
@@ -16,8 +14,6 @@ public sealed record CampaignGrantSummary(
     string Code,
     Guid UserId,
     Instant AssignedAt,
-    EmailOutboxStatus? LatestEmailStatus,
-    Instant? LatestEmailAt,
     Instant? RedeemedAt);
 
 /// <summary>Cross-section reads; writes are on <see cref="ICampaignWrite"/>.</summary>

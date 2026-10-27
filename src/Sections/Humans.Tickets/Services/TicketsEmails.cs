@@ -18,19 +18,19 @@ internal sealed class TicketsEmails(
     private readonly EmailSettings _settings = settings.Value;
 
     public EmailMessage TicketTransferRequested(
-        string senderEmail, string senderName, string receiverName, string ticketLabel, string? culture = null)
+        Guid senderUserId, string senderEmail, string senderName, string receiverName, string ticketLabel, string? culture = null)
     {
         using (new CultureScope(culture, logger))
         {
             return new EmailMessage(
-                senderEmail, senderName,
+                senderEmail, senderName, senderUserId,
                 localizer["Tickets_TicketTransfer_Email_Requested_Subject"].Value,
                 Lf("Tickets_TicketTransfer_Email_Requested_Body", Encode(senderName), Encode(ticketLabel), Encode(receiverName)),
                 "ticket_transfer_requested", MessageCategory.System);
         }
     }
 
-    /// <summary>Always English: an operator mailbox.</summary>
+    /// <summary>Always English, and to no user: an operator mailbox.</summary>
     public EmailMessage TicketTransferTeamNotification(
         string senderName, string receiverName, string receiverEmail,
         string ticketLabel, string? reason, string reviewUrl)
@@ -46,7 +46,7 @@ internal sealed class TicketsEmails(
             ? reviewUrl
             : $"{_settings.BaseUrl.TrimEnd('/')}{(reviewUrl.StartsWith('/') ? "" : "/")}{reviewUrl}";
         return new EmailMessage(
-            TicketConstants.TicketsTeamEmail, "Ticket team",
+            TicketConstants.TicketsTeamEmail, "Ticket team", UserId: null,
             "Ticket transfer to process",
             $"""
                 <p>A new ticket transfer is awaiting manual processing in TicketTailor.</p>
@@ -61,7 +61,7 @@ internal sealed class TicketsEmails(
     }
 
     public EmailMessage TicketTransferDecision(
-        string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
+        Guid toUserId, string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
         string? reason, string? culture = null)
     {
         using (new CultureScope(culture, logger))
@@ -72,7 +72,7 @@ internal sealed class TicketsEmails(
             if (successful)
             {
                 return new EmailMessage(
-                    toEmail, toName,
+                    toEmail, toName, toUserId,
                     localizer["Tickets_TicketTransfer_Email_Completed_Subject"].Value,
                     Lf("Tickets_TicketTransfer_Email_Completed_Body", name, ticket, receiver),
                     "ticket_transfer_completed", MessageCategory.System);
@@ -82,7 +82,7 @@ internal sealed class TicketsEmails(
                 ? ""
                 : Lf("Tickets_TicketTransfer_Email_Cancelled_Reason", Encode(reason));
             return new EmailMessage(
-                toEmail, toName,
+                toEmail, toName, toUserId,
                 localizer["Tickets_TicketTransfer_Email_Cancelled_Subject"].Value,
                 Lf("Tickets_TicketTransfer_Email_Cancelled_Body", name, ticket, receiver, reasonHtml),
                 "ticket_transfer_cancelled", MessageCategory.System);

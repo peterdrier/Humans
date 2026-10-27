@@ -45,7 +45,7 @@ public sealed class GovernanceAuthorizationTests
 
     private static void AssertControllerPolicy<TController>(string expectedPolicy)
     {
-        var attribute = typeof(TController).GetCustomAttribute<AuthorizeAttribute>();
+        var attribute = typeof(TController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attribute.Should().NotBeNull($"{typeof(TController).Name} must have [Authorize]");
         attribute.Policy.Should().Be(expectedPolicy);
     }
@@ -55,7 +55,7 @@ public sealed class GovernanceAuthorizationTests
         var action = typeof(TController)
             .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
             .Single(method => string.Equals(method.Name, actionName, StringComparison.Ordinal));
-        var attribute = action.GetCustomAttribute<AuthorizeAttribute>();
+        var attribute = action.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
 
         attribute.Should().NotBeNull($"{typeof(TController).Name}.{actionName} must override its controller policy");
         attribute.Policy.Should().Be(expectedPolicy);

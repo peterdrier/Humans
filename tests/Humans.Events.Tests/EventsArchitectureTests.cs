@@ -48,7 +48,7 @@ public class EventsArchitectureTests
 
         foreach (var controller in controllers)
         {
-            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
+            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             authorize.Should().NotBeNull(
                 because: $"{controller.Name} is an Events administration surface");
             authorize.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin,
@@ -59,7 +59,7 @@ public class EventsArchitectureTests
     [HumansFact]
     public void EventsSubmissionSurface_RequiresAnAuthenticatedUser()
     {
-        typeof(EventsController).GetCustomAttribute<AuthorizeAttribute>()
+        typeof(EventsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)
             .Should().NotBeNull(
                 because: "event submission and personal submissions must not be anonymous");
     }

@@ -15,7 +15,7 @@ public sealed class EmailPreviewServiceTests
         composer.Compose("<p>Invitation</p>").Returns(("<html>Branded invitation</html>", "Invitation"));
         var sut = new EmailPreviewService(composer);
         var message = new EmailMessage(
-            "tester@example.com", "Tester", "Survey subject", "<p>Invitation</p>",
+            "tester@example.com", "Tester", Guid.NewGuid(), "Survey subject", "<p>Invitation</p>",
             "survey_invitation", MessageCategory.System);
 
         var preview = sut.RenderSystemMessage(message);
@@ -31,7 +31,7 @@ public sealed class EmailPreviewServiceTests
         var composer = Substitute.For<IEmailBodyComposer>();
         var sut = new EmailPreviewService(composer);
         var message = new EmailMessage(
-            "tester@example.com", "Tester", "Team update", "<p>Update</p>",
+            "tester@example.com", "Tester", Guid.NewGuid(), "Team update", "<p>Update</p>",
             "added_to_team", MessageCategory.TeamUpdates);
 
         var action = () => sut.RenderSystemMessage(message);

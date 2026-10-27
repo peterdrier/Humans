@@ -1,11 +1,14 @@
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Controllers;
 
 [ApiController]
 [Route("api/timezone")]
+// Browser beacon; stores nothing a visitor could not set themselves.
+[AllowAnonymous]
 public class TimezoneApiController : ControllerBase
 {
     [HttpPost]

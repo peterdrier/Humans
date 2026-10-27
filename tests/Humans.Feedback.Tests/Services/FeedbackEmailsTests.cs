@@ -16,7 +16,7 @@ public sealed class FeedbackEmailsTests
     [HumansFact]
     public void FeedbackResponse_StampsSystem()
     {
-        var msg = Create().FeedbackResponse("a@x.com", "Alice", "It broke", "Fixed.", "en");
+        var msg = Create().FeedbackResponse(Guid.NewGuid(), "a@x.com", "Alice", "It broke", "Fixed.", "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
@@ -29,6 +29,7 @@ public sealed class FeedbackEmailsTests
     public void FeedbackResponse_renders_sanitized_markdown_with_https_images()
     {
         var msg = Create().FeedbackResponse(
+            Guid.NewGuid(),
             "a@x.com",
             "Daniel <Admin>",
             "The <b>lights</b> were off",
@@ -82,6 +83,7 @@ public sealed class FeedbackEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"FeedbackEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

@@ -20,22 +20,20 @@ internal sealed class UsersEmails(
 {
     private readonly EmailSettings _settings = settings.Value;
 
-    /// <summary>
-    /// Address-verification link. Always-send (no opt-out category) and time-sensitive:
-    /// <see cref="TimeSensitiveTemplates.EmailVerification"/> is what makes the outbox
-    /// drain it immediately, so the template name is load-bearing.
-    /// </summary>
-    public EmailMessage EmailVerification(string toEmail, string userName, string verificationUrl, bool isConflict = false, string? culture = null)
+    internal const string EmailVerificationTemplate = "email_verification";
+
+    /// <summary>Address-verification link. Always-send (no opt-out category) and urgent.</summary>
+    public EmailMessage EmailVerification(Guid userId, string toEmail, string userName, string verificationUrl, bool isConflict = false, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, userName,
+            toEmail, userName, userId,
             L("Users_Email_VerifyEmail_Subject"),
             Lf(isConflict ? "Users_Email_EmailVerification_Merge_Body" : "Users_Email_EmailVerification_Body",
                 Encode(userName), Encode(toEmail), verificationUrl),
-            TimeSensitiveTemplates.EmailVerification));
+            EmailVerificationTemplate, Urgent: true));
 
-    public EmailMessage AccountDeletionRequested(string userEmail, string userName, Instant deletionDate, string? culture = null)
+    public EmailMessage AccountDeletionRequested(Guid userId, string userEmail, string userName, Instant deletionDate, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Users_Email_DeletionRequested_Subject"),
             Lf("Users_Email_AccountDeletionRequested_Body", Encode(userName), deletionDate.InUtc().Date.ToDate(), _settings.BaseUrl),
             "deletion_requested"));
@@ -44,16 +42,16 @@ internal sealed class UsersEmails(
     /// Erasure confirmation. <c>DoNotPersist</c>: the recipient has just been erased, so an
     /// outbox row would re-create their address and name after Article 17 removed them.
     /// </summary>
-    public EmailMessage AccountDeleted(string userEmail, string userName, string? culture = null)
+    public EmailMessage AccountDeleted(Guid userId, string userEmail, string userName, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Users_Email_AccountDeleted_Subject"),
             Lf("Users_Email_AccountDeleted_Body", Encode(userName)),
             "account_deleted", DoNotPersist: true));
 
-    public EmailMessage AccessSuspended(string userEmail, string userName, string reason, string? culture = null)
+    public EmailMessage AccessSuspended(Guid userId, string userEmail, string userName, string reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Users_Email_AccessSuspended_Subject"),
             Lf("Users_Email_AccessSuspended_Body", Encode(userName), Encode(reason), _settings.BaseUrl, _settings.AdminAddress),
             "access_suspended"));

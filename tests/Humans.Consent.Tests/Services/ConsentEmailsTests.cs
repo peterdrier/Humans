@@ -16,7 +16,7 @@ public sealed class ConsentEmailsTests
     [HumansFact]
     public void ReConsentsRequired_IsAlwaysSend_NullCategory()
     {
-        var msg = Create().ReConsentsRequired("a@x.com", "Alice", ["Doc"], "en");
+        var msg = Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["Doc"], "en");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.TemplateName.Should().Be("reconsents_required");
@@ -27,7 +27,7 @@ public sealed class ConsentEmailsTests
     [HumansFact]
     public void ReConsentReminder_IsAlwaysSend_NullCategory()
     {
-        var msg = Create().ReConsentReminder("a@x.com", "Alice", ["Doc"], 14, "en");
+        var msg = Create().ReConsentReminder(Guid.NewGuid(), "a@x.com", "Alice", ["Doc"], 14, "en");
 
         msg.TemplateName.Should().Be("reconsent_reminder");
         msg.Category.Should().BeNull();
@@ -36,17 +36,17 @@ public sealed class ConsentEmailsTests
     [HumansFact]
     public void ReConsentsRequired_SubjectNamesTheDocumentOnlyWhenThereIsOne()
     {
-        var single = Create().ReConsentsRequired("a@x.com", "Alice", ["Volunteer Agreement"], "en");
+        var single = Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["Volunteer Agreement"], "en");
         single.Subject.Should().Be("Please re-accept: Volunteer Agreement");
 
-        var many = Create().ReConsentsRequired("a@x.com", "Alice", ["Volunteer Agreement", "Privacy Policy"], "en");
+        var many = Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["Volunteer Agreement", "Privacy Policy"], "en");
         many.Subject.Should().Be("Consent_Email_ReConsentRequired_Subject_Multiple#en");
     }
 
     [HumansFact]
     public void DocumentNamesAreHtmlEncodedIntoTheList()
     {
-        var msg = Create().ReConsentsRequired("a@x.com", "Alice", ["<b>Doc</b>"], "en");
+        var msg = Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["<b>Doc</b>"], "en");
 
         msg.HtmlBody.Should().Contain("<li><strong>&lt;b&gt;Doc&lt;/b&gt;</strong></li>");
     }
@@ -54,7 +54,7 @@ public sealed class ConsentEmailsTests
     [HumansFact]
     public void RendersInTheRecipientsCulture()
     {
-        Create().ReConsentsRequired("a@x.com", "Alice", ["A", "B"], "es")
+        Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["A", "B"], "es")
             .Subject.Should().Be("Consent_Email_ReConsentRequired_Subject_Multiple#es");
     }
 
@@ -100,6 +100,7 @@ public sealed class ConsentEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         if (type == typeof(int)) return 14;
         if (type == typeof(IReadOnlyList<string>)) return new[] { "sample" };

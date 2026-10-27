@@ -24,7 +24,7 @@ public sealed class TeamsEmailsTests
     [InlineData("ca")]
     public void AddedToTeam_StampsTeamUpdates(string culture)
     {
-        var msg = Create().AddedToTeam("a@x.com", "Alice", "Alpha", "alpha", [], culture);
+        var msg = Create().AddedToTeam(Guid.NewGuid(), "a@x.com", "Alice", "Alpha", "alpha", [], culture);
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
@@ -37,7 +37,7 @@ public sealed class TeamsEmailsTests
     [HumansFact]
     public void AddedToTeam_LinksTheTeamAndOmitsAnEmptyResourceList()
     {
-        var msg = Create().AddedToTeam("a@x.com", "Alice", "Alpha", "alpha", [], "en");
+        var msg = Create().AddedToTeam(Guid.NewGuid(), "a@x.com", "Alice", "Alpha", "alpha", [], "en");
 
         msg.HtmlBody.Should().Contain($"{TestTeamsEmails.BaseUrl}/Teams/alpha");
         msg.HtmlBody.Should().NotContain("Resources:");
@@ -46,7 +46,7 @@ public sealed class TeamsEmailsTests
     [HumansFact]
     public void AddedToTeam_RendersResourcesWithAndWithoutLinks()
     {
-        var msg = Create().AddedToTeam("a@x.com", "Alice", "Alpha", "alpha",
+        var msg = Create().AddedToTeam(Guid.NewGuid(), "a@x.com", "Alice", "Alpha", "alpha",
             [("Handbook", null), ("Drive", "https://drive.google.com/drive/folders/example?usp=sharing&resourcekey=0_key")], "en");
 
         msg.HtmlBody.Should().Contain(
@@ -95,6 +95,7 @@ public sealed class TeamsEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         if (type == typeof(IEnumerable<(string Name, string? Url)>)) return Array.Empty<(string, string?)>();
         throw new NotSupportedException(

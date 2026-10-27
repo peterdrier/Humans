@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Hangfire;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -48,7 +49,8 @@ public sealed class SectionServiceResolutionTests
         { IsBackground = true };
         worker.Start();
 
-        worker.Join(TimeSpan.FromSeconds(10)).Should().BeTrue(
+        // Under HumansFact's 30s timeout, which would otherwise fail first without naming the service.
+        worker.Join(TimeSpan.FromSeconds(25)).Should().BeTrue(
             because: $"resolution hung on {current}, which means a constructor cycle");
         failures.Should().BeEmpty();
     }
@@ -63,27 +65,34 @@ public sealed class SectionServiceResolutionTests
 
     private static string Describe(ServiceDescriptor d) =>
         d.IsKeyedService ? $"{d.ServiceType.FullName} [{d.ServiceKey}]" : d.ServiceType.FullName!;
+}
 
-    private sealed class NoDatabaseFactory : WebApplicationFactory<Program>
+/// <summary>Boots the real app without a database or background jobs; HTTP smoke tests and service-resolution checks share it.</summary>
+public sealed class NoDatabaseFactory : WebApplicationFactory<Program>
+{
+    /// <summary>Every registration the host was built from, captured after the test overrides.</summary>
+    public IReadOnlyList<ServiceDescriptor> Registrations { get; private set; } = [];
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        public IReadOnlyList<ServiceDescriptor> Registrations { get; private set; } = [];
-
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        // Testing skips Hangfire; the connection string is never opened.
+        builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:DefaultConnection",
+            "Host=localhost;Database=stub;Username=stub;Password=stub");
+        builder.UseSetting("Email:SmtpHost", "localhost");
+        builder.UseSetting("Email:FromAddress", "test@example.com");
+        builder.UseSetting("Email:BaseUrl", "https://localhost");
+        builder.UseSetting("GoogleMaps:ApiKey", "stub");
+        // The Google sign-in handler validates its options on the first request through the pipeline.
+        builder.UseSetting("Authentication:Google:ClientId", "stub");
+        builder.UseSetting("Authentication:Google:ClientSecret", "stub");
+        builder.ConfigureTestServices(services =>
         {
-            // Testing skips Hangfire; the connection string is never opened.
-            builder.UseEnvironment("Testing");
-            builder.UseSetting("ConnectionStrings:DefaultConnection",
-                "Host=localhost;Database=stub;Username=stub;Password=stub");
-            builder.UseSetting("Email:SmtpHost", "localhost");
-            builder.UseSetting("Email:FromAddress", "test@example.com");
-            builder.UseSetting("Email:BaseUrl", "https://localhost");
-            builder.UseSetting("GoogleMaps:ApiKey", "stub");
-            builder.ConfigureTestServices(services =>
-            {
-                services.RemoveAll<IHostedService>();
-                services.AddSingleton(Substitute.For<IBackgroundJobClient>());
-                Registrations = services.ToList();
-            });
-        }
+            services.RemoveAll<IHostedService>();
+            services.AddSingleton(Substitute.For<IBackgroundJobClient>());
+            // Key storage is the system DbContext; antiforgery and auth cookies need a provider that works without it.
+            services.AddDataProtection().UseEphemeralDataProtectionProvider();
+            Registrations = services.ToList();
+        });
     }
 }

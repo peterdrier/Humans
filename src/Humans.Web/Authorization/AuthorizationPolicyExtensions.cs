@@ -17,6 +17,10 @@ public static class AuthorizationPolicyExtensions
     {
         services.AddAuthorization(options =>
         {
+            // Every endpoint without its own [Authorize]/[AllowAnonymous] (health checks, hubs, minimal APIs,
+            // Hangfire) requires a signed-in user; public surfaces opt out with [AllowAnonymous] / .AllowAnonymous().
+            options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
             options.AddPolicy(PolicyNames.AdminOnly, policy =>
                 policy.RequireRole(RoleNames.Admin));
 

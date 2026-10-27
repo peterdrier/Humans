@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Email.Models;
 using Humans.Email.ViewComponents;
 using Microsoft.AspNetCore.Http;
@@ -25,7 +24,7 @@ public class CommunicationPreferencesPanelViewComponentTests
             .Returns(Task.FromException<IReadOnlyList<CommunicationPreferenceSnapshot>>(
                 new OperationCanceledException(aborted.Token)));
         var sut = new CommunicationPreferencesPanelViewComponent(
-            commPrefs, Substitute.For<ITicketService>(), new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
+            commPrefs, [Substitute.For<ICommunicationPreferenceLock>()], new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -54,18 +53,18 @@ public class CommunicationPreferencesPanelViewComponentTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MissingNonMarketingRow_RendersCheckedWithTicketLock(bool hasTicketOrder)
+    public async Task MissingNonMarketingRow_RendersCheckedWithLock(bool locked)
     {
         // Every other category is opt-in-by-default, so a missing row stays checked.
-        var model = await InvokeWithAsync(prefs: [], hasTicketOrder);
+        var model = await InvokeWithAsync(prefs: [], locked);
 
         Item(model, MessageCategory.Governance).EmailEnabled.Should().BeTrue();
         var ticketing = Item(model, MessageCategory.Ticketing);
         ticketing.EmailEnabled.Should().BeTrue();
         ticketing.AlertEnabled.Should().BeTrue();
-        ticketing.IsTicketingLocked.Should().Be(hasTicketOrder);
-        ticketing.EmailEditable.Should().Be(!hasTicketOrder);
-        ticketing.AlertEditable.Should().Be(!hasTicketOrder);
+        ticketing.IsLocked.Should().Be(locked);
+        ticketing.EmailEditable.Should().Be(!locked);
+        ticketing.AlertEditable.Should().Be(!locked);
     }
 
     [HumansFact]
@@ -101,18 +100,19 @@ public class CommunicationPreferencesPanelViewComponentTests
         model.Categories.Single(c => c.Category == category);
 
     private static async Task<CommunicationPreferencesViewModel> InvokeWithAsync(
-        IReadOnlyList<CommunicationPreferenceSnapshot> prefs, bool hasTicketOrder = false)
+        IReadOnlyList<CommunicationPreferenceSnapshot> prefs, bool ticketingLocked = false)
     {
         var commPrefs = Substitute.For<ICommunicationPreferenceService>();
         commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(prefs);
 
-        var tickets = Substitute.For<ITicketService>();
-        tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(hasTicketOrder ? 1 : 0, []));
+        var preferenceLock = Substitute.For<ICommunicationPreferenceLock>();
+        preferenceLock.GetLockedCategoriesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>(
+                ticketingLocked ? [MessageCategory.Ticketing] : []));
 
         var sut = new CommunicationPreferencesPanelViewComponent(
-            commPrefs, tickets, new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
+            commPrefs, [preferenceLock], new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))
         {
             ViewComponentContext = new ViewComponentContext
             {

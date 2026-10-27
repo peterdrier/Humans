@@ -15,7 +15,7 @@ internal sealed class AuthEmailPreviews(AuthEmails emails) : IEmailPreviewContri
         return
         [
             new EmailPreviewSample("magic-link-login", "Magic Link Login",
-                emails.MagicLinkLogin(email, name, SampleLoginUrl, culture)),
+                emails.MagicLinkLogin(Guid.Empty, email, name, SampleLoginUrl, culture)),
             new EmailPreviewSample("magic-link-signup", "Magic Link Signup",
                 emails.MagicLinkSignup(email, SampleSignupUrl, culture)),
         ];

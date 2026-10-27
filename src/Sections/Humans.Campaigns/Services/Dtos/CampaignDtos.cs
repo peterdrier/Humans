@@ -7,8 +7,6 @@ namespace Humans.Campaigns.Services.Dtos;
 internal sealed record CampaignDetailStatsDto(
     int TotalCodes,
     int AvailableCodes,
-    int SentCount,
-    int FailedCount,
     int CodesRedeemed,
     int TotalGrants);
 
@@ -22,8 +20,6 @@ internal sealed record CampaignListSummary(
     CampaignStatus Status,
     int TotalCodes,
     int AssignedCodes,
-    int SentCount,
-    int FailedCount,
     Instant CreatedAt);
 
 internal sealed record CampaignEditSnapshot(

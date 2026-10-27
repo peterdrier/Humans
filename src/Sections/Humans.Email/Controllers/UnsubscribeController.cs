@@ -1,9 +1,12 @@
 using Humans.Email.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Email.Controllers;
 
 [Route("Email/Unsubscribe")]
+// Reached from an email link; the token is the credential.
+[AllowAnonymous]
 internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeService, ILogger<UnsubscribeController> logger)
     : Controller
 {

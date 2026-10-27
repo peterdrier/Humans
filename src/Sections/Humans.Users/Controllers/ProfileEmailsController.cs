@@ -100,13 +100,13 @@ internal sealed class ProfileEmailsController(
         var info = await _userService.GetUserInfoAsync(user.Id);
 
         var message = emailMessages.EmailVerification(
+            user.Id,
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
             user.PreferredLanguage.IsSupportedCultureCode()
-                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode) with
-        { UserId = user.Id };
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
         await emailService.SendAsync(message);
     }
 

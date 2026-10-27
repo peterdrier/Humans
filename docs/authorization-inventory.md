@@ -1,10 +1,12 @@
 # Authorization Inventory
 
-**Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views call `RoleChecks.*` / `ShiftRoleChecks.*` directly in one place only (§2). **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6. **Phase 3 (service-layer enforcement) is cancelled.**
+**Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and no view calls `RoleChecks.*` / `ShiftRoleChecks.*` directly (§2). **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6. **Phase 3 (service-layer enforcement) is cancelled.**
 
 Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions across `src/Humans.Web/Controllers/` and every section project under `src/Sections/*/Controllers/`, every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/`, `src/Sections/**`, and `src/Humans.Base/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute (implemented by `AuthorizeViewTagHelper` in `src/Humans.Base/TagHelpers/`) and `User.IsInRole` / `Model.X` authorization check across views and view components, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/`, `src/Humans.Base/Authorization/`, and `src/Sections/**/Authorization/`. (`Humans.Domain`, `Humans.Application`, and `Humans.UI` no longer exist; their non-Razor plumbing lives in `Humans.Base`, under `Humans.Base.*` namespaces — see §6.)
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
+
+**Authenticated by default.** `AddHumansAuthorizationPolicies` sets a `FallbackPolicy` of `RequireAuthenticatedUser`, so every endpoint without its own authorization metadata (health checks, hubs, minimal APIs, Hangfire) needs a signed-in user, and `HumansControllerBase` / `ApiControllerBase` carry `[Authorize]`, which every descendant inherits. A public surface says so with `[AllowAnonymous]` or `.AllowAnonymous()`; `EndpointAuthorizationTests` pins the full list of anonymous controllers and actions. A row below reading "no class-level `[Authorize]`" therefore means authenticated-by-default, not open.
 
 ---
 
@@ -35,12 +37,14 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `AboutController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
+| `AboutController` (`src/Humans.Web`) | Class | `[Authorize]` (inherited from `HumansControllerBase`) | — |
+| `AboutController.Index` | Action | `AllowAnonymous` | Override |
 | `AboutController.Staff` | Action | `[Authorize]` (authenticated) | — |
-| `HomeController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
-| `AccountController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
-| `AccountController.GateLogin` (GET/POST) | Action | (no `[Authorize]`) | — (shared kiosk credential login at `/Account/GateLogin`; IP-throttled via `GateLoginThrottle`; never gated by role — the gate-terminal account holds no roles) |
-| `LanguageController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
+| `HomeController` (`src/Humans.Web`) | Class | `[Authorize]` (inherited from `HumansControllerBase`) | — |
+| `HomeController.Index` / `Privacy` / `Error` | Action | `AllowAnonymous` | Override. `Index` is the landing page and the dashboard on one route: `MembershipRequiredFilter.IsPublicEndpoint` keeps the state and name gates on it for signed-in users |
+| `AccountController` (`src/Humans.Web`) | Class | `AllowAnonymous` | Sign-in flows run before there is a principal |
+| `AccountController.GateLogin` (GET/POST) | Action | (anonymous via the class) | — (shared kiosk credential login at `/Account/GateLogin`; IP-throttled via `GateLoginThrottle`; never gated by role — the gate-terminal account holds no roles) |
+| `LanguageController` (`src/Humans.Web`) | Class | `AllowAnonymous` | Culture switch on the login page |
 
 `GuestController` lives in `Humans.Onboarding`; `ColorPaletteController` and `WidgetGalleryController` (`/Debug/WidgetGallery`) in `Humans.Debug`; `TicketsGateAdminController` in `Humans.Tickets` — see those sections' authorization docs.
 
@@ -48,8 +52,9 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `TimezoneApiController` (`src/Humans.Web`) | Class | (no class-level `[Authorize]`) | — |
-| `HangfireAuthorizationFilter` (`src/Humans.Web`) | Filter | `RoleChecks.IsAdmin(User)` | Admin only |
+| `TimezoneApiController` (`src/Humans.Web`) | Class | `AllowAnonymous` | Browser beacon |
+| `/health`, `/health/live`, `/health/ready`, `/metrics` (`Program.cs`) | Endpoint | `.AllowAnonymous()` | Probed and scraped by infrastructure that holds no cookie |
+| `HangfireAuthorizationFilter` (`src/Humans.Web`) | Filter | `RoleChecks.IsAdmin(User)` | Admin only (the fallback policy already requires a signed-in user before the filter runs) |
 
 ---
 
@@ -62,7 +67,7 @@ Views express authorization four ways today:
 3. **`User.IsInRole(RoleNames.X)` direct calls** — not present in any view file.
 4. **`Model.CanX` / `Model.IsX` view-model properties** — for resource-relative checks (coordinator-of-this-team, lead-of-this-camp, can-edit-this-budget) and for status-driven UI (suspended badge, approved badge, etc.). The view does not know about roles; the controller / view-model author resolved authorization upstream.
 
-`RoleChecks.*` / `ShiftRoleChecks.*` are invoked from one view: `Camp/Index.cshtml` calls `RoleChecks.IsActiveMember(User)` (the state check behind `AppAccess`) — see §4.
+`RoleChecks.*` / `ShiftRoleChecks.*` are invoked from no view.
 
 ### Nav Layout (`_Layout.cshtml`)
 
@@ -119,10 +124,11 @@ Every other top-nav link is contributed by its section through `ISectionNav` and
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Team/Index.cshtml` (`src/Sections/Humans.Teams`) | 19 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | "Summary" + "Sync Status" toolbar buttons on the Teams landing page |
-| `Team/Summary.cshtml` | 22 | `authorize-policy="BoardOrAdmin"` | "Create Team" button |
-| `Team/Summary.cshtml` | 50 | `authorize-policy="BoardOrAdmin"` | Actions column header |
+| `Team/Summary.cshtml` | 22 | `authorize-policy="TeamsAdminBoardOrAdmin"` | "Create Team" button (matches `TeamController.CreateTeam`) |
+| `Team/Summary.cshtml` | 50 | `authorize-policy="TeamsAdminBoardOrAdmin"` | Actions column header |
 | `Team/_AdminTeamRow.cshtml` | 42 | `(await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded` | Pending-shift-signup badge link |
-| `Team/_AdminTeamRow.cshtml` | 94 | `authorize-policy="BoardOrAdmin"` | Actions column cell (Edit/Deactivate buttons) |
+| `Team/_AdminTeamRow.cshtml` | 94 | `authorize-policy="TeamsAdminBoardOrAdmin"` | Actions column cell (Edit button) |
+| `Team/_AdminTeamRow.cshtml` | 101 | `authorize-policy="BoardOrAdmin"` | Deactivate form (matches `TeamController.DeleteTeam`) |
 | `Team/EditTeam.cshtml` | 81 | `authorize-policy="AdminOnly"` | "Sensitive team" checkbox |
 | `Team/Details.cshtml` | 316 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded` | Drives `canOpenStore` flag (OR'd with coordinator-of-active-top-level-department) for the "Open store" button |
 | `Team/Details.cshtml` | 386 | `authorize-policy="@PolicyNames.BoardOrAdmin"` | "Roster" link (matches `TeamAdminController.Roster`'s action-level policy) |
@@ -132,7 +138,7 @@ Every other top-nav link is contributed by its section through `ISectionNav` and
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Camp/Index.cshtml` (`src/Sections/Humans.Camps`) | 11 | `authorize-policy="CampAdminOrAdmin"` | "Camp Admin" link |
-| `Camp/Index.cshtml` | 24 | `RoleChecks.IsActiveMember(User)` | "Register a barrio" button (same rule as `AppAccess`, spelled as a role-check call rather than `authorize-policy="AppAccess"`) |
+| `Camp/Index.cshtml` | 24 | `authorize-policy="AppAccess"` | "Register a barrio" button |
 | `CampAdmin/Index.cshtml` | 386 | `authorize-policy="AdminOnly"` | Danger Zone card (Delete Camp) |
 
 ### Ticket Views
@@ -188,7 +194,7 @@ Every other top-nav link is contributed by its section through `ISectionNav` and
 
 ## 3. Same-Rule-Different-Spelling Table
 
-Post Phase-1 retirement, controllers and views express the same authorization rule by referencing the same `PolicyNames` constant — the controller via the `[Authorize(Policy = ...)]` attribute, the view via the `authorize-policy="..."` TagHelper attribute (or `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` when a boolean is needed). The legacy `RoleChecks.*` / `ShiftRoleChecks.*` helpers are invoked from no view except `Camp/Index.cshtml` (`RoleChecks.IsActiveMember`), and the Events Guide section's controllers and `_Layout.cshtml` dropdown both resolve through `PolicyNames.EventsAdminOrAdmin`.
+Post Phase-1 retirement, controllers and views express the same authorization rule by referencing the same `PolicyNames` constant — the controller via the `[Authorize(Policy = ...)]` attribute, the view via the `authorize-policy="..."` TagHelper attribute (or `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` when a boolean is needed). The legacy `RoleChecks.*` / `ShiftRoleChecks.*` helpers are invoked from no view, and the Events Guide section's controllers and `_Layout.cshtml` dropdown both resolve through `PolicyNames.EventsAdminOrAdmin`.
 
 | Rule | Controller Spelling | View Spelling |
 |---|---|---|
@@ -196,7 +202,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Any admin role (admin shell) | `[Authorize(Policy = PolicyNames.AnyAdminRole)]` | `authorize-policy="AnyAdminRole"` |
 | Board or Admin | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` | `authorize-policy="BoardOrAdmin"` |
 | TeamsAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` | `authorize-policy="TeamsAdminBoardOrAdmin"` |
-| TeamsAdmin or Admin | (no current controller spelling — registered but only referenced from a view) | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded` (Team/Details.cshtml "Open store" flag) |
+| TeamsAdmin or Admin | `AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)` (`TeamAdminController` role-management toggle) | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded` (Team/Details.cshtml "Open store" flag) |
 | TicketAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` | `authorize-policy="TicketAdminBoardOrAdmin"` |
 | TicketAdmin or Admin | `[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]` | `authorize-policy="TicketAdminOrAdmin"` |
 | Scanner access (roles + gate terminal) | `[Authorize(Policy = PolicyNames.ScannerAccess)]` | (no current view spelling) |
@@ -214,7 +220,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Shift dashboard access | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` | `authorize-policy="ShiftDashboardAccess"` |
 | Shift department manager | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` | `authorize-policy="ShiftDepartmentManager"` |
 | Volunteer tracking write | `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]` | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` |
-| App access (`UserState == Active`) | `[Authorize(Policy = PolicyNames.AppAccess)]` | `authorize-policy="AppAccess"`; `Camp/Index.cshtml` spells it `RoleChecks.IsActiveMember(User)` |
+| App access (`UserState == Active`) | `[Authorize(Policy = PolicyNames.AppAccess)]` | `authorize-policy="AppAccess"` |
 | Resource: team coord/admin | `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.{ManageCoordinators, ManageEarlyEntry})` | `Model.IsCurrentUserCoordinator` / `Model.CanManageEarlyEntry` (view-model) |
 | Resource: camp lead/admin | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` (view-model) |
 | Resource: camp-event submit | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` | (no view spelling — controller-only) |
@@ -239,7 +245,7 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Location | Check | Risk |
 |---|---|---|
 | `CampAdmin/Index.cshtml` — "Delete Camp" | `authorize-policy="AdminOnly"` in view | Delete action has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK, narrower than class-level CampAdminOrAdmin**. |
-| `Team/Summary.cshtml` / `_AdminTeamRow.cshtml` — Edit/Delete/Archive links | `authorize-policy="BoardOrAdmin"` in view | Team edit actions have `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` — view is **stricter** than server (hides from TeamsAdmin). |
+| `Team/Summary.cshtml` / `_AdminTeamRow.cshtml` — Create/Edit links, Deactivate form | `authorize-policy="TeamsAdminBoardOrAdmin"` on the links, `authorize-policy="BoardOrAdmin"` on the Deactivate form | Match `TeamController.CreateTeam` / `EditTeam` (`TeamsAdminBoardOrAdmin`) and `DeleteTeam` (`BoardOrAdmin`) — **OK**. |
 | `Ticket/_TicketNav.cshtml` — Backfill / Settings links | `authorize-policy="AdminOnly"` in view | Targets `Shifts/Settings` / Ticket admin actions which have `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK**. |
 
 ### Server-Only (protected endpoint, no visible UI gating)
@@ -258,7 +264,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Controller | Action | Guard |
 |---|---|---|
 | `ShiftAdminController` | All non-public actions | Coordinator-of-department check via `ResolveDepartmentManagementAsync` → `HumansTeamControllerBase.ResolveDepartmentAccessAsync` (resource-based) |
-| `TeamAdminController` | Most non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync` (`TeamOperationRequirement.ManageCoordinators`); `RoleChecks.IsTeamsAdmin(User)` / `RoleChecks.IsAdmin(User)` toggle management features |
+| `TeamAdminController` | Most non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync` (`TeamOperationRequirement.ManageCoordinators`); `AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)` gates the role-management toggle (`Roles`, `EditRole`, `ToggleManagement`) |
 | `TeamAdminController` | `EarlyEntry` / `AddEarlyEntry` / `EditEarlyEntry` / `RemoveEarlyEntry` | EE-management check via `ResolveEarlyEntryManagementAsync` → `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageEarlyEntry)` (Admin/TeamsAdmin/Board any team; `EETeamAdmin` any team; coordinator own team) |
 | `BudgetController` | `Index`, `Summary`, `CategoryDetail`, line-item CRUD | `_authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` and `_authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `CampController` | All management actions | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` via `HumansCampControllerBase` |
@@ -275,8 +281,8 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `RoleAssignmentsController.AddRole/EndRole` (`src/Sections/Humans.Auth`) | After `[Authorize(Policy)]` attribute | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` enforces the role-list filter |
 | `ProfileEmailsController` email-edit endpoints | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |
 | `TicketController.Index` | After class-level policy | `RoleChecks.CanAccessFinance(User)` toggles finance-only metrics |
-| `MembershipRequiredFilter` | All authenticated requests | Gates the app purely on stored `UserState` (stamped on the principal by `RoleAssignmentClaimsTransformation`): only `Active` reaches the app; `DeletePending` → `/Gdpr/Deletion`, Suspended/AdminSuspended/Rejected/Deleted/Merged → `/Gdpr/Status`, Bare/unseeded → `/OnboardingWidget`. Roles do not bypass the gate. A Backdoor-API-key-authenticated request (`IsMachineRequest` — `AuthenticationType == BackdoorAuthentication.SchemeName`) passes through unconditionally: a machine principal never runs claims transformation, so the state claim is absent by construction. `Deleted`/`Merged` accounts get no exemptions beyond `Account`, `Language` and `Gdpr/Status` — a lingering cookie never reaches a profile. For every other state, exempt controllers (`Account`, `OnboardingWidget`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`), the own-profile maintenance actions on `Profile` (`Index`, `Me`, `Edit`, `Privacy`, `Medical`), `CommunicationPreferences` (`Index`, `UpdatePreference` — own preferences, Email), `TicketParticipation.DeclareNotAttending` / `UndoNotAttending` (own not-attending declaration, Tickets) and `ProfileEmails` (own email/linked-account grid actions), `MemberOutbox.MyOutbox` (own outbox, Email), `CantinaProfile.Dietary` (own dietary form, Cantina), `MemberData.RequestDeletion` / `MemberData.DownloadData` (own deletion request and export, Gdpr), and `[AllowAnonymous]` pass through; other humans' profiles, messaging, search and admin email actions require `Active`. |
-| `NameRequiredFilter` | All requests | Global action filter (registered in `Program.cs` before `MembershipRequiredFilter`). Redirects any authenticated user with no real `BurnerName` to the name form; never blocks sign-in (only redirects). A Backdoor-API-key-authenticated request (`MembershipRequiredFilter.IsMachineRequest`) passes through unconditionally — a JSON client cannot fill in the name form. `Deleted`/`Merged` accounts (names cleared by anonymization) pass through to `MembershipRequiredFilter`'s status wall. Exempt controllers (`Account`, `Language`), exempt actions (`OnboardingWidget/Names`, `Home/Error`, `Home/Privacy`), and `[AllowAnonymous]` pass through. |
+| `MembershipRequiredFilter` | All authenticated requests | Gates the app purely on stored `UserState` (stamped on the principal by `RoleAssignmentClaimsTransformation`): only `Active` reaches the app; `DeletePending` → `/Gdpr/Deletion`, Suspended/AdminSuspended/Rejected/Deleted/Merged → `/Gdpr/Status`, Bare/unseeded → `/OnboardingWidget`. Roles do not bypass the gate. A Backdoor-API-key-authenticated request (`IsMachineRequest` — `AuthenticationType == BackdoorAuthentication.SchemeName`) passes through unconditionally: a machine principal never runs claims transformation, so the state claim is absent by construction. `Deleted`/`Merged` accounts get no exemptions beyond `Account`, `Language` and `Gdpr/Status` — a lingering cookie never reaches a profile. `[AllowAnonymous]` endpoints pass through (`IsPublicEndpoint`), except `Home/Index`, which is the public landing page and the member dashboard on one route and stays gated. For every other state, exempt controllers (`Account`, `OnboardingWidget`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`), the own-profile maintenance actions on `Profile` (`Index`, `Me`, `Edit`, `Privacy`, `Medical`), `CommunicationPreferences` (`Index`, `UpdatePreference` — own preferences, Email), `TicketParticipation.DeclareNotAttending` / `UndoNotAttending` (own not-attending declaration, Tickets) and `ProfileEmails` (own email/linked-account grid actions), `MemberOutbox.MyOutbox` (own outbox, Email), `CantinaProfile.Dietary` (own dietary form, Cantina), `MemberData.RequestDeletion` / `MemberData.DownloadData` (own deletion request and export, Gdpr), and `[AllowAnonymous]` pass through; other humans' profiles, messaging, search and admin email actions require `Active`. |
+| `NameRequiredFilter` | All requests | Global action filter (registered in `Program.cs` before `MembershipRequiredFilter`). Redirects any authenticated user with no real `BurnerName` to the name form; never blocks sign-in (only redirects). A Backdoor-API-key-authenticated request (`MembershipRequiredFilter.IsMachineRequest`) passes through unconditionally — a JSON client cannot fill in the name form. `Deleted`/`Merged` accounts (names cleared by anonymization) pass through to `MembershipRequiredFilter`'s status wall. Exempt controllers (`Account`, `Language`), exempt actions (`OnboardingWidget/Names`, `Home/Error`, `Home/Privacy`), and `[AllowAnonymous]` endpoints other than `Home/Index` (`MembershipRequiredFilter.IsPublicEndpoint`) pass through. |
 | `HangfireAuthorizationFilter` | Hangfire dashboard | `RoleChecks.IsAdmin(User)` |
 | `AgentController.Ask` | Per-request | `auth.AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (resource-based; requirement instantiated directly rather than via a named policy) |
 | `GateController.Decision` | Supervisor overrides (too-early / unconfirmed-EE admit, child-without-ID waiver) | Shared override PIN from `Gate:SupervisorPin` config, verified server-side (`SupervisorPinValid` — SHA-256 fixed-time compare) and brute-force-throttled via `GatePinThrottle` (one shared bucket for the terminal: 5 tries / 15 min); fail-closed when no PIN is configured. The PIN authorizes but cannot attribute — the event records the gate account. |
@@ -465,7 +471,7 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 | `IsAdmin` | `AdminOnly` |
 | `IsBoard` | (no standalone policy — used in `GetAssignableRoles`) |
 | `IsAdminOrBoard` | `BoardOrAdmin` |
-| `IsTeamsAdmin` | (no standalone policy — used in TeamAdminController toggle-management check) |
+| `IsTeamsAdmin` | (no standalone policy — used by Store's privileged-reader check and `OrderAuthorizationHandler`) |
 | `IsTeamsAdminBoardOrAdmin` | `TeamsAdminBoardOrAdmin` |
 | `IsCampAdmin` | `CampAdminOrAdmin` |
 | `IsHumanAdminBoardOrAdmin` | `HumanAdminBoardOrAdmin` |

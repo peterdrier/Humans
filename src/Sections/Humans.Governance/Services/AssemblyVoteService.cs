@@ -1317,6 +1317,7 @@ internal sealed class AssemblyVoteService(
             {
                 await email.SendAsync(
                     messages.AssemblyVoteOpened(
+                        info.Id,
                         address,
                         info.BurnerName,
                         EmailTitle(current, language),
@@ -1371,6 +1372,7 @@ internal sealed class AssemblyVoteService(
             {
                 await email.SendAsync(
                     messages.AssemblyVoteCancelled(
+                        info.Id,
                         address,
                         info.BurnerName,
                         EmailTitle(vote, language),
@@ -1595,6 +1597,7 @@ internal sealed class AssemblyVoteService(
                 {
                     await email.SendAsync(
                         messages.AssemblyVoteReminder(
+                            info.Id,
                             address,
                             info.BurnerName,
                             EmailTitle(current, language),

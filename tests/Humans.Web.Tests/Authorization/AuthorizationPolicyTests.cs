@@ -15,7 +15,9 @@ using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -56,6 +58,16 @@ public class AuthorizationPolicyTests : IDisposable
     public void Dispose()
     {
         _serviceProvider.Dispose();
+    }
+
+    [HumansFact]
+    public void Fallback_policy_requires_an_authenticated_user()
+    {
+        var options = _serviceProvider.GetRequiredService<IOptions<AuthorizationOptions>>().Value;
+
+        options.FallbackPolicy.Should().NotBeNull("an endpoint with no authorization metadata must not be public");
+        options.FallbackPolicy!.Requirements.Should().ContainSingle()
+            .Which.Should().BeOfType<DenyAnonymousAuthorizationRequirement>();
     }
 
     public static TheoryData<string, string, bool> RolePolicyCases => new()
@@ -425,7 +437,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     private static string FeedbackControllerPolicy =>
         SectionType("Humans.Feedback.Controllers.FeedbackController")
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)?.Policy
         ?? throw new InvalidOperationException(
             "FeedbackController must carry a policy-bearing [Authorize] attribute.");
 

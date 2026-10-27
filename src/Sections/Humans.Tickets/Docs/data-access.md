@@ -199,6 +199,12 @@ No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
 `Section.cs:70`) — builds one sample per template via `TicketsEmails` for
 `/Email/EmailPreview`. No DB access, no cache.
 
+### TicketingPreferenceLock (Scoped)
+
+No repository. Email's `ICommunicationPreferenceLock` fan-out: reports Ticketing as
+locked for a human whose `ITicketService.GetUserTicketHoldingsAsync` has an attendee
+match. No DB access; reads the cached holdings.
+
 ### AttendeeContactImportService (Scoped, keyed — inner of CachingTicketQueryService)
 
 Repository: `ITicketRepository`.

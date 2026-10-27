@@ -3,6 +3,8 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Email.Tests;
 
@@ -13,15 +15,15 @@ namespace Humans.Email.Tests;
 public class EmailArchitectureTests
 {
     [HumansFact]
-    public void OutboxEmailService_TakesOutboxRepositoryAndUserEmailService()
+    public void OutboxEmailService_TakesOutboxRepositoryAndNoAddressLookup()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IEmailOutboxRepository),
             because: "outbox writes go through the Email section's repository");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "looking up UserId by email is a Profile-section query — routed through IUserEmailService rather than direct access to user_emails (§2c)");
+        paramTypes.Should().NotContain(typeof(IUserEmailService),
+            because: "every sender passes the recipient's UserId; Email never resolves it from the address (nobodies-collective/Humans#1245)");
     }
 
     [HumansFact]
@@ -55,13 +57,23 @@ public class EmailArchitectureTests
     }
 
     [HumansFact]
+    public void Section_RegistersTheImmediateTrigger()
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IImmediateOutboxProcessor))
+            .Which.ImplementationType.Should().Be(typeof(HangfireImmediateOutboxProcessor));
+    }
+
+    [HumansFact]
     public void ConnectorAbstractions_SitOnTheSideTheirImplementationLivesOn()
     {
-        // IImmediateOutboxProcessor stays on the contracts leaf because the Shell registers it.
-        // IEmailBodyComposer is internal because both sides are.
+        // Both are internal because their implementation, registration and consumer all sit in the section.
         typeof(IImmediateOutboxProcessor).Namespace
-            .Should().Be("Humans.Email.Contracts");
-        typeof(IImmediateOutboxProcessor).IsPublic.Should().BeTrue();
+            .Should().Be("Humans.Email.Services");
+        typeof(IImmediateOutboxProcessor).IsPublic.Should().BeFalse();
+        typeof(HangfireImmediateOutboxProcessor).IsPublic.Should().BeFalse();
 
         typeof(IEmailBodyComposer).Namespace
             .Should().Be("Humans.Email.Services");

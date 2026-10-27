@@ -4,6 +4,7 @@ using Humans.Base.Configuration;
 using Humans.Web.Models;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Controllers;
 
@@ -13,6 +14,9 @@ public class HomeController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry) : HumansControllerBase(userService)
 {
+    // Public landing page and member dashboard on one route. MembershipRequiredFilter and NameRequiredFilter
+    // still gate signed-in users here despite the attribute (see MembershipRequiredFilter.IsPublicEndpoint).
+    [AllowAnonymous]
     public async Task<IActionResult> Index()
     {
         if (!User.Identity?.IsAuthenticated ?? true)
@@ -46,6 +50,7 @@ public class HomeController(
         return View("Dashboard", viewModel);
     }
 
+    [AllowAnonymous]
     public IActionResult Privacy()
     {
         ViewData["DpoEmail"] = configuration.GetOptionalSetting(
@@ -53,6 +58,7 @@ public class HomeController(
         return View();
     }
 
+    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     [Route("/Home/Error/{statusCode?}")]
     public IActionResult Error(int? statusCode = null)

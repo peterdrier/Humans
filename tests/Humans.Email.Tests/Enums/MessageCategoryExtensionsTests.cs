@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Xunit;
 
 namespace Humans.Email.Tests.Enums;

@@ -112,7 +112,7 @@ public class VolunteerTrackingControllerTests
     public void Class_RequiresShiftDashboardAccess_Policy()
     {
         var attr = typeof(VolunteerTrackingController)
-            .GetCustomAttribute<AuthorizeAttribute>();
+            .GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull("class-level [Authorize] gates anonymous reads");
         attr.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
     }
@@ -127,7 +127,7 @@ public class VolunteerTrackingControllerTests
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .First(m => string.Equals(m.Name, actionName, StringComparison.Ordinal));
-        var attr = method.GetCustomAttribute<AuthorizeAttribute>();
+        var attr = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull($"{actionName} must require VolunteerTrackingWrite");
         attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
@@ -483,7 +483,7 @@ public class VolunteerTrackingControllerTests
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .First(m => string.Equals(m.Name, nameof(VolunteerTrackingController.SetAvailabilityDay), StringComparison.Ordinal));
-        var attr = method.GetCustomAttribute<AuthorizeAttribute>();
+        var attr = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull("SetAvailabilityDay must require VolunteerTrackingWrite");
         attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }
@@ -494,7 +494,7 @@ public class VolunteerTrackingControllerTests
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .First(m => string.Equals(m.Name, nameof(VolunteerTrackingController.ClearAvailabilityDay), StringComparison.Ordinal));
-        var attr = method.GetCustomAttribute<AuthorizeAttribute>();
+        var attr = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull("ClearAvailabilityDay must require VolunteerTrackingWrite");
         attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
     }

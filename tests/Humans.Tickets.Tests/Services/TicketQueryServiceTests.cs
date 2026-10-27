@@ -769,7 +769,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var grantRows = grants
             .Select(g => new CampaignCodeTrackingGrant(
                 Guid.NewGuid(), g.CampaignId, summary.CampaignTitle, Guid.NewGuid(),
-                "Recipient", g.Code, RedeemedAt: null, LatestEmailStatus: null))
+                "Recipient", g.Code, RedeemedAt: null))
             .ToList();
 
         _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())

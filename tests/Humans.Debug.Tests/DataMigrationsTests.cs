@@ -95,7 +95,7 @@ public class DataMigrationsTests
     [HumansFact]
     public void Screen_is_admin_only_and_apply_is_an_antiforgery_post()
     {
-        typeof(DataMigrationsController).GetCustomAttribute<AuthorizeAttribute>()!.Policy
+        typeof(DataMigrationsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
             .Should().Be(PolicyNames.AdminOnly);
         typeof(DataMigrationsController).GetCustomAttribute<AllowAnonymousAttribute>().Should().BeNull();
 
@@ -131,12 +131,13 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Apply_redirects_back_to_the_screen()
+    public async Task Apply_redirects_back_to_the_migrations_tab()
     {
         var result = await Controller(_actorId).Apply(Key, Ct);
 
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(DataMigrationsController.Index));
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(DataMigrationsController.Index));
+        redirect.Fragment.Should().Be(Key);
         _migrations.ApplyCalls.Should().Be(1);
     }
 

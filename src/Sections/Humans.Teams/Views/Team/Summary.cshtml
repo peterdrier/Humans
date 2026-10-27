@@ -19,7 +19,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Teams Summary</h1>
-    <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="BoardOrAdmin">@Localizer["Teams_CreateTeam"]</a>
+    <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="TeamsAdminBoardOrAdmin">@Localizer["Teams_CreateTeam"]</a>
 </div>
 
 
@@ -47,7 +47,7 @@
                             <th>@Localizer["Teams_AdminTeams_DriveResources"]</th>
                             <th>@SharedLocalizer["Common_Status"]</th>
                             <th>@Localizer["Teams_AdminTeams_Created"]</th>
-                            <th authorize-policy="BoardOrAdmin">@Localizer["Teams_MyTeams_Actions"]</th>
+                            <th authorize-policy="TeamsAdminBoardOrAdmin">@Localizer["Teams_MyTeams_Actions"]</th>
                         </tr>
                     </thead>
                     <tbody>

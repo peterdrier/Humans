@@ -7,26 +7,30 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Both templates are <see cref="TimeSensitiveTemplates"/>: the outbox drains a sign-in link immediately
+/// Both templates are <see cref="EmailMessage.Urgent"/>: the outbox drains a sign-in link immediately
 /// instead of on the next sweep.
 /// </summary>
 internal sealed class AuthEmails(
     IStringLocalizer<AuthResource> localizer,
     ILogger<AuthEmails> logger)
 {
-    public EmailMessage MagicLinkLogin(string toEmail, string displayName, string magicLinkUrl, string? culture = null)
+    internal const string MagicLinkLoginTemplate = "magic_link_login";
+    internal const string MagicLinkSignupTemplate = "magic_link_signup";
+
+    public EmailMessage MagicLinkLogin(Guid userId, string toEmail, string displayName, string magicLinkUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, displayName,
+            toEmail, displayName, userId,
             L("Auth_Email_MagicLinkLogin_Subject"),
             Lf("Auth_Email_MagicLinkLogin_Body", Encode(displayName), magicLinkUrl),
-            TimeSensitiveTemplates.MagicLinkLogin));
+            MagicLinkLoginTemplate, Urgent: true));
 
+    /// <summary>No account stands behind the address yet, so the message carries no user.</summary>
     public EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, toEmail,
+            toEmail, toEmail, UserId: null,
             L("Auth_Email_MagicLinkSignup_Subject"),
             Lf("Auth_Email_MagicLinkSignup_Body", magicLinkUrl),
-            TimeSensitiveTemplates.MagicLinkSignup));
+            MagicLinkSignupTemplate, Urgent: true));
 
     private string L(string key) => localizer[key].Value;
 

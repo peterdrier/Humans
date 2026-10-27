@@ -27,12 +27,12 @@ internal sealed class WorkgroupsEmailPreviews(WorkgroupsEmails emails) : IEmailP
                 $"workgroup-notice-{Kebab(kind)}",
                 $"Working Group Notice — {kind}",
                 emails.WorkgroupNotice(new WorkgroupNoticeRequest(
-                    persona.Email, persona.Name, kind, SampleName, SampleSlug,
+                    Guid.Empty, persona.Email, persona.Name, kind, SampleName, SampleSlug,
                     Details.GetValueOrDefault(kind), persona.Culture)))),
             // A null RecipientName is the role-inbox case, which takes the generic greeting.
             new EmailPreviewSample("workgroup-notice-role-inbox", "Workgroup Notice (role inbox, generic greeting)",
                 emails.WorkgroupNotice(new WorkgroupNoticeRequest(
-                    persona.Email, null, WorkgroupNoticeKind.Registered, SampleName, SampleSlug,
+                    Guid.Empty, persona.Email, null, WorkgroupNoticeKind.Registered, SampleName, SampleSlug,
                     Culture: persona.Culture))),
         ];
     }

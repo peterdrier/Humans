@@ -24,9 +24,9 @@ internal sealed class CommunicationPreferencesViewModel
 internal sealed class CategoryPreferenceItem
 {
     private static CategoryPreferenceItem FromPreference(
-        MessageCategory category, CommunicationPreferenceSnapshot? preference, bool hasTicketOrder)
+        MessageCategory category, CommunicationPreferenceSnapshot? preference, IReadOnlySet<MessageCategory> lockedCategories)
     {
-        var locked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
+        var locked = lockedCategories.Contains(category);
         var editable = !category.IsAlwaysOn() && !locked;
         return new CategoryPreferenceItem
         {
@@ -36,7 +36,7 @@ internal sealed class CategoryPreferenceItem
             AlertEnabled = preference?.InboxEnabled ?? true,
             EmailEditable = editable,
             AlertEditable = editable,
-            IsTicketingLocked = locked,
+            IsLocked = locked,
         };
     }
 
@@ -47,12 +47,12 @@ internal sealed class CategoryPreferenceItem
 
     public bool AlertEnabled { get; set; } = true;
 
-    /// <summary>False for always-on categories and for locked Ticketing.</summary>
+    /// <summary>False for always-on categories and for locked ones.</summary>
     public bool EmailEditable { get; set; }
 
     public bool AlertEditable { get; set; }
 
-    public bool IsTicketingLocked { get; set; }
+    public bool IsLocked { get; set; }
 
     /// <summary>Shown only in the read-only view.</summary>
     public string? UpdateSource { get; set; }
@@ -62,13 +62,13 @@ internal sealed class CategoryPreferenceItem
 
     /// <summary>One item per active category, in display order.</summary>
     public static List<CategoryPreferenceItem> ForActiveCategories(
-        IReadOnlyList<CommunicationPreferenceSnapshot> prefs, bool hasTicketOrder)
+        IReadOnlyList<CommunicationPreferenceSnapshot> prefs, IReadOnlySet<MessageCategory> lockedCategories)
     {
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
         return MessageCategoryExtensions.ActiveCategories.Select(category =>
         {
             var pref = prefsByCategory.GetValueOrDefault(category);
-            var item = FromPreference(category, pref, hasTicketOrder);
+            var item = FromPreference(category, pref, lockedCategories);
             item.UpdateSource = pref?.UpdateSource;
             item.UpdatedAt = pref?.UpdatedAt;
             return item;
