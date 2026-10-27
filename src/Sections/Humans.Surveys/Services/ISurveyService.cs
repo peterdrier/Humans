@@ -61,7 +61,7 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>
     /// Sends the invitation wave: resolves the audience, creates invitations for net-new recipients
     /// (idempotent — already-invited users are skipped, sends never revoke), and queues each email.
-    /// Requires the survey to be Open with an audience.
+    /// Returns a refusal before writes unless the survey is Open with a valid audience.
     /// </summary>
     Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
@@ -307,8 +307,11 @@ internal sealed record InformationImageInput(
 
 internal sealed record SurveyImageUpload(Stream Content, string ContentType, string FileName, long Length);
 
-/// <summary>Outcome of a send wave: net-new invitations created, emails queued, and enqueue failures.</summary>
-internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);
+/// <summary>Invitation totals and enqueue failures, or an expected refusal before any invitation write.</summary>
+internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
 
 /// <summary>An expected Board review refusal, or a successful decision with optional invitation totals.</summary>
 internal sealed record SurveyReviewResult(SendResult? Send = null, string? Refusal = null)

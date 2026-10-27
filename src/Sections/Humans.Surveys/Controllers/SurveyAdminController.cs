@@ -505,15 +505,15 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        try
+        var result = await surveyService.SendInvitesAsync(id, actorId.Value, ct);
+        if (result.Succeeded)
         {
-            var result = await surveyService.SendInvitesAsync(id, actorId.Value, ct);
             SetSuccess($"Sent {result.InvitationsCreated} new invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Send invites rejected for survey {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Send invites rejected for survey {SurveyId}: {Reason}", id, result.Refusal);
+            SetError(result.Refusal!);
         }
         return RedirectToAction(nameof(Send), new { id });
     }

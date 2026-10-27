@@ -676,7 +676,8 @@ internal sealed class SurveyService(
 
         // CancellationToken.None, not ct: approval is persisted, and a request-scoped token firing mid-send would
         // leave the survey Open with a partial invitation set.
-        return new(Send: await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None));
+        var sent = await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None);
+        return new(Send: sent, Refusal: sent.Refusal);
     }
 
     public async Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
@@ -724,14 +725,16 @@ internal sealed class SurveyService(
 
     public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new SendResult(0, 0, 0, "Survey not found.");
         if (survey.Status != SurveyStatus.Open)
-            throw new InvalidOperationException("Invitations can only be sent for an Open survey.");
-        var audienceType = survey.AudienceType
-            ?? throw new InvalidOperationException("Survey has no audience to invite.");
-        ValidateAudienceConfiguration(
-            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+            return new SendResult(0, 0, 0, "Invitations can only be sent for an Open survey.");
+        var audienceError = AudienceConfigurationError(
+            survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+        if (audienceError is not null)
+            return new SendResult(0, 0, 0, audienceError.DiagnosticMessage);
+        var audienceType = survey.AudienceType!.Value;
 
         var now = clock.GetCurrentInstant();
         var target = await ResolveRecipientIdsAsync(
@@ -2359,14 +2362,6 @@ internal sealed class SurveyService(
             IsMerged: false,
             State: UserState.Active,
         };
-
-    private static void ValidateAudienceConfiguration(
-        SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
-    {
-        var error = AudienceConfigurationError(type, teamId, loggedInSince, requireAudience);
-        if (error is not null)
-            throw new InvalidOperationException(error.DiagnosticMessage);
-    }
 
     private static SurveyAuthoringError? AudienceConfigurationError(
         SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)

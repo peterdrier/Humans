@@ -207,6 +207,51 @@ public sealed class SurveyAdminControllerTests
         sut.ModelState.IsValid.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendInvites_displays_expected_refusals_or_invitation_totals(bool refused)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        const string reason = "Invitations can only be sent for an Open survey.";
+        surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(refused ? new SendResult(0, 0, 0, reason) : new SendResult(3, 2, 1));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
+        redirect.ActionName.Should().Be(nameof(SurveyAdminController.Send));
+        redirect.RouteValues!["id"].Should().Be(id);
+        if (refused)
+        {
+            sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+            sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        }
+        else
+        {
+            sut.TempData[TempDataKeys.SuccessMessage].Should().Be("Sent 3 new invitation(s); 2 email(s) queued, 1 failed.");
+            sut.TempData.Should().NotContainKey(TempDataKeys.ErrorMessage);
+        }
+    }
+
+    [HumansFact]
+    public async Task SendInvites_does_not_disguise_unexpected_failures_as_refusals()
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var failure = new InvalidOperationException("Unexpected invitation persistence failure.");
+        surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<SendResult>(failure));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var act = () => sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Approve_refusal_returns_to_queue_with_the_reason()
     {

@@ -1838,38 +1838,40 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_throws_when_not_open()
+    public async Task SendInvitesAsync_returns_refusal_when_not_open()
     {
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, Guid.NewGuid());
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Invitations can only be sent for an Open survey.");
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_throws_when_audience_null()
+    public async Task SendInvitesAsync_returns_refusal_when_audience_null()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Survey has no audience to invite.");
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_throws_when_team_audience_has_no_team()
+    public async Task SendInvitesAsync_returns_refusal_when_team_audience_has_no_team()
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SendInvitesAsync(
+        var result = await CreateService().SendInvitesAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*team is required*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("A team is required for the Team audience.");
         await _repo.DidNotReceive().AddInvitationAndSaveAsync(
             Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
     }
