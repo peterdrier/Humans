@@ -83,24 +83,39 @@ internal sealed class TeamService(
         bool isHidden = false,
         CancellationToken cancellationToken = default)
     {
+        var result = await CreateTeamCoreAsync(name, description, requiresApproval, parentTeamId,
+            googleGroupPrefix, isHidden, cancellationToken);
+        result.RequireSuccess();
+        return result.Team!;
+    }
+
+    private async Task<TeamUpdateResult> CreateTeamCoreAsync(
+        string name,
+        string? description,
+        bool requiresApproval,
+        Guid? parentTeamId = null,
+        string? googleGroupPrefix = null,
+        bool isHidden = false,
+        CancellationToken cancellationToken = default)
+    {
         var baseSlug = SlugHelper.GenerateSlug(name);
         if (baseSlug.Length == 0)
             baseSlug = "team";
         var now = clock.GetCurrentInstant();
 
         if (ReservedTeamSlugs.Contains(baseSlug))
-            throw new InvalidOperationException($"The team name '{name}' conflicts with a reserved route");
+            return new(ErrorMessage: $"The team name '{name}' conflicts with a reserved route");
 
         if (parentTeamId.HasValue)
         {
-            var parent = await repo.GetByIdAsync(parentTeamId.Value, cancellationToken)
-                ?? throw new InvalidOperationException($"Parent team {parentTeamId.Value} not found");
+            var parent = await repo.GetByIdAsync(parentTeamId.Value, cancellationToken);
+            if (parent is null) return new(ErrorMessage: $"Parent team {parentTeamId.Value} not found");
 
             if (parent.IsSystemTeam)
-                throw new InvalidOperationException("System teams cannot be parents");
+                return new(ErrorMessage: "System teams cannot be parents");
 
             if (parent.ParentTeamId.HasValue)
-                throw new InvalidOperationException("Cannot nest more than one level — the parent team already has a parent");
+                return new(ErrorMessage: "Cannot nest more than one level — the parent team already has a parent");
         }
 
         for (var attempt = 0; attempt < 10; attempt++)
@@ -134,11 +149,14 @@ internal sealed class TeamService(
             };
 
             var persisted = await repo.AddTeamWithRequiresApprovalOverrideAsync(team, requiresApproval, cancellationToken);
-            if (persisted)
+            if (persisted == TeamUpdateConflict.None)
             {
                 logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
-                return team;
+                return new(Team: team);
             }
+
+            if (persisted is not (TeamUpdateConflict.SlugTaken or TeamUpdateConflict.CustomSlugTaken))
+                return new(Conflict: persisted);
 
             // Slug unique-constraint race: retry with the next suffix.
             logger.LogDebug(
@@ -146,7 +164,7 @@ internal sealed class TeamService(
                 slug, attempt + 1);
         }
 
-        throw new InvalidOperationException($"Could not generate unique slug for team '{name}' after 10 attempts");
+        return new(ErrorMessage: $"Could not generate unique slug for team '{name}' after 10 attempts");
     }
 
     public async Task<TeamInfo?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
@@ -409,7 +427,7 @@ internal sealed class TeamService(
         && Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri)
         && (!uri.IsAbsoluteUri || uri.Scheme is "http" or "https" or "mailto");
 
-    public async Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
+    public async Task<TeamUpdateResult> CreateTeamWithGoogleGroupAsync(
         string name,
         string? description,
         bool requiresApproval,
@@ -418,8 +436,10 @@ internal sealed class TeamService(
         bool isHidden = false,
         CancellationToken cancellationToken = default)
     {
-        var team = await CreateTeamAsync(
+        var result = await CreateTeamCoreAsync(
             name, description, requiresApproval, parentTeamId, googleGroupPrefix, isHidden, cancellationToken);
+        if (!result.Succeeded) return result;
+        var team = result.Team!;
 
         string? groupWarning = null;
         if (!string.IsNullOrEmpty(googleGroupPrefix))
@@ -440,7 +460,7 @@ internal sealed class TeamService(
             }
         }
 
-        return new TeamWithGroupResult(team, groupWarning);
+        return result with { GroupWarning = groupWarning };
     }
 
     public async Task<TeamUpdateResult> UpdateTeamWithGoogleGroupAsync(

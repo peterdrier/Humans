@@ -76,9 +76,12 @@ public class TeamControllerPageContentTests
 
     [HumansTheory]
     [InlineData("create", false, false)]
+    [InlineData("create-group", false, false)]
     [InlineData("edit", false, false)]
     [InlineData("delete", false, false)]
     [InlineData("create", true, false)]
+    [InlineData("create-database", true, false)]
+    [InlineData("create-dependency", true, false)]
     [InlineData("edit", true, false)]
     [InlineData("edit-database", true, false)]
     [InlineData("edit-dependency", true, false)]
@@ -100,22 +103,24 @@ public class TeamControllerPageContentTests
         const string reason = "The team hierarchy does not permit this change";
         var editCase = action;
         if (action.StartsWith("edit-", StringComparison.Ordinal)) action = "edit";
+        if (action.StartsWith("create-", StringComparison.Ordinal)) action = "create";
         var conflict = editCase switch
         {
             "edit-slug" => Humans.Teams.Data.TeamUpdateConflict.SlugTaken,
             "edit-custom" => Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken,
-            "edit-group" => Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken,
+            "create-group" or "edit-group" => Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken,
             _ => Humans.Teams.Data.TeamUpdateConflict.None
         };
         Exception failure = editCase switch
         {
-            "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
-            "edit-dependency" => new InvalidOperationException(reason),
+            "create-database" or "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
+            "create-dependency" or "edit-dependency" => new InvalidOperationException(reason),
             "delete" when unexpected => new InvalidOperationException("Private dependency failure"),
             _ => unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason)
         };
         teams.CreateTeamWithGoogleGroupAsync("", null, false)
-            .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
+            .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
+                : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
             .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
                 : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
@@ -200,7 +205,7 @@ public class TeamControllerPageContentTests
             Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken => "GoogleGroupPrefix",
             _ => string.Empty
         };
-        if (string.Equals(action, "edit", StringComparison.Ordinal))
+        if (string.Equals(action, "edit", StringComparison.Ordinal) || conflict != Humans.Teams.Data.TeamUpdateConflict.None)
         {
             controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expectedReason);
             controller.TempData.Should().NotContainKey("SuccessMessage");

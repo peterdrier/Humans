@@ -7,7 +7,6 @@ using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Configuration;
 using Humans.Base.Enums;
@@ -646,27 +645,26 @@ internal sealed class TeamController(
         {
             var result = await teamService.CreateTeamWithGoogleGroupAsync(
                 model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
+            if (!result.Succeeded)
+            {
+                var reason = result.Conflict == TeamUpdateConflict.GroupPrefixTaken
+                    ? "This Google Group prefix is already in use by another team."
+                    : result.ErrorMessage!;
+                logger.LogWarning("Failed to create team: {Reason}", reason);
+                if (result.Conflict == TeamUpdateConflict.GroupPrefixTaken)
+                    ModelState.AddModelError("GoogleGroupPrefix", reason);
+                else
+                    SetError(reason);
+                await PopulateEligibleParentsAsync(model, excludeTeamId: null);
+                return View(model);
+            }
             var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team.Id, result.Team.Name);
+            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
 
             SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
             if (result.GroupWarning is not null)
                 SetError(result.GroupWarning);
             return RedirectToAction(nameof(Summary));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to create team: {Reason}", ex.Message);
-            SetError(ex.Message);
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-            return View(model);
-        }
-        catch (DbUpdateException ex)
-        {
-            logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
-            ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-            return View(model);
         }
         catch (Exception ex)
         {

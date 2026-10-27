@@ -1053,8 +1053,20 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.GroupWarning.Should().Contain("Google Group setup failed")
             .And.Contain("prefix has been cleared");
         ClearAllTrackers();
-        var reloaded = await TeamsDb.Teams.SingleAsync(t => t.Id == result.Team.Id, TestContext.Current.CancellationToken);
+        var reloaded = await TeamsDb.Teams.SingleAsync(t => t.Id == result.Team!.Id, TestContext.Current.CancellationToken);
         reloaded.GoogleGroupPrefix.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CreateTeamWithGoogleGroup_ReservedName_RefusesBeforePersistenceOrProvisioning()
+    {
+        var result = await _service.CreateTeamWithGoogleGroupAsync("Roster", null, false,
+            googleGroupPrefix: "roster", cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("reserved route");
+        (await TeamsDb.Teams.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        await _googleSyncService.DidNotReceive().EnsureTeamGroupAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

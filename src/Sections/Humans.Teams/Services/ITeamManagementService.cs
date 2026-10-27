@@ -120,7 +120,7 @@ internal interface ITeamManagementService : ITeamManagement
     /// <c>GroupWarning</c> then carries the operator message.
     /// </summary>
     [ExternalWrite]
-    Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
+    Task<TeamUpdateResult> CreateTeamWithGoogleGroupAsync(
         string name,
         string? description,
         bool requiresApproval,
@@ -314,9 +314,6 @@ internal sealed record TeamRoleReconciliationMembership(
 internal sealed record TeamRoleManagementToggleResult(
     string RoleName,
     bool IsManagement);
-
-/// <summary><see cref="GroupWarning"/> is null when the group is in order, else the operator message to show.</summary>
-internal sealed record TeamWithGroupResult(Team Team, string? GroupWarning);
 
 internal enum TeamJoinOutcome
 {

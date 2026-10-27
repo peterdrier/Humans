@@ -30,7 +30,7 @@ internal sealed class CachingTeamService(
     /// </summary>
     private readonly ConcurrentDictionary<Guid, HashSet<Guid>> _teamIdsByUserId = new();
 
-    public Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
+    public Task<TeamUpdateResult> CreateTeamWithGoogleGroupAsync(
         string name,
         string? description,
         bool requiresApproval,
