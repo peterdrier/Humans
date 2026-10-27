@@ -142,13 +142,12 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[181,0],[1,1],[0,0]]]}""")]
     [InlineData("""{"type":"Polygon","coordinates":[[[0,0],["1",0],[1,1],[0,0]]]}""")]
     [InlineData("""{"type":"MultiPolygon","coordinates":[[]]}""")]
-    public async Task SaveCampPolygonAsync_InvalidGeoJson_Throws(string geoJson)
+    public async Task SaveCampPolygonAsync_InvalidGeoJson_ReturnsRefusal(string geoJson)
     {
-        var act = async () => await _sut.SaveCampPolygonAsync(
+        var result = await _sut.SaveCampPolygonAsync(
             Guid.NewGuid(), geoJson, 100.0, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("Invalid GeoJSON.*");
+        result.Refusal.Should().Be("Invalid GeoJSON.");
         (await CityPlanningDb.CampPolygons.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await CityPlanningDb.CampPolygonHistories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
@@ -161,11 +160,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     public async Task SaveCampPolygonAsync_InvalidArea_RejectsWithoutSaving(double areaSqm)
     {
         const string geoJson = """{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}""";
-        var act = async () => await _sut.SaveCampPolygonAsync(
+        var result = await _sut.SaveCampPolygonAsync(
             Guid.NewGuid(), geoJson, areaSqm, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("Area must be finite and non-negative.*");
+        result.Refusal.Should().Be("Area must be finite and non-negative.");
         (await CityPlanningDb.CampPolygons.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await CityPlanningDb.CampPolygonHistories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }

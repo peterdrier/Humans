@@ -45,7 +45,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     private readonly ILogger<CityPlanningApiController> _logger = Substitute.For<ILogger<CityPlanningApiController>>();
     private readonly IClientProxy _allClients = Substitute.For<IClientProxy>();
     private readonly ISettingsService _settings = ActiveEvent(2026);
-    private readonly CityPlanningService _service;
+    private CityPlanningService _service;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _campSeasonId = Guid.NewGuid();
 
@@ -420,6 +420,34 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(restore ? 2 : 1);
         await _allClients.DidNotReceive().SendCoreAsync(
             Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PolygonWrite_DependencyArgumentFailure_PropagatesWithoutBadRequest(bool restore)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var repo = Substitute.For<ICityPlanningRepository>();
+        var failure = new ArgumentException("Private persistence failure", nameof(restore));
+        repo.SavePolygonAndAppendHistoryAsync(default, default!, default, default, default!, default, default)
+            .ThrowsAsyncForAnyArgs(failure);
+        repo.GetHistoryEntryAsync(default, default, default).ThrowsAsyncForAnyArgs(failure);
+        _service = new CityPlanningService(repo, Clock,
+            Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
+        var controller = CreateController(RoleNames.CampAdmin);
+        Func<Task> act = async () =>
+        {
+            if (restore)
+                await controller.RestoreCampPolygon(_campSeasonId, Guid.NewGuid(), ct);
+            else
+                await controller.SaveCampPolygon(_campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+        };
+
+        (await act.Should().ThrowAsync<ArgumentException>()).Which.Should().BeSameAs(failure);
+        _logger.ReceivedCalls().Should().BeEmpty();
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
     }
 
     [HumansFact]
