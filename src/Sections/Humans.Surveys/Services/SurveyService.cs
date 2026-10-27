@@ -642,20 +642,23 @@ internal sealed class SurveyService(
         return new SurveySubmitResult(true);
     }
 
-    public async Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
     {
         if (!viewer.IsBoardOrAdmin)
-            throw new InvalidOperationException("Only Board/Admin may approve a survey.");
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+            return new(Refusal: "Only Board/Admin may approve a survey.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new(Refusal: "Survey not found.");
         if (survey.Status != SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("Only a survey pending approval can be approved.");
+            return new(Refusal: "Only a survey pending approval can be approved.");
 
         // Send validates the audience, and Open is not a state the author can edit out of — so a
         // misconfigured audience has to fail here, before approval is persisted, leaving the
         // survey in the queue where the Board can reject it back to the author.
-        ValidateAudienceConfiguration(
+        var audienceError = AudienceConfigurationError(
             survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+        if (audienceError is not null)
+            return new(Refusal: audienceError.DiagnosticMessage);
 
         // Well-formed is not the same as non-empty: a Team audience whose team has since been
         // deleted passes configuration and resolves to nobody. Resolve here too, so that case
@@ -663,7 +666,7 @@ internal sealed class SurveyService(
         var recipients = await ResolveRecipientIdsAsync(
             survey.AudienceType!.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0)
-            throw new InvalidOperationException("This survey's audience resolves to nobody to invite.");
+            return new(Refusal: "This survey's audience resolves to nobody to invite.");
 
         var now = clock.GetCurrentInstant();
         await repo.ApproveAsync(surveyId, now, ct);
@@ -673,28 +676,30 @@ internal sealed class SurveyService(
 
         // CancellationToken.None, not ct: approval is persisted, and a request-scoped token firing mid-send would
         // leave the survey Open with a partial invitation set.
-        return await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None);
+        return new(Send: await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None));
     }
 
-    public async Task RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
     {
         if (!viewer.IsBoardOrAdmin)
-            throw new InvalidOperationException("Only Board/Admin may reject a survey.");
+            return new(Refusal: "Only Board/Admin may reject a survey.");
         if (string.IsNullOrWhiteSpace(note))
-            throw new InvalidOperationException("A rejection note is required.");
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+            return new(Refusal: "A rejection note is required.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new(Refusal: "Survey not found.");
         if (survey.Status != SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("Only a survey pending approval can be rejected.");
+            return new(Refusal: "Only a survey pending approval can be rejected.");
 
         var now = clock.GetCurrentInstant();
         var trimmedNote = note.Trim();
         if (trimmedNote.Length > 4000)
-            throw new InvalidOperationException("A rejection note must be 4000 characters or fewer.");
+            return new(Refusal: "A rejection note must be 4000 characters or fewer.");
         await repo.RejectAsync(surveyId, trimmedNote, now, ct);
         await auditLog.LogAsync(AuditAction.SurveyRejected, AuditEntityTypes.Survey, surveyId,
             $"Rejected survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}': {trimmedNote}",
             viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
+        return new();
     }
 
     public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)

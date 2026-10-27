@@ -47,10 +47,10 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     Task<SurveySubmitResult> SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Board/Admin only — enforced here.</summary>
-    Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
+    Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Draft, recording the Board's note. Board/Admin only — enforced here.</summary>
-    Task RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);
+    Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);
 
     /// <summary>
     /// Resolves the survey's audience and returns the number of net-new recipients who would receive
@@ -309,6 +309,12 @@ internal sealed record SurveyImageUpload(Stream Content, string ContentType, str
 
 /// <summary>Outcome of a send wave: net-new invitations created, emails queued, and enqueue failures.</summary>
 internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed);
+
+/// <summary>An expected Board review refusal, or a successful decision with optional invitation totals.</summary>
+internal sealed record SurveyReviewResult(SendResult? Send = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
 
 internal sealed record SurveyInviteStatus(
     Guid UserId,

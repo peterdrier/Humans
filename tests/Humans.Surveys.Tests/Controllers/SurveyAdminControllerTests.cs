@@ -182,6 +182,48 @@ public sealed class SurveyAdminControllerTests
             .Should().Be(55L * 1024 * 1024);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Review_does_not_disguise_unexpected_dependency_failures_as_refusals(bool approve)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var failure = new InvalidOperationException("Unexpected persistence failure.");
+        if (approve)
+            surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        else
+            surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), "note", Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var act = async () => approve
+            ? await sut.Approve(id, Xunit.TestContext.Current.CancellationToken)
+            : await sut.Reject(id, "note", Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
+        sut.ModelState.IsValid.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Approve_refusal_returns_to_queue_with_the_reason()
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        const string reason = "This survey's audience resolves to nobody to invite.";
+        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyReviewResult(Refusal: reason));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+    }
+
     [HumansFact]
     public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
     {
@@ -191,7 +233,7 @@ public sealed class SurveyAdminControllerTests
         surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
             .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
         surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("A rejection note must be 4000 characters or fewer."));
+            .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));
         var sut = CreateController(surveys, isBoardOrAdmin: true);
 
         var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);

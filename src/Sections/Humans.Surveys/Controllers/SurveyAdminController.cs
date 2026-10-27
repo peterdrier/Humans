@@ -66,16 +66,16 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        try
+        var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
+        var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
+        if (result.Succeeded)
         {
-            var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
-            var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
-            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.EmailsQueued, result.Failed]);
+            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.Send!.EmailsQueued, result.Send.Failed]);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Survey approval rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Survey approval rejected for {SurveyId}: {Reason}", id, result.Refusal);
+            SetError(result.Refusal!);
         }
         return RedirectToAction(nameof(Queue));
     }
@@ -88,19 +88,16 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        try
+        var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
+        var result = await surveyService.RejectAsync(id, viewer, note, ct);
+        if (!result.Succeeded)
         {
-            var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
-            await surveyService.RejectAsync(id, viewer, note, ct);
-            SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
+            logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, result.Refusal);
+            ModelState.AddModelError(string.Empty, result.Refusal!);
             ViewData[$"RejectionNote:{id}"] = note;
             return await Queue(ct);
         }
+        SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
         return RedirectToAction(nameof(Queue));
     }
 

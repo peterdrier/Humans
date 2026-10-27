@@ -5210,8 +5210,9 @@ public class SurveyServiceTests
         var result = await CreateService().ApproveAndSendAsync(
             survey.Id, new SurveyViewer(boardUserId, IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
 
-        result.InvitationsCreated.Should().Be(1);
-        result.EmailsQueued.Should().Be(1);
+        result.Succeeded.Should().BeTrue();
+        result.Send!.InvitationsCreated.Should().Be(1);
+        result.Send!.EmailsQueued.Should().Be(1);
         await _repo.Received(1).ApproveAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _repo.Received(1).AddInvitationAndSaveAsync(
             Arg.Is<SurveyInvitation>(i => i.UserId == recipient), Arg.Any<CancellationToken>());
@@ -5221,15 +5222,16 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAndSendAsync_throws_for_a_non_boardOrAdmin_viewer()
+    public async Task ApproveAndSendAsync_returns_refusal_for_a_non_boardOrAdmin_viewer()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAndSendAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: false), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Only Board/Admin may approve a survey.");
         await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -5237,15 +5239,16 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.Draft)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task ApproveAndSendAsync_throws_when_survey_is_not_pending_approval(SurveyStatus status)
+    public async Task ApproveAndSendAsync_returns_refusal_when_survey_is_not_pending_approval(SurveyStatus status)
     {
         var survey = SurveyWith(status, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAndSendAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Only a survey pending approval can be approved.");
         await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -5258,10 +5261,11 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAndSendAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Survey has no audience to invite.");
         await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         survey.Status.Should().Be(SurveyStatus.PendingApproval);
     }
@@ -5277,10 +5281,11 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
-        var act = async () => await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAndSendAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("This survey's audience resolves to nobody to invite.");
         await _repo.DidNotReceive().ApproveAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         survey.Status.Should().Be(SurveyStatus.PendingApproval);
     }
@@ -5293,10 +5298,11 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
         var boardUserId = Guid.NewGuid();
-        await CreateService().RejectAsync(
+        var result = await CreateService().RejectAsync(
             survey.Id, new SurveyViewer(boardUserId, IsBoardOrAdmin: true), "  Please clarify Q3.  ",
             TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
         await _repo.Received(1).RejectAsync(survey.Id, "Please clarify Q3.", _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyRejected, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
@@ -5308,11 +5314,12 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().RejectAsync(
+        var result = await CreateService().RejectAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), new string('x', 4001),
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*4000*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("A rejection note must be 4000 characters or fewer.");
         await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         _audit.ReceivedCalls().Should().BeEmpty();
     }
@@ -5324,24 +5331,26 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         var note = new string('x', 4000);
 
-        await CreateService().RejectAsync(
+        var result = await CreateService().RejectAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), "  " + note + "  ",
             TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
         await _repo.Received(1).RejectAsync(survey.Id, note, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task RejectAsync_throws_for_a_non_boardOrAdmin_viewer()
+    public async Task RejectAsync_returns_refusal_for_a_non_boardOrAdmin_viewer()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().RejectAsync(
+        var result = await CreateService().RejectAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: false), "note",
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Only Board/Admin may reject a survey.");
         await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -5349,16 +5358,17 @@ public class SurveyServiceTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
-    public async Task RejectAsync_throws_when_the_note_is_blank(string? note)
+    public async Task RejectAsync_returns_refusal_when_the_note_is_blank(string? note)
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().RejectAsync(
+        var result = await CreateService().RejectAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), note!,
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("A rejection note is required.");
         await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
@@ -5366,16 +5376,17 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.Draft)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task RejectAsync_throws_when_survey_is_not_pending_approval(SurveyStatus status)
+    public async Task RejectAsync_returns_refusal_when_survey_is_not_pending_approval(SurveyStatus status)
     {
         var survey = SurveyWith(status, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().RejectAsync(
+        var result = await CreateService().RejectAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), IsBoardOrAdmin: true), "note",
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Only a survey pending approval can be rejected.");
         await _repo.DidNotReceive().RejectAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
