@@ -14,8 +14,8 @@ using NodaTime;
 namespace Humans.Auth.Controllers;
 
 /// <summary>
-/// <c>AddRole</c> and <c>EndRole</c> add the per-role <see cref="PolicyNames.RoleAssignmentManage"/> check on top
-/// of the class gate.
+/// The class gate lets Board read the roster; <c>AddRole</c> and <c>EndRole</c> narrow to <see cref="PolicyNames.HumanAdminOrAdmin"/>
+/// (the principals <c>RoleAssignmentRules</c> admits) and add the per-role <see cref="PolicyNames.RoleAssignmentManage"/> check.
 /// </summary>
 [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 internal sealed class RoleAssignmentsController(
@@ -63,6 +63,7 @@ internal sealed class RoleAssignmentsController(
     }
 
     [HttpGet("Auth/Admin/{id:guid}/Roles/Add")]
+    [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
     public async Task<IActionResult> AddRole(Guid id)
     {
         if (await UserService.GetRawUserInfoAsync(id, HttpContext.RequestAborted) is null)
@@ -78,6 +79,7 @@ internal sealed class RoleAssignmentsController(
     }
 
     [HttpPost("Auth/Admin/{id:guid}/Roles/Add")]
+    [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
@@ -120,6 +122,7 @@ internal sealed class RoleAssignmentsController(
     }
 
     [HttpPost("Auth/Admin/{id:guid}/Roles/{roleId:guid}/End")]
+    [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
     {

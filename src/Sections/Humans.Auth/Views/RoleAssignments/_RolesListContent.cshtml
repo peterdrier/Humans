@@ -76,7 +76,7 @@
                 @<text>
                     @if (item.IsActive)
                     {
-                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline"
+                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline" authorize-policy="HumanAdminOrAdmin"
                               data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Auth_Roles_End"]</button>

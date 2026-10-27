@@ -64,8 +64,8 @@ Successful Google and magic-link sign-ins (including magic-link signup) bump She
 | Route | Purpose |
 |---|---|
 | `GET /Auth/Admin/Roles` | System-wide role roster, filterable by role, active-only by default |
-| `GET/POST /Auth/Admin/{id}/Roles/Add` | Assign a role to a member (per-role `RoleAssignmentManage` check on POST) |
-| `POST /Auth/Admin/{id}/Roles/{roleId}/End` | End an assignment (per-role `RoleAssignmentManage` check) |
+| `GET/POST /Auth/Admin/{id}/Roles/Add` | Assign a role to a member (`HumanAdminOrAdmin`; per-role `RoleAssignmentManage` check on POST) |
+| `POST /Auth/Admin/{id}/Roles/{roleId}/End` | End an assignment (`HumanAdminOrAdmin`; per-role `RoleAssignmentManage` check) |
 
 Reached from the Roles item of the Users admin sidebar group and the Role Assignments card on `/Users/Admin/{id}`; both POSTs redirect back to the member's admin detail.
 
@@ -155,7 +155,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 - Magic links are sent silently when the email is unknown or rate-limited — no account enumeration. The caller always sees the same "check your email" UI.
 - `RoleAssignmentService.AssignRoleAsync` **cannot** create a new assignment when an overlapping active one already exists for the same (user, role) — under the current or a former name — nor one for a role the catalog does not list.
 - `EndRoleAsync` **cannot** end an assignment that is already ended or not yet active.
-- The role-assignment admin pages are `HumanAdminBoardOrAdmin`-gated, and each assign/end additionally passes the per-role `RoleAssignmentManage` check: a UsersAdmin actor **cannot** assign or end `Admin`, and a Board actor **cannot** assign or end any role (assign answers 403, end answers 404 and writes nothing). The roster and add-role GETs carry request cancellation through their role-assignment and raw-user reads.
+- The roster is `HumanAdminBoardOrAdmin`-gated; `AddRole` and `EndRole` are `HumanAdminOrAdmin`-gated (Board **cannot** reach them: 403, and the Add/End buttons are hidden from it), and each assign/end additionally passes the per-role `RoleAssignmentManage` check: a UsersAdmin actor **cannot** assign or end `Admin` (assign answers 403, end answers 404 and writes nothing). The roster and add-role GETs carry request cancellation through their role-assignment and raw-user reads.
 
 ## Triggers
 

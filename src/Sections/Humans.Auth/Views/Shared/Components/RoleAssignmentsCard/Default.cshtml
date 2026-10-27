@@ -3,7 +3,7 @@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>@Localizer["Auth_Roles_Assignments"]</span>
-        <a asp-controller="RoleAssignments" asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">@Localizer["Auth_Roles_AddRole"]</a>
+        <a asp-controller="RoleAssignments" asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary" authorize-policy="HumanAdminOrAdmin">@Localizer["Auth_Roles_AddRole"]</a>
     </div>
     @if (Model.Roles.Count > 0)
     {
@@ -36,7 +36,7 @@
                     </div>
                     @if (role.IsActive)
                     {
-                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@Model.UserId" asp-route-roleId="@role.Id" method="post" class="d-inline"
+                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@Model.UserId" asp-route-roleId="@role.Id" method="post" class="d-inline" authorize-policy="HumanAdminOrAdmin"
                               data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Auth_Roles_End"]</button>

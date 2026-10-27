@@ -106,8 +106,8 @@ Human management is now on `UsersAdminController` under `/Users/Admin`, accessib
 | `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: UsersAdmin, Board, Admin |
 | `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: UsersAdmin, Board, Admin |
 | `/Users/Admin/{id}/Reject` | RejectSignup | POST: UsersAdmin, Board, Admin |
-| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: UsersAdmin, Board, Admin |
-| `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: UsersAdmin, Board, Admin |
+| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: UsersAdmin, Admin |
+| `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: UsersAdmin, Admin |
 | `/Auth/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | UsersAdmin, Board, Admin — role assignments across members |
 | `/Users/Admin/Audience` | Audience | Admin only — audience segmentation (accounts with a ticket / a profile / both / neither) for a year |
 
