@@ -1195,6 +1195,118 @@ public sealed class IssuesServiceTests
             ReferenceEquals(call.GetArguments()[3], failure));
     }
 
+    [HumansTheory]
+    [InlineData("Submit")]
+    [InlineData("Comment")]
+    [InlineData("Status")]
+    [InlineData("Assignee")]
+    [InlineData("Section")]
+    public async Task CommittedMutation_CompletesFollowUpDespiteRequestCancellation(string operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var request = new CancellationTokenSource();
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
+        var issue = (await _repository.GetByIdAsync(issueId, ct))!;
+        var handler = SeedUser();
+        var assignee = SeedUser();
+        var repo = Substitute.For<IIssuesRepository>();
+        repo.FindForMutationAsync(issueId, request.Token).Returns(issue);
+        repo.AddIssueAsync(Arg.Any<Issue>(), request.Token).Returns(async call =>
+        {
+            issue = call.Arg<Issue>();
+            await _repository.AddIssueAsync(issue, call.Arg<CancellationToken>());
+            await request.CancelAsync();
+        });
+        repo.SaveTrackedIssueAsync(issue, request.Token).Returns(async call =>
+        {
+            await _repository.SaveTrackedIssueAsync(issue, call.Arg<CancellationToken>());
+            await request.CancelAsync();
+        });
+        repo.AddCommentAndSaveIssueAsync(Arg.Any<IssueComment>(), issue, request.Token).Returns(async call =>
+        {
+            await _repository.AddCommentAndSaveIssueAsync(call.Arg<IssueComment>(), issue, call.Arg<CancellationToken>());
+            await request.CancelAsync();
+        });
+        _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<Guid>>([handler.Id]);
+        });
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult(Info(call.Arg<Guid>()));
+        });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return call.Arg<IReadOnlyCollection<Guid>>().Select(Info).OfType<UserInfo>().ToDictionary(info => info.Id);
+        });
+        PrimeBadgeCounts(reporterId, handler.Id);
+        var service = new IssuesApplicationService(
+            repo, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+        switch (operation)
+        {
+            case "Submit":
+                var submitted = await service.SubmitIssueAsync(reporterId, IssueCategory.Bug, "New issue", "Details",
+                    "Tickets", null, null, null, null, ct: request.Token);
+                submitted.Issue.Should().NotBeNull();
+                break;
+            case "Comment":
+                (await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed", true, request.Token)).Comment.Should().NotBeNull();
+                break;
+            case "Status":
+                (await service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Admin.UserId, request.Token)).Succeeded.Should().BeTrue();
+                break;
+            case "Assignee":
+                (await service.UpdateAssigneeAsync(issueId, Admin, assignee.Id, Admin.UserId, request.Token)).Succeeded.Should().BeTrue();
+                break;
+            default:
+                (await service.UpdateSectionAsync(issueId, Admin, "Teams", Admin.UserId, request.Token)).Succeeded.Should().BeTrue();
+                break;
+        }
+
+        request.IsCancellationRequested.Should().BeTrue();
+        var stored = (await _repository.GetByIdAsync(issue.Id, ct))!;
+        stored.Should().NotBeNull();
+        if (!string.Equals(operation, "Assignee", StringComparison.Ordinal))
+        {
+            BadgeCountCached(reporterId).Should().BeFalse();
+            BadgeCountCached(handler.Id).Should().BeFalse();
+        }
+        if (!string.Equals(operation, "Section", StringComparison.Ordinal))
+        {
+            var source = operation switch
+            {
+                "Submit" => NotificationSource.IssueSubmitted,
+                "Comment" => NotificationSource.IssueComment,
+                "Status" => NotificationSource.IssueStatusChanged,
+                _ => NotificationSource.IssueAssigned,
+            };
+            _notificationService.ReceivedCalls().Should().Contain(call =>
+                (NotificationSource)call.GetArguments()[0]! == source
+                && (CancellationToken)call.GetArguments()[10]! == CancellationToken.None);
+        }
+        switch (operation)
+        {
+            case "Comment":
+                stored.Comments.Should().ContainSingle().Which.Content.Should().Be("Fixed");
+                await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
+                goto case "Status";
+            case "Status":
+                stored.Status.Should().Be(IssueStatus.Resolved);
+                await _notificationInbox.Received(1).ResolveBySourceKeyAsync(NotificationSource.IssueSubmitted,
+                    issue.Id.ToString(), Admin.UserId, CancellationToken.None);
+                break;
+            case "Assignee": stored.AssigneeUserId.Should().Be(assignee.Id); break;
+            case "Section": stored.Section.Should().Be("Teams"); break;
+            default: stored.Title.Should().Be("New issue"); break;
+        }
+    }
+
     [HumansFact]
     public async Task Mutation_cancellation_propagates_instead_of_becoming_a_failure_result()
     {

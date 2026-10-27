@@ -177,6 +177,8 @@ internal sealed class IssuesService(
             }
             throw;
         }
+        // The issue is committed; finish cache updates and notices after a browser disconnect.
+        ct = CancellationToken.None;
         EvictBadgeCounts(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
 
@@ -423,6 +425,8 @@ internal sealed class IssuesService(
 
         issue.UpdatedAt = now;
         await repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
+        // The reply and any status change are committed; finish their follow-up work.
+        ct = CancellationToken.None;
 
         if (statusChangedToOpen)
         {
@@ -520,6 +524,8 @@ internal sealed class IssuesService(
             SetStatusFields(issue, newStatus, actorUserId, clock.GetCurrentInstant());
 
             await repo.SaveTrackedIssueAsync(issue, ct);
+            // The mutation is committed; finish its cache updates and notices independently of the request.
+            ct = CancellationToken.None;
             await LogAuditAsync(
                 AuditAction.IssueStatusChanged, issueId, actorUserId,
                 $"status: {oldStatus} → {newStatus}");
@@ -576,6 +582,8 @@ internal sealed class IssuesService(
             issue.AssigneeUserId = newAssigneeUserId;
             issue.UpdatedAt = clock.GetCurrentInstant();
             await repo.SaveTrackedIssueAsync(issue, ct);
+            // The mutation is committed; finish its cache updates and notices independently of the request.
+            ct = CancellationToken.None;
 
             await LogAuditAsync(
                 AuditAction.IssueAssigneeChanged, issueId, actorUserId,
@@ -622,6 +630,8 @@ internal sealed class IssuesService(
             issue.Section = newSection;
             issue.UpdatedAt = clock.GetCurrentInstant();
             await repo.SaveTrackedIssueAsync(issue, ct);
+            // The mutation is committed; finish its cache updates and notices independently of the request.
+            ct = CancellationToken.None;
 
             await LogAuditAsync(
                 AuditAction.IssueSectionChanged, issueId, actorUserId,
