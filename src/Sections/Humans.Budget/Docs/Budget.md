@@ -205,7 +205,7 @@ Stored as string via `HasConversion<string>()`.
   load-failure flash; mutation paths keep their existing cancellation boundaries.
 - Year-status POSTs require an explicit status and reject binding errors after resolving the actor and before mutation. A missing or malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
 - Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
-- A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
+- A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate. Failed line-item mutations show a generic localized error and retain exception details only in server logs.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
 - The member `/Budget` year-status and expenditure-type labels use Budget resources in all six supported cultures; stored enum values and badge styling remain unchanged.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.

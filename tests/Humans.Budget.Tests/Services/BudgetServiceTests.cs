@@ -627,6 +627,64 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
+    [InlineData("Create", "Budget_Flash_LineCreateFailed")]
+    [InlineData("Update", "Budget_Flash_LineUpdateFailed")]
+    [InlineData("Delete", "Budget_Flash_LineDeleteFailed")]
+    public async Task CoordinatorLineFailure_LogsExceptionWithoutDisplayingItsMessage(string action, string errorKey)
+    {
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+        var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
+        budget.GetCategoryByIdAsync(_yearId).Returns(category);
+        budget.GetLineItemByIdAsync(_yearId).Returns(new BudgetLineItemSnapshot(
+            _yearId, _yearId, "Item", 0m, null, null, null, 0, false, false, 0));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var failure = new InvalidOperationException("Connection failed: internal-db.example; user=private-service");
+        budget.CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId)
+            .Returns(Task.FromException<BudgetLineItemSnapshot>(failure));
+        budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId)
+            .Returns(Task.FromException(failure));
+        budget.DeleteLineItemAsync(_yearId, viewerId).Returns(Task.FromException(failure));
+        var resources = new System.Resources.ResourceManager(typeof(BudgetResource));
+        var culture = CultureInfo.GetCultureInfo("en");
+        var localizer = Substitute.For<IStringLocalizer<BudgetResource>>();
+        localizer[Arg.Any<string>()].Returns(call =>
+            new LocalizedString(call.Arg<string>(), resources.GetString(call.Arg<string>(), culture)!));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call =>
+            new LocalizedString(call.Arg<string>(), string.Format(culture,
+                resources.GetString(call.Arg<string>(), culture)!, call.Arg<object[]>())));
+        var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<BudgetController>>();
+        var controller = new BudgetController(budget, auth, users, localizer, logger)
+        {
+            ControllerContext = admin.ControllerContext,
+            TempData = admin.TempData,
+            Url = admin.Url
+        };
+
+        var result = action switch
+        {
+            "Create" => await controller.CreateLineItem(_yearId, "Item", 0m, null, null, null, 0),
+            "Update" => await controller.UpdateLineItem(_yearId, "Item", 0m, null, null, null, 0),
+            _ => await controller.DeleteLineItem(_yearId)
+        };
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(BudgetController.CategoryDetail));
+        redirect.RouteValues!["id"].Should().Be(_yearId);
+        var message = controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().BeOfType<string>().Subject;
+        message.Should().NotContain(failure.Message).And.NotContain("{0}");
+        message.Should().Be(resources.GetString(errorKey, culture));
+        _ = localizer.Received(1)[errorKey];
+        var log = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        log[0].Should().Be(Microsoft.Extensions.Logging.LogLevel.Error);
+        log[3].Should().BeSameAs(failure);
+    }
+
+    [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
     public async Task CreateLineItemAsync_rejects_vat_rates_outside_0_to_21(int vatRate)
