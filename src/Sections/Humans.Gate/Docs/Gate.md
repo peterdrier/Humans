@@ -20,6 +20,19 @@
 Gate ticket scanning that **decides entry** at the event door and writes the durable
 admission record. Distinct from the read-only `Scanner` section, which must never check anyone in.
 
+**Purpose:** one fast, fail-safe admission decision per ticket at the door. The server clock
+decides, and the result is one append-only record: Humans is the system of record for gate
+admission.
+
+**Good looks like:** an agent scans, sees a red, amber or green card, confirms the photo ID with
+Yes or No, and moves on. Nobody is silently admitted when settings are missing. Every admit and
+override can be traced afterwards.
+
+**Deliberate choices:** the vendor mirror is best-effort and off unless enabled; scans are purged
+after the retention window.
+
+**Out of scope:** undoing an admit (nobodies-collective/Humans#906).
+
 ## Concepts
 
 - **Gate scan** — a staffer scans a Ticket Tailor QR on the rugged tablet. The Gate service
@@ -134,7 +147,7 @@ kept separate so they can diverge. The supervisor override on `Decision` is auth
 shared override PIN (`Gate:SupervisorPin`), brute-force throttled via `GatePinThrottle` on a
 single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin` PIN routes — plus
 the claim flow's `EndShift` POST and its name-search endpoint `/Gate/Search` — remain but are
-unreachable since peterdrier/Humans#1075 — nothing links to them; the Staff PINs page (`Admin`) is linked from the admin nav, but the PINs it manages serve only the bypassed claim flow. Deletion is planned:
+unreachable since peterdrier/Humans#1075 — nothing links to them; the Staff PINs page (`Admin`) has no nav entry either, and the PINs it manages serve only the bypassed claim flow. Deletion is planned:
 nobodies-collective/Humans#933.)
 
 ## Invariants

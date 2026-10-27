@@ -24,7 +24,7 @@ history is exportable and erasable under GDPR; account merges re-point their sca
 | May this barcode enter? | `GET /Gate`, `GET /Gate/Evaluate`, `POST /Gate/Decision` | One flow: scan → verdict card → agent decision → durable row (+ attendance projection, + best-effort vendor mirror) |
 | Who scanned what? | `GET /Gate/Leaderboard` | 7-day tallies by scanner id — one row in practice, since every scan attributes to the shared gate account |
 | Configure the gate | `/Settings#gate` (tab posts to `POST /Gate/Admin`) | Cutoff + minor age (peterdrier/Humans#1634) |
-| Staff PINs *(dormant)* | `GET /Gate/Admin`, `POST /Gate/Admin/SetPin`, `POST /Gate/Admin/ResetPin` | Linked from the admin nav ("Staff PINs"), but the PINs it manages serve only the bypassed claim flow |
+| Staff PINs *(dormant)* | `GET /Gate/Admin`, `POST /Gate/Admin/SetPin`, `POST /Gate/Admin/ResetPin` | No nav entry; the PINs it manages serve only the bypassed claim flow |
 | Recover missed vendor mirrors | `GET/POST /Gate/Admin/VendorCheckInBackfill` (`RunOne`, `Run`) | Temp page — remove after use |
 | Who is scanning? *(retired)* | `Claim` GET/POST, `ClaimPin`, `EndShift`, `/Gate/Search` | Unreachable since peterdrier/Humans#1075; deletion tracked in nobodies-collective/Humans#933, shelved for the 2027 gate rewrite |
 | Housekeeping | `GateRetentionJob`, `GateVendorCheckInJob`, `IUserDataContributor`, `IUserMerge` | Retention purge; fire-and-forget mirror; GDPR export/erase; merge re-point |
