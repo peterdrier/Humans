@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.Primitives;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Csv;
@@ -343,6 +344,77 @@ public class CampAdminControllerTests
         var act = () => InvokeActionAsync(controller, action, targetId);
 
         await act.Should().ThrowAsync<IOException>().WithMessage("Storage unavailable");
+    }
+
+    [HumansTheory]
+    [InlineData(false, nameof(CampRoleDefinitionFormViewModel.SlotCount))]
+    [InlineData(false, nameof(CampRoleDefinitionFormViewModel.MinimumRequired))]
+    [InlineData(false, nameof(CampRoleDefinitionFormViewModel.SortOrder))]
+    [InlineData(true, nameof(CampRoleDefinitionFormViewModel.SlotCount))]
+    [InlineData(true, nameof(CampRoleDefinitionFormViewModel.MinimumRequired))]
+    [InlineData(true, nameof(CampRoleDefinitionFormViewModel.SortOrder))]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    public async Task RoleForms_RequirePostedCountsAndOrderBeforeMutation(bool edit, string? omitted)
+    {
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(new UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStatus.Updated, "Updated"));
+        var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Worker",
+            ["Slug"] = "worker",
+            ["SlotCount"] = "3",
+            ["MinimumRequired"] = "0",
+            ["SortOrder"] = "0"
+        };
+        if (omitted is not null)
+            fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>()
+            .GetMetadataForType(typeof(CampRoleDefinitionFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(CampRoleDefinitionFormViewModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var form = (CampRoleDefinitionFormViewModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = edit ? await controller.EditRole(roleId, form, ct) : await controller.CreateRole(form, ct);
+
+        if (omitted is not null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            roles.ReceivedCalls().Should().BeEmpty();
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (edit)
+                await roles.Received(1).UpdateDefinitionAsync(roleId, Arg.Is<UpdateCampRoleDefinitionInput>(
+                    input => input.SlotCount == 3 && input.MinimumRequired == 0 && input.SortOrder == 0), actorId, ct);
+            else
+                await roles.Received(1).CreateDefinitionAsync(Arg.Is<CreateCampRoleDefinitionInput>(
+                    input => input.SlotCount == 3 && input.MinimumRequired == 0 && input.SortOrder == 0), actorId, ct);
+        }
     }
 
     [HumansTheory]
