@@ -96,17 +96,13 @@ internal sealed class CityPlanningApiController(
             return Forbid();
         }
 
-        CampPolygonSaveResult saved;
-        try
+        var saved = await cityPlanningService.SaveCampPolygonAsync(
+            campSeasonId, request.GeoJson, request.AreaSqm, userId,
+            note: request.Note ?? "Saved",
+            cancellationToken: cancellationToken);
+        if (saved.Refusal is { } refusal)
         {
-            saved = await cityPlanningService.SaveCampPolygonAsync(
-                campSeasonId, request.GeoJson, request.AreaSqm, userId,
-                note: request.Note ?? "Saved",
-                cancellationToken: cancellationToken);
-        }
-        catch (ArgumentException ex)
-        {
-            logger.LogWarning("Rejected camp polygon for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
+            logger.LogWarning("Rejected camp polygon for {CampSeasonId} by {UserId}: {Reason}", campSeasonId, userId, refusal);
             return BadRequest();
         }
 
@@ -127,18 +123,14 @@ internal sealed class CityPlanningApiController(
             return Forbid();
         }
 
-        CampPolygonSaveResult? restored;
-        try
+        var restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
+            campSeasonId, historyId, userId, cancellationToken);
+        if (restored is null) return NotFound();
+        if (restored.Refusal is { } refusal)
         {
-            restored = await cityPlanningService.RestoreCampPolygonVersionAsync(
-                campSeasonId, historyId, userId, cancellationToken);
-        }
-        catch (ArgumentException ex)
-        {
-            logger.LogWarning("Rejected camp polygon restore for {CampSeasonId}: {Reason}", campSeasonId, ex.Message);
+            logger.LogWarning("Rejected camp polygon restore for {CampSeasonId}, history {HistoryId} by {UserId}: {Reason}", campSeasonId, historyId, userId, refusal);
             return BadRequest();
         }
-        if (restored is null) return NotFound();
 
         return await BroadcastAndReturnAsync(campSeasonId, restored, cancellationToken);
     }

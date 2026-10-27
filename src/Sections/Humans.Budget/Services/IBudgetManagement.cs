@@ -1,3 +1,4 @@
+using Humans.Budget.Data;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using NodaTime;
@@ -10,9 +11,9 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
     Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
     Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
-    Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
-    Task UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
-    Task DeleteYearAsync(Guid yearId, Guid actorUserId);
+    Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
+    Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
+    Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId);
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
     Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);

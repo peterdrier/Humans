@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using System.Globalization;
 using System.Resources;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -27,7 +26,6 @@ internal sealed class IssuesService(
     INotificationEmitter notifications,
     INotificationAutoResolve notificationInbox,
     IAuditLogService audit,
-    IMemoryCache cache,
     IClock clock,
     IFileStorage fileStorage,
     ISectionCatalog sectionCatalog,
@@ -37,7 +35,6 @@ internal sealed class IssuesService(
     internal const string Issues = "Issues";
     internal const string IssueComments = "IssueComments";
 
-    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly ResourceManager NoticeResources = new(typeof(IssuesResource));
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -177,9 +174,8 @@ internal sealed class IssuesService(
             }
             throw;
         }
-        EvictBadgeCounts(
-            await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
-
+        // The issue is committed; finish its notices after a browser disconnect.
+        ct = CancellationToken.None;
         await DispatchSubmittedNotificationAsync(issue, ct);
 
         logger.LogInformation(
@@ -423,6 +419,8 @@ internal sealed class IssuesService(
 
         issue.UpdatedAt = now;
         await repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
+        // The reply and any status change are committed; finish their follow-up work.
+        ct = CancellationToken.None;
 
         if (statusChangedToOpen)
         {
@@ -443,12 +441,6 @@ internal sealed class IssuesService(
             await DispatchStatusChangedNotificationAsync(
                 issue, statusBeforeResolution, IssueStatus.Resolved, senderUserId, ct);
             await ResolveSubmittedNotificationsAsync(issue, senderUserId, ct);
-        }
-
-        if (statusChangedToOpen || resolveWithComment)
-        {
-            EvictBadgeCounts(
-                await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
         }
 
         logger.LogInformation(
@@ -520,6 +512,8 @@ internal sealed class IssuesService(
             SetStatusFields(issue, newStatus, actorUserId, clock.GetCurrentInstant());
 
             await repo.SaveTrackedIssueAsync(issue, ct);
+            // The mutation is committed; finish its notices independently of the request.
+            ct = CancellationToken.None;
             await LogAuditAsync(
                 AuditAction.IssueStatusChanged, issueId, actorUserId,
                 $"status: {oldStatus} → {newStatus}");
@@ -528,9 +522,6 @@ internal sealed class IssuesService(
             // Nothing left to act on: clear the "New issue filed" alerts.
             if (newStatus.IsTerminal())
                 await ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
-
-            EvictBadgeCounts(
-                await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
 
             return IssueMutationResult.Success();
         }, ct);
@@ -576,6 +567,8 @@ internal sealed class IssuesService(
             issue.AssigneeUserId = newAssigneeUserId;
             issue.UpdatedAt = clock.GetCurrentInstant();
             await repo.SaveTrackedIssueAsync(issue, ct);
+            // The mutation is committed; finish its notices independently of the request.
+            ct = CancellationToken.None;
 
             await LogAuditAsync(
                 AuditAction.IssueAssigneeChanged, issueId, actorUserId,
@@ -626,9 +619,6 @@ internal sealed class IssuesService(
             await LogAuditAsync(
                 AuditAction.IssueSectionChanged, issueId, actorUserId,
                 $"section: {oldSection} → {nextSection}");
-            EvictBadgeCounts(
-                await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
-
             return IssueMutationResult.Success();
         }, ct);
     }
@@ -682,50 +672,10 @@ internal sealed class IssuesService(
         }
     }
 
-    public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default)
-    {
-        var cacheKey = BadgeCacheKey(viewer.UserId);
-        return await cache.GetOrCreateAsync(cacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
-
-            if (viewer.IsAdmin) return await repo.CountActionableAsync(null, null, ct);
-
-            var sections = routing.SectionsForRoles(viewer.Roles);
-            return await repo.CountActionableAsync(sections, viewer.UserId, ct);
-        });
-    }
-
-    /// <summary>This service is the key's only reader and evicter.</summary>
-    internal static string BadgeCacheKey(Guid userId) => $"NavBadge:Issues:{userId:N}";
-
-    private void EvictBadgeCounts(IEnumerable<Guid> userIds)
-    {
-        foreach (var id in userIds) cache.Remove(BadgeCacheKey(id));
-    }
-
-    /// <summary>Reporter, admins, and role-holders for the current and previous sections.</summary>
-    private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
-        Guid reporterUserId, string? section, string? previousSection,
-        CancellationToken ct)
-    {
-        var ids = new HashSet<Guid> { reporterUserId };
-
-        var admins = await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct);
-        foreach (var id in admins) ids.Add(id);
-
-        foreach (var s in new[] { section, previousSection })
-        {
-            if (s is null) continue;
-            foreach (var role in routing.RolesFor(s))
-            {
-                var holders = await roles.GetActiveUserIdsInRoleAsync(role, ct);
-                foreach (var id in holders) ids.Add(id);
-            }
-        }
-
-        return ids;
-    }
+    public Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
+        viewer.IsAdmin
+            ? repo.CountActionableAsync(null, null, ct)
+            : repo.CountActionableAsync(routing.SectionsForRoles(viewer.Roles), viewer.UserId, ct);
 
     public async Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(
         CancellationToken ct = default)
@@ -818,13 +768,6 @@ internal sealed class IssuesService(
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         var ownIssues = await repo.GetForUserExportAsync(userId, ct);
-        var badgeUserIds = new HashSet<Guid> { userId };
-        foreach (var section in ownIssues.Where(i => i.ReporterUserId == userId)
-                     .Select(i => i.Section).Distinct(StringComparer.Ordinal))
-        {
-            badgeUserIds.UnionWith(await ResolveBadgeUserIdsAsync(userId, section, previousSection: null, ct));
-        }
-
         var screenshotKeys = ownIssues.Where(i => i.ReporterUserId == userId)
             .Select(i => i.ScreenshotStoragePath).OfType<string>().Distinct(StringComparer.Ordinal);
         ct = CancellationToken.None;
@@ -832,7 +775,6 @@ internal sealed class IssuesService(
             await fileStorage.DeleteAsync(key, ct);
 
         await repo.EraseForUserAsync(userId, ct);
-        EvictBadgeCounts(badgeUserIds);
     }
 
     /// <summary>

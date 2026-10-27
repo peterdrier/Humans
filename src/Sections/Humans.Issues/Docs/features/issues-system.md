@@ -74,6 +74,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca)
+- Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
 - Effective notification email is resolved through `IUserEmailService.GetNotificationTargetEmailsAsync` so verified-email and forwarding rules apply
 
 ### US-28.5: Conversation Thread

@@ -77,6 +77,7 @@ BudgetYear ("2026", "2027-A", ...)
 - A "Ticketing" group (`IsTicketingGroup = true`) is auto-created per year with a `TicketingProjection` for configurable revenue/fee projection parameters
 - An "Admin" group with `IsRestricted = true` hides sensitive items (staff, meetings) from coordinators/public
 - Allocation lives on `BudgetCategory` — line items are the free-text breakdown
+- Coordinator line-item create, update and delete failures return to the category with a localized generic error. Exception messages are logged, never inserted into the banner.
 - Each line item has: description, amount, responsible team (FK → Team), optional notes
 - CapEx/OpEx flag is on `BudgetCategory`, not line items
 - No arbitrary nesting beyond four levels

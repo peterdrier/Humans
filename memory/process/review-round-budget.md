@@ -1,12 +1,11 @@
 ---
 name: review-round-budget
-description: Unattended PRs get at most 5 review-round commits (bot-finding/CI-failure responses). Load the `pd:steward` skill and count before acting on any wake.
+description: Unattended PRs get at most 5 review-round commits (bot-finding/CI-failure responses). Count before acting on any wake.
 ---
 
 Unattended review rounds on a PR are capped at **five review-round commits**. Before acting on
-any CI failure or review finding on a PR you opened, load the
-`pd:steward` skill (plus the overlay [`.claude/steward.md`](../../.claude/steward.md)) and run its
-count first.
+any CI failure or review finding on a PR you opened, read
+[`.claude/steward.md`](../../.claude/steward.md) and count first.
 
 **What a round is:** a commit pushed *in response to an automated review finding (Codex,
 the Claude bot, Gemini) or a CI failure*, counted from the point the PR's own work is
@@ -36,7 +35,8 @@ review?* Everything below serves that. Where a case isn't listed, answer that qu
 act on the answer; don't hunt for a rule that names it.
 
 - Every review-round commit carries a `Review-round: <n>` trailer, `<n>` being its own
-  number. Count spent = those trailers on the PR (command in the skill). A commit that is
+  number. Count spent = those trailers on the PR
+  (`git log origin/main..HEAD --format=%B | grep -c '^Review-round:'`). A commit that is
   not a round must not carry one.
 - The trailer is the memory, not the definition — a record you keep for a future you who
   has lost the context, not an enforcement mechanism. It is self-declared on purpose
@@ -45,8 +45,7 @@ act on the answer; don't hunt for a rule that names it.
   the PR's review history disagree, the history wins.
 - At 4 spent: last commit — read every open finding, spend it on the most serious.
 - At 5+: no triage, no patch. One comment (open items, what you'd do, what needs
-  deciding), unsubscribe from PR activity, drop any check-in schedule, stop. In the
-  steward shape the round worker drafts that comment and the steward posts it.
+  deciding), unsubscribe from PR activity, drop any check-in schedule, stop.
 - One round = one commit; batch the round's fixes.
 - Raising the ceiling, or pushing past it, needs Peter to say so in his own words.
 

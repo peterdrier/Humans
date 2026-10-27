@@ -765,4 +765,7 @@
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información médica.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Solicitar ser colaborador o asociado</value></data>
   <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Voluntario</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Esta cuenta ya no está disponible para cambiar sus direcciones de correo.</value>
+  </data>
 </root>

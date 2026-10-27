@@ -153,7 +153,7 @@ Forms advertise these bounds and the service rejects overflow before writing any
 Validation failures re-render the submitted form; admin lifecycle decisions (refuse, refer,
 withdraw, close, reactivate, coordinator override) are made from the group's Details page
 (Board/Admin actions panel) and redirect back to it, flashing any rule failure. Register
-alone stays on the queue.
+alone stays on the queue. Register-existing requires an explicit valid registration date before creating a group, Drive folder, budget account, audit or notice; an omitted date never becomes the type's default backdate. Explicit backdated dates remain supported.
 
 `WorkgroupLogKind` — system: Applied, Registered, Referred, Refused, Withdrawn, Ended,
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,

@@ -1,11 +1,9 @@
-using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using AwesomeAssertions;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -18,7 +16,6 @@ public class NotificationInboxServiceTests : IDisposable
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly FakeClock _clock;
-    private readonly IMemoryCache _cache;
     private readonly NotificationRepository _repo;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly NotificationInboxService _service;
@@ -32,20 +29,18 @@ public class NotificationInboxServiceTests : IDisposable
 
         _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
-        _cache = new MemoryCache(new MemoryCacheOptions());
         _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
 
         // No test here seeds a user, so an empty display-name lookup is enough.
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        _service = new NotificationInboxService(_repo, _userService, _clock, _cache);
+        _service = new NotificationInboxService(_repo, _userService, _clock);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
-        _cache.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -110,7 +105,25 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PurgeExpiredAsync_InvalidatesAllRecipientsOfStaleAndRetiredNotifications()
+    public async Task BadgeReadStartedBeforeMarkAllRead_CannotRepublishStaleCounts()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var snapshot = new TaskCompletionSource<(int Actionable, int Informational)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var repo = Substitute.For<INotificationRepository>();
+        repo.GetUnreadBadgeCountsAsync(_userId, ct)
+            .Returns(snapshot.Task, Task.FromResult((Actionable: 0, Informational: 0)));
+        var service = new NotificationInboxService(repo, _userService, _clock);
+
+        var beforeWrite = service.GetUnreadBadgeCountsAsync(_userId, ct);
+        await service.MarkAllReadAsync(_userId, ct);
+        snapshot.SetResult((1, 0));
+        (await beforeWrite).Should().Be((1, 0));
+
+        (await service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_UpdatesBadgesForAllRecipientsOfStaleAndRetiredNotifications()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var otherUserId = Guid.NewGuid();
@@ -138,22 +151,23 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PurgeExpiredAsync_InvalidatesCommittedDeletionBeforeLaterFailure()
+    public async Task PurgeExpiredAsync_ShowsCommittedDeletionAfterLaterFailure()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var repo = Substitute.For<INotificationRepository>();
         repo.DeleteUnresolvedInformationalOlderThanAsync(Arg.Any<Instant>(), ct)
-            .Returns((1, (IReadOnlyList<Guid>)new[] { _userId }));
+            .Returns(1);
         repo.DeleteUnresolvedBySourcesAsync(Arg.Any<IReadOnlyList<NotificationSource>>(), ct)
-            .Returns<Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)>>(_ =>
+            .Returns<Task<int>>(_ =>
                 throw new InvalidOperationException("Retention storage failed."));
-        _cache.Set(CacheKeys.NotificationBadgeCounts(_userId), (0, 1));
-        var service = new NotificationInboxService(repo, _userService, _clock, _cache);
+        repo.GetUnreadBadgeCountsAsync(_userId, ct).Returns((0, 1), (0, 0));
+        var service = new NotificationInboxService(repo, _userService, _clock);
+        (await service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
 
         await ((Func<Task>)(async () => await service.PurgeExpiredAsync(ct)))
             .Should().ThrowAsync<InvalidOperationException>();
 
-        _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(_userId), out _).Should().BeFalse();
+        (await service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
     }
 
     [HumansFact]
@@ -498,38 +512,38 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ResolveAsync_InvalidatesBadgeCache()
+    public async Task ResolveAsync_UpdatesBadgeCounts()
     {
         var notification = await CreateNotificationAsync(NotificationClass.Actionable);
-        var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
-        _cache.Set(cacheKey, 5);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((1, 0));
 
         await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
-        _cache.TryGetValue(cacheKey, out _).Should().BeFalse();
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
     }
 
     [HumansFact]
-    public async Task MarkReadAsync_InvalidatesBadgeCache()
+    public async Task MarkReadAsync_UpdatesBadgeCounts()
     {
         var notification = await CreateNotificationAsync();
-        var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
-        _cache.Set(cacheKey, 3);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
 
         await _service.MarkReadAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
 
-        _cache.TryGetValue(cacheKey, out _).Should().BeFalse();
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
     }
 
     [HumansFact]
-    public async Task MarkAllReadAsync_InvalidatesBadgeCache()
+    public async Task MarkAllReadAsync_UpdatesBadgeCounts()
     {
         await CreateNotificationAsync();
-        var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
-        _cache.Set(cacheKey, 2);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
 
         await _service.MarkAllReadAsync(_userId, Xunit.TestContext.Current.CancellationToken);
 
-        _cache.TryGetValue(cacheKey, out _).Should().BeFalse();
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
     }
 }

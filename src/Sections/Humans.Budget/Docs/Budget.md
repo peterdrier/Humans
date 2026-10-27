@@ -197,7 +197,8 @@ Stored as string via `HasConversion<string>()`.
 - Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. Year-by-id retains archived years for historical report labels.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
-- A Closed year is read-only: every repository mutation — the ticketing sync pair and the year-metadata rename included — refuses with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- A Closed year is read-only: year-metadata rename returns an internal refusal result; other repository mutations, including the ticketing sync pair, refuse with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- Year status changes, metadata edits and archives return internal results for missing/archived targets and existing lifecycle guards. The admin actions display expected reasons and log Warning with year/actor identifiers; unexpected dependency failures propagate. Refusals write no audit or state changes. Seed activation still throws on refusal.
 - Member index, summary and category GETs preserve request cancellation through actor resolution,
   coordinator scope and page reads. Cancellation does not display a load-failure flash.
 - Admin GET pages preserve browser cancellation through year/category/audit reads, team names,
@@ -205,7 +206,7 @@ Stored as string via `HasConversion<string>()`.
   load-failure flash; mutation paths keep their existing cancellation boundaries.
 - Year-status POSTs require an explicit status and reject binding errors after resolving the actor and before mutation. A missing or malformed status cannot reset an Active year to the valid Draft default or add a status audit entry; explicitly selecting Draft remains supported.
 - Archived years cannot change status. A stale activation request fails before changing the current Active year or writing status audit entries; archived audit history remains available.
-- A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
+- A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate. Failed line-item mutations show a generic localized error and retain exception details only in server logs.
 - Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
 - The member `/Budget` year-status and expenditure-type labels use Budget resources in all six supported cultures; stored enum values and badge styling remain unchanged.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.

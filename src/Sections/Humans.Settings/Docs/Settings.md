@@ -128,6 +128,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   only editor, `/Shifts/Settings` is knobs-only.
 - **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. The admin form, saves, and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).
 - **Calendar dates must be representable.** Admin saves and seeded activation reject gate/offset combinations whose dates or following day fall outside BCL date support, before writing or deactivating another cycle. Rejections log Warning without an exception stack and return the existing admin failure flash.
+- **Admin save refusals are results.** Invalid calendar dates, early-entry offsets and competing active cycles return internal refusal results before writes, audit or listener notifications. Unexpected dependency failures propagate instead of becoming operator conflict messages. Seed activation retains its throwing validation contract.
 - **Writes to `settings_event` stay inside the section.**
   `SaveEventSettingsAsync` lives on the internal `ISettingsWriteService`, not on
   the `ISettingsService` contract.

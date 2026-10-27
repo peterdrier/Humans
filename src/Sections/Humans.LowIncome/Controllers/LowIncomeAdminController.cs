@@ -31,8 +31,8 @@ internal sealed class LowIncomeAdminController(
     public Task<IActionResult> Grant(Guid? userId, CancellationToken ct) =>
         ActAsync(nameof(Grant), userId, async (person, actor) =>
         {
-            await grants.IssueAsync(Section.SourceKey, person, sourceRef: null, actor, ct);
-            return (true, "Low Income grant given");
+            var result = await grants.IssueAsync(Section.SourceKey, person, sourceRef: null, actor, ct);
+            return result.Succeeded ? (true, "Low Income grant given") : (false, RefusalMessage(result.Refusal));
         }, ct);
 
     [HttpPost("Remove")]
@@ -40,9 +40,19 @@ internal sealed class LowIncomeAdminController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Remove(Guid? userId, string? reason, CancellationToken ct) =>
         ActAsync(nameof(Remove), userId, async (person, actor) =>
-            await grants.RevokeAsync(Section.SourceKey, person, reason, actor, ct)
-                ? (true, "Low Income grant removed")
-                : (false, "That person holds no Low Income grant."), ct);
+        {
+            var result = await grants.RevokeAsync(Section.SourceKey, person, reason, actor, ct);
+            if (!result.Succeeded) return (false, RefusalMessage(result.Refusal));
+            return result.Revoked ? (true, "Low Income grant removed") : (false, "That person holds no Low Income grant.");
+        }, ct);
+
+    private static string RefusalMessage(GrantWriteRefusal refusal) => refusal switch
+    {
+        GrantWriteRefusal.NoOpenProgram => NoProgram,
+        GrantWriteRefusal.SourceReferenceTooLong => "The source reference is too long.",
+        GrantWriteRefusal.ReasonTooLong => "The reason is too long.",
+        _ => throw new ArgumentOutOfRangeException(nameof(refusal), refusal, "Unknown grant write refusal.")
+    };
 
     private async Task<IActionResult> ActAsync(
         string action, Guid? userId, Func<Guid, Guid, Task<(bool Ok, string Message)>> act, CancellationToken ct)
@@ -55,20 +65,14 @@ internal sealed class LowIncomeAdminController(
             return RedirectToAction(nameof(Index));
         }
 
-        try
+        var (ok, message) = await act(person, user.Id);
+        if (ok)
+            SetSuccess(message);
+        else
         {
-            var (ok, message) = await act(person, user.Id);
-            if (ok) SetSuccess(message); else SetError(message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Low Income {Action} refused for {UserId}", action, person);
-            SetError(NoProgram);
-        }
-        catch (ArgumentException ex)
-        {
-            logger.LogWarning(ex, "Low Income {Action} rejected for {UserId}", action, person);
-            SetError("The reason is too long.");
+            logger.LogWarning("Low Income {Action} refused for person {UserId}, actor {ActorId}: {Reason}",
+                action, person, user.Id, message);
+            SetError(message);
         }
         return RedirectToAction(nameof(Index));
     }

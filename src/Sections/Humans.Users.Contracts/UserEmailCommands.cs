@@ -15,7 +15,8 @@ public sealed record UserEmailAddCommand(
 public sealed record UserEmailAddResult(
     Guid EmailId,
     bool Added,
-    bool IsConflict);
+    bool IsConflict,
+    string? ErrorKey = null);
 
 public enum UserEmailPrimaryChange
 {

@@ -75,10 +75,10 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// No verification flow. A @nobodies.team address becomes the notification target. Returns false when the
-    /// address already exists for this user.
+    /// No verification flow. A @nobodies.team address becomes the notification target. An existing address returns Added=false without an error;
+    /// expected refusals return ErrorKey without adding an address.
     /// </summary>
-    Task<bool> AddVerifiedEmailAsync(
+    Task<UserEmailAddResult> AddVerifiedEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);

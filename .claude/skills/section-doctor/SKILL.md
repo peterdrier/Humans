@@ -487,11 +487,10 @@ the Resume grep gate. Unattended runs skip this; unanswered items carry forward,
 ### Phase 9: Stand down
 
 Stop working; the worktree stays until the PR is merged or closed, and everything a later session
-needs is derivable from the branch name and the run file. An interactive run's review rounds run
-under the `pd:steward` skill, `.claude/steward.md` and `memory/process/review-round-budget.md`.
+needs is derivable from the branch name and the run file. The session that opened the PR tends
+it, under `.claude/steward.md` and `memory/process/review-round-budget.md`; never hand it off.
 
-An unattended run stewards its own PR in this session, with no `pd:steward` and no hand-off
-session (the carve-out in `memory/process/steward-thin-session.md`):
+An unattended run adds these limits, lower than the round budget:
 
 - Once the PR is up, subscribe to its activity, post `@codex review` once and note the creation
   time.

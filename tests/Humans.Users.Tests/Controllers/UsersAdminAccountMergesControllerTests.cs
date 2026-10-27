@@ -24,6 +24,10 @@ public class UsersAdminAccountMergesControllerTests
 
     public UsersAdminAccountMergesControllerTests()
     {
+        _mergeService.MergeAsync(default, default, default).ReturnsForAnyArgs(new AccountMergeResult());
+        _mergeService.AcceptAsync(default, default, default).ReturnsForAnyArgs(new AccountMergeResult());
+        _mergeService.RejectAsync(default, default).ReturnsForAnyArgs(new AccountMergeResult());
+        _mergeService.ReconcileMergedRequestAsync(default, default).ReturnsForAnyArgs(new AccountMergeResult());
         var adminUser = new User { Id = _adminUserId, PreferredLanguage = "en" };
         _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(adminUser.ToUserInfo()));
@@ -61,6 +65,37 @@ public class UsersAdminAccountMergesControllerTests
         return c;
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("merge")]
+    [Xunit.InlineData("accept")]
+    [Xunit.InlineData("reject")]
+    [Xunit.InlineData("close")]
+    public async Task Mutation_DependencyFailure_PropagatesWithoutRefusalFeedback(string action)
+    {
+        var id = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var failure = new InvalidOperationException("Private dependency failure");
+        _mergeService.MergeAsync(id, other, _adminUserId, null, null, ct).Returns(Task.FromException<AccountMergeResult>(failure));
+        _mergeService.AcceptAsync(id, _adminUserId, other, null, ct).Returns(Task.FromException<AccountMergeResult>(failure));
+        _mergeService.RejectAsync(id, _adminUserId, null, ct).Returns(Task.FromException<AccountMergeResult>(failure));
+        _mergeService.ReconcileMergedRequestAsync(id, _adminUserId, ct).Returns(Task.FromException<AccountMergeResult>(failure));
+        var controller = BuildController();
+        Func<Task> act = async () =>
+        {
+            _ = action switch
+            {
+                "merge" => await controller.Merge(id, other, null, ct),
+                "accept" => await controller.MergeRequest(id, other, null, ct),
+                "reject" => await controller.Dismiss(id, null, ct),
+                _ => await controller.Close(id, ct)
+            };
+        };
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Merge_CallsMergeAsyncWithSurvivorArchivedAndAdmin_RedirectsToIndex()
     {
@@ -76,12 +111,12 @@ public class UsersAdminAccountMergesControllerTests
     }
 
     [HumansFact]
-    public async Task Merge_WhenMergeThrowsInvalidOperation_SetsErrorAndRedirectsToIndex()
+    public async Task Merge_WhenRefused_SetsErrorAndRedirectsToIndex()
     {
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
         _mergeService.MergeAsync(survivor, archived, _adminUserId, Arg.Any<string?>(), null, Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("boom"));
+            .Returns(new AccountMergeResult("boom"));
 
         var result = await BuildController().Merge(survivor, archived, notes: null, Xunit.TestContext.Current.CancellationToken);
 
@@ -130,11 +165,11 @@ public class UsersAdminAccountMergesControllerTests
     }
 
     [HumansFact]
-    public async Task Close_WhenReconcileThrowsInvalidOperation_SetsErrorAndRedirectsToIndex()
+    public async Task Close_WhenReconcileRefused_SetsErrorAndRedirectsToIndex()
     {
         var requestId = Guid.NewGuid();
         _mergeService.ReconcileMergedRequestAsync(requestId, _adminUserId, Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("not merged into each other"));
+            .Returns(new AccountMergeResult("not merged into each other"));
 
         var result = await BuildController().Close(requestId, Xunit.TestContext.Current.CancellationToken);
 

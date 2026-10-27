@@ -56,6 +56,37 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             NullLogger<CampService>.Instance);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(-1, false)]
+    [Xunit.InlineData(3, true)]
+    [Xunit.InlineData(3, false)]
+    [Xunit.InlineData(0, false)]
+    public async Task SetCampSeasonEeSlotCountAsync_RefusesInvalidCapsAndPreservesNoOpSemantics(int slotCount, bool missing)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 3);
+        var auditCalls = AuditLog.ReceivedCalls().Count();
+
+        var result = await _service.SetCampSeasonEeSlotCountAsync(
+            missing ? Guid.NewGuid() : season.Id, slotCount, Guid.NewGuid(), ct);
+
+        await CampsDb.Entry(season).ReloadAsync(ct);
+        if (slotCount < 0 || missing)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.ErrorMessage.Should().Be(missing ? "Camp season not found." : "EE slot count cannot be negative.");
+            season.EeSlotCount.Should().Be(3);
+            AuditLog.ReceivedCalls().Count().Should().Be(auditCalls);
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            season.EeSlotCount.Should().Be(slotCount);
+            AuditLog.ReceivedCalls().Count().Should().Be(auditCalls + (slotCount == 3 ? 0 : 1));
+        }
+    }
+
     [HumansFact]
     public async Task SetCampSeasonEeSlotCountAsync_SetsValue_AndAuditsChange()
     {

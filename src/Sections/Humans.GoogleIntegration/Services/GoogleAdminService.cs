@@ -489,7 +489,9 @@ internal sealed class GoogleAdminService(
             }
 
             // A verified @nobodies.team address is the Google identity, with an Unknown verdict, so reconciliation resumes.
-            await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+            var emailAddition = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+            if (emailAddition.ErrorKey is not null)
+                throw new InvalidOperationException("Could not add the verified email address.");
 
             await teamWrite.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 

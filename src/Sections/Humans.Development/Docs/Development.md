@@ -48,6 +48,8 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 
 ## Invariants
 
+- Persona and dashboard seeders abort when Users refuses a verified-email addition, before subsequent profile setup or reporting that user as seeded. An already-present address without a refusal remains an idempotent no-op.
+
 - **Nothing in this section is reachable in Production.** Three independent mechanisms, deliberately not one: the seeders are not registered (`Section.Register` returns early), `DevLoginController` is removed from MVC's controller feature by Shell's `DevLoginControllerExclusionProvider`, and both controllers' own `IsDevAuthEnabled()` / `IsDevSeedEnabled()` guards return `NotFound()`.
 - **`Section.Register` fails closed.** `ISection.Register` takes no `IHostEnvironment`, so it reads `HostDefaults.EnvironmentKey` from the configuration Shell hands it. An environment name it cannot read registers *nothing* - the failure lands as dev login 404ing in the test host, not as dev seeders reaching Production. Pinned by `DevelopmentArchitectureTests.Register_binds_nothing_in_production_or_when_the_environment_is_unknown`.
 - **The dashboard seed is stricter than the rest**: `IsDevelopment()` **and** `DevAuth:Enabled`. QA, preview and production cannot invoke it regardless of role. (`src/Sections/Humans.Shifts/Docs/Shifts.md` states the same invariant from the other side; `DevSeedControllerTests` covers both branches.)

@@ -765,4 +765,7 @@
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni mediche.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Candidati come Colaborador o Asociado</value></data>
   <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Volontario</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Non è più possibile modificare gli indirizzi email di questo account.</value>
+  </data>
 </root>

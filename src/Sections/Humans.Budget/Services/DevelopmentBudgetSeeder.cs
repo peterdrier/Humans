@@ -195,7 +195,8 @@ internal sealed class DevelopmentBudgetSeeder(
         var activatedBudgetYear = false;
         if (activeYear is null)
         {
-            await budgetService.UpdateYearStatusAsync(budgetYearId, BudgetYearStatus.Active, actorUserId);
+            var activation = await budgetService.UpdateYearStatusAsync(budgetYearId, BudgetYearStatus.Active, actorUserId);
+            if (!activation.Succeeded) throw new InvalidOperationException(activation.Refusal);
             activatedBudgetYear = true;
         }
 

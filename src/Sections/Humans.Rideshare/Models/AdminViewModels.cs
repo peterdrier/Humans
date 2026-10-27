@@ -14,9 +14,11 @@ internal sealed class RideshareSettingsViewModel
     [Required, StringLength(200)]
     public string DestinationLabel { get; set; } = string.Empty;
 
+    [BindRequired]
     [Range(-90, 90)]
     public double DestinationLatitude { get; set; }
 
+    [BindRequired]
     [Range(-180, 180)]
     public double DestinationLongitude { get; set; }
 

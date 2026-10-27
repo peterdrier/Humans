@@ -765,4 +765,7 @@
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht gespeichert werden.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Als Colaborador oder Asociado bewerben</value></data>
   <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Freiwillige</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Für dieses Konto können keine E-Mail-Adressen mehr geändert werden.</value>
+  </data>
 </root>

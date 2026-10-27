@@ -220,7 +220,9 @@ internal sealed class AccountProvisioningService(
 
         try
         {
-            await userEmailService.AddVerifiedEmailAsync(user.Id, email, ct);
+            var emailAddition = await userEmailService.AddVerifiedEmailAsync(user.Id, email, ct);
+            if (emailAddition.ErrorKey is not null)
+                throw new InvalidOperationException("Could not add the verified email address.");
         }
         catch (Exception ex)
         {

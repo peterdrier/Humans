@@ -120,7 +120,7 @@ internal interface ITeamManagementService : ITeamManagement
     /// <c>GroupWarning</c> then carries the operator message.
     /// </summary>
     [ExternalWrite]
-    Task<TeamWithGroupResult> CreateTeamWithGoogleGroupAsync(
+    Task<TeamUpdateResult> CreateTeamWithGoogleGroupAsync(
         string name,
         string? description,
         bool requiresApproval,
@@ -151,7 +151,7 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Deactivates; nothing is deleted.</summary>
-    Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Approval-required teams get a pending request, open teams an immediate membership.</summary>
     Task<TeamJoinResult> JoinTeamAsync(
@@ -170,13 +170,13 @@ internal interface ITeamManagementService : ITeamManagement
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    Task<TeamMember> ApproveJoinRequestAsync(
+    Task<TeamJoinReviewResult> ApproveJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string? notes,
         CancellationToken cancellationToken = default);
 
-    Task RejectJoinRequestAsync(
+    Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
         string reason,
@@ -216,7 +216,7 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Bypasses the join-request workflow.</summary>
-    Task<TeamMember> AddMemberToTeamAsync(
+    Task<TeamJoinReviewResult> AddMemberToTeamAsync(
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,
@@ -231,14 +231,14 @@ internal interface ITeamManagementService : ITeamManagement
         Guid updatedByUserId,
         CancellationToken cancellationToken = default);
 
-    Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
+    Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
-    Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
+    Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
@@ -247,12 +247,12 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Also deletes its assignments.</summary>
-    Task DeleteRoleDefinitionAsync(
+    Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Can't be enabled while members are assigned to the role.</summary>
-    Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+    Task<TeamRoleDefinitionMutationResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -311,13 +311,6 @@ internal sealed record TeamRoleReconciliationMembership(
     SystemTeamType SystemTeamType,
     bool HasManagementRoleAssignment);
 
-internal sealed record TeamRoleManagementToggleResult(
-    string RoleName,
-    bool IsManagement);
-
-/// <summary><see cref="GroupWarning"/> is null when the group is in order, else the operator message to show.</summary>
-internal sealed record TeamWithGroupResult(Team Team, string? GroupWarning);
-
 internal enum TeamJoinOutcome
 {
     Joined,
@@ -347,3 +340,18 @@ internal sealed record TeamMembershipMutationResult(bool Succeeded, string? Erro
 internal sealed record TeamJoinResult(TeamJoinOutcome? Outcome = null, string? ErrorKey = null);
 internal sealed record TeamJoinRequestResult(TeamJoinRequest? Request = null, string? ErrorKey = null);
 internal sealed record TeamDirectJoinResult(TeamMember? Member = null, string? ErrorKey = null);
+
+internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
+
+internal sealed record TeamDeactivationResult(string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
+
+internal sealed record TeamRoleDefinitionMutationResult(TeamRoleDefinition? Definition = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
