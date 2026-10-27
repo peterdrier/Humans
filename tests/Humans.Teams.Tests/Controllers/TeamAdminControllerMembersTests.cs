@@ -170,13 +170,19 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(true, true, true)]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(true, true, false)]
-    public async Task RoleForms_InvalidBinding_NeverMutates(bool edit, bool ajax, bool allowed)
+    [InlineData(false, false, true, null)]
+    [InlineData(true, false, true, null)]
+    [InlineData(true, true, true, null)]
+    [InlineData(false, false, false, null)]
+    [InlineData(true, false, false, null)]
+    [InlineData(true, true, false, null)]
+    [InlineData(false, false, true, "SlotCount")]
+    [InlineData(false, false, true, "SortOrder")]
+    [InlineData(true, false, true, "SlotCount")]
+    [InlineData(true, true, true, "SortOrder")]
+    [InlineData(false, false, true, "")]
+    [InlineData(true, true, true, "")]
+    public async Task RoleForms_RejectInvalidOrMissingNumbersAndAcceptExplicitZeroOrder(bool edit, bool ajax, bool allowed, string? omitted)
     {
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
@@ -201,17 +207,56 @@ public class TeamAdminControllerMembersTests
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
-            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
         };
-        controller.ModelState.AddModelError("EstimatedHours", "Invalid hours");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        http.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = "Role",
+            ["SlotCount"] = "1",
+            ["SortOrder"] = "0",
+            ["Priorities"] = "None"
+        };
+        if (!string.IsNullOrEmpty(omitted)) fields.Remove(omitted);
+        var modelType = edit ? typeof(EditRoleDefinitionModel) : typeof(CreateRoleDefinitionModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(modelType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = modelType
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var form = context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
+        if (omitted is null) controller.ModelState.AddModelError("EstimatedHours", "Invalid hours");
 
         var result = edit
-            ? await controller.EditRole(team.Slug, Guid.NewGuid(), new EditRoleDefinitionModel
-            { Name = "Role", SlotCount = 1, Priorities = ["None"] })
-            : await controller.CreateRole(team.Slug, new CreateRoleDefinitionModel { Name = "Role" });
+            ? await controller.EditRole(team.Slug, Guid.NewGuid(), (EditRoleDefinitionModel)form)
+            : await controller.CreateRole(team.Slug, (CreateRoleDefinitionModel)form);
 
+        if (allowed && string.Equals(omitted, "", StringComparison.Ordinal))
+        {
+            if (ajax) result.Should().BeOfType<JsonResult>();
+            else result.Should().BeOfType<RedirectToActionResult>();
+            var mutation = teams.ReceivedCalls().Should().ContainSingle(call =>
+                string.Equals(call.GetMethodInfo().Name, edit ? nameof(ITeamManagementService.UpdateRoleDefinitionAsync)
+                    : nameof(ITeamManagementService.CreateRoleDefinitionAsync), StringComparison.Ordinal)).Subject;
+            mutation.GetArguments()[3].Should().Be(1);
+            mutation.GetArguments()[5].Should().Be(0);
+            return;
+        }
         if (allowed)
+        {
             result.Should().BeOfType<BadRequestObjectResult>();
+            if (omitted is not null) controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+        }
         else if (ajax)
             result.Should().BeOfType<UnauthorizedResult>();
         else

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
@@ -418,9 +419,11 @@ internal sealed class CreateRoleDefinitionModel
 
     [MaxLength(2000)]
     public string? Description { get; set; }
+    [BindRequired]
     public int SlotCount { get; set; } = 1;
     public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = ["None"];
+    [BindRequired]
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
@@ -432,9 +435,11 @@ internal sealed class EditRoleDefinitionModel
 
     [MaxLength(2000)]
     public string? Description { get; set; }
+    [BindRequired]
     public int SlotCount { get; set; }
     public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = [];
+    [BindRequired]
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
     public bool IsManagement { get; set; }
