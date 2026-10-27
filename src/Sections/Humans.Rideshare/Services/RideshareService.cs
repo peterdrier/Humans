@@ -283,7 +283,7 @@ internal sealed class RideshareService(
             if (interest.Message is not null)
                 body += $"\n\"{interest.Message}\"";
             return (Notice(culture, titleKey, name), body);
-        }, ct);
+        });
         return new(interest.Id);
     }
 
@@ -310,8 +310,7 @@ internal sealed class RideshareService(
             // The rider accepting a driver's answer to their pin tells the driver, not a rider.
             (culture, name) => (Notice(culture, interest.RequestId is null ? "Rideshare_NoticeAccepted" : "Rideshare_NoticeOfferAccepted", name),
                 Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
-                    interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))),
-            ct);
+                    interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))));
         return new();
     }
 
@@ -334,8 +333,7 @@ internal sealed class RideshareService(
             (culture, name) => (Notice(culture, "Rideshare_NoticeUpdate"),
                 Notice(culture, interest.RequestId is null
                     ? "Rideshare_NoticeDeclinedOffer"
-                    : "Rideshare_NoticeDeclinedRider", name)),
-            ct);
+                    : "Rideshare_NoticeDeclinedRider", name)));
         return new();
     }
 
@@ -666,15 +664,15 @@ internal sealed class RideshareService(
         s.Year, s.DestinationLabel, s.DestinationLatitude, s.DestinationLongitude,
         s.InboundWindowStart, s.InboundWindowEnd, s.OutboundWindowStart, s.OutboundWindowEnd);
 
-    // Notifications are best-effort: a failed send never rolls back the interest write.
+    // The interest write is committed: browser cancellation must not interrupt its notification.
     private async Task NotifyAsync(
         NotificationSource source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
-        Func<CultureInfo, string, (string Title, string Body)> content, CancellationToken ct)
+        Func<CultureInfo, string, (string Title, string Body)> content)
     {
         try
         {
-            var name = (await users.GetUserInfoAsync(actorUserId, ct))?.BurnerName;
-            var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage;
+            var name = (await users.GetUserInfoAsync(actorUserId, CancellationToken.None))?.BurnerName;
+            var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, CancellationToken.None))?.PreferredLanguage;
             var language = preferredLanguage.IsSupportedCultureCode()
                 ? preferredLanguage!
                 : CultureCatalog.DefaultCultureCode;
@@ -692,11 +690,7 @@ internal sealed class RideshareService(
             await notifications.SendAsync(
                 source, notificationClass, NotificationPriority.Normal, title, [recipientUserId],
                 body: body, actionUrl: MineUrl,
-                actionLabel: actionLabel, cancellationToken: ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
+                actionLabel: actionLabel, cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {

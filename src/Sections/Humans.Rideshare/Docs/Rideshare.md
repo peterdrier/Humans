@@ -280,8 +280,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   stored: the route is recomputed and re-stored.
 - When an interest is created: `INotificationEmitter` notifies the posting owner (`Actionable`),
   best-effort — name/recipient lookup, message preparation and delivery failures are caught and logged,
-  never surfaced after the interest is saved. The same boundary applies to acceptance and decline. Caller
-  cancellation still propagates.
+  never surfaced after the interest is saved. The same boundary applies to acceptance and decline.
+  Reads and persistence honor caller cancellation; after a successful save, notification lookups and
+  delivery run without the browser token so navigation cannot interrupt the committed action.
 - When an interest is accepted: the interest's author is notified (`Informational`) — a rider
   that they are in, a driver whose answer to a pin was accepted that their offer was; seats
   remaining recomputes on next read.

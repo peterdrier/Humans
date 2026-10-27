@@ -1082,26 +1082,64 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         Logger.Entries.Should().Contain(e => e.Level == LogLevel.Error && e.Exception != null);
     }
 
-    [HumansFact]
-    public async Task ExpressInterest_PropagatesCallerCancellationDuringNotification()
+    [HumansTheory]
+    [InlineData("express", false)]
+    [InlineData("accept", false)]
+    [InlineData("decline", false)]
+    [InlineData("express", true)]
+    [InlineData("accept", true)]
+    [InlineData("decline", true)]
+    public async Task InterestMutation_CompletesNotificationAfterCallerCancellation(string action, bool cancelDuringLookup)
     {
-        var trip = await SeedTripAsync(SeedUser("Ada"));
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var interestId = string.Equals(action, "express", StringComparison.Ordinal) ? (Guid?)null : (await SeedInterestAsync(rider, trip.Id)).Id;
+        var actor = string.Equals(action, "express", StringComparison.Ordinal) ? rider : driver;
+        var actorInfo = await Users.GetUserInfoAsync(actor, Ct);
         using var cancellation = new CancellationTokenSource();
+        Users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(call => LookupActorAsync(call.Arg<CancellationToken>()));
+
+        async ValueTask<Humans.Users.Contracts.UserInfo?> LookupActorAsync(CancellationToken token)
+        {
+            if (cancelDuringLookup) await cancellation.CancelAsync();
+            token.ThrowIfCancellationRequested();
+            return actorInfo;
+        }
+
         Notifications.SendAsync(
                 Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(async _ =>
+            .Returns(async call =>
             {
                 await cancellation.CancelAsync();
-                throw new OperationCanceledException(cancellation.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             });
+        var service = NewService();
 
-        var act = () => NewService().ExpressInterestAsync(SeedUser("Bo"), trip.Id, null, 1, null, cancellation.Token);
+        var result = action switch
+        {
+            "express" => await service.ExpressInterestAsync(rider, trip.Id, null, 1, null, cancellation.Token),
+            "accept" => await service.AcceptInterestAsync(interestId!.Value, driver, cancellation.Token),
+            _ => await service.DeclineInterestAsync(interestId!.Value, driver, cancellation.Token)
+        };
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
+        result.Refusal.Should().BeNull();
+        cancellation.IsCancellationRequested.Should().BeTrue();
         await using var ctx = OpenContext();
-        (await ctx.Interests.AnyAsync(i => i.TripId == trip.Id, Ct)).Should().BeTrue();
+        var stored = await ctx.Interests.SingleAsync(Ct);
+        stored.Status.Should().Be(action switch
+        {
+            "accept" => InterestStatus.Accepted,
+            "decline" => InterestStatus.Declined,
+            _ => InterestStatus.Pending
+        });
+        await Notifications.Received(1).SendAsync(
+            Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), CancellationToken.None);
         Logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
     }
 
