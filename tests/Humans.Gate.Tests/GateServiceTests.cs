@@ -682,7 +682,7 @@ public class GateServiceTests
     public async Task SetOwnPin_Supervisor_SelfSetsClaimPin_ButItCannotOverride()
     {
         var sup = Guid.NewGuid();
-        _roles.HasActiveRoleAsync(sup, RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns(true);
+        _roles.HasActiveRoleAsync(sup, TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>()).Returns(true);
 
         // A supervisor may now self-enrol a CLAIM PIN (attribution — everyone can)...
         (await _svc.SetOwnPinAsync(sup, "2580")).Should().Be(GatePinSetResult.Ok);

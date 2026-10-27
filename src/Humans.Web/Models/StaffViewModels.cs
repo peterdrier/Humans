@@ -1,78 +1,9 @@
-using Humans.Base.Constants;
-
 namespace Humans.Web.Models;
 
 public class StaffViewModel
 {
     public IReadOnlyList<StaffRoleSectionViewModel> RoleSections { get; init; } = [];
-
-    /// <summary>
-    /// Defines the ordered list of roles with display metadata.
-    /// Order: community-facing roles first, full Admin last.
-    /// </summary>
-    public static IReadOnlyList<StaffRoleDefinition> GetRoleDefinitions() =>
-    [
-        new(RoleNames.Board, "The Board",
-            "Elected stewards of the collective. They guide strategy, approve tier applications, and make the big decisions so the rest of us can focus on making things happen.",
-            "fa-solid fa-crown"),
-
-        new(RoleNames.ConsentCoordinator, "Consent Coordinators",
-            "Guardians of trust and safety. They review every new human's consent journey, ensuring our community standards are understood and upheld from day one.",
-            "fa-solid fa-shield-heart"),
-
-        new(RoleNames.VolunteerCoordinator, "Volunteer Coordinators",
-            "The welcoming committee. They shepherd new humans through onboarding, answer the questions nobody else thinks to ask, and make sure no one gets lost along the way.",
-            "fa-solid fa-hand-holding-heart"),
-
-        new(RoleNames.TeamsAdmin, "Teams Stewards",
-            "Architects of collaboration. They organize the working groups, provision resources, and make sure every team has what it needs to thrive.",
-            "fa-solid fa-people-group"),
-
-        new(RoleNames.CampAdmin, "Camp Wranglers",
-            "Masters of the camp universe. They review registrations, manage settings, and keep the camp ecosystem running smoothly season after season.",
-            "fa-solid fa-campground"),
-
-        new(RoleNames.FinanceAdmin, "Finance Keepers",
-            "Stewards of the purse. They manage budgets, track expenditures, and ensure every euro is accounted for with the transparency a nonprofit deserves.",
-            "fa-solid fa-coins"),
-
-        new(RoleNames.StoreAdmin, "Store Keepers",
-            "Quartermasters of the collective shop. They curate the catalog, mind the orders, reconcile the payments, and keep the treasury in sync.",
-            "fa-solid fa-store"),
-
-        new(RoleNames.TicketAdmin, "Ticket Alchemists",
-            "They conjure tickets from vendor APIs, match purchases to humans, and make sure the numbers add up before the gates open.",
-            "fa-solid fa-ticket"),
-
-        new(RoleNames.EventsAdmin, "Guide Curators",
-            "Tastemakers of the program. They review event guide submissions, request edits, and shepherd the schedule from rough draft to ready-for-prime-time.",
-            "fa-solid fa-book-open"),
-
-        // Retired role: Feedback is closed to new reports, so the blurb must not advertise triage these holders can
-        // no longer perform.
-        new(RoleNames.FeedbackAdmin, "Feedback Whisperers",
-            "Listeners of the community voice. They fielded bug reports, feature requests, and questions back when Feedback was how you reached us — these days that lives in Issues.",
-            "fa-solid fa-comments"),
-
-        new(RoleNames.HumanAdmin, "Human Administrators",
-            "Keepers of the human directory. They manage profiles, handle role assignments, and provision workspace accounts. If you exist in this system, they probably helped.",
-            "fa-solid fa-users-gear"),
-
-        new(RoleNames.NoInfoAdmin, "NoInfo Stewards",
-            "Shift approval specialists with access to sensitive volunteer data. They approve signups and handle the operational details that keep events running.",
-            "fa-solid fa-clipboard-check"),
-
-        new(RoleNames.Admin, "Full Administrators",
-            "The ones who keep the lights on. Full system access, all the keys, all the responsibility. When something breaks at 3am, these are the humans who fix it.",
-            "fa-solid fa-gear")
-    ];
 }
-
-public record StaffRoleDefinition(
-    string RoleName,
-    string DisplayTitle,
-    string Blurb,
-    string Icon);
 
 public class StaffRoleSectionViewModel
 {

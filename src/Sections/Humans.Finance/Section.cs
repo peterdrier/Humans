@@ -13,8 +13,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Finance;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(FinanceRoles.FinanceAdmin, "Finance Admin",
+            "Stewards of the purse. They manage budgets, track expenditures, and ensure every euro is accounted for with the transparency a nonprofit deserves.",
+            "fa-solid fa-coins"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");

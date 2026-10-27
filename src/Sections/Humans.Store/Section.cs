@@ -10,8 +10,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Store;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(StoreRoles.StoreAdmin, "Store Admin",
+            "Quartermasters of the collective shop. They curate the catalog, mind the orders, reconcile the payments, and keep the treasury in sync.",
+            "fa-solid fa-store"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<StoreSectionOptions>(configuration.GetSection(StoreSectionOptions.Section));

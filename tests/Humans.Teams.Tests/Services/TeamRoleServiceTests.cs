@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
@@ -45,6 +46,12 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             new CachingRoleAssignmentService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
                 NullLogger<CachingRoleAssignmentService>.Instance),
+            new RoleCatalog(new RoleDefinition[]
+            {
+                new(RoleNames.Admin, "Admin", "", ""),
+                new(RoleNames.Board, "Board", "", ""),
+                new(TeamsRoles.TeamsAdmin, "Teams Admin", "", ""),
+            }),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
         var teamResourceService = Substitute.For<ITeamResourceService>();

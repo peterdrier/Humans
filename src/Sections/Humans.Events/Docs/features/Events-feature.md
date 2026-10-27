@@ -157,7 +157,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - Rows absent from the CSV are left untouched — bulk upload does not delete or withdraw events
 - Invalid headers or cells return structured refusal keys with physical file-row arguments. The controller localizes all errors together; parse failure supplies no importable rows and never displays dependency diagnostics.
 - Upload is rejected if the submission window is closed, including when it closes after controller preflight; no rows are written and the uploader sees the localized closed-window message.
-- Only Camp Leads, Workshop Leads, CampAdmin, and Admin may access the bulk upload routes for a given barrio slug
+- Only Camp Leads, Workshop Leads, CampsAdmin, and Admin may access the bulk upload routes for a given barrio slug
 
 #### Routes
 

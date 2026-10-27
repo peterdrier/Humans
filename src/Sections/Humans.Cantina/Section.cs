@@ -10,8 +10,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Cantina;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(CantinaRoles.CantinaAdmin, "Cantina Admin",
+            "Meal planners. They read the weekly roster, the dietary breakdown and the allergy rollups so the kitchen cooks for the people who are actually on site.",
+            "fa-solid fa-utensils"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<CantinaDbContext>(sentinelTable: "cantina_dietary_profiles");

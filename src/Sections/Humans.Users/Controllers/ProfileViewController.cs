@@ -102,7 +102,7 @@ internal sealed class ProfileViewController(
         }
 
         var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId, ct)).Count > 0;
-        var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+        var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftsRoles.IsPrivilegedSignupApprover(User);
         if (!viewerCanViewShiftHistory)
         {
             return (false, null);

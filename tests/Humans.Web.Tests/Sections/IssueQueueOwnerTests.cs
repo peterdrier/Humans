@@ -1,3 +1,10 @@
+using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Camps.Contracts;
+using Humans.Tickets.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Finance.Contracts;
+using Humans.Consent.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
@@ -26,18 +33,18 @@ public class IssueQueueOwnerTests
     /// </summary>
     private static readonly (string Section, string Key, string[] Roles)[] Declared =
     [
-        ("Budget", "Budget", [RoleNames.FinanceAdmin]),
-        ("Camps", "Camps", [RoleNames.CampAdmin]),
-        ("CityPlanning", "CityPlanning", [RoleNames.CampAdmin]),
-        ("Consent", "Legal", [RoleNames.ConsentCoordinator]),
+        ("Budget", "Budget", [FinanceRoles.FinanceAdmin]),
+        ("Camps", "Camps", [CampsRoles.CampsAdmin]),
+        ("CityPlanning", "CityPlanning", [CampsRoles.CampsAdmin]),
+        ("Consent", "Legal", [ConsentRoles.ConsentCoordinator]),
         ("Governance", "Governance", [RoleNames.Board]),
         ("Onboarding", "Onboarding",
-            [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin]),
-        ("Scanner", "Scanner", [RoleNames.TicketAdmin, RoleNames.Board]),
-        ("Shifts", "Shifts", [RoleNames.NoInfoAdmin]),
-        ("Teams", "Teams", [RoleNames.TeamsAdmin]),
-        ("Tickets", "Tickets", [RoleNames.TicketAdmin]),
-        ("Users", "Profiles", [RoleNames.HumanAdmin]),
+            [ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin]),
+        ("Scanner", "Scanner", [TicketsRoles.TicketsAdmin, RoleNames.Board]),
+        ("Shifts", "Shifts", [ShiftsRoles.ShiftsNoInfo]),
+        ("Teams", "Teams", [TeamsRoles.TeamsAdmin]),
+        ("Tickets", "Tickets", [TicketsRoles.TicketsAdmin]),
+        ("Users", "Profiles", [UsersRoles.UsersAdmin]),
     ];
 
     public static TheoryData<string, string, string[]> DeclaredQueues

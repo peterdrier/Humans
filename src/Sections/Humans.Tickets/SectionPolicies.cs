@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
@@ -14,9 +15,9 @@ internal sealed class SectionPolicies : ISectionPolicies
     public void AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.TicketAdminBoardOrAdmin, policy =>
-            policy.RequireRole(RoleNames.TicketAdmin, RoleNames.Admin, RoleNames.Board));
+            policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin, RoleNames.Board));
 
         options.AddPolicy(PolicyNames.TicketAdminOrAdmin, policy =>
-            policy.RequireRole(RoleNames.TicketAdmin, RoleNames.Admin));
+            policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin));
     }
 }

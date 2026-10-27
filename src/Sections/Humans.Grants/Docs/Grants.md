@@ -68,7 +68,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 | Grant holder | Sees their own grants on their profile; gets an email and in-app notice on issue, resend and revoke |
 | Program manager | Sees the programs they manage; issues (managers' programs only), revokes, resends notices on them |
 | Board, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
-| HumanAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
+| UsersAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
 | A source section (LowIncome) | Issues and revokes under the open program whose source key it passes, through `IGrantWrite` |
 
 ## Invariants
@@ -89,7 +89,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - A manager of one program **cannot** see or act on another program's grants (per-grant routes 404 when the grant is not in the routed program).
 - Managers, Board and Admin **cannot** issue by hand under a source program. Another section **cannot** issue under a managers' program or under a source key it does not own.
 - A grant holder **cannot** reach the admin pages, and **cannot** see anyone else's grants.
-- FinanceAdmin, TicketAdmin and other roles **cannot** manage grants unless they are Board, Admin, or a named manager.
+- FinanceAdmin, TicketsAdmin and other roles **cannot** manage grants unless they are Board, Admin, or a named manager.
 
 ## Triggers
 

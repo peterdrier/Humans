@@ -99,8 +99,8 @@ internal sealed class ShiftManagementService(
     public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default)
     {
         if (await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.Admin, ct) ||
-            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin, ct) ||
-            await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator, ct))
+            await RoleAssignmentService.HasActiveRoleAsync(userId, ShiftsRoles.ShiftsNoInfo, ct) ||
+            await RoleAssignmentService.HasActiveRoleAsync(userId, ShiftsRoles.ShiftsAdmin, ct))
             return true;
 
         return await IsDeptCoordinatorAsync(userId, departmentTeamId, ct);

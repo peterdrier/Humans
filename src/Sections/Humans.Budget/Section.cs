@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
@@ -47,5 +48,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["finance", "budget"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.FinanceAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [FinanceRoles.FinanceAdmin];
 }

@@ -7,7 +7,7 @@
   src/Sections/Humans.Camps/Humans.Camps.csproj
 -->
 <!-- freshness:flag-on-change
-  Polygon edit authorization (lead vs city-planning team vs CampAdmin), placement-open gating, and append-only history rules — review when CityPlanning service/entities/controllers change.
+  Polygon edit authorization (lead vs city-planning team vs CampsAdmin), placement-open gating, and append-only history rules — review when CityPlanning service/entities/controllers change.
 -->
 
 # City Planning — Section Invariants
@@ -155,7 +155,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 | Camp lead (own camp, placement Changeable) | Edit their own camp's existing polygon — not draw a new one |
 | Camp lead (own camp, container placement open) | Add/edit/delete their own camp's containers |
 | City-planning team member (team slug: `city-planning`) | Full admin access always (any polygon, containers, settings, exports) |
-| CampAdmin role | Full admin access always |
+| CampsAdmin role | Full admin access always |
 
 ## Invariants
 
@@ -163,9 +163,9 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
 - Barrio placement has one effective state, computed on every read by `CityPlanningService` (peterdrier/Humans#2102): the manual override when set (true = Open, false = Closed); otherwise the schedule, by today's date in the active event's time zone (`EventSettingsInfo.TimeZoneId`) against `GateOpeningDate` + offset — **Open** from the opening day through the closing day, **Changeable** through the changeable-until day, then **Closed**. No opening day, no active event, or a row for another year than the active event's means Closed unless forced open. No job flips anything: the date decides at read time.
-- Camp leads can create or edit their own camp's polygon only while placement is Open, and only edit one that already exists while it is Changeable. City-planning team members and CampAdmin are exempt.
+- Camp leads can create or edit their own camp's polygon only while placement is Open, and only edit one that already exists while it is Changeable. City-planning team members and CampsAdmin are exempt.
 - The schedule's days must run open ≤ close ≤ changeable-until, within 366 days of gate opening, and a changeable-until day needs a closing day; anything else is refused without a write or an audit entry.
-- Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
+- Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampsAdmin are exempt.
 - City planning's current year is the active event's year. With no active event there is no current year: the map pages (index, barrio map, container map), the admin page and the state API answer 404, the `/Settings#city-planning` tab says so in place of the placement cards — the registration-info card stays while a season is open, since that copy is keyed to the open season — the Camps details page shows placement as closed, and a settings write throws.
 - Settings reads are side-effect free (peterdrier/Humans#2102): `GetSettingsAsync` and `GetRegistrationInfoAsync` never write. A year with no row reads as the defaults (closed, no dates, no zones) with `Id = Guid.Empty`; the row is created by the first admin write (`GetOrCreateSettingsAsync` on the write paths only).
 - SignalR broadcasts polygon updates to all connected clients in real time.
@@ -246,6 +246,6 @@ Per §12, `camp_polygon_histories` is append-only — the repository intentional
 
 CityPlanning owns the `CityPlanning` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle
-issues filed against it — `CampAdmin`, plus `Admin`, which handles every queue. Issues
+issues filed against it — `CampsAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

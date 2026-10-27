@@ -97,7 +97,7 @@ Stored as string via `HasConversion<string>()`.
 
 **Table:** `team_early_entry_grants`
 
-One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EETeamAdmin` role (and TeamsAdmin/Board/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
+One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EarlyEntryAdmin` role (and TeamsAdmin/Board/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
 
 ### SystemTeamType
 
@@ -181,7 +181,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | Anyone (including anonymous) | Browse the team directory and view public team pages |
 | Any active human | View team detail pages, request to join a team, leave a team, withdraw a pending request, view own memberships, browse the birthday calendar, search humans, view the roster and map |
 | Coordinator | Manage members, approve/reject join requests, manage roles, edit the team page, manage Google resources, and (when `EarlyEntryEnabled`) grant/edit/revoke Early Entry for their department (and its sub-teams) |
-| EETeamAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
+| EarlyEntryAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
 | Sub-team Manager | Manage members, approve/reject join requests, manage roles, manage shifts, and edit the team page for their sub-team only. Cannot manage Google resources, the parent department, or sibling sub-teams |
 | TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, directory promotion, Early Entry enabled flag), toggle the management role, and link/unlink Google resources on all teams. **Cannot** change the sensitive flag via Edit Team (Admin-only — a non-Admin's save leaves `IsSensitive` unchanged) |
 | Board | All TeamsAdmin capabilities. Additionally can delete (deactivate) teams |
@@ -266,8 +266,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Inactive teams grant no Early Entry: the roster excludes grants of deactivated teams. Grants are kept and resume if the team is reactivated.
 - Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
 - `RemoveEarlyEntryGrantAsync` is idempotent (removing an absent grant is a no-op).
-- `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EETeamAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
-- `EETeamAdmin` is in `RoleNames.All` and `RoleNames.BoardManageableRoles` (board-grantable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
+- `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EarlyEntryAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
+- `EarlyEntryAdmin` is declared by EarlyEntry's `ISectionRoles` with `OpensAdminShell: false` (assignable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
 - The Members page's `@nobodies.team` column is this section's own: `TeamAdminController.Members` batches each member's verified nobodies.team email through `IUserService.GetUserInfosAsync` and the view renders the address, or a form posting to this controller's own `ProvisionEmail`, itself (nobodies-collective/Humans#1815). It is not a cross-section widget.
 - Workspace provisioning shows credential-handoff warnings separately from account creation: a created and linked account remains successful when its credentials email cannot be queued or has no recovery address. The coordinator sees the admin password-reset guidance; accepted handoffs are described as queued rather than delivered.
 

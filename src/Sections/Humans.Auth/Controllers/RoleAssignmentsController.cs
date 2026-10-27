@@ -1,3 +1,4 @@
+using Humans.Auth.Authorization;
 using Humans.Auth.Contracts;
 using Humans.Auth.Models;
 using Humans.Auth.Services;
@@ -23,6 +24,7 @@ internal sealed class RoleAssignmentsController(
     IRoleAssignmentManagement roleAssignmentManagement,
     IClock clock,
     IAuthorizationService authorizationService,
+    RoleCatalog catalog,
     ILogger<RoleAssignmentsController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
@@ -69,7 +71,7 @@ internal sealed class RoleAssignmentsController(
         var viewModel = new CreateRoleAssignmentViewModel
         {
             UserId = id,
-            AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
+            AvailableRoles = RoleAssignmentRules.Assignable(User, catalog)
         };
 
         return View(viewModel);
@@ -86,7 +88,7 @@ internal sealed class RoleAssignmentsController(
         {
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
             model.UserId = id;
-            model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
+            model.AvailableRoles = RoleAssignmentRules.Assignable(User, catalog);
             return View(model);
         }
 

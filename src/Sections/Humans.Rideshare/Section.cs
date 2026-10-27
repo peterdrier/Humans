@@ -1,3 +1,4 @@
+using Humans.Rideshare.Contracts;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
@@ -14,8 +15,15 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Rideshare;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(RideshareRoles.RideshareAdmin, "Rideshare Admin",
+            "Road captains. They set the year's destination and travel windows, watch the season statistics, and keep the day roster of trips and riders.",
+            "fa-solid fa-car"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<RideshareDbContext>(sentinelTable: "rideshare_trips");

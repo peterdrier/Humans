@@ -59,6 +59,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`refunds-manual-via-dashboard`](architecture/refunds-manual-via-dashboard.md) — HARD RULE. Humans never calls Stripe refund/payout APIs — money-out is human-initiated on stripe.com; the app only bookkeeps via negative `StorePayment` rows.
 - [`required-columns-need-approval`](architecture/required-columns-need-approval.md) — HARD RULE. Every new column on an existing table is nullable — never propose or ask about NOT NULL there; only Peter initiates one. New tables may have required columns.
 - [`read-model-enrichment`](architecture/read-model-enrichment.md) — When a caller needs stable facts about an aggregate already on a canonical read model (`UserInfo`, `TeamInfo`), add scalar fields to that DTO instead of a new service method.
+- [`roles-are-section-owned`](architecture/roles-are-section-owned.md) — A grantable role is a `<Section>Roles` constant declared through `ISectionRoles` in its owning section; Base's `RoleNames` holds only Admin and Board, and a rename keeps the old name in `FormerNames`.
 - [`repository-required-for-db-access`](architecture/repository-required-for-db-access.md) — HARD RULE. Every DB-accessing service goes through a repository deriving from `IRepository` — no service injects a DbContext directly, even for a singleton-row table.
 - [`section-contribution-seams`](architecture/section-contribution-seams.md) — When adding a nav link, admin tile, job, or health check, implement it as an `ISectionContribution` seam on `Section` — never a by-name edit to a Shell composition class.
 - [`section-state-visibility`](architecture/section-state-visibility.md) — A section holding config, mappings, sync state or external-account maps owns an admin page that shows the current state — what maps to what, what is disabled, orphaned or stale. Hidden state that can break a user path is a gap to fill in the same PR.
@@ -87,7 +88,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 ## code/
 
-- [`admin-role-superset`](code/admin-role-superset.md) — When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampAdmin/TicketAdmin) — never one without the other.
+- [`admin-role-superset`](code/admin-role-superset.md) — When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampsAdmin/TicketsAdmin) — never one without the other.
 - [`always-log-problems`](code/always-log-problems.md) — When logging an expected/user-driven failure, use LogWarning and drop the exception object — LogInformation is invisible in prod.
 - [`authorization-conventions`](code/authorization-conventions.md) — Controllers/routes use `[Authorize(Policy = PolicyNames.X)]`; views use `authorize-policy` or `IAuthorizationService`. Never `[Authorize(Roles=...)]` or `User.IsInRole` chains.
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — In reusable views/components, resolve auth via injected `IAuthorizationService` in the template — don't pass `Can…` auth booleans on the view model.
@@ -111,7 +112,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`log-file-debugging`](code/log-file-debugging.md) — When debugging runtime errors, grep the log file first — don't speculate. Write diagnostic logs with entity IDs and actual values, not just "operation failed".
 - [`lsp-integration`](code/lsp-integration.md) — After editing a `.cs` file, re-Read it — the `csharp-ls` LSP fires diagnostics on Read, not Edit.
 - [`namespace-alias-application`](code/namespace-alias-application.md) — Referencing `Humans.Domain.Entities.Application`? Alias it `using MemberApplication = ...;` — it collides with the framework `Application` type.
-- [`narrow-admin-role-needs-anyadminrole`](code/narrow-admin-role-needs-anyadminrole.md) — A new narrow admin-shell role (e.g. `CantinaAdmin`) must join the `AnyAdminRole` policy too, or holders pass their page but never see the ADMIN nav link.
+- [`narrow-admin-role-needs-anyadminrole`](code/narrow-admin-role-needs-anyadminrole.md) — A new admin-shell role is declared in its section's `ISectionRoles`; `AnyAdminRole` derives from that, so set `OpensAdminShell: false` only when the role's page lives outside `/Admin`.
 - [`no-enum-compare-in-ef`](code/no-enum-compare-in-ef.md) — Enums with `HasConversion<string>()` compare lexicographically in SQL — never use `>`/`>=`/`<`/`<=` in EF queries; use `Contains()` with explicit allowed-values lists.
 - [`no-localized-exception-messages`](code/no-localized-exception-messages.md) — Nothing deriving from Exception carries localization without Peter's explicit approval — no resx text in `throw new …(…)`, no resx keys/args on exception types, no mapping `ex.Message` to resx keys.
 - [`no-extensions-for-owned-classes`](code/no-extensions-for-owned-classes.md) — Don't write extension methods for types this repo owns — add the method/property directly on the class. Extensions are only for BCL/third-party types.

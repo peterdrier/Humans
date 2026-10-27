@@ -7,7 +7,7 @@ namespace Humans.Guide.Tests.Services;
 public class GuideSegmenterTests
 {
     private static GuideSegment Scoped(string markdown, string role) =>
-        GuideSegmenter.Segment(markdown).Segments.Single(s => string.Equals(s.Role, role, StringComparison.Ordinal));
+        GuideTestRoles.Segmenter.Segment(markdown).Segments.Single(s => string.Equals(s.Role, role, StringComparison.Ordinal));
 
     [HumansFact]
     public void Segment_VolunteerBlock_CarriesTheVolunteerRole()
@@ -53,13 +53,13 @@ public class GuideSegmenterTests
     public void Segment_BoardAdminWithParenthetical_CapturesSystemRole()
     {
         const string input = """
-            ## As a Board member / Admin (Camp Admin)
+            ## As a Board member / Admin (Camps Admin)
 
             Do camp admin things.
             """;
 
         Scoped(input, GuideDocument.BoardAdmin)
-            .Privileges.Should().ContainSingle().Which.Should().Be("CampAdmin");
+            .Privileges.Should().ContainSingle().Which.Should().Be("CampsAdmin");
     }
 
     [HumansFact]
@@ -87,7 +87,7 @@ public class GuideSegmenterTests
             Coordinator stuff.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().HaveCount(2);
         document.Segments[0].Role.Should().Be(GuideDocument.Volunteer);
@@ -108,7 +108,7 @@ public class GuideSegmenterTests
             See other stuff.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().HaveCount(2);
         document.Segments[0].Role.Should().Be(GuideDocument.Volunteer);
@@ -131,7 +131,7 @@ public class GuideSegmenterTests
             The governance body.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().ContainSingle();
         document.Segments[0].Role.Should().BeNull();
@@ -142,7 +142,7 @@ public class GuideSegmenterTests
     public void Segment_ParentheticalWithUnknownToken_OmitsItButKeepsHeading()
     {
         const string input = """
-            ## As a Board member / Admin (Camp Admin, Mystery Role)
+            ## As a Board member / Admin (Camps Admin, Mystery Role)
 
             Content.
             """;
@@ -150,11 +150,11 @@ public class GuideSegmenterTests
         var segment = Scoped(input, GuideDocument.BoardAdmin);
 
         // Unknown tokens must not become a privilege nobody can hold.
-        segment.Privileges.Should().ContainSingle().Which.Should().Be("CampAdmin");
+        segment.Privileges.Should().ContainSingle().Which.Should().Be("CampsAdmin");
 
         // The heading itself is passed through unchanged so that any markdown
         // links inside it (e.g. "[Volunteer](Glossary.md#volunteer)") survive.
-        segment.Markdown.Should().Contain("## As a Board member / Admin (Camp Admin, Mystery Role)");
+        segment.Markdown.Should().Contain("## As a Board member / Admin (Camps Admin, Mystery Role)");
     }
 
     [HumansFact]
@@ -184,7 +184,7 @@ public class GuideSegmenterTests
         var markdown = File.ReadAllText(
             Path.Combine(LocateRepoRoot(), "docs", "guide", "Camps.md"));
 
-        GuideSegmenter.Segment(markdown).Segments
+        GuideTestRoles.Segmenter.Segment(markdown).Segments
             .Where(s => string.Equals(s.Role, GuideDocument.Coordinator, StringComparison.Ordinal))
             .SelectMany(s => s.Privileges)
             .Should().Contain(GuideRolePrivilegeMap.CampLead);
@@ -198,7 +198,7 @@ public class GuideSegmenterTests
 
         foreach (var file in Directory.GetFiles(guideDir, "*.md"))
         {
-            var document = GuideSegmenter.Segment(File.ReadAllText(file));
+            var document = GuideTestRoles.Segmenter.Segment(File.ReadAllText(file));
 
             foreach (var heading in RoleHeadings(File.ReadAllText(file)))
             {
@@ -232,7 +232,7 @@ public class GuideSegmenterTests
             Still board-only guidance.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().ContainSingle();
         document.Segments[0].Role.Should().Be(GuideDocument.BoardAdmin);
@@ -259,7 +259,7 @@ public class GuideSegmenterTests
             The parenthetical must name a mapped privilege.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().ContainSingle();
         document.Segments[0].Role.Should().BeNull();
@@ -281,7 +281,7 @@ public class GuideSegmenterTests
             Still coordinator-only guidance.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().ContainSingle();
         document.Segments[0].Role.Should().Be(GuideDocument.Coordinator);
@@ -306,7 +306,7 @@ public class GuideSegmenterTests
             Everyone sees this.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().HaveCount(2);
         document.Segments[0].Role.Should().Be(GuideDocument.Volunteer);
@@ -331,7 +331,7 @@ public class GuideSegmenterTests
             Board-only guidance.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().HaveCount(2);
         document.Segments[1].Role.Should().Be(GuideDocument.BoardAdmin);
@@ -357,7 +357,7 @@ public class GuideSegmenterTests
             Still coordinator-only guidance.
             """;
 
-        var document = GuideSegmenter.Segment(input);
+        var document = GuideTestRoles.Segmenter.Segment(input);
 
         document.Segments.Should().ContainSingle();
         document.Segments[0].Role.Should().Be(GuideDocument.Coordinator);
@@ -372,7 +372,7 @@ public class GuideSegmenterTests
         {
             var markdown = File.ReadAllText(file);
             var rejoined = string.Join('\n',
-                GuideSegmenter.Segment(markdown).Segments.Select(s => s.Markdown));
+                GuideTestRoles.Segmenter.Segment(markdown).Segments.Select(s => s.Markdown));
 
             rejoined.Should().Be(markdown, because: $"{Path.GetFileName(file)} must survive a round trip");
         }

@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -172,7 +173,7 @@ public sealed class CampAuthorizationHandlerTests
         kind switch
         {
             "admin" => CreateUserWithRoles(RoleNames.Admin),
-            "camp-admin" => CreateUserWithRoles(RoleNames.CampAdmin),
+            "camp-admin" => CreateUserWithRoles(CampsRoles.CampsAdmin),
             "lead" => CreateUserWithId(UserId),
             "workshop" => CreateUserWithId(WorkshopUserId),
             "regular" => CreateUserWithId(regularUserId),

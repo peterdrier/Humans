@@ -112,9 +112,9 @@ Until you enter that name the app stays shut: every page sends you back to the n
 
 If you hold the **Consent Coordinator** role, your work in onboarding is reviewing the queue at `/OnboardingReview` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
 
-If you hold the **Volunteer Coordinator** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject — those actions all require Consent Coordinator (or Board / Admin).
+If you hold the **Shifts Admin** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject — those actions all require Consent Coordinator (or Board / Admin).
 
-## As a Board member / Admin (Human Admin)
+## As a Board member / Admin (Users Admin)
 
 Board members and Admins can do everything a Consent Coordinator can, plus:
 

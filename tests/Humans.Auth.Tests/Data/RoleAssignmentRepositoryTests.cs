@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Auth.Domain;
@@ -121,7 +122,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(Guid.NewGuid(), RoleNames.Admin, now - Duration.FromDays(1), null);
 
         var (items, total) = await _repo.GetFilteredAsync(
-            RoleNames.Board, activeOnly: true, page: 1, pageSize: 50, now, ct: Xunit.TestContext.Current.CancellationToken);
+            [RoleNames.Board], activeOnly: true, page: 1, pageSize: 50, now, ct: Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(2);
         items.Should().HaveCount(2);
@@ -136,7 +137,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.Board, now - Duration.FromDays(10), null);
 
         var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+            userId, [RoleNames.Board], now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         hasOverlap.Should().BeTrue();
     }
@@ -150,10 +151,10 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
             now - Duration.FromDays(30), now - Duration.FromDays(10));
 
         var before = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board,
+            userId, [RoleNames.Board],
             now - Duration.FromDays(40), validTo: now - Duration.FromDays(35), ct: Xunit.TestContext.Current.CancellationToken);
         var after = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board,
+            userId, [RoleNames.Board],
             now - Duration.FromDays(5), validTo: now, ct: Xunit.TestContext.Current.CancellationToken);
 
         before.Should().BeFalse();
@@ -169,7 +170,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
             now - Duration.FromDays(20), now - Duration.FromDays(10));
 
         var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+            userId, [RoleNames.Board], now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         hasOverlap.Should().BeFalse();
     }
@@ -182,7 +183,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.Board, now + Duration.FromDays(10), null);
 
         var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+            userId, [RoleNames.Board], now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         hasOverlap.Should().BeTrue();
     }
@@ -195,7 +196,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.Admin, now - Duration.FromDays(5), null);
 
         var hasOverlap = await _repo.HasOverlappingAssignmentAsync(
-            userId, RoleNames.Board, now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
+            userId, [RoleNames.Board], now, validTo: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         hasOverlap.Should().BeFalse();
     }
@@ -207,7 +208,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         await SeedAssignmentAsync(userId, RoleNames.Admin, now - Duration.FromDays(1), null);
 
-        var result = await _repo.HasActiveRoleAsync(userId, RoleNames.Admin, now, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.HasActiveRoleAsync(userId, [RoleNames.Admin], now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -220,7 +221,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         await SeedAssignmentAsync(userId, RoleNames.Admin,
             now - Duration.FromDays(10), now - Duration.FromDays(1));
 
-        var result = await _repo.HasActiveRoleAsync(userId, RoleNames.Admin, now, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.HasActiveRoleAsync(userId, [RoleNames.Admin], now, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -232,7 +233,7 @@ public sealed class RoleAssignmentRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         var active1 = await SeedAssignmentAsync(userId, RoleNames.Board, now - Duration.FromDays(5), null);
         var active2 = await SeedAssignmentAsync(userId, RoleNames.Admin, now - Duration.FromDays(3), null);
-        await SeedAssignmentAsync(userId, RoleNames.TeamsAdmin,
+        await SeedAssignmentAsync(userId, TeamsRoles.TeamsAdmin,
             now - Duration.FromDays(100), now - Duration.FromDays(50));
 
         var result = await _repo.GetActiveForUserForMutationAsync(userId, now, Xunit.TestContext.Current.CancellationToken);

@@ -21,8 +21,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Users;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(UsersRoles.UsersAdmin, "Users Admin",
+            "Keepers of the human directory. They manage profiles, handle role assignments, and provision workspace accounts. If you exist in this system, they probably helped.",
+            "fa-solid fa-users-gear",
+            FormerNames: ["HumanAdmin"]),
+    ];
+
     internal static IdentityBuilder AddIdentityStores(IdentityBuilder builder) =>
         builder.AddEntityFrameworkStores<UsersDbContext>();
 
@@ -110,5 +118,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["profile", "humans"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.HumanAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [UsersRoles.UsersAdmin];
 }

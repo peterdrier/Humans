@@ -25,7 +25,7 @@ public sealed class TeamResourceAuthorizationHandlerTests
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
     public async Task TeamsAdminBoardOrAdmin_Succeeds_WithoutTheResourceManagerCheck(string role)
     {
         var allowed = await EvaluateAsync(Principal(_userId, role), Team(Guid.NewGuid(), parentTeamId: null));

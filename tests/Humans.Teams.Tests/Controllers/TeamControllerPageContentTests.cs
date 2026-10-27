@@ -227,7 +227,7 @@ public class TeamControllerPageContentTests
     [InlineData("parent")]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
     public async Task Roster_PrivateRoles_RequireTeamManagementAccess(string? role)
     {
         var viewer = Guid.NewGuid();
@@ -275,7 +275,7 @@ public class TeamControllerPageContentTests
         var result = await controller.Roster(null, null, null, TestContext.Current.CancellationToken);
 
         var slots = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which.Slots;
-        var expected = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin
+        var expected = role is RoleNames.Admin or RoleNames.Board or TeamsRoles.TeamsAdmin
             ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId, otherPrivate.RoleDefinitionId }
             : role is "coordinator" or "parent"
                 ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId }
@@ -287,7 +287,7 @@ public class TeamControllerPageContentTests
     [InlineData(null)]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
     public async Task MemberLists_HiddenPendingRequestsAndRoster_RequirePrivilegedRole(string? role)
     {
         var userId = Guid.NewGuid();

@@ -17,7 +17,7 @@ public class SectionAccessMatrixTests
         matrix.Key.Should().Be("Camps");
         matrix.SectionName.Should().Be("Barrios");
         matrix.Order.Should().Be(30);
-        matrix.Roles.Should().Equal("Volunteer", "Camp Lead", "CampAdmin");
+        matrix.Roles.Should().Equal("Volunteer", "Camp Lead", "CampsAdmin");
     }
 
     [HumansFact]
@@ -26,10 +26,10 @@ public class SectionAccessMatrixTests
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
             .Should().Equal(
-                "Browse camps: Volunteer=Allowed, Camp Lead=Allowed, CampAdmin=Allowed",
-                "Register a camp: Volunteer=Allowed, Camp Lead=Allowed, CampAdmin=Allowed",
-                "Edit own camp: Volunteer=Denied, Camp Lead=Allowed, CampAdmin=Allowed",
-                "Approve/reject camps: Volunteer=Denied, Camp Lead=Denied, CampAdmin=Allowed",
-                "Camp settings: Volunteer=Denied, Camp Lead=Denied, CampAdmin=Allowed");
+                "Browse camps: Volunteer=Allowed, Camp Lead=Allowed, CampsAdmin=Allowed",
+                "Register a camp: Volunteer=Allowed, Camp Lead=Allowed, CampsAdmin=Allowed",
+                "Edit own camp: Volunteer=Denied, Camp Lead=Allowed, CampsAdmin=Allowed",
+                "Approve/reject camps: Volunteer=Denied, Camp Lead=Denied, CampsAdmin=Allowed",
+                "Camp settings: Volunteer=Denied, Camp Lead=Denied, CampsAdmin=Allowed");
     }
 }

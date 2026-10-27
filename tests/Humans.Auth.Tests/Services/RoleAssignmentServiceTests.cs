@@ -15,6 +15,7 @@ using Humans.Notifications.Contracts;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
+using Humans.Camps.Contracts;
 using Humans.Users.Contracts;
 
 
@@ -56,6 +57,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             Notifier,
             _systemTeamSync,
             _rowCache,
+            TestRoles.Catalog(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
     }
@@ -497,6 +499,85 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(
             RoleAssignmentService.RoleAssignments);
+    }
+
+    [HumansFact]
+    public async Task AssignRoleAsync_RefusesARoleTheCatalogDoesNotList()
+    {
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(assignerId, "Admin User");
+
+        var result = await _service.AssignRoleAsync(
+            userId, "RoleNobodyDeclared", assignerId, null, TestContext.Current.CancellationToken);
+
+        result.Should().Be(new RoleAssignmentResult(false, "UnknownRole"));
+        (await _repository.GetByUserIdAsync(userId, TestContext.Current.CancellationToken)).Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RowStoredUnderAFormerName_ReadsAsTheCurrentRole()
+    {
+        // Between deploy and the data migration, rows still carry the old name; nobody may lose the role meanwhile.
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Camps Admin");
+        SeedRoleAssignment(userId, TestRoles.FormerCampsAdmin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+
+        (await _service.HasActiveRoleAsync(userId, CampsRoles.CampsAdmin, TestContext.Current.CancellationToken))
+            .Should().BeTrue();
+        (await _service.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
+            .Select(r => r.RoleName).Should().Equal(CampsRoles.CampsAdmin);
+        (await _service.GetActiveUserIdsInRoleAsync(CampsRoles.CampsAdmin, TestContext.Current.CancellationToken))
+            .Should().Equal(userId);
+        (await _service.GetActiveCountsByRoleAsync(TestContext.Current.CancellationToken))
+            .Should().ContainKey(CampsRoles.CampsAdmin).WhoseValue.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task AssignRoleAsync_SeesAnActiveRowUnderTheFormerName()
+    {
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Camps Admin");
+        await SeedUserAsync(assignerId, "Admin User");
+        SeedRoleAssignment(userId, TestRoles.FormerCampsAdmin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+
+        var result = await _service.AssignRoleAsync(
+            userId, CampsRoles.CampsAdmin, assignerId, null, TestContext.Current.CancellationToken);
+
+        result.Should().Be(new RoleAssignmentResult(false, "RoleAlreadyActive"));
+    }
+
+    [HumansFact]
+    public async Task RewriteFormerNamesAsync_RewritesEveryFormerNameRow_AndIsIdempotent()
+    {
+        var campsUser = Guid.NewGuid();
+        var usersUser = Guid.NewGuid();
+        var boardUser = Guid.NewGuid();
+        await SeedUserAsync(campsUser, "Camps Admin");
+        await SeedUserAsync(usersUser, "Users Admin");
+        await SeedUserAsync(boardUser, "Board Member");
+        var past = Clock.GetCurrentInstant() - Duration.FromDays(30);
+        SeedRoleAssignment(campsUser, TestRoles.FormerCampsAdmin, past);
+        // An ended row is rewritten too: history reads under the current name.
+        SeedRoleAssignment(usersUser, TestRoles.FormerUsersAdmin, past, past + Duration.FromDays(1));
+        SeedRoleAssignment(boardUser, RoleNames.Board, past);
+
+        var pending = await _service.GetRowsUnderFormerNamesAsync(TestContext.Current.CancellationToken);
+        pending.Select(r => (r.UserId, r.StoredName, r.CurrentName)).Should().BeEquivalentTo(
+        [
+            (campsUser, TestRoles.FormerCampsAdmin, CampsRoles.CampsAdmin),
+            (usersUser, TestRoles.FormerUsersAdmin, UsersRoles.UsersAdmin),
+        ]);
+
+        (await _service.RewriteFormerNamesAsync(TestContext.Current.CancellationToken)).Should().Be(2);
+
+        AuthDb.RoleAssignments.AsNoTracking().Select(r => r.RoleName).ToList()
+            .Should().BeEquivalentTo([CampsRoles.CampsAdmin, UsersRoles.UsersAdmin, RoleNames.Board]);
+        (await _service.GetRowsUnderFormerNamesAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+        (await _service.RewriteFormerNamesAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     private Task SeedUserAsync(Guid userId, string displayName)

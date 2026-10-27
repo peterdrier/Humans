@@ -6,7 +6,7 @@ a link to the section guide where it's most relevant.
 ## Admin
 
 A human with the `Admin` role — global superset privilege over the whole app.
-Domain admins like Teams Admin, Camp Admin, and Ticket Admin are separate,
+Domain admins like Teams Admin, Camps Admin, and Tickets Admin are separate,
 narrower roles scoped to their section. See [Admin](Admin.md).
 
 ## Asociado
@@ -41,7 +41,7 @@ is finalized; only the collective decision is retained. See
 ## Camp Lead
 
 A human responsible for a camp. A camp has at least one lead and, by default,
-up to two (a Camp Admin can raise the cap). Leads have equal authority and are
+up to two (a Camps Admin can raise the cap). Leads have equal authority and are
 managed from the camp's Edit page. (An older "Primary Lead / Co-Lead"
 distinction is being retired.) See [Camps](Camps.md).
 
@@ -161,7 +161,7 @@ The default membership tier — the standard human. Everyone lands here after
 completing signup, entering their legal name, and signing the required
 documents; admission is automatic. See [Onboarding](Onboarding.md).
 
-## Volunteer Coordinator
+## Shifts Admin
 
 The role that acts as a facilitation contact for onboarding, with read-only
 access to the onboarding review queue. Distinct from the Consent Coordinator,

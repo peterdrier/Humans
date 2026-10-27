@@ -17,8 +17,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Events;
 
-public sealed class Section : ISection, IUserPart, ICampPart
+public sealed class Section : ISection, IUserPart, ICampPart, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(EventsRoles.EventsAdmin, "Events Admin",
+            "Tastemakers of the program. They review event guide submissions, request edits, and shepherd the schedule from rough draft to ready-for-prime-time.",
+            "fa-solid fa-book-open"),
+    ];
+
     IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(EventsCardViewComponent))];
 
     IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(EventsCardViewComponent))];

@@ -18,7 +18,7 @@ Scanner is reached from its own "Scanner" row in the admin sidebar; its tools ar
 ## User Stories
 
 ### US-S1.1: Decode a ticket barcode on my phone
-**As a** TicketAdmin (or Board/Admin)
+**As a** TicketsAdmin (or Board/Admin)
 **I want to** point my phone camera at a TicketTailor ticket stub
 **So that** I can see what value the barcode encodes without opening the TicketTailor dashboard
 
@@ -30,7 +30,7 @@ Scanner is reached from its own "Scanner" row in the admin sidebar; its tools ar
 - Tapping Stop releases the camera stream (hard requirement — no stale indicator light).
 
 ### US-S1.2: Works on a laptop too
-**As a** TicketAdmin
+**As a** TicketsAdmin
 **I want to** use the same tool from a laptop webcam
 **So that** I'm not blocked if my phone isn't handy
 
@@ -49,7 +49,7 @@ Scanner is reached from its own "Scanner" row in the admin sidebar; its tools ar
 
 ### In Scope
 
-- `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `ScannerAccess` (TicketAdmin/Board/Admin roles or the shared gate-terminal account).
+- `ScannerController` with `/Scanner` index and `/Scanner/Barcode` tool, gated to `ScannerAccess` (TicketsAdmin/Board/Admin roles or the shared gate-terminal account).
 - Nav entry in the admin sidebar (its own Scanner group).
 - Camera start/stop with feature-detect + ZXing fallback.
 - Decoded list rendered in the page, client-side only.

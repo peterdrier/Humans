@@ -55,7 +55,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
-            new Claim(ClaimTypes.Role, RoleNames.CampAdmin),
+            new Claim(ClaimTypes.Role, CampsRoles.CampsAdmin),
         };
         var http = new DefaultHttpContext
         {

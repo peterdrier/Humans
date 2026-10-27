@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
@@ -22,5 +23,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["scanner"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.TicketAdmin, RoleNames.Board];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [TicketsRoles.TicketsAdmin, RoleNames.Board];
 }

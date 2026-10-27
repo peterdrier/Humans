@@ -12,8 +12,15 @@ using Humans.Users.Contracts;
 namespace Humans.Feedback;
 
 /// <summary>No caching decorator: the service caches the nav-badge count itself.</summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(FeedbackRoles.FeedbackAdmin, "Feedback Admin",
+            "Listeners of the community voice. They fielded bug reports, feature requests, and questions back when Feedback was how you reached us; these days that lives in Issues.",
+            "fa-solid fa-comments"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<FeedbackDbContext>(sentinelTable: "feedback_reports");

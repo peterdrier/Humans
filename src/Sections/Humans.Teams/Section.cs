@@ -18,8 +18,15 @@ using Humans.Users.Contracts;
 
 namespace Humans.Teams;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(TeamsRoles.TeamsAdmin, "Teams Admin",
+            "Architects of collaboration. They organize the working groups, provision resources, and make sure every team has what it needs to thrive.",
+            "fa-solid fa-people-group"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
@@ -70,5 +77,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["teams"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.TeamsAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [TeamsRoles.TeamsAdmin];
 }

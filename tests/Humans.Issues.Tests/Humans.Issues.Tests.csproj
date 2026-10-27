@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />

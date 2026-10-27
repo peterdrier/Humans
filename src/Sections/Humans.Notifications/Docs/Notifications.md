@@ -76,7 +76,7 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 | Actor | Capabilities |
 |-------|--------------|
 | Any authenticated human | View own notification inbox (`/Notifications`) and popup (`/Notifications/Popup`). Mark individual notifications as read; resolve actionable; dismiss informational; click-through (auto-marks read + redirects); bulk-resolve / bulk-dismiss; mark-all-read |
-| Admin / Board / Coordinators | See additional **meters** in inbox + popup, gated by role: Consent Coordinator → consent reviews pending; Board → applications pending your vote; Admin → pending deletions, failed Google sync events, team join requests, ticket sync error; Board + Volunteer Coordinator → onboarding profiles pending; Camp Leads → "N humans want to join your camp" |
+| Admin / Board / Coordinators | See additional **meters** in inbox + popup, gated by role: Consent Coordinator → consent reviews pending; Board → applications pending your vote; Admin → pending deletions, failed Google sync events, team join requests, ticket sync error; Board + Shifts Admin → onboarding profiles pending; Camp Leads → "N humans want to join your camp" |
 | Any service / job | Emit notifications via `INotificationEmitter.SendAsync(source, class, priority, title, recipientUserIds, …)` for known recipient lists, or `INotificationService.SendToRoleAsync(…, roleName, …)` for role-group dispatch |
 
 ## Invariants

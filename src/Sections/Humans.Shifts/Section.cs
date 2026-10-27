@@ -22,8 +22,20 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(ShiftsRoles.ShiftsAdmin, "Shifts Admin",
+            "The welcoming committee and the rota keepers. They shepherd new humans through onboarding, run shift management system-wide, and make sure no one gets lost along the way.",
+            "fa-solid fa-hand-holding-heart",
+            FormerNames: ["VolunteerCoordinator"]),
+        new(ShiftsRoles.ShiftsNoInfo, "Shifts NoInfo",
+            "Shift approval specialists with access to sensitive volunteer data. They approve signups and handle the operational details that keep events running.",
+            "fa-solid fa-clipboard-check",
+            FormerNames: ["NoInfoAdmin"]),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
@@ -114,5 +126,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["shifts", "vol"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.NoInfoAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ShiftsRoles.ShiftsNoInfo];
 }

@@ -50,7 +50,7 @@
     repo. The rename of this project to Humans.Base is a later lane.
 
     G5 lane 4b-iii A brought the non-Razor half of Humans.UI down here: Authorization/
-    (PolicyNames, RoleChecks, ShiftRoleChecks), Constants/TempDataKeys, Controllers/
+    (PolicyNames, RoleChecks), Constants/TempDataKeys, Controllers/
     (HumansControllerBase, ApiControllerBase), the eight Extensions/, Filters/
     ApiKeyAuthFilterBase, Helpers/LanguageCatalog, twelve Models/ view models and
     Models/Tables/. Namespaces are still Humans.UI.* on purpose — every `using`,

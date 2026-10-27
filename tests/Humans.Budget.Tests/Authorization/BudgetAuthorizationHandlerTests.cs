@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
@@ -122,7 +123,7 @@ public sealed class BudgetAuthorizationHandlerTests
         kind switch
         {
             "admin" => CreateUserWithRoles(RoleNames.Admin),
-            "finance-admin" => CreateUserWithRoles(RoleNames.FinanceAdmin),
+            "finance-admin" => CreateUserWithRoles(FinanceRoles.FinanceAdmin),
             "coordinator" => CreateUserWithId(UserId),
             "regular" => CreateUserWithId(Guid.NewGuid()),
             "anonymous" => new ClaimsPrincipal(new ClaimsIdentity()),

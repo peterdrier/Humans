@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Services;
@@ -34,7 +35,7 @@ internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprov
     }
 
     internal static bool IsManagingRole(ClaimsPrincipal user) =>
-        user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) || user.IsInRole(RoleNames.FinanceAdmin);
+        user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) || user.IsInRole(FinanceRoles.FinanceAdmin);
 
     private async Task<bool> ManagesAsync(ClaimsPrincipal user) =>
         IsManagingRole(user) || (UserId(user) is { } id && await preapprovals.ManagesAnyProgramAsync(id));

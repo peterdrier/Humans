@@ -1,3 +1,5 @@
+using Humans.Base.Interfaces;
+using Humans.Camps.Contracts;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.GoogleIntegration.Contracts;
@@ -18,8 +20,16 @@ namespace Humans.Camps;
 /// The caching decorator is a Singleton owning the canonical per-camp <c>CampInfo</c> projection; the keyed-Scoped
 /// inner service owns the repository's unit of work.
 /// </summary>
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(CampsRoles.CampsAdmin, "Camps Admin",
+            "Masters of the camp universe. They review registrations, manage settings, and keep the camp ecosystem running smoothly season after season.",
+            "fa-solid fa-campground",
+            FormerNames: ["CampAdmin"]),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
@@ -82,5 +92,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["camps", "barrios"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.CampAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [CampsRoles.CampsAdmin];
 }

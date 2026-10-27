@@ -12,7 +12,7 @@ namespace Humans.Development.Controllers;
 
 internal sealed record DevPersonaInfo(string Slug, string DisplayName);
 
-// Dev/preview sign-in. Gated by DevAuth:Enabled=true AND non-Production env. Personas from RoleNames.
+// Dev/preview sign-in. Gated by DevAuth:Enabled=true AND non-Production env. One persona per catalogued role.
 [Route("dev/login")]
 [AllowAnonymous]
 internal sealed class DevLoginController(
@@ -24,20 +24,21 @@ internal sealed class DevLoginController(
     IWebHostEnvironment env,
     IConfiguration config,
     ConfigurationRegistry configRegistry,
+    RoleCatalog catalog,
     ILogger<DevLoginController> logger) : Controller
 {
     // Rendered by Views/Shared/_DevLoginPanel.cshtml, which Shell's /Account/Login pulls in by name.
-    internal static IReadOnlyList<DevPersonaInfo> AllPersonas { get; } = BuildPersonaList();
+    internal static IReadOnlyList<DevPersonaInfo> AllPersonas(RoleCatalog catalog) => BuildPersonaList(catalog);
 
     /// <summary>
     /// Drops Admin unless <see cref="AdminSignInAllowed"/>. The panel calls this so the buttons and the route share
     /// one predicate.
     /// </summary>
     internal static IEnumerable<DevPersonaInfo> PersonasFor(
-        IWebHostEnvironment environment, IConfiguration configuration) =>
+        IWebHostEnvironment environment, IConfiguration configuration, RoleCatalog catalog) =>
         AdminSignInAllowed(environment, configuration)
-            ? AllPersonas
-            : AllPersonas.Where(p => !IsAdminPersona(p));
+            ? AllPersonas(catalog)
+            : AllPersonas(catalog).Where(p => !IsAdminPersona(p));
 
     private static readonly SemaphoreSlim SeedLock = new(1, 1);
 
@@ -47,7 +48,7 @@ internal sealed class DevLoginController(
         if (!IsDevAuthEnabled())
             return NotFound();
 
-        var info = AllPersonas.FirstOrDefault(p =>
+        var info = AllPersonas(catalog).FirstOrDefault(p =>
             string.Equals(p.Slug, persona, StringComparison.OrdinalIgnoreCase));
         if (info is null)
             return NotFound();
@@ -187,10 +188,9 @@ internal sealed class DevLoginController(
         || configuration.GetValue("DevAuth:AllowAdmin", false);
 
     private static bool IsAdminPersona(DevPersonaInfo persona) =>
-        string.Equals(
-            DevPersonaSeeder.RoleNameFromSlug(persona.Slug), RoleNames.Admin, StringComparison.Ordinal);
+        string.Equals(persona.Slug, DevPersonaSeeder.PascalToKebab(RoleNames.Admin), StringComparison.OrdinalIgnoreCase);
 
-    private static List<DevPersonaInfo> BuildPersonaList()
+    private static List<DevPersonaInfo> BuildPersonaList(RoleCatalog catalog)
     {
         var list = new List<DevPersonaInfo>
         {
@@ -203,23 +203,11 @@ internal sealed class DevLoginController(
             new("city-planning", "City Planning Team")
         };
 
-        foreach (var role in DevPersonaSeeder.RoleNameValues.OrderBy(r => r, StringComparer.Ordinal))
+        foreach (var role in catalog.Roles.OrderBy(r => r.Name, StringComparer.Ordinal))
         {
-            list.Add(new(DevPersonaSeeder.PascalToKebab(role), PascalToDisplay(role)));
+            list.Add(new(DevPersonaSeeder.PascalToKebab(role.Name), role.Title));
         }
 
         return list;
-    }
-
-    private static string PascalToDisplay(string pascal)
-    {
-        var sb = new StringBuilder(pascal.Length + 4);
-        for (var i = 0; i < pascal.Length; i++)
-        {
-            if (i > 0 && char.IsUpper(pascal[i]))
-                sb.Append(' ');
-            sb.Append(pascal[i]);
-        }
-        return sb.ToString();
     }
 }

@@ -339,7 +339,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 ## Negative Access Rules
 
 - Coordinators **cannot** view `/Finance/*` routes.
-- FinanceAdmin, Board and HumanAdmin **cannot** reveal a raw IBAN or see the Payment Details card; both are Admin only.
+- FinanceAdmin, Board and UsersAdmin **cannot** reveal a raw IBAN or see the Payment Details card; both are Admin only.
 - The sync job **cannot** delete `HoldedExpenseDoc` rows. Holded-side deletions are not handled in v1.
 - Finance **cannot** read or write Budget tables directly, and **cannot write Budget data at all**: its only Budget dependency is the read contract `IBudgetService`.
 - Finance **cannot** write to `holded_expense_docs` outside the sync job. No manual create/edit/delete UI for expense docs in v1.

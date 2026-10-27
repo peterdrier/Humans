@@ -21,8 +21,8 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftMa
 
         // Same role list as ShiftDashboardAccess; spares the common admin path a service call.
         if (user.IsInRole(RoleNames.Admin)
-            || user.IsInRole(RoleNames.NoInfoAdmin)
-            || user.IsInRole(RoleNames.VolunteerCoordinator))
+            || user.IsInRole(ShiftsRoles.ShiftsNoInfo)
+            || user.IsInRole(ShiftsRoles.ShiftsAdmin))
         {
             context.Succeed(requirement);
             return;

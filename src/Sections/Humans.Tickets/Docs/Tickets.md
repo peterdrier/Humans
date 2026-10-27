@@ -84,8 +84,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 |-------|--------------|
 | Any authenticated member | Declare or withdraw their own `NotAttending` for the active event year (`/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`); see their own "Onsite since" chip on their profile |
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
-| TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
-| TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
+| TicketsAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
+| TicketsAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketAdminOrAdmin`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketAdminOrAdmin`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
 
 ## Invariants
@@ -143,7 +143,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 - Board **cannot** trigger attendee contact import — same `TicketAdminOrAdmin` gate as the sync.
 - Board **cannot** set or rotate the gate-terminal password (`/Tickets/Admin/Gate` is `TicketAdminOrAdmin`).
 - The gate-terminal account **cannot** reach any `/Tickets/*` page — it holds no roles; only the Scanner section's `ScannerAccess` policy admits it.
-- TicketAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
+- TicketsAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketAdminBoardOrAdmin`.
 - A user **cannot** send an attendee they do not own (the attendee's `MatchedUserId` must equal the Sender's user id; validated via `TicketAttendeeOwnership.IsCurrentOwner` in `TicketTransferService.CreateRequestAsync`; buyer-only order ownership does not confer send rights).
@@ -319,7 +319,7 @@ The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudget
 
 Tickets owns the `Tickets` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle
-issues filed against it — `TicketAdmin`, plus `Admin`, which handles every queue. Issues
+issues filed against it — `TicketsAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
 

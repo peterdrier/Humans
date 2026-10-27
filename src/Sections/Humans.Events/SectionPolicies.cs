@@ -1,3 +1,4 @@
+using Humans.Events.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
@@ -10,6 +11,6 @@ internal sealed class SectionPolicies : ISectionPolicies
     public void AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.EventsAdminOrAdmin, policy =>
-            policy.RequireRole(RoleNames.EventsAdmin, RoleNames.Admin));
+            policy.RequireRole(EventsRoles.EventsAdmin, RoleNames.Admin));
     }
 }

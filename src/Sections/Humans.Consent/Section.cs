@@ -14,8 +14,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Consent;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(ConsentRoles.ConsentCoordinator, "Consent Coordinator",
+            "Guardians of trust and safety. They review every new human's consent journey, ensuring our community standards are understood and upheld from day one.",
+            "fa-solid fa-shield-heart"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
@@ -93,5 +100,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["legal", "consent"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.ConsentCoordinator];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentCoordinator];
 }

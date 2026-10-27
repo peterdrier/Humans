@@ -1,7 +1,9 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Auth.Authorization;
 using Humans.Auth.Contracts;
+using Humans.Auth.Tests.Infrastructure;
 using Humans.Auth.Controllers;
 using Humans.Auth.Models;
 using Humans.Auth.Services;
@@ -37,6 +39,7 @@ public sealed class RoleAssignmentsControllerTests
     private readonly IRoleAssignmentManagement _write = Substitute.For<IRoleAssignmentManagement>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
+    private readonly RoleCatalog _catalog = TestRoles.Catalog();
 
     public RoleAssignmentsControllerTests()
     {
@@ -55,7 +58,7 @@ public sealed class RoleAssignmentsControllerTests
             [new Claim(ClaimTypes.NameIdentifier, ActorId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "test"));
         var http = new DefaultHttpContext { User = principal, RequestAborted = aborted };
         return new RoleAssignmentsController(
-            _users, _roles, _write, _clock, _authorization, NullLogger<RoleAssignmentsController>.Instance, _localizer)
+            _users, _roles, _write, _clock, _authorization, _catalog, NullLogger<RoleAssignmentsController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -110,7 +113,7 @@ public sealed class RoleAssignmentsControllerTests
         var model = result.Should().BeOfType<ViewResult>().Which.Model
             .Should().BeOfType<CreateRoleAssignmentViewModel>().Subject;
         model.UserId.Should().Be(TargetId);
-        model.AvailableRoles.Should().Equal(RoleChecks.GetAssignableRoles(BuildController().User));
+        model.AvailableRoles.Should().Equal(RoleAssignmentRules.Assignable(BuildController().User, _catalog));
         await _users.Received(1).GetRawUserInfoAsync(TargetId, source.Token);
     }
 

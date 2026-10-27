@@ -260,8 +260,8 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 | Any authenticated human | View own governance status (tier, active applications). Submit a Colaborador or Asociado application. See **every** assembly vote, its official text and its live participation stats, and the results of any closed vote — roster or not |
 | Roster member (official) | Cast and change a ballot until the vote closes; see their own ballot history |
 | Roster member (indicative) | The same, with the ballot labelled indicative and excluded from the official result |
-| Board | Draft, edit and delete assembly-vote drafts; see every vote and its stats; list every individual ballot after close (audited). **Cannot** open, stop, extend, cancel or peek. View all pending applications and role assignments. Cast individual votes on applications. View Board voting detail. Manage role assignments (all `BoardManageableRoles` — i.e. every role except Admin) |
-| HumanAdmin | Manage role assignments (all `BoardManageableRoles` — i.e. every role except Admin). View admin profile pages. (Cannot vote, cannot finalize.) |
+| Board | Draft, edit and delete assembly-vote drafts; see every vote and its stats; list every individual ballot after close (audited). **Cannot** open, stop, extend, cancel or peek. View all pending applications and role assignments. Cast individual votes on applications. View Board voting detail. Views role assignments; cannot assign or end them |
+| UsersAdmin | Manage role assignments (every role except Admin). View admin profile pages. (Cannot vote, cannot finalize.) |
 | Automation (`governance-assembly-vote-lapse`) | Close a lapsed vote and audit it under the job actor; send the T-24h reminder. Nothing else |
 | Admin | Open, stop, extend and cancel an assembly vote, and peek at the embargoed tally (every peek recorded and published on the results page). Reach the Finalize endpoint to approve/reject (AdminOnly policy). The Finalize UI form is rendered only for Admin (`CanFinalize = isAdmin`). Assign and revoke the Admin role. All Board capabilities. Sole finalizer for tier applications |
 
@@ -296,7 +296,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
 - On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive. Decision notes over 4,000 characters are refused before changing the application, deleting votes, or triggering decision side effects. The form enforces the same limit and shows a localized refusal.
 - Decision emails are best-effort after finalization: recipient lookup, address resolution, message preparation and enqueue failures are logged without turning the committed decision into failure or skipping the in-app notice. Caller cancellation still propagates; audit, tier update and system-team sync remain outside this email boundary.
-- Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin (per `RoleAssignmentAuthorizationHandler` + `RoleNames.BoardManageableRoles`).
+- Admin can assign all roles. UsersAdmin can assign all roles except Admin; Board assigns none (per `RoleAssignmentRules` in Auth).
 - Role assignments track temporal membership with valid-from and optional valid-to dates. See `Auth.md` for the role-assignment entity.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - **Assembly votes — the roster** is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
@@ -323,7 +323,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 
 - Regular humans **cannot** view other humans' applications, cast Board votes, or manage role assignments.
 - Board **cannot** assign the Admin role.
-- HumanAdmin **cannot** assign the Admin role.
+- UsersAdmin **cannot** assign the Admin role.
 - A human with a pending (Submitted) application **cannot** submit another, of any tier, until the first is resolved. Concurrent submissions share a short in-process gate; only one is inserted, and the other returns `AlreadyPending`.
 - Non-roster members **cannot** cast or change a ballot, and **cannot** see any individual ballot.
 - Board **cannot** open, stop, extend, cancel or peek an assembly vote — all AdminOnly.

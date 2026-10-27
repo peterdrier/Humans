@@ -149,7 +149,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 |-------|--------------|
 | Anyone (including anonymous) | View `/Legal` Statutes page |
 | Any authenticated human | View own consent dashboard at `/Consent`. Sign or re-sign document versions. Accessible during onboarding (before becoming an active member) |
-| ConsentCoordinator, VolunteerCoordinator, Board, Admin | Read access to the onboarding review queue at `/OnboardingReview` (`PolicyNames.ReviewQueueAccess`) |
+| ConsentCoordinator, ShiftsAdmin, Board, Admin | Read access to the onboarding review queue at `/OnboardingReview` (`PolicyNames.ReviewQueueAccess`) |
 | ConsentCoordinator, Board, Admin | Clear, Flag, or Reject consent checks (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | Board, Admin | Manage legal documents and document versions at `/Legal/Admin/Documents` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
 

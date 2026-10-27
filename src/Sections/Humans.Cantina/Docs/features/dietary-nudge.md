@@ -27,7 +27,7 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 
 - **Dietary form** (`/Cantina/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
 - **Medical form** (`/Profile/Me/Medical`, Users' `ProfileController`): any authenticated user, own conditions only.
-- **Reading medical conditions:** owner, `NoInfoAdmin`, `Admin` (`MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
+- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
 - **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaAdminOrAdmin` roster, all through `ICantinaService`.
 
 Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member can still answer them.
@@ -58,7 +58,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 ### US-35.3: Medical prompt (Users)
 **Acceptance Criteria:**
 - Users' `SectionThingsToDo` contributes a `"medical"` item (`Todo_Medical_Title`, `Todo_Medical_Pending`, `fa-solid fa-notes-medical`) → `Profile/Medical`, only while `MedicalConditions` is empty **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Users composes this itself) — it rides alongside the dietary nudge and disappears with it (an answer or a decline).
-- `/Profile/Me/Medical` is a free-text textarea (≤ 4000), trimmed, blank saves as null. Hint: only visible to the member and No-Info Admins.
+- `/Profile/Me/Medical` is a free-text textarea (≤ 4000), trimmed, blank saves as null. Hint: only visible to the member and Shifts NoInfo.
 
 ### US-35.4: Edit later from profile
 - `/Profile/Me` quick actions link to both forms unconditionally; `/Profile/Me/Edit` links to the dietary form instead of embedding it.

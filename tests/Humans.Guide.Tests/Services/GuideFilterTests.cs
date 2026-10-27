@@ -32,13 +32,13 @@ public class GuideFilterTests
 
         Camp lead content.
 
-        ## As a Board member / Admin (Camp Admin)
+        ## As a Board member / Admin (Camps Admin)
 
         Camp admin content.
         """;
 
     private static string Apply(string markdown, GuideRoleContext context) =>
-        GuideFilter.Apply(GuideSegmenter.Segment(markdown), context);
+        GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(markdown), context);
 
     private static GuideRoleContext Roles(bool isCoord, params string[] systemRoles) =>
         new(IsAuthenticated: true, IsTeamCoordinator: isCoord, IsCampLead: false,
@@ -93,7 +93,7 @@ public class GuideFilterTests
     [HumansFact]
     public void Apply_ConsentCoordinatorRoleOnly_SeesCoordinatorBlockByParenthetical()
     {
-        var result = Apply(Sample, Roles(isCoord: false, RoleNames.ConsentCoordinator));
+        var result = Apply(Sample, Roles(isCoord: false, GuideTestRoles.ConsentCoordinator));
 
         result.Should().Contain("Coord content.");
         result.Should().NotContain("Teams admin content.");
@@ -108,7 +108,7 @@ public class GuideFilterTests
             Bare coord content.
             """;
 
-        var result = Apply(bareCoord, Roles(isCoord: false, RoleNames.ConsentCoordinator));
+        var result = Apply(bareCoord, Roles(isCoord: false, GuideTestRoles.ConsentCoordinator));
 
         result.Should().NotContain("Bare coord content.");
     }
@@ -117,7 +117,7 @@ public class GuideFilterTests
     public void Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile()
     {
         // Within-file superset: seeing Board/Admin via (Teams Admin) implies seeing Coordinator too.
-        var result = Apply(Sample, Roles(isCoord: false, RoleNames.TeamsAdmin));
+        var result = Apply(Sample, Roles(isCoord: false, GuideTestRoles.TeamsAdmin));
 
         result.Should().Contain("Coord content.");
         result.Should().Contain("Teams admin content.");
@@ -140,7 +140,7 @@ public class GuideFilterTests
             BA-body
             """;
 
-        var result = Apply(ticketsLike, Roles(isCoord: false, RoleNames.TeamsAdmin));
+        var result = Apply(ticketsLike, Roles(isCoord: false, GuideTestRoles.TeamsAdmin));
 
         result.Should().Contain("V-body");
         result.Should().NotContain("C-body");
@@ -176,7 +176,7 @@ public class GuideFilterTests
 
             Plain-body
 
-            ## As a Board member / Admin (Camp Admin)
+            ## As a Board member / Admin (Camps Admin)
 
             Camp-scoped-body
             """;

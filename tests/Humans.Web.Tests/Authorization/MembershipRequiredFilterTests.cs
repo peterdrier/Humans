@@ -267,7 +267,7 @@ public class MembershipRequiredFilterTests
         Assert.NotEmpty(actions);
 
         foreach (var method in actions)
-            foreach (var role in new[] { null, RoleNames.Admin, RoleNames.HumanAdmin, RoleNames.Board })
+            foreach (var role in new[] { null, RoleNames.Admin, UsersRoles.UsersAdmin, RoleNames.Board })
             {
                 var (result, nextCalled) = await RunAsync(
                     method.DeclaringType!.Name[..^"Controller".Length], method.Name, state,

@@ -95,7 +95,7 @@ public class GuideArchitectureTests
                 foreach (var token in match.Groups["paren"].Value
                     .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
                 {
-                    if (!GuideRolePrivilegeMap.TryResolve(token, out _))
+                    if (!GuideTestRoles.Map.TryResolve(token, out _))
                     {
                         unmapped.Add($"{Path.GetFileName(file)}: ({token})");
                     }

@@ -1,3 +1,4 @@
+using Humans.Rideshare.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
@@ -10,6 +11,6 @@ internal sealed class SectionPolicies : ISectionPolicies
     public void AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.RideshareAdminOrAdmin, policy =>
-            policy.RequireRole(RoleNames.RideshareAdmin, RoleNames.Admin));
+            policy.RequireRole(RideshareRoles.RideshareAdmin, RoleNames.Admin));
     }
 }

@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
@@ -12,22 +13,22 @@ internal sealed class SectionPolicies : ISectionPolicies
     {
         // Three-role list; ShiftDepartmentManager below additionally admits any team coordinator.
         options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin));
 
         options.AddPolicy(PolicyNames.VolunteerTrackingWrite, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
 
         // The role-or-team-coordinator disjunction lives in one handler because policy requirements AND.
         options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
             policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 
         options.AddPolicy(PolicyNames.PrivilegedSignupApprover, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
 
         options.AddPolicy(PolicyNames.VolunteerManager, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
 
         options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
     }
 }

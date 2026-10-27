@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -22,10 +23,10 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
 
     [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.NoInfoAdmin, true)]
-    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(ShiftsRoles.ShiftsNoInfo, true)]
+    [InlineData(ShiftsRoles.ShiftsAdmin, true)]
     [InlineData(RoleNames.Board, false)]
-    [InlineData(RoleNames.TeamsAdmin, false)]
+    [InlineData(TeamsRoles.TeamsAdmin, false)]
     public async Task ChecksCorrectRoles(string role, bool expected)
     {
         var result = await EvaluateAsync(CreateUserWithRole(role));

@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Base.Constants;
 using Humans.CityPlanning.Authorization;
 using Humans.Issues.Contracts;
@@ -38,5 +39,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["cityplanning"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.CampAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [CampsRoles.CampsAdmin];
 }

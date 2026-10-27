@@ -28,7 +28,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 
 ### US-732.1: Coordinator emails everyone on a rota
 
-**As a** rota coordinator (Admin, VolunteerCoordinator, or department coordinator)
+**As a** rota coordinator (Admin, ShiftsAdmin, or department coordinator)
 **I want to** send one personalised email to every active signup on a rota
 **So that** I can broadcast schedule clarifications, venue changes, or thanks without losing the per-recipient shift context
 
@@ -43,7 +43,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - Shift list uses the event's timezone (matches the rota detail page convention): `"ddd MMMM d"` for all-day shifts, `"ddd MMMM d @ HH:mm"` for time-slotted shifts.
 - Delivery flows through `IEmailService` → outbox so audit, opt-out routing, and category suppression stay consistent with every other transactional send.
 - A single audit row (`AuditAction.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text.
-- Non-coordinators (and `NoInfoAdmin`) do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
+- Non-coordinators (and `ShiftsNoInfo`) do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
 
 ### US-732.2: Recipients see exactly their own shifts
 
@@ -119,7 +119,7 @@ Thank you,
 The compose + submit endpoints (`GET/POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Email`) use the standard shift-admin gate:
 
 - Resolves the team and confirms the current user can **manage** that department (`ResolveDepartmentManagementAsync`).
-- That gate excludes `NoInfoAdmin` and non-managers; it admits Admin, VolunteerCoordinator, and department coordinators — matching the existing rota CRUD authorization scope.
+- That gate excludes `ShiftsNoInfo` and non-managers; it admits Admin, ShiftsAdmin, and department coordinators — matching the existing rota CRUD authorization scope.
 - `404` is returned when the rota does not belong to the resolved team (prevents cross-team probing).
 
 ## Data Model
@@ -174,6 +174,6 @@ Failure paths
 ## Related Features
 
 - [Shift Management](shift-management.md) — broader shift/rota admin context.
-- [Coordinator Roles](coordinator-roles.md) — Volunteer Coordinator role that gates many shift-admin actions.
+- [Coordinator Roles](coordinator-roles.md) — Shifts Admin role that gates many shift-admin actions.
 - [Shift Signup Visibility](shift-signup-visibility.md) — the signup statuses that scope the recipient set.
 - [`docs/sections/shifts.md`](../Shifts.md) — section invariants for Shifts.

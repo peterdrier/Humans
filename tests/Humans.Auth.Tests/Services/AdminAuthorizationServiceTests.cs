@@ -43,7 +43,7 @@ public sealed class AdminAuthorizationServiceTests
         var currentUserId = Guid.NewGuid();
         _currentUser.UserId.Returns(currentUserId);
         _roleAssignments
-            .HasActiveRoleAsync(currentUserId, RoleNames.Admin, TestNow, Arg.Any<CancellationToken>())
+            .HasActiveRoleAsync(currentUserId, Arg.Is<IReadOnlyList<string>>(r => r.SequenceEqual(new[] { RoleNames.Admin })), TestNow, Arg.Any<CancellationToken>())
             .Returns(false);
 
         var act = () => _service.RequireCurrentUserIsAdminAsync(Xunit.TestContext.Current.CancellationToken);
@@ -57,12 +57,12 @@ public sealed class AdminAuthorizationServiceTests
         var currentUserId = Guid.NewGuid();
         _currentUser.UserId.Returns(currentUserId);
         _roleAssignments
-            .HasActiveRoleAsync(currentUserId, RoleNames.Admin, TestNow, Arg.Any<CancellationToken>())
+            .HasActiveRoleAsync(currentUserId, Arg.Is<IReadOnlyList<string>>(r => r.SequenceEqual(new[] { RoleNames.Admin })), TestNow, Arg.Any<CancellationToken>())
             .Returns(true);
 
         await _service.RequireCurrentUserIsAdminAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _roleAssignments.Received(1)
-            .HasActiveRoleAsync(currentUserId, RoleNames.Admin, TestNow, Arg.Any<CancellationToken>());
+            .HasActiveRoleAsync(currentUserId, Arg.Is<IReadOnlyList<string>>(r => r.SequenceEqual(new[] { RoleNames.Admin })), TestNow, Arg.Any<CancellationToken>());
     }
 }

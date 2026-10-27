@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using System.Globalization;
 using AwesomeAssertions;
@@ -134,7 +135,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
 
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]
-    [Xunit.InlineData(RoleNames.FinanceAdmin)]
+    [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
     [Xunit.InlineData(RoleNames.Admin)]
     public async Task ManagingRole_CreatesAProgram(string role)
     {

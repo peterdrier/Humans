@@ -2,7 +2,11 @@
   src/Sections/Humans.Auth/**
   src/Sections/Humans.Auth/Contracts/**
   src/Humans.Base/Constants/RoleNames.cs
-  src/Humans.Base/Constants/RoleGroups.cs
+  src/Humans.Base/Interfaces/ISectionRoles.cs
+  src/Sections/Humans.Auth/Contracts/RoleCatalog.cs
+  src/Sections/Humans.Auth/SectionRoles.cs
+  src/Sections/Humans.Auth/Authorization/RoleAssignmentRules.cs
+  src/Sections/Humans.Auth/SectionDataMigrations.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Authorization/**
   src/Humans.Web/Program.cs
@@ -28,7 +32,7 @@ Role assignments (temporal), magic-link login/signup, claims transformation.
 
 ## Concepts
 
-- **Role Assignment** is a temporal assignment of a role name (e.g. `Admin`, `Board`, `TeamsAdmin`, `HumanAdmin`, `ConsentCoordinator`, …) to a human, with a `ValidFrom` and optional `ValidTo`. `RoleAssignmentClaimsTransformation` reads active assignments on every request (from Auth's in-memory role-assignment cache, no per-user claims cache) and projects them into ASP.NET role claims so `[Authorize(Roles = ...)]`, `[Authorize(Policy = …)]`, and `User.IsInRole()` work. The same transformation also stamps the stored `UserState` claim — the single source of truth for access (`UserState == Active`, i.e. the user entered their legal name, grants full app access).
+- **Role Assignment** is a temporal assignment of a role name (e.g. `Admin`, `Board`, `TeamsAdmin`, `UsersAdmin`, `ConsentCoordinator`, …) to a human, with a `ValidFrom` and optional `ValidTo`. `RoleAssignmentClaimsTransformation` reads active assignments on every request (from Auth's in-memory role-assignment cache, no per-user claims cache) and projects them into ASP.NET role claims so `[Authorize(Roles = ...)]`, `[Authorize(Policy = …)]`, and `User.IsInRole()` work. The same transformation also stamps the stored `UserState` claim — the single source of truth for access (`UserState == Active`, i.e. the user entered their legal name, grants full app access).
 - **Magic Link Auth** is the email-based login/signup flow handled by `MagicLinkService` + `AccountController`. Users enter an email address; the system sends a Data-Protection-token-protected link. Login links verify a user id; signup links carry the email address. Both token types require canonical Base64url spelling before validation: whitespace, padding and alternate trailing bits are rejected so equivalent protected bytes cannot bypass the token-text SHA-256 replay key. Both token types are single-use, consumed into the same replay-protected 15-minute cache: **login** tokens on `VerifyLoginTokenAsync` (returns `bool`; the controller loads the Identity user by id to sign in), **signup** tokens on `VerifyAndConsumeSignupTokenAsync` at the POST that redeems them. The signup GET reads the token without consuming it (form prefill, so a scanner following the link cannot burn it). This is the guarantee the shipped signup email makes in all six cultures. Signup sends are rate-limited to 1 per 60 seconds per address; login-link sends are rate-limited to 1 per 60 seconds per user via an exclusive per-user cache reservation taken before profile lookup or email enqueue (in-memory only; the cooldown does not survive a restart, by decision 2026-10-20).
 - **Access gating** — `MembershipRequiredFilter` (a global `IAsyncActionFilter`) routes authenticated users by their stored `UserState`: only `Active` reaches the app; `Bare` → `/OnboardingWidget`, `DeletePending` → `/Gdpr/Deletion`, and `Suspended`/`AdminSuspended`/`Rejected` → `/Gdpr/Status`. `Deleted`/`Merged` accounts are walled off before the exemptions below apply — only `Account`, `Language`, and `Gdpr/Status` reach them. It passes through endpoints carrying `[AllowAnonymous]` and the exempt controllers a non-Active recoverable user must still reach wholesale (`Account`, `OnboardingWidget`, `Consent`, `User`, `Language`, `Guest`, `GovernanceApplications`, `Issues`, `Notifications`, `Survey`), plus specific `Profile`/`ProfileEmails` actions (own-profile editing, privacy/download-data, email management) — not those controllers wholesale. Role-gated app controllers require `UserState == Active` before their role policies matter. It also passes a Backdoor-API-key-authenticated request straight through — a machine principal never carries the `UserState` claim this gate reads, and there is no onboarding page to redirect a JSON client to (see `src/Sections/Humans.Backdoor/Docs/Backdoor.md`).
 
@@ -86,37 +90,39 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 `RoleAssignment` has no `User` or `CreatedByUser` navigation property; display data stitches via `IUserService.GetUserInfosAsync`.
 
-### RoleNames (constants)
+### Roles (the catalog)
 
-Defined in `src/Humans.Base/Constants/RoleNames.cs`.
+`RoleNames` (Base) holds only the two system-wide roles, `Admin` and `Board`. Every other role is declared by its owning section through `ISectionRoles` — a `RoleDefinition` with name (`<Section><Role>`), title, blurb, icon, `OpensAdminShell` and `FormerNames` — and lives as a `<Section>Roles` constant in that section's Contracts. Auth composes them into the singleton `RoleCatalog` (`Contracts/RoleCatalog.cs`) at startup, which throws on a duplicate name, a duplicate title, or a former name that still names a role; Auth declares `Admin` and `Board` itself (`SectionRoles.cs`). The catalog feeds the role-assignment UI, the Staff page, the authorization pill, the dev personas, the Guide's heading parentheticals (by title) and the Shell's `AnyAdminRole` policy (every role with `OpensAdminShell`).
 
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| Admin | `"Admin"` | Full system access — global superset |
-| Board | `"Board"` | Elevated permissions, votes on tier applications |
-| HumanAdmin | `"HumanAdmin"` | Approve/suspend/reject humans, provision @nobodies.team email accounts, manage role assignments |
-| TeamsAdmin | `"TeamsAdmin"` | Manage all teams, approve membership, assign leads, configure Google Group prefixes system-wide |
-| CampAdmin | `"CampAdmin"` | Manage camps, approve/reject season registrations, configure camp settings system-wide |
-| TicketAdmin | `"TicketAdmin"` | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data |
-| FeedbackAdmin | `"FeedbackAdmin"` | No privileges — Feedback is `AdminOnly`. Kept assignable; still admits the holder to the `/Admin` shell via `AnyAdminRole` |
-| FinanceAdmin | `"FinanceAdmin"` | Full access to Finance section (budgets, audit log) |
-| NoInfoAdmin | `"NoInfoAdmin"` | Approve/voluntell shift signups (cannot create/edit shifts); access to volunteer-event-profile medical data |
-| StoreAdmin | `"StoreAdmin"` | Store-domain superset: catalog, orders, payments, invoices, treasury sync; FinanceAdmin retains parallel access for accounting workflows |
-| EventsAdmin | `"EventsAdmin"` | Approve, reject, and request edits on event guide submissions |
-| CantinaAdmin | `"CantinaAdmin"` | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
-| ConsentCoordinator | `"ConsentCoordinator"` | Safety gate for onboarding consent checks |
-| VolunteerCoordinator | `"VolunteerCoordinator"` | Facilitation contact for onboarding; read-only access to onboarding review queue |
-| RideshareAdmin | `"RideshareAdmin"` | Rideshare settings (year's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
-| EETeamAdmin | `"EETeamAdmin"` | Cross-team Early-Entry administrator — can grant/edit/revoke early-entry grants on ANY team that has `EarlyEntryEnabled`. Confers nothing else. Coordinators manage EE on their own team without this role |
+| Role | Declared by | Purpose |
+|------|-------------|---------|
+| Admin | Auth | Full system access — global superset |
+| Board | Auth | Elevated permissions, votes on tier applications |
+| UsersAdmin | Users (was `HumanAdmin`) | Approve/suspend/reject humans, provision @nobodies.team email accounts, manage role assignments |
+| TeamsAdmin | Teams | Manage all teams, approve membership, assign leads, configure Google Group prefixes system-wide |
+| CampsAdmin | Camps (was `CampAdmin`) | Manage camps, approve/reject season registrations, configure camp settings system-wide |
+| TicketsAdmin | Tickets (was `TicketAdmin`) | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data |
+| FeedbackAdmin | Feedback | No privileges — Feedback is `AdminOnly`. Kept assignable; still admits the holder to the `/Admin` shell via `AnyAdminRole` |
+| FinanceAdmin | Finance | Full access to Finance section (budgets, audit log) |
+| ShiftsNoInfo | Shifts (was `NoInfoAdmin`) | Approve/voluntell shift signups (cannot create/edit shifts); access to volunteer-event-profile medical data |
+| StoreAdmin | Store | Store-domain superset: catalog, orders, payments, invoices, treasury sync; FinanceAdmin retains parallel access for accounting workflows |
+| EventsAdmin | Events | Approve, reject, and request edits on event guide submissions |
+| CantinaAdmin | Cantina | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
+| ConsentCoordinator | Consent | Safety gate for onboarding consent checks |
+| ShiftsAdmin | Shifts (was `VolunteerCoordinator`) | Facilitation contact for onboarding; read-only access to onboarding review queue |
+| RideshareAdmin | Rideshare | Rideshare settings (year's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
+| EarlyEntryAdmin | EarlyEntry (was `EETeamAdmin`) | Cross-team Early-Entry administrator — can grant/edit/revoke early-entry grants on ANY team that has `EarlyEntryEnabled`. Confers nothing else. Coordinators manage EE on their own team without this role |
 
-`RoleNames.BoardManageableRoles` (a `HashSet<string>` on the same constants class) enumerates the roles that Board and HumanAdmin are permitted to assign / end; `Admin` is **not** in that set, so only an existing Admin can assign the Admin role (enforced by both `RoleAssignmentAuthorizationHandler` and `RoleChecks.GetAssignableRoles`).
+**Former names.** The six renamed roles carry their old name in `FormerNames`. Rows stored under a former name keep working: every read goes through `RoleCatalog.StoredNames`/`Canonical`, so claims, filters, counts and the GDPR export report the current name, and a new assignment under the current name is refused while an active row exists under the former one. The operator-run data migration `auth.role-renames` (`/Debug/DataMigrations`) rewrites those rows once and is idempotent.
 
-### Authorization-policy layout (RoleGroups → PolicyNames)
+`RoleAssignmentRules` (`Authorization/RoleAssignmentRules.cs`) decides who may assign or end which role: Admin any role; UsersAdmin any role but `Admin`; nobody else, Board included. `RoleAssignmentAuthorizationHandler` and the add-role form's role list both read it, and `AssignRoleAsync` refuses a name the catalog does not list (`UnknownRole`).
 
-- **Phase 1 — coarse policies** (`Humans.Base/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. The legacy `Humans.Base.Constants.RoleGroups` constants still exist in source but have **zero in-source call sites** — kept around as constants only and slated for deletion.
-- **Phase 2 — resource-based authorization (first vertical slices):** shipped. `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` (`src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs`) registers the shared platform policies only (`AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `AppAccess`, `RoleAssignmentManage`) and then picks up each section's `ISectionPolicies`; every handler registers from inside its own section. Camps: `CampAuthorizationHandler` (resource: `Camp`) and `CampComplianceAccessHandler` (policy `CampComplianceAccess`: succeeds for CampAdmin/Admin, or any team/sub-team coordinator via the cached `IShiftManagement.GetCoordinatorTeamIdsAsync` lookup — gates the read-only Barrios role-staffing compliance matrix, broader than the CampAdmin-only `CampAdminOrAdmin` management surface). Users: `UserEmailAuthorizationHandler` (resource: `UserEmail`) and `HumanAdminOnlyHandler`. Shifts: `IsAnyTeamManagerOrCoordinatorHandler`. The nav-visibility gate is the single `AppAccess` policy — a plain `RequireAssertion` (`UserState == Active`), no custom handler.
+### Authorization-policy layout
 
-  The other section-owned resource handlers likewise register from their own `Section.cs` — they reuse `PolicyNames`/`RoleChecks` from `Humans.Base.Authorization` but are not part of Auth's registration surface: `TeamAuthorizationHandler` (resource: `Team`; `src/Sections/Humans.Teams/Authorization/` — gates the `ManageCoordinators` and `ManageEarlyEntry` team operations — Admin/TeamsAdmin/Board pass any operation on any team, `EETeamAdmin` passes `ManageEarlyEntry` on any team only, and a team's own coordinator passes both for their team), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; `src/Sections/Humans.Auth/Authorization/`), `AgentRateLimitHandler` (+ its section-internal `AgentRateLimitRequirement`; `src/Sections/Humans.Agent/Authorization/`), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits; `src/Sections/Humans.Budget/Authorization/`), `IssuesAuthorizationHandler` (resource: `Issue`; `src/Sections/Humans.Issues/Authorization/`), `ContainerAuthorizationHandler` (resource: `ContainerAuthorizationTarget`; `src/Sections/Humans.Containers/Authorization/`), `PreapprovalsPolicyHandler` / `ProgramAuthorizationHandler` (`src/Sections/Humans.Preapprovals/Authorization/`), `CityPlanningMapAdminHandler` (`src/Sections/Humans.CityPlanning/Authorization/`), `ExpenseReportAuthorizationHandler` (resource: `ExpenseReportDto`; gates View/Edit/Submit/Withdraw/Endorse/CoordinatorReject/Approve/FinanceReject/RequeueHoldedPush; `src/Sections/Humans.Expenses/Authorization/`), and `OrderAuthorizationHandler` (resource: `OrderDto` / `OrderCreateContext` / `OrderLineContext`; also gates line edits past a product's `OrderableUntil` deadline for non-admin paths; `src/Sections/Humans.Store/Authorization/`).
+- **Phase 1 — coarse policies** (`Humans.Base/Authorization/PolicyNames.cs` + `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`): **complete.** Controllers use `[Authorize(Policy = PolicyNames.X)]` and views use the `authorize-policy` TagHelper. `RoleGroups` is gone; role lists derive from the `RoleCatalog`.
+- **Phase 2 — resource-based authorization (first vertical slices):** shipped. `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` (`src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs`) registers the shared platform policies only (`AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `AppAccess`, `RoleAssignmentManage`) and then picks up each section's `ISectionPolicies`; every handler registers from inside its own section. Camps: `CampAuthorizationHandler` (resource: `Camp`) and `CampComplianceAccessHandler` (policy `CampComplianceAccess`: succeeds for CampsAdmin/Admin, or any team/sub-team coordinator via the cached `IShiftManagement.GetCoordinatorTeamIdsAsync` lookup — gates the read-only Barrios role-staffing compliance matrix, broader than the CampsAdmin-only `CampAdminOrAdmin` management surface). Users: `UserEmailAuthorizationHandler` (resource: `UserEmail`) and `HumanAdminOnlyHandler`. Shifts: `IsAnyTeamManagerOrCoordinatorHandler`. The nav-visibility gate is the single `AppAccess` policy — a plain `RequireAssertion` (`UserState == Active`), no custom handler.
+
+  The other section-owned resource handlers likewise register from their own `Section.cs` — they reuse `PolicyNames`/`RoleChecks` from `Humans.Base.Authorization` but are not part of Auth's registration surface: `TeamAuthorizationHandler` (resource: `Team`; `src/Sections/Humans.Teams/Authorization/` — gates the `ManageCoordinators` and `ManageEarlyEntry` team operations — Admin/TeamsAdmin/Board pass any operation on any team, `EarlyEntryAdmin` passes `ManageEarlyEntry` on any team only, and a team's own coordinator passes both for their team), `RoleAssignmentAuthorizationHandler` (resource: target role-name string; `src/Sections/Humans.Auth/Authorization/`), `AgentRateLimitHandler` (+ its section-internal `AgentRateLimitRequirement`; `src/Sections/Humans.Agent/Authorization/`), `BudgetAuthorizationHandler` (resource: `BudgetCategory`/department-scoped budget edits; `src/Sections/Humans.Budget/Authorization/`), `IssuesAuthorizationHandler` (resource: `Issue`; `src/Sections/Humans.Issues/Authorization/`), `ContainerAuthorizationHandler` (resource: `ContainerAuthorizationTarget`; `src/Sections/Humans.Containers/Authorization/`), `PreapprovalsPolicyHandler` / `ProgramAuthorizationHandler` (`src/Sections/Humans.Preapprovals/Authorization/`), `CityPlanningMapAdminHandler` (`src/Sections/Humans.CityPlanning/Authorization/`), `ExpenseReportAuthorizationHandler` (resource: `ExpenseReportDto`; gates View/Edit/Submit/Withdraw/Endorse/CoordinatorReject/Approve/FinanceReject/RequeueHoldedPush; `src/Sections/Humans.Expenses/Authorization/`), and `OrderAuthorizationHandler` (resource: `OrderDto` / `OrderCreateContext` / `OrderLineContext`; also gates line edits past a product's `OrderableUntil` deadline for non-admin paths; `src/Sections/Humans.Store/Authorization/`).
 - **Phase 3 — broad service-layer authorization enforcement:** **not pursued.** Per `docs/architecture/design-rules.md §11`, services are auth-free by default; controllers call `IAuthorizationService.AuthorizeAsync` and do not pass `isPrivileged` booleans. The sole exception is the documented full-Admin destructive-delete/reset guard via `IAdminAuthorizationService`.
 
 ## Actors & Roles
@@ -124,7 +130,7 @@ Defined in `src/Humans.Base/Constants/RoleNames.cs`.
 | Actor | Capabilities |
 |-------|--------------|
 | Anyone with a valid email | Request a magic-link login or signup |
-| Admin, Board, HumanAdmin | Assign / end role assignments (scope depends on role — see Governance invariants). Admin is the only role that can assign the Admin role. |
+| Admin, UsersAdmin | Assign / end role assignments: Admin any role, UsersAdmin any role but Admin. Board sees the roster and assigns nothing. |
 
 ## Invariants
 
@@ -147,12 +153,13 @@ Defined in `src/Humans.Base/Constants/RoleNames.cs`.
 ## Negative Access Rules
 
 - Magic links are sent silently when the email is unknown or rate-limited — no account enumeration. The caller always sees the same "check your email" UI.
-- `RoleAssignmentService.AssignRoleAsync` **cannot** create a new assignment when an overlapping active one already exists for the same (user, role).
+- `RoleAssignmentService.AssignRoleAsync` **cannot** create a new assignment when an overlapping active one already exists for the same (user, role) — under the current or a former name — nor one for a role the catalog does not list.
 - `EndRoleAsync` **cannot** end an assignment that is already ended or not yet active.
-- The role-assignment admin pages are `HumanAdminBoardOrAdmin`-gated, and each assign/end additionally passes the per-role `RoleAssignmentManage` check: a Board or HumanAdmin actor **cannot** assign or end `Admin` (assign answers 403, end answers 404 and writes nothing). The roster and add-role GETs carry request cancellation through their role-assignment and raw-user reads.
+- The role-assignment admin pages are `HumanAdminBoardOrAdmin`-gated, and each assign/end additionally passes the per-role `RoleAssignmentManage` check: a UsersAdmin actor **cannot** assign or end `Admin`, and a Board actor **cannot** assign or end any role (assign answers 403, end answers 404 and writes nothing). The roster and add-role GETs carry request cancellation through their role-assignment and raw-user reads.
 
 ## Triggers
 
+- **On the `auth.role-renames` data migration:** every `role_assignments` row under a former role name is rewritten to the current name, then the row cache is cleared.
 - **On role assigned or ended:** the row cache is cleared; an in-app `RoleAssignmentChanged` notification is sent to the affected human (best-effort — failures are logged, not propagated); if the role is `Board`, `ISystemTeamSync.SyncBoardTeamAsync` runs.
 - **On `RevokeAllActiveAsync(userId)`:** every currently-active row for the user has `ValidTo` stamped to now in one batch update, then the row cache is cleared. (Per-row notifications are intentionally **not** dispatched on this bulk path — it's a privacy/account-deletion code path, not an admin role-management action.)
 - **On magic-link login email sent:** nothing is written. The per-user `IMagicLinkRateLimiter.TryReserveUserSendAsync` reservation was taken before preparation and is the whole cooldown; only preparation/send failures release it. Signup-link sends use their separate per-address reservation (also released on send failure).

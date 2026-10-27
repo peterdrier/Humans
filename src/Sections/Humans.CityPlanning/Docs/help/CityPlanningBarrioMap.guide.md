@@ -35,7 +35,7 @@ Click the **Measure** button (ruler icon) to enter measurement mode, then click 
 
 ### For Map Admins
 
-**Map Admin** is not a standalone role. You are a Map Admin if you hold the `CampAdmin` role **or** belong to the `city-planning` team. Map Admins can edit any polygon at any time (regardless of placement phase), force placement open or closed, upload overlays, and export GeoJSON.
+**Map Admin** is not a standalone role. You are a Map Admin if you hold the `CampsAdmin` role **or** belong to the `city-planning` team. Map Admins can edit any polygon at any time (regardless of placement phase), force placement open or closed, upload overlays, and export GeoJSON.
 
 Set the placement schedule (days from gate opening), force placement open or closed, or hand it back to the schedule, from the City Planning tab in Settings.
 

@@ -14,12 +14,12 @@ internal sealed class SectionAccessMatrix : ISectionAccessMatrix
             Key = "Tickets",
             SectionName = "Tickets",
             Order = 70,
-            Roles = ["Board", "TicketAdmin"],
+            Roles = ["Board", "TicketsAdmin"],
             Features =
             [
-                Of("View tickets & orders", ("Board", Allowed), ("TicketAdmin", Allowed)),
-                Of("Sync operations", ("Board", Denied), ("TicketAdmin", Allowed)),
-                Of("Discount codes", ("Board", Allowed), ("TicketAdmin", Allowed)),
+                Of("View tickets & orders", ("Board", Allowed), ("TicketsAdmin", Allowed)),
+                Of("Sync operations", ("Board", Denied), ("TicketsAdmin", Allowed)),
+                Of("Discount codes", ("Board", Allowed), ("TicketsAdmin", Allowed)),
             ]
         }
     ];

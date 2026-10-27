@@ -35,13 +35,13 @@
 
 | Actor | Capabilities |
 |-------|-------------|
-| TicketAdmin, Board, Admin | Access the scanner index and use the barcode + ticket lookup tools |
+| TicketsAdmin, Board, Admin | Access the scanner index and use the barcode + ticket lookup tools |
 | Gate terminal account (`SystemUserIds.GateTerminal`) | Admitted by `ScannerAccess` by well-known id, but never reaches these routes: the kiosk route-restriction middleware in `src/Humans.Web/Program.cs` redirects the signed-in gate account to `/Gate` for any path outside `/Gate/*` and its own login/logout. Signs in at `/Account/GateLogin` with the credential set on `/Tickets/Admin/Gate`; holds no roles. See `Docs/features/gate-terminal-login.md` and `src/Sections/Humans.Gate/Docs/Gate.md` |
 | Everyone else | No access — all routes require `ScannerAccess` |
 
 ## Invariants
 
-- All scanner routes require the `ScannerAccess` policy (`TicketAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`; pinned by `EndpointAuthorizationTests` in `tests/Humans.Web.Tests`.
+- All scanner routes require the `ScannerAccess` policy (`TicketsAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`; pinned by `EndpointAuthorizationTests` in `tests/Humans.Web.Tests`.
 - `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser.
 - `/Scanner/Tickets/Card` searches only orders flagged `IsCurrentEvent`; a blank or unknown barcode renders the not-found card (blank: without echoing a code).
 - `/Scanner/Tickets` performs only the cross-section reads listed under Cross-Section Dependencies to render the ticket card plus door context. It is strictly read-only and must never write server-side state.
@@ -73,7 +73,7 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`I
 - **Tickets**: `ITicketService.GetParticipationsAsync` — the matched Human's check-in timestamp for the active event year.
 - **Events**: `IEventService.GetApprovedEventsAsync` — events the matched Human is offering (`SubmitterUserId` match, non-camp, expanded per occurrence for recurring events).
 - **Settings / Calendar**: `ISettingsService.GetActiveEventSettingsAsync` (`EventSettingsInfo`) for the active event year and time zone; `IICalFeedService.GetFeedItemsAsync` for the Human's shift commitments (`Shifts`-sourced items only).
-- **Issues**: feedback filed from `/Scanner/*` routes to the `Scanner` queue this section declares on its own `Section` through `IIssueQueueOwner` (see "Issue queue" below), which TicketAdmin and Board handlers see. Scanner does not call `IIssuesService`.
+- **Issues**: feedback filed from `/Scanner/*` routes to the `Scanner` queue this section declares on its own `Section` through `IIssueQueueOwner` (see "Issue queue" below), which TicketsAdmin and Board handlers see. Scanner does not call `IIssuesService`.
 
 ## Architecture
 
@@ -92,6 +92,6 @@ Project references (`Humans.Scanner.csproj`): `Humans.Base`, `Humans.Issues` (`I
 
 Scanner owns the `Scanner` issue queue: it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle
-issues filed against it — `TicketAdmin, Board`, plus `Admin`, which handles every queue. Issues
+issues filed against it — `TicketsAdmin, Board`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -143,7 +144,7 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansFact]
     public async Task StoreAdmin_is_forbidden_to_record_a_refund()
     {
-        var controller = BuildController(RoleNames.StoreAdmin);
+        var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
             _order.Id, PaymentMethod.Refund, 10m, "re_123", null, TestContext.Current.CancellationToken);
@@ -153,7 +154,7 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansTheory]
-    [InlineData(RoleNames.FinanceAdmin)]
+    [InlineData(FinanceRoles.FinanceAdmin)]
     [InlineData(RoleNames.Admin)]
     public async Task FinanceAdmin_and_Admin_can_record_a_refund(string role)
     {
@@ -179,7 +180,7 @@ public sealed class StoreControllerRecordPaymentTests
                 UnitPriceSnapshot = 5m, VatRateSnapshot = 21m, DepositAmountSnapshot = 30m,
             },
         ];
-        var controller = BuildController(RoleNames.StoreAdmin);
+        var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
             _order.Id, PaymentMethod.DepositReturn, 30m, null, null, TestContext.Current.CancellationToken);
@@ -207,8 +208,8 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansTheory]
-    [InlineData(RoleNames.StoreAdmin)]
-    [InlineData(RoleNames.FinanceAdmin)]
+    [InlineData(StoreRoles.StoreAdmin)]
+    [InlineData(FinanceRoles.FinanceAdmin)]
     public async Task Only_full_Admin_may_delete_a_payment(string role)
     {
         var payment = AddPayment(-3m, PaymentMethod.Refund);
@@ -297,8 +298,8 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansTheory]
-    [InlineData(RoleNames.StoreAdmin, false, false)]
-    [InlineData(RoleNames.FinanceAdmin, true, false)]
+    [InlineData(StoreRoles.StoreAdmin, false, false)]
+    [InlineData(FinanceRoles.FinanceAdmin, true, false)]
     [InlineData(RoleNames.Admin, true, true)]
     public async Task Order_page_offers_refund_and_payment_delete_by_role(string role, bool canRefund, bool canDeletePayment)
     {

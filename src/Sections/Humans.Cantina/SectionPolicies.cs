@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
@@ -10,6 +11,6 @@ internal sealed class SectionPolicies : ISectionPolicies
     public void AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.CantinaAdminOrAdmin, policy =>
-            policy.RequireRole(RoleNames.CantinaAdmin, RoleNames.Admin));
+            policy.RequireRole(CantinaRoles.CantinaAdmin, RoleNames.Admin));
     }
 }

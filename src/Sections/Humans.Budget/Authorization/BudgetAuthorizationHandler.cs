@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
@@ -13,7 +14,7 @@ internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService)
         BudgetOperationRequirement requirement,
         BudgetCategorySnapshot resource)
     {
-        if (RoleChecks.IsFinanceAdmin(context.User))
+        if (FinanceRoles.IsFinanceAdmin(context.User))
         {
             context.Succeed(requirement);
             return;

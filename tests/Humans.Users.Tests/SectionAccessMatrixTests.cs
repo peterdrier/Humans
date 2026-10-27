@@ -16,7 +16,7 @@ public class SectionAccessMatrixTests
         matrix.Key.Should().Be("Profile");
         matrix.SectionName.Should().Be("Profile");
         matrix.Order.Should().Be(80);
-        matrix.Roles.Should().Equal("Volunteer", "Coordinator", "Board", "HumanAdmin", "Admin");
+        matrix.Roles.Should().Equal("Volunteer", "Coordinator", "Board", "UsersAdmin", "Admin");
     }
 
     /// <summary>
@@ -29,10 +29,10 @@ public class SectionAccessMatrixTests
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
             .Should().Equal(
-                "View own profile: Volunteer=Allowed, Coordinator=Allowed, Board=Allowed, HumanAdmin=Allowed, Admin=Allowed",
-                "Edit own profile: Volunteer=Allowed, Coordinator=Allowed, Board=Allowed, HumanAdmin=Allowed, Admin=Allowed",
-                "View other profiles: Volunteer=Limited, Coordinator=Allowed, Board=Allowed, HumanAdmin=Allowed, Admin=Allowed",
-                "View contact fields: Volunteer=Limited, Coordinator=Limited, Board=Allowed, HumanAdmin=Allowed, Admin=Allowed",
-                "Admin view of profile: Volunteer=Denied, Coordinator=Denied, Board=Allowed, HumanAdmin=Allowed, Admin=Allowed");
+                "View own profile: Volunteer=Allowed, Coordinator=Allowed, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed",
+                "Edit own profile: Volunteer=Allowed, Coordinator=Allowed, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed",
+                "View other profiles: Volunteer=Limited, Coordinator=Allowed, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed",
+                "View contact fields: Volunteer=Limited, Coordinator=Limited, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed",
+                "Admin view of profile: Volunteer=Denied, Coordinator=Denied, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed");
     }
 }

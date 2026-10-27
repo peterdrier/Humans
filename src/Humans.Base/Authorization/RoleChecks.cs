@@ -4,14 +4,12 @@ using Humans.Users.Contracts;
 
 namespace Humans.Base.Authorization;
 
+/// <summary>
+/// Predicates over the two system-wide roles and the stored user state. A section's own roles come with their own
+/// predicates on its <c>&lt;Section&gt;Roles</c> class.
+/// </summary>
 public static class RoleChecks
 {
-    private static readonly IReadOnlyList<string> AdminAssignableRoles =
-        [RoleNames.Admin, .. RoleNames.BoardManageableRoles];
-
-    private static readonly IReadOnlyList<string> BoardAssignableRoles =
-        [.. RoleNames.BoardManageableRoles];
-
     /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
     /// <remarks>
     /// Here, not on Shell's <c>RoleAssignmentClaimsTransformation</c> which stamps it, because a section view (Camps'
@@ -43,79 +41,4 @@ public static class RoleChecks
     {
         return IsAdmin(user) || IsBoard(user);
     }
-
-    public static bool IsTeamsAdmin(ClaimsPrincipal user)
-    {
-        return user.IsInRole(RoleNames.TeamsAdmin);
-    }
-
-    public static bool IsTeamsAdminBoardOrAdmin(ClaimsPrincipal user)
-    {
-        return IsAdminOrBoard(user) || IsTeamsAdmin(user);
-    }
-
-    public static bool IsCampAdmin(ClaimsPrincipal user)
-    {
-        return IsAdmin(user) || user.IsInRole(RoleNames.CampAdmin);
-    }
-
-    public static bool IsEventsAdmin(ClaimsPrincipal user)
-    {
-        return IsAdmin(user) || user.IsInRole(RoleNames.EventsAdmin);
-    }
-
-    /// <summary>
-    /// Roles the current principal may assign from the human admin surface.
-    /// </summary>
-    public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
-    {
-        if (IsAdmin(user))
-            return AdminAssignableRoles;
-        if (IsBoard(user) || IsHumanAdmin(user))
-            return BoardAssignableRoles;
-        return [];
-    }
-
-    public static bool IsHumanAdmin(ClaimsPrincipal user)
-    {
-        return user.IsInRole(RoleNames.HumanAdmin);
-    }
-
-    public static bool IsHumanAdminBoardOrAdmin(ClaimsPrincipal user)
-    {
-        return IsAdminOrBoard(user) || IsHumanAdmin(user);
-    }
-
-    public static bool IsFinanceAdmin(ClaimsPrincipal user)
-    {
-        return IsAdmin(user) || user.IsInRole(RoleNames.FinanceAdmin);
-    }
-
-    public static bool CanAccessFinance(ClaimsPrincipal user)
-    {
-        return IsFinanceAdmin(user);
-    }
-
-    /// <summary>
-    /// Store domain superset (per <c>memory/code/admin-role-superset.md</c>):
-    /// <c>StoreAdmin</c> owns the Store section end-to-end (catalog, orders, payments,
-    /// invoices). <c>FinanceAdmin</c> retains parallel access for accounting workflows.
-    /// </summary>
-    public static bool CanAdministerStore(ClaimsPrincipal user)
-    {
-        return IsAdmin(user)
-            || user.IsInRole(RoleNames.StoreAdmin)
-            || user.IsInRole(RoleNames.FinanceAdmin);
-    }
-
-    /// <summary>
-    /// Admin or VolunteerCoordinator — intentionally excludes NoInfoAdmin,
-    /// who can approve shift signups but not manage rotas/departments.
-    /// </summary>
-    public static bool IsVolunteerManager(ClaimsPrincipal user)
-    {
-        return IsAdmin(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
-    }
-
-
 }

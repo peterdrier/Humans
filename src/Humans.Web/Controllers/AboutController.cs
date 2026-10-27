@@ -1,4 +1,5 @@
 using Humans.Auth.Contracts;
+using Humans.Base.Constants;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace Humans.Web.Controllers;
 public class AboutController(
     IUserService userService,
     IRoleAssignmentService roleAssignmentService,
+    RoleCatalog catalog,
     IClock clock,
     ILogger<AboutController> logger) : HumansControllerBase(userService)
 {
@@ -61,14 +63,18 @@ public class AboutController(
             var assigneeInfos = await _userService.GetUserInfosAsync(
                 assignments.Select(ra => ra.UserId).Distinct().ToList());
 
-            var roleDefinitions = StaffViewModel.GetRoleDefinitions();
+            // Board first, Admin last, the section roles between them by title.
+            var roleDefinitions = catalog.Roles
+                .OrderBy(r => string.Equals(r.Name, RoleNames.Board, StringComparison.Ordinal) ? 0
+                    : string.Equals(r.Name, RoleNames.Admin, StringComparison.Ordinal) ? 2 : 1)
+                .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase);
 
             var roleSections = new List<StaffRoleSectionViewModel>();
 
             foreach (var roleDef in roleDefinitions)
             {
                 var holders = assignments
-                    .Where(ra => string.Equals(ra.RoleName, roleDef.RoleName, StringComparison.Ordinal))
+                    .Where(ra => string.Equals(ra.RoleName, roleDef.Name, StringComparison.Ordinal))
                     .Select(ra => new
                     {
                         Holder = new StaffRoleHolderViewModel { UserId = ra.UserId },
@@ -82,8 +88,8 @@ public class AboutController(
                 {
                     roleSections.Add(new StaffRoleSectionViewModel
                     {
-                        RoleName = roleDef.RoleName,
-                        DisplayTitle = roleDef.DisplayTitle,
+                        RoleName = roleDef.Name,
+                        DisplayTitle = roleDef.Title,
                         Blurb = roleDef.Blurb,
                         Icon = roleDef.Icon,
                         Holders = holders

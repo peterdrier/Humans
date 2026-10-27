@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Domain;
@@ -34,7 +35,7 @@ internal sealed class StoreController(
 
         // TeamsAdmins read every counterparty but edit only team orders, so per-row affordances go through the order
         // authorization handler.
-        var isPrivilegedReader = RoleChecks.CanAdministerStore(User) || RoleChecks.IsTeamsAdmin(User);
+        var isPrivilegedReader = StoreRoles.CanAdministerStore(User) || TeamsRoles.IsTeamsAdmin(User);
         var pageData = isPrivilegedReader
             ? await storeService.GetAllCounterpartiesIndexDataAsync(ct)
             : await storeService.GetIndexDataAsync(user.Id, ct);

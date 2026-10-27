@@ -34,7 +34,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
     }
 
     public async Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
-        string? roleFilter,
+        IReadOnlyList<string>? roleNames,
         bool activeOnly,
         int page,
         int pageSize,
@@ -44,9 +44,9 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.RoleAssignments.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(roleFilter))
+        if (roleNames is not null)
         {
-            query = query.Where(ra => ra.RoleName == roleFilter);
+            query = query.Where(ra => roleNames.Contains(ra.RoleName));
         }
 
         if (activeOnly)
@@ -69,7 +69,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
 
     public async Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
-        string roleName,
+        IReadOnlyList<string> roleNames,
         Instant validFrom,
         Instant? validTo,
         CancellationToken ct = default)
@@ -77,7 +77,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.RoleAssignments
             .AsNoTracking()
-            .Where(ra => ra.UserId == userId && ra.RoleName == roleName);
+            .Where(ra => ra.UserId == userId && roleNames.Contains(ra.RoleName));
 
         // [A_start, A_end) overlaps [B_start, B_end) iff A_end > B_start and B_end > A_start; null end is open.
         if (validTo.HasValue)
@@ -96,14 +96,14 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
 
     public async Task<bool> HasActiveRoleAsync(
         Guid userId,
-        string roleName,
+        IReadOnlyList<string> roleNames,
         Instant now,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.RoleAssignments.AnyAsync(
             ra => ra.UserId == userId &&
-                  ra.RoleName == roleName &&
+                  roleNames.Contains(ra.RoleName) &&
                   ra.ValidFrom <= now &&
                   (ra.ValidTo == null || ra.ValidTo > now),
             ct);
@@ -150,7 +150,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
     }
 
     public async Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
-        string roleName,
+        IReadOnlyList<string> roleNames,
         Instant now,
         CancellationToken ct = default)
     {
@@ -158,7 +158,7 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
         return await ctx.RoleAssignments
             .AsNoTracking()
             .Where(ra =>
-                ra.RoleName == roleName &&
+                roleNames.Contains(ra.RoleName) &&
                 ra.ValidFrom <= now &&
                 (ra.ValidTo == null || ra.ValidTo > now))
             .Select(ra => ra.UserId)
@@ -179,6 +179,20 @@ internal sealed class RoleAssignmentRepository(IDbContextFactory<AuthDbContext> 
             .ToListAsync(ct);
 
         return rows.ToDictionary(r => r.Role, r => r.Count, StringComparer.Ordinal);
+    }
+
+    public async Task<IReadOnlyList<RoleAssignment>> GetByRoleNamesForMutationAsync(
+        IReadOnlyList<string> roleNames,
+        CancellationToken ct = default)
+    {
+        if (roleNames.Count == 0)
+            return [];
+
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => roleNames.Contains(ra.RoleName))
+            .ToListAsync(ct);
     }
 
     public async Task AddAsync(RoleAssignment assignment, CancellationToken ct = default)

@@ -59,6 +59,7 @@ public class GuideContentServiceTests
         return new GuideContentService(
             source,
             renderer,
+            GuideTestRoles.Segmenter,
             cache,
             settings,
             NullLogger<GuideContentService>.Instance);

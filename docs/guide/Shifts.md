@@ -9,7 +9,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
   src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs
-  src/Humans.Base/Authorization/ShiftRoleChecks.cs
+  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
   src/Sections/Humans.Shifts/Services/**
   src/Sections/Humans.Shifts/Domain/Rota.cs
   src/Sections/Humans.Shifts/Domain/Shift.cs
@@ -23,7 +23,7 @@
   src/Sections/Humans.Shifts/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  Shift browsing/signup, rota management, signup approvals, event settings (early-entry capacity, browsing toggle), shift preferences wizard, and NoInfoAdmin/VolunteerCoordinator scoping. Review when shift views, services, or entities change.
+  Shift browsing/signup, rota management, signup approvals, event settings (early-entry capacity, browsing toggle), shift preferences wizard, and ShiftsNoInfo/ShiftsAdmin scoping. Review when shift views, services, or entities change.
 -->
 
 # Shifts
@@ -94,14 +94,14 @@ There's a hard cap on how many people are on site during set-up and pre-event. E
 
 Reach Volunteer Coordination at [volunteers@nobodies.team](mailto:volunteers@nobodies.team) (Frank, Nurse, Hardcastle).
 
-## As a Board member / Admin (NoInfo Admin)
+## As a Board member / Admin (Shifts NoInfo)
 
-Admins get the site-wide shift view and can approve, refuse, bail, or voluntell across any department. **NoInfoAdmin** has the same signup powers but can't create or edit rotas and shifts. **VolunteerCoordinator** has full coordinator capabilities across every department.
+Admins get the site-wide shift view and can approve, refuse, bail, or voluntell across any department. **ShiftsNoInfo** has the same signup powers but can't create or edit rotas and shifts. **ShiftsAdmin** has full coordinator capabilities across every department.
 
 Admin-only controls:
 
 - **Event settings** at `/Settings#event` — gate opening date, build/event/strike offsets, timezone, early-entry capacity, barrios allocation, and early-entry close instant. Shifts' own knobs — the **shift browsing toggle** (when closed, regular humans only see shifts they already have signups for; privileged roles can always browse), global volunteer cap, and reminder lead time — live on `/Settings#shifts`.
-- **Medical data** on volunteer event profiles is visible only to Admin and NoInfoAdmin. Coordinators and VolunteerCoordinator see skills and dietary info but not medical.
+- **Medical data** on volunteer event profiles is visible only to Admin and ShiftsNoInfo. Coordinators and ShiftsAdmin see skills and dietary info but not medical.
 - **Early-entry freeze** — after early-entry close, non-privileged humans can't sign up for or bail from Set-up shifts; admins can still adjust.
 
 Only one active Event Settings exists at a time. Changes ripple through every shift date on the site.

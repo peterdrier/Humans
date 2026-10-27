@@ -80,7 +80,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/ActivityLog` | GET | Admin | Newest-first `google_sync_log` (500 rows), filterable by date, action, trigger, success, resource name |
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |
 | `/Google/Resource/{id}` | GET | Board, Admin | Sync history for one resource |
-| `/Google/Human/{id}` | GET | HumanAdmin, Board, Admin | Sync history for one human |
+| `/Google/Human/{id}` | GET | UsersAdmin, Board, Admin | Sync history for one human |
 | `/Google/Sync/Preview/{resourceType}` | POST | TeamsAdmin, Board, Admin | AJAX: drift preview for resource type |
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
@@ -88,7 +88,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/SyncOutbox/{id}/Requeue` | POST | Admin | Requeue one permanently-failed outbox event for retry |
 | `/Google/SyncOutbox/RequeueAll` | POST | Admin | Requeue all permanently-failed outbox events for retry |
 | `/Google/Human/{id}/RerunSync` | POST | Admin | Enqueue fresh Google sync events for all of a user's current teams |
-| `/Google/Human/{id}/ProvisionEmail` | POST | HumanAdmin, Admin | Provision @nobodies.team email for a human |
+| `/Google/Human/{id}/ProvisionEmail` | POST | UsersAdmin, Admin | Provision @nobodies.team email for a human |
 | `/Google/AllGroups` | GET | Admin | Domain-wide group listing with drift status |
 | `/Google/CheckGroupSettings` | POST | Admin | Trigger group settings drift check |
 | `/Google/GroupSettingsResults` | GET | Admin | PRG landing for group settings drift results |
@@ -113,7 +113,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | POST | same; resource must belong to the team | Toggle inherited-access restriction on a Drive folder |
 | `/Google/Teams/{slug}/Resources/{resourceId}/Unlink` | POST | same; resource must belong to the team | Soft-unlink (IsActive = false) |
 | `/Google/Teams/{slug}/Resources/{resourceId}/Sync` | POST | same; resource must belong to the team | Reconcile one resource now |
-| `/Google/Admin/{id}/WorkspaceEmail` | POST | HumanAdmin, Board, Admin (`HumanAdminBoardOrAdmin`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
+| `/Google/Admin/{id}/WorkspaceEmail` | POST | UsersAdmin, Board, Admin (`HumanAdminBoardOrAdmin`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
 
 ## Actors & Roles
 
@@ -123,7 +123,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamResourcesController`. View resource status. Trigger per-resource sync |
 | Coordinator | Link and unlink Google resources for their own department (via `TeamResourcesController`). Trigger per-resource sync for their own department |
 | Board, Admin | View Drive activity anomaly check results. View sync audit logs |
-| HumanAdmin, Board, Admin | View per-human Google sync audit |
+| UsersAdmin, Board, Admin | View per-human Google sync audit |
 | Background jobs | Automated sync: system team sync (hourly), resource reconciliation (daily at 03:00), sync outbox processing, resource provisioning |
 
 ## Invariants
@@ -199,7 +199,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - TeamsAdmin and Board **cannot** manage sync settings — that is Admin-only.
 - Coordinators **cannot** manage sync settings, execute bulk sync actions, or remediate Google Group settings drift.
 - Regular humans have no access to Google resource management.
-- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Google/WorkspaceEmail` acts on the signed-in member only, and `/Google/Admin/{id}/WorkspaceEmail` requires HumanAdmin, Board or Admin.
+- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Google/WorkspaceEmail` acts on the signed-in member only, and `/Google/Admin/{id}/WorkspaceEmail` requires UsersAdmin, Board or Admin.
 - The admin Google Sync / @nobodies.team cards (`AdminDetailSidebar` user part) render nothing outside the admin view; the Re-run Google Sync button inside them is Admin-only.
 
 ## Triggers

@@ -10,6 +10,7 @@ namespace Humans.Guide.Services;
 internal sealed class GuideContentService(
     IGuideContentSource source,
     IGuideRenderer renderer,
+    GuideSegmenter segmenter,
     IMemoryCache cache,
     IOptions<GuideSettings> settings,
     ILogger<GuideContentService> logger) : IGuideContentService
@@ -90,7 +91,7 @@ internal sealed class GuideContentService(
             try
             {
                 var markdown = await source.GetMarkdownAsync(stem, cancellationToken);
-                newEntries[stem] = GuideSegmenter.Segment(markdown);
+                newEntries[stem] = segmenter.Segment(markdown);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {

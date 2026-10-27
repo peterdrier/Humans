@@ -14,6 +14,8 @@ public sealed class Section : ISection
     {
         services.AddSingleton<GuideHtmlPostprocessor>();
         services.AddSingleton<IGuideRenderer, GuideRenderer>();
+        services.AddSingleton<GuideRolePrivilegeMap>();
+        services.AddSingleton<GuideSegmenter>();
         services.AddSingleton<IGuideContentService, GuideContentService>();
         services.AddScoped<IGuideRoleResolver, GuideRoleResolver>();
     }

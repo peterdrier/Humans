@@ -510,7 +510,7 @@ public class TeamAdminControllerMembersTests
             .Returns(call =>
             {
                 var user = call.Arg<ClaimsPrincipal>();
-                return user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.TeamsAdmin)
+                return user.IsInRole(RoleNames.Admin) || user.IsInRole(TeamsRoles.TeamsAdmin)
                     ? AuthorizationResult.Success()
                     : AuthorizationResult.Failed();
             });

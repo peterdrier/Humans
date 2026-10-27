@@ -8,7 +8,7 @@
   src/Sections/Humans.Users.Contracts/User.cs
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
   src/Humans.Base/Constants/RoleNames.cs
-  src/Humans.Base/Constants/RoleGroups.cs
+  src/Humans.Base/Interfaces/ISectionRoles.cs
   src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
@@ -137,24 +137,24 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | Role | Description |
 |------|-------------|
 | **ConsentCoordinator** | Safety checks on new humans (clear/flag consent checks) |
-| **VolunteerCoordinator** | Read-only onboarding queue access; assists new humans |
+| **ShiftsAdmin** | Read-only onboarding queue access; assists new humans |
 
 ### Section Admin Roles (scoped to one functional area)
 
 | Role | Description |
 |------|-------------|
-| **HumanAdmin** | Human management pages, suspend/reject humans, provision @nobodies.team accounts |
+| **UsersAdmin** | Human management pages, suspend/reject humans, provision @nobodies.team accounts |
 | **TeamsAdmin** | System-wide team management; view sync status but not execute |
-| **CampAdmin** | Camp management and season approval |
-| **TicketAdmin** | Ticket vendor integration, discount codes, ticket data export |
+| **CampsAdmin** | Camp management and season approval |
+| **TicketsAdmin** | Ticket vendor integration, discount codes, ticket data export |
 | **FeedbackAdmin** | None — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
 | **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
 | **EventsAdmin** | Approve, reject, and request edits on event guide submissions |
 | **CantinaAdmin** | Read-only cantina roster for meal planning; dietary preferences only, never medical conditions |
 | **RideshareAdmin** | Rideshare settings, season statistics, and the day roster; confers nothing outside Rideshare |
-| **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
-| **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
+| **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
+| **ShiftsNoInfo** | Approve/voluntell shift signups; access volunteer medical data |
 
 ### UserState Access Claim
 

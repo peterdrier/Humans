@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using CsvHelper;
 using Hangfire;
 using Humans.Base.Csv;
@@ -26,7 +27,7 @@ internal sealed class TicketController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        return View(await dashboardPageBuilder.BuildAsync(RoleChecks.CanAccessFinance(User)));
+        return View(await dashboardPageBuilder.BuildAsync(FinanceRoles.IsFinanceAdmin(User)));
     }
 
     [HttpGet("Orders")]

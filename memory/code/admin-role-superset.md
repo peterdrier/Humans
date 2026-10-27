@@ -1,17 +1,19 @@
 ---
 name: Admin and domain-admin roles are supersets
-description: When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampAdmin/TicketAdmin) — never one without the other.
+description: When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampsAdmin/TicketsAdmin) — never one without the other.
 ---
 
 **Admin** can do everything in the entire system that any other role can do. Hard rule, no known exceptions.
 
 Each domain-specific `*Admin` role is a superset of all capabilities within its domain:
 - **TeamsAdmin** — everything under `/Teams`
-- **CampAdmin** — everything under `/Camps`
-- **TicketAdmin** — everything under `/Tickets`
+- **CampsAdmin** — everything under `/Camps`
+- **TicketsAdmin** — everything under `/Tickets`
+
+Each lives in its section's `<Section>Roles` class (`CampsRoles.CampsAdmin`), never in Base.
 
 **Why:** These are administrative roles scoped to their domain. They should never be locked out of functionality within their own area.
 
 **How to apply:**
 
-When adding `[Authorize(Roles = "...")]` or role checks, always include `Admin`. Within a domain area, also include the relevant `*Admin` role. When reviewing existing authorization, flag any place where Admin or a domain admin is excluded from capabilities in their area. Use `RoleGroups` constants (e.g. `RoleGroups.BoardOrAdmin`) instead of hand-maintained role-name lists.
+When adding `[Authorize(Roles = "...")]` or role checks, always include `Admin`. Within a domain area, also include the relevant `*Admin` role. When reviewing existing authorization, flag any place where Admin or a domain admin is excluded from capabilities in their area. Use the section's role predicates (`CampsRoles.IsCampsAdmin`, `TeamsRoles.IsTeamsAdminBoardOrAdmin`) or a `PolicyNames` policy instead of hand-maintained role-name lists.

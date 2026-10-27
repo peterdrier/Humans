@@ -51,7 +51,7 @@ internal sealed class ShiftsController(
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
-        var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
+        var isPrivileged = ShiftsRoles.IsPrivilegedSignupApprover(User) ||
                            (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
 
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
@@ -164,7 +164,7 @@ internal sealed class ShiftsController(
 
         // Narrow flag for auto-confirm. The service widens it to CanViewRestricted, as the browse page does, so a
         // coordinator's row for a hidden shift still renders instead of 500-ing after the write committed.
-        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+        var privileged = ShiftsRoles.IsPrivilegedSignupApprover(User);
         var outcome = await signupService.ToggleDayAsync(user.Id, shiftId, es.Id, privileged, ct);
 
         var result = outcome.Result;

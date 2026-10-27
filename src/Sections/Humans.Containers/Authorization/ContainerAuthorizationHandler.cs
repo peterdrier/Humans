@@ -15,7 +15,7 @@ internal sealed class ContainerAuthorizationHandler(ICampService campService, IC
         ContainerOperationRequirement requirement,
         ContainerAuthorizationTarget resource)
     {
-        if (RoleChecks.IsCampAdmin(context.User))
+        if (CampsRoles.IsCampsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;

@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
-  src/Humans.Base/Authorization/ShiftRoleChecks.cs
+  src/Humans.Base/Authorization/ShiftsRoles.cs
   src/Sections/Humans.Shifts/Views/Shifts/**
   src/Sections/Humans.Shifts/Views/ShiftAdmin/**
 -->
@@ -22,7 +22,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 > **Policy change (under evaluation):** Signup lists on the browse page (`/Shifts`) are temporarily visible to **all** authenticated viewers — not just coordinators/admins. The `isPrivileged` computation is intentionally retained in `ShiftsController` so the gate can be reinstated by making `ShowSignups` and the `IncludeSignups` browse flag in `ShiftBrowsePageBuilder` depend on `isPrivileged` again if folks object. Acceptance criteria below are written against the current (public) policy.
 
 - **Browse page (`/Shifts`):** Signup lists visible to every authenticated user. The `isPrivileged` variable still gates other admin-only behaviour (AdminOnly shift visibility, hidden rota visibility, browsing-while-closed).
-- **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveDepartmentAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team. Unchanged.
+- **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveDepartmentAsync` helper in `ShiftAdminController` — true for Admin, ShiftsNoInfo, ShiftsAdmin, or coordinator of that specific team. Unchanged.
 
 ## User Stories
 

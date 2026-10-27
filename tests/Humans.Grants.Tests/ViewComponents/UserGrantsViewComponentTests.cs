@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
@@ -25,7 +26,7 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
     {
         var (holder, a, _) = await SeedTwoProgramsAsync(manager: null);
 
-        var model = await CardAsync(holder, SeedUser("Human admin"), RoleNames.HumanAdmin);
+        var model = await CardAsync(holder, SeedUser("Human admin"), UsersRoles.UsersAdmin);
 
         model.Grants.Should().HaveCount(2);
         model.LinkablePrograms.Should().NotContain(a);
@@ -38,7 +39,7 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
         var manager = SeedUser("Manager");
         var (holder, a, _) = await SeedTwoProgramsAsync(manager);
 
-        var model = await CardAsync(holder, manager, RoleNames.HumanAdmin);
+        var model = await CardAsync(holder, manager, UsersRoles.UsersAdmin);
 
         model.LinkablePrograms.Should().BeEquivalentTo([a]);
     }
@@ -72,7 +73,7 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
             {
                 new SectionPolicies().AddPolicies(options);
                 options.AddPolicy(PolicyNames.HumanAdminBoardOrAdmin, policy =>
-                    policy.RequireRole(RoleNames.HumanAdmin, RoleNames.Board, RoleNames.Admin));
+                    policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Board, RoleNames.Admin));
             })
             .AddSingleton<IAuthorizationHandler>(new GrantsPolicyHandler(service, Users))
             .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users))

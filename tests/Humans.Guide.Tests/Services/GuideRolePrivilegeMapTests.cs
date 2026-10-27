@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Constants;
 using Humans.Guide.Services;
 using Xunit;
 
@@ -7,23 +6,24 @@ namespace Humans.Guide.Tests.Services;
 
 public class GuideRolePrivilegeMapTests
 {
+    private static readonly GuideRolePrivilegeMap Map = GuideTestRoles.Map;
+
     [HumansTheory]
-    [InlineData("Camp Admin", RoleNames.CampAdmin)]
-    [InlineData("camp admin", RoleNames.CampAdmin)]
-    [InlineData("Teams Admin", RoleNames.TeamsAdmin)]
-    [InlineData("NoInfo Admin", RoleNames.NoInfoAdmin)]
-    [InlineData("Human Admin", RoleNames.HumanAdmin)]
-    [InlineData("Finance Admin", RoleNames.FinanceAdmin)]
-    [InlineData("Events Admin", RoleNames.EventsAdmin)]
-    [InlineData("Store Admin", RoleNames.StoreAdmin)]
-    [InlineData("Feedback Admin", RoleNames.FeedbackAdmin)]
-    [InlineData("Ticket Admin", RoleNames.TicketAdmin)]
-    [InlineData("Consent Coordinator", RoleNames.ConsentCoordinator)]
-    [InlineData("Volunteer Coordinator", RoleNames.VolunteerCoordinator)]
+    [InlineData("Camps Admin", GuideTestRoles.CampsAdmin)]
+    [InlineData("camps admin", GuideTestRoles.CampsAdmin)]
+    [InlineData("Teams Admin", GuideTestRoles.TeamsAdmin)]
+    [InlineData("Shifts NoInfo", GuideTestRoles.ShiftsNoInfo)]
+    [InlineData("Users Admin", GuideTestRoles.UsersAdmin)]
+    [InlineData("Finance Admin", GuideTestRoles.FinanceAdmin)]
+    [InlineData("Events Admin", GuideTestRoles.EventsAdmin)]
+    [InlineData("Store Admin", GuideTestRoles.StoreAdmin)]
+    [InlineData("Tickets Admin", GuideTestRoles.TicketsAdmin)]
+    [InlineData("Consent Coordinator", GuideTestRoles.ConsentCoordinator)]
+    [InlineData("Shifts Admin", GuideTestRoles.ShiftsAdmin)]
     [InlineData("Camp Lead", GuideRolePrivilegeMap.CampLead)]
-    public void TryResolve_KnownDisplayName_ReturnsSystemRole(string displayName, string expectedRole)
+    public void TryResolve_KnownTitle_ReturnsSystemRole(string displayName, string expectedRole)
     {
-        GuideRolePrivilegeMap.TryResolve(displayName, out var role).Should().BeTrue();
+        Map.TryResolve(displayName, out var role).Should().BeTrue();
         role.Should().Be(expectedRole);
     }
 
@@ -31,10 +31,11 @@ public class GuideRolePrivilegeMapTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Unknown")]
+    [InlineData("Camp Admin")] // The pre-rename title: only catalog titles resolve
     [InlineData("Camp Coordinator")] // Not a thing: the domain term is Camp Lead
     public void TryResolve_UnknownOrEmpty_ReturnsFalse(string input)
     {
-        GuideRolePrivilegeMap.TryResolve(input, out var role).Should().BeFalse();
+        Map.TryResolve(input, out var role).Should().BeFalse();
         role.Should().BeNull();
     }
 
@@ -43,30 +44,31 @@ public class GuideRolePrivilegeMapTests
     {
         // MappedRoles is the resolver's IsInRole probe list. Camp lead is a per-camp role,
         // never a claim, so probing it would be dead work and imply a system role exists.
-        GuideRolePrivilegeMap.MappedRoles.Should().NotContain(GuideRolePrivilegeMap.CampLead);
+        Map.MappedRoles.Should().NotContain(GuideRolePrivilegeMap.CampLead);
+        Map.MappedRoles.Should().Contain(GuideTestRoles.CampsAdmin);
     }
 
     [HumansFact]
     public void ParseParenthetical_MultipleCommaSeparated_ReturnsAll()
     {
-        var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Finance Admin");
+        var result = Map.ParseParenthetical("Camps Admin, Finance Admin");
 
-        result.Should().BeEquivalentTo(RoleNames.CampAdmin, RoleNames.FinanceAdmin);
+        result.Should().BeEquivalentTo(GuideTestRoles.CampsAdmin, GuideTestRoles.FinanceAdmin);
     }
 
     [HumansFact]
     public void ParseParenthetical_UnknownTokensDropped()
     {
-        var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Gibberish");
+        var result = Map.ParseParenthetical("Camps Admin, Gibberish");
 
-        result.Should().BeEquivalentTo(RoleNames.CampAdmin);
+        result.Should().BeEquivalentTo(GuideTestRoles.CampsAdmin);
     }
 
     [HumansFact]
     public void ParseParenthetical_NullOrEmpty_ReturnsEmpty()
     {
-        GuideRolePrivilegeMap.ParseParenthetical(null).Should().BeEmpty();
-        GuideRolePrivilegeMap.ParseParenthetical("").Should().BeEmpty();
-        GuideRolePrivilegeMap.ParseParenthetical("   ").Should().BeEmpty();
+        Map.ParseParenthetical(null).Should().BeEmpty();
+        Map.ParseParenthetical("").Should().BeEmpty();
+        Map.ParseParenthetical("   ").Should().BeEmpty();
     }
 }

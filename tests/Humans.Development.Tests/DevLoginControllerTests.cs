@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.AuditLog.Contracts;
@@ -170,12 +172,12 @@ public class DevLoginControllerTests
         // _DevLoginPanel renders this list; the button and the route must not disagree.
         _environment.EnvironmentName.Returns("Staging");
 
-        DevLoginController.PersonasFor(_environment, _configuration)
+        DevLoginController.PersonasFor(_environment, _configuration, Catalog)
             .Should().NotContain(p => p.Slug == "admin");
 
         SetAllowAdmin(true);
 
-        DevLoginController.PersonasFor(_environment, _configuration)
+        DevLoginController.PersonasFor(_environment, _configuration, Catalog)
             .Should().Contain(p => p.Slug == "admin");
     }
 
@@ -215,6 +217,7 @@ public class DevLoginControllerTests
             _environment,
             _configuration,
             _configRegistry,
+            Catalog,
             NullLogger<DevLoginController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
@@ -224,6 +227,12 @@ public class DevLoginControllerTests
         };
         return ctrl;
     }
+
+    private static readonly RoleCatalog Catalog = new RoleCatalog(new RoleDefinition[]
+        {
+            new(RoleNames.Admin, "Admin", "", ""),
+            new(RoleNames.Board, "Board", "", ""),
+        });
 
     private DevPersonaSeeder BuildSeeder() => new(
         _userManager,
@@ -246,5 +255,6 @@ public class DevLoginControllerTests
         Substitute.For<IHumanLifecycleService>(),
         new FakeClock(Instant.FromUtc(2026, 8, 16, 12, 0)),
         Options.Create(new CityPlanningOptions()),
+        Catalog,
         NullLogger<DevPersonaSeeder>.Instance);
 }

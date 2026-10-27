@@ -17,7 +17,7 @@ internal sealed class AdminAuthorizationService(
 
         var isAdmin = await roleAssignments.HasActiveRoleAsync(
             userId,
-            RoleNames.Admin,
+            [RoleNames.Admin],
             clock.GetCurrentInstant(),
             cancellationToken);
 

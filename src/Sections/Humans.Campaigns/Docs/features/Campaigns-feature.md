@@ -46,7 +46,7 @@ Commits are per-grant: if the enqueue throws for one human, that failure is logg
 
 ## Admin UI
 
-Route: `/Campaigns/Admin` — Admin role, except the detail page and API code generation, which also accept TicketAdmin.
+Route: `/Campaigns/Admin` — Admin role, except the detail page and API code generation, which also accept TicketsAdmin.
 
 Pages:
 - Campaign list with status and code/grant counts

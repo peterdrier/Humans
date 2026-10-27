@@ -116,7 +116,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 
 `POST /Feedback` is gone — the controller has no root-`POST` route at all.
 
-**FeedbackAdmin role:** grants **no** Feedback access (#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` do not exist.
+**FeedbackAdmin role:** grants **no** Feedback access (#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin` and `RoleChecks.IsFeedbackAdmin` do not exist.
 
 ## URL Routes
 

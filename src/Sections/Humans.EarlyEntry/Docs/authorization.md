@@ -2,4 +2,4 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `EarlyEntryRosterController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
+| `EarlyEntryRosterController` | Class | `Admin, ShiftsNoInfo, ShiftsAdmin` | `PolicyNames.ShiftDashboardAccess` |

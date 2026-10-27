@@ -51,9 +51,9 @@ If you have paid but your card still says you do not have a ticket, the attendee
 
 Can't make it, or bought a ticket under your name for a friend? You can transfer a ticket you hold to another person from **Tickets → Transfers** (`/Tickets/Transfers`). You start the request, the ticketing team completes the swap with the vendor, and you both get an email. A ticket that has already been scanned at the gate can no longer be transferred. Full walkthrough: [Transferring your ticket](TicketTransfers.md).
 
-## As a Board member / Admin (Ticket Admin)
+## As a Board member / Admin (Tickets Admin)
 
-Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view everything but cannot trigger sync, export, or generate codes — those require Ticket Admin or Admin.
+Tickets Admin, Admin, and Board all see the Tickets dashboard. Board can view everything but cannot trigger sync, export, or generate codes — those require Tickets Admin or Admin.
 
 ### Dashboard, orders, and attendees
 
@@ -67,19 +67,19 @@ Ticket Admin, Admin, and Board all see the Tickets dashboard. Board can view eve
 
 The Scanner section's ticket lookup (`/Scanner/Tickets`) uses your device camera to scan a ticket's barcode and shows the holder, ticket type, and status — and, for a voided ticket, who it was transferred to and when. Only the current event's tickets match; an older barcode reads as not found. When the ticket is matched to a member, the card also shows their early-entry date and how they earned it, whether they have already checked in this event, any required consents they have not signed, and what they have committed to provide — shifts and the events they submitted. It is read-only — it never checks anyone in.
 
-The gate laptop signs in with a shared, admin-free account and lands on the Gate terminal (`/Gate`), not on this lookup. Ticket Admin and Admin set or rotate its password at `/Tickets/Admin/Gate`; the laptop then signs in at `/Account/GateLogin`. Rotating the password signs out any existing gate sessions within half an hour.
+The gate laptop signs in with a shared, admin-free account and lands on the Gate terminal (`/Gate`), not on this lookup. Tickets Admin and Admin set or rotate its password at `/Tickets/Admin/Gate`; the laptop then signs in at `/Account/GateLogin`. Rotating the password signs out any existing gate sessions within half an hour.
 
 ### Trigger a sync
 
-Sync runs on a schedule (every 5 minutes in the shipped configuration); Ticket Admins and Admins can also trigger one manually with the **Sync Now** button at the bottom of the dashboard. A sync pulls new and updated orders, attendees, and gate check-ins from the vendor since the last successful sync (using `LastSyncAt` as the cursor), upserts them, re-runs email matching, enriches paid orders with Stripe fee data when a payment-intent id is present, recomputes VAT using the VIP split, marks used vendor codes as redeemed on their campaign grants, and reconciles `EventParticipation` rows for matched users.
+Sync runs on a schedule (every 5 minutes in the shipped configuration); Tickets Admins and Admins can also trigger one manually with the **Sync Now** button at the bottom of the dashboard. A sync pulls new and updated orders, attendees, and gate check-ins from the vendor since the last successful sync (using `LastSyncAt` as the cursor), upserts them, re-runs email matching, enriches paid orders with Stripe fee data when a payment-intent id is present, recomputes VAT using the VIP split, marks used vendor codes as redeemed on their campaign grants, and reconciles `EventParticipation` rows for matched users.
 
 A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clears the cursor and re-fetches every order from the vendor. Use this only when you suspect the incremental sync has missed historical data.
 
 ### Codes and sales reports
 
-`/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Campaigns/Admin/{id}` and use the generate-codes action there (Ticket Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
+`/Tickets/Codes` shows which discount codes have been used and ties them back to their campaigns. Code *generation* happens in the Campaigns section — open the relevant campaign at `/Campaigns/Admin/{id}` and use the generate-codes action there (Tickets Admin or Admin only). Board can view this page and the redemption table but cannot generate codes.
 
-`/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items. A Monthly Income for Accountant card buckets income by purchase month (Europe/Madrid) and has an **Export CSV** button for Ticket Admin and Admin; Admin alone also gets a **Ticketing Donations** button that downloads the donor list for the accountant (one row per VIP-ticket premium or separate donation on a paid order, with the buyer's name and email; every download is audited). A By Ticket Type card breaks down tickets sold and face value (the listed price, before discounts and donations) per ticket type. A Discount Codes by Campaign card shows codes granted, codes used, and the average and total discount per campaign, with codes that match no campaign grant grouped as vendor codes. All money columns are EUR — the currency is named in the column header rather than repeated in each cell, so the tables paste cleanly into a spreadsheet.
+`/Tickets/SalesAggregates` gives weekly (Monday–Sunday) and quarterly (calendar Q1–Q4, matching the Spanish tax convention) views of revenue, Donations, VIP Donations, VAT, and Net. Figures come from the VIP split logic, not the vendor's own tax line items. A Monthly Income for Accountant card buckets income by purchase month (Europe/Madrid) and has an **Export CSV** button for Tickets Admin and Admin; Admin alone also gets a **Ticketing Donations** button that downloads the donor list for the accountant (one row per VIP-ticket premium or separate donation on a paid order, with the buyer's name and email; every download is audited). A By Ticket Type card breaks down tickets sold and face value (the listed price, before discounts and donations) per ticket type. A Discount Codes by Campaign card shows codes granted, codes used, and the average and total discount per campaign, with codes that match no campaign grant grouped as vendor codes. All money columns are EUR — the currency is named in the column header rather than repeated in each cell, so the tables paste cleanly into a spreadsheet.
 
 ### Who hasn't bought yet
 
@@ -87,11 +87,11 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 
 ### Backfilling participation
 
-When you import historical attendance from outside the vendor (e.g. from a previous year's spreadsheet), Admins can paste a CSV of `UserId,Status` rows at `/Tickets/Participation/Backfill`. The page is scoped to the active event year. Ticket Admin and Board do not have access to this page.
+When you import historical attendance from outside the vendor (e.g. from a previous year's spreadsheet), Admins can paste a CSV of `UserId,Status` rows at `/Tickets/Participation/Backfill`. The page is scoped to the active event year. Tickets Admin and Board do not have access to this page.
 
 ### Process ticket transfers
 
-When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. The queue and its decisions are Ticket Admin and Admin only; Board cannot open it.
+When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. The queue and its decisions are Tickets Admin and Admin only; Board cannot open it.
 
 ### Import attendee contacts
 

@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
@@ -23,7 +24,7 @@ internal sealed class ExpenseReportAuthorizationHandler(
             return;
 
         var op = requirement.Operation;
-        var isFinanceAdmin = RoleChecks.IsFinanceAdmin(context.User); // includes Admin
+        var isFinanceAdmin = FinanceRoles.IsFinanceAdmin(context.User); // includes Admin
 
         if (isFinanceAdmin
             && (op == ExpenseReportOperation.View

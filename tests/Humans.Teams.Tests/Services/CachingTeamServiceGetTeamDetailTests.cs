@@ -232,7 +232,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     [Xunit.InlineData("member")]
     [Xunit.InlineData(RoleNames.Admin)]
     [Xunit.InlineData(RoleNames.Board)]
-    [Xunit.InlineData(RoleNames.TeamsAdmin)]
+    [Xunit.InlineData(TeamsRoles.TeamsAdmin)]
     public async Task Detail_HiddenParentAndChildLinks_RequirePrivilegedRole(string role)
     {
         var root = MakeTeam("VisibleRoot", isPublicPage: true);
@@ -246,7 +246,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var viewer = Guid.NewGuid();
         _roleAssignmentService.IsUserAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
         _roleAssignmentService.IsUserBoardMemberAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
-        _roleAssignmentService.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.TeamsAdmin, StringComparison.Ordinal));
+        _roleAssignmentService.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, TeamsRoles.TeamsAdmin, StringComparison.Ordinal));
         Guid? userId = string.Equals(role, "anonymous", StringComparison.Ordinal) ? null : viewer;
 
         var rootPage = await _pages.GetTeamDetailAsync(root.Slug, userId, Xunit.TestContext.Current.CancellationToken);
@@ -254,7 +254,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         rootPage.Should().NotBeNull();
         childPage.Should().NotBeNull();
-        var privileged = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin;
+        var privileged = role is RoleNames.Admin or RoleNames.Board or TeamsRoles.TeamsAdmin;
         rootPage.ChildTeams.Select(team => team.Id).Should().Equal(privileged ? new[] { hiddenChild.Id } : []);
         var parentId = childPage.Team.ParentTeam?.Id;
         parentId.Should().Be(privileged ? hiddenParent.Id : null);

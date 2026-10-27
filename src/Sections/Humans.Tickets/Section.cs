@@ -18,8 +18,16 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(TicketsRoles.TicketsAdmin, "Tickets Admin",
+            "They conjure tickets from vendor APIs, match purchases to humans, and make sure the numbers add up before the gates open.",
+            "fa-solid fa-ticket",
+            FormerNames: ["TicketAdmin"]),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
@@ -97,5 +105,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["tickets"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.TicketAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [TicketsRoles.TicketsAdmin];
 }

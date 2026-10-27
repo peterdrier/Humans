@@ -1,3 +1,6 @@
+using Humans.Users.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Base.Interfaces;
@@ -30,5 +33,5 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["onboardingreview"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin];
 }

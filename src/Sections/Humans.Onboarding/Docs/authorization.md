@@ -2,7 +2,7 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `OnboardingReviewController` | Class | `ConsentCoordinator, VolunteerCoordinator, Board, Admin` | `PolicyNames.ReviewQueueAccess` |
+| `OnboardingReviewController` | Class | `ConsentCoordinator, ShiftsAdmin, Board, Admin` | `PolicyNames.ReviewQueueAccess` |
 | `OnboardingReviewController.Clear` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.BulkClear` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Flag` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |

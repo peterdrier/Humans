@@ -33,7 +33,7 @@ public abstract class HumansCampControllerBase(
             return (false, false);
         }
 
-        return (camp.IsLead(user.Id), RoleChecks.IsCampAdmin(User));
+        return (camp.IsLead(user.Id), CampsRoles.IsCampsAdmin(User));
     }
 
     protected async Task<(IActionResult? ErrorResult, UserInfo User, CampInfo Camp)> ResolveCampManagementAsync(string slug)

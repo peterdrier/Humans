@@ -20,6 +20,9 @@ public sealed class Section : ISection
     {
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
 
+        // Composed from every section's ISectionRoles (registered by discovery); throws on a duplicate name.
+        services.AddSingleton(sp => new RoleCatalog(sp.GetServices<ISectionRoles>()));
+
         services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
         services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 

@@ -1,3 +1,4 @@
+using Humans.EarlyEntry.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Teams.Contracts;
@@ -18,14 +19,14 @@ internal sealed class TeamAuthorizationHandler(ITeamService teamService)
         TeamOperationRequirement requirement,
         TeamInfo resource)
     {
-        if (RoleChecks.IsTeamsAdminBoardOrAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdminBoardOrAdmin(context.User))
         {
             context.Succeed(requirement);
             return;
         }
 
         if (string.Equals(requirement.OperationName, TeamOperationRequirement.ManageEarlyEntry.OperationName, StringComparison.Ordinal)
-            && context.User.IsInRole(RoleNames.EETeamAdmin))
+            && context.User.IsInRole(EarlyEntryRoles.EarlyEntryAdmin))
         {
             context.Succeed(requirement);
             return;

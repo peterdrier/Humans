@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
@@ -10,6 +11,6 @@ internal sealed class SectionPolicies : ISectionPolicies
     public void AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
-            policy.RequireRole(RoleNames.FinanceAdmin, RoleNames.Admin));
+            policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
     }
 }

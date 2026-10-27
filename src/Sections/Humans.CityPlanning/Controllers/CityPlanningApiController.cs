@@ -90,7 +90,7 @@ internal sealed class CityPlanningApiController(
         CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        if (!RoleChecks.IsCampAdmin(User) &&
+        if (!CampsRoles.IsCampsAdmin(User) &&
             !await cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
         {
             return Forbid();

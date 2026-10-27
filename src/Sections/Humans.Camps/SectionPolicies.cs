@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Camps.Authorization;
@@ -15,7 +16,7 @@ internal sealed class SectionPolicies : ISectionPolicies
     public void AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.CampAdminOrAdmin, policy =>
-            policy.RequireRole(RoleNames.CampAdmin, RoleNames.Admin));
+            policy.RequireRole(CampsRoles.CampsAdmin, RoleNames.Admin));
 
         // CampAdmin/Admin OR any team coordinator — the OR lives in
         // CampComplianceAccessHandler so the policy is a single requirement

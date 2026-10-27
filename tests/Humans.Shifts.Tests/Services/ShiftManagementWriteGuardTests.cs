@@ -68,8 +68,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
-    [InlineData(RoleNames.NoInfoAdmin)]
-    [InlineData(RoleNames.VolunteerCoordinator)]
+    [InlineData(ShiftsRoles.ShiftsNoInfo)]
+    [InlineData(ShiftsRoles.ShiftsAdmin)]
     public async Task CanApproveSignups_IsGrantedByAnyOneSystemWideRoleOnItsOwn(string roleName)
     {
         var userId = Guid.NewGuid();
@@ -89,8 +89,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
         (await _service.CanApproveSignupsAsync(userId, departmentId, cancellation.Token)).Should().BeFalse();
         await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.Admin, cancellation.Token);
-        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.NoInfoAdmin, cancellation.Token);
-        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator, cancellation.Token);
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, ShiftsRoles.ShiftsNoInfo, cancellation.Token);
+        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, ShiftsRoles.ShiftsAdmin, cancellation.Token);
         await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, cancellation.Token);
         await _teamService.Received(1).GetTeamAsync(departmentId, cancellation.Token);
     }

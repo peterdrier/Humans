@@ -1,3 +1,5 @@
+using Humans.Tickets.Contracts;
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -59,8 +61,8 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
 
     [HumansTheory]
     [Xunit.InlineData(null)]
-    [Xunit.InlineData(RoleNames.FinanceAdmin)]
-    [Xunit.InlineData(RoleNames.TicketAdmin)]
+    [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
+    [Xunit.InlineData(TicketsRoles.TicketsAdmin)]
     public async Task OtherPeople_AreDenied_EvenGrantHolders(string? role)
     {
         var person = SeedUser("Holder");

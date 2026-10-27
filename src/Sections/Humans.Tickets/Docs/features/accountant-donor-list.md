@@ -53,7 +53,7 @@ Acceptance criteria:
 `TicketDonationsExported` on entity type `Tickets` with the actor, the number of donation rows,
 and the total in EUR.
 
-**As a TicketAdmin or Board member**, I cannot download this file. The action carries
+**As a TicketsAdmin or Board member**, I cannot download this file. The action carries
 `PolicyNames.AdminOnly`, tightening the controller-wide `TicketAdminBoardOrAdmin`; the button is
 only rendered for admins. Anonymous callers are denied by the same policy.
 
@@ -80,5 +80,5 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
 - [`Tickets.md`](../Tickets.md) — endpoint table, audit list, and the monthly accountant recap
   the totals must match.
 - [`authorization.md`](../authorization.md) — policy row for `ExportDonations`.
-- The older `/Tickets/Export/Orders` and `/Tickets/Export/Attendees` CSVs are TicketAdmin-wide (not
+- The older `/Tickets/Export/Orders` and `/Tickets/Export/Attendees` CSVs are TicketsAdmin-wide (not
   Admin-only) but each download is audited too (`TicketOrdersExported` / `TicketAttendeesExported`).

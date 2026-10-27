@@ -12,4 +12,4 @@
 | `EventsApiController.GetEvents/GetEvent/GetBarrios/GetBarrio/GetCategories` | Action | (anonymous reads) | — |
 | `EventsApiController.GetPreferences/UpdatePreferences/GetFavourites/AddFavourite/RemoveFavourite` | Action | `[Authorize]` (authenticated) | — |
 
-Owner-or-`RoleChecks.IsEventsAdmin` applies only to the individual `Submit/{eventId}/Edit` GET/POST; barrio-event actions gate solely through `ResolveCampEventManagementAsync` (Camps' `HumansCampControllerBase`).
+Owner-or-`EventsRoles.IsEventsAdmin` applies only to the individual `Submit/{eventId}/Edit` GET/POST; barrio-event actions gate solely through `ResolveCampEventManagementAsync` (Camps' `HumansCampControllerBase`).

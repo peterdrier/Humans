@@ -103,27 +103,6 @@
   <data name="Auth_AddRole_SelectRole" xml:space="preserve">
     <value>Rolle auswählen...</value>
   </data>
-  <data name="Auth_AddRole_AdminDesc" xml:space="preserve">
-    <value>Vollständiger Systemzugriff</value>
-  </data>
-  <data name="Auth_AddRole_BoardDesc" xml:space="preserve">
-    <value>Vorstandsmitglied-Berechtigungen</value>
-  </data>
-  <data name="Auth_AddRole_TeamsAdminDesc" xml:space="preserve">
-    <value>Alle Teams und Mitgliedschaften verwalten</value>
-  </data>
-  <data name="Auth_AddRole_ConsentCoordinatorDesc" xml:space="preserve">
-    <value>Sicherheitsprüfungen beim Onboarding</value>
-  </data>
-  <data name="Auth_AddRole_CampAdminDesc" xml:space="preserve">
-    <value>Lagerplan und Platzierungsphasen verwalten</value>
-  </data>
-  <data name="Auth_AddRole_VolunteerCoordinatorDesc" xml:space="preserve">
-    <value>Onboarding-Begleitung, systemweite Schichtverwaltung</value>
-  </data>
-  <data name="Auth_AddRole_NoInfoAdminDesc" xml:space="preserve">
-    <value>Schichtanmeldungen genehmigen, medizinische Daten einsehen</value>
-  </data>
   <data name="Auth_AddRole_NotesLabel" xml:space="preserve">
     <value>Notizen (optional)</value>
   </data>

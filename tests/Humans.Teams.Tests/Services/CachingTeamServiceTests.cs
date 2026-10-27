@@ -447,7 +447,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     [InlineData(null)]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
     public async Task MyTeams_HiddenMembershipNamesAndCounts_RequirePrivilegedRole(string? role)
     {
         var user = SeedUser("Coordinator");
@@ -456,7 +456,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _roleAssignmentService.IsUserBoardMemberAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
         _roleAssignmentService.IsUserTeamsAdminAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(string.Equals(role, RoleNames.TeamsAdmin, StringComparison.Ordinal));
+            .Returns(string.Equals(role, TeamsRoles.TeamsAdmin, StringComparison.Ordinal));
         var hiddenParent = SeedTeam("Private parent");
         hiddenParent.IsHidden = true;
         var publicChild = SeedTeam("Visible child");

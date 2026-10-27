@@ -23,7 +23,7 @@ Asked for in nobodies-collective/Humans#161 (partial scope — CSV exports are d
 
 ### US-PES.1: Admin Sees Event-Level Completion and No-Show Rates
 
-**As an** Admin / NoInfoAdmin / VolunteerCoordinator
+**As an** Admin / ShiftsNoInfo / ShiftsAdmin
 **I want to** see overall Confirmed, No-Show, and completion-rate counters for the active event
 **So that** I can assess at a glance how the event went
 
@@ -35,7 +35,7 @@ Asked for in nobodies-collective/Humans#161 (partial scope — CSV exports are d
 
 ### US-PES.2: Admin Sees Per-Department Breakdown
 
-**As an** Admin / NoInfoAdmin / VolunteerCoordinator
+**As an** Admin / ShiftsNoInfo / ShiftsAdmin
 **I want to** see a table with one row per top-level department showing confirmed, no-shows, completion rate, and per-period badges
 **So that** I can identify which departments drove no-show problems and in which periods
 
@@ -53,7 +53,7 @@ Asked for in nobodies-collective/Humans#161 (partial scope — CSV exports are d
 **I cannot** access the post-event stats dashboard
 
 **Acceptance Criteria:**
-- Route `GET /Shifts/Dashboard/PostEventStats` requires the `ShiftDashboardAccess` policy (Admin, NoInfoAdmin, VolunteerCoordinator)
+- Route `GET /Shifts/Dashboard/PostEventStats` requires the `ShiftDashboardAccess` policy (Admin, ShiftsNoInfo, ShiftsAdmin)
 - Unauthenticated or unauthorized users are redirected to the login page / access-denied page per the standard middleware
 
 ## Data Model
@@ -87,7 +87,7 @@ Nav entry appears under Shifts in the admin sidebar, next to the existing shift 
 
 ## Authorization
 
-`ShiftDashboardAccess` policy: Admin, NoInfoAdmin, VolunteerCoordinator.
+`ShiftDashboardAccess` policy: Admin, ShiftsNoInfo, ShiftsAdmin.
 
 ## DTOs
 
