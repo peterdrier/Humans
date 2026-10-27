@@ -491,14 +491,14 @@ needs is derivable from the branch name and the run file. An interactive run's r
 under the `pd:steward` skill, `.claude/steward.md` and `memory/process/review-round-budget.md`.
 
 An unattended run stewards its own PR in this session, with no `pd:steward` and no hand-off
-session:
+session (the carve-out in `memory/process/steward-thin-session.md`):
 
 - Once the PR is up, subscribe to its activity, post `@codex review` once and note the creation
   time.
 - On each wake read the real `date`. Stop at whichever comes first: three hours after PR creation,
   three Codex review rounds handled, or the PR merged or closed. A round is one Codex review and
-  the fix push answering it; after a fix push, request `@codex review` again only while rounds
-  remain. To stop: unsubscribe, post one PR comment listing what is still open (also added to the
+  the fix push answering it. Never re-request `@codex review` after a fix push
+  (`memory/process/pr-review-feedback-handling.md`). To stop: unsubscribe, post one PR comment listing what is still open (also added to the
   run file's `## Needs Peter`), and end. A quiet PR simply ends at the deadline; nothing is
   scheduled to reach it.
 - Fix only what this run's own diff caused: a finding on a line the run changed, or a CI failure

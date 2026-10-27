@@ -1,12 +1,14 @@
 ---
 name: The session subscribed to a PR never does the work
-description: Routines only, never interactive sessions: at ready-for-review, hand the PR to a fresh sonnet steward session (create_session) and stop; the steward only classifies wakes and dispatches one round worker per actionable event; it never builds, reads threads or logs, or fixes. See the `pd:steward` skill.
+description: Routines only, never interactive sessions: at ready-for-review, hand the PR to a fresh sonnet steward session (create_session) and stop; the steward only classifies wakes and dispatches one round worker per actionable event; it never builds, reads threads or logs, or fixes. Section-doctor's unattended run is carved out. See the `pd:steward` skill.
 ---
 
 **Scope: routines and other unattended runs only.** In an interactive session Peter decides what
 happens to the PR; the builder never hands off on its own (Peter, 2026-10-06: "that was for
 routines, not interactive sessions; interactive I make that decision"). In practice the hand-off
-also rarely works outside the cloud routines.
+also rarely works outside the cloud routines. **Section-doctor's unattended run is carved out:** it
+stewards its own PR under the limits in its skill's Phase 9, because the hand-off does not work
+reliably in cloud settings (Peter, 2026-10-27).
 
 In a routine, the session that built a PR does not tend it. At ready-for-review it spawns a steward
 session with a brief of a few hundred tokens, unsubscribes, and stops. The steward only
