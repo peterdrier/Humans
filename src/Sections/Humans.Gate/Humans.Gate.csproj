@@ -29,7 +29,7 @@
     <!--
       Tickets' contracts leaf: GateVendorCheckInJob mirrors a gate admit back to the vendor
       through ITicketVendorMirror rather than naming the vendor port. The leaf references
-      Humans.Interfaces only, so it cannot cycle
+      Humans.Base only, so it cannot cycle
       (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />

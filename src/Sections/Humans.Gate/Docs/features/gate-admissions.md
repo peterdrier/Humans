@@ -172,7 +172,7 @@ Two independent reviews (correctness/architecture + security/privacy/ops) ran on
 
 **Test notes:**
 
-- The dedupe's atomic unique-index backstop can't be exercised by the EF in-memory test provider; the explicit pre-check path *is* tested. A Postgres-backed integration test for the concurrent-admit race is a follow-up.
+- The dedupe's atomic unique-index backstop can't be exercised by the EF in-memory test provider; the explicit pre-check path *is* tested.
 - Unrelated pre-existing failure on `main` (confirmed on clean `upstream/main`, not introduced here): `ShiftSignupServiceEarlyEntryTests.SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull`.
 
 ## Open decisions for Peter (all since resolved)
