@@ -35,8 +35,8 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
-    Task RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
+    Task<CampSeasonReviewResult> ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
+    Task<CampSeasonReviewResult> RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> WithdrawSeasonAsync(Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>CampAdmin-only verb (unscoped by design — the dashboard is cross-camp).</summary>
@@ -139,6 +139,8 @@ internal sealed record CampMemberRequestResult(
     CampMemberRequestOutcome Outcome,
     string MessageKey,
     CampMemberRequestNoticeLevel NoticeLevel);
+
+internal sealed record CampSeasonReviewResult(bool Succeeded, string? ErrorMessage = null);
 
 internal sealed record CampMembershipMutationResult(bool Succeeded, string? ErrorMessage)
 {

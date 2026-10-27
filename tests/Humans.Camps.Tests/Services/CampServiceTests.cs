@@ -345,6 +345,37 @@ public sealed class CampServiceTests : CampsTestHarness
         info.Active!.LeadUserIds.Should().Contain(camp.CreatedByUserId);
     }
 
+    [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task SeasonReview_RefusesMissingOrNonPendingSeasonsWithoutAudit(bool approve, bool missing)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCampAsync();
+        var season = await CampsDb.CampSeasons.SingleAsync(s => s.CampId == camp.Id, ct);
+        season.Reject(TestActorId, "Earlier review", Clock.GetCurrentInstant());
+        await SaveAllAsync(ct);
+        var updatedAt = season.UpdatedAt;
+        var auditCalls = AuditLog.ReceivedCalls().Count();
+        var seasonId = missing ? Guid.NewGuid() : season.Id;
+
+        var result = approve
+            ? await _service.ApproveSeasonAsync(seasonId, TestActorId, null, ct)
+            : await _service.RejectSeasonAsync(seasonId, TestActorId, "New review", ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be(missing ? "Season not found."
+            : $"Cannot {(approve ? "approve" : "reject")} a season with status Rejected.");
+        await CampsDb.Entry(season).ReloadAsync(ct);
+        season.Status.Should().Be(CampSeasonStatus.Rejected);
+        season.ReviewNotes.Should().Be("Earlier review");
+        season.UpdatedAt.Should().Be(updatedAt);
+        AuditLog.ReceivedCalls().Count().Should().Be(auditCalls);
+    }
+
     [HumansFact]
     public async Task ApproveSeasonAsync_PendingSeason_SetsActive()
     {
@@ -353,7 +384,8 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         var adminId = Guid.NewGuid();
 
-        await _service.ApproveSeasonAsync(season.Id, adminId, "Looks good", TestContext.Current.CancellationToken);
+        (await _service.ApproveSeasonAsync(season.Id, adminId, "Looks good", TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
 
         var updated = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, TestContext.Current.CancellationToken);
         updated.Status.Should().Be(CampSeasonStatus.Active);
@@ -369,7 +401,8 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
 
-        await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "Not a real camp", TestContext.Current.CancellationToken);
+        (await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "Not a real camp", TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
 
         var updated = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id, TestContext.Current.CancellationToken);
         updated.Status.Should().Be(CampSeasonStatus.Rejected);

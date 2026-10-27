@@ -38,6 +38,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public CachingCampServiceTests()
     {
         _innerSubstitute = Substitute.For<ICampManagement, IUserMerge>();
+        _innerSubstitute.ApproveSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonReviewResult(true));
+        _innerSubstitute.RejectSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonReviewResult(true));
         _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
         var inner = new CampService(
@@ -108,6 +112,19 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     /// flow usually approves the season next and hides it; a cancellation between the two
     /// leaves the stale result indefinitely.
     /// </summary>
+    [HumansFact]
+    public async Task SeedApproval_ThrowsWhenTheSeasonReviewIsRefused()
+    {
+        var seasonId = Guid.NewGuid();
+        _innerSubstitute.ApproveSeasonAsync(seasonId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonReviewResult(false, "Season not found."));
+
+        var act = () => ((ICampSeeding)_service).ApproveSeasonAsync(seasonId, TestActorId, null,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Season not found.");
+    }
+
     [HumansFact]
     public async Task SeedingOptIn_ExplicitlyUsesTheAutomatedActorPath()
     {

@@ -43,15 +43,15 @@ internal sealed class CampAdminController(
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
-        try
+        var result = await campService.ApproveSeasonAsync(seasonId, user.Id, notes);
+        if (result.Succeeded)
         {
-            await campService.ApproveSeasonAsync(seasonId, user.Id, notes);
             SetSuccess("Season approved.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to approve camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to approve camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));
@@ -70,15 +70,15 @@ internal sealed class CampAdminController(
             return RedirectToAction(nameof(Index));
         }
 
-        try
+        var result = await campService.RejectSeasonAsync(seasonId, user.Id, notes);
+        if (result.Succeeded)
         {
-            await campService.RejectSeasonAsync(seasonId, user.Id, notes);
             SetSuccess("Season rejected.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to reject camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to reject camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));

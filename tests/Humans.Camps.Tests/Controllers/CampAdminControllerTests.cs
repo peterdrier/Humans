@@ -212,6 +212,26 @@ public class CampAdminControllerTests
     [HumansTheory]
     [InlineData("Approve")]
     [InlineData("Reject")]
+    public async Task SeasonReview_InvalidOperationFromDependency_Propagates(string action)
+    {
+        var camps = Substitute.For<ICampManagement>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var failure = new InvalidOperationException("Database transaction unavailable");
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        ConfigureFailure(camps, action, seasonId, actorId, failure);
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+
+        var act = () => InvokeActionAsync(controller, action, seasonId);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().NotContainKey("ErrorMessage");
+    }
+
+    [HumansTheory]
+    [InlineData("Approve")]
+    [InlineData("Reject")]
     [InlineData("Reactivate")]
     [InlineData("Delete")]
     public async Task LifecycleAction_ExpectedRejection_LogsWarningWithoutException(string action)
@@ -224,7 +244,13 @@ public class CampAdminControllerTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
         var reason = string.Equals(action, "Delete", StringComparison.Ordinal) ? "Camp not found." : "Season not found.";
-        ConfigureFailure(camps, action, targetId, actorId, new InvalidOperationException(reason));
+        if (action is "Approve" or "Reject")
+        {
+            camps.ApproveSeasonAsync(targetId, actorId, null).Returns(new CampSeasonReviewResult(false, reason));
+            camps.RejectSeasonAsync(targetId, actorId, "Rejected").Returns(new CampSeasonReviewResult(false, reason));
+        }
+        else
+            ConfigureFailure(camps, action, targetId, actorId, new InvalidOperationException(reason));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, logger);
 
         var result = await InvokeActionAsync(controller, action, targetId);

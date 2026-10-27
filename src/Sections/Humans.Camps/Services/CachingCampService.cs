@@ -214,20 +214,22 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task ApproveSeasonAsync(
+    public Task<CampSeasonReviewResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            if (result.Succeeded) await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            return result;
         });
 
-    public Task RejectSeasonAsync(
+    public Task<CampSeasonReviewResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            if (result.Succeeded) await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            return result;
         });
 
     public Task<CampUpdateResult> WithdrawSeasonAsync(
@@ -756,8 +758,11 @@ internal sealed class CachingCampService(
     }
 
     /// <inheritdoc />
-    Task ICampSeeding.ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken) =>
-        ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken);
+    async Task ICampSeeding.ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken)
+    {
+        var result = await ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken);
+        if (!result.Succeeded) throw new InvalidOperationException(result.ErrorMessage);
+    }
 
     /// <inheritdoc />
     async Task ICampSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(

@@ -598,51 +598,60 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task ApproveSeasonAsync(
+    public async Task<CampSeasonReviewResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default)
     {
+        string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.Status != CampSeasonStatus.Pending)
+            {
+                refusal = $"Cannot approve a season with status {season.Status}.";
+                return;
+            }
             season.Approve(reviewedByUserId, notes, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
+        if (refusal is not null) return new(false, refusal);
+        if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonApproved, nameof(CampSeason), seasonId,
             $"Approved season {year}",
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        return new(true);
 
     }
 
-    public async Task RejectSeasonAsync(
+    public async Task<CampSeasonReviewResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default)
     {
+        string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.Status != CampSeasonStatus.Pending)
+            {
+                refusal = $"Cannot reject a season with status {season.Status}.";
+                return;
+            }
             season.Reject(reviewedByUserId, notes, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
+        if (refusal is not null) return new(false, refusal);
+        if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonRejected, nameof(CampSeason), seasonId,
@@ -651,6 +660,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
+        return new(true);
 
     }
 
