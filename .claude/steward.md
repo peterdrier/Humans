@@ -1,16 +1,16 @@
-# Steward conventions for Humans
+# PR-tending conventions for Humans
 
-Read by the `pd:steward` skill (the steward and its round worker). Where this conflicts with
-the skill, this file wins.
+Read by the session tending a PR it opened, before acting on any CI or review event. Where a
+skill's PR guidance (including `pd:steward`) conflicts with this file, this file wins.
 
 ## Who decides
 
-- **Peter merges.** "The user" in the skill is Peter: his questions, his change requests, and
-  only he raises the review-round ceiling ([`review-round-budget`](../memory/process/review-round-budget.md)).
+- **Peter merges.** His questions, his change requests, and only he raises the review-round
+  ceiling ([`review-round-budget`](../memory/process/review-round-budget.md)).
 - A question from Peter gets an answer, not a commit
   ([peters-working-rules](../docs/architecture/peters-working-rules.md)).
-- A builder skill may set a lower ceiling (`/debt-review`: 3); it goes in every worker
-  brief as `Ceiling: <c>`. Read the skill's ceiling table with 4 as `c-1` and 5+ as `c+`.
+- A builder skill may set a lower ceiling (`/debt-review`: 3, section-doctor unattended: 3);
+  it goes in every worker brief as `Ceiling: <c>`. Read the budget's 4 as `c-1` and 5+ as `c+`.
 - Never schedule check-ins ([`no-scheduled-pr-checkins`](../memory/process/no-scheduled-pr-checkins.md)).
 
 ## Triage
@@ -35,6 +35,6 @@ Skipped `Humans.Integration.Tests` entries are by design, not a failure
 
 ## Workspace and push
 
-- Locally, reuse the builder's worktree or add `.claude/worktrees/steward-<N>`
+- Locally, reuse the PR's own worktree
   ([`always-use-worktree`](../memory/process/always-use-worktree.md)); a cloud run uses the repo root.
 - In the cloud, push by URL ([`push-by-url-in-cloud`](../memory/process/push-by-url-in-cloud.md)).
