@@ -269,23 +269,16 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        try
+        var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
+        if (deleted.Succeeded)
         {
-            var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
-            if (deleted.Succeeded)
-            {
-                await LogSelfEmailDeletedAsync(user.Id, emailId);
-                SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
-            }
-            else
-            {
-                SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
-            }
+            await LogSelfEmailDeletedAsync(user.Id, emailId);
+            SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
+            logger.LogWarning("Email deletion refused for email {EmailId}, user {UserId}: {Reason}", emailId, user.Id, deleted.ErrorKey);
+            SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
         }
 
         return RedirectToAction(nameof(Emails));
@@ -368,16 +361,8 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        try
-        {
-            var result = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
-            SetEmailUnlinkedResult(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to unlink email {EmailId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
+        var result = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+        SetEmailUnlinkedResult(result, user.Id, id, user.Id);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -388,8 +373,12 @@ internal sealed class ProfileEmailsController(
         return message.ResourceNotFound ? sharedLocalizer[key].Value : message.Value;
     }
 
-    private void SetEmailUnlinkedResult(UnlinkEmailResult result)
+    private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid emailId, Guid actorId)
     {
+        if (!result.Succeeded || result.ErrorKey is not null)
+            logger.LogWarning("Email unlink refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, userId, actorId, result.ErrorKey ?? "Users_EmailGrid_UnlinkRejected");
+
         if (result.ErrorKey is { } errorKey)
         {
             SetError(LocalizeEmailRefusal(errorKey));
@@ -442,49 +431,39 @@ internal sealed class ProfileEmailsController(
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
             && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
 
-        try
+        if (matching is not null)
         {
-            if (matching is not null)
+            var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
+            SetEmailUnlinkedResult(result, user.Id, matching.Id, user.Id);
+        }
+        else
+        {
+            // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
+            // email this login may be the only way in.
+            if (rawRows.Count(r => r.IsVerified) < 1)
             {
-                var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
-                SetEmailUnlinkedResult(result);
+                SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
+                return RedirectToAction(nameof(Emails));
+            }
+
+            var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
+            if (removeLogin.Succeeded)
+            {
+                await auditLogService.LogAsync(
+                    AuditAction.UserEmailUnlinked,
+                    nameof(User), user.Id,
+                    $"Unlinked orphan {provider} login (no matching UserEmail row)",
+                    user.Id);
+                SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
             }
             else
             {
-                // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
-                // email this login may be the only way in.
-                if (rawRows.Count(r => r.IsVerified) < 1)
-                {
-                    SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
-                    return RedirectToAction(nameof(Emails));
-                }
-
-                var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
-                if (removeLogin.Succeeded)
-                {
-                    await auditLogService.LogAsync(
-                        AuditAction.UserEmailUnlinked,
-                        nameof(User), user.Id,
-                        $"Unlinked orphan {provider} login (no matching UserEmail row)",
-                        user.Id);
-                    SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
-                }
-                else
-                {
-                    logger.LogWarning(
-                        "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
-                        user.Id, provider,
-                        string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-                    SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
-                }
+                logger.LogWarning(
+                    "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
+                    user.Id, provider,
+                    string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
+                SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
             }
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
-                provider, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -758,16 +737,8 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
-        {
-            var result = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
-            SetEmailUnlinkedResult(result);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to unlink email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        var result = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
+        SetEmailUnlinkedResult(result, id, emailId, actor.Id);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -784,16 +755,8 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
-        {
-            var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
-            await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
+        await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -802,6 +765,8 @@ internal sealed class ProfileEmailsController(
     {
         if (!deleted.Succeeded)
         {
+            logger.LogWarning("Admin email deletion refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, userId, actorId, deleted.ErrorKey);
             SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
             return;
         }

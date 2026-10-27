@@ -439,6 +439,17 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task DeleteEmailAsync_MissingOrForeignRowReturnsRefusalWithoutMutation()
+    {
+        var result = await _service.DeleteEmailAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_EmailUpdate_NotFound");
+        _userService.ReceivedCalls().Should().BeEmpty();
+        _googleIdentity.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task DeleteEmailAsync_RejectsProviderAttachedRow()
     {
         // Provider-attached rows MUST go through UnlinkAsync (which removes both

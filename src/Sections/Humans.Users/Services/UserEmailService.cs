@@ -242,8 +242,9 @@ internal sealed class UserEmailService(
     public async Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken)
-            ?? throw new InvalidOperationException("Email not found.");
+        var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        if (email is null)
+            return new DeleteEmailResult(false, "Users_EmailUpdate_NotFound");
 
         if (!string.IsNullOrEmpty(email.Provider))
         {
