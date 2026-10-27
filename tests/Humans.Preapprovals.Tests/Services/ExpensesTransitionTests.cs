@@ -42,7 +42,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
 
         var stamp = await NewService().ClaimAsync(grant.Id, Report, person, Ct);
 
-        stamp.Should().Be(new GrantStamp(300m, 62900150, "acc-62900150", program.ClaimBy));
+        stamp.Stamp.Should().Be(new GrantStamp(300m, 62900150, "acc-62900150", program.ClaimBy));
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Claimed);
         stored.ExpenseReportId.Should().Be(Report);
@@ -62,7 +62,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
 
         var stamp = await NewService().ClaimAsync(grant.Id, Report, person, Ct);
 
-        stamp.MaxAmount.Should().Be(300m);
+        stamp.Stamp!.MaxAmount.Should().Be(300m);
         (await ReadGrantAsync(grant.Id)).Status.Should().Be(GrantStatus.Claimed);
         await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalGrantClaimed, AuditEntityTypes.Grant, grant.Id,
             Arg.Is<string>(d => d.Contains("resubmit")), person, Report, AuditEntityTypes.ExpenseReport);
@@ -73,27 +73,27 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     [Xunit.InlineData((int)GrantStatus.Revoked, "revoked")]
     [Xunit.InlineData((int)GrantStatus.Consumed, "consumed")]
     [Xunit.InlineData((int)GrantStatus.Applied, "Applied")]
-    public async Task Claim_NotOpen_Throws(int statusValue, string reason)
+    public async Task Claim_NotOpen_ReturnsRefusal(int statusValue, string reason)
     {
         var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
         var grant = await SeedGrantAsync(program, status: status, expenseReportId: status == GrantStatus.Applied ? null : OtherReport);
 
-        var act = () => NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
+        var result = await NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage($"*{reason}*");
+        result.Refusal.Should().Contain(reason);
         (await ReadGrantAsync(grant.Id)).Status.Should().Be(status);
     }
 
     [HumansFact]
-    public async Task Claim_AfterDeadline_Throws_AndGrantStaysOpen()
+    public async Task Claim_AfterDeadline_ReturnsRefusal_AndGrantStaysOpen()
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(-1));
         var grant = await SeedGrantAsync(program);
 
-        var act = () => NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
+        var result = await NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
 
-        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*deadline*");
+        result.Refusal.Should().Contain("deadline");
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Open);
         stored.MaxAmount.Should().Be(300m);
@@ -105,7 +105,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(claimBy: Today);
         var grant = await SeedGrantAsync(program);
         var stamp = await NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
-        stamp.ClaimBy.Should().Be(Today);
+        stamp.Stamp!.ClaimBy.Should().Be(Today);
     }
 
     [HumansFact]
@@ -114,8 +114,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(-1));
         var grant = await SeedGrantAsync(program);
         var service = NewService();
-        await FluentActions.Invoking(() => service.ClaimAsync(grant.Id, Report, SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>();
+        (await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("deadline");
 
         await using (var db = OpenContext())
         {
@@ -125,14 +124,14 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         }
 
         var stamp = await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct);
-        stamp.ClaimBy.Should().Be(Today.PlusDays(30));
+        stamp.Stamp!.ClaimBy.Should().Be(Today.PlusDays(30));
     }
 
     [HumansFact]
-    public async Task Claim_Unknown_Throws()
+    public async Task Claim_Unknown_ReturnsRefusal()
     {
-        var act = () => NewService().ClaimAsync(Guid.NewGuid(), Report, SeedUser(), Ct);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await NewService().ClaimAsync(Guid.NewGuid(), Report, SeedUser(), Ct))
+            .Refusal.Should().Contain("does not exist");
     }
 
     [HumansFact]
@@ -142,7 +141,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var person = SeedUser("Person");
         var grant = await SeedGrantAsync(program, person, status: GrantStatus.Claimed, expenseReportId: Report);
 
-        await NewService().ReleaseAsync(grant.Id, Report, person, Ct);
+        (await NewService().ReleaseAsync(grant.Id, Report, person, Ct)).Refusal.Should().BeNull();
 
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Open);
@@ -160,7 +159,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var person = SeedUser("Person");
         var grant = await SeedGrantAsync(program, person, status: GrantStatus.Claimed, expenseReportId: Report);
 
-        await NewService().ConsumeAsync(grant.Id, Report, person, Ct);
+        (await NewService().ConsumeAsync(grant.Id, Report, person, Ct)).Refusal.Should().BeNull();
 
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Consumed);
@@ -179,12 +178,14 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var held = await SeedGrantAsync(program, status: GrantStatus.Claimed, expenseReportId: OtherReport);
         var open = await SeedGrantAsync(program);
         var service = NewService();
-        Func<Guid, Task> act = release
+        Func<Guid, Task<PreapprovalWriteResult>> act = release
             ? id => service.ReleaseAsync(id, Report, SeedUser(), Ct)
             : id => service.ConsumeAsync(id, Report, SeedUser(), Ct);
 
-        await FluentActions.Invoking(() => act(held.Id)).Should().ThrowAsync<InvalidOperationException>().WithMessage("*not held by*");
-        await FluentActions.Invoking(() => act(open.Id)).Should().ThrowAsync<InvalidOperationException>().WithMessage("*not held by*");
+        (await act(held.Id)).Refusal.Should().Contain("not held by");
+        (await act(open.Id)).Refusal.Should().Contain("not held by");
+        (await act(Guid.NewGuid())).Refusal.Should().Contain("does not exist");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
         (await ReadGrantAsync(held.Id)).Status.Should().Be(GrantStatus.Claimed);
         (await ReadGrantAsync(open.Id)).Status.Should().Be(GrantStatus.Open);
     }
@@ -198,10 +199,9 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var service = NewService();
         (await service.RevokeAsync(grant.Id, "budget cut", manager, Ct)).Refusal.Should().BeNull();
 
-        await FluentActions.Invoking(() => service.ClaimAsync(grant.Id, Report, SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>().WithMessage("*revoked*");
-        await FluentActions.Invoking(() => service.ConsumeAsync(grant.Id, Report, SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>().WithMessage("*revoked*");
+        (await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
+        (await service.ConsumeAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
+        (await service.ReleaseAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Revoked);
         stored.ExpenseReportId.Should().Be(Report);
