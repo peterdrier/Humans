@@ -20,6 +20,7 @@ internal sealed class EmailOutboxMessage
     /// Set only on rows queued before nobodies-collective/Humans#1243; nothing reads or writes it now. The
     /// column stays until its drop is approved.
     /// </summary>
+    [Obsolete("Unwritten since nobodies-collective/Humans#1243 dropped grant delivery tracking. Kept only until its column drop is approved.")]
     public Guid? CampaignGrantId { get; set; }
 
     public string? ReplyTo { get; set; }

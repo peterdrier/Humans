@@ -259,7 +259,9 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
                 cg.Code.Code,
                 cg.AssignedAt,
                 cg.RedeemedAt,
+#pragma warning disable CS0618 // old grants still hand over their stored status
                 cg.LatestEmailStatus))
+#pragma warning restore CS0618
             .ToListAsync(ct);
     }
 
