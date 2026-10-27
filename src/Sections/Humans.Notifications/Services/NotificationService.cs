@@ -113,10 +113,17 @@ internal sealed class NotificationService(
         }
     }
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
-        => repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, ct);
-
-    public void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds) =>
-        InvalidateBadgeCaches(userIds);
+    {
+        try
+        {
+            await repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, ct);
+        }
+        finally
+        {
+            // The save may commit before its acknowledgement fails.
+            InvalidateBadgeCaches([sourceUserId, targetUserId]);
+        }
+    }
 }

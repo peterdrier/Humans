@@ -4,7 +4,6 @@ using Humans.Users.Data;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
-using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
@@ -21,7 +20,6 @@ public class AccountMergeServiceMergeTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly INotificationService _notify = Substitute.For<INotificationService>();
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
@@ -37,7 +35,7 @@ public class AccountMergeServiceMergeTests
         new(
             mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoRefresher,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _notify);
+            _userMerges, _userService);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
@@ -163,24 +161,7 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task MergeAsync_RefreshesNotificationsAfterTombstone()
-    {
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
-        SetupUsers(src, tgt);
-
-        await BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
-
-        Received.InOrder(() =>
-        {
-            _ = _userService.AnonymizeForMergeAsync(src, tgt,
-                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
-            _notify.InvalidateBadgeCachesForUsers(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(src) && ids.Contains(tgt)));
-        });
-        _notify.Received(1).InvalidateBadgeCachesForUsers(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(src) && ids.Contains(tgt)));
-    }
-
-    [HumansFact]
-    public async Task MergeAsync_FanOutThrows_StillRefreshesNotifications()
+    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstoned()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
@@ -191,8 +172,9 @@ public class AccountMergeServiceMergeTests
 
         var act = () => BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        _notify.Received(1).InvalidateBadgeCachesForUsers(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(src) && ids.Contains(tgt)));
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        await _userService.DidNotReceive().AnonymizeForMergeAsync(
+            src, tgt, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

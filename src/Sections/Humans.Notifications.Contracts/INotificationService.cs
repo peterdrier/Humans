@@ -16,7 +16,4 @@ public interface INotificationService : IApplicationService, INotificationEmitte
         string? actionUrl = null,
         string? actionLabel = null,
         CancellationToken cancellationToken = default);
-
-    /// <summary>Call after the account-merge commit, so the next badge read sees committed state.</summary>
-    void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds);
 }

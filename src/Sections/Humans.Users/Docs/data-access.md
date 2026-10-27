@@ -273,7 +273,7 @@ owned-table reassignment, so `AccountMergeService` does not inject other
 sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
 `IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
-calls via `ITeamWrite`, `INotificationService`, `IAuditLogService`, plus the `IUserMerge`
+calls via `IAuditLogService`, plus the `IUserMerge`
 aggregator. Consent's per-user cache needs no merge signal: it rebuilds an entry
 whose `UserInfo.AllUserIds` changed when the tombstone lands.
 

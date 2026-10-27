@@ -37,11 +37,10 @@ can mute the chatter but never the work.
 | 5 | "How much work is waiting for someone like me?" | `NotificationMeterProvider.GetMetersForUserAsync` |
 | 6 | "What is unread for this key's owner?" | `INotificationInboxRead.GetUnreadInboxAsync`, served by Backdoor at `/api/backdoor/notifications` |
 | 7 | "Throw away what has aged out." | `INotificationRetention.PurgeExpiredAsync`, driven nightly by `CleanupNotificationsJob` |
-| 8 | "These humans' badges are stale now." | `INotificationService.InvalidateBadgeCachesForUsers` |
 | 9 | "Give me / erase everything you hold about this human." | `IUserDataContributor` on `NotificationInboxService` |
 | 10 | "These two accounts are one human — fold them." | `IUserMerge.ReassignAsync` on `NotificationService` |
 
-Shapes 1, 2, 7, 8 and 10 are the cross-section write contract; 6 is the one cross-section read;
+Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-section read;
 3–5 are the section's own pages.
 
 ## 3. Structure

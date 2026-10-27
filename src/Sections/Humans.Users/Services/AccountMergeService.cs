@@ -6,7 +6,6 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Notifications.Contracts;
 
 namespace Humans.Users.Services;
 
@@ -18,8 +17,7 @@ internal sealed class AccountMergeService(
     ILogger<AccountMergeService> logger,
     IClock clock,
     IEnumerable<IUserMerge> userMerges,
-    IUserManagement userService,
-    INotificationService notificationService) : IAccountMergeService, IUserDataContributor
+    IUserManagement userService) : IAccountMergeService, IUserDataContributor
 {
     internal const string AccountMergeRequests = "AccountMergeRequests";
 
@@ -115,37 +113,30 @@ internal sealed class AccountMergeService(
             "Admin {AdminId} merging: folding archived {ArchivedId} into survivor {SurvivorId}",
             adminUserId, archivedUserId, survivorUserId);
 
-        try
-        {
-            // 1. Move every section's user-keyed rows archived -> survivor. Each commits
-            //    independently and re-moving is a no-op, so the step is retryable.
-            foreach (var merger in userMerges)
-                await merger.ReassignAsync(archivedUserId, survivorUserId, adminUserId, now, ct);
+        // 1. Move every section's user-keyed rows archived -> survivor. Each commits
+        //    independently and re-moving is a no-op, so the step is retryable.
+        foreach (var merger in userMerges)
+            await merger.ReassignAsync(archivedUserId, survivorUserId, adminUserId, now, ct);
 
-            // 2. Settle the pending email the row-collapse missed. A missing or consumed one is
-            //    the desired end state, so the result is ignored.
-            if (pendingEmailIdToVerify is Guid pendingId)
-                await userRepository.MarkUserEmailVerifiedAsync(pendingId, now, ct);
+        // 2. Settle the pending email the row-collapse missed. A missing or consumed one is
+        //    the desired end state, so the result is ignored.
+        if (pendingEmailIdToVerify is Guid pendingId)
+            await userRepository.MarkUserEmailVerifiedAsync(pendingId, now, ct);
 
-            // 3. Tombstone the archived account LAST: the observable commit point. No wipe —
-            //    chain-follow reads need the redirect.
-            await userService.AnonymizeForMergeAsync(archivedUserId, survivorUserId, now, ct);
+        // 3. Tombstone the archived account LAST: the observable commit point. No wipe —
+        //    chain-follow reads need the redirect.
+        await userService.AnonymizeForMergeAsync(archivedUserId, survivorUserId, now, ct);
 
-            // 4. Audit.
-            await auditLogService.LogAsync(
-                AuditAction.AccountMergeAccepted,
-                nameof(User), archivedUserId,
-                $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
-                adminUserId,
-                relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
+        // 4. Audit.
+        await auditLogService.LogAsync(
+            AuditAction.AccountMergeAccepted,
+            nameof(User), archivedUserId,
+            $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
+            adminUserId,
+            relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
 
-            // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
-            await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
-        }
-        finally
-        {
-            notificationService.InvalidateBadgeCachesForUsers([archivedUserId, survivorUserId]);
-        }
+        // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
+        await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
     }
 
     private static AccountMergeRequestSnapshot ToSnapshot(

@@ -1,4 +1,6 @@
+using Humans.Base.Caching;
 using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;
@@ -87,6 +89,48 @@ public class NotificationServiceTests : IDisposable
 
 
 
+
+    [HumansFact]
+    public async Task ReassignAsync_RefreshesBothUsersBadgeCountsAfterMovingRecipients()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+        await _service.SendAsync(NotificationSource.TeamMemberAdded, NotificationClass.Informational,
+            NotificationPriority.Normal, "Source notice", [source], cancellationToken: ct);
+        await _service.SendAsync(NotificationSource.TeamMemberAdded, NotificationClass.Informational,
+            NotificationPriority.Normal, "Target notice", [target], cancellationToken: ct);
+        var inbox = new NotificationInboxService(_repo, Substitute.For<IUserService>(), _clock, _cache);
+        (await inbox.GetUnreadBadgeCountsAsync(source, ct)).Should().Be((0, 1));
+        (await inbox.GetUnreadBadgeCountsAsync(target, ct)).Should().Be((0, 1));
+
+        await _service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(), ct);
+
+        (await inbox.GetUnreadBadgeCountsAsync(source, ct)).Should().Be((0, 0));
+        (await inbox.GetUnreadBadgeCountsAsync(target, ct)).Should().Be((0, 2));
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_EvictsBadgeCountsWhenTheSaveAcknowledgementFails()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var failure = new IOException("Save acknowledgement lost");
+        var repo = Substitute.For<INotificationRepository>();
+        repo.ReassignRecipientsToUserAsync(source, target, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(failure));
+        _cache.Set(CacheKeys.NotificationBadgeCounts(source), (0, 1));
+        _cache.Set(CacheKeys.NotificationBadgeCounts(target), (0, 1));
+        var service = new NotificationService(Substitute.For<INotificationEmitter>(), repo,
+            _roleAssignmentService, _preferenceService, _clock, _cache, NullLogger<NotificationService>.Instance);
+
+        var act = () => service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(),
+            TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(source), out _).Should().BeFalse();
+        _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(target), out _).Should().BeFalse();
+    }
 
     [HumansFact]
     public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders()
