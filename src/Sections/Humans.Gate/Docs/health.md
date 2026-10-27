@@ -140,4 +140,4 @@ recorded, not a structural need.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-31 | First pass: comments/docs/UI copy re-anchored to the shipped shared-PIN security model; dead override-picker client remnants cut; GDPR-erasure, merge, retention and deny-path invariants pinned | peterdrier/Humans#1574 |
-| 2 | 2026-10-27 | Kiosk and docs point at the real cutoff setting; comments stop claiming an age waiver and live per-staffer override authority; export minimization and server-time verdicts pinned | pending |
+| 2 | 2026-10-27 | Kiosk and docs point at the real cutoff setting; comments stop claiming an age waiver and live per-staffer override authority; export minimization and server-time verdicts pinned | peterdrier/Humans#2168 |
