@@ -12,6 +12,7 @@ using Humans.Email.Services;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Humans.Email;
 
@@ -24,16 +25,13 @@ public sealed class Section : ISection
 
         services.AddSingleton<IEmailOutboxRepository, EmailOutboxRepository>();
 
-        // Without an SMTP host the logging stub sends. Shell enforces "required in Production", where the
-        // environment is known at startup.
-        if (!string.IsNullOrEmpty(configuration["Email:SmtpHost"]))
-        {
-            services.AddScoped<IEmailTransport, SmtpEmailTransport>();
-        }
-        else
-        {
-            services.AddScoped<IEmailTransport, StubEmailTransport>();
-        }
+        // Missing SMTP must not block boot or silently discard production mail through the
+        // stub. Resolve the environment here; Section.Register has no environment argument.
+        var hasSmtpHost = !string.IsNullOrWhiteSpace(configuration["Email:SmtpHost"]);
+        services.AddScoped<IEmailTransport>(sp =>
+            hasSmtpHost || sp.GetRequiredService<IHostEnvironment>().IsProduction()
+                ? ActivatorUtilities.CreateInstance<SmtpEmailTransport>(sp)
+                : ActivatorUtilities.CreateInstance<StubEmailTransport>(sp));
 
         services.AddSingleton<IEmailBodyComposer, BrandedEmailBodyComposer>();
         services.AddSingleton<EmailPreviewService>();

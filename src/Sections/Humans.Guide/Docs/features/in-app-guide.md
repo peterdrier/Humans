@@ -56,7 +56,7 @@ cached in-memory from GitHub. No migrations, no new tables.
    `GuideFiles.All` on cache miss.
 4. `GuideFilter` drops the segments the user can't see and joins what remains.
 5. `GuideRenderer` renders that markdown through Markdig and rewrites its
-   links; the HTML goes inside `_GuideLayout.cshtml` with the sidebar.
+   links; the HTML goes inside `_GuideLayout.cshtml` with the sidebar. Concrete app paths in inline code become links only when outside an existing link or code block; explicit link destinations are preserved.
 
 ### Refreshing from GitHub (Admin)
 

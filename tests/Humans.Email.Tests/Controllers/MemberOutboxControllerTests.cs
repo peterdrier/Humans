@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Humans.Email.Controllers;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -43,7 +43,7 @@ public sealed class MemberOutboxControllerTests
     private void GivenKnownUser(Guid id) =>
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             id, "Member", false, "en", null, Instant.FromUnixTimeSeconds(0),
-            null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
             null, null, null, [], [], [], null, []));
 
     private static EmailOutboxMessageDto Message(Guid userId) => new(

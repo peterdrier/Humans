@@ -88,6 +88,38 @@ public class CalendarLabelsViewTests
         html.Should().Contain(HtmlEncoder.Default.Encode(message));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", "Workgroups")]
+    [Xunit.InlineData("es", "Grupos de trabajo")]
+    [Xunit.InlineData("de", "Arbeitsgruppen")]
+    [Xunit.InlineData("it", "Gruppi di lavoro")]
+    [Xunit.InlineData("fr", "Groupes de travail")]
+    [Xunit.InlineData("ca", "Grups de treball")]
+    public async Task CommunitySources_UseUiLanguageAcrossCalendarViews(string language, string sourceLabel)
+    {
+        using var culture = new CultureScope(language);
+        var start = Instant.FromUtc(2026, 7, 6, 10, 0);
+        var single = new CalendarOccurrence(Guid.Empty, start, start + Duration.FromHours(1), false,
+            "Meeting", null, null, null, Guid.Empty, "", false, null, Source: "Workgroups");
+        var banner = single with { Title = "Workshop", OccurrenceEndUtc = start + Duration.FromDays(2) };
+        var unknown = single with { Title = "Other", Source = "New contributor" };
+        CalendarOccurrence[] items = [single, banner, unknown];
+        var month = new CalendarMonthViewModel(new YearMonth(2026, 7), items, null, "Europe/Madrid");
+
+        foreach (var page in new[] { "Index", "List", "Team", "Agenda" })
+        {
+            object model = string.Equals(page, "Agenda", StringComparison.Ordinal)
+                ? new CalendarAgendaViewModel(start, start + Duration.FromDays(4), items, null, "Europe/Madrid")
+                : month;
+            var html = System.Net.WebUtility.HtmlDecode(await RenderAsync(page, model));
+            html.Should().Contain($"— {sourceLabel}", page);
+            html.Should().Contain("New contributor", page);
+            html.Should().NotContain("Calendar_Source_", page);
+            if (!string.Equals(language, "en", StringComparison.Ordinal)) html.Should().NotContain("— Workgroups", page);
+        }
+        single.Source.Should().Be("Workgroups");
+    }
+
     private static async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

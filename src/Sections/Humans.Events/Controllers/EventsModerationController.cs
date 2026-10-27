@@ -101,6 +101,7 @@ internal sealed class EventsModerationController(
     {
         var moderator = await GetCurrentUserInfoAsync();
         if (moderator == null) return Challenge();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var guideEvent = await guide.GetEventForModerationAsync(model.EventId);
         if (guideEvent == null)
@@ -290,6 +291,7 @@ internal sealed class EventsModerationController(
     {
         var moderator = await GetCurrentUserInfoAsync();
         if (moderator == null) return Challenge();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var guideEvent = await guide.GetEventForModerationAsync(eventId);
         if (guideEvent == null)

@@ -88,7 +88,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Save_retains_the_form_with_localized_refusal_and_hides_dependency_diagnostics(bool dependencyFailure)
+    public async Task Save_localizes_refusals_and_propagates_dependency_failures(bool dependencyFailure)
     {
         var actor = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -109,40 +109,76 @@ public sealed class SurveyAdminControllerTests
             Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Entered title" },
         };
 
+        if (dependencyFailure)
+        {
+            Func<Task> act = async () => await sut.Save(model, "save-translate", Xunit.TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private storage diagnostic");
+            sut.ModelState.Should().BeEmpty();
+            sut.TempData.Should().BeEmpty();
+            await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default);
+            return;
+        }
+
         var result = await sut.Save(model, "save-translate", Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Which;
         view.ViewName.Should().Be("Builder");
         view.Model.Should().BeSameAs(model);
         var error = sut.ModelState[string.Empty]!.Errors.Should().ContainSingle().Subject.ErrorMessage;
-        error.Should().Be(dependencyFailure ? localizer["Surveys_Validation_SaveFailed"].Value
-            : localizer["Surveys_Validation_SubjectLength", 200, "ca"].Value);
+        error.Should().Be(localizer["Surveys_Validation_SubjectLength", 200, "ca"].Value);
         sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
         await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default);
     }
 
-    [HumansFact]
-    public async Task Save_translation_failure_reports_the_committed_save_without_exposing_the_exception()
+    [HumansTheory]
+    [Xunit.InlineData("validation")]
+    [Xunit.InlineData("io")]
+    [Xunit.InlineData("http")]
+    [Xunit.InlineData("provider-cancellation")]
+    [Xunit.InlineData("request-cancellation")]
+    public async Task Save_translation_failure_reports_the_committed_save_without_exposing_the_exception(string failureKind)
     {
         var actor = Guid.NewGuid();
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         surveys.CreateAsync(Arg.Any<SurveyEditInput>(), actor, Arg.Any<CancellationToken>())
             .Returns(new SurveySaveResult(id));
-        surveys.PreFillTranslationsAsync(id, Arg.Any<IReadOnlyList<string>>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
-            .Returns<int>(_ => throw new InvalidOperationException("Private translation diagnostic"));
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        Exception failure = failureKind switch
+        {
+            "io" => new IOException("Private translation diagnostic"),
+            "http" => new HttpRequestException("Private translation diagnostic"),
+            "provider-cancellation" or "request-cancellation" => new OperationCanceledException("Private translation diagnostic"),
+            _ => new InvalidOperationException("Private translation diagnostic")
+        };
+        surveys.PreFillTranslationsAsync(id, Arg.Any<IReadOnlyList<string>>(), Arg.Any<SurveyViewer>(), request.Token)
+            .Returns<int>(_ =>
+            {
+                if (string.Equals(failureKind, "request-cancellation", StringComparison.Ordinal)) request.Cancel();
+                throw failure;
+            });
         var localizer = SpanishLocalizer();
         var sut = CreateController(surveys, userId: actor, localizer: localizer);
 
-        var result = await sut.Save(new SurveyBuilderViewModel
+        var model = new SurveyBuilderViewModel
         {
             Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Saved" },
-        }, "save-translate", Xunit.TestContext.Current.CancellationToken);
+        };
+        if (string.Equals(failureKind, "request-cancellation", StringComparison.Ordinal))
+        {
+            Func<Task> act = async () => await sut.Save(model, "save-translate", request.Token);
+            (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+            sut.TempData.Should().BeEmpty();
+            await surveys.Received(1).CreateAsync(Arg.Any<SurveyEditInput>(), actor, request.Token);
+            return;
+        }
+
+        var result = await sut.Save(model, "save-translate", request.Token);
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
         redirect.ActionName.Should().Be(nameof(SurveyAdminController.Edit));
         redirect.RouteValues!["id"].Should().Be(id);
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Survey_Admin_Builder_Saved_TranslationFailed"].Value);
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"].Value);
         sut.ModelState.IsValid.Should().BeTrue();
         await surveys.Received(1).CreateAsync(Arg.Any<SurveyEditInput>(), actor, Arg.Any<CancellationToken>());
     }
@@ -182,6 +218,143 @@ public sealed class SurveyAdminControllerTests
             .Should().Be(55L * 1024 * 1024);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Review_does_not_disguise_unexpected_dependency_failures_as_refusals(bool approve)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var failure = new InvalidOperationException("Unexpected persistence failure.");
+        if (approve)
+            surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        else
+            surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), "note", Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var act = async () => approve
+            ? await sut.Approve(id, Xunit.TestContext.Current.CancellationToken)
+            : await sut.Reject(id, "note", Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
+        sut.ModelState.IsValid.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Open_continues_to_send_only_after_a_successful_transition(bool succeeded)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        const string reason = "A closed Asociado vote cannot be reopened.";
+        surveys.OpenAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(succeeded ? new SurveyReviewResult() : new SurveyReviewResult(Refusal: reason));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.Open(id, continueToSend: true, Xunit.TestContext.Current.CancellationToken);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
+        redirect.ActionName.Should().Be(succeeded ? nameof(SurveyAdminController.Send) : nameof(SurveyAdminController.Edit));
+        redirect.RouteValues!["id"].Should().Be(id);
+        if (succeeded)
+            sut.TempData[TempDataKeys.SuccessMessage].Should().Be("Survey opened.");
+        else
+        {
+            sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+            sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task StatusTransition_does_not_disguise_unexpected_failures_as_refusals(bool open)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var failure = new InvalidOperationException("Unexpected status persistence failure.");
+        if (open)
+            surveys.OpenAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        else
+            surveys.CloseAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var act = () => open
+            ? sut.Open(id, continueToSend: true, Xunit.TestContext.Current.CancellationToken)
+            : sut.Close(id, Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendInvites_displays_expected_refusals_or_invitation_totals(bool refused)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        const string reason = "Invitations can only be sent for an Open survey.";
+        surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(refused ? new SendResult(0, 0, 0, reason) : new SendResult(3, 2, 1));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
+        redirect.ActionName.Should().Be(nameof(SurveyAdminController.Send));
+        redirect.RouteValues!["id"].Should().Be(id);
+        if (refused)
+        {
+            sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+            sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        }
+        else
+        {
+            sut.TempData[TempDataKeys.SuccessMessage].Should().Be("Sent 3 new invitation(s); 2 email(s) queued, 1 failed.");
+            sut.TempData.Should().NotContainKey(TempDataKeys.ErrorMessage);
+        }
+    }
+
+    [HumansFact]
+    public async Task SendInvites_does_not_disguise_unexpected_failures_as_refusals()
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var failure = new InvalidOperationException("Unexpected invitation persistence failure.");
+        surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<SendResult>(failure));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var act = () => sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Approve_refusal_returns_to_queue_with_the_reason()
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        const string reason = "This survey's audience resolves to nobody to invite.";
+        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyReviewResult(Refusal: reason));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+    }
+
     [HumansFact]
     public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
     {
@@ -191,7 +364,7 @@ public sealed class SurveyAdminControllerTests
         surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
             .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
         surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("A rejection note must be 4000 characters or fewer."));
+            .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));
         var sut = CreateController(surveys, isBoardOrAdmin: true);
 
         var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
@@ -342,8 +515,10 @@ public sealed class SurveyAdminControllerTests
         await teams.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task RankedAvailability_logs_a_rejected_update()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RankedAvailability_logs_refusals_and_propagates_dependency_failures(bool dependencyFailure)
     {
         var surveyId = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -355,7 +530,9 @@ public sealed class SurveyAdminControllerTests
                 Arg.Any<IReadOnlyList<string>>(),
                 Arg.Is<SurveyViewer>(v => v.UserId == actorId),
                 Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("The vote is still open."));
+            .Returns(_ => dependencyFailure
+                ? throw new InvalidOperationException("The vote is still open.")
+                : new SurveySaveResult(Error: new(null, "The vote is still open.")));
         var logger = new CapturingLogger<SurveyAdminController>();
         var http = new DefaultHttpContext
         {
@@ -375,6 +552,16 @@ public sealed class SurveyAdminControllerTests
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
         };
 
+        if (dependencyFailure)
+        {
+            Func<Task> act = async () => await sut.RankedAvailability(
+                surveyId, questionId, [], Xunit.TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("The vote is still open.");
+            sut.TempData.Should().BeEmpty();
+            logger.Entries.Should().BeEmpty();
+            return;
+        }
+
         var result = await sut.RankedAvailability(
             surveyId,
             questionId,
@@ -392,7 +579,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Preview_dependency_failure_uses_translated_feedback(bool send)
+    public async Task Preview_dependency_failure_propagates_without_refusal_feedback(bool send)
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -408,13 +595,16 @@ public sealed class SurveyAdminControllerTests
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId,
             localizer: localizer);
 
-        if (send)
-            await sut.SendPreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
-        else
-            await sut.PreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
+        Func<Task> act = async () =>
+        {
+            if (send)
+                await sut.SendPreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
+            else
+                await sut.PreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
+        };
 
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer[send ? "Surveys_PreviewQueueFailed" : "Surveys_PreviewFailed"].Value);
-        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private preview diagnostic");
+        sut.TempData.Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -671,7 +861,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_dependency_failure_uses_translated_feedback()
+    public async Task Submit_dependency_failure_propagates_without_refusal_feedback()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -684,10 +874,10 @@ public sealed class SurveyAdminControllerTests
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId,
             localizer: localizer);
 
-        await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
+        Func<Task> act = async () => await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Surveys_SubmitFailed"].Value);
-        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private provider diagnostic");
+        sut.TempData.Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -712,8 +902,13 @@ public sealed class SurveyAdminControllerTests
         sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
     }
 
-    [HumansFact]
-    public async Task Preview_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    [HumansTheory]
+    [Xunit.InlineData("intro")]
+    [Xunit.InlineData("page")]
+    [Xunit.InlineData("thank-you")]
+    [Xunit.InlineData("email")]
+    [Xunit.InlineData("send-email")]
+    public async Task Preview_denies_a_non_owner_non_boardOrAdmin_human_by_id(string route)
     {
         // Rehearsal reads the whole survey back, Drafts included — opening it to authors must not
         // open it to everyone with an account.
@@ -725,9 +920,19 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
 
-        var result = await sut.Preview(surveyId, "en", Xunit.TestContext.Current.CancellationToken);
+        var previewEmails = Substitute.For<ISurveyPreviewEmailService>();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var result = route switch
+        {
+            "page" => await sut.PreviewPage(surveyId, "en", null, ct),
+            "thank-you" => await sut.PreviewThankYou(surveyId, "en", ct),
+            "email" => await sut.PreviewEmail(surveyId, previewEmails, ct),
+            "send-email" => await sut.SendPreviewEmail(surveyId, previewEmails, ct),
+            _ => await sut.Preview(surveyId, "en", ct),
+        };
 
         result.Should().BeOfType<ForbidResult>();
+        previewEmails.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

@@ -1,49 +1,5 @@
 # Section debt ledger for Humans.Users. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 23
-inbox:
-  - added: 2026-10-21
-    id: USERS-12
-    what: "Drop users.UnsubscribedFromCampaigns (User entity). Held the legacy campaign opt-out boolean; Email's per-category preferences replaced it and the current unsubscribe flow never flips it. Commit 16 of the Users decomposition removed its readers from UserInfo and the cache interceptor and marked the property [Obsolete]; its only remaining reader is the Art. 15 account export slice in UserService (scoped CS0618 suppression), which the drop PR must remove along with the property. Never behind a data migration, so the per-case gate in memory/architecture/no-drops-until-prod-verified.md applies: pickaxe over full history for every assignment, then Peter's written approval, in its own PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-13
-    what: "Drop users.SuppressScheduleChangeEmails (User entity). Held a per-user opt-out for schedule-change notifications; nothing writes or reads it. Commit 16 of the Users decomposition removed its readers from UserInfo and the cache interceptor and marked the property [Obsolete]; its only remaining reader is the Art. 15 account export slice in UserService (scoped CS0618 suppression), which the drop PR must remove along with the property. Never behind a data migration, so the per-case gate in memory/architecture/no-drops-until-prod-verified.md applies: pickaxe over full history for every assignment, then Peter's written approval, in its own PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-14
-    what: "Drop users.GoogleEmailStatus and delete User.GoogleEmailStatus, its UserConfiguration mapping and LegacyGoogleEmailStatus use there (#687 moved the verdict per-address; the Users decomposition then moved it to google_workspace_identities). No reader or writer remains. Never behind a registered data migration, so the per-case gate in memory/architecture/no-drops-until-prod-verified.md applies: pickaxe over full history, then Peter's written approval, in its own PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-15
-    what: "Drop profiles.Iban (Users) and delete Profile.Iban entity property, its configuration and Users' erase line. Replaced by data migration finance.iban-to-payment-details; blocked on CENTRAL-89 (the retirement PR) merged and deployed. The production done reading of finance.iban-to-payment-details (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-16
-    what: "Drop the five profiles food columns (DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText) (Users) and delete the matching Profile entity properties, configuration and erase/export lines; MedicalConditions stays. Replaced by data migration cantina.profile-dietary; blocked on CENTRAL-90 (the retirement PR) merged and deployed. The production done reading of cantina.profile-dietary (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-17
-    what: "Drop profiles.MembershipTier (Users) and delete the Profile.MembershipTier entity property and configuration. Replaced by data migration governance.profile-tier; blocked on CENTRAL-91 (the retirement PR) merged and deployed. The production done reading of governance.profile-tier (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-18
-    what: "Drop the profiles review columns (ConsentCheckStatus, ConsentCheckAt, ConsentCheckedByUserId, ConsentCheckNotes, RejectionReason, RejectedAt, RejectedByUserId, IsApproved) and the index on ConsentCheckStatus (Users) and delete the matching Profile entity properties and configuration. Replaced by data migration consent.profile-review; blocked on CENTRAL-92 (the retirement PR) merged and deployed. The production done reading of consent.profile-review (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-19
-    what: "Drop the event_participations table (Users) and delete the EventParticipation entity, its configuration, the User.EventParticipations navigation and the merge/purge code that touches the table. Replaced by data migration tickets.event-participations; blocked on CENTRAL-93 (the retirement PR) merged and deployed. The production done reading of tickets.event-participations (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-20
-    what: "Drop the communication_preferences table (Users) and delete the CommunicationPreference entity, its configuration and the User navigation if one remains. Replaced by data migration email.communication-preferences; blocked on CENTRAL-94 (the retirement PR) merged and deployed. The production done reading of email.communication-preferences (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-21
-    what: "Drop user_emails.IsGoogle and user_emails.GoogleEmailStatus (Users) and delete the UserEmail entity properties and configuration (users.GoogleEmailStatus is USERS-14). Replaced by data migration google.workspace-identities; blocked on CENTRAL-95 (the retirement PR) merged and deployed. The production done reading of google.workspace-identities (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
-  - added: 2026-10-21
-    id: USERS-22
-    what: "Drop users.LastConsentReminderSentAt (Users) and delete the User.LastConsentReminderSentAt entity property and its copy in UserInfoSaveChangesInterceptor. Replaced by data migration consent.reminder-stamps; blocked on CENTRAL-97 (the retirement PR) merged and deployed. The production done reading of consent.reminder-stamps (quoted with its date) is the standing approval in memory/architecture/no-drops-until-prod-verified.md; the drop is its own generated migration with a baseline entry in NoDestructiveMigrationOps.baseline.txt whose Approval line cites that reading and Evidence line cites the retirement PR."
-    review: panel
+next_id: 24
+inbox: []

@@ -111,6 +111,17 @@ class InterfaceSurfaceTests(unittest.TestCase):
         self.assertEqual(self.delta(before, after)["added_interface_methods"],
                          {"IStripeService": ["bool IsConfigured()", 'string Read(string key = "a=>b{")']})
 
+    def test_comment_markers_in_default_urls_do_not_hide_interface_members(self):
+        before = "public interface IStripeService\n{\n}"
+        for literal in ('"https://example.org/a"', '@"https://example.org/a"'):
+            with self.subTest(literal=literal):
+                after = ("public interface IStripeService\n{\n"
+                         f"    string Read(string url = {literal}); // read URL\n"
+                         "    bool IsConfigured(); // another member\n}")
+                self.assertEqual(self.delta(before, after)["added_interface_methods"],
+                                 {"IStripeService": ["bool IsConfigured()",
+                                                     f"string Read(string url = {literal})"]})
+
     def test_bodied_default_properties_report_their_declaration(self):
         before = "public interface IStripeService\n{\n}"
         after = ("public interface IStripeService\n{\n    int Count => 0;\n"

@@ -484,15 +484,7 @@ internal sealed class UserService(
         Guid userId,
         CancellationToken ct = default)
     {
-        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
-        var anonymized = await repo.AnonymizeForDeletionByUserIdAsync(userId, ct);
-        return new UserProfileAnonymizeResult(
-            anonymized,
-            profile?.Id,
-            profile is null
-                ? null
-                : ProfilePictureKeys.Resolve(
-                    profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey));
+        return new UserProfileAnonymizeResult(await repo.AnonymizeForDeletionByUserIdAsync(userId, ct));
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
@@ -532,7 +524,7 @@ internal sealed class UserService(
         var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
-            throw new ValidationException("Please enter a valid email address.");
+            return Refuse("Validation_EmailAddress");
 
         using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);
         var rows = await repo.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, ct);
@@ -542,15 +534,14 @@ internal sealed class UserService(
             if (command.IgnoreExisting)
                 return new UserEmailAddResult(existing.Id, Added: false, IsConflict: false);
 
-            throw new ValidationException("This email address is already in your account.");
+            return Refuse("Users_Profile_EmailAlreadyAdded");
         }
 
         var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
 
-        var user = await repo.GetByIdAsync(userId, ct)
-            ?? throw new InvalidOperationException("User not found.");
-        if (UserStateEvaluator.IsTombstone(user))
-            throw new InvalidOperationException("Cannot add email addresses to a deleted or merged account.");
+        var user = await repo.GetByIdAsync(userId, ct);
+        if (user is null || UserStateEvaluator.IsTombstone(user))
+            return Refuse("Users_EmailUpdate_AccountUnavailable");
 
         var now = clock.GetCurrentInstant();
         var row = new UserEmail
@@ -572,6 +563,12 @@ internal sealed class UserService(
         // The row has committed; finish its required invariant repairs after a browser disconnect.
         await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
+
+        UserEmailAddResult Refuse(string key)
+        {
+            logger.LogWarning("Email addition refused for user {UserId}: {ErrorKey}", userId, key);
+            return new UserEmailAddResult(Guid.Empty, Added: false, IsConflict: false, ErrorKey: key);
+        }
     }
 
     public async Task<UpdateEmailResult> UpdateUserEmailAsync(
@@ -588,7 +585,7 @@ internal sealed class UserService(
             if (email is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
 
             if (email.IsVerified || email.Provider is not null)
-                return new UpdateEmailResult(false, "Profile_InvalidVerificationLink");
+                return new UpdateEmailResult(false, "Users_Profile_InvalidVerificationLink");
 
             email.IsVerified = true;
             email.UpdatedAt = clock.GetCurrentInstant();
@@ -940,23 +937,15 @@ internal sealed class UserService(
 
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        var profileAnonymization = await AnonymizeProfileForDeletionAsync(userId, ct);
-        if (profileAnonymization.Anonymized &&
-            profileAnonymization.ProfileId is { } profileId &&
-            profileAnonymization.PreviousProfilePictureKey is { } pictureKey)
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
+        if (profile is not null && ProfilePictureKeys.Resolve(
+                profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey) is { } pictureKey)
         {
-            try
-            {
-                await fileStorage.DeleteAsync(pictureKey, ct);
-            }
-            catch (Exception ex)
-            {
-                // A stranded blob must not abort the cascade — the row it hangs off is already gone.
-                logger.LogError(ex,
-                    "Failed to delete profile picture during GDPR erasure for user {UserId}", userId);
-            }
+            // Retain the only retryable file reference until deletion succeeds.
+            await fileStorage.DeleteAsync(pictureKey, ct);
         }
 
+        await AnonymizeProfileForDeletionAsync(userId, ct);
         await repo.EraseProfileExtrasForUserAsync(userId, ct);
         await communicationPreferenceRepo.DeleteAllForUserAsync(userId, ct);
         await ApplyExpiredDeletionAnonymizationAsync(userId, ct);

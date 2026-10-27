@@ -110,9 +110,9 @@ internal sealed class ShiftManagementService(
     public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
         TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
 
-    public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId)
+    public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
-        var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
         return entity is null
             ? null
             : new ShiftEventKnobs(entity.IsShiftBrowsingOpen, entity.GlobalVolunteerCap, entity.ReminderLeadTimeHours);
@@ -540,7 +540,7 @@ internal sealed class ShiftManagementService(
         foreach (var dayOffset in dailyStaffing.Keys)
         {
             if (dayOffset < periodStart || dayOffset > periodEnd)
-                throw new InvalidOperationException($"Day offset {dayOffset} is outside the {rota.Period.ToString().ToLowerInvariant()} period ({periodStart} to {periodEnd})");
+                return ShiftGenerationResult.Failure($"Day offset {dayOffset} is outside the {rota.Period.ToString().ToLowerInvariant()} period ({periodStart} to {periodEnd})");
         }
 
         // Additive: days that already have shifts are skipped.
@@ -834,9 +834,9 @@ internal sealed class ShiftManagementService(
         LocalDate? startDate = null, LocalDate? endDate = null,
         ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null,
-        bool includeRestricted = false)
+        bool includeRestricted = false, CancellationToken ct = default)
     {
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
@@ -862,16 +862,16 @@ internal sealed class ShiftManagementService(
         if (!includeRestricted)
             flags |= ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas;
 
-        var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId);
+        var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId, ct);
         var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             urgencyTeamIds,
             minDayOffset,
             maxDayOffset,
-            flags));
+            flags), ct);
 
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
 
         var now = clock.GetCurrentInstant();
         var urgentShifts = shifts
@@ -1094,6 +1094,13 @@ internal sealed class ShiftManagementService(
         return result.OrderByDescending(u => u.UrgencyScore).ToList();
     }
 
+    private static bool OverlapsDay(Shift shift, EventSettingsInfo calendar, Instant dayStart, Instant dayEnd)
+    {
+        var start = shift.GetAbsoluteStart(calendar);
+        var end = shift.GetAbsoluteEnd(calendar);
+        return start < dayEnd && end > dayStart;
+    }
+
     public async Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
@@ -1124,12 +1131,7 @@ internal sealed class ShiftManagementService(
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var dateLabel = dayDate.ToWeekdayDayMonth();
 
-            var overlapping = shifts.Where(s =>
-            {
-                var start = s.GetAbsoluteStart(es);
-                var end = s.GetAbsoluteEnd(es);
-                return start < dayEnd && end > dayStart;
-            }).ToList();
+            var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd)).ToList();
 
             var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
@@ -1314,29 +1316,29 @@ internal sealed class ShiftManagementService(
         cache.Remove(OverallCoverageCacheKey);
     }
 
-    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
+    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
         // Sub-periods would fan the cache key out 4x, so only the base period is cached.
         if (subPeriod is not null)
-            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod);
+            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod, ct);
 
         var cached = await cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null);
+            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null, ct);
         });
         return cached!;
     }
 
-    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod)
+    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null)
             return new DashboardOverview(0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, []);
 
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
-            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
 
         var shifts = period is null
             ? allShifts
@@ -1349,7 +1351,7 @@ internal sealed class ShiftManagementService(
         }
 
         var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCountsRo = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCountsRo = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
         var confirmedCounts = confirmedCountsRo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         int ConfirmedOn(Guid shiftId) => confirmedCounts.TryGetValue(shiftId, out var c) ? c : 0;
@@ -1373,26 +1375,26 @@ internal sealed class ShiftManagementService(
                 Pct(perPeriod, ShiftPeriod.Strike));
         }
 
-        var ticketOrders = await TicketQueryService.GetTicketOrdersAsync();
+        var ticketOrders = await TicketQueryService.GetTicketOrdersAsync(ct);
         var ticketHolders = ticketOrders
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
             .Select(o => o.MatchedUserId!.Value)
             .ToHashSet();
 
-        var engagedUserIds = await repo.GetEngagedUserIdsForShiftsAsync(shiftIds);
+        var engagedUserIds = await repo.GetEngagedUserIdsForShiftsAsync(shiftIds, ct);
         var engaged = engagedUserIds.ToHashSet();
 
         var ticketHoldersEngaged = engaged.Count(ticketHolders.Contains);
         var nonTicketSignups = engaged.Count(u => !ticketHolders.Contains(u));
 
         var staleThreshold = clock.GetCurrentInstant().Minus(Duration.FromDays(3));
-        var stalePendingCount = await repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold);
+        var stalePendingCount = await repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold, ct);
 
         var teamIdsOnRotas = shifts
             .Select(s => s.Rota.TeamId)
             .Distinct()
             .ToList();
-        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas, ct);
 
         var departments = BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
 
@@ -1532,39 +1534,39 @@ internal sealed class ShiftManagementService(
         return (total, filled, totalSlots, filledSlots, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
+    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
         // Sub-periods would fan the cache key out 4x, so only the base period is cached.
         if (subPeriod is not null)
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod);
+            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
 
         var cached = await cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null);
+            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null, ct);
         });
         return cached!;
     }
 
-    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod)
+    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
         int? minDayOffset = null;
         int? maxDayOffset = null;
 
         if (period is not null)
         {
-            var es = await calendarResolver.GetAsync(eventSettingsId);
+            var es = await calendarResolver.GetAsync(eventSettingsId, ct);
             if (es is null) return [];
             (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
         }
 
         var pendingCounts = await repo.GetPendingSignupCountsByTeamAsync(
-            eventSettingsId, minDayOffset, maxDayOffset);
+            eventSettingsId, minDayOffset, maxDayOffset, ct);
 
         if (pendingCounts.Count == 0)
             return [];
 
-        var teamsById = await TeamService.GetTeamsAsync();
+        var teamsById = await TeamService.GetTeamsAsync(ct);
         var teamMeta = IncludeParents(teamsById, pendingCounts.Keys);
 
         var relevantTeamIds = new HashSet<Guid>(pendingCounts.Keys.Where(teamMeta.ContainsKey));
@@ -1587,7 +1589,7 @@ internal sealed class ShiftManagementService(
             .ToList();
         var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
 
-        var userLookup = await UserService.GetUserInfosAsync(coordinatorUserIds);
+        var userLookup = await UserService.GetUserInfosAsync(coordinatorUserIds, ct);
 
         var coordsByTeam = coordsRaw
             .GroupBy(c => c.TeamId)
@@ -1657,27 +1659,27 @@ internal sealed class ShiftManagementService(
 
     public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null)
+        BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
         // Sub-periods would fan the cache key out 4x, so only the base period is cached.
         if (subPeriod is not null)
-            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod);
+            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod, ct);
 
         var cached = await cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null);
+            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null, ct);
         });
         return cached!;
     }
 
     private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
-        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod)
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
         // CreatedAt is Shifts-owned, not on the Settings calendar; TrendWindow.All starts there.
-        var local = await repo.GetEventSettingsByIdAsync(eventSettingsId);
+        var local = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
         if (local is null) return [];
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1701,15 +1703,15 @@ internal sealed class ShiftManagementService(
         var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
 
         var signupsInWindow = await repo.GetSignupCreatedAtsInWindowAsync(
-            eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
+            eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset, ct);
 
-        var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync())
+        var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync(ct))
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
                 && o.PurchasedAt >= startInstant
                 && o.PurchasedAt < endInstant)
             .Select(o => o.PurchasedAt)
             .ToList();
-        var loginsInWindow = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
+        var loginsInWindow = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
             .Select(u => u.LastLoginAt!.Value)
             .ToList();
@@ -1735,13 +1737,13 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
-        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
         // Event days have different day-over-day dynamics.
         if (period is not (ShiftPeriod.Build or ShiftPeriod.Strike))
             return [];
 
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1751,12 +1753,12 @@ internal sealed class ShiftManagementService(
 
         var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
-            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
         var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var teamIdsOnRotas = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas, ct);
 
         (Guid Id, string Name) DeptOf(Shift s)
         {
@@ -1777,12 +1779,7 @@ internal sealed class ShiftManagementService(
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var dateLabel = dayDate.ToWeekdayDayMonth();
 
-            var overlapping = shifts.Where(s =>
-            {
-                var start = s.GetAbsoluteStart(es);
-                var end = s.GetAbsoluteEnd(es);
-                return start < dayEnd && end > dayStart;
-            });
+            var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd));
 
             var byDept = new Dictionary<Guid, (string Name, int Count)>();
             foreach (var s in overlapping)
@@ -1806,13 +1803,13 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<CoverageHeatmap> GetCoverageHeatmapAsync(
-        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
         var empty = new CoverageHeatmap(
             [],
             []);
 
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return empty;
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
@@ -1822,14 +1819,14 @@ internal sealed class ShiftManagementService(
 
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
-            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
         if (allShifts.Count == 0) return empty;
 
         var shiftIds = allShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var teamIds = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
-        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds);
+        var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
 
         var days = dayOffsets
             .Select(off =>
@@ -1872,12 +1869,7 @@ internal sealed class ShiftManagementService(
                 var dayStart = day.Date.AtStartOfDayInZone(tz).ToInstant();
                 var dayEnd = day.Date.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
 
-                var overlapping = shifts.Where(s =>
-                {
-                    var start = s.GetAbsoluteStart(es);
-                    var end = s.GetAbsoluteEnd(es);
-                    return start < dayEnd && end > dayStart;
-                }).ToList();
+                var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd)).ToList();
 
                 var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
                 var filledSlots = overlapping.Sum(s =>
@@ -1941,16 +1933,16 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
-        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
     {
         if (period is null) return [];
 
-        var es = await calendarResolver.GetAsync(eventSettingsId);
+        var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
         var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
-            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas));
+            Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
         var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
 
         if (period == ShiftPeriod.Build && subPeriod is not null)
@@ -1960,7 +1952,7 @@ internal sealed class ShiftManagementService(
         }
 
         var shiftIds = periodShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         int FilledSlotsOn(Shift s)
         {

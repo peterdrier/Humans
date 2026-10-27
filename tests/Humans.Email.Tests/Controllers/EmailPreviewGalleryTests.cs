@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -39,7 +38,6 @@ public sealed class EmailPreviewGalleryTests
         var controller = new EmailController(
             Substitute.For<IUserService>(),
             Substitute.For<IEmailOutboxManagement>(),
-            Substitute.For<IAuditLogService>(),
             NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings()));
 
@@ -53,7 +51,7 @@ public sealed class EmailPreviewGalleryTests
     {
         var outbox = Substitute.For<IEmailOutboxManagement>();
         var controller = new EmailController(Substitute.For<IUserService>(), outbox,
-            Substitute.For<IAuditLogService>(), NullLogger<EmailController>.Instance,
+            NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings()))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }

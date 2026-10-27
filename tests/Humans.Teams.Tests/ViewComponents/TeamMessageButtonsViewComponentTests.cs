@@ -31,7 +31,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
         _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             _targetId, "Target", false, "en", null, Instant.FromUnixTimeSeconds(0),
-            null, null, null, null, null, null, null,
+            null, null, null, null, null, null,
             null, null, null, [], [], [], null, []));
     }
 

@@ -1,7 +1,7 @@
 using Humans.Base.Attributes;
-namespace Humans.Email.Contracts;
+namespace Humans.Email.Services;
 
-public interface IEmailOutboxProcessor
+internal interface IEmailOutboxProcessor
 {
     /// <summary>
     /// Drains one batch; returns at once while sending is paused. A single message's failure never throws: the row

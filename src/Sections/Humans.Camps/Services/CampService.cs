@@ -598,51 +598,70 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task ApproveSeasonAsync(
+    public async Task<CampAdminMutationResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default)
     {
+        if (notes is { Length: > 2000 })
+        {
+            return new(false, "Review notes must be 2000 characters or fewer.");
+        }
+
+        string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.Status != CampSeasonStatus.Pending)
+            {
+                refusal = $"Cannot approve a season with status {season.Status}.";
+                return;
+            }
             season.Approve(reviewedByUserId, notes, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
+        if (refusal is not null) return new(false, refusal);
+        if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonApproved, nameof(CampSeason), seasonId,
             $"Approved season {year}",
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        return new(true);
 
     }
 
-    public async Task RejectSeasonAsync(
+    public async Task<CampAdminMutationResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default)
     {
+        if (notes is { Length: > 2000 })
+        {
+            return new(false, "Review notes must be 2000 characters or fewer.");
+        }
+
+        string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.Status != CampSeasonStatus.Pending)
+            {
+                refusal = $"Cannot reject a season with status {season.Status}.";
+                return;
+            }
             season.Reject(reviewedByUserId, notes, now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
+        if (refusal is not null) return new(false, refusal);
+        if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonRejected, nameof(CampSeason), seasonId,
@@ -650,7 +669,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
+        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
+        return new(true);
 
     }
 
@@ -692,31 +712,28 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
+        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
 
         return CampUpdateResult.Success();
 
     }
 
     private async Task NotifyPendingRequestersOfSeasonClosureAsync(
-        Guid seasonId, Guid campId, int year, CancellationToken cancellationToken)
+        Guid seasonId, Guid campId, int year)
     {
-        var pendingUserIds = await _repo.GetPendingRequesterUserIdsForSeasonAsync(seasonId, cancellationToken);
-        if (pendingUserIds.Count == 0)
-        {
-            return;
-        }
-
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        var name = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug;
-        var slug = camp?.Slug;
-
+        // The season change is committed; finish its notifications independently of the request.
         try
         {
+            var pendingUserIds = await _repo.GetPendingRequesterUserIdsForSeasonAsync(seasonId, CancellationToken.None);
+            if (pendingUserIds.Count == 0) return;
+
+            var camp = await _repo.GetByIdAsync(campId, CancellationToken.None);
+            var name = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug;
+            var slug = camp?.Slug;
             var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
             foreach (var userId in pendingUserIds)
             {
-                var culture = await GetRecipientCultureAsync(userId, cancellationToken);
+                var culture = await GetRecipientCultureAsync(userId);
                 if (!recipientsByCulture.TryGetValue(culture, out var recipients))
                 {
                     recipients = [];
@@ -739,7 +756,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                         body: NoticeResources.GetString("Camps_Notification_SeasonClosedBody", culture),
                         actionUrl: slug is null ? null : $"/Barrios/{slug}",
                         actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
-                        cancellationToken: cancellationToken);
+                        cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -794,8 +811,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
+        string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
@@ -804,22 +822,26 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.Status is not (CampSeasonStatus.Full or CampSeasonStatus.Withdrawn))
+            {
+                refusal = $"Cannot reactivate a season with status {season.Status}.";
+                return;
+            }
             previousStatus = season.Status;
             newStatus = season.Reactivate(now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
+        if (refusal is not null) return new(false, refusal);
+        if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status changed from {previousStatus} to {newStatus}",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        return new(true);
 
     }
 
@@ -883,10 +905,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return CampUpdateResult.Success();
     }
 
-    public async Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp not found.");
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        if (camp is null) return new(false, "Camp not found.");
 
         // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
         // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
@@ -914,7 +936,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
             if (deletedImagePaths is null)
             {
-                throw new InvalidOperationException("Camp not found.");
+                return new(false, "Camp not found.");
             }
 
             scope.Complete();
@@ -939,6 +961,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     path, campId);
             }
         }
+        return new(true);
 
     }
 
@@ -1341,16 +1364,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         };
     }
 
-    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
+    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
     {
         try
         {
-            var language = (await _userService.GetUserInfoAsync(userId, cancellationToken))?.PreferredLanguage;
+            var language = (await _userService.GetUserInfoAsync(userId, CancellationToken.None))?.PreferredLanguage;
             return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
         }
         catch (Exception ex)
         {
@@ -1383,11 +1402,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
-        var slug = camp?.Slug;
+        // Membership is committed; request cancellation must not skip its notification.
         try
         {
-            var culture = await GetRecipientCultureAsync(member.UserId, cancellationToken);
+            var camp = await _repo.GetByIdAsync(scopedCampId, CancellationToken.None);
+            var slug = camp?.Slug;
+            var culture = await GetRecipientCultureAsync(member.UserId);
             var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug
                 ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
             var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipApproved", culture)!, campName);
@@ -1400,7 +1420,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 body: null,
                 actionUrl: slug is null ? null : $"/Barrios/{slug}",
                 actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
-                cancellationToken: cancellationToken);
+                cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -1430,10 +1450,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             cascadeRoleAssignments: false,
             cancellationToken);
 
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+        // Membership is committed; request cancellation must not skip its notification.
         try
         {
-            var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
+            var camp = await _repo.GetByIdAsync(scopedCampId, CancellationToken.None);
+            var culture = await GetRecipientCultureAsync(requesterUserId);
             var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug
                 ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
             var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipRejected", culture)!, campName);
@@ -1444,7 +1465,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 title,
                 [requesterUserId],
                 body: null,
-                cancellationToken: cancellationToken);
+                cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -1641,19 +1662,19 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // the registered IUserDataContributor, which refreshes after this returns.
     }
 
-    public async Task SetCampSeasonEeSlotCountAsync(
+    public async Task<CampAdminMutationResult> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         if (slotCount < 0)
-            throw new ArgumentOutOfRangeException(nameof(slotCount), "EE slot count cannot be negative.");
+            return new(false, "EE slot count cannot be negative.");
 
         var result = await _repo.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, cancellationToken);
         if (result is null)
-            throw new InvalidOperationException("Camp season not found.");
+            return new(false, "Camp season not found.");
 
         var (oldValue, newValue, campId) = result.Value;
-        if (oldValue == newValue) return;
+        if (oldValue == newValue) return new(true);
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonEeSlotCountChanged,
@@ -1661,6 +1682,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             $"EE slot count changed from {oldValue} to {newValue}.",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        return new(true);
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(

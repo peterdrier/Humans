@@ -73,6 +73,28 @@ public sealed class DashboardShiftsViewComponentTests
     }
 
     [HumansFact]
+    public async Task InvokeAsync_AbortedUrgencyReadPropagatesInsteadOfRenderingAnEmptyCard()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var sut = BuildSut();
+        sut.HttpContext.RequestAborted = cancellation.Token;
+        _membership.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(OpenBurn);
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(false));
+        _shiftMgmt.GetUrgentShiftsAsync(OpenBurn.Id, limit: 3, ct: cancellation.Token)
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromCanceled<IReadOnlyList<UrgentShiftInfo>>(cancellation.Token);
+            });
+
+        Func<Task> invoke = () => sut.InvokeAsync();
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task InvokeAsync_InSeason_ShiftBrowsingFollowsTheBurnSwitch()
     {
         var model = await InvokeAsync(isOffSeason: false);

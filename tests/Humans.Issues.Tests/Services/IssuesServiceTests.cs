@@ -23,7 +23,6 @@ using Humans.Issues.Tests.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -48,7 +47,6 @@ public sealed class IssuesServiceTests
     private static readonly IssueViewer Admin = new(Guid.NewGuid(), [RoleNames.Admin]);
 
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
-    private readonly IMemoryCache Cache = new MemoryCache(new MemoryCacheOptions());
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
     private readonly InMemoryFileStorage FileStorage = new();
 
@@ -123,18 +121,9 @@ public sealed class IssuesServiceTests
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
-            Cache,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
-
-    private void PrimeBadgeCounts(params Guid[] userIds)
-    {
-        foreach (var id in userIds) Cache.Set(IssuesApplicationService.BadgeCacheKey(id), -1);
-    }
-
-    private bool BadgeCountCached(Guid userId) =>
-        Cache.TryGetValue(IssuesApplicationService.BadgeCacheKey(userId), out _);
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
         where TContext : DbContext =>
@@ -350,13 +339,16 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_lands_in_Triage_and_invalidates_nav_badge()
+    public async Task SubmitIssueAsync_lands_in_Triage_and_updates_nav_badge()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var bystanderId = Guid.NewGuid();
-        PrimeBadgeCounts(userId, bystanderId);
+        var viewer = new IssueViewer(userId, []);
+        var bystander = new IssueViewer(bystanderId, []);
+        (await _service.GetActionableCountForViewerAsync(viewer, TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _service.GetActionableCountForViewerAsync(bystander, TestContext.Current.CancellationToken)).Should().Be(0);
 
         var issue = (await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
@@ -367,8 +359,8 @@ public sealed class IssuesServiceTests
         issue.Status.Should().Be(IssueStatus.Triage);
         issue.ReporterUserId.Should().Be(userId);
         issue.Section.Should().Be("Tickets");
-        BadgeCountCached(userId).Should().BeFalse();
-        BadgeCountCached(bystanderId).Should().BeTrue();
+        (await _service.GetActionableCountForViewerAsync(viewer, TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _service.GetActionableCountForViewerAsync(bystander, TestContext.Current.CancellationToken)).Should().Be(0);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issue.Id, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Triage);
@@ -444,7 +436,7 @@ public sealed class IssuesServiceTests
             var service = new IssuesApplicationService(
                 repo, _userService, _userEmailService, _roleService,
                 _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
-                Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+                Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
             {
@@ -492,7 +484,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
-            Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
 
         var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
@@ -618,13 +610,14 @@ public sealed class IssuesServiceTests
     public async Task PostCommentAsync_reporter_on_terminal_auto_reopens_to_Open()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
-        PrimeBadgeCounts(reporterId);
+        var viewer = new IssueViewer(reporterId, []);
+        (await _service.GetActionableCountForViewerAsync(viewer, TestContext.Current.CancellationToken)).Should().Be(0);
 
         await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Status.Should().Be(IssueStatus.Open);
-        BadgeCountCached(reporterId).Should().BeFalse();
+        (await _service.GetActionableCountForViewerAsync(viewer, TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -1015,7 +1008,8 @@ public sealed class IssuesServiceTests
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
-        PrimeBadgeCounts(reporterId);
+        var viewer = new IssueViewer(reporterId, []);
+        (await _service.GetActionableCountForViewerAsync(viewer, TestContext.Current.CancellationToken)).Should().Be(1);
 
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, actorId, TestContext.Current.CancellationToken);
 
@@ -1023,7 +1017,7 @@ public sealed class IssuesServiceTests
         stored.Status.Should().Be(IssueStatus.Resolved);
         stored.ResolvedAt.Should().NotBeNull();
         stored.ResolvedByUserId.Should().Be(actorId);
-        BadgeCountCached(reporterId).Should().BeFalse();
+        (await _service.GetActionableCountForViewerAsync(viewer, TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -1172,7 +1166,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
-            Cache, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
         var assignee = SeedUser();
         await Db.SaveChangesAsync(ct);
@@ -1193,6 +1187,142 @@ public sealed class IssuesServiceTests
             call.GetMethodInfo().Name == "Log" &&
             (LogLevel)call.GetArguments()[0]! == LogLevel.Error &&
             ReferenceEquals(call.GetArguments()[3], failure));
+    }
+
+    [HumansFact]
+    public async Task BadgeReadStartedBeforeResolution_CannotRepublishStaleCount()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var snapshot = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var repo = Substitute.For<IIssuesRepository>();
+        var issue = new Issue { Id = Guid.NewGuid(), ReporterUserId = Admin.UserId, Status = IssueStatus.Open };
+        repo.FindForMutationAsync(issue.Id, ct).Returns(issue);
+        repo.CountActionableAsync(null, null, ct).Returns(snapshot.Task, Task.FromResult(0));
+        var service = new IssuesApplicationService(
+            repo, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+        var beforeWrite = service.GetActionableCountForViewerAsync(Admin, ct);
+        (await service.UpdateStatusAsync(issue.Id, Admin, IssueStatus.Resolved, Admin.UserId, ct)).Succeeded.Should().BeTrue();
+        snapshot.SetResult(1);
+        (await beforeWrite).Should().Be(1);
+
+        (await service.GetActionableCountForViewerAsync(Admin, ct)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData("Submit")]
+    [InlineData("Comment")]
+    [InlineData("Status")]
+    [InlineData("Assignee")]
+    [InlineData("Section")]
+    public async Task CommittedMutation_CompletesFollowUpDespiteRequestCancellation(string operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var request = new CancellationTokenSource();
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
+        var issue = (await _repository.GetByIdAsync(issueId, ct))!;
+        var handler = SeedUser();
+        var assignee = SeedUser();
+        var repo = Substitute.For<IIssuesRepository>();
+        repo.FindForMutationAsync(issueId, request.Token).Returns(issue);
+        repo.AddIssueAsync(Arg.Any<Issue>(), request.Token).Returns(async call =>
+        {
+            issue = call.Arg<Issue>();
+            await _repository.AddIssueAsync(issue, call.Arg<CancellationToken>());
+            await request.CancelAsync();
+        });
+        repo.SaveTrackedIssueAsync(issue, request.Token).Returns(async call =>
+        {
+            await _repository.SaveTrackedIssueAsync(issue, call.Arg<CancellationToken>());
+            await request.CancelAsync();
+        });
+        repo.AddCommentAndSaveIssueAsync(Arg.Any<IssueComment>(), issue, request.Token).Returns(async call =>
+        {
+            await _repository.AddCommentAndSaveIssueAsync(call.Arg<IssueComment>(), issue, call.Arg<CancellationToken>());
+            await request.CancelAsync();
+        });
+        _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<Guid>>([handler.Id]);
+        });
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult(Info(call.Arg<Guid>()));
+        });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return call.Arg<IReadOnlyCollection<Guid>>().Select(Info).OfType<UserInfo>().ToDictionary(info => info.Id);
+        });
+        var reporter = new IssueViewer(reporterId, []);
+        (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(1);
+        var service = new IssuesApplicationService(
+            repo, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+        switch (operation)
+        {
+            case "Submit":
+                var submitted = await service.SubmitIssueAsync(reporterId, IssueCategory.Bug, "New issue", "Details",
+                    "Tickets", null, null, null, null, ct: request.Token);
+                submitted.Issue.Should().NotBeNull();
+                break;
+            case "Comment":
+                (await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed", true, request.Token)).Comment.Should().NotBeNull();
+                break;
+            case "Status":
+                (await service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Admin.UserId, request.Token)).Succeeded.Should().BeTrue();
+                break;
+            case "Assignee":
+                (await service.UpdateAssigneeAsync(issueId, Admin, assignee.Id, Admin.UserId, request.Token)).Succeeded.Should().BeTrue();
+                break;
+            default:
+                (await service.UpdateSectionAsync(issueId, Admin, "Teams", Admin.UserId, request.Token)).Succeeded.Should().BeTrue();
+                break;
+        }
+
+        request.IsCancellationRequested.Should().BeTrue();
+        var stored = (await _repository.GetByIdAsync(issue.Id, ct))!;
+        stored.Should().NotBeNull();
+        (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(operation switch
+        {
+            "Submit" => 2,
+            "Comment" or "Status" => 0,
+            _ => 1,
+        });
+        if (!string.Equals(operation, "Section", StringComparison.Ordinal))
+        {
+            var source = operation switch
+            {
+                "Submit" => NotificationSource.IssueSubmitted,
+                "Comment" => NotificationSource.IssueComment,
+                "Status" => NotificationSource.IssueStatusChanged,
+                _ => NotificationSource.IssueAssigned,
+            };
+            _notificationService.ReceivedCalls().Should().Contain(call =>
+                (NotificationSource)call.GetArguments()[0]! == source
+                && (CancellationToken)call.GetArguments()[10]! == CancellationToken.None);
+        }
+        switch (operation)
+        {
+            case "Comment":
+                stored.Comments.Should().ContainSingle().Which.Content.Should().Be("Fixed");
+                await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
+                goto case "Status";
+            case "Status":
+                stored.Status.Should().Be(IssueStatus.Resolved);
+                await _notificationInbox.Received(1).ResolveBySourceKeyAsync(NotificationSource.IssueSubmitted,
+                    issue.Id.ToString(), Admin.UserId, CancellationToken.None);
+                break;
+            case "Assignee": stored.AssigneeUserId.Should().Be(assignee.Id); break;
+            case "Section": stored.Section.Should().Be("Teams"); break;
+            default: stored.Title.Should().Be("New issue"); break;
+        }
     }
 
     [HumansFact]
@@ -1355,24 +1485,24 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_audits_change_and_invalidates_nav_badge()
+    public async Task UpdateSectionAsync_audits_change_and_updates_both_queue_counts()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var actorId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
         var teamsAdminId = Guid.NewGuid();
-        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([ticketAdminId]);
-        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TeamsAdmin, Arg.Any<CancellationToken>()).Returns([teamsAdminId]);
-        PrimeBadgeCounts(ticketAdminId, teamsAdminId);
+        var ticketViewer = new IssueViewer(ticketAdminId, [RoleNames.TicketAdmin]);
+        var teamsViewer = new IssueViewer(teamsAdminId, [RoleNames.TeamsAdmin]);
+        (await _service.GetActionableCountForViewerAsync(ticketViewer, TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _service.GetActionableCountForViewerAsync(teamsViewer, TestContext.Current.CancellationToken)).Should().Be(0);
 
         await _service.UpdateSectionAsync(issueId, Admin, "Teams", actorId, TestContext.Current.CancellationToken);
 
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.Section.Should().Be("Teams");
 
-        // Both queues' holders: the issue left one count and joined the other.
-        BadgeCountCached(ticketAdminId).Should().BeFalse();
-        BadgeCountCached(teamsAdminId).Should().BeFalse();
+        (await _service.GetActionableCountForViewerAsync(ticketViewer, TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _service.GetActionableCountForViewerAsync(teamsViewer, TestContext.Current.CancellationToken)).Should().Be(1);
 
         await AuditLog.Received().LogAsync(
             AuditAction.IssueSectionChanged,
@@ -2194,15 +2324,37 @@ public sealed class IssuesServiceTests
         (await ScreenshotController(stranger.Id).Screenshot(Guid.NewGuid())).Should().BeOfType<NotFoundResult>();
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ScreenshotCleanupFailure_AfterCommittedErasure_DoesNotReverseSuccess(bool gdprErasure)
+    [HumansFact]
+    public async Task EraseForUserAsync_ScreenshotFailure_RetainsTheIssueForRetry()
+    {
+        const string key = "uploads/issues/retry/shot.png";
+        var issueId = await SeedIssueWithResolvedAtAsync(
+            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
+        var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
+        var attempts = 0;
+        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(_ =>
+            ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
+        var service = new IssuesApplicationService(
+            _repository, _userService, _userEmailService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+        var erase = () => service.EraseForUserAsync(reporterId, Ct);
+        await erase.Should().ThrowAsync<IOException>();
+
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, Ct))
+            .ScreenshotStoragePath.Should().Be(key);
+        await erase();
+        (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
+        await _fileStorage.Received(2).DeleteAsync(key, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task ScreenshotCleanupFailure_AfterCommittedRetention_DoesNotReverseSuccess()
     {
         const string key = "uploads/issues/cleanup/shot.png";
         var issueId = await SeedIssueWithResolvedAtAsync(
             IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
-        var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
         var rowRemovedAtCleanup = false;
         CancellationToken? cleanupToken = null;
         _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(async call =>
@@ -2214,10 +2366,9 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
-            Cache, Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
-        if (gdprErasure) await service.EraseForUserAsync(reporterId, Ct);
-        else (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
+        (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
 
         (await _issuesDb.Issues.AsNoTracking().AnyAsync(i => i.Id == issueId, Ct)).Should().BeFalse();
         rowRemovedAtCleanup.Should().BeTrue();

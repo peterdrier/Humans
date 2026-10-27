@@ -200,7 +200,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         }
     }
 
-    public async Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
+    public async Task<TeamUpdateConflict> AddTeamWithRequiresApprovalOverrideAsync(
         Team team, bool requiresApproval, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -213,15 +213,19 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
         {
             SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
-            ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug"
+            ConstraintName: "IX_teams_Slug" or "IX_teams_CustomSlug" or "IX_teams_GoogleGroupPrefix"
         })
         {
-            // A slug race against a concurrent create: false lets the service retry with the next suffix.
             db.Entry(team).State = EntityState.Detached;
-            return false;
+            return ((Npgsql.PostgresException)ex.InnerException).ConstraintName switch
+            {
+                "IX_teams_Slug" => TeamUpdateConflict.SlugTaken,
+                "IX_teams_CustomSlug" => TeamUpdateConflict.CustomSlugTaken,
+                _ => TeamUpdateConflict.GroupPrefixTaken
+            };
         }
 
-        return true;
+        return TeamUpdateConflict.None;
     }
 
     public async Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)

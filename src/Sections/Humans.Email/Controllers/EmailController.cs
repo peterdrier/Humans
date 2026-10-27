@@ -1,11 +1,9 @@
 using Humans.Email.Contracts;
 using Humans.Email.Services;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
-using Humans.Email.Domain;
 using Humans.Email.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +17,6 @@ namespace Humans.Email.Controllers;
 internal sealed class EmailController(
     IUserService userService,
     IEmailOutboxManagement outboxService,
-    IAuditLogService audit,
     ILogger<EmailController> logger,
     IOptions<EmailSettings> emailSettings) : HumansControllerBase(userService)
 {
@@ -68,16 +65,11 @@ internal sealed class EmailController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BackfillDailyCounts()
     {
-        var added = await outboxService.BackfillDailySendCountsAsync();
-        logger.LogInformation("Admin {AdminId} backfilled {Count} daily send count row(s)", User.Identity?.Name, added);
-
         var actorId = GetCurrentUserId();
-        if (actorId.HasValue)
-        {
-            await audit.LogAsync(
-                AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount), Guid.Empty,
-                $"Backfilled {added} daily send count row(s) from outbox history", actorId.Value);
-        }
+        if (actorId is null) return Unauthorized();
+
+        var added = await outboxService.BackfillDailySendCountsAsync(actorId.Value);
+        logger.LogInformation("Admin {AdminId} backfilled {Count} daily send count row(s)", User.Identity?.Name, added);
 
         SetSuccess($"Backfilled {added} daily send count row(s) from outbox history.");
         return RedirectToAction(nameof(EmailOutbox));

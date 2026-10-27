@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Email.ViewComponents;
 
 /// <summary>Renders only for an admin viewer who passes the host page's policy; nothing for anyone else.</summary>
-public sealed class CommunicationPreferencesCardViewComponent(IAuthorizationService authorization) : ViewComponent
+internal sealed class CommunicationPreferencesCardViewComponent(IAuthorizationService authorization) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {

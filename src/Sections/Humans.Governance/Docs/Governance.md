@@ -131,7 +131,7 @@ A binding vote of the association. Full design in [`features/assembly-votes.md`]
 | Title | jsonb culture → text | `GovernanceLocalizedText` |
 | OfficialText | jsonb culture → text | Markdown, rendered through the shared sanitizer |
 | OfficialCulture | string (10) | The culture whose text is binding; the rest are translations |
-| InfoUrl | string? (2000) | Optional information link |
+| InfoUrl | string? (2000) | Optional absolute HTTP(S) information link; trimmed on save. Member detail omits unsafe legacy values without changing the stored record. |
 | Kind | AssemblyVoteKind | YesNo / RankedChoice, stored as string |
 | RequiredMajority | RequiredMajority | Simple / TwoThirds, stored as string |
 | IndicativeAudience | IndicativeAudience | None / Colaboradores / AllMembers, stored as string |
@@ -267,10 +267,16 @@ The member dashboard's Applications tile links to `/Governance/Applications` and
 
 ## Invariants
 
+- Membership status uses account state, active affiliations and consent deadlines; the Consent Coordinator review is an independent annotation. Bare accounts are pending, suspended accounts remain suspended, and other non-active states cannot become active through stale affiliations.
+
+- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
+
+- Consent deadline audiences use `GetUsersRequiringStatusUpdateAsync`: a zero horizon selects active-role holders already due, while reminder callers supply their look-ahead horizon. Both use the same deadline calculation.
+
 - Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
   memberships or consent requirements. Snapshot memoization uses that same resolved identity.
 
-Approval and rejection share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
+Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
@@ -340,7 +346,7 @@ Approval and rejection share one committed-decision path: capture Board ids, fin
 - Only the latest approved application (by submission time) per human and tier can receive a renewal reminder. Selection precedes the expiry-window and sent-stamp filters: an older term never reappears after renewal or after the latest reminder was sent. Other tiers and humans remain independent.
 - A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs`; it reads and stamps Applications only through `IGovernanceManagement`.
 - On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by the date-filtered active approvals, so it never waits on the tier write). `MembershipTierExpiryJob` (`Humans.Governance/Jobs/`, `SectionJobs` cron `5 0 * * *`, UTC) runs Asociado then Colaborador through the internal `IGovernanceManagement.ExpireMembershipTiersAsync`, which **rewrites the member's tier row** — to another still-active tier the human holds, otherwise to `Volunteer` — and returns the downgrades; the job writes an `AuditAction.TierDowngraded` entry per downgrade (entity `Profile`, actor `MembershipTierExpiryJob`, unchanged wording).
-- **Membership tier GDPR:** `MembershipTierService` exports the `MembershipTier` slice (tier, granted, term end, granting application; the legacy tier alone while uncopied; null for a Volunteer). Art. 17 retains it — the register of members (LO 1/2002 Art. 14; GDPR Art. 17(3)(b)) — and it holds no free text. Account merge: the survivor's tier wins (a legacy-only survivor tier is copied to a row first); the source row moves when the survivor has none, otherwise it is deleted.
+- **Membership tier GDPR:** `MembershipTierService` exports the `MembershipTier` slice (tier, granted, term end, granting application; the legacy tier alone while uncopied; null for a Volunteer). Art. 17 retains it — the register of members (LO 1/2002 Art. 14; GDPR Art. 17(3)(b)) — and it holds no free text. Account merge: the survivor's tier wins, otherwise the source's effective tier moves, including a legacy-only tier with its granting application and term dates. An explicit Volunteer row suppresses that account's legacy tier. Tier merging runs before application reassignment to retain grant provenance; the source row is removed and retries preserve the result.
 - The member-dashboard term card passes `HttpContext.RequestAborted` through its profile, membership, and application reads, so a disconnected browser cancels all of its advisory rendering work.
 - The Board voting grid links row content to the application detail. Applicant profile links retain their own destination, including modified clicks that open another tab without navigating the grid.
 - After an application is submitted, withdrawn, approved, or rejected, `ApplicationDecisionService` evicts every current Board member's voting-badge count because each unvoted count changes. A Board-vote upsert invalidates only that voter's voting badge.

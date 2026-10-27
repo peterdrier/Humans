@@ -26,6 +26,8 @@ internal sealed class UnsubscribeTokenProvider(
 
     public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateToken(string token)
     {
+        if (string.IsNullOrEmpty(token)) return (TokenValidationStatus.Invalid, default, default);
+
         try
         {
             var payload = _protector.Unprotect(token);

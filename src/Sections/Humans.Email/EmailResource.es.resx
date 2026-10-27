@@ -125,10 +125,10 @@
     <value>Te has dado de baja. Puedes volver a activar cualquier categoría abajo.</value>
   </data>
   <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Source</value>
+    <value>Origen del cambio</value>
   </data>
   <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Updated</value>
+    <value>Actualizado el</value>
   </data>
   <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Siempre activo</value></data>
   <data name="Email_Unsubscribe_Title" xml:space="preserve">
@@ -180,7 +180,6 @@
   <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
   <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Códigos de campañas</value></data>
   <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Mensajes entre personas</value></data>
-  <data name="Email_CommPrefs_Name_Ticketing" xml:space="preserve"><value>Entradas</value></data>
   <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novedades del voluntariado</value></data>
   <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novedades de los equipos</value></data>
   <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Gobernanza</value></data>

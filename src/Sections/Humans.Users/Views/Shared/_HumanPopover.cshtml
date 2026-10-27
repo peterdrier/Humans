@@ -26,7 +26,7 @@
         }
         else if (Model.IsSuspended)
         {
-            <span class="badge bg-danger" style="font-size: 0.7rem;">@Localizer["ProfileCard_Suspended"]</span>
+            <span class="badge bg-danger" style="font-size: 0.7rem;">@Localizer["Users_ProfileCard_Suspended"]</span>
         }
         else if (!string.IsNullOrEmpty(Model.MembershipTier)
             && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))
@@ -64,7 +64,7 @@
         {
             <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;">
                 @lang.LanguageName
-                <small class="opacity-75">(@lang.Proficiency)</small>
+                <small class="opacity-75">(@Localizer.EnumDisplay(lang.Proficiency))</small>
             </span>
         }
     </div>

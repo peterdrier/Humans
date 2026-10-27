@@ -53,7 +53,7 @@ public class SepaWithdrawTests
                 [UserId] = new(
                     Id: UserId, BurnerName: "Paul", IsGdprAnonymized: false, PreferredLanguage: "fr",
                     FallbackPictureUrl: null, CreatedAt: FixedNow, LastLoginAt: null,
-                    LastConsentReminderSentAt: null, DeletionRequestedAt: null, DeletionScheduledFor: null,
+                    DeletionRequestedAt: null, DeletionScheduledFor: null,
                     DeletionEligibleAfter: null,
                     ContactSource: null,
                     ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,

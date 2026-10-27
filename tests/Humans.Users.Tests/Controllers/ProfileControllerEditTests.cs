@@ -425,14 +425,14 @@ public class ProfileControllerEditTests
     {
         _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
         _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(false, ErrorKey: "Profile_BurnerCVRequired"));
+            .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
         var model = MakeValidModel();
 
         var result = await _controller.Edit(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         _controller.ModelState[nameof(ProfileViewModel.NoPriorBurnExperience)]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("Profile_BurnerCVRequired");
+            .Which.ErrorMessage.Should().Be("Users_Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
         await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
     }

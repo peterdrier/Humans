@@ -152,7 +152,7 @@ internal sealed class AssemblyVoteService(
             // official text, and labelling the binding text "a translation" would be wrong.
             IsTranslation: vote.OfficialText.HasCulture(culture)
                            && !culture.Equals(vote.OfficialCulture, StringComparison.OrdinalIgnoreCase),
-            vote.InfoUrl,
+            SafeInfoUrl(vote.InfoUrl),
             vote.Kind,
             vote.RequiredMajority,
             vote.IndicativeAudience,
@@ -888,6 +888,7 @@ internal sealed class AssemblyVoteService(
         if (string.IsNullOrWhiteSpace(draft.OfficialCulture)) return false;
         if (!Fits(draft.OfficialCulture, MaxCultureLength)) return false;
         if (!Fits(draft.InfoUrl, MaxInfoUrlLength)) return false;
+        if (!string.IsNullOrWhiteSpace(draft.InfoUrl) && SafeInfoUrl(draft.InfoUrl) is null) return false;
         if (!draft.Title.TryGetValue(draft.OfficialCulture, out var title)
             || string.IsNullOrWhiteSpace(title)) return false;
         if (draft.Title.Values.Any(t => !Fits(t, MaxTitleLength))) return false;
@@ -910,13 +911,21 @@ internal sealed class AssemblyVoteService(
                   == draft.Options.Count;
     }
 
+    // Used on reads too: older rows may predate URL validation.
+    private static string? SafeInfoUrl(string? url)
+    {
+        var trimmed = url?.Trim();
+        return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            && uri.Scheme is "http" or "https" ? trimmed : null;
+    }
+
     private static void ApplyDraft(AssemblyVote vote, AssemblyVoteDraft draft, Instant now)
     {
         vote.Title = new GovernanceLocalizedText(draft.Title.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
         vote.OfficialText = new GovernanceLocalizedText(
             draft.OfficialText.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
         vote.OfficialCulture = draft.OfficialCulture;
-        vote.InfoUrl = draft.InfoUrl;
+        vote.InfoUrl = SafeInfoUrl(draft.InfoUrl);
         vote.Kind = draft.Kind;
         vote.RequiredMajority = draft.RequiredMajority;
         vote.IndicativeAudience = draft.IndicativeAudience;

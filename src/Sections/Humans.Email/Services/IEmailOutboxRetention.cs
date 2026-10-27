@@ -1,6 +1,6 @@
-namespace Humans.Email.Contracts;
+namespace Humans.Email.Services;
 
-public interface IEmailOutboxRetention
+internal interface IEmailOutboxRetention
 {
     /// <summary>Deletes sent rows older than <c>Email:OutboxRetentionDays</c>. Returns rows deleted.</summary>
     Task<int> PurgeExpiredAsync(CancellationToken cancellationToken = default);

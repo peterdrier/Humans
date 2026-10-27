@@ -37,6 +37,8 @@ Guest updates serialize per row by disabling both editable channels and the matc
 
 GDPR erasure invalidates preference access through both current and legacy unsubscribe tokens, even while their cryptographic lifetime remains valid. Guest access also refuses an erased signed-in account. These paths cannot recreate the preference rows erasure deleted.
 
+Guest preferences and unsubscribe actions use the same token validator for account resolution and erasure refusal. Legacy campaign tokens authorize Marketing unsubscribe only, never the Guest preference editor.
+
 Tokens minted before an account merge resolve to the surviving account for both Guest preference reads and writes, as in the one-click unsubscribe flow.
 
 Signed-in Profile and Guest updates audit the authenticated actor. Magic-link, one-click and imported changes keep service attribution; a stale token on a signed-in Guest request does not change its source or actor. Both channel-update overloads share one service write path, preserving the inbox channel on email-only writes, the first subscription date and no-op metadata.
@@ -80,11 +82,11 @@ Until the legacy table is dropped, a (user, category) with no row here falls bac
 
 ## Migration History
 
-- `SplitCommunicationCategories` — data migration splitting EventOperations → VolunteerUpdates + TeamUpdates, renaming CommunityUpdates → FacilitatedMessages
+- Category split (EventOperations → VolunteerUpdates + TeamUpdates, CommunityUpdates → FacilitatedMessages) — applied before the Email baseline; the deprecated values stay in the enum because rows store categories by name
 - `AddEmailCommunicationPreferences` + data migration `email.communication-preferences` — Users decomposition commit 14 moves the table to Email
 
 ## Related Features
 
-- [Notification Inbox (#292-295)](../../../Humans.Notifications/Docs/features/notification-inbox.md) — in-app alerts controlled by the Alert column
+- [Notification Inbox (nobodies-collective/Humans#292–#295)](../../../Humans.Notifications/Docs/features/notification-inbox.md) — in-app alerts controlled by the Alert column
 - Unsubscribe flow — RFC 8058 one-click + browser-based unsubscribe using category-aware tokens
 - Facilitated Messaging — user-to-user email via Humans, gated by FacilitatedMessages preference

@@ -2,10 +2,10 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Email.Contracts;
 
-/// <summary>Renders an always-send system email exactly as the outbox would wrap it. Enqueues nothing.</summary>
+/// <summary>Renders a System or uncategorized email exactly as the outbox would wrap it. Enqueues nothing.</summary>
 public interface IEmailPreviewService : IApplicationService
 {
-    /// <summary>Rejects opt-outable messages: their wrapper needs a recipient-specific unsubscribe URL.</summary>
+    /// <summary>Rejects any other category: its wrapper may need a recipient-specific unsubscribe URL.</summary>
     RenderedEmailPreview RenderSystemMessage(EmailMessage message);
 }
 

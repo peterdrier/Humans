@@ -1,6 +1,6 @@
 @model Humans.Calendar.Models.CalendarMonthViewModel
 @{
-    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.Year}-{Model.Month.Month:D2}";
+    ViewData["Title"] = $"{Localizer["Calendar_Title"].Value} — {Model.Month.ToInvariantYearMonth()}";
     ViewData["ActiveView"] = "grid";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var prev = Model.Month.PlusMonths(-1);
@@ -100,7 +100,7 @@
 
                                     var isCommunityItem = banner.Occurrence.IsCommunityContribution();
                                     var ownerSuffix = isCommunityItem
-                                        ? $" — {banner.Occurrence.Source}"
+                                        ? $" — {banner.Occurrence.LocalizedSource(Localizer)}"
                                         : string.IsNullOrEmpty(banner.Occurrence.OwningTeamName) ? "" : $" — {banner.Occurrence.OwningTeamName}";
                                     var titleAttr = $"{banner.Occurrence.Title}{ownerSuffix}";
                                     <div class="@string.Join(' ', classes)" title="@titleAttr">
@@ -141,7 +141,7 @@
                             {
                                 var localStart = o.OccurrenceStartUtc?.InZone(zone).LocalDateTime;
                                 var isCommunityItem = o.IsCommunityContribution();
-                                <div class="small text-truncate" title="@(isCommunityItem ? $"{o.Title} — {o.Source}" : $"{o.Title} — {o.OwningTeamName}")">
+                                <div class="small text-truncate" title="@(isCommunityItem ? $"{o.Title} — {o.LocalizedSource(Localizer)}" : $"{o.Title} — {o.OwningTeamName}")">
                                     @if (!o.ShouldHideTimeLabel(zone))
                                     {
                                         <span class="text-muted">@DateFormattingExtensions.TimeOfDayPattern.Format(localStart!.Value.TimeOfDay)</span>
@@ -156,7 +156,7 @@
                                         {
                                             @o.Title
                                         }
-                                        <span class="badge bg-light text-muted small">@o.Source</span>
+                                        <span class="badge bg-light text-muted small">@o.LocalizedSource(Localizer)</span>
                                     }
                                     else
                                     {

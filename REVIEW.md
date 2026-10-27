@@ -9,7 +9,7 @@ Apply the repository rules in [AGENTS.md](AGENTS.md), [Peter's hard rules](docs/
 No reviewer, author or agent may waive these. A PR that breaks one is blocked, whatever its size or tier.
 
 1. **Migrations are never edited by hand.** Only `dotnet ef migrations add` writes migration files. Never edit, delete, rename or regenerate a migration that has merged to `main` (QA has applied it; QA is never reset from prod). A wrong merged migration is fixed by a new EF-generated migration on top. ([`no-hand-edited-migrations`](memory/architecture/no-hand-edited-migrations.md), [`migration-regen-after-rebase`](memory/architecture/migration-regen-after-rebase.md))
-2. **No NOT NULL column on an existing table without Peter's explicit permission.** New columns on existing tables are nullable, and code treats null as "unanswered" or "not set". A required column needs Peter's written approval for that column, linked in the PR. ([`required-columns-need-approval`](memory/architecture/required-columns-need-approval.md))
+2. **Every new column on an existing table is nullable.** Code treats null as "unanswered" or "not set". Add a required column only when Peter asked for that column himself, linked in the PR — never propose or ask for one. Completely new tables can have required columns from the start. ([`required-columns-need-approval`](memory/architecture/required-columns-need-approval.md))
 
 Run the [`ef-migration-reviewer`](.claude/agents/ef-migration-reviewer.md) before a PR with a migration is opened, not after it merges ([`ef-migration-review-gate`](memory/process/ef-migration-review-gate.md)).
 

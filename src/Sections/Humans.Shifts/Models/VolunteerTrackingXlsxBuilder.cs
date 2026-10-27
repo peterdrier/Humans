@@ -55,8 +55,8 @@ internal sealed class VolunteerTrackingXlsxBuilder
         {
             var col = i + 2;
             var d = model.Days[i];
-            sheet.Cell(5, col).Value = d.DayOfWeek.ToString().Substring(0, 3);
-            sheet.Cell(6, col).Value = $"{d.Day:D2}/{d.Month:D2}/{d.Year:D4}";
+            sheet.Cell(5, col).Value = d.ToInvariantWeekdayAbbrev();
+            sheet.Cell(6, col).Value = d.ToInvariantDayMonthYear();
             sheet.Cell(5, col).Style.Font.Bold = true;
             sheet.Cell(6, col).Style.Font.Bold = true;
         }

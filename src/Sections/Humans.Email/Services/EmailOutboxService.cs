@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Data;
 using Humans.Base.Configuration;
@@ -135,12 +134,14 @@ internal sealed class EmailOutboxService(
                 .ToList());
     }
 
-    public async Task<int> BackfillDailySendCountsAsync(CancellationToken cancellationToken = default)
+    public async Task<int> BackfillDailySendCountsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var rows = await ComputeMissingBackfillRowsAsync(cancellationToken);
-        if (rows.Count == 0) return 0;
+        if (rows.Count > 0)
+            await repo.AddDailySendCountsAsync(rows, cancellationToken);
 
-        await repo.AddDailySendCountsAsync(rows, cancellationToken);
+        await audit.LogAsync(AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount), Guid.Empty,
+            $"Backfilled {rows.Count} daily send count row(s) from outbox history", actorUserId);
         return rows.Count;
     }
 

@@ -25,7 +25,7 @@ internal sealed class TicketingBudgetService(
 
             // No orders of any status for the year's event means a moved VendorEventId or missing
             // sync state, not "everything refunded": write nothing rather than zero the year.
-            if (!orders.Any(o => IsYearTicketOrder(activeYear, o)))
+            if (!orders.Any(o => o.IsForEvent(activeYear.VendorEventId)))
             {
                 logger.LogWarning(
                     "Ticketing sync for budget year {YearId} found no orders for its event; stored actuals left untouched",
@@ -42,7 +42,7 @@ internal sealed class TicketingBudgetService(
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
-                    .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && IsYearTicketOrder(activeYear, o))
+                    .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.IsForEvent(activeYear.VendorEventId))
                     .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                     .Where(g => g.Key < currentWeekMonday)
                     .OrderBy(g => g.Key)
@@ -120,15 +120,6 @@ internal sealed class TicketingBudgetService(
 
         return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
     }
-
-    /// <summary>
-    /// A year with a configured <c>VendorEventId</c> counts only that event's orders; otherwise the current event's.
-    /// Finance's CashFlowService keeps its own copy of this rule.
-    /// </summary>
-    private static bool IsYearTicketOrder(BudgetYearDetail year, TicketOrderInfo order) =>
-        year.VendorEventId is { } eventId
-            ? string.Equals(order.VendorEventId, eventId, StringComparison.Ordinal)
-            : order.IsCurrentEvent;
 
     private static LocalDate GetIsoMonday(LocalDate date)
     {

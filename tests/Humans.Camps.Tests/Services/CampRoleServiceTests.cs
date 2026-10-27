@@ -90,15 +90,18 @@ public sealed class CampRoleServiceTests : CampsTestHarness
 
         var result = await _service.CreateDefinitionAsync(input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Name.Should().Be("Sound Lead");
-        result.SlotCount.Should().Be(1);
-        result.MinimumRequired.Should().Be(0);
+        result.Succeeded.Should().BeTrue();
+        var created = await _service.GetDefinitionBySlugAsync(input.Slug, Xunit.TestContext.Current.CancellationToken);
+        created.Should().NotBeNull();
+        created.Name.Should().Be("Sound Lead");
+        created.SlotCount.Should().Be(1);
+        created.MinimumRequired.Should().Be(0);
 
         // Audit happens AFTER save.
         await AuditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
-            result.Id,
+            created.Id,
             Arg.Any<string>(),
             _actorUserId);
     }
@@ -112,9 +115,12 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             Name: "Consent Lead", Slug: "consent-lead-2", Description: null,
             SlotCount: 1, MinimumRequired: 1, SortOrder: 99);
 
-        var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.CreateDefinitionAsync(input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already exists*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already exists");
+        (await _service.ListDefinitionsAsync(true, Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle();
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -124,9 +130,44 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             Name: "Bad Role", Slug: "bad-role", Description: null,
             SlotCount: 1, MinimumRequired: 2, SortOrder: 99);
 
-        var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.CreateDefinitionAsync(input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*MinimumRequired*");
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("MinimumRequired");
+        (await _service.ListDefinitionsAsync(true, Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData("bad--slug")]
+    [Xunit.InlineData("create")]
+    public async Task Definition_forms_return_invalid_slug_refusals_without_writing(string slug)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var definition = await SeedDefinitionAsync();
+        var create = await _service.CreateDefinitionAsync(
+            new CreateCampRoleDefinitionInput("Worker", slug, null, 1, 0, 0), _actorUserId, ct);
+        var update = await _service.UpdateDefinitionAsync(definition.Id,
+            new UpdateCampRoleDefinitionInput("Worker", slug, null, 1, 0, 0), _actorUserId, ct);
+
+        create.Succeeded.Should().BeFalse();
+        create.ErrorMessage.Should().NotBeNullOrEmpty();
+        update.Status.Should().Be(UpdateCampRoleDefinitionStatus.Rejected);
+        update.ErrorMessage.Should().Be(create.ErrorMessage);
+        var stored = (await _service.ListDefinitionsAsync(true, ct)).Should().ContainSingle().Subject;
+        stored.Name.Should().Be(definition.Name);
+        stored.Slug.Should().Be(definition.Slug);
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansFact]
+    public async Task Seed_creation_still_throws_when_definition_is_refused()
+    {
+        await SeedDefinitionAsync();
+        var act = () => ((ICampRoleSeeding)_service).CreateDefinitionForSeedAsync(
+            "Consent Lead", "new-slug", null, 1, 0, 0, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already exists*");
     }
 
     [HumansFact]
@@ -166,9 +207,11 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             SlotCount: def2.SlotCount, MinimumRequired: def2.MinimumRequired,
             SortOrder: def2.SortOrder);
 
-        var act = async () => await _service.UpdateDefinitionAsync(def2.Id, input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UpdateDefinitionAsync(def2.Id, input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.Rejected);
+        result.ErrorMessage.Should().Contain("already exists");
+        (await _service.GetDefinitionByIdAsync(def2.Id, Xunit.TestContext.Current.CancellationToken))!.Name.Should().Be("LNT");
     }
 
     [HumansFact]
@@ -253,6 +296,35 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(member.UserId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CommittedRoleAssignment_FinishesNoticeAfterRequestCancellation()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        using var request = new CancellationTokenSource();
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+        _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+        AuditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(async _ => await request.CancelAsync());
+        _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult<UserInfo?>(null);
+        });
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, request.Token);
+
+        outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+        request.IsCancellationRequested.Should().BeTrue();
+        var notice = Notifier.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(NotificationSource.CampRoleAssigned);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(member.UserId);
+        notice[10].Should().Be(CancellationToken.None);
+        (await CampsDb.CampRoleAssignments.AsNoTracking().SingleAsync(ct)).CampMemberId.Should().Be(member.Id);
     }
 
     [HumansTheory]
@@ -839,9 +911,11 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             SlotCount: def.SlotCount, MinimumRequired: def.MinimumRequired,
             SortOrder: def.SortOrder);
 
-        var act = async () => await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*system role*");
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.Rejected);
+        result.ErrorMessage.Should().Contain("system role");
+        (await _service.GetDefinitionByIdAsync(def.Id, Xunit.TestContext.Current.CancellationToken))!.Name.Should().Be(CampSystemRoles.CampLeadName);
     }
 
     [HumansFact]

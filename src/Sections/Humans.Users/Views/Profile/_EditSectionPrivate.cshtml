@@ -2,50 +2,50 @@
 
 <div class="card mb-4">
     <div class="card-body">
-        <h3 class="text-muted"><i class="fa-solid fa-lock me-1"></i> @Localizer["Profile_BoardInformation"]</h3>
-        <p class="text-muted small mb-3">@Localizer["Profile_OnlyVisibleToYouAndBoard"]</p>
+        <h3 class="text-muted"><i class="fa-solid fa-lock me-1"></i> @Localizer["Users_Profile_BoardInformation"]</h3>
+        <p class="text-muted small mb-3">@Localizer["Users_Profile_OnlyVisibleToYouAndBoard"]</p>
 
-        <h6>@Localizer["Profile_LegalName"]</h6>
-        <div class="form-text mb-3">@Localizer["ProfileEdit_LegalNameHelp"]</div>
+        <h6>@Localizer["Users_Profile_LegalName"]</h6>
+        <div class="form-text mb-3">@Localizer["Users_ProfileEdit_LegalNameHelp"]</div>
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <label asp-for="FirstName" class="form-label">@Localizer["Profile_LegalFirstNames"]</label>
+                <label asp-for="FirstName" class="form-label">@Localizer["Users_Profile_LegalFirstNames"]</label>
                 <input asp-for="FirstName" class="form-control" />
                 <span asp-validation-for="FirstName" class="text-danger"></span>
             </div>
             <div class="col-md-6">
-                <label asp-for="LastName" class="form-label">@Localizer["Profile_LegalLastNames"]</label>
+                <label asp-for="LastName" class="form-label">@Localizer["Users_Profile_LegalLastNames"]</label>
                 <input asp-for="LastName" class="form-control" />
                 <span asp-validation-for="LastName" class="text-danger"></span>
             </div>
         </div>
 
         <hr />
-        <h6>@Localizer["Profile_EmergencyContact"]</h6>
-        <div class="form-text mb-3">@Localizer["ProfileEdit_EmergencyContactHelp"]</div>
+        <h6>@Localizer["Users_Profile_EmergencyContact"]</h6>
+        <div class="form-text mb-3">@Localizer["Users_ProfileEdit_EmergencyContactHelp"]</div>
 
         <div class="row mb-3">
             <div class="col-md-4">
-                <label asp-for="EmergencyContactName" class="form-label">@Localizer["Profile_EmergencyContactName"]</label>
+                <label asp-for="EmergencyContactName" class="form-label">@Localizer["Users_Profile_EmergencyContactName"]</label>
                 <input asp-for="EmergencyContactName" class="form-control" />
                 <span asp-validation-for="EmergencyContactName" class="text-danger"></span>
             </div>
             <div class="col-md-4">
-                <label asp-for="EmergencyContactPhone" class="form-label">@Localizer["Profile_EmergencyContactPhone"]</label>
+                <label asp-for="EmergencyContactPhone" class="form-label">@Localizer["Users_Profile_EmergencyContactPhone"]</label>
                 <input asp-for="EmergencyContactPhone" class="form-control" type="tel" pattern="\+.+" placeholder="@SharedLocalizer["Validation_PhonePlaceholder"].Value" title="@SharedLocalizer["Validation_PhoneHint"].Value" />
                 <span asp-validation-for="EmergencyContactPhone" class="text-danger"></span>
             </div>
             <div class="col-md-4">
-                <label asp-for="EmergencyContactRelationship" class="form-label">@Localizer["Profile_EmergencyContactRelationship"]</label>
-                <input asp-for="EmergencyContactRelationship" class="form-control" placeholder="@Localizer["ProfileEdit_RelationshipPlaceholder"].Value" />
+                <label asp-for="EmergencyContactRelationship" class="form-label">@Localizer["Users_Profile_EmergencyContactRelationship"]</label>
+                <input asp-for="EmergencyContactRelationship" class="form-control" placeholder="@Localizer["Users_ProfileEdit_RelationshipPlaceholder"].Value" />
                 <span asp-validation-for="EmergencyContactRelationship" class="text-danger"></span>
             </div>
         </div>
 
         <hr />
-        <h6>@Localizer["Profile_BoardNotes"]</h6>
-        <div class="form-text mb-3">@Localizer["ProfileEdit_BoardNotesHelp"]</div>
+        <h6>@Localizer["Users_Profile_BoardNotes"]</h6>
+        <div class="form-text mb-3">@Localizer["Users_ProfileEdit_BoardNotesHelp"]</div>
         <div class="mb-3">
             <textarea asp-for="BoardNotes" class="form-control" rows="3"></textarea>
             <span asp-validation-for="BoardNotes" class="text-danger"></span>

@@ -22,9 +22,10 @@ internal static class EventsTimeHelpers
     }
 
     public static Instant ToInstant(DateTime dateTime, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
-        return LocalDateTime.FromDateTime(dateTime).InZoneLeniently(tz).ToInstant();
-    }
+        => ToInstant(LocalDateTime.FromDateTime(dateTime), tz);
+
+    public static Instant ToInstant(LocalDateTime localDateTime, DateTimeZone? tz)
+        => tz == null
+            ? localDateTime.InUtc().ToInstant()
+            : localDateTime.InZoneLeniently(tz).ToInstant();
 }

@@ -1,11 +1,11 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 
 namespace Humans.Email.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupEmailOutboxJob(
+internal sealed class CleanupEmailOutboxJob(
     IEmailOutboxRetention outbox,
     IHumansMetrics metrics,
     ILogger<CleanupEmailOutboxJob> logger) : IRecurringJob

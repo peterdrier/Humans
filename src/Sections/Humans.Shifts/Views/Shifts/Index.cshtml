@@ -38,10 +38,10 @@
             ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
             _ => opt.SubPeriod switch
             {
-                BuildSubPeriod.FirstCrew => Localizer["ShiftDash_SubPeriodFilter_FirstCrew"].Value,
-                BuildSubPeriod.SetupWeek => Localizer["ShiftDash_SubPeriodFilter_SetupWeek"].Value,
-                BuildSubPeriod.PreEventWeek => Localizer["ShiftDash_SubPeriodFilter_PreEventWeek"].Value,
-                BuildSubPeriod.FinishingWeekend => Localizer["ShiftDash_SubPeriodFilter_FinishingWeekend"].Value,
+                BuildSubPeriod.FirstCrew => Localizer["Shifts_ShiftDash_SubPeriodFilter_FirstCrew"].Value,
+                BuildSubPeriod.SetupWeek => Localizer["Shifts_ShiftDash_SubPeriodFilter_SetupWeek"].Value,
+                BuildSubPeriod.PreEventWeek => Localizer["Shifts_ShiftDash_SubPeriodFilter_PreEventWeek"].Value,
+                BuildSubPeriod.FinishingWeekend => Localizer["Shifts_ShiftDash_SubPeriodFilter_FinishingWeekend"].Value,
                 _ => SharedLocalizer["Shifts_SetUp"].Value,
             }
         };

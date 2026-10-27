@@ -267,7 +267,8 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     public void UnsubscribeToken_RoundTrips()
     {
         var userId = Guid.NewGuid();
-        var token = _service.GenerateUnsubscribeToken(userId, MessageCategory.TeamUpdates);
+        var url = _service.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.TeamUpdates);
+        var token = new Uri(url).Segments[^1];
 
         _service.ValidateUnsubscribeToken(token).Should().Be((TokenValidationStatus.Valid, userId, MessageCategory.TeamUpdates));
     }
@@ -287,8 +288,12 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     [HumansTheory]
     [InlineData("this-is-not-a-valid-token")]
     [InlineData("aGVsbG8gd29ybGQ=")]
-    public void UnsubscribeToken_Tampered_IsInvalid(string token) =>
-        _service.ValidateUnsubscribeToken(token).Should().Be((TokenValidationStatus.Invalid, Guid.Empty, default(MessageCategory)));
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("%")]
+    [InlineData("a")]
+    public void UnsubscribeToken_Tampered_IsInvalid(string? token) =>
+        _service.ValidateUnsubscribeToken(token!).Should().Be((TokenValidationStatus.Invalid, Guid.Empty, default(MessageCategory)));
 
     [HumansFact]
     public void UnsubscribeHeaders_KeepTheUnsubscribeUrls()

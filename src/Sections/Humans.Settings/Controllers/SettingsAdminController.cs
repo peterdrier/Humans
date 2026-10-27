@@ -34,15 +34,9 @@ internal sealed class SettingsAdminController(
 
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
-        try
-        {
-            await settingsService.SaveEventSettingsAsync(parsed.Settings!, actorId, ct);
-        }
-        catch (InvalidOperationException ex)
-        {
-            // An operator can act on this conflict, so it goes back to the form, not to a 500.
-            return BackToTab(model.Id, ex.Message);
-        }
+        var result = await settingsService.SaveEventSettingsAsync(parsed.Settings!, actorId, ct);
+        if (!result.Succeeded)
+            return BackToTab(model.Id, result.ErrorMessage!);
 
         SetSuccess("Event settings saved.");
         // By id, not bare: the /Settings#event tab defaults to the active row, so a

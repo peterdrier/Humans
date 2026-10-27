@@ -378,7 +378,7 @@ internal sealed class TicketQueryService(
                 var refundedRows = refundedByMonth.GetValueOrDefault(k) ?? [];
                 return new MonthlySalesAggregate
                 {
-                    MonthLabel = $"{k.Year:D4}-{k.Month:D2}",
+                    MonthLabel = new YearMonth(k.Year, k.Month).ToInvariantYearMonth(),
                     OrderCount = paid.Count,
                     TicketsSold = paid.Sum(o => o.AttendeeCount),
                     GrossRevenue = paid.Sum(o => o.TotalAmount),

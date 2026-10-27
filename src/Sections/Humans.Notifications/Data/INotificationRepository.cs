@@ -13,7 +13,6 @@ internal interface INotificationRepository : IRepository
 
     /// <summary>
     /// Only when the actor is a recipient and the class matches; an already resolved row succeeds without a write.
-    /// Returns the recipient ids for cache invalidation.
     /// </summary>
     Task<NotificationMutationOutcome> ResolveAsync(
         Guid notificationId, Guid actorUserId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
@@ -22,37 +21,37 @@ internal interface INotificationRepository : IRepository
     Task<NotificationMutationOutcome> MarkReadAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default);
 
-    Task<int> MarkAllReadAsync(Guid userId, Instant now, CancellationToken ct = default);
+    Task MarkAllReadAsync(Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Only unresolved rows of the service-selected class with the user as a recipient. Returns the affected
-    /// recipient ids for cache invalidation.
+    /// Only unresolved rows of the service-selected class with the user as a recipient.
     /// </summary>
-    Task<IReadOnlyList<Guid>> BulkResolveAsync(
+    Task BulkResolveAsync(
         IReadOnlyList<Guid> notificationIds, Guid userId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
 
     /// <summary>Marks the row read if needed. NotFound when there is no recipient row.</summary>
     Task<ClickThroughOutcome> ClickThroughAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default);
 
-    Task<bool> ResolveBySourceAsync(
+    /// <summary>Resolves matching notifications shared with the user.</summary>
+    Task ResolveBySourceAsync(
         Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null);
 
     /// <summary>
-    /// Across all recipients. Returns the distinct affected recipient ids. A null
+    /// Across all recipients. A null
     /// <paramref name="resolvedByUserId"/> means no actor.
     /// </summary>
-    Task<IReadOnlyList<Guid>> ResolveBySourceKeyAsync(
+    Task ResolveBySourceKeyAsync(
         NotificationSource source, string sourceKey, Instant now,
         Guid? resolvedByUserId, CancellationToken ct = default);
 
     /// <summary>For retired sources: nothing emits them and nothing can resolve them.</summary>
-    Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)> DeleteUnresolvedBySourcesAsync(
+    Task<int> DeleteUnresolvedBySourcesAsync(
         IReadOnlyList<NotificationSource> sources, CancellationToken ct = default);
 
     Task<int> DeleteResolvedOlderThanAsync(Instant resolvedCutoff, CancellationToken ct = default);
 
-    Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)> DeleteUnresolvedInformationalOlderThanAsync(
+    Task<int> DeleteUnresolvedInformationalOlderThanAsync(
         Instant createdCutoff, CancellationToken ct = default);
 
     /// <summary>Unordered: callers sort.</summary>
@@ -94,14 +93,12 @@ internal interface INotificationRepository : IRepository
 internal sealed record NotificationMutationOutcome(
     bool Success,
     bool NotFound,
-    bool Forbidden,
-    IReadOnlyList<Guid> AffectedUserIds);
+    bool Forbidden);
 
 /// <summary><c>ActionUrl</c> is null when there is no recipient row or no action URL.</summary>
 internal sealed record ClickThroughOutcome(
     string? ActionUrl,
-    bool NotFound,
-    bool MarkedRead);
+    bool NotFound);
 
 internal enum NotificationInboxFilter
 {

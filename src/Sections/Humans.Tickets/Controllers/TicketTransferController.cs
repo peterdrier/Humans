@@ -25,15 +25,7 @@ internal sealed class TicketTransferController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var mine = await service.GetMyAttendeesAsync(user.Id, ct);
-        var transfers = await service.GetBySenderAsync(user.Id, ct);
-        var earlyEntry = await earlyEntryService.GetForUserAsync(user.Id, ct);
-        return View("Index", new TicketTransferWizardViewModel
-        {
-            MyTickets = mine,
-            MyTransfers = transfers,
-            HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
-        });
+        return View("Index", await BuildWizardAsync(user.Id, ct));
     }
 
     [HttpPost("Confirm")]
@@ -43,20 +35,11 @@ internal sealed class TicketTransferController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var mine = await service.GetMyAttendeesAsync(user.Id, ct);
-        var transfers = await service.GetBySenderAsync(user.Id, ct);
-        var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
-        var earlyEntry = await earlyEntryService.GetForUserAsync(user.Id, ct);
-        return View("Index", new TicketTransferWizardViewModel
-        {
-            MyTickets = mine,
-            MyTransfers = transfers,
-            HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
-            Confirm = confirm,
-            Error = confirm is null
-                ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
-                : null,
-        });
+        var model = await BuildWizardAsync(user.Id, ct, (attendeeId, receiverUserId));
+        model.Error = model.Confirm is null
+            ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
+            : null;
+        return View("Index", model);
     }
 
     [HttpPost("")]
@@ -77,21 +60,30 @@ internal sealed class TicketTransferController(
         logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {RefusalKey}",
             attendeeId, result.RefusalKey!);
         var error = localizer[result.RefusalKey!];
-        var mine = await service.GetMyAttendeesAsync(user.Id, ct);
-        var transfers = await service.GetBySenderAsync(user.Id, ct);
-        var confirm = await service.GetConfirmationAsync(attendeeId, receiverUserId, user.Id, ct);
-        var earlyEntry = await earlyEntryService.GetForUserAsync(user.Id, ct);
-        return View("Index", new TicketTransferWizardViewModel
+        var model = await BuildWizardAsync(user.Id, ct, (attendeeId, receiverUserId));
+        model.Reason = reason;
+        model.Error = error.ResourceNotFound
+            ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
+            : error.Value;
+        return View("Index", model);
+    }
+
+    private async Task<TicketTransferWizardViewModel> BuildWizardAsync(
+        Guid userId, CancellationToken ct, (Guid AttendeeId, Guid ReceiverUserId)? selection = null)
+    {
+        var mine = await service.GetMyAttendeesAsync(userId, ct);
+        var transfers = await service.GetBySenderAsync(userId, ct);
+        var confirm = selection is { } selected
+            ? await service.GetConfirmationAsync(selected.AttendeeId, selected.ReceiverUserId, userId, ct)
+            : null;
+        var earlyEntry = await earlyEntryService.GetForUserAsync(userId, ct);
+        return new TicketTransferWizardViewModel
         {
             MyTickets = mine,
             MyTransfers = transfers,
             HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
             Confirm = confirm,
-            Reason = reason,
-            Error = error.ResourceNotFound
-                ? localizer["Tickets_TicketTransfer_InvalidSelection"].Value
-                : error.Value,
-        });
+        };
     }
 
     [HttpPost("Cancel")]

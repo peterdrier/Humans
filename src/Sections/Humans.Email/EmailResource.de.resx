@@ -125,10 +125,10 @@
     <value>Abgemeldet. Du kannst jede Kategorie unten wieder aktivieren.</value>
   </data>
   <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
-    <value>Source</value>
+    <value>Änderungsquelle</value>
   </data>
   <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
-    <value>Updated</value>
+    <value>Aktualisiert am</value>
   </data>
   <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Immer aktiv</value></data>
   <data name="Email_Unsubscribe_Title" xml:space="preserve">
@@ -180,7 +180,6 @@
   <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>System</value></data>
   <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Kampagnencodes</value></data>
   <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Nachrichten zwischen Mitgliedern</value></data>
-  <data name="Email_CommPrefs_Name_Ticketing" xml:space="preserve"><value>Tickets</value></data>
   <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Neuigkeiten für Freiwillige</value></data>
   <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Teamneuigkeiten</value></data>
   <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Vereinsführung</value></data>

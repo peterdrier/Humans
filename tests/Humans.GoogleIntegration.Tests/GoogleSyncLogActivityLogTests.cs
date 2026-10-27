@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Extensions;
 using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
@@ -152,6 +153,20 @@ public sealed class GoogleSyncLogActivityLogTests
             Xunit.TestContext.Current.CancellationToken, "workgroups/TICKETS");
 
         rows.Select(r => r.Id).Should().BeEquivalentTo([unlinkedMatch.Id, linkedById.Id]);
+    }
+
+    [HumansFact]
+    public async Task GetRecentAsync_LiteralDescriptionMatchIsCultureIndependent_AndPrecedesLimit()
+    {
+        using var culture = new CultureScope("tr");
+        var match = Entry(T0, resourceId: Guid.Empty, description: "Synced ITEM.[+]_50%");
+        var newerOther = Entry(T0 + Duration.FromHours(1), resourceId: Guid.Empty, description: "Other");
+        await SeedAsync(match, newerOther);
+
+        var rows = await Repo().GetRecentAsync(null, null, null, null, null, [], 1,
+            Xunit.TestContext.Current.CancellationToken, "item.[+]_50%");
+
+        rows.Should().ContainSingle().Which.Id.Should().Be(match.Id);
     }
 
     [HumansFact]

@@ -55,26 +55,23 @@ themes:
       RoleAssignment keeps read-after-write order by clearing inside the
       inner service before the Board team sync. Entry stays at 0 because it
       is parked (only Peter removes `parked:`); the HUM0028 analyzer still
-      blocks new invalidators. The one cross-section flush left outside
-      HUM0028 is CENTRAL-98.
+      blocks new invalidators. Teams now resolves member display data live from Users; its last
+      cross-section flush (CENTRAL-98) is retired.
   - id: obsolete-user-displayname
     title: User.DisplayName reads (HUM_USER_DISPLAYNAME)
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
-    last_swept: 2026-10-21
-    remaining: 8
+    last_swept: 2026-10-22
+    remaining: 3
     notes: >-
-      Swept 2026-10-21 (clean rebuild, 17 -> 8): creation-time and profile-save
-      writes are gone (new rows hold ""), and the deletion email greets by
-      BurnerName. Left, all retired by one PR: the legacy GDPR tombstone arm
-      (UserInfo x2, UserStateEvaluator, UserInfoSaveChangesInterceptor x2 for its
-      clone) and the scrubs and export that exist only while the column does
-      (UserRepository merge + erasure, UserService GDPR export). Path to 0:
-      apply users.legacy-gdpr-tombstones on production; once
-      /api/data-migrations reports it done, delete the legacy arms and drop the
-      users.DisplayName column (nobodies-collective/Humans#1102, #1742), which
-      also clears the 108 test files that seed it and the WarningsNotAsErrors
-      entry.
+      Production reported users.legacy-gdpr-tombstones pending: 0, done: true
+      on 2026-10-22. Retired its data-migration registration, name-shape
+      recognition and BurnerName sentinel fallback; UserInfo and the cache
+      interceptor no longer read DisplayName. The remaining reads are legacy
+      column scrubs (merge and erasure) and GDPR export. These stay until the
+      separate approved users.DisplayName column drop
+      (nobodies-collective/Humans#1102, nobodies-collective/Humans#1742), which
+      also clears the test seed assignments and WarningsNotAsErrors entry.
   - id: cs0618-pragma-nav-reads
     title: CS0618 pragma sites
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
@@ -156,27 +153,15 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-06-14
-    remaining: 22
+    remaining: 7
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-18
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-24
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-21
-    id: CENTRAL-99
-    what: "VAT math lives twice: Finance's CashFlowService (VatPortion, VatSettlementDate — the Spanish quarter-end + 45 days rule) copies BudgetService.ComputeVatPortion / ComputeVatSettlementDate, which Budget still needs for ComputeBudgetSummary (the /Finance and /Budget/Summary VAT totals) and VatProjection.ForLineItems (category VAT projections). Budget cannot call Finance (Finance -> Budget), so the copy stays until those VAT views move into Finance too (peterdrier/Humans#2105 direction: budget math belongs in Finance)."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-100
-    what: "Ticket-event rule lives twice: Finance's CashFlowService.IsYearTicketOrder (configured VendorEventId, else current event) copies TicketingBudgetService.IsYearTicketOrder, which Budget's ticketing actuals sync (SyncActualsAsync) still needs. The copy stays until the actuals sync moves into Finance (peterdrier/Humans#2105) or the rule gets one owner."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-98
-    what: "ITeamWrite.InvalidateActiveTeamsCache (Teams.Contracts) is the last cross-section cache flush: Users' account merge (AccountMergeService) calls it after its tombstone because CachingTeamService's TeamInfo stitches each member's UserInfo, which no Teams write sees. Fix: Teams reads member display data from IUserService at read time so the flush and the write method go away. Left by the HUM0028 burn-down (peterdrier/Humans#2095); Peter deciding the shape."
-    review: panel
   - added: 2026-10-21
     id: CENTRAL-89
     what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
@@ -204,12 +189,4 @@ inbox:
   - added: 2026-10-21
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-96
-    what: "Remaining MA0011 suppressions on column-side .ToLower() in EF queries: TicketRepository (GetOrdersPageAsync/GetAttendeesPageAsync search + duplicate-email grouping), UserRepository.UserEmails (batch lowered-IN lookup; UserEmail.Email is not stored normalized, OAuth claim emails keep their case), GoogleSyncLogRepository.GetRecentAsync (text filter applied before Take(limit) on an unbounded log). Npgsql 10 translates only parameterless ToLower() (ToLowerInvariant/ToLower(culture) throw); EF.Functions.ILike breaks the InMemory repo tests. Fix needs a cheap in-memory shape or an accepted test strategy. Found in the debt/ma0011 burndown."
-    review: light
-  - added: 2026-10-21
-    id: CENTRAL-97
-    what: "Retirement PR for data migration consent.reminder-stamps (Consent): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: ConsentReminderService's LegacyLastSent fallback (read, copy and export) and UserInfo.LastConsentReminderSentAt with its HUM_USER_CONSENT_REMINDER obsolete. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row USERS-22 (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel

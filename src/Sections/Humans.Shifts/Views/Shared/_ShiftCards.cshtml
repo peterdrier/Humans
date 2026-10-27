@@ -4,7 +4,7 @@
 {
     <div class="card border-0 shadow-sm mt-3">
         <div class="card-body">
-            <h6 class="mb-3"><i class="fa-solid fa-fire text-danger me-1"></i>@Localizer["GetInvolved_UrgentShifts"]</h6>
+            <h6 class="mb-3"><i class="fa-solid fa-fire text-danger me-1"></i>@Localizer["Shifts_GetInvolved_UrgentShifts"]</h6>
             <ul class="list-unstyled mb-0">
                 @foreach (var item in Model)
                 {
@@ -13,11 +13,11 @@
                             <strong>@item.Rota.Name</strong>
                             <small class="text-muted ms-1">@item.DepartmentName</small>
                         </span>
-                        <span class="badge bg-danger">@item.RemainingSlots @(item.RemainingSlots == 1 ? Localizer["Dashboard_SlotsSingular"].Value : Localizer["Dashboard_SlotsPlural"].Value)</span>
+                        <span class="badge bg-danger">@item.RemainingSlots @(item.RemainingSlots == 1 ? Localizer["Shifts_Dashboard_SlotsSingular"].Value : Localizer["Shifts_Dashboard_SlotsPlural"].Value)</span>
                     </li>
                 }
             </ul>
-            <a asp-controller="Shifts" asp-action="Index" class="btn btn-sm btn-outline-success mt-2">@Localizer["GetInvolved_BrowseAllShifts"]</a>
+            <a asp-controller="Shifts" asp-action="Index" class="btn btn-sm btn-outline-success mt-2">@Localizer["Shifts_GetInvolved_BrowseAllShifts"]</a>
         </div>
     </div>
 }

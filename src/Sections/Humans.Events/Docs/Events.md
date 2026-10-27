@@ -140,7 +140,7 @@ Append-only audit log. DB-level: `OnDelete(DeleteBehavior.Restrict)` prevents ca
 | DayOffset | int? | Day offset (from gate opening) of the favourited occurrence of a recurring event. Null = whole event (every occurrence). Rows created before this column existed also mean "whole event". |
 | CreatedAt | Instant | |
 
-Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT` (PG15+), so a user cannot hold two whole-event (null-day) favourites for the same event. A duplicate caught at insert returns the same already-favourited result as the initial lookup; unrelated persistence failures still propagate.
+Unique constraint on (UserId, GuideEventId, DayOffset) with `NULLS NOT DISTINCT` (PG15+), so a user cannot hold two whole-event (null-day) favourites for the same event. A duplicate caught at insert returns the same already-favourited result as the initial lookup; unrelated persistence failures still propagate. Favourite-button requests reject redirects: an onboarding, status or login page cannot masquerade as a successful save. A failed request keeps the heart and schedule row unchanged, shows the existing localized error and permits retry.
 
 Adding a favourite requires a currently approved event. A supplied day on a recurring event with authored recurrence days must match one of those offsets; invalid targets are rejected before persistence (API 404 for missing/unpublished events, 400 for invalid occurrence days). Null still favourites the whole event, and non-recurring events retain their day-ignoring expansion behavior.
 
@@ -178,6 +178,12 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Approve, reject, request-edit and moderator-withdraw forms reject invalid model binding or validation with HTTP 400 after resolving the moderator, before event reads or writes. This includes the moderation reason’s 500-character limit.
+
+- Individual-event edit GET and POST share the event lookup, individual-route ownership check and editable-status refusal. Missing/camp events return 404 before ownership denial; non-owners require EventsAdmin/Admin, and non-editable events redirect with the existing message.
+
+- Guide settings and event forms share the section’s local-time conversion helper: configured zones use lenient DST resolution, and an unavailable zone treats local values as UTC. NodaTime inputs retain their sub-tick precision.
+
 - Category and venue create/edit forms require explicit active and display-order values; categories also require the sensitivity choice. Missing fields cannot reactivate an inactive entry, clear its sensitivity marker or reset its order. Explicit false and order zero remain valid, and form summaries display missing-field errors.
 
 - Personal, barrio and moderation authoring forms require explicit start time, duration and recurrence choices; personal and moderator individual forms also require the all-day choice. Moderator camp forms require the priority-rank field, with an explicit blank still clearing the rank. Missing fields refuse the save before event changes or persistence. Explicit midnight, 60-minute durations and false choices remain valid. Validation summaries show field errors even when an all-day toggle hides the timing inputs.
@@ -203,11 +209,11 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - My Submissions, individual submit/edit forms, Schedule and Browse GETs preserve request cancellation through viewer, guide/burn settings, dropdown, submission, camp, favourite and submitter reads. Shared form helpers keep their default token for POST redisplays; event mutations and permission gates are unchanged.
 
-- Submissions are only accepted when `now >= EventGuideSettings.SubmissionOpenAt && now <= EventGuideSettings.SubmissionCloseAt`; `SubmitEventAsync` and `BulkImportAsync` refuse submissions outside it (the controller checks the same window first to show the closed-window message). `SubmitEventAsync` also performs the Draft→Pending `Submit` transition. Editing, resubmitting or withdrawing an existing individual or barrio event stays open after the window closes, by design: late corrections still reach a moderator.
+- Submissions are only accepted when `now >= EventGuideSettings.SubmissionOpenAt && now <= EventGuideSettings.SubmissionCloseAt`; `SubmitEventAsync` and `BulkImportAsync` refuse submissions outside it (the controller checks the same window first). If it closes after that check, both services return a refusal without writing or emailing; individual, barrio and CSV upload actions show the existing localized closed-window message rather than a server error. `SubmitEventAsync` also performs the Draft→Pending `Submit` transition. Editing, resubmitting or withdrawing an existing individual or barrio event stays open after the window closes, by design: late corrections still reach a moderator.
 - Personal calendar-feed descriptions reuse the Events host/category labels in the request UI culture, in all six languages; authored text, event data and iCal identifiers remain unchanged.
 - The individual and barrio submission forms render their field labels through `EventsResource` in every supported culture. Their required-field, length, and range validation messages use shared resources in all six cultures; validation limits are unchanged.
 - The My Submissions controller orders both personal and barrio event lists newest-submitted first; the service returns camp submission counts and event data without a display sort.
-- Submission and moderation lifecycle emails are best-effort after the event write commits. Submitter lookup, message preparation, and delivery failures are logged without turning the committed operation into a reported failure.
+- Submission and moderation lifecycle emails are best-effort after the event write commits. Submitter lookup, message preparation, and delivery failures are logged without turning the committed operation into a reported failure. After commit, submitter lookup and delivery are independent of request cancellation; the event write itself retains the caller’s token.
 - A moderation action (Approve/Reject/RequestEdit) may only be applied to a `Pending` event, and Reject/RequestEdit require a reason; `ApplyModerationAsync` returns either refusal as a `ModerationOutcome` and the controller maps it to its message; any other failure propagates.
 - An admin/moderator in-place edit (`EventsModerationController.Edit`/`Update` → `IEventManagement.AdminUpdateAsync`) may edit **any** event in **any** status and **preserves `Status`** — an Approved event stays Approved/published and is never re-queued to Pending (contrast `UpdateAndResubmitAsync`, the submitter path, which does re-queue). It appends an `Edited` `ModerationAction` (actor + optional note) and never changes the event's camp association or submitter.
 - `ModerationAction` records are never deleted or updated — `OnDelete(DeleteBehavior.Restrict)` prevents cascade; no Update paths exist in the repository.

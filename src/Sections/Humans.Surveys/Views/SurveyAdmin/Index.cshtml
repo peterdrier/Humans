@@ -1,7 +1,7 @@
 @model SurveyAdminIndexViewModel
 
 @{
-    ViewData["Title"] = Localizer["Survey_Admin_Index_Title"].Value;
+    ViewData["Title"] = Localizer["Surveys_Admin_Index_Title"].Value;
     Guid.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var viewerId);
 
     string StatusBadge(SurveyStatus s) => s switch
@@ -18,14 +18,14 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@Localizer["Survey_Admin_Index_Title"]</li>
+            <li class="breadcrumb-item active" aria-current="page">@Localizer["Surveys_Admin_Index_Title"]</li>
         </ol>
     </nav>
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">@Localizer["Survey_Admin_Index_Title"]</h1>
-    <a asp-controller="SurveyAdmin" asp-action="Create" class="btn btn-primary btn-sm">@Localizer["Survey_Admin_Index_New"]</a>
+    <h1 class="mb-0">@Localizer["Surveys_Admin_Index_Title"]</h1>
+    <a asp-controller="SurveyAdmin" asp-action="Create" class="btn btn-primary btn-sm">@Localizer["Surveys_Admin_Index_New"]</a>
 </div>
 
 <div class="card">
@@ -33,22 +33,22 @@
         <table class="table table-hover mb-0 align-middle">
             <thead>
                 <tr>
-                    <th>@Localizer["Survey_Admin_Index_ColumnTitle"]</th>
+                    <th>@Localizer["Surveys_Admin_Index_ColumnTitle"]</th>
                     @if (Model.IsBoardOrAdmin)
                     {
-                        <th>@Localizer["Survey_Admin_Index_ColumnAuthor"]</th>
+                        <th>@Localizer["Surveys_Admin_Index_ColumnAuthor"]</th>
                     }
-                    <th>@Localizer["Survey_Admin_Index_ColumnStatus"]</th>
-                    <th class="text-end">@Localizer["Survey_Admin_Index_ColumnInvited"]</th>
-                    <th class="text-end">@Localizer["Survey_Admin_Index_ColumnResponses"]</th>
-                    <th class="text-end">@Localizer["Survey_Admin_Index_ColumnRate"]</th>
+                    <th>@Localizer["Surveys_Admin_Index_ColumnStatus"]</th>
+                    <th class="text-end">@Localizer["Surveys_Admin_Index_ColumnInvited"]</th>
+                    <th class="text-end">@Localizer["Surveys_Admin_Index_ColumnResponses"]</th>
+                    <th class="text-end">@Localizer["Surveys_Admin_Index_ColumnRate"]</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Surveys.Count == 0)
                 {
-                    <tr><td colspan="@(Model.IsBoardOrAdmin ? 7 : 6)" class="text-center text-muted py-4">@Localizer["Survey_Admin_Index_Empty"]</td></tr>
+                    <tr><td colspan="@(Model.IsBoardOrAdmin ? 7 : 6)" class="text-center text-muted py-4">@Localizer["Surveys_Admin_Index_Empty"]</td></tr>
                 }
                 @foreach (var s in Model.Surveys)
                 {
@@ -56,7 +56,7 @@
                     var canViewResults = Model.IsBoardOrAdmin || s.Status == SurveyStatus.Closed;
                     <tr>
                         <td>
-                            @{ var title = string.IsNullOrWhiteSpace(s.Title) ? Localizer["Survey_Admin_Index_Untitled"].Value : s.Title; }
+                            @{ var title = string.IsNullOrWhiteSpace(s.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : s.Title; }
                             @if (Model.IsBoardOrAdmin || s.Status == SurveyStatus.Draft)
                             {
                                 @* Same gate as the Edit button below: past Draft this destination
@@ -69,7 +69,7 @@
                             }
                             @if (s.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(s.RejectionNote))
                             {
-                                <div class="small text-danger">@string.Format(Localizer["Survey_Admin_Index_RejectionNote"].Value, s.RejectionNote)</div>
+                                <div class="small text-danger">@string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, s.RejectionNote)</div>
                             }
                         </td>
                         @if (Model.IsBoardOrAdmin)
@@ -99,22 +99,22 @@
                             {
                                 @* An author may edit only their own Draft, so past Submitted this
                                    link would be a 403 for them (SurveyAuthorizationHandler). *@
-                                <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id" class="btn btn-outline-primary btn-sm">@Localizer["Survey_Admin_Index_Edit"]</a>
+                                <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@s.Id" class="btn btn-outline-primary btn-sm">@Localizer["Surveys_Admin_Index_Edit"]</a>
                             }
                             @if (s.Status == SurveyStatus.Draft && s.CreatedByUserId == viewerId)
                             {
                                 <form asp-controller="SurveyAdmin" asp-action="Submit" asp-route-id="@s.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-success btn-sm">@Localizer["Survey_Admin_Index_SubmitForApproval"]</button>
+                                    <button type="submit" class="btn btn-outline-success btn-sm">@Localizer["Surveys_Admin_Index_SubmitForApproval"]</button>
                                 </form>
                             }
                             @if (Model.IsBoardOrAdmin)
                             {
-                                <a asp-controller="SurveyAdmin" asp-action="Send" asp-route-id="@s.Id" class="btn btn-outline-secondary btn-sm">@Localizer["Survey_Admin_Index_Send"]</a>
+                                <a asp-controller="SurveyAdmin" asp-action="Send" asp-route-id="@s.Id" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Index_Send"]</a>
                             }
                             @if (canViewResults)
                             {
-                                <a asp-controller="SurveyAdmin" asp-action="Results" asp-route-id="@s.Id" class="btn btn-outline-secondary btn-sm">@Localizer["Survey_Admin_Index_Results"]</a>
+                                <a asp-controller="SurveyAdmin" asp-action="Results" asp-route-id="@s.Id" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Index_Results"]</a>
                             }
                         </td>
                     </tr>

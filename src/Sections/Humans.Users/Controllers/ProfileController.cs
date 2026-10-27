@@ -71,7 +71,6 @@ internal sealed class ProfileController(
 
         var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);
-        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -79,7 +78,6 @@ internal sealed class ProfileController(
             UserId = info.Id,
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
-            IsApproved = profile is not null && review.IsApproved,
             IsOwnProfile = true,
             DisplayName = info.BurnerName,
         };
@@ -185,14 +183,14 @@ internal sealed class ProfileController(
             if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith("+", StringComparison.Ordinal))
             {
                 ModelState.AddModelError($"EditableContactFields[{i}].Value",
-                    sharedLocalizer["Validation_PhoneE164", localizer["Profile_" + cf.FieldType].Value].Value);
+                    sharedLocalizer["Validation_PhoneE164", localizer["Users_Profile_" + cf.FieldType].Value].Value);
             }
         }
 
         if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
-                sharedLocalizer["Validation_PhoneE164", localizer["Profile_EmergencyContactPhone"].Value].Value);
+                sharedLocalizer["Validation_PhoneE164", localizer["Users_Profile_EmergencyContactPhone"].Value].Value);
         }
     }
 
@@ -284,7 +282,7 @@ internal sealed class ProfileController(
         if (upload.Length > MaxProfilePictureUploadBytes)
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                localizer["Profile_PictureTooLarge"].Value);
+                localizer["Users_Profile_PictureTooLarge"].Value);
             return (false, null, null);
         }
 
@@ -301,7 +299,7 @@ internal sealed class ProfileController(
         if (!AllowedImageContentTypes.Contains(uploadContentType))
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                localizer["Profile_PictureInvalidFormat"].Value);
+                localizer["Users_Profile_PictureInvalidFormat"].Value);
             return (false, null, null);
         }
 
@@ -311,7 +309,7 @@ internal sealed class ProfileController(
         if (result is null)
         {
             ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                localizer["Profile_PictureInvalidFormat"].Value);
+                localizer["Users_Profile_PictureInvalidFormat"].Value);
             return (false, null, null);
         }
 

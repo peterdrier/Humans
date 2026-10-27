@@ -68,8 +68,8 @@ Enforced in the service layer (not the database):
 
 | Rule | Error key on violation |
 |---|---|
-| `BuildStartOffset ≤ DayOffset < 0` | `VolTrack_Err_DayOffOutsideBuild` |
-| Volunteer has no Confirmed/Pending Build signup on that day | `VolTrack_Err_DayOffWithSignups` |
+| `BuildStartOffset ≤ DayOffset < 0` | `Shifts_VolTrack_Err_DayOffOutsideBuild` |
+| Volunteer has no Confirmed/Pending Build signup on that day | `Shifts_VolTrack_Err_DayOffWithSignups` |
 | At most one entry per `DayOffset` per `(UserId, EventSettingsId)` row | (repository normalizes; replaces existing entry for same day) |
 | Reason: trimmed; whitespace-only → null; longer than 200 chars → truncated to 200 | (no error; silent normalization) |
 
@@ -247,7 +247,7 @@ The cell popover gains a Day-off section below the camp-setup section. It is **s
 | Cell state | Rendered |
 |---|---|
 | DayOff (entry exists for this day) | A small caption showing the reason (or "no reason given"), then a `Cancel day off` button posting `ClearDayOff`. |
-| Confirmed or Pending | A muted note from `VolTrack_Popover_DayOffBlockedBySignups` (no button). |
+| Confirmed or Pending | A muted note from `Shifts_VolTrack_Popover_DayOffBlockedBySignups` (no button). |
 | CampSetup | **No day-off section rendered.** The cell is already visibly blue; no action is available, and surfacing a "you can't do this" message would be noise. |
 | Gap | A small `<input name="Reason" placeholder="Reason (optional)">` plus a `Mark day off` button posting `SetDayOff`. |
 
@@ -279,7 +279,7 @@ This is the "striped gray" option from the visual round of brainstorming. It rea
 
 `CellClass`/`CellAria` switches in `_VolunteerHeatmap.cshtml` get one new arm each:
 - `VolunteerCellState.DayOff => "vt-dayoff"`
-- `VolunteerCellState.DayOff => Localizer["VolTrack_State_DayOff"].Value`
+- `VolunteerCellState.DayOff => Localizer["Shifts_VolTrack_State_DayOff"].Value`
 
 The unbooked cohort partial is left alone — `DayOff` doesn't appear there.
 
@@ -302,7 +302,7 @@ Add one swatch on the footer legend in `Index.cshtml`, between Gap and Available
 
 ```html
 <span><span class="legend-swatch vt-dayoff border"></span>
-  @Localizer["VolTrack_Legend_DayOff"]</span>
+  @Localizer["Shifts_VolTrack_Legend_DayOff"]</span>
 ```
 
 ## Localization
@@ -311,19 +311,19 @@ Add one swatch on the footer legend in `Index.cshtml`, between Gap and Available
 
 | Key | EN |
 |---|---|
-| `VolTrack_State_DayOff` | `Day off` |
-| `VolTrack_Legend_DayOff` | `Day off (acknowledged)` |
-| `VolTrack_Popover_MarkDayOff` | `Mark day off` |
-| `VolTrack_Popover_CancelDayOff` | `Cancel day off` |
-| `VolTrack_Popover_ReasonLabel` | `Reason (optional)` |
-| `VolTrack_Popover_DayOffBlockedBySignups` | `Bail this signup before marking a day off` |
-| `VolTrack_Msg_DayOffMarked` | `Day off marked.` |
-| `VolTrack_Msg_DayOffCleared` | `Day off cleared.` |
-| `VolTrack_DayOffBadge` | `{0} day off` |
-| `VolTrack_Err_DayOffWithSignups` | `Volunteer has signups on that day — bail them first.` |
-| `VolTrack_Err_DayOffOutsideBuild` | `Day off must be inside the build period.` |
-| `VolTrack_AuditAction_DayOffMarked` | `Day off marked` |
-| `VolTrack_AuditAction_DayOffCleared` | `Day off cleared` |
+| `Shifts_VolTrack_State_DayOff` | `Day off` |
+| `Shifts_VolTrack_Legend_DayOff` | `Day off (acknowledged)` |
+| `Shifts_VolTrack_Popover_MarkDayOff` | `Mark day off` |
+| `Shifts_VolTrack_Popover_CancelDayOff` | `Cancel day off` |
+| `Shifts_VolTrack_Popover_ReasonLabel` | `Reason (optional)` |
+| `Shifts_VolTrack_Popover_DayOffBlockedBySignups` | `Bail this signup before marking a day off` |
+| `Shifts_VolTrack_Msg_DayOffMarked` | `Day off marked.` |
+| `Shifts_VolTrack_Msg_DayOffCleared` | `Day off cleared.` |
+| `Shifts_VolTrack_DayOffBadge` | `{0} day off` |
+| `Shifts_VolTrack_Err_DayOffWithSignups` | `Volunteer has signups on that day — bail them first.` |
+| `Shifts_VolTrack_Err_DayOffOutsideBuild` | `Day off must be inside the build period.` |
+| `Shifts_VolTrack_AuditAction_DayOffMarked` | `Day off marked` |
+| `Shifts_VolTrack_AuditAction_DayOffCleared` | `Day off cleared` |
 
 (No `VolTrack_Popover_DayOffBlockedByCampSetup` or `VolTrack_Err_DayOffDuringCampSetup` — the camp-setup case is silent in the UI and not validated server-side; see §"Camp-setup interaction".)
 

@@ -14,9 +14,6 @@ internal interface ICommunicationPreferenceManagement
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
         Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
-    /// <summary>Valid for about 90 days.</summary>
-    string GenerateUnsubscribeToken(Guid userId, MessageCategory category);
-
     (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token);
 
     /// <summary>RFC 8058 List-Unsubscribe headers.</summary>

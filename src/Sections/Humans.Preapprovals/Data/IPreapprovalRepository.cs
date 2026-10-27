@@ -63,6 +63,9 @@ internal interface IPreapprovalRepository : IRepository
 
     Task<bool> ManagesAnyProgramAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
+    Task<IReadOnlyList<Guid>> GetGrantIdsOfManagedProgramsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
     /// <summary>An open program accepting applications whose deadline is on or after <paramref name="today"/>.</summary>
     Task<bool> AnyProgramAcceptsApplicationsAsync(LocalDate today, CancellationToken ct = default);
 

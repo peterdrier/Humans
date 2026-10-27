@@ -363,11 +363,9 @@ separately below the key table.
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
 | `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | FeedbackService (evicts its own key) |
-| `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationInboxService** (`GetUnreadBadgeCountsAsync`) | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
-| `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | IssuesService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenDigest}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
@@ -386,7 +384,7 @@ separately below the key table.
 | Cache | Section | Key | Type | Populated By | Invalidated By |
 |-------|---------|-----|------|-------------|----------------|
 | `TrackedCache<Guid, UserInfo>` | Users (+Profiles) | `User.UserInfo` | Per-User | CachingUserService warmup + lazy load | own write pass-throughs + section-internal `IUserInfoSliceRefresher` (`UserInfoSaveChangesInterceptor`, Users' own services) |
-| `TrackedCache<Guid, TeamInfo>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | own writes, `IUserMerge`, GDPR erasure + `ITeamWrite.InvalidateActiveTeamsCache` (Users' merge tail) |
+| `TrackedCache<Guid, TeamReadSnapshot>` | Teams | `Team.TeamInfo` | Per-Entity | CachingTeamService warmup + lazy load | own writes, `IUserMerge`, GDPR erasure; member display data resolves live from Users |
 | `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` | Shifts | `ShiftView.UserView` / `ShiftView.RotaView` | Per-User / Per-Entity | CachingShiftViewService lazy load | `InvalidateUser` / `InvalidateRota`, called only by Shifts' own services |
 | `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | own write pass-throughs (clear-all on sync, transfer, contact import, erasure, merge) |
 | `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | own write pass-throughs (both users on merge; clear-all otherwise) |
@@ -403,9 +401,9 @@ separately below the key table.
 
 ### Cache Issues / Notes
 
-1. **Nav-badge caches are owned by services.** `NotificationBadge:{userId}` is
-   populated by `NotificationInboxService`, `FeedbackBadgeCount` by
+1. **Nav-badge caches are owned by services.** `FeedbackBadgeCount` is populated by
    `FeedbackService`, and `NavBadge:Voting:{userId}` by `ApplicationDecisionService`.
+   Notifications reads unread recipient counts and Issues reads actionable counts directly, without badge caches.
 
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
    `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,

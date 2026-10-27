@@ -115,7 +115,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 |-------|--------------|
 | Member with a grant | See own grants on `/Preapprovals`; file an expense against an Open one before the deadline. |
 | Any member while a program accepts applications | All of the above. Additionally apply for a pre-approval; a second submit edits the pending one. |
-| Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. |
+| Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. In Expenses, does the first review (endorse, reject, decline a line) of reports filed against their programs' grants. |
 | Board, FinanceAdmin, Admin | All of the above on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
 
 ## Invariants
@@ -141,7 +141,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - One pending application per person per program across every id they have held; a second
   submit edits it.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
-  for it (a rejected report resubmitting). Release and consume need the holding report.
+  for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction.
 - Grant-level admin routes 404 for a grant of another program, so a manager of A never acts
   on B's grants (`PreapprovalsAdminController.ManageAsync`, `ControllerTests`).
 - Grant admin actions reject invalid form binding with 400 after identity, program permission
@@ -208,7 +208,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **Gdpr**: implements `IUserDataContributor`.
 - **Expenses** (consumer, PR 3 of the feature): `IPreapprovalWrite.ClaimAsync` / `ReleaseAsync` /
   `ConsumeAsync` inside its own `TransactionScope`; `IPreapprovalService.ListClaimableForUserAsync` /
-  `GetGrantAsync`.
+  `GetGrantAsync` / `ListManagedGrantIdsAsync`.
 
 ## Architecture
 
@@ -222,11 +222,11 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 
 | Interface | Methods | Notes |
 |---|---:|---|
-| `IPreapprovalService` (public) | 2 | `ListClaimableForUserAsync`, `GetGrantAsync`. Returns `GrantOption`, never entities. |
-| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `GrantStamp`). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
+| `IPreapprovalService` (public) | 3 | `ListClaimableForUserAsync`, `GetGrantAsync`, `ListManagedGrantIdsAsync` (the grants a named manager may first-review in Expenses). Returns `GrantOption` or ids, never entities. |
+| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with a `GrantStamp` on successful claims). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
 | `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking, reminders. |
 
-`GrantOption`, `GrantStamp` and `GrantStatus` are the public types beside them.
+`GrantOption`, `GrantStamp`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
 
 ### For (A) Migrated sections
 

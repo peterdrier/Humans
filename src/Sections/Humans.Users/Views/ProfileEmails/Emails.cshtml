@@ -1,7 +1,7 @@
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.EmailsViewModel
 @{
-    ViewData["Title"] = Localizer["Emails_Title"].Value;
+    ViewData["Title"] = Localizer["Users_Emails_Title"].Value;
     // Self users toggle exclusively, so Clear is hidden, except on rows already in violation
     // (several verified Primary rows), where radios can't unselect.
     var hasMultiplePrimary = Model.Emails.Count(e => e.IsPrimary && e.IsVerified) > 1;
@@ -22,11 +22,11 @@
                 {
                     <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
                 }
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Emails_Title"]</li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_Emails_Title"]</li>
             </ol>
         </nav>
 
-        <h1>@Localizer["Emails_Title"]</h1>
+        <h1>@Localizer["Users_Emails_Title"]</h1>
 
         @if (Model.IsAdminContext)
         {
@@ -35,11 +35,11 @@
                 <div>
                     @if (!string.IsNullOrWhiteSpace(Model.TargetDisplayName))
                     {
-                        @string.Format(Localizer["EmailGrid_AdminContextBannerNamed"].Value, Model.TargetDisplayName)
+                        @string.Format(Localizer["Users_EmailGrid_AdminContextBannerNamed"].Value, Model.TargetDisplayName)
                     }
                     else
                     {
-                        @Localizer["EmailGrid_AdminContextBanner"]
+                        @Localizer["Users_EmailGrid_AdminContextBanner"]
                     }
                 </div>
             </div>
@@ -47,7 +47,7 @@
         else
         {
             <p class="text-muted">
-                @Localizer["Emails_Description"]
+                @Localizer["Users_Emails_Description"]
             </p>
         }
 
@@ -74,7 +74,7 @@
             <div class="alert alert-warning d-flex align-items-center mb-3">
                 <i class="fa-solid fa-envelope-circle-check me-2 fs-4"></i>
                 <div>
-                    <strong>@Localizer["EmailGrid_VerificationPendingTitle"]</strong> — @Localizer["EmailGrid_VerificationPendingBody"]
+                    <strong>@Localizer["Users_EmailGrid_VerificationPendingTitle"]</strong> — @Localizer["Users_EmailGrid_VerificationPendingBody"]
                 </div>
             </div>
         }
@@ -83,14 +83,14 @@
 
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">@Localizer["Emails_YourEmails"]</h5>
+                <h5 class="mb-0">@Localizer["Users_Emails_YourEmails"]</h5>
             </div>
             <div class="card-body p-0">
                 @if (Model.WorkspaceLockedEmailId.HasValue)
                 {
                     <div class="px-3 pt-3">
                         <small class="text-muted">
-                            <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_WorkspaceLockedHelp"]
+                            <i class="fa-solid fa-lock me-1"></i>@Localizer["Users_EmailGrid_WorkspaceLockedHelp"]
                         </small>
                     </div>
                 }
@@ -98,12 +98,12 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>@Localizer["EmailGrid_Email"]</th>
-                                <th>@Localizer["EmailGrid_Status"]</th>
-                                <th>@Localizer["EmailGrid_Primary"]</th>
-                                <th title="@Localizer["EmailGrid_GoogleColumnTooltip"]">@Localizer["EmailGrid_Google"]</th>
-                                <th>@Localizer["EmailGrid_Visibility"]</th>
-                                <th class="text-end">@Localizer["EmailGrid_Actions"]</th>
+                                <th>@Localizer["Users_EmailGrid_Email"]</th>
+                                <th>@Localizer["Users_EmailGrid_Status"]</th>
+                                <th>@Localizer["Users_EmailGrid_Primary"]</th>
+                                <th title="@Localizer["Users_EmailGrid_GoogleColumnTooltip"]">@Localizer["Users_EmailGrid_Google"]</th>
+                                <th>@Localizer["Users_EmailGrid_Visibility"]</th>
+                                <th class="text-end">@Localizer["Users_EmailGrid_Actions"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -116,7 +116,7 @@
                                     {
                                         <div class="small text-warning">
                                             <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                                            @Localizer["EmailGrid_OrphanProviderTag", row.Provider ?? string.Empty]
+                                            @Localizer["Users_EmailGrid_OrphanProviderTag", row.Provider ?? string.Empty]
                                         </div>
                                     }
                                 </td>
@@ -124,24 +124,24 @@
                                     @if (row.IsMergePending)
                                     {
                                         <span class="badge bg-warning text-dark">
-                                            <i class="fa-solid fa-code-merge me-1"></i>@Localizer["EmailGrid_StatusMergePending"]
+                                            <i class="fa-solid fa-code-merge me-1"></i>@Localizer["Users_EmailGrid_StatusMergePending"]
                                         </span>
                                     }
                                     else if (row.IsVerified)
                                     {
                                         <span class="badge bg-success">
-                                            <i class="fa-solid fa-check me-1"></i>@Localizer["EmailGrid_StatusVerified"]
+                                            <i class="fa-solid fa-check me-1"></i>@Localizer["Users_EmailGrid_StatusVerified"]
                                         </span>
                                     }
                                     else if (row.IsPendingVerification)
                                     {
                                         <span class="badge bg-warning text-dark">
-                                            <i class="fa-solid fa-clock me-1"></i>@Localizer["EmailGrid_StatusPending"]
+                                            <i class="fa-solid fa-clock me-1"></i>@Localizer["Users_EmailGrid_StatusPending"]
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary">@Localizer["Emails_Unverified"]</span>
+                                        <span class="badge bg-secondary">@Localizer["Users_Emails_Unverified"]</span>
                                     }
                                 </td>
                                 <td>
@@ -159,17 +159,17 @@
                                     @if (primaryChecked)
                                     {
                                         <span class="d-inline-flex align-items-center">
-                                            <i class="fa-solid fa-circle-check text-success me-1" aria-label="@Localizer["EmailGrid_Primary"]"></i>
+                                            <i class="fa-solid fa-circle-check text-success me-1" aria-label="@Localizer["Users_EmailGrid_Primary"]"></i>
                                             @if (showClearPrimary)
                                             {
                                                 <form asp-action="@(Model.IsAdminContext ? "AdminClearPrimary" : "ClearPrimary")"
                                                       asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                                       method="post" class="d-inline ms-1"
-                                                      data-confirm="@Localizer["EmailGrid_ConfirmClearPrimary"].Value">
+                                                      data-confirm="@Localizer["Users_EmailGrid_ConfirmClearPrimary"].Value">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="emailId" value="@row.Id" />
                                                     <button type="submit" class="btn btn-link btn-sm text-muted p-0"
-                                                            title="@Localizer["EmailGrid_Clear"].Value">
+                                                            title="@Localizer["Users_EmailGrid_Clear"].Value">
                                                         <i class="fa-solid fa-xmark"></i>
                                                     </button>
                                                 </form>
@@ -184,18 +184,18 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="emailId" value="@row.Id" />
                                             <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                                @Localizer["EmailGrid_SetPrimary"]
+                                                @Localizer["Users_EmailGrid_SetPrimary"]
                                             </button>
                                         </form>
                                     }
                                     else if (workspaceLocked && row.IsVerified)
                                     {
                                         @* Verified but Workspace lock held elsewhere — don't claim "verify first" *@
-                                        <span class="text-muted small" title="@Localizer["EmailGrid_WorkspaceLocked"].Value">—</span>
+                                        <span class="text-muted small" title="@Localizer["Users_EmailGrid_WorkspaceLocked"].Value">—</span>
                                     }
                                     else
                                     {
-                                        <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                        <span class="text-muted small">@Localizer["Users_Emails_VerifyFirst"]</span>
                                     }
                                 </td>
                                 <td>
@@ -210,11 +210,11 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="emailId" value="@row.Id" />
                                             <select name="visibility" class="form-select form-select-sm js-auto-submit" style="width: auto; display: inline-block;">
-                                                <option value="" selected="@(row.Visibility == null ? "selected" : null)">@Localizer["Emails_Visibility_Hidden"]</option>
-                                                <option value="AllActiveProfiles" selected="@(row.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">@Localizer["Emails_Visibility_AllHumans"]</option>
-                                                <option value="MyTeams" selected="@(row.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">@Localizer["Emails_Visibility_MyTeams"]</option>
-                                                <option value="CoordinatorsAndBoard" selected="@(row.Visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer["Emails_Visibility_CoordinatorsBoard"]</option>
-                                                <option value="BoardOnly" selected="@(row.Visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer["Emails_Visibility_BoardOnly"]</option>
+                                                <option value="" selected="@(row.Visibility == null ? "selected" : null)">@Localizer["Users_Emails_Visibility_Hidden"]</option>
+                                                <option value="AllActiveProfiles" selected="@(row.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">@Localizer["Users_Emails_Visibility_AllHumans"]</option>
+                                                <option value="MyTeams" selected="@(row.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">@Localizer["Users_Emails_Visibility_MyTeams"]</option>
+                                                <option value="CoordinatorsAndBoard" selected="@(row.Visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer["Users_Emails_Visibility_CoordinatorsBoard"]</option>
+                                                <option value="BoardOnly" selected="@(row.Visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer["Users_Emails_Visibility_BoardOnly"]</option>
                                             </select>
                                         </form>
                                     }
@@ -229,11 +229,11 @@
                                         <form asp-action="AdminVerifyEmail"
                                               asp-route-id="@Model.TargetUserId"
                                               method="post" class="d-inline me-1"
-                                              data-confirm="@Localizer["EmailGrid_ConfirmAdminVerify"].Value">
+                                              data-confirm="@Localizer["Users_EmailGrid_ConfirmAdminVerify"].Value">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="emailId" value="@row.Id" />
                                             <button type="submit" class="btn btn-outline-success btn-sm">
-                                                <i class="fa-solid fa-check me-1"></i>@Localizer["EmailGrid_AdminVerify"]
+                                                <i class="fa-solid fa-check me-1"></i>@Localizer["Users_EmailGrid_AdminVerify"]
                                             </button>
                                         </form>
                                     }
@@ -248,10 +248,10 @@
                                                       asp-route-id="@Model.TargetUserId"
                                                       asp-route-emailId="@row.Id"
                                                       method="post" class="d-inline"
-                                                      data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
+                                                      data-confirm="@Localizer["Users_EmailGrid_ConfirmUnlink"].Value">
                                                     @Html.AntiForgeryToken()
                                                     <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["Users_EmailGrid_Unlink"]
                                                     </button>
                                                 </form>
                                             }
@@ -260,10 +260,10 @@
                                                 <form asp-action="Unlink"
                                                       asp-route-id="@row.Id"
                                                       method="post" class="d-inline"
-                                                      data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
+                                                      data-confirm="@Localizer["Users_EmailGrid_ConfirmUnlink"].Value">
                                                     @Html.AntiForgeryToken()
                                                     <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["Users_EmailGrid_Unlink"]
                                                     </button>
                                                 </form>
                                             }
@@ -272,14 +272,14 @@
                                            ticket-linked email. Admins use AdminDelete, which re-validates. *@
                                         else if (row.IsPrimary)
                                         {
-                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeletePrimaryBlocked"].Value">
-                                                <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_DeletePrimaryBlocked"]
+                                            <span class="text-muted small" title="@Localizer["Users_EmailGrid_DeletePrimaryBlocked"].Value">
+                                                <i class="fa-solid fa-lock me-1"></i>@Localizer["Users_EmailGrid_DeletePrimaryBlocked"]
                                             </span>
                                         }
                                         else if (row.IsTicketLinked)
                                         {
-                                            <span class="text-muted small" title="@Localizer["EmailGrid_DeleteTicketLinkedBlocked"].Value">
-                                                <i class="fa-solid fa-ticket me-1"></i>@Localizer["EmailGrid_DeleteTicketLinkedBlocked"]
+                                            <span class="text-muted small" title="@Localizer["Users_EmailGrid_DeleteTicketLinkedBlocked"].Value">
+                                                <i class="fa-solid fa-ticket me-1"></i>@Localizer["Users_EmailGrid_DeleteTicketLinkedBlocked"]
                                             </span>
                                         }
                                         else
@@ -287,7 +287,7 @@
                                             <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
                                                   asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                                   method="post" class="d-inline"
-                                                  data-confirm="@Localizer["Emails_ConfirmRemove"].Value">
+                                                  data-confirm="@Localizer["Users_Emails_ConfirmRemove"].Value">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="emailId" value="@row.Id" />
                                                 <button type="submit" class="btn btn-outline-danger btn-sm">
@@ -480,7 +480,7 @@
 
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
+                <h5 class="mb-0">@Localizer["Users_Emails_AddNew"]</h5>
             </div>
             <div class="card-body">
                 @if (!Model.IsAdminContext)
@@ -488,8 +488,8 @@
                     <div class="alert alert-info d-flex align-items-start mb-3">
                         <i class="fa-solid fa-circle-info me-2 fs-4"></i>
                         <div>
-                            <strong>@Localizer["Emails_MergeWarningTitle"]</strong>
-                            <div>@Localizer["Emails_MergeWarningBody"]</div>
+                            <strong>@Localizer["Users_Emails_MergeWarningTitle"]</strong>
+                            <div>@Localizer["Users_Emails_MergeWarningBody"]</div>
                         </div>
                     </div>
                 }
@@ -512,20 +512,20 @@
                             <span asp-validation-for="NewEmail" class="text-danger"></span>
                         }
                         <div class="form-text">
-                            @Localizer["Emails_VerificationWillBeSent"]
+                            @Localizer["Users_Emails_VerificationWillBeSent"]
                         </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary"
                             @(Model.CanAddEmail ? "" : "disabled")>
                         <i class="fa-solid fa-paper-plane me-1"></i>
-                        @Localizer["Emails_SendVerification"]
+                        @Localizer["Users_Emails_SendVerification"]
                     </button>
 
                     @if (!Model.IsAdminContext && !Model.CanAddEmail)
                     {
                         <small class="text-muted ms-2">
-                            @string.Format(Localizer["Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
+                            @string.Format(Localizer["Users_Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
                         </small>
                     }
                 </form>
@@ -537,15 +537,15 @@
             @* CanUnlink is re-validated server-side. *@
             <div class="card mb-4" id="linked-accounts">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-link me-2"></i>@Localizer["LinkedAccounts_Title"]</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-link me-2"></i>@Localizer["Users_LinkedAccounts_Title"]</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="px-3 pt-3">
-                        <small class="text-muted">@Localizer["LinkedAccounts_Description"]</small>
+                        <small class="text-muted">@Localizer["Users_LinkedAccounts_Description"]</small>
                     </div>
                     @if (!Model.LinkedAccounts.Any())
                     {
-                        <div class="p-3 text-muted">@Localizer["LinkedAccounts_Empty"]</div>
+                        <div class="p-3 text-muted">@Localizer["Users_LinkedAccounts_Empty"]</div>
                     }
                     else
                     {
@@ -553,10 +553,10 @@
                             <table class="table table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th>@Localizer["LinkedAccounts_Provider"]</th>
-                                        <th>@Localizer["LinkedAccounts_Account"]</th>
-                                        <th>@Localizer["LinkedAccounts_LinkedOn"]</th>
-                                        <th class="text-end">@Localizer["LinkedAccounts_Actions"]</th>
+                                        <th>@Localizer["Users_LinkedAccounts_Provider"]</th>
+                                        <th>@Localizer["Users_LinkedAccounts_Account"]</th>
+                                        <th>@Localizer["Users_LinkedAccounts_LinkedOn"]</th>
+                                        <th class="text-end">@Localizer["Users_LinkedAccounts_Actions"]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -602,19 +602,19 @@
                                             @if (acct.CanUnlink)
                                             {
                                                 <form asp-action="UnlinkLinkedAccount" method="post" class="d-inline"
-                                                      data-confirm="@Localizer["LinkedAccounts_ConfirmUnlink"].Value">
+                                                      data-confirm="@Localizer["Users_LinkedAccounts_ConfirmUnlink"].Value">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="provider" value="@acct.Provider" />
                                                     <input type="hidden" name="providerKey" value="@acct.ProviderKey" />
                                                     <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["Users_EmailGrid_Unlink"]
                                                     </button>
                                                 </form>
                                             }
                                             else
                                             {
-                                                <span class="text-muted small" title="@Localizer["LinkedAccounts_LastSignInMethod"].Value">
-                                                    <i class="fa-solid fa-lock me-1"></i>@Localizer["LinkedAccounts_LastSignInMethod"]
+                                                <span class="text-muted small" title="@Localizer["Users_LinkedAccounts_LastSignInMethod"].Value">
+                                                    <i class="fa-solid fa-lock me-1"></i>@Localizer["Users_LinkedAccounts_LastSignInMethod"]
                                                 </span>
                                             }
                                         </td>
@@ -629,16 +629,16 @@
 
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["EmailGrid_LinkGoogleAccount"]</h5>
+                    <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["Users_EmailGrid_LinkGoogleAccount"]</h5>
                 </div>
                 <div class="card-body">
                     <p class="text-muted small mb-3">
-                        @Localizer["EmailGrid_LinkGoogleHelp"]
+                        @Localizer["Users_EmailGrid_LinkGoogleHelp"]
                     </p>
                     <form asp-action="Link" asp-route-provider="Google" method="post">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-primary">
-                            <i class="fa-brands fa-google me-1"></i>@Localizer["EmailGrid_LinkGoogleAccount"]
+                            <i class="fa-brands fa-google me-1"></i>@Localizer["Users_EmailGrid_LinkGoogleAccount"]
                         </button>
                     </form>
                 </div>
@@ -650,14 +650,14 @@
             {
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.TargetUserId" class="btn btn-outline-secondary">
                     <i class="fa-solid fa-arrow-left me-1"></i>
-                    @Localizer["EmailGrid_BackToAdminDetail"]
+                    @Localizer["Users_EmailGrid_BackToAdminDetail"]
                 </a>
             }
             else
             {
                 <a asp-controller="Profile" asp-action="Edit" class="btn btn-outline-secondary">
                     <i class="fa-solid fa-arrow-left me-1"></i>
-                    @Localizer["Emails_BackToEdit"]
+                    @Localizer["Users_Emails_BackToEdit"]
                 </a>
             }
         </div>

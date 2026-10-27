@@ -53,10 +53,10 @@ internal interface ITeamRepository : IRepository
     Task<TeamUpdateConflict> UpdateTeamAsync(Team team, CancellationToken ct = default);
 
     /// <summary>
-    /// One save: the configured true sentinel preserves an explicit false on insert. Returns false on a unique-constraint
-    /// collision (usually a slug race), which drives the service's suffix retry.
+    /// One save: the configured true sentinel preserves an explicit false on insert. Reports only named unique
+    /// conflicts; slug conflicts drive the service's suffix retry.
     /// </summary>
-    Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
+    Task<TeamUpdateConflict> AddTeamWithRequiresApprovalOverrideAsync(
         Team team, bool requiresApproval, CancellationToken ct = default);
 
     /// <summary>Closes every active membership and deactivates the team in one transaction. Returns the users removed.</summary>

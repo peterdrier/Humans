@@ -2,10 +2,10 @@ using Humans.Base.Interfaces;
 using Humans.Base.Enums;
 using NodaTime;
 
-namespace Humans.Email.Contracts;
+namespace Humans.Email.Services;
 
-/// <summary>Per-user outbox history, for other sections.</summary>
-public interface IEmailOutboxService : IApplicationService
+/// <summary>Per-user outbox history.</summary>
+internal interface IEmailOutboxService : IApplicationService
 {
     /// <summary>Newest first.</summary>
     Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
@@ -15,7 +15,7 @@ public interface IEmailOutboxService : IApplicationService
         Guid userId, CancellationToken cancellationToken = default);
 }
 
-public sealed record EmailOutboxMessageDto(
+internal sealed record EmailOutboxMessageDto(
     Guid Id,
     string RecipientEmail,
     string? RecipientName,

@@ -23,21 +23,29 @@ internal sealed class PaymentDetailsService(
     public async Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        var row = await repo.GetAsync(info?.Id ?? userId, ct);
+        return await ReadIbanAsync(info?.Id ?? userId, info, ct);
+    }
+
+    private async Task<string?> ReadIbanAsync(Guid userId, UserInfo? info, CancellationToken ct)
+    {
+        var row = await repo.GetAsync(userId, ct);
         return row is not null ? row.Iban : LegacyIban(info);
     }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
-        if (await users.GetUserInfoAsync(userId, ct) is null) return false;
+        var info = await users.GetUserInfoAsync(userId, ct);
+        if (info is null) return false;
         var normalized = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
-        await repo.UpsertAsync(userId, normalized, clock.GetCurrentInstant(), ct);
+        await repo.UpsertAsync(info.Id, normalized, clock.GetCurrentInstant(), ct);
         return true;
     }
 
     public async Task<string?> RevealIbanAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
-        var iban = await GetIbanAsync(userId, ct);
+        var info = await users.GetUserInfoAsync(userId, ct);
+        userId = info?.Id ?? userId;
+        var iban = await ReadIbanAsync(userId, info, ct);
         if (iban is null) return null;
 
         // Same entity type and wording as before, so old and new reveals read back together.
@@ -83,12 +91,15 @@ internal sealed class PaymentDetailsService(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // The survivor's IBAN wins. One still only on its legacy profile counts as its own, so it is
-        // copied first rather than overwritten by the source's row.
-        if (await repo.GetAsync(mergedToUserId, ct) is null
-            && LegacyIban(await users.GetRawUserInfoAsync(mergedToUserId, ct)) is { } legacy)
+        // The survivor's legacy value beats the source's row; a recorded removal on either
+        // account beats that account's legacy value.
+        if (await repo.GetAsync(mergedToUserId, ct) is null)
         {
-            await repo.TryInsertAsync(mergedToUserId, legacy, now, ct);
+            var legacy = LegacyIban(await users.GetRawUserInfoAsync(mergedToUserId, ct));
+            if (legacy is null && await repo.GetAsync(mergedFromUserId, ct) is null)
+                legacy = LegacyIban(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
+            if (legacy is not null)
+                await repo.TryInsertAsync(mergedToUserId, legacy, now, ct);
         }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }

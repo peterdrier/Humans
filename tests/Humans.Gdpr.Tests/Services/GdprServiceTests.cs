@@ -52,7 +52,6 @@ public class GdprServiceTests
         FallbackPictureUrl: null,
         CreatedAt: FixedNow,
         LastLoginAt: null,
-        LastConsentReminderSentAt: null,
         DeletionRequestedAt: null,
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,

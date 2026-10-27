@@ -1,3 +1,4 @@
+using Humans.Grants.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Grants.Domain;
@@ -70,16 +71,17 @@ internal sealed partial class GrantService
         return GrantMutationResult.Ok;
     }
 
-    public async Task<Guid> IssueAsync(
+    public async Task<GrantIssueResult> IssueAsync(
         string sourceKey, Guid userId, string? sourceRef, Guid actorUserId, CancellationToken ct = default)
     {
         sourceRef = Trimmed(sourceRef);
         if (sourceRef?.Length > SourceRefMax)
-            throw new ArgumentException($"Source reference longer than {SourceRefMax} characters.", nameof(sourceRef));
+            return new(Guid.Empty, GrantWriteRefusal.SourceReferenceTooLong);
         var program = await SourceProgramAsync(sourceKey, ct);
+        if (program is null) return new(Guid.Empty, GrantWriteRefusal.NoOpenProgram);
 
         var live = program.Grants.FirstOrDefault(g => g.UserId == userId && g.RevokedAt is null);
-        if (live is not null) return live.Id;
+        if (live is not null) return new(live.Id);
 
         var grant = NewGrant(program, userId, sourceRef, expiresOn: null, actorUserId, clock.GetCurrentInstant());
         await repository.AddGrantsAsync([grant], ct);
@@ -89,27 +91,27 @@ internal sealed partial class GrantService
             $"{(sourceRef is null ? "" : $", ref {sourceRef}")}{ExpirySuffix(grant, program)}.",
             actorUserId);
         await AnnounceIssuedAsync(grant, program, ct);
-        return grant.Id;
+        return new(grant.Id);
     }
 
-    public async Task<bool> RevokeAsync(
+    public async Task<GrantRevokeResult> RevokeAsync(
         string sourceKey, Guid userId, string? reason, Guid actorUserId, CancellationToken ct = default)
     {
         if ((reason?.Length ?? 0) > ReasonMax)
-            throw new ArgumentException($"Reason longer than {ReasonMax} characters.", nameof(reason));
+            return new(false, GrantWriteRefusal.ReasonTooLong);
         var program = await SourceProgramAsync(sourceKey, ct);
+        if (program is null) return new(false, GrantWriteRefusal.NoOpenProgram);
         var live = program.Grants.FirstOrDefault(g => g.UserId == userId && g.RevokedAt is null);
-        if (live is null) return false;
+        if (live is null) return new(false);
         live.Program = program;
         await RevokeCoreAsync(live, Trimmed(reason), actorUserId, ct);
-        return true;
+        return new(true);
     }
 
-    private async Task<GrantProgram> SourceProgramAsync(string sourceKey, CancellationToken ct)
+    private async Task<GrantProgram?> SourceProgramAsync(string sourceKey, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceKey);
-        return (await repository.GetProgramsAsync(ct)).SingleOrDefault(p => IsOpenSource(p, sourceKey))
-            ?? throw new InvalidOperationException($"No open grant program is filled by source {sourceKey}.");
+        return (await repository.GetProgramsAsync(ct)).SingleOrDefault(p => IsOpenSource(p, sourceKey));
     }
 
     private static bool IsOpenSource(GrantProgram program, string sourceKey) =>

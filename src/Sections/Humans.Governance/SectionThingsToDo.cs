@@ -13,7 +13,7 @@ namespace Humans.Governance;
 internal sealed class SectionThingsToDo : ISectionThingsToDo
 {
     public async ValueTask<IEnumerable<ThingsToDoEntry>> EntriesAsync(
-        IServiceProvider services, ClaimsPrincipal user)
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct = default)
     {
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
@@ -21,7 +21,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
         }
 
         var snapshot = await services.GetRequiredService<IMembershipCalculator>()
-            .GetMembershipSnapshotAsync(userId);
+            .GetMembershipSnapshotAsync(userId, ct);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var complete = snapshot.PendingConsentCount == 0;
 
@@ -41,7 +41,7 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
             });
         }
 
-        entries.AddRange(await VoteEntriesAsync(services, userId, localizer));
+        entries.AddRange(await VoteEntriesAsync(services, userId, localizer, ct));
         return entries;
     }
 
@@ -51,10 +51,10 @@ internal sealed class SectionThingsToDo : ISectionThingsToDo
     /// nothing for them to do.
     /// </summary>
     private static async ValueTask<IEnumerable<ThingsToDoEntry>> VoteEntriesAsync(
-        IServiceProvider services, Guid userId, IStringLocalizer<SharedResource> localizer)
+        IServiceProvider services, Guid userId, IStringLocalizer<SharedResource> localizer, CancellationToken ct)
     {
         var votes = await services.GetRequiredService<IAssemblyVoteService>()
-            .GetVotesForMemberAsync(userId);
+            .GetVotesForMemberAsync(userId, ct);
 
         return votes
             .Where(v => v.Status == AssemblyVoteStatus.Open && v.IsOnRoster)

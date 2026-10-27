@@ -260,14 +260,18 @@ internal sealed class ShiftBrowsePageBuilder(
 
     private static List<ShiftPeriod> ParseActivePeriods(IReadOnlyList<string>? periods, string? period)
     {
-        var activePeriods = (periods ?? [])
-            .Where(p => Enum.TryParse<ShiftPeriod>(p, true, out _))
-            .Select(p => Enum.Parse<ShiftPeriod>(p, true))
-            .Distinct()
-            .ToList();
+        var activePeriods = new List<ShiftPeriod>();
+        foreach (var value in periods ?? [])
+        {
+            if (Enum.TryParse<ShiftPeriod>(value, true, out var parsed) &&
+                Enum.IsDefined(parsed) && !activePeriods.Contains(parsed))
+            {
+                activePeriods.Add(parsed);
+            }
+        }
 
         if (activePeriods.Count == 0 && !string.IsNullOrEmpty(period) &&
-            Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
+            Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod) && Enum.IsDefined(parsedPeriod))
         {
             activePeriods = [parsedPeriod];
         }

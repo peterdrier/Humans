@@ -150,7 +150,7 @@
                         <span class="form-text mb-0">@q.RatingMinLabel</span>
                     }
                     <div class="btn-group" role="group" aria-label="@q.Prompt">
-                        @for (var n = min; n <= max; n++)
+                        @for (long n = min; n <= max; n++)
                         {
                             var checkedRating = q.RatingValue == n;
                             <input type="radio" class="btn-check"
@@ -230,8 +230,8 @@
                            data-equal-ranks="@(q.RankedAllowEqualRanks ? "true" : "false")">
                         <thead>
                             <tr>
-                                <th scope="col">@Localizer["Survey_Ranked_Option"]</th>
-                                <th scope="col">@Localizer["Survey_Ranked_Rank"]</th>
+                                <th scope="col">@Localizer["Surveys_Ranked_Option"]</th>
+                                <th scope="col">@Localizer["Surveys_Ranked_Rank"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -249,13 +249,13 @@
                                     <td>
                                         <select class="form-select form-select-sm ranked-selection"
                                                 name="Answers[@answerIndex].RankedOptions[@optionIndex].Selection">
-                                            <option value="">@Localizer["Survey_Ranked_Unranked"]</option>
+                                            <option value="">@Localizer["Surveys_Ranked_Unranked"]</option>
                                             @for (var rank = 1; rank <= q.Options.Count; rank++)
                                             {
                                                 var rankLabel = rank == 1
-                                                    ? $"{rank} - {Localizer["Survey_Ranked_Best"]}"
+                                                    ? $"{rank} - {Localizer["Surveys_Ranked_Best"]}"
                                                     : rank == q.Options.Count
-                                                        ? $"{rank} - {Localizer["Survey_Ranked_Worst"]}"
+                                                        ? $"{rank} - {Localizer["Surveys_Ranked_Worst"]}"
                                                         : rank.ToString();
                                                 @if (selectedRank == rank)
                                                 {
@@ -269,7 +269,7 @@
                                             @if (q.RankedAllowReject)
                                             {
                                                 <option value="reject" selected="@(rejected.Contains(option.Value) ? "selected" : null)">
-                                                    @Localizer["Survey_Ranked_Reject"]
+                                                    @Localizer["Surveys_Ranked_Reject"]
                                                 </option>
                                             }
                                         </select>

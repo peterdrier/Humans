@@ -48,8 +48,7 @@ internal static class UserStateEvaluator
     /// UserEmail rows, so the raw column is the only place the tombstone lives (null never means erased).
     /// </summary>
     internal static bool IsGdprTombstoned(User user) =>
-        (user.IdentityEmailColumn is { } email && email.EndsWith(DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase))
-        || IsLegacyGdprTombstone(user);
+        user.IdentityEmailColumn is { } email && email.EndsWith(DeletedEmailSuffix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Terminal accounts must not acquire new personal data or credentials.</summary>
     internal static bool IsTombstone(User user) =>
@@ -61,15 +60,4 @@ internal static class UserStateEvaluator
             && email.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase));
 
     internal const string DeletedEmailSuffix = "@deleted.local";
-
-    /// <summary>
-    /// Legacy-only: rows anonymized before erasure scrubbed the email. Safe only because erasure
-    /// blanked BurnerName, which a member typing "Deleted User" never does. Delete once no pre-scrub
-    /// erased rows survive in production, keying erasure solely on the minted email.
-    /// </summary>
-    private static bool IsLegacyGdprTombstone(User user) =>
-        string.IsNullOrWhiteSpace(user.BurnerName)
-        && string.Equals(user.DisplayName, UserStateClassifier.GdprAnonymizedDisplayName, StringComparison.Ordinal)
-        && string.Equals(user.FirstName, "Deleted", StringComparison.Ordinal)
-        && string.Equals(user.LastName, "User", StringComparison.Ordinal);
 }

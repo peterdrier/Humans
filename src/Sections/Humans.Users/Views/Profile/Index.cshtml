@@ -2,13 +2,13 @@
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.ProfileViewModel
 @{
-    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
+    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Users_Profile_Title"].Value : Model.DisplayName;
 }
 
 <div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
         <div class="d-flex justify-content-between align-items-center">
-            <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
+            <h1>@(Model.IsOwnProfile ? Localizer["Users_Profile_Title"] : Model.DisplayName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
@@ -24,15 +24,8 @@
         @if (Model.IsOwnProfile && Model.HasPendingConsents)
         {
             <div class="alert alert-warning" role="alert">
-                <strong>@Localizer["Profile_ActionRequired"]</strong> @string.Format(Localizer["Profile_PendingConsents"].Value, Model.PendingConsentCount)
-                <a asp-controller="Consent" asp-action="Index" class="alert-link">@Localizer["Profile_ReviewNow"]</a>
-            </div>
-        }
-
-        @if (Model.IsOwnProfile && !Model.IsApproved)
-        {
-            <div class="alert alert-info" role="alert">
-                <strong>@Localizer["Profile_PendingApproval"]</strong> @Localizer["Profile_PendingApprovalDescription"]
+                <strong>@Localizer["Users_Profile_ActionRequired"]</strong> @string.Format(Localizer["Users_Profile_PendingConsents"].Value, Model.PendingConsentCount)
+                <a asp-controller="Consent" asp-action="Index" class="alert-link">@Localizer["Users_Profile_ReviewNow"]</a>
             </div>
         }
 
@@ -47,10 +40,10 @@
             <div class="alert @alertClass" role="alert">
                 <div class="d-flex justify-content-between align-items-center">
                     <span>
-                        @string.Format(Localizer["Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
+                        @string.Format(Localizer["Users_Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
                         <span class="badge @Model.TierApplicationBadgeClass ms-1">@SharedLocalizer["ApplicationStatus_" + Model.TierApplicationStatus.ToString()]</span>
                     </span>
-                    <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Profile_TierApplicationDetails"]</a>
+                    <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Users_Profile_TierApplicationDetails"]</a>
                 </div>
             </div>
         }
@@ -81,7 +74,7 @@
         {
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Profile_NoShowHistory", Model.NoShowHistory!.Count]</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Users_Profile_NoShowHistory", Model.NoShowHistory!.Count]</h5>
                 </div>
                 <div class="card-body p-0">
                     @{
@@ -89,8 +82,8 @@
                             .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
                             .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
                             .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel)
-                            .Column(Localizer["Profile_MarkedBy"].Value, r => r.MarkedByName)
-                            .Column(Localizer["Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
+                            .Column(Localizer["Users_Profile_MarkedBy"].Value, r => r.MarkedByName)
+                            .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
                             .Build();
                     }
                     <partial name="_Table" model="noShowTable" />
@@ -108,8 +101,8 @@
                           actions="FacilitatedMessageSent" limit="50"
                           layout="table" columns="when,actor,description"
                           column-labels="@sentMessageHeaders"
-                          title="@Localizer["Profile_SentMessages"].Value"
-                          empty-text="@Localizer["Profile_NoSentMessages"].Value" />
+                          title="@Localizer["Users_Profile_SentMessages"].Value"
+                          empty-text="@Localizer["Users_Profile_NoSentMessages"].Value" />
         }
     </div>
 
@@ -119,7 +112,7 @@
             <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.ProfileSidebar" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
             <div class="card mb-4">
-                <div class="card-header">@Localizer["Profile_QuickActions"]</div>
+                <div class="card-header">@Localizer["Users_Profile_QuickActions"]</div>
                 <div class="list-group list-group-flush">
                     <a asp-controller="Profile" asp-action="Edit" class="list-group-item list-group-item-action">@SharedLocalizer["Common_EditProfile"]</a>
                     <a asp-controller="Consent" asp-action="Index" class="list-group-item list-group-item-action">
@@ -129,14 +122,14 @@
                             <span class="badge bg-warning text-dark float-end">@Model.PendingConsentCount</span>
                         }
                     </a>
-                    <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">@Localizer["Profile_ShiftInfo"]</a>
+                    <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">@Localizer["Users_Profile_ShiftInfo"]</a>
                     <a asp-controller="CantinaProfile" asp-action="Dietary" class="list-group-item list-group-item-action">@Localizer["Users_Profile_DietaryLink"]</a>
-                    <a asp-controller="Profile" asp-action="Medical" class="list-group-item list-group-item-action">@Localizer["Profile_DietaryMedical_MedicalConditions_Title"]</a>
-                    <a asp-controller="ProfileEmails" asp-action="Emails" class="list-group-item list-group-item-action">@Localizer["Emails_Title"]</a>
-                    <a asp-controller="CommunicationPreferences" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["CommPrefs_Title"]</a>
+                    <a asp-controller="Profile" asp-action="Medical" class="list-group-item list-group-item-action">@Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</a>
+                    <a asp-controller="ProfileEmails" asp-action="Emails" class="list-group-item list-group-item-action">@Localizer["Users_Emails_Title"]</a>
+                    <a asp-controller="CommunicationPreferences" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Users_CommPrefs_Title"]</a>
                     <a asp-controller="Governance" asp-action="Index" class="list-group-item list-group-item-action">@SharedLocalizer["Nav_Governance"]</a>
-                    <a asp-controller="MyData" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
-                    <a asp-controller="MemberOutbox" asp-action="MyOutbox" class="list-group-item list-group-item-action">@Localizer["Profile_MyEmails"]</a>
+                    <a asp-controller="MyData" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Users_ProfilePrivacy_Title"]</a>
+                    <a asp-controller="MemberOutbox" asp-action="MyOutbox" class="list-group-item list-group-item-action">@Localizer["Users_Profile_MyEmails"]</a>
                 </div>
             </div>
         </div>

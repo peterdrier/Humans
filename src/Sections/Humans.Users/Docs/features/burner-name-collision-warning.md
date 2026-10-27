@@ -96,8 +96,8 @@ responses superseded by a later keystroke immediately, before the next debounce
 fires. Every input hides the previous warning, including when the name becomes
 too short for another lookup.
 
-Localization keys `ProfileEdit_BurnerNameCollisionOne` /
-`ProfileEdit_BurnerNameCollisionMany` are defined in `UsersResource.resx` and the
+Localization keys `Users_ProfileEdit_BurnerNameCollisionOne` /
+`Users_ProfileEdit_BurnerNameCollisionMany` are defined in `UsersResource.resx` and the
 five locale siblings (es/ca/fr/de/it).
 
 ## Related

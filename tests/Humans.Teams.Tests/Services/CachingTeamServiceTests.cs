@@ -38,6 +38,19 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             .IsUserBoardMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
         _innerTeamService = Substitute.For<ITeamManagementService>();
+        _innerTeamService.GetTeamSnapshotsAsync(Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var teams = await _innerTeamService.GetTeamsAsync(call.Arg<CancellationToken>());
+                return (IReadOnlyDictionary<Guid, TeamReadSnapshot>)teams.ToDictionary(pair => pair.Key, pair => new TeamReadSnapshot(
+                    pair.Value, pair.Value.Members.Select(member => new TeamMemberReference(
+                        member.TeamMemberId, member.UserId, member.Role, member.JoinedAt)).ToList()));
+            });
+        _innerTeamService.ResolveTeamMembersAsync(
+                Arg.Any<IReadOnlyDictionary<Guid, TeamReadSnapshot>>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
+                call.Arg<IReadOnlyDictionary<Guid, TeamReadSnapshot>>()
+                    .ToDictionary(pair => pair.Key, pair => pair.Value.Team)));
         _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => BuildTeamInfosAsync());
 
@@ -623,14 +636,15 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await _service.GetTeamAsync(team.Id, ct);
         var before = _service.BulkInvalidations;
 
-        // Inner is an unconfigured NSubstitute mock; approve returns default (null) — fine for this assertion.
-        await (write switch
+        // An unconfigured inner mock can return no result; invalidation must still run.
+        Task mutation = write switch
         {
             nameof(CachingTeamService.JoinTeamAsync) => _service.JoinTeamAsync(team.Id, Guid.NewGuid(), null, ct),
             nameof(CachingTeamService.WithdrawJoinRequestAsync) => _service.WithdrawJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct),
             nameof(CachingTeamService.RejectJoinRequestAsync) => _service.RejectJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), "reason", ct),
             _ => _service.ApproveJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), null, ct),
-        });
+        };
+        await mutation;
 
         _service.BulkInvalidations.Should().BeGreaterThan(before);
     }

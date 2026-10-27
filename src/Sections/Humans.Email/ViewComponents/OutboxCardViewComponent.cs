@@ -1,6 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
-using Humans.Email.Contracts;
+using Humans.Email.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +9,7 @@ namespace Humans.Email.ViewComponents;
 /// <summary>
 /// Renders only for an admin viewer who passes the host page's policy, even at zero messages; nothing for anyone else.
 /// </summary>
-public sealed class OutboxCardViewComponent(
+internal sealed class OutboxCardViewComponent(
     IEmailOutboxService outbox,
     IAuthorizationService authorization) : ViewComponent
 {

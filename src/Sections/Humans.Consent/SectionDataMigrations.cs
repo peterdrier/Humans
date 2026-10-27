@@ -8,7 +8,6 @@ namespace Humans.Consent;
 internal sealed class SectionDataMigrations : ISectionDataMigrations
 {
     internal const string ProfileReviewKey = "consent.profile-review";
-    internal const string ReminderStampsKey = "consent.reminder-stamps";
 
     public IEnumerable<DataMigration> Migrations() =>
     [
@@ -16,10 +15,6 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
             "Copy each Consent Coordinator review (consent check, approval, rejection) from profiles into consent_reviews, and record a legacy rejection as users.State = Rejected where the state never did",
             "ConsentReviewService's legacy fallback, UserInfo.IsRejected's legacy arm, the review fields on ProfileInfo and LegacyConsentCheckStatus; then a drop PR for the profiles review columns",
             StatusAsync, ApplyAsync),
-        new(ReminderStampsKey, "Consent",
-            "Copy each member's last re-consent reminder time from users.LastConsentReminderSentAt into consent_reminders",
-            "ConsentReminderService's legacy fallback and UserInfo.LastConsentReminderSentAt; then a drop PR for users.LastConsentReminderSentAt",
-            ReminderStatusAsync, ReminderApplyAsync),
     ];
 
     private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
@@ -36,12 +31,4 @@ internal sealed class SectionDataMigrations : ISectionDataMigrations
 
     private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
         sp.GetRequiredService<ConsentReviewService>().CopyLegacyReviewsAsync(ct);
-
-    private static async Task<DataMigrationStatus> ReminderStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Last sent"],
-            [.. (await sp.GetRequiredService<ConsentReminderService>().GetUncopiedLegacyStampsAsync(ct))
-                .Select(s => (IReadOnlyList<string>)[s.UserId.ToString(), s.SentAt.ToIso8601()])]);
-
-    private static Task<int> ReminderApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ConsentReminderService>().CopyLegacyStampsAsync(ct);
 }

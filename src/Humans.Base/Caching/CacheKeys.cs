@@ -2,7 +2,6 @@ namespace Humans.Base.Caching;
 
 public static class CacheKeys
 {
-    public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string HoldedContacts = "HoldedContacts";
     public const string SepaStuckBankLines = "SepaStuckBankLines";
 
@@ -32,7 +31,6 @@ public static class CacheKeys
         new Dictionary<string, CacheKeyMeta>(StringComparer.Ordinal)
         {
             ["FeedbackBadgeCount"] = new("2 min", CacheKeyType.Static),
-            ["NotificationBadge"] = new("2 min", CacheKeyType.PerUser),
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
             ["HoldedContacts"] = new("2 min", CacheKeyType.Static),
             ["SepaStuckBankLines"] = new("until the lines read again", CacheKeyType.Static),

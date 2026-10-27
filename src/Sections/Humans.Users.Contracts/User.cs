@@ -98,8 +98,8 @@ public class User : IdentityUser<Guid>
     }
 
     /// <summary>
-    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure; read
-    /// only by the <c>consent.reminder-stamps</c> copy and fallback. Dropped once that copy is done.
+    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure;
+    /// the column goes with its separate drop migration.
     /// </summary>
     public Instant? LastConsentReminderSentAt { get; set; }
 
@@ -113,10 +113,10 @@ public class User : IdentityUser<Guid>
 
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
-    [Obsolete("No reader or writer; retained for the DB column until a drop migration (debt ledger USERS-12).")]
+    [Obsolete("No reader or writer; retained for the DB column until a drop migration (peterdrier/Humans#2156).")]
     public bool UnsubscribedFromCampaigns { get; set; }
 
-    [Obsolete("No reader or writer; retained for the DB column until a drop migration (debt ledger USERS-13).")]
+    [Obsolete("No reader or writer; retained for the DB column until a drop migration (peterdrier/Humans#2156).")]
     public bool SuppressScheduleChangeEmails { get; set; }
 
     /// <summary>Null for self-registered users.</summary>

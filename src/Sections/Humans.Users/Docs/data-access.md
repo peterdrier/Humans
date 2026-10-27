@@ -35,8 +35,7 @@ storage paths).
 |-------|-----|
 | Profiles | R (storage-path lookup) |
 
-Uses `IUserManagement` for migration-snapshot user lookups and `IFileStorage`
-to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
+Uses `IFileStorage` to read picture bytes. No picture mutations or `IMemoryCache`; writes belong to
 the profile-edit flow below.
 
 ### ProfileEditorService (Scoped)
@@ -274,7 +273,7 @@ owned-table reassignment, so `AccountMergeService` does not inject other
 sections' repositories. Both tables it touches are **owned by the Users
 section** (no cross-section table access). Implements `IAccountMergeService`,
 `IUserDataContributor`. Calls the section's own `IUserManagement`; cross-section
-calls via `ITeamWrite`, `INotificationService`, `IAuditLogService`, plus the `IUserMerge`
+calls via `IAuditLogService`, plus the `IUserMerge`
 aggregator. Consent's per-user cache needs no merge signal: it rebuilds an entry
 whose `UserInfo.AllUserIds` changed when the tombstone lands.
 
@@ -310,22 +309,6 @@ create), `IUserEmailService` (`ReconcileOAuthIdentityAsync` — the sole
 caller, pinned by HUM0005; `FindByAddressAsync` for the verified-email
 owner), and `IClock`. No direct DB access, no
 `IMemoryCache`. Implements `IExternalLoginService`.
-
-### UserNameSyncService (Scoped)
-
-Repository: `IUserRepository`.
-
-| Table | R/W |
-|-------|-----|
-| Users | R |
-| Profiles | R/W (re-persists the Profile row to run the User↔Profile dual-write sync) |
-
-Operator-driven BurnerName/legal-name backfill (the `users.names-onto-user` data
-migration on `/Debug/DataMigrations`): finds `User`/`Profile`
-pairs where the User row is missing a name the Profile carries, then
-re-saves the Profile through the normal dual-write path. Cross-section
-calls via `IUserService` (`GetAllUserInfosAsync`, for email display only) and `IAuditLogService` (actor-attributed `UserNamesBackfilled` per saved member).
-No `IMemoryCache`.
 
 ### UsersAudienceService (Scoped)
 

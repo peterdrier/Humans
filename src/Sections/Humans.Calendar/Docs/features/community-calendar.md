@@ -14,6 +14,7 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 ## Scope — Slice 1 (v1)
 
 - Month view (`/Calendar`), list view (`/Calendar/List` — same month window, flat list), and agenda (upcoming events) view (`/Calendar/Agenda`); switched via the `_CalendarViewPills` partial
+- Contributor source labels use the viewer's UI culture in month, list, team, and agenda views, including tooltips; feed source identifiers are unchanged.
 - Team-filtered view — `?teamId` narrows month/list/agenda to one team, plus a per-team page at `/Calendar/Team/{teamId}` (see US-39.2: no picker UI ships)
 - Single and recurring events (RFC 5545 recurrence rules)
 - Cancel or override individual occurrences without deleting the entire series
@@ -160,6 +161,8 @@ CalendarEventException
 ├── UpdatedAt: Instant
 └── Navigation: Event
 ```
+
+Timed and all-day overrides require representable original and effective ranges, including inherited duration. Series edits reject a duration that would invalidate an active override.
 
 The occurrence editor keeps text overrides optional, enforces these stored length limits and URL syntax before saving, and displays validation errors in all six supported cultures.
 

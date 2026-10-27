@@ -57,8 +57,8 @@ public class EmailArchitectureTests
     [HumansFact]
     public void ConnectorAbstractions_SitOnTheSideTheirImplementationLivesOn()
     {
-        // IImmediateOutboxProcessor sits on the contracts leaf although both its sides are now
-        // section-side (it could go internal). IEmailBodyComposer is internal because both sides are.
+        // IImmediateOutboxProcessor stays on the contracts leaf because the Shell registers it.
+        // IEmailBodyComposer is internal because both sides are.
         typeof(IImmediateOutboxProcessor).Namespace
             .Should().Be("Humans.Email.Contracts");
         typeof(IImmediateOutboxProcessor).IsPublic.Should().BeTrue();

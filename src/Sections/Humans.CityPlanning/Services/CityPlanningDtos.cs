@@ -29,7 +29,7 @@ internal sealed record CampPolygonHistoryEntryDto(
     string Note,
     string GeoJson);
 
-internal sealed record CampPolygonSaveResult(string GeoJson, double AreaSqm);
+internal sealed record CampPolygonSaveResult(string GeoJson, double AreaSqm, string? Refusal = null);
 
 internal sealed record PlacementScheduleUpdateResult(
     bool Success,

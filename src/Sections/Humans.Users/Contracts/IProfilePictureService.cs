@@ -8,7 +8,4 @@ public interface IProfilePictureService : IApplicationService
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId,
         CancellationToken ct = default);
-
-    Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
-        CancellationToken ct = default);
 }

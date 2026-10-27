@@ -249,6 +249,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to RideshareAdmin/Admin (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
 - **Rule failures are localized.** Mutation services return a refusal carrying a `RideshareResource` key and format arguments; member and admin controllers localize it and preserve the form or toast flow. Dependency faults propagate without becoming refusal feedback. Not-found and unauthorized exceptions retain their separate 404/403 paths. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all six cultures.
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.
+- **Admin settings require posted destination coordinates.** Missing latitude or longitude returns the form with field errors before any settings save or audit; an explicitly posted zero is valid. Existing coordinate bounds still apply.
 - **Offer and request forms require posted choices and counts.** Direction, vehicle type, luggage capacity/load, cost sharing, duration, seats and party size cannot silently fall back to zero-valued choices or initial counts when omitted. Invalid forms show field errors before any save; explicitly posted zero-valued choices remain valid.
 - **Interest posts reject malformed ids, not a cleared seats box.** An unparseable trip or request id is a 400 before any write. A blank `seats` binds to null and takes the service default (party size for a driver's offer, the seats-≥-1 refusal otherwise).
 - **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active`, the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
@@ -256,6 +257,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Interest and posting mutations are serialized.** Interest creation, acceptance, decline, and withdrawal share a boundary through persistence with offer/request edits and cancellations. Concurrent requests cannot create duplicate pending interests, exceed capacity while reducing seats, overwrite a completed response, or restore a cancelled posting through a stale edit. Notifications run after the boundary.
 - **Interest messages are limited to 1000 characters after trimming.** Longer messages receive a localized refusal before persistence or notification; messages at the limit remain valid.
 - **Withdraw is available to the author or the posting owner**, from `Pending` or `Accepted`.
+- **Offer travel spans must fit within the supported date range.** Creation validates both the posted departure and the seeded inverse departure; edits validate the new departure and duration before persistence. Invalid spans return the localized invalid-date refusal.
 - **Creating an inbound (or outbound) offer auto-seeds the inverse leg.** `LinkedTripId` is a soft, display-only link — the two legs are not otherwise coupled and are edited/cancelled independently.
 
 ## Negative Access Rules
@@ -279,8 +281,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   stored: the route is recomputed and re-stored.
 - When an interest is created: `INotificationEmitter` notifies the posting owner (`Actionable`),
   best-effort — name/recipient lookup, message preparation and delivery failures are caught and logged,
-  never surfaced after the interest is saved. The same boundary applies to acceptance and decline. Caller
-  cancellation still propagates.
+  never surfaced after the interest is saved. The same boundary applies to acceptance and decline.
+  Reads and persistence honor caller cancellation; after a successful save, notification lookups and
+  delivery run without the browser token so navigation cannot interrupt the committed action.
 - When an interest is accepted: the interest's author is notified (`Informational`) — a rider
   that they are in, a driver whose answer to a pin was accepted that their offer was; seats
   remaining recomputes on next read.

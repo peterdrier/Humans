@@ -1,3 +1,4 @@
+using Humans.Grants.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -155,8 +156,10 @@ public sealed class GrantTests : GrantsTestHarness
         var first = await service.IssueAsync("low-income", person, "app-42", actor, Ct);
         var second = await service.IssueAsync("low-income", person, "app-43", actor, Ct);
 
+        first.Succeeded.Should().BeTrue();
         second.Should().Be(first);
         var grant = (await ReadGrantsAsync()).Should().ContainSingle().Subject;
+        first.GrantId.Should().Be(grant.Id);
         grant.ProgramId.Should().Be(program.Id);
         grant.SourceRef.Should().Be("app-42");
         grant.IssuedByUserId.Should().Be(actor);
@@ -181,13 +184,46 @@ public sealed class GrantTests : GrantsTestHarness
         await SeedProgramAsync();
         var service = NewService();
 
-        await FluentActions.Awaiting(() => service.IssueAsync("workers", SeedUser(), null, SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>();
-        await FluentActions.Awaiting(() => service.IssueAsync("nobody", SeedUser(), null, SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>();
-        await FluentActions.Awaiting(() => service.RevokeAsync("workers", SeedUser(), null, SeedUser(), Ct))
-            .Should().ThrowAsync<InvalidOperationException>();
+        foreach (var key in new[] { "workers", "nobody" })
+        {
+            var issue = await service.IssueAsync(key, SeedUser(), null, SeedUser(), Ct);
+            issue.Succeeded.Should().BeFalse();
+            issue.Refusal.Should().Be(GrantWriteRefusal.NoOpenProgram);
+            var revoke = await service.RevokeAsync(key, SeedUser(), null, SeedUser(), Ct);
+            revoke.Succeeded.Should().BeFalse();
+            revoke.Refusal.Should().Be(GrantWriteRefusal.NoOpenProgram);
+        }
         (await ReadGrantsAsync()).Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SourceWrite_OverlongInputReturnsRefusalBeforeMutation(bool revoke)
+    {
+        var person = SeedUser();
+        var actor = SeedUser();
+        var program = await SeedProgramAsync(GrantIssuer.Source, "low-income");
+        var grant = await SeedGrantAsync(program, person);
+        var service = NewService();
+
+        if (revoke)
+        {
+            var result = await service.RevokeAsync("low-income", person, new string('x', 501), actor, Ct);
+            result.Succeeded.Should().BeFalse();
+            result.Refusal.Should().Be(GrantWriteRefusal.ReasonTooLong);
+        }
+        else
+        {
+            var result = await service.IssueAsync("low-income", SeedUser(), new string('x', 129), actor, Ct);
+            result.Succeeded.Should().BeFalse();
+            result.Refusal.Should().Be(GrantWriteRefusal.SourceReferenceTooLong);
+        }
+
+        (await ReadGrantsAsync()).Should().ContainSingle();
+        (await ReadGrantAsync(grant.Id)).RevokedAt.Should().BeNull();
+        Email.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -198,8 +234,8 @@ public sealed class GrantTests : GrantsTestHarness
         var grant = await SeedGrantAsync(program, person);
         var service = NewService();
 
-        (await service.RevokeAsync("low-income", SeedUser(), null, SeedUser(), Ct)).Should().BeFalse();
-        (await service.RevokeAsync("low-income", person, "Withdrew", SeedUser(), Ct)).Should().BeTrue();
+        (await service.RevokeAsync("low-income", SeedUser(), null, SeedUser(), Ct)).Should().Be(new GrantRevokeResult(false));
+        (await service.RevokeAsync("low-income", person, "Withdrew", SeedUser(), Ct)).Should().Be(new GrantRevokeResult(true));
 
         (await ReadGrantAsync(grant.Id)).RevokeReason.Should().Be("Withdrew");
         await ReceivedNoticeAsync(NotificationSource.GrantRevoked, person);

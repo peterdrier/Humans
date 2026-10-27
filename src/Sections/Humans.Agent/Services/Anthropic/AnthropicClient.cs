@@ -206,12 +206,7 @@ internal sealed class AnthropicClient : IAnthropicClient
             System = new List<TextBlockParam> { new(text) },
             Messages = new List<MessageParam>
             {
-                new()
-                {
-                    Role = Role.User,
-                    Content = new MessageParamContent(
-                        new List<ContentBlockParam> { new(new TextBlockParam(".")) }),
-                },
+                new UserMessageParam(new List<ContentBlockParam> { new(new TextBlockParam(".")) }),
             },
         };
 
@@ -228,10 +223,6 @@ internal sealed class AnthropicClient : IAnthropicClient
 
         foreach (var msg in messages)
         {
-            var role = string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase)
-                ? Role.Assistant
-                : Role.User;
-
             var contentBlocks = new List<ContentBlockParam>();
 
             if (msg.Text is not null)
@@ -263,11 +254,9 @@ internal sealed class AnthropicClient : IAnthropicClient
                 }
             }
 
-            result.Add(new MessageParam
-            {
-                Role = role,
-                Content = new MessageParamContent(contentBlocks),
-            });
+            result.Add(string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase)
+                ? new AssistantMessageParam(contentBlocks)
+                : new UserMessageParam(contentBlocks));
         }
 
         return result;

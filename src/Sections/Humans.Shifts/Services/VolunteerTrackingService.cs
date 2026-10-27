@@ -337,7 +337,7 @@ internal sealed class VolunteerTrackingService(
 
         if (setupOffset >= 0)
         {
-            return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen", null);
+            return new SetCampSetupResult(false, "Shifts_VolTrack_Err_SetupAtOrAfterGateOpen", null);
         }
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
@@ -348,7 +348,7 @@ internal sealed class VolunteerTrackingService(
             .Min();
         if (firstSignup.HasValue && setupOffset < firstSignup.Value)
         {
-            return new SetCampSetupResult(false, "VolTrack_Err_SetupBeforeFirstSignup", null);
+            return new SetCampSetupResult(false, "Shifts_VolTrack_Err_SetupBeforeFirstSignup", null);
         }
 
         var trimmed = await trackingRepo.UpsertCampSetupAsync(
@@ -414,14 +414,14 @@ internal sealed class VolunteerTrackingService(
 
         if (dayOffset < es.BuildStartOffset || dayOffset >= 0)
         {
-            return new SetDayOffResult(false, "VolTrack_Err_DayOffOutsideBuild");
+            return new SetDayOffResult(false, "Shifts_VolTrack_Err_DayOffOutsideBuild");
         }
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
         var hasSignupThatDay = signups.Any(s => s.UserId == targetUserId && s.DayOffset == dayOffset);
         if (hasSignupThatDay)
         {
-            return new SetDayOffResult(false, "VolTrack_Err_DayOffWithSignups");
+            return new SetDayOffResult(false, "Shifts_VolTrack_Err_DayOffWithSignups");
         }
 
         var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();

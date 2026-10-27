@@ -52,14 +52,14 @@ under the export key declared as `TeamService.TeamEarlyEntry`; the
 `IUserMerge` path reassigns grants across the merge.
 
 Team search is cache-only: `CachingTeamService.SearchAsync` filters the
-cached `TeamInfo` snapshot (hidden teams excluded unless requested); the
+cached Teams-owned snapshot (hidden teams excluded unless requested); the
 inner `TeamService.SearchAsync` **throws `NotSupportedException`** — there
 is no DB-backed search path.
 
 The inner `ITeamService`
 registration is wrapped by
 `Humans.Teams.Services.CachingTeamService` (Singleton
-decorator inheriting `TrackedCache<Guid, TeamInfo>`); it exposes the
+decorator inheriting `TrackedCache<Guid, TeamReadSnapshot>`); it exposes the
 cross-section read surface as `ITeamService`.
 
 ### TeamService (Scoped — wrapped by CachingTeamService Singleton decorator)
@@ -109,11 +109,11 @@ synced. Reads `ITeamService.GetTeamsAsync` and GoogleIntegration's
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, TeamInfo>` (`Team.TeamInfo`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (own writes, `IUserMerge.ReassignAsync` and GDPR erasure; `ITeamWrite.InvalidateActiveTeamsCache` from Users' merge tail) |
+| `TrackedCache<Guid, TeamReadSnapshot>` (`Team.TeamInfo`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (own writes, `IUserMerge.ReassignAsync` and GDPR erasure; member display fields resolve live through Users) |
 
 Implements `ITeamManagementService`, `ITeamSeeding`, `IUserMerge`, `IUserDataContributor` (owns the erasure table, forwards to the inner `TeamService`, evicts after erasure). The
-`TeamInfo` `TrackedCache` is the canonical source — no `ActiveTeams`
-`IMemoryCache` entry. `SearchAsync` is served from the cached `TeamInfo`
+`TeamReadSnapshot` `TrackedCache` holds the Teams-owned facts; the inner service resolves member display data through `IUserService` for returned `TeamInfo` records — no `ActiveTeams`
+`IMemoryCache` entry. `SearchAsync` is served from the cached Teams-owned
 snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 ### TeamPageService / TeamPageSummaryMapper / TeamDirectoryBuilder
@@ -122,7 +122,7 @@ Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
 `IShiftService`, `ISettingsService`, `IUserService` and Auth’s
 `IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
-member/child projections over the cached `TeamInfo` snapshot, with live
+member/child projections over the cached Teams-owned snapshot, with live
 pending-request reads through `ITeamManagementService`. The My Teams projection
 uses the cached team and user-membership reads for parent names and manageable
 pending counts, keeping Auth role checks out of the decorator;

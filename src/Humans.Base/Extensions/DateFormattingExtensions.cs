@@ -55,6 +55,10 @@ public static class DateFormattingExtensions
     public static string? ToMonthDayTime(this DateTime? value) => value?.ToMonthDayTime();
     public static string ToMonthDayTime(this LocalDateTime value) => value.ToDateTimeUnspecified().ToMonthDayTime();
 
+    /// <summary>Culture-ordered month and day, without a year or weekday.</summary>
+    public static string ToMonthDay(this LocalDate value) =>
+        value.AtMidnight().ToDateTimeUnspecified().ToString(DisplayDatePattern(false, false), CultureInfo.CurrentUICulture);
+
     // 3 — weekday + month + day
     public static string ToWeekdayDayMonth(this DateTime value) => value.ToString(DisplayDatePattern(true, false), CultureInfo.CurrentUICulture);
     public static string? ToWeekdayDayMonth(this DateTime? value) => value?.ToWeekdayDayMonth();
@@ -97,6 +101,18 @@ public static class DateFormattingExtensions
     // Audit timestamps from an Instant are always UTC (never the user's session tz).
     public static string ToInvariantTimestamp(this Instant value) => value.ToDateTimeUtc().ToInvariantTimestamp();
     public static string? ToInvariantTimestamp(this Instant? value) => value?.ToInvariantTimestamp();
+
+    /// <summary>Invariant year-month label, "yyyy-MM".</summary>
+    public static string ToInvariantYearMonth(this YearMonth value) =>
+        value.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+
+    /// <summary>Invariant abbreviated weekday for export headers, e.g. "Tue".</summary>
+    public static string ToInvariantWeekdayAbbrev(this LocalDate value) =>
+        value.ToString("ddd", CultureInfo.InvariantCulture);
+
+    /// <summary>Invariant day/month/year for export headers, "dd/MM/yyyy".</summary>
+    public static string ToInvariantDayMonthYear(this LocalDate value) =>
+        value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
 
     public static string ToInvariantLongDate(this LocalDate value) =>
         value.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);

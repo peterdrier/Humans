@@ -229,7 +229,7 @@ internal sealed class ExpensesController(
                 ? await preapprovals.GetGrantAsync(grantId, HttpContext.RequestAborted)
                 : null;
 
-            // Reaching this page needs View, which only the submitter, the category coordinator and finance admins
+            // Reaching this page needs View, which only the submitter, the first reviewer and finance admins
             // hold, so the viewer may see who submitted. The IBAN stays behind CanSeePayee.
             var submitterInfo = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
             var profileLegalName = $"{submitterInfo?.Profile?.FirstName} {submitterInfo?.Profile?.LastName}".Trim();

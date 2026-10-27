@@ -41,9 +41,9 @@ internal sealed class MembershipCalculator(
             return MembershipStatus.Suspended;
         }
 
-        if (!(await ConsentService.GetConsentReviewAsync(info.Id, cancellationToken)).IsApproved)
+        if (info.State != UserState.Active)
         {
-            return MembershipStatus.Pending;
+            return info.State == UserState.Bare ? MembershipStatus.Pending : MembershipStatus.None;
         }
 
         // Active = has role assignments OR is a Volunteers-team member.
@@ -212,11 +212,6 @@ internal sealed class MembershipCalculator(
 
         return result;
     }
-
-    public Task<IReadOnlySet<Guid>> GetUsersWithAnyExpiredConsentsAsync(
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default) =>
-        GetUsersWithConsentDeadlineByAsync(userIds, clock.GetCurrentInstant(), cancellationToken);
 
     private async Task<IReadOnlySet<Guid>> GetUsersWithConsentDeadlineByAsync(
         IEnumerable<Guid> userIds, Instant deadline, CancellationToken cancellationToken)

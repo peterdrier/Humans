@@ -45,7 +45,7 @@ public sealed class SurveyPreviewEmailServiceTests
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(new UserInfo(
                     userId, "Author", false, "fr", null, Instant.FromUnixTimeSeconds(0),
-                    null, null, null, null, null, null, null,
+                    null, null, null, null, null, null,
                     null, null, null, [], [], [], null, []));
             emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new IOException("Outbox unavailable")));
@@ -95,7 +95,7 @@ public sealed class SurveyPreviewEmailServiceTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserInfo(
                 userId, "Tester", false, "en", null, Instant.FromUnixTimeSeconds(0),
-                null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, [], [], [], null, []));
         var wrapped = new RenderedEmailPreview(
             "tester@example.com", "Choose our gathering dates", "<html>Branded preview</html>");
@@ -149,7 +149,7 @@ public sealed class SurveyPreviewEmailServiceTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserInfo(
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
-                null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, [], [], [], null, []));
         var sut = new SurveyPreviewEmailService(
             surveys,
@@ -236,7 +236,7 @@ public sealed class SurveyPreviewEmailServiceTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserInfo(
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
-                null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, [], [], [], null, []));
         emailPreviews.RenderSystemMessage(Arg.Any<EmailMessage>())
             .Returns(call => new RenderedEmailPreview(

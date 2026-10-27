@@ -138,15 +138,17 @@ public sealed class EventServiceTests
         result.Should().Be(expected);
     }
 
-    [HumansFact]
-    public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone()
+    [HumansTheory]
+    [InlineData("Europe/Madrid", 10)]
+    [InlineData("Unavailable/Zone", 12)]
+    public async Task SaveGuideSettingsAsync_CreatesSettingsUsingEventTimezone(string zoneId, int utcHour)
     {
         var eventSettingsId = Guid.NewGuid();
         _burnSettings.GetEventSettingsByIdAsync(eventSettingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             Id: eventSettingsId,
             EventName: "Nowhere 2026",
             Year: 2026,
-            TimeZoneId: "Europe/Madrid",
+            TimeZoneId: zoneId,
             GateOpeningDate: new LocalDate(2026, 7, 1),
             BuildStartOffset: -14,
             EventEndOffset: 7,
@@ -162,15 +164,15 @@ public sealed class EventServiceTests
         await _service.SaveGuideSettingsAsync(
             existingId: null,
             eventSettingsId,
-            submissionOpenAt: new LocalDateTime(2026, 5, 5, 12, 0),
+            submissionOpenAt: new LocalDateTime(2026, 5, 5, 12, 0).PlusNanoseconds(123),
             submissionCloseAt: new LocalDateTime(2026, 5, 6, 12, 0),
             guidePublishAt: new LocalDateTime(2026, 5, 7, 12, 0),
             maxPrintSlots: 42, ct: TestContext.Current.CancellationToken);
 
         _repo.Settings.Should().NotBeNull();
-        _repo.Settings!.SubmissionOpenAt.Should().Be(Instant.FromUtc(2026, 5, 5, 10, 0));
-        _repo.Settings.SubmissionCloseAt.Should().Be(Instant.FromUtc(2026, 5, 6, 10, 0));
-        _repo.Settings.GuidePublishAt.Should().Be(Instant.FromUtc(2026, 5, 7, 10, 0));
+        _repo.Settings!.SubmissionOpenAt.Should().Be(Instant.FromUtc(2026, 5, 5, utcHour, 0) + Duration.FromNanoseconds(123));
+        _repo.Settings.SubmissionCloseAt.Should().Be(Instant.FromUtc(2026, 5, 6, utcHour, 0));
+        _repo.Settings.GuidePublishAt.Should().Be(Instant.FromUtc(2026, 5, 7, utcHour, 0));
         _repo.Settings.MaxPrintSlots.Should().Be(42);
         _repo.SaveChangesCount.Should().Be(1);
     }
@@ -565,6 +567,63 @@ public sealed class EventServiceTests
                 && m.HtmlBody.Contains("https://x/edit")));
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LifecycleEmail_AfterCommit_CompletesDespiteRequestCancellation(bool moderation)
+    {
+        using var request = new CancellationTokenSource();
+        OpenSubmissionWindow();
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        var submitter = await _userService.GetUserInfoAsync(submitterId);
+        _userService.ClearReceivedCalls();
+        _userService.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult(submitter);
+        });
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = submitterId,
+            Title = "Fire show",
+            Status = moderation ? EventStatus.Pending : EventStatus.Draft,
+        };
+        var repo = Substitute.For<IEventRepository>();
+        repo.GetGuideSettingsAsync(request.Token).Returns(_repo.Settings);
+        repo.GetEventForModerationAsync(guideEvent.Id, request.Token).Returns(guideEvent);
+        repo.AddEventAsync(guideEvent, request.Token).Returns(async _ =>
+        {
+            await request.CancelAsync();
+        });
+        repo.SaveEventAndModerationActionAsync(guideEvent, Arg.Any<EventModerationAction>(), request.Token).Returns(async _ =>
+        {
+            await request.CancelAsync();
+        });
+        var service = new EventService(repo, _burnSettings, _userService, _camps, _audit, _emailService,
+            _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
+
+        if (moderation)
+        {
+            (await service.ApplyModerationAsync(guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
+                "Too loud", "https://x/edit", request.Token)).Should().Be(ModerationOutcome.Applied);
+            await repo.Received(1).SaveEventAndModerationActionAsync(guideEvent,
+                Arg.Is<EventModerationAction>(action => action.Action == EventModerationActionType.Rejected), request.Token);
+        }
+        else
+        {
+            (await service.SubmitEventAsync(guideEvent, "https://x/edit", request.Token)).Should().BeTrue();
+            await repo.Received(1).AddEventAsync(guideEvent, request.Token);
+        }
+
+        request.IsCancellationRequested.Should().BeTrue();
+        guideEvent.Status.Should().Be(moderation ? EventStatus.Rejected : EventStatus.Pending);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(message =>
+            message.RecipientEmail == "sub@example.com"
+            && message.TemplateName == (moderation ? "event_rejected" : "event_submitted")), CancellationToken.None);
+        _ = _userService.Received(1).GetUserInfoAsync(submitterId, CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task ApplyModerationAsync_EmailFailure_DoesNotFailModeration()
     {
@@ -805,7 +864,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitEventAsync_WindowClosed_ThrowsAndWritesNothing()
+    public async Task SubmitEventAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
     {
         _repo.Settings = new EventGuideSettings
         {
@@ -817,18 +876,25 @@ public sealed class EventServiceTests
 
         var act = () => _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).Should().BeFalse();
         _repo.Events.Should().NotContain(guideEvent);
+        guideEvent.SubmittedAt.Should().Be(default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_WindowClosed_Throws()
+    public async Task BulkImportAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
     {
         var act = () => _service.BulkImportAsync(
             Guid.NewGuid(), Guid.NewGuid(), [], new LocalDate(2026, 7, 1), 6, DateTimeZone.Utc,
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await act();
+        result.RefusalKey.Should().Be("Events_SubmissionWindowClosed");
+        result.HasErrors.Should().BeTrue();
+        result.CreatedCount.Should().Be(0);
+        result.UpdatedCount.Should().Be(0);
+        _repo.Events.Should().BeEmpty();
     }
 
     [HumansFact]

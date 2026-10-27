@@ -4,7 +4,6 @@ using Humans.Base.Interfaces.Metering;
 using Humans.Base.Metering;
 using Humans.Campaigns.Contracts;
 using Humans.Base.Enums;
-using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Base.Configuration;
@@ -123,7 +122,7 @@ internal sealed class EmailOutboxProcessor(
                     message.CampaignGrantId.Value, EmailOutboxStatus.Sent, sentAt, message.Id, cancellationToken);
             }
 
-            // 1 second between sends to stay under SMTP rate limits.
+            // Stays under the SMTP relay's rate limit.
             await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);
         }
 

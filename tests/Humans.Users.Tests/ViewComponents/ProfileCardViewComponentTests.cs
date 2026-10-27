@@ -5,7 +5,6 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Models;
@@ -109,12 +108,9 @@ public sealed class ProfileCardViewComponentTests
             [parent.Id] = parent,
             [child.Id] = child
         });
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(), teams,
-            Substitute.For<IRoleAssignmentService>(), membership, Substitute.For<ICommunicationPreferenceService>(), ConsentReviewStubs.Create())
+            Substitute.For<IRoleAssignmentService>(), Substitute.For<ICommunicationPreferenceService>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -146,7 +142,7 @@ public sealed class ProfileCardViewComponentTests
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
-            Substitute.For<IMembershipCalculator>(), Substitute.For<ICommunicationPreferenceService>(), ConsentReviewStubs.Create())
+            Substitute.For<ICommunicationPreferenceService>())
         {
             ViewComponentContext = new ViewComponentContext
             {

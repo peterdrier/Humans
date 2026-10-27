@@ -13,6 +13,8 @@ internal sealed class UnsubscribeService(
 {
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
     {
+        if (string.IsNullOrEmpty(token)) return UnsubscribeTokenResult.Invalid();
+
         var result = preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
@@ -38,7 +40,7 @@ internal sealed class UnsubscribeService(
         }
         catch (CryptographicException ex)
         {
-            // Already logged in CommunicationPreferenceService.
+            // UnsubscribeTokenProvider has already warned about this token.
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
 

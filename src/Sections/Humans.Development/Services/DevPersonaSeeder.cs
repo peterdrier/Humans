@@ -95,7 +95,9 @@ internal sealed class DevPersonaSeeder(
             return id;
         }
 
-        await userEmailService.AddVerifiedEmailAsync(id, email);
+        var emailAddition = await userEmailService.AddVerifiedEmailAsync(id, email);
+        if (emailAddition.ErrorKey is not null)
+            throw new InvalidOperationException("Could not add the verified email address.");
 
         // SaveProfileAsync creates the Profile row when missing and lifts it out of Stub.
         var saveRequest = BuildPersonaProfileRequest(
@@ -281,7 +283,9 @@ internal sealed class DevPersonaSeeder(
             return;
         }
 
-        await userEmailService.AddVerifiedEmailAsync(id, email);
+        var emailAddition = await userEmailService.AddVerifiedEmailAsync(id, email);
+        if (emailAddition.ErrorKey is not null)
+            throw new InvalidOperationException("Could not add the verified email address.");
 
         logger.LogInformation("DEV: seeded profileless guest persona {Email} ({Id})", email, id);
     }

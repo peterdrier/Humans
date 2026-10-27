@@ -83,8 +83,10 @@ internal sealed class StoreInvoiceIssuer(
                 await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
                 adoptedDoc = await holdedClient.GetSalesDocumentAsync(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
+                if (GetRecoveryRefusal(order, adoptedDoc, totals) is { } approvalRefusal)
+                    return Refuse(order, actorUserId, approvalRefusal);
             }
-            await CommitInvoiceAsync(
+            return await CommitInvoiceAsync(
                 order, adoptedDoc,
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
                 actorUserId,
@@ -92,7 +94,6 @@ internal sealed class StoreInvoiceIssuer(
                 + $"(EUR {adoptedDoc.Total:0.00}), already issued for order {order.Id} by an earlier "
                 + "attempt that failed before saving — no second document was created",
                 ct);
-            return AdminMutationResult.Success;
         }
 
         if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
@@ -153,14 +154,13 @@ internal sealed class StoreInvoiceIssuer(
         await holdedClient.ApproveSalesDocumentAsync(kind, docId, CancellationToken.None);
         var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
 
-        await CommitInvoiceAsync(
+        return await CommitInvoiceAsync(
             order, document,
             JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
             actorUserId,
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
             + $"for EUR {totalDue:0.00} on order {order.Id}",
             ct);
-        return AdminMutationResult.Success;
     }
 
     private AdminMutationResult Refuse(Order order, Guid actorUserId, string reason)
@@ -191,8 +191,7 @@ internal sealed class StoreInvoiceIssuer(
         return $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
             + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
             + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
-            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. The order was changed after that "
-            + "document was created. Resolve it by hand — correcting an issued document is a factura "
+            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. Resolve it by hand — correcting an issued document is a factura "
             + "rectificativa, and no second document will be issued in the meantime.";
     }
 
@@ -229,7 +228,7 @@ internal sealed class StoreInvoiceIssuer(
     }
 
     /// <summary>Shared by first issuance and adoption, which differ only in the request payload they can honestly record and the audit line.</summary>
-    private async Task CommitInvoiceAsync(
+    private async Task<AdminMutationResult> CommitInvoiceAsync(
         Order order,
         HoldedSalesDocumentDto document,
         string requestPayload,
@@ -237,6 +236,11 @@ internal sealed class StoreInvoiceIssuer(
         string auditDetail,
         CancellationToken ct)
     {
+        if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
+            return Refuse(order, actorUserId,
+                $"Holded document {document.Id} is still a draft or has no issued document number. "
+                + "The order remains open. Retry after Holded confirms issuance; the existing document will be recovered.");
+
         var invoice = new Invoice
         {
             Id = Guid.NewGuid(),
@@ -258,6 +262,7 @@ internal sealed class StoreInvoiceIssuer(
             AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
             auditDetail, actorUserId,
             order.Id, AuditEntityTypes.Order);
+        return AdminMutationResult.Success;
     }
 
     /// <summary>

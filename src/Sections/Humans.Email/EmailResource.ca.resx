@@ -180,7 +180,6 @@
   <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>Sistema</value></data>
   <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Codis de campanyes</value></data>
   <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Missatges entre persones</value></data>
-  <data name="Email_CommPrefs_Name_Ticketing" xml:space="preserve"><value>Entrades</value></data>
   <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Novetats del voluntariat</value></data>
   <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Novetats dels equips</value></data>
   <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Governança</value></data>

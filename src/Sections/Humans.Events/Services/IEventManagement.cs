@@ -44,8 +44,9 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
     Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
-    // Also emails the submitter a confirmation; a null lifecycleActionUrl opts out (bulk import).
-    Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
+    /// <summary>False when the submission window is closed; no event is then written or emailed.
+    /// A null <paramref name="lifecycleActionUrl"/> skips the submitter's confirmation email.</summary>
+    Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
     /// <summary>Re-queues for moderation; the event's own <c>CampId</c> picks the field set.</summary>
     Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default);
     Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default);

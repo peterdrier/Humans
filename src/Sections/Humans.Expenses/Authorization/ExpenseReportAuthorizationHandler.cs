@@ -2,6 +2,7 @@ using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
+using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Expenses.Authorization;
 
 /// <summary>Deny by default: only explicit Succeed paths grant access.</summary>
-internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetService, ITeamService teamService, IUserService userService)
+internal sealed class ExpenseReportAuthorizationHandler(
+    IBudgetService budgetService, ITeamService teamService, IUserService userService, IPreapprovalService preapprovals)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
     protected override async Task HandleRequirementAsync(
@@ -84,20 +86,27 @@ internal sealed class ExpenseReportAuthorizationHandler(IBudgetService budgetSer
             }
         }
 
-        // A coordinator holds Endorse only while the report is Submitted, so DeclineLine follows it.
+        // A first reviewer holds Endorse only while the report is Submitted, so DeclineLine follows it.
         if ((op is ExpenseReportOperation.Endorse
                 or ExpenseReportOperation.CoordinatorReject
                 or ExpenseReportOperation.DeclineLine
                 or ExpenseReportOperation.View)
-            && await IsCoordinatorOfReportCategoryAsync(userId, resource)
-            && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted))
+            && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted)
+            && await IsFirstReviewerAsync(userId, resource))
         {
             context.Succeed(requirement);
         }
     }
 
-    private async Task<bool> IsCoordinatorOfReportCategoryAsync(Guid userId, ExpenseReportDto report)
+    /// <summary>
+    /// The category's coordinator, or for a pre-approved report (which has no category) a manager of the grant's
+    /// program.
+    /// </summary>
+    private async Task<bool> IsFirstReviewerAsync(Guid userId, ExpenseReportDto report)
     {
+        if (report.PreapprovalGrantId is { } grantId)
+            return (await preapprovals.ListManagedGrantIdsAsync(userId, CancellationToken.None)).Contains(grantId);
+
         // No budget category (an account outside the budget) means no coordinator route at all.
         if (report.BudgetCategoryId is not { } categoryId) return false;
         var category = await budgetService.GetCategoryByIdAsync(categoryId);

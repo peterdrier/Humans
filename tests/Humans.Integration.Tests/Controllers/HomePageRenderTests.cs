@@ -14,7 +14,7 @@ public class HomePageRenderTests(HumansTestDatabase database) : IntegrationTestB
 {
     /// <summary>Prefixes that live in Shifts' and Governance's own sets, not <c>SharedResource</c>.</summary>
     private static readonly string[] CarvedPrefixes =
-        ["GetInvolved_", "Dashboard_SlotsSingular", "Dashboard_SlotsPlural", "Dashboard_GetInvolved",
+        ["GetInvolved_", "Shifts_Dashboard_SlotsSingular", "Shifts_Dashboard_SlotsPlural", "Shifts_Dashboard_GetInvolved",
          "Governance_Dashboard_AgreementSingular", "Governance_Dashboard_AgreementPlural", "Governance_Dashboard_GovernanceCardDescription"];
 
     private static void AssertRenderedCleanly(string html, string what)

@@ -5,9 +5,9 @@
         pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
 
     string PctStatusLabel(double pct) =>
-        pct >= 80 ? Localizer["ShiftDash_Status_OnTrack"].Value
-        : pct >= 60 ? Localizer["ShiftDash_Status_AtRisk"].Value
-        : Localizer["ShiftDash_Status_BelowTarget"].Value;
+        pct >= 80 ? Localizer["Shifts_ShiftDash_Status_OnTrack"].Value
+        : pct >= 60 ? Localizer["Shifts_ShiftDash_Status_AtRisk"].Value
+        : Localizer["Shifts_ShiftDash_Status_BelowTarget"].Value;
 
     var o = Model.Overview;
     var slotsPct = o.TotalSlots == 0 ? 0 : 100.0 * o.FilledSlots / o.TotalSlots;
@@ -22,7 +22,7 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_ShiftsFilled"]</div>
+                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_ShiftsFilled"]</div>
                 <div class="fs-3 fw-bold">@o.FilledSlots <span class="text-muted fs-6">/ @o.TotalSlots (@slotsPct.ToString("0")%)</span></div>
                 @if (!Model.SelectedPeriod.HasValue)
                 {
@@ -38,16 +38,16 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_TicketHolders"]</div>
+                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_TicketHolders"]</div>
                 @if (showTicketData)
                 {
                     <div class="fs-3 fw-bold">@o.TicketHolderCount</div>
-                    <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketHoldersSubline"]</div>
+                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketHoldersSubline"]</div>
                 }
                 else
                 {
                     <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
-                    <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketData_Hidden"]</div>
+                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"]</div>
                 }
             </div>
         </div>
@@ -55,16 +55,16 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100 @(showTicketData ? "border-primary" : "")">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_TicketHoldersEngaged"]</div>
+                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"]</div>
                 @if (showTicketData)
                 {
                     <div class="fs-3 fw-bold">@o.TicketHoldersEngaged <span class="text-muted fs-6">/ @o.TicketHolderCount (@engagedPct.ToString("0")%)</span></div>
-                    <div class="text-muted small">@string.Format(Localizer["ShiftDash_Overview_EngagedSubline"].Value, unreached)</div>
+                    <div class="text-muted small">@string.Format(Localizer["Shifts_ShiftDash_Overview_EngagedSubline"].Value, unreached)</div>
                 }
                 else
                 {
                     <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
-                    <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketData_Hidden"]</div>
+                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"]</div>
                 }
             </div>
         </div>
@@ -72,16 +72,16 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_NonTicketSignups"]</div>
+                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_NonTicketSignups"]</div>
                 @if (showTicketData)
                 {
                     <div class="fs-3 fw-bold">@o.NonTicketSignups</div>
-                    <div class="text-muted small">@Localizer["ShiftDash_Overview_NonTicketSubline"]</div>
+                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_NonTicketSubline"]</div>
                 }
                 else
                 {
                     <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
-                    <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketData_Hidden"]</div>
+                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"]</div>
                 }
             </div>
         </div>
@@ -89,9 +89,9 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100 @(o.StalePendingCount > 0 ? "border-warning" : "")">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_StalePending"]</div>
+                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_StalePending"]</div>
                 <div class="fs-3 fw-bold">@o.StalePendingCount</div>
-                <div class="text-muted small">@Localizer["ShiftDash_Overview_StaleSubline"]</div>
+                <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_StaleSubline"]</div>
             </div>
         </div>
     </div>

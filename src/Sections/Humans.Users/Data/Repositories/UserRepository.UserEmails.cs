@@ -183,30 +183,20 @@ internal sealed partial class UserRepository
         if (emails.Count == 0)
             return [];
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-#pragma warning disable MA0011 // Use a CultureInfo overload — EF translates ToLower to Postgres lower()
-        var lowered = emails.Select(e => e.ToLowerInvariant()).ToArray();
-        var exact = await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => lowered.Contains(ue.Email.ToLower()))
-            .ToListAsync(ct);
-#pragma warning restore MA0011
-
-        // Gmail alias fallback: Google strips "+tag" and dots from the local part, so a stored
-        // user+tag@gmail.com never exact-matches what Google reports. Only Gmail rows the exact
-        // pass missed are re-checked, canonical form to canonical form.
-        var exactIds = exact.Select(e => e.Id).ToHashSet();
+        // The email directory fits in RAM. Use the same identity comparer as the Google callers,
+        // preserving exact matches before Gmail dot/plus/domain aliases without SQL casing rules.
+        var exactTargets = new HashSet<string>(emails, StringComparer.OrdinalIgnoreCase);
         var canonicalTargets = new HashSet<string>(emails, GmailAliasEmailComparer.Instance);
-
-        var gmailCandidates = await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => EF.Functions.ILike(ue.Email, "%@gmail.com") || EF.Functions.ILike(ue.Email, "%@googlemail.com"))
-            .ToListAsync(ct);
-
-        var aliasMatches = gmailCandidates.Where(ue =>
-            !exactIds.Contains(ue.Id) && canonicalTargets.Contains(ue.Email));
-
-        return exact.Concat(aliasMatches).ToList();
+        var exact = new List<UserEmail>();
+        var aliases = new List<UserEmail>();
+        foreach (var row in await GetAllUserEmailsAsync(ct))
+        {
+            if (exactTargets.Contains(row.Email))
+                exact.Add(row);
+            else if (canonicalTargets.Contains(row.Email))
+                aliases.Add(row);
+        }
+        return [.. exact, .. aliases];
     }
 
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(

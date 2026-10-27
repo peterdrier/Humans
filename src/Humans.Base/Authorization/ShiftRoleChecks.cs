@@ -19,11 +19,6 @@ public static class ShiftRoleChecks
         return IsPrivilegedSignupApprover(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
     }
 
-    public static bool CanAccessDashboard(ClaimsPrincipal user)
-    {
-        return CanManageDepartment(user);
-    }
-
     public static bool CanViewMedical(ClaimsPrincipal user)
     {
         return IsPrivilegedSignupApprover(user);

@@ -100,6 +100,71 @@ public sealed class RideshareControllerTests
     }
 
     [HumansTheory]
+    [InlineData(nameof(RideshareSettingsViewModel.DestinationLatitude))]
+    [InlineData(nameof(RideshareSettingsViewModel.DestinationLongitude))]
+    [InlineData(null)]
+    public async Task AdminSettings_RequirePostedCoordinatesButAcceptExplicitZero(string? omitted)
+    {
+        var member = BuildController();
+        var controller = new RideshareAdminController(
+            _rideshare, _users, _localizer, Substitute.For<IClock>(),
+            Substitute.For<ILogger<RideshareAdminController>>())
+        {
+            ControllerContext = member.ControllerContext,
+            TempData = member.TempData,
+            Url = member.Url
+        };
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["DestinationLabel"] = "Burn",
+            ["DestinationLatitude"] = "0",
+            ["DestinationLongitude"] = "0",
+            ["InboundWindowStart"] = "2026-07-01",
+            ["InboundWindowEnd"] = "2026-07-03",
+            ["OutboundWindowStart"] = "2026-07-10",
+            ["OutboundWindowEnd"] = "2026-07-12"
+        };
+        if (omitted is not null)
+            fields.Remove(omitted);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>()
+            .GetMetadataForType(typeof(RideshareSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(RideshareSettingsViewModel)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = (RideshareSettingsViewModel)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+        _rideshare.GetSnapshotAsync(2026, Ct).Returns(new RideshareSnapshot(2026, null, [], [], []));
+        _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Ct).Returns(new RideshareMutationResult());
+
+        var result = await controller.Index(model, Ct);
+
+        if (omitted is not null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            await _rideshare.DidNotReceive().SaveSettingsAsync(
+                Arg.Any<int>(), Arg.Any<SettingsSave>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _rideshare.Received(1).SaveSettingsAsync(2026, Arg.Is<SettingsSave>(
+                save => save.DestinationLatitude == 0 && save.DestinationLongitude == 0), _me, Ct);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(true, "Direction", true)]
     [InlineData(true, "VehicleType", true)]
     [InlineData(true, "LuggageCapacity", true)]
@@ -446,6 +511,6 @@ public sealed class RideshareControllerTests
 
     private static UserInfo User(Guid id) => new(
         id, "Ada", false, "en", null, Now,
-        null, null, null, null, null, null, null,
+        null, null, null, null, null, null,
         null, null, null, [], [], [], null, []);
 }

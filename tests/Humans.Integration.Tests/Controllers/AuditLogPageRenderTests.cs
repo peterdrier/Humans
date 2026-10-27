@@ -162,7 +162,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().Contain("Mensajes enviados", "Profile_SentMessages is the panel title");
+        html.Should().Contain("Mensajes enviados", "Users_Profile_SentMessages is the panel title");
         html.Should().Contain("Remitente", "Common_Sender must reach the Actor column header");
         html.Should().Contain("Vista previa", "Common_Preview must reach the Description column header");
         html.Should().NotContain("Sender", "the English default header must not survive column-labels");

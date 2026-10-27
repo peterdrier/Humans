@@ -19,7 +19,7 @@ public sealed class DuplicateAccountServiceTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 6, 12, 0);
 
-    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, Substitute.For<IGovernanceService>(), ConsentReviewStubs.Create(), _audit);
+    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, Substitute.For<IGovernanceService>(), _audit);
 
     private void SetUsers(params UserInfo[] infos) =>
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -55,6 +55,22 @@ public sealed class DuplicateAccountServiceTests
             UpdatedAt = Now,
         };
         return UserInfoFactory.Create(user, emails, [], [], profile, [], [], [], []);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Active, "Active")]
+    [Xunit.InlineData(UserState.Suspended, "Suspended")]
+    [Xunit.InlineData(UserState.Bare, "Pending")]
+    public async Task DuplicateStatus_UsesAccountStateWithoutConsentReviewApproval(UserState state, string expected)
+    {
+        var first = MakeInfo(Guid.NewGuid(), identityEmailColumn: "same@example.org") with { State = state };
+        var second = MakeInfo(Guid.NewGuid(), identityEmailColumn: "same@example.org") with { State = UserState.Active };
+        SetUsers(first, second);
+
+        var group = (await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle().Subject;
+        var account = group.Accounts.Single(a => a.UserId == first.Id);
+
+        account.MembershipStatus.Should().Be(expected);
     }
 
     [HumansFact]

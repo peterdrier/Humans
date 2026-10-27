@@ -120,7 +120,6 @@ internal sealed class ProfileViewModel
     public bool RemoveProfilePicture { get; set; }
 
     public MembershipStatus MembershipStatus { get; set; }
-    public bool IsApproved { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
 
@@ -157,7 +156,7 @@ internal sealed class ProfileViewModel
             if (parsed is null)
                 return null;
 
-            return parsed.Value.ToWeekdayDayMonth();
+            return parsed.Value.ToMonthDay();
         }
     }
 
@@ -240,9 +239,9 @@ internal sealed class ContactFieldViewModel
     /// <summary>Null for public fields, which get no badge.</summary>
     public string? VisibilityBadgeKey => Visibility switch
     {
-        ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Emails_Visibility_CoordinatorsBoard",
-        ContactFieldVisibility.MyTeams => "Emails_Visibility_MyTeams",
+        ContactFieldVisibility.BoardOnly => "Users_Emails_Visibility_BoardOnly",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Users_Emails_Visibility_CoordinatorsBoard",
+        ContactFieldVisibility.MyTeams => "Users_Emails_Visibility_MyTeams",
         _ => null
     };
 }
@@ -341,9 +340,9 @@ internal sealed class UserEmailDisplayViewModel
     /// <summary>Null for public fields, which get no badge.</summary>
     public string? VisibilityBadgeKey => Visibility switch
     {
-        ContactFieldVisibility.BoardOnly => "Emails_Visibility_BoardOnly",
-        ContactFieldVisibility.CoordinatorsAndBoard => "Emails_Visibility_CoordinatorsBoard",
-        ContactFieldVisibility.MyTeams => "Emails_Visibility_MyTeams",
+        ContactFieldVisibility.BoardOnly => "Users_Emails_Visibility_BoardOnly",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Users_Emails_Visibility_CoordinatorsBoard",
+        ContactFieldVisibility.MyTeams => "Users_Emails_Visibility_MyTeams",
         _ => null
     };
 }

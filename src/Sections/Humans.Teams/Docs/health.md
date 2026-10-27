@@ -33,7 +33,6 @@ Deactivating a team closes its memberships in bulk and does none of the three (Â
 | "Who gets in early, for what?" | the per-team EE page; the EE roster | the EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
 | "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamWrite.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
 | "This human is gone / merged" | Users (deletion, merge), Gdpr | `RevokeAllMembershipsAsync`; `IUserMerge.ReassignAsync`; `IUserDataContributor` (export + erasure, via the decorator, which evicts) |
-| "Something changed underneath you" | Users (merge tail) | `ITeamWrite.InvalidateActiveTeamsCache` |
 | "Seed a fixture" | Development, Budget dev seeders | `ITeamSeeding` |
 
 Vocabulary the leaf carries: `TeamInfo` (+ `TeamMemberInfo`, `TeamRoleDefinitionSnapshot`,
@@ -47,7 +46,7 @@ The shapes imply:
 
 - **A contracts leaf** with exactly the cross-section half: the read interface (the
   whole-graph, authority and membership shapes), a write interface carrying only members some *other* section
-  calls, the system-sync contract, the seeding contract, the cache-invalidator contract,
+  calls, the system-sync contract, the seeding contract,
   and the flat records those signatures name. A member with no caller outside the
   assembly does not belong on the leaf.
 - **One inner service** owning every business rule, behind the internal management
@@ -55,7 +54,7 @@ The shapes imply:
   sections through their interfaces (audit, notifications, Google outbox, shifts auth
   eviction, user read model).
 - **One singleton caching decorator** over the same interface holding the canonical
-  `TeamInfo` graph, serving every read shape from memory, and clearing wholesale on every
+  Teams-owned graph, resolving member display data live through the inner service, and clearing wholesale on every
   write so the next read re-warms the whole graph â€” no per-mutation diffing. Pending-request
   reads bypass it on purpose.
 - **One repository** with thick, named methods; no LINQ leaks.
@@ -129,7 +128,7 @@ The shapes imply:
 ## Load-bearing weirdness
 
 - **`TeamService.InvalidateActiveTeamsCache` is an empty
-  body.** The inner service has no cache; the decorator overrides it. Callers always
+  body.** The inner service has no cache; the decorator overrides it. Only Teams-internal callers
   hold the decorator, so the no-op is the correct inner behaviour, not a bug.
 - **Keyed-Scoped inner + Singleton decorator.** The decorator opens a scope per call that
   reaches the inner service; `TeamService` is also registered unkeyed so its non-`ITeamService`

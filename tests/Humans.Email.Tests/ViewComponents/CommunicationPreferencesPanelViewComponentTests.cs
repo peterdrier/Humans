@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Email.Tests.ViewComponents;
 
@@ -50,13 +51,21 @@ public class CommunicationPreferencesPanelViewComponentTests
         Item(model, MessageCategory.Marketing).EmailEnabled.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task MissingNonMarketingRow_RendersChecked()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingNonMarketingRow_RendersCheckedWithTicketLock(bool hasTicketOrder)
     {
         // Every other category is opt-in-by-default, so a missing row stays checked.
-        var model = await InvokeWithAsync(prefs: []);
+        var model = await InvokeWithAsync(prefs: [], hasTicketOrder);
 
         Item(model, MessageCategory.Governance).EmailEnabled.Should().BeTrue();
+        var ticketing = Item(model, MessageCategory.Ticketing);
+        ticketing.EmailEnabled.Should().BeTrue();
+        ticketing.AlertEnabled.Should().BeTrue();
+        ticketing.IsTicketingLocked.Should().Be(hasTicketOrder);
+        ticketing.EmailEditable.Should().Be(!hasTicketOrder);
+        ticketing.AlertEditable.Should().Be(!hasTicketOrder);
     }
 
     [HumansFact]
@@ -69,7 +78,10 @@ public class CommunicationPreferencesPanelViewComponentTests
                 "Profile", Instant.FromUtc(2026, 1, 1, 0, 0)),
         ]);
 
-        Item(model, MessageCategory.Marketing).EmailEnabled.Should().BeTrue();
+        var marketing = Item(model, MessageCategory.Marketing);
+        marketing.EmailEnabled.Should().BeTrue();
+        marketing.UpdateSource.Should().Be("Profile");
+        marketing.UpdatedAt.Should().Be(Instant.FromUtc(2026, 1, 1, 0, 0));
     }
 
     [HumansFact]
@@ -89,7 +101,7 @@ public class CommunicationPreferencesPanelViewComponentTests
         model.Categories.Single(c => c.Category == category);
 
     private static async Task<CommunicationPreferencesViewModel> InvokeWithAsync(
-        IReadOnlyList<CommunicationPreferenceSnapshot> prefs)
+        IReadOnlyList<CommunicationPreferenceSnapshot> prefs, bool hasTicketOrder = false)
     {
         var commPrefs = Substitute.For<ICommunicationPreferenceService>();
         commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -97,7 +109,7 @@ public class CommunicationPreferencesPanelViewComponentTests
 
         var tickets = Substitute.For<ITicketService>();
         tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(0, []));
+            .Returns(new UserTicketHoldings(hasTicketOrder ? 1 : 0, []));
 
         var sut = new CommunicationPreferencesPanelViewComponent(
             commPrefs, tickets, new FakeClock(Instant.FromUtc(2026, 5, 20, 0, 0)))

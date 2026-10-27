@@ -1,4 +1,4 @@
-@model IList<Humans.Email.Contracts.EmailOutboxMessageDto>
+@model IList<Humans.Email.Services.EmailOutboxMessageDto>
 @{
     var humanId = (Guid?)ViewBag.HumanId;
     var isAdminView = humanId.HasValue;

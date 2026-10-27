@@ -164,7 +164,7 @@ internal sealed class BudgetController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create line item in category {CategoryId}", budgetCategoryId);
-            SetError(localizer["Budget_Flash_LineCreateFailed", ex.Message].Value);
+            SetError(localizer["Budget_Flash_LineCreateFailed"].Value);
         }
 
         return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
@@ -201,7 +201,7 @@ internal sealed class BudgetController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to update line item {LineItemId}", id);
-            SetError(localizer["Budget_Flash_LineUpdateFailed", ex.Message].Value);
+            SetError(localizer["Budget_Flash_LineUpdateFailed"].Value);
         }
 
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
@@ -228,7 +228,7 @@ internal sealed class BudgetController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to delete line item {LineItemId}", id);
-            SetError(localizer["Budget_Flash_LineDeleteFailed", ex.Message].Value);
+            SetError(localizer["Budget_Flash_LineDeleteFailed"].Value);
         }
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }

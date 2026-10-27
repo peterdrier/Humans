@@ -390,7 +390,7 @@ public sealed class EmailOutboxServiceTests
         _repo.GetDailySendCountKeysAsync(Arg.Any<CancellationToken>())
             .Returns(new HashSet<(LocalDate, string)> { (day, "welcome") });
 
-        var added = await _service.BackfillDailySendCountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var added = await _service.BackfillDailySendCountsAsync(_actorId, Xunit.TestContext.Current.CancellationToken);
 
         added.Should().Be(0);
         await _repo.DidNotReceive().AddDailySendCountsAsync(
@@ -406,13 +406,15 @@ public sealed class EmailOutboxServiceTests
         _repo.GetDailySendCountKeysAsync(Arg.Any<CancellationToken>())
             .Returns(new HashSet<(LocalDate, string)>());
 
-        var added = await _service.BackfillDailySendCountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var added = await _service.BackfillDailySendCountsAsync(_actorId, Xunit.TestContext.Current.CancellationToken);
 
         added.Should().Be(1);
         await _repo.Received(1).AddDailySendCountsAsync(
             Arg.Is<IReadOnlyList<EmailDailySendCount>>(rows =>
                 rows.Count == 1 && rows[0].Date == day && rows[0].TemplateName == "welcome" && rows[0].SentCount == 1),
             Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount),
+            Guid.Empty, Arg.Any<string>(), _actorId);
     }
 
     private static EmailOutboxMessage BuildOutboxMessage(Instant createdAt, EmailOutboxStatus status, string templateName) => new()

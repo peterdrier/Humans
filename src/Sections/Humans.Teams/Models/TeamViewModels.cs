@@ -1,7 +1,7 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
-using Humans.Teams.Domain;
 using Humans.Base.Enums;
 using NodaTime;
 
@@ -303,6 +303,8 @@ internal sealed class MapMarkerViewModel
 internal sealed class ApproveRejectRequestModel
 {
     public Guid RequestId { get; set; }
+
+    [MaxLength(2000)]
     public string? Notes { get; set; }
 }
 
@@ -325,51 +327,6 @@ internal sealed class TeamRoleDefinitionViewModel
     public RolePeriod Period { get; set; }
 
     public HashSet<Guid> AssignedUserIds { get; set; } = [];
-
-    public static TeamRoleDefinitionViewModel FromEntity(TeamRoleDefinition d)
-    {
-        var slots = new List<TeamRoleSlotViewModel>();
-        var assignedUserIds = new HashSet<Guid>();
-
-        for (var i = 0; i < d.SlotCount; i++)
-        {
-            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
-            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
-            slots.Add(new TeamRoleSlotViewModel
-            {
-                SlotIndex = i,
-                Priority = priority,
-                PriorityBadgeClass = priority switch
-                {
-                    SlotPriority.Critical => "bg-danger",
-                    SlotPriority.Important => "bg-warning text-dark",
-                    SlotPriority.NiceToHave => "bg-secondary",
-                    _ => "bg-light text-dark"
-                },
-                IsFilled = assignment is not null,
-                AssignedUserId = assignment?.TeamMember?.UserId,
-                TeamMemberId = assignment?.TeamMemberId
-            });
-
-            if (assignment?.TeamMember?.UserId is not null)
-                assignedUserIds.Add(assignment.TeamMember.UserId);
-        }
-
-        return new TeamRoleDefinitionViewModel
-        {
-            Id = d.Id,
-            Name = d.Name,
-            Description = d.Description,
-            SlotCount = d.SlotCount,
-            EstimatedHours = d.EstimatedHours,
-            Slots = slots,
-            SortOrder = d.SortOrder,
-            IsPublic = d.IsPublic,
-            IsManagement = d.IsManagement,
-            Period = d.Period,
-            AssignedUserIds = assignedUserIds
-        };
-    }
 
     public static TeamRoleDefinitionViewModel FromSnapshot(
         TeamRoleDefinitionSnapshot d,
@@ -462,9 +419,11 @@ internal sealed class CreateRoleDefinitionModel
 
     [MaxLength(2000)]
     public string? Description { get; set; }
+    [BindRequired]
     public int SlotCount { get; set; } = 1;
     public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = ["None"];
+    [BindRequired]
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
@@ -476,9 +435,11 @@ internal sealed class EditRoleDefinitionModel
 
     [MaxLength(2000)]
     public string? Description { get; set; }
+    [BindRequired]
     public int SlotCount { get; set; }
     public int? EstimatedHours { get; set; }
     public List<string> Priorities { get; set; } = [];
+    [BindRequired]
     public int SortOrder { get; set; }
     public bool IsPublic { get; set; } = true;
     public bool IsManagement { get; set; }

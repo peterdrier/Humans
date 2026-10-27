@@ -17,6 +17,7 @@ namespace Humans.Email.Controllers;
 internal sealed class GuestAccountController(
     IUserService userService,
     ICommunicationPreferenceManagement commPrefService,
+    IUnsubscribeService unsubscribeService,
     ITicketService ticketQueryService,
     IClock clock,
     ILogger<GuestAccountController> logger,
@@ -97,47 +98,21 @@ internal sealed class GuestAccountController(
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);
 
-        var result = commPrefService.ValidateUnsubscribeToken(utoken);
-        if (result.Status != TokenValidationStatus.Valid)
-            return (null, null, false);
-
-        var userInfo = await FindUserInfoByIdAsync(result.UserId, ct);
-        return userInfo is { IsGdprAnonymized: false }
-            ? (userInfo.Id, result.Category, true)
+        var result = await unsubscribeService.ValidateTokenAsync(utoken, ct);
+        return result.IsValid && !result.IsLegacy
+            ? (result.UserId, result.Category, true)
             : (null, null, false);
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId, CancellationToken ct)
     {
         var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId, ct);
-        var prefsByCategory = prefs.ToDictionary(p => p.Category);
-
         var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct))
             .HasTicketAttendeeMatch;
 
-        var categories = new List<CategoryPreferenceItem>();
-
-        foreach (var category in MessageCategoryExtensions.ActiveCategories)
-        {
-            var pref = prefsByCategory.GetValueOrDefault(category);
-            var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = CommunicationPreferenceService.IsTicketingLocked(category, hasTicketOrder);
-
-            categories.Add(new CategoryPreferenceItem
-            {
-                Category = category,
-                // No row: the category's default, as in the panel view component.
-                EmailEnabled = pref is null ? !category.DefaultOptedOut() : !pref.OptedOut,
-                AlertEnabled = pref?.InboxEnabled ?? true,
-                EmailEditable = !isAlwaysOn && !isTicketingLocked,
-                AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                IsTicketingLocked = isTicketingLocked,
-            });
-        }
-
         return new CommunicationPreferencesViewModel
         {
-            Categories = categories,
+            Categories = CategoryPreferenceItem.ForActiveCategories(prefs, hasTicketOrder),
             TicketingYear = clock.GetCurrentInstant().InUtc().Year,
         };
     }

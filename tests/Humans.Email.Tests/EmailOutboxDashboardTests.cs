@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using Xunit;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Email.Controllers;
 using Humans.Email.Models;
@@ -25,8 +24,7 @@ public sealed class EmailOutboxDashboardTests
         outbox.GetDailySendCountsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new DailySendCountsDto([], []));
         var controller = new EmailController(
-            Substitute.For<IUserService>(), outbox, Substitute.For<IAuditLogService>(),
-            NullLogger<EmailController>.Instance,
+            Substitute.For<IUserService>(), outbox, NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings { OutboxBatchSize = 37 }))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -62,8 +60,7 @@ public sealed class EmailOutboxDashboardTests
             outbox.PreviewDailySendCountBackfillAsync(aborted.Token)
                 .Returns(Task.FromCanceled<BackfillPreviewDto>(aborted.Token));
         var controller = new EmailController(
-            Substitute.For<IUserService>(), outbox, Substitute.For<IAuditLogService>(),
-            NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()))
+            Substitute.For<IUserService>(), outbox, NullLogger<EmailController>.Instance, Options.Create(new EmailSettings()))
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token } }
         };

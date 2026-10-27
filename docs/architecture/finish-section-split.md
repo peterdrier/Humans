@@ -46,7 +46,7 @@ Done when required member operations, the profile page and the admin member page
 
 ### 2. Retire cross-section cache invalidation
 
-- [ ] Retire `ITeamWrite.InvalidateActiveTeamsCache`, called from Users' merge tail (CENTRAL-98, pending Peter's call): Teams evicts on a signal it already receives or reads live ([design-rules §15e](design-rules.md#15e-the-cache-owner-evicts)).
+- [x] Retire `ITeamWrite.InvalidateActiveTeamsCache` (CENTRAL-98): Teams caches its own facts and resolves member display data live from Users ([design-rules §15e](design-rules.md#15e-the-cache-owner-evicts)).
 - [x] Every `I<X>Invalidator` is retired: each cache owner evicts on its own writes or reads live (`grandfathered-hum0028-invalidators` in the debt ledger).
 
 Done when no section injects another section's invalidator and no cross-section write exists only to flush a cache. Prerequisite for the done-state of package 1.
