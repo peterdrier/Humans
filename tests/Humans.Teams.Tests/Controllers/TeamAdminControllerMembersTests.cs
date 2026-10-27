@@ -32,6 +32,70 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamAdminControllerMembersTests
 {
     [HumansTheory]
+    [InlineData(true, 2000)]
+    [InlineData(false, 2000)]
+    [InlineData(true, 2001)]
+    [InlineData(false, 2001)]
+    public async Task JoinReviewForms_RejectOversizedNotesBeforeMutation(bool approve, int length)
+    {
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
+            users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            localizer, Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http, ActionDescriptor = new ControllerActionDescriptor() },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var form = new ApproveRejectRequestModel { Notes = new string('x', length) };
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
+
+        var result = approve
+            ? await controller.ApproveRequest(team.Slug, requestId, form)
+            : await controller.RejectRequest(team.Slug, requestId, form);
+
+        if (length > 2000)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            controller.ModelState[nameof(form.Notes)]!.Errors.Should().ContainSingle();
+            teams.ReceivedCalls().Should().NotContain(call =>
+                string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.ApproveJoinRequestAsync), StringComparison.Ordinal)
+                || string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.RejectJoinRequestAsync), StringComparison.Ordinal));
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (approve)
+                await teams.Received(1).ApproveJoinRequestAsync(requestId, userId, form.Notes);
+            else
+                await teams.Received(1).RejectJoinRequestAsync(requestId, userId, form.Notes);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, "")]
     [InlineData(true, "")]
     [InlineData(false, "2026-02-31")]

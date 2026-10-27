@@ -42,6 +42,13 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid join request approval form for request {RequestId} in team {TeamId} by user {UserId}",
+                requestId, team.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         try
         {
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
@@ -64,6 +71,13 @@ internal sealed class TeamAdminController(
         if (teamError is not null)
         {
             return teamError;
+        }
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid join request rejection form for request {RequestId} in team {TeamId} by user {UserId}",
+                requestId, team.Id, user.Id);
+            return BadRequest(ModelState);
         }
 
         if (string.IsNullOrWhiteSpace(model.Notes))

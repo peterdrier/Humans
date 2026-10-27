@@ -302,6 +302,8 @@ internal sealed class MapMarkerViewModel
 internal sealed class ApproveRejectRequestModel
 {
     public Guid RequestId { get; set; }
+
+    [MaxLength(2000)]
     public string? Notes { get; set; }
 }
 

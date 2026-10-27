@@ -282,6 +282,8 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 
 ## Triggers
 
+- Join-review approval and rejection notes accept at most 2,000 characters, matching storage. Longer form submissions return HTTP 400 before any request or membership mutation; the rejection textarea also enforces the limit.
+
 - Membership inserts and join approvals return the existing-member outcome only for `IX_team_members_active_unique` collisions; unrelated persistence failures propagate.
 
 - When a join request is approved, a team membership record is created and the human is notified. After join-request submission, direct join, approval, rejection or manager-added membership commits, notification metadata reads, welcome email and inbox notices finish independently of request cancellation. Validation, preflight reads and the membership/request transaction retain caller cancellation. Added-member emails and notices use the recipient's supported saved language, with English fallback for blank, invalid or unsupported preferences. Welcome emails HTML-encode team and resource links as well as names. Notices reuse the translated email subject and the recipient language already prepared for email, retaining that language if email preparation/delivery fails. Approval, rejection and member-removal notices use the recipient’s supported saved language across all six cultures, with English fallback for missing/unsupported languages or a failed language lookup.
