@@ -136,7 +136,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Create and edit forms reject missing or unknown destination teams with 404 before mutation. Edit checks the event exists before looking up its submitted team.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).
 - Unexpected create/edit failures return `Calendar_SaveFailed` for the controller to localize in all six cultures; detailed exceptions remain in server logs.
-- Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
+- Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID. All use the same post-commit audit handler: an audit exception logs Critical with the action, event, actor and description, without failing the committed mutation or preventing its cache refresh.
 - Update missing-row results come from the repository outcome, not diagnostic text. A dependency failure mentioning "not found" remains an ordinary failure.
 - Create and update result wrappers preserve caller cancellation before commit; they do not turn a canceled operation into an ordinary validation or persistence failure. After any successful event or occurrence mutation, the cache refresh runs without the browser token, so an abort cannot make a committed write fail during refresh. Malformed recurrence and unknown timezone rejections remain Warning logs with their reason, without exception stacks.
 - Title is required (non-null, non-empty).

@@ -50,21 +50,9 @@ internal sealed class CalendarService(
 
         await repo.AddAsync(ev, ct);
 
-        // Audit best-effort: the row is committed, so re-raising would lie to the caller.
-        try
-        {
-            await audit.LogAsync(
-                AuditAction.CalendarEventCreated, AuditEntityTypes.CalendarEvent, ev.Id,
-                $"Created calendar event '{ev.Title}'",
-                createdByUserId,
-                relatedEntityId: ev.OwningTeamId, relatedEntityType: AuditEntityTypes.Team);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was created by {UserId}. Row was committed; reconcile audit trail manually.",
-                ev.Id, ev.Title, createdByUserId);
-        }
+        await LogCommittedMutationAsync(
+            AuditAction.CalendarEventCreated, ev.Id,
+            $"Created calendar event '{ev.Title}'", createdByUserId, ev.OwningTeamId);
 
         return CalendarEventMutationResult.Success(ev);
     }
@@ -365,21 +353,9 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Missing("Calendar event not found.");
         }
 
-        // Audit best-effort: already committed. See CreateEventAsync.
-        try
-        {
-            await audit.LogAsync(
-                AuditAction.CalendarEventUpdated, AuditEntityTypes.CalendarEvent, mutated.Id,
-                $"Updated calendar event '{mutated.Title}'",
-                updatedByUserId,
-                relatedEntityId: mutated.OwningTeamId, relatedEntityType: AuditEntityTypes.Team);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was updated by {UserId}. Row was committed; reconcile audit trail manually.",
-                mutated.Id, mutated.Title, updatedByUserId);
-        }
+        await LogCommittedMutationAsync(
+            AuditAction.CalendarEventUpdated, mutated.Id,
+            $"Updated calendar event '{mutated.Title}'", updatedByUserId, mutated.OwningTeamId);
 
         return CalendarEventMutationResult.Success(mutated);
     }
@@ -411,21 +387,9 @@ internal sealed class CalendarService(
         var result = await repo.SoftDeleteAsync(id, now, ct);
         if (result is null) return;
 
-        // Audit best-effort: already committed. See CreateEventAsync.
-        try
-        {
-            await audit.LogAsync(
-                AuditAction.CalendarEventDeleted, AuditEntityTypes.CalendarEvent, id,
-                $"Deleted calendar event '{result.Value.Title}'",
-                deletedByUserId,
-                relatedEntityId: result.Value.OwningTeamId, relatedEntityType: AuditEntityTypes.Team);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was deleted by {UserId}. Soft-delete was committed; reconcile audit trail manually.",
-                id, result.Value.Title, deletedByUserId);
-        }
+        await LogCommittedMutationAsync(
+            AuditAction.CalendarEventDeleted, id,
+            $"Deleted calendar event '{result.Value.Title}'", deletedByUserId, result.Value.OwningTeamId);
     }
 
     public async Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
@@ -496,20 +460,7 @@ internal sealed class CalendarService(
             ct: ct, originalDate: originalDate);
         if (repositoryRefusal is not null) return Refuse(repositoryRefusal);
 
-        // Audit best-effort: already committed. See CreateEventAsync.
-        try
-        {
-            await audit.LogAsync(
-                auditAction, AuditEntityTypes.CalendarEvent, eventId,
-                auditDescription,
-                userId);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}. Exception upsert was committed; reconcile audit trail manually.",
-                auditAction, eventId, userId);
-        }
+        await LogCommittedMutationAsync(auditAction, eventId, auditDescription, userId);
         return true;
 
         bool Refuse(string reason)
@@ -517,6 +468,25 @@ internal sealed class CalendarService(
             logger.LogWarning("Calendar occurrence mutation rejected for event {EventId}, actor {UserId}: {Reason}",
                 eventId, userId, reason);
             return false;
+        }
+    }
+
+    private async Task LogCommittedMutationAsync(
+        AuditAction action, Guid eventId, string description, Guid actorUserId, Guid? owningTeamId = null)
+    {
+        // The mutation is committed; an audit failure must not prevent the cache refresh.
+        try
+        {
+            await audit.LogAsync(
+                action, AuditEntityTypes.CalendarEvent, eventId, description, actorUserId,
+                relatedEntityId: owningTeamId,
+                relatedEntityType: owningTeamId.HasValue ? AuditEntityTypes.Team : null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}: {Description}. Mutation was committed; reconcile audit trail manually.",
+                action, eventId, actorUserId, description);
         }
     }
 
