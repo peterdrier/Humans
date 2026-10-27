@@ -209,17 +209,18 @@ internal sealed class EventService(
 
         // A null actionUrl opts out: bulk import would otherwise send one email per CSV row.
         if (lifecycleActionUrl is not null)
-            await SendLifecycleEmailAsync(guideEvent, EventStatus.Pending, reason: null, lifecycleActionUrl, ct);
+            await SendLifecycleEmailAsync(guideEvent, EventStatus.Pending, reason: null, lifecycleActionUrl);
         return true;
     }
 
     private async Task SendLifecycleEmailAsync(
-        Event guideEvent, EventStatus newStatus, string? reason, string actionUrl, CancellationToken ct)
+        Event guideEvent, EventStatus newStatus, string? reason, string actionUrl)
     {
-        // The caller already persisted the change: an email failure must not report the operation failed.
+        // The change is committed: request cancellation must not skip its notification.
+        // Lookup and delivery failures remain best effort.
         try
         {
-            var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, ct);
+            var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, CancellationToken.None);
             if (submitter?.Email is null)
             {
                 logger.LogWarning(
@@ -506,7 +507,7 @@ internal sealed class EventService(
                 _ => null
             };
             if (lifecycleStatus.HasValue)
-                await SendLifecycleEmailAsync(guideEvent, lifecycleStatus.Value, reason, submitterEditUrl, ct);
+                await SendLifecycleEmailAsync(guideEvent, lifecycleStatus.Value, reason, submitterEditUrl);
         }
 
         return ModerationOutcome.Applied;

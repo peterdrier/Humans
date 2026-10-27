@@ -290,7 +290,7 @@ Hard deletion is not supported; `Withdrawn` is the terminal state for events rem
 | Moderation: Rejected | Submitter — rejection with reason |
 | Moderation: ResubmitRequested | Submitter — edit request with reason |
 
-All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure. Lifecycle notifications run after persistence; failures looking up the recipient or preparing/sending the message are logged and do not fail the committed submission or moderation.
+All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure. Lifecycle notifications run after persistence; failures looking up the recipient or preparing/sending the message are logged and do not fail the committed submission or moderation. A browser disconnect after the save cannot cancel recipient lookup or delivery; cancellation before the save is still honored.
 
 ## Route Summary
 

@@ -567,6 +567,63 @@ public sealed class EventServiceTests
                 && m.HtmlBody.Contains("https://x/edit")));
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LifecycleEmail_AfterCommit_CompletesDespiteRequestCancellation(bool moderation)
+    {
+        using var request = new CancellationTokenSource();
+        OpenSubmissionWindow();
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        var submitter = await _userService.GetUserInfoAsync(submitterId);
+        _userService.ClearReceivedCalls();
+        _userService.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult(submitter);
+        });
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = submitterId,
+            Title = "Fire show",
+            Status = moderation ? EventStatus.Pending : EventStatus.Draft,
+        };
+        var repo = Substitute.For<IEventRepository>();
+        repo.GetGuideSettingsAsync(request.Token).Returns(_repo.Settings);
+        repo.GetEventForModerationAsync(guideEvent.Id, request.Token).Returns(guideEvent);
+        repo.AddEventAsync(guideEvent, request.Token).Returns(async _ =>
+        {
+            await request.CancelAsync();
+        });
+        repo.SaveEventAndModerationActionAsync(guideEvent, Arg.Any<EventModerationAction>(), request.Token).Returns(async _ =>
+        {
+            await request.CancelAsync();
+        });
+        var service = new EventService(repo, _burnSettings, _userService, _camps, _audit, _emailService,
+            _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
+
+        if (moderation)
+        {
+            (await service.ApplyModerationAsync(guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
+                "Too loud", "https://x/edit", request.Token)).Should().Be(ModerationOutcome.Applied);
+            await repo.Received(1).SaveEventAndModerationActionAsync(guideEvent,
+                Arg.Is<EventModerationAction>(action => action.Action == EventModerationActionType.Rejected), request.Token);
+        }
+        else
+        {
+            (await service.SubmitEventAsync(guideEvent, "https://x/edit", request.Token)).Should().BeTrue();
+            await repo.Received(1).AddEventAsync(guideEvent, request.Token);
+        }
+
+        request.IsCancellationRequested.Should().BeTrue();
+        guideEvent.Status.Should().Be(moderation ? EventStatus.Rejected : EventStatus.Pending);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(message =>
+            message.RecipientEmail == "sub@example.com"
+            && message.TemplateName == (moderation ? "event_rejected" : "event_submitted")), CancellationToken.None);
+        _ = _userService.Received(1).GetUserInfoAsync(submitterId, CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task ApplyModerationAsync_EmailFailure_DoesNotFailModeration()
     {
