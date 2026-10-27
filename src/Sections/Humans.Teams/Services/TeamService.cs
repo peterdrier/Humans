@@ -490,17 +490,18 @@ internal sealed class TeamService(
         return result with { GroupWarning = groupWarning };
     }
 
-    public async Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+        var team = await repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is null)
+            return new(Refusal: $"Team {teamId} not found");
 
         if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot delete system team");
+            return new(Refusal: "Cannot delete system team");
 
         var hasActiveChildren = await repo.HasActiveChildrenAsync(teamId, cancellationToken);
         if (hasActiveChildren)
-            throw new InvalidOperationException("Cannot deactivate a team that has active sub-teams. Remove or reassign sub-teams first.");
+            return new(Refusal: "Cannot deactivate a team that has active sub-teams. Remove or reassign sub-teams first.");
 
         var now = clock.GetCurrentInstant();
 
@@ -516,6 +517,7 @@ internal sealed class TeamService(
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
             teamId, team.Name, closedUsers.Count);
+        return new();
     }
 
     public async Task<TeamJoinResult> JoinTeamAsync(

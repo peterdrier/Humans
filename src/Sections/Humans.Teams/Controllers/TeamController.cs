@@ -769,17 +769,16 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        try
+        var result = await teamService.DeleteTeamAsync(id, currentUser!.Id);
+        if (result.Refusal is { } refusal)
         {
-            await teamService.DeleteTeamAsync(id, currentUser!.Id);
-            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
-
-            SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
+            logger.LogWarning("Refused team deactivation {TeamId} by admin {AdminId}: {Reason}", id, currentUser.Id, refusal);
+            SetError(refusal);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to deactivate team {TeamId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
+            SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
         }
 
         return RedirectToAction(nameof(Summary));

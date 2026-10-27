@@ -151,7 +151,7 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Deactivates; nothing is deleted.</summary>
-    Task DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Approval-required teams get a pending request, open teams an immediate membership.</summary>
     Task<TeamJoinResult> JoinTeamAsync(
@@ -349,6 +349,11 @@ internal sealed record TeamJoinRequestResult(TeamJoinRequest? Request = null, st
 internal sealed record TeamDirectJoinResult(TeamMember? Member = null, string? ErrorKey = null);
 
 internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
+
+internal sealed record TeamDeactivationResult(string? Refusal = null)
 {
     public bool Succeeded => Refusal is null;
 }

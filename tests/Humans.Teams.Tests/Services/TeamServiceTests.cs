@@ -3232,6 +3232,37 @@ public sealed class TeamServiceTests : TeamsTestHarness
         summary.PendingShiftSignupCount.Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData("missing")]
+    [InlineData("system")]
+    [InlineData("children")]
+    public async Task DeleteTeamAsync_Refusal_DoesNotDeactivateOrEndMemberships(string reason)
+    {
+        var team = SeedTeam("Parent", type: string.Equals(reason, "system", StringComparison.Ordinal)
+            ? SystemTeamType.Volunteers : SystemTeamType.None);
+        var member = SeedTeamMember(team.Id, SeedUser().Id);
+        if (string.Equals(reason, "children", StringComparison.Ordinal))
+            SeedTeam("Child").ParentTeamId = team.Id;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var id = string.Equals(reason, "missing", StringComparison.Ordinal) ? Guid.NewGuid() : team.Id;
+
+        var result = await _service.DeleteTeamAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain(reason switch
+        {
+            "missing" => "not found",
+            "system" => "system team",
+            _ => "active sub-teams"
+        });
+        ClearAllTrackers();
+        (await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id, TestContext.Current.CancellationToken))
+            .IsActive.Should().BeTrue();
+        (await TeamsDb.TeamMembers.AsNoTracking().SingleAsync(m => m.Id == member.Id, TestContext.Current.CancellationToken))
+            .LeftAt.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task DeleteTeamAsync_ClosesActiveMemberships()
     {
@@ -3246,7 +3277,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var actor = Guid.NewGuid();
-        await _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken);
+        (await _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         // Service uses its own DbContext; detach trackers so assertions re-read
         // from the store rather than returning stale tracked entities.

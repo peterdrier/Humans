@@ -111,6 +111,7 @@ public class TeamControllerPageContentTests
         {
             "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
             "edit-dependency" => new InvalidOperationException(reason),
+            "delete" when unexpected => new InvalidOperationException("Private dependency failure"),
             _ => unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason)
         };
         teams.CreateTeamWithGoogleGroupAsync("", null, false)
@@ -118,7 +119,9 @@ public class TeamControllerPageContentTests
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
             .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
                 : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
-        teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(Task.FromException(failure));
+        teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(unexpected
+            ? Task.FromException<TeamDeactivationResult>(failure)
+            : Task.FromResult(new TeamDeactivationResult(reason)));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
