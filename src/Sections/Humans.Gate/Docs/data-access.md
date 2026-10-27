@@ -73,7 +73,7 @@ kiosk account.
 ### Background jobs (`Humans.Gate/Jobs/`)
 
 `GateRetentionJob` (daily purge of scan rows past retention, via
-`IGateScanRetention.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
+`IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
 and `GateVendorCheckInJob` (best-effort mirror of an admit to TicketTailor
 via `ITicketVendorMirror` — the Tickets Contracts leaf's narrow mirror
 surface, not the full `ITicketVendorService` port; off by default behind

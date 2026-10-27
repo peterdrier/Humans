@@ -7,7 +7,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Jobs;
@@ -34,7 +33,7 @@ internal sealed class GateService(
     GateVendorMirrorLedger mirrorLedger,
     IConfiguration configuration,
     ILogger<GateService> logger,
-    IClock clock) : IGateService, IGateScanRetention, IUserMerge, IUserDataContributor
+    IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     internal const string GateScans = "GateScans";
 

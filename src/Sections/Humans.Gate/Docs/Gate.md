@@ -252,9 +252,9 @@ nobodies-collective/Humans#933.)
 **Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
 except `Section`; there is no `GateResource` because the kiosk carries no resource keys
 (every string is inline English by design — a staff-facing, single-locale terminal).
-`IGateScanRetention` lives in the project's `Contracts/` folder.
+There is no `Contracts/` folder: nothing outside the section calls into it.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
-`IUserDataContributor` and `IGateScanRetention`.
+`IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
 **Jobs:** both in `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
 section's own `SectionJobs` (`ISectionJobs`, discovered by Shell — cron `45 3 * * *`);

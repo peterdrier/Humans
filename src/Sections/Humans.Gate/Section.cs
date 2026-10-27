@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Jobs;
@@ -31,7 +30,6 @@ public sealed class Section : ISection
 
         services.AddScoped<GateService>();
         services.AddScoped<IGateService>(sp => sp.GetRequiredService<GateService>());
-        services.AddScoped<IGateScanRetention>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GateService>());
 

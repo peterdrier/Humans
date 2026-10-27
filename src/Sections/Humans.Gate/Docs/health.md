@@ -45,18 +45,18 @@ recorded, not a structural need.
 
 ### Invariants
 
-- The cutoff comparison uses the server clock only (`Services/GateService.cs:68`);
-  `ClientScanAt` is audit data, written and never read (`Services/GateService.cs:436`).
+- The cutoff comparison uses the server clock only (`Services/GateService.cs:67`);
+  `ClientScanAt` is audit data, written and never read (`Services/GateService.cs:435`).
 - Unset cutoff → every otherwise-admissible scan AMBERs — invalid and duplicate still STOP
   first (`Services/GateAdmissionRules.cs:47`); the terminal shows a loud banner
   (`Views/Gate/Index.cshtml:19`).
 - A barcode admits at most once: unique index on `AdmitDedupeKey`
   (`Data/Configurations/GateScanEventConfiguration.cs:32`), pre-check for the common case
   (`Data/GateRepository.cs:24`); the losing racer records `RejectedDuplicate`
-  (`Services/GateService.cs:119`).
+  (`Services/GateService.cs:118`).
 - A client flag can never turn a STOP into an admit: `RecordDecisionAsync` re-evaluates
-  server-side (`Services/GateService.cs:110`); overrides admit only with `OverrideByUserId` set
-  (`Services/GateService.cs:411`), which the controller sets only after server-verifying the
+  server-side (`Services/GateService.cs:109`); overrides admit only with `OverrideByUserId` set
+  (`Services/GateService.cs:410`), which the controller sets only after server-verifying the
   shared supervisor PIN (`Controllers/GateController.cs:75`), timing-safe compare
   (`Controllers/GateController.cs:327`).
 - Unset override PIN fails closed with an explicit "not configured" card
@@ -68,12 +68,12 @@ recorded, not a structural need.
   (`Controllers/GateController.cs:61`).
 - An admit with a matched guest writes the Attended participation row for the active year via
   `ITicketWrite.RecordParticipationAsync`; failure there never fails the admit
-  (`Services/GateService.cs:179`).
+  (`Services/GateService.cs:178`).
 - Vendor mirror is best-effort, non-retrying (`Jobs/GateVendorCheckInJob.cs:16`), gated by
   `Gate:VendorMirrorEnabled` (`Jobs/GateVendorCheckInJob.cs:37`). The backfill claims the ledger
   atomically before enqueueing (`Controllers/GateVendorBackfillAdminController.cs:86`), so
   overlapping backfill sends never double-post; live admits mark the ledger *after* their
-  enqueue (`Services/GateService.cs:148`), so a backfill click in that instant can still re-send
+  enqueue (`Services/GateService.cs:147`), so a backfill click in that instant can still re-send
   one — accepted, not a guarantee.
 - Write routes carry `GateAdmit` (`Controllers/GateController.cs:55`), read routes
   `ScannerAccess` (`Controllers/GateController.cs:23`); the staff-PIN and settings routes
@@ -82,7 +82,7 @@ recorded, not a structural need.
   reason; EE source, prior scanner identity, and GUIDs stay server-side
   (`Models/GateViewModels.cs:22`).
 - GDPR: export is data-minimized — no barcode, no other person's ids
-  (`Services/GateService.cs:375`); erasure clears `GuestUserId`/`OverrideByUserId` and deletes the
+  (`Services/GateService.cs:374`); erasure clears `GuestUserId`/`OverrideByUserId` and deletes the
   PIN row but keeps `ScannedByUserId` (`Data/GateRepository.cs:71`); merge re-points every user
   column (`Data/GateRepository.cs:95`).
 
@@ -126,11 +126,8 @@ recorded, not a structural need.
   while off would hide exactly the rows the backfill exists to recover.
 - Kiosk JS: quiet-timer submit (no reliance on wedge Enter-suffix), anti-mistap arming delay,
   typing `logout` is the only way off the route-locked gate account.
-- Both jobs are `public` (HUM0034 allows nothing else public; Hangfire needs the concrete
-  types — the retention job via the section's own `SectionJobs` registration, the mirror job
-  via the enqueue's serialized method reference). That is also why `IGateScanRetention` is a
-  public Contracts interface with no caller outside the section: a public job cannot take the
-  internal `IGateService`.
+- `GateVendorCheckInJob` is `public`: Hangfire resolves it from the enqueue's serialized method
+  reference. `GateRetentionJob` is `internal`, scheduled through the section's own `SectionJobs`.
 - The settings form lives in the Settings tab view component but posts to `GateController`'s
   `Admin` action, naming the controller explicitly — inside `/Settings` the ambient route would
   resolve `Admin` against the wrong controller.
