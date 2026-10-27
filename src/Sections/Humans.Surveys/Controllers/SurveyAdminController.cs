@@ -450,8 +450,8 @@ internal sealed class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
-        await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
-        return continueToSend
+        var opened = await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
+        return opened && continueToSend
             ? RedirectToAction(nameof(Send), new { id })
             : RedirectToAction(nameof(Edit), new { id });
     }
@@ -605,18 +605,18 @@ internal sealed class SurveyAdminController(
         return auth.Succeeded ? null : Forbid();
     }
 
-    private async Task RunStatusTransitionAsync(Guid id, Func<Task> transition, string success)
+    private async Task<bool> RunStatusTransitionAsync(Guid id, Func<Task<SurveyReviewResult>> transition, string success)
     {
-        try
+        var result = await transition();
+        if (!result.Succeeded)
         {
-            await transition();
-            SetSuccess(success);
+            logger.LogWarning("Status transition rejected for survey {SurveyId}: {Reason}", id, result.Refusal);
+            SetError(result.Refusal!);
+            return false;
         }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Status transition rejected for survey {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
-        }
+
+        SetSuccess(success);
+        return true;
     }
 
     private async Task<IReadOnlyList<SurveyTeamOption>> LoadTeamsAsync(CancellationToken ct)

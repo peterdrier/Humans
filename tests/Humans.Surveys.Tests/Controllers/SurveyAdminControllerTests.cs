@@ -208,6 +208,56 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Open_continues_to_send_only_after_a_successful_transition(bool succeeded)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        const string reason = "A closed Asociado vote cannot be reopened.";
+        surveys.OpenAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(succeeded ? new SurveyReviewResult() : new SurveyReviewResult(Refusal: reason));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var result = await sut.Open(id, continueToSend: true, Xunit.TestContext.Current.CancellationToken);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
+        redirect.ActionName.Should().Be(succeeded ? nameof(SurveyAdminController.Send) : nameof(SurveyAdminController.Edit));
+        redirect.RouteValues!["id"].Should().Be(id);
+        if (succeeded)
+            sut.TempData[TempDataKeys.SuccessMessage].Should().Be("Survey opened.");
+        else
+        {
+            sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
+            sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task StatusTransition_does_not_disguise_unexpected_failures_as_refusals(bool open)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        var failure = new InvalidOperationException("Unexpected status persistence failure.");
+        if (open)
+            surveys.OpenAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        else
+            surveys.CloseAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<SurveyReviewResult>(failure));
+        var sut = CreateController(surveys, isBoardOrAdmin: true);
+
+        var act = () => open
+            ? sut.Open(id, continueToSend: true, Xunit.TestContext.Current.CancellationToken)
+            : sut.Close(id, Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task SendInvites_displays_expected_refusals_or_invitation_totals(bool refused)

@@ -1099,20 +1099,22 @@ public class SurveyServiceTests
         var id = Guid.NewGuid();
         _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.Draft);
 
-        await CreateService().OpenAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await CreateService().OpenAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SetStatusAsync(id, SurveyStatus.Open, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(AuditAction.SurveyOpened, "Survey", id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
-    public async Task OpenAsync_throws_when_survey_missing()
+    public async Task OpenAsync_returns_refusal_when_survey_missing()
     {
         _repo.GetStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyStatus?)null);
 
-        var act = async () => await CreateService().OpenAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await CreateService().OpenAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Survey not found.");
     }
 
     private void StubTranslationAsMarker() =>
@@ -4876,11 +4878,11 @@ public class SurveyServiceTests
         _repo.GetStatusAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.Closed);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().OpenAsync(
+        var result = await CreateService().OpenAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*cannot be reopened*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("A closed Asociado vote cannot be reopened.");
         await _repo.DidNotReceive().SetStatusAsync(
             Arg.Any<Guid>(), Arg.Any<SurveyStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
@@ -5393,28 +5395,30 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task OpenAsync_throws_for_a_survey_pending_approval()
+    public async Task OpenAsync_returns_refusal_for_a_survey_pending_approval()
     {
         var id = Guid.NewGuid();
         _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.PendingApproval);
 
-        var act = async () => await CreateService().OpenAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await CreateService().OpenAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("A survey pending approval must be approved or rejected, not opened directly.");
         await _repo.DidNotReceive().SetStatusAsync(Arg.Any<Guid>(), Arg.Any<SurveyStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task CloseAsync_throws_for_a_survey_pending_approval()
+    public async Task CloseAsync_returns_refusal_for_a_survey_pending_approval()
     {
         // Closed reopens through OpenAsync, so closing a pending submission would walk it out of
         // the approval gate: PendingApproval → Closed → Open, no approval recorded, nobody invited.
         var id = Guid.NewGuid();
         _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.PendingApproval);
 
-        var act = async () => await CreateService().CloseAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await CreateService().CloseAsync(id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("A survey pending approval must be approved or rejected, not closed.");
         await _repo.DidNotReceive().SetStatusAsync(Arg.Any<Guid>(), Arg.Any<SurveyStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 

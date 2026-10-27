@@ -32,10 +32,10 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid surveyId, IReadOnlyList<string> targetCultures, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>Transitions Draft → Open.</summary>
-    Task OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
+    Task<SurveyReviewResult> OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Transitions Open → Closed.</summary>
-    Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
+    Task<SurveyReviewResult> CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Survey list scoped to the viewer: Board/Admin see every survey; anyone else sees only their own.</summary>
     Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default);

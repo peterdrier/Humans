@@ -546,40 +546,45 @@ internal sealed class SurveyService(
             => values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v);
     }
 
-    public async Task OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var status = await repo.GetStatusAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
-        if (status == SurveyStatus.Open) return;
+        var status = await repo.GetStatusAsync(surveyId, ct);
+        if (status is null)
+            return new(Refusal: "Survey not found.");
+        if (status == SurveyStatus.Open) return new();
         // A submission pending approval can only become Open via ApproveAndSendAsync — that is
         // the one step that also sends invitations and records the approval (Workgroups §11).
         if (status == SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("A survey pending approval must be approved or rejected, not opened directly.");
+            return new(Refusal: "A survey pending approval must be approved or rejected, not opened directly.");
         if (status == SurveyStatus.Closed)
         {
-            var survey = await repo.GetByIdAsync(surveyId, ct)
-                ?? throw new InvalidOperationException("Survey not found.");
+            var survey = await repo.GetByIdAsync(surveyId, ct);
+            if (survey is null)
+                return new(Refusal: "Survey not found.");
             if (survey.IsAsociadoVote == true)
-                throw new InvalidOperationException("A closed Asociado vote cannot be reopened.");
+                return new(Refusal: "A closed Asociado vote cannot be reopened.");
         }
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Open, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyOpened, AuditEntityTypes.Survey, surveyId, "Opened survey", actorUserId);
+        return new();
     }
 
-    public async Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var status = await repo.GetStatusAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
-        if (status == SurveyStatus.Closed) return;
+        var status = await repo.GetStatusAsync(surveyId, ct);
+        if (status is null)
+            return new(Refusal: "Survey not found.");
+        if (status == SurveyStatus.Closed) return new();
         // Closing a pending submission would walk it out of the approval gate: Closed reopens
         // through OpenAsync, so PendingApproval → Closed → Open would reach Open with no approval
         // recorded and no invitations sent. Approve or reject it instead.
         if (status == SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("A survey pending approval must be approved or rejected, not closed.");
+            return new(Refusal: "A survey pending approval must be approved or rejected, not closed.");
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
+        return new();
     }
 
     public async Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default)
