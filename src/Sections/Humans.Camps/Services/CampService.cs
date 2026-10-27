@@ -598,7 +598,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task<CampSeasonReviewResult> ApproveSeasonAsync(
+    public async Task<CampAdminMutationResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default)
     {
         string? refusal = null;
@@ -630,7 +630,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task<CampSeasonReviewResult> RejectSeasonAsync(
+    public async Task<CampAdminMutationResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default)
     {
         string? refusal = null;
@@ -804,8 +804,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
+        string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
         var campId = Guid.Empty;
@@ -814,22 +815,26 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         var found = await _repo.UpdateSeasonAsync(seasonId, season =>
         {
+            if (season.Status is not (CampSeasonStatus.Full or CampSeasonStatus.Withdrawn))
+            {
+                refusal = $"Cannot reactivate a season with status {season.Status}.";
+                return;
+            }
             previousStatus = season.Status;
             newStatus = season.Reactivate(now);
             year = season.Year;
             campId = season.CampId;
         }, cancellationToken);
 
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
+        if (refusal is not null) return new(false, refusal);
+        if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status changed from {previousStatus} to {newStatus}",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        return new(true);
 
     }
 
@@ -893,10 +898,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return CampUpdateResult.Success();
     }
 
-    public async Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken)
-            ?? throw new InvalidOperationException("Camp not found.");
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        if (camp is null) return new(false, "Camp not found.");
 
         // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
         // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
@@ -924,7 +929,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
             if (deletedImagePaths is null)
             {
-                throw new InvalidOperationException("Camp not found.");
+                return new(false, "Camp not found.");
             }
 
             scope.Complete();
@@ -949,6 +954,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     path, campId);
             }
         }
+        return new(true);
 
     }
 

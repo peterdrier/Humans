@@ -214,7 +214,7 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task<CampSeasonReviewResult> ApproveSeasonAsync(
+    public Task<CampAdminMutationResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
@@ -223,7 +223,7 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task<CampSeasonReviewResult> RejectSeasonAsync(
+    public Task<CampAdminMutationResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
@@ -241,11 +241,12 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ReactivateSeasonAsync(seasonId, actorUserId: actorUserId, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.ReactivateSeasonAsync(seasonId, actorUserId: actorUserId, cancellationToken));
+            if (result.Succeeded) await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            return result;
         });
 
     public Task<CampUpdateResult> MarkSeasonFullAsync(
@@ -267,12 +268,13 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.DeleteCampAsync(campId, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.DeleteCampAsync(campId, actorUserId: actorUserId, cancellationToken));
             // Tombstone without flipping warmth — preserves the all-rows invariant.
             DeleteKey(campId);
+            return result;
         });
 
     public Task<CampUpdateResult> AddHistoricalNameAsync(

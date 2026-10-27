@@ -346,6 +346,40 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReactivateSeasonAsync_RefusesMissingOrPendingSeasonsWithoutAudit(bool missing)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCampAsync();
+        var season = await CampsDb.CampSeasons.SingleAsync(s => s.CampId == camp.Id, ct);
+        var updatedAt = season.UpdatedAt;
+        var auditCalls = AuditLog.ReceivedCalls().Count();
+
+        var result = await _service.ReactivateSeasonAsync(missing ? Guid.NewGuid() : season.Id, TestActorId, ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be(missing ? "Season not found." : "Cannot reactivate a season with status Pending.");
+        await CampsDb.Entry(season).ReloadAsync(ct);
+        season.Status.Should().Be(CampSeasonStatus.Pending);
+        season.UpdatedAt.Should().Be(updatedAt);
+        AuditLog.ReceivedCalls().Count().Should().Be(auditCalls);
+    }
+
+    [HumansFact]
+    public async Task DeleteCampAsync_MissingCamp_ReturnsRefusalWithoutAuditOrPolygonDeletion()
+    {
+        var result = await _service.DeleteCampAsync(Guid.NewGuid(), TestActorId, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Camp not found.");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        await _cityPlanningService.DidNotReceive().DeleteCampPolygonsForSeasonsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(true, false)]
     [InlineData(false, false)]
     [InlineData(true, true)]

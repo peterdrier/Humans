@@ -113,7 +113,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Approve transitions season to Active status
 - Reject requires notes explaining the reason
 - Records reviewer ID and timestamp
-- Missing or already-reviewed seasons return an admin refusal without a transition or audit; dependency failures remain errors.
+- Missing or already-reviewed seasons return an admin refusal without a transition or audit; dependency failures remain errors. Reactivation refuses a missing or ineligible season, and deletion refuses a missing camp; these expected outcomes likewise preserve state and do not disguise dependency failures.
 
 ### US-20.7: Manage Seasons
 **As a** CampAdmin or Admin

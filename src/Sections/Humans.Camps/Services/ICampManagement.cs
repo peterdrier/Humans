@@ -35,12 +35,12 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task<CampSeasonReviewResult> ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
-    Task<CampSeasonReviewResult> RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
+    Task<CampAdminMutationResult> ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
+    Task<CampAdminMutationResult> RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> WithdrawSeasonAsync(Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>CampAdmin-only verb (unscoped by design — the dashboard is cross-camp).</summary>
-    Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>
     /// Camp lead or CampAdmin marks an Active season Full. The Full label does not block join requests.
     /// Returns a refusal for a non-Active season or one outside <paramref name="scopedCampId"/>, matching the
@@ -49,7 +49,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampUpdateResult> MarkSeasonFullAsync(
         Guid scopedCampId, Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default);
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
@@ -140,7 +140,7 @@ internal sealed record CampMemberRequestResult(
     string MessageKey,
     CampMemberRequestNoticeLevel NoticeLevel);
 
-internal sealed record CampSeasonReviewResult(bool Succeeded, string? ErrorMessage = null);
+internal sealed record CampAdminMutationResult(bool Succeeded, string? ErrorMessage = null);
 
 internal sealed record CampMembershipMutationResult(bool Succeeded, string? ErrorMessage)
 {

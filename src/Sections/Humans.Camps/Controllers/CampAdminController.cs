@@ -193,15 +193,15 @@ internal sealed class CampAdminController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
-        try
+        var result = await campService.ReactivateSeasonAsync(seasonId, actorUserId: user.Id);
+        if (result.Succeeded)
         {
-            await campService.ReactivateSeasonAsync(seasonId, actorUserId: user.Id);
             SetSuccess("Season status updated.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to reactivate camp season {SeasonId}: {Reason}", seasonId, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to reactivate camp season {SeasonId}: {Reason}", seasonId, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         if (!string.IsNullOrEmpty(returnSlug))
@@ -240,15 +240,15 @@ internal sealed class CampAdminController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
-        try
+        var result = await campService.DeleteCampAsync(campId, actorUserId: user.Id);
+        if (result.Succeeded)
         {
-            await campService.DeleteCampAsync(campId, actorUserId: user.Id);
             SetSuccess("Camp deleted.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to delete camp {CampId}: {Reason}", campId, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to delete camp {CampId}: {Reason}", campId, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));

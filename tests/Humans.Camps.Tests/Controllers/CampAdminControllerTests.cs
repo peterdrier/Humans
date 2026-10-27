@@ -110,6 +110,8 @@ public class CampAdminControllerTests
         if (userExists)
             users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        camps.ReactivateSeasonAsync(targetId, actorId).Returns(new CampAdminMutationResult(true));
+        camps.DeleteCampAsync(targetId, actorId).Returns(new CampAdminMutationResult(true));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
         var lockDate = new LocalDate(2026, 3, 1);
 
@@ -212,7 +214,9 @@ public class CampAdminControllerTests
     [HumansTheory]
     [InlineData("Approve")]
     [InlineData("Reject")]
-    public async Task SeasonReview_InvalidOperationFromDependency_Propagates(string action)
+    [InlineData("Reactivate")]
+    [InlineData("Delete")]
+    public async Task LifecycleMutation_InvalidOperationFromDependency_Propagates(string action)
     {
         var camps = Substitute.For<ICampManagement>();
         var users = Substitute.For<IUserService>();
@@ -244,13 +248,13 @@ public class CampAdminControllerTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
         var reason = string.Equals(action, "Delete", StringComparison.Ordinal) ? "Camp not found." : "Season not found.";
-        if (action is "Approve" or "Reject")
+        switch (action)
         {
-            camps.ApproveSeasonAsync(targetId, actorId, null).Returns(new CampSeasonReviewResult(false, reason));
-            camps.RejectSeasonAsync(targetId, actorId, "Rejected").Returns(new CampSeasonReviewResult(false, reason));
+            case "Approve": camps.ApproveSeasonAsync(targetId, actorId, null).Returns(new CampAdminMutationResult(false, reason)); break;
+            case "Reject": camps.RejectSeasonAsync(targetId, actorId, "Rejected").Returns(new CampAdminMutationResult(false, reason)); break;
+            case "Reactivate": camps.ReactivateSeasonAsync(targetId, actorId).Returns(new CampAdminMutationResult(false, reason)); break;
+            case "Delete": camps.DeleteCampAsync(targetId, actorId).Returns(new CampAdminMutationResult(false, reason)); break;
         }
-        else
-            ConfigureFailure(camps, action, targetId, actorId, new InvalidOperationException(reason));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, logger);
 
         var result = await InvokeActionAsync(controller, action, targetId);

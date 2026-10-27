@@ -38,10 +38,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public CachingCampServiceTests()
     {
         _innerSubstitute = Substitute.For<ICampManagement, IUserMerge>();
+        _innerSubstitute.ReactivateSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        _innerSubstitute.DeleteCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
         _innerSubstitute.ApproveSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonReviewResult(true));
+            .Returns(new CampAdminMutationResult(true));
         _innerSubstitute.RejectSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonReviewResult(true));
+            .Returns(new CampAdminMutationResult(true));
         _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
         var inner = new CampService(
@@ -117,7 +121,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         var seasonId = Guid.NewGuid();
         _innerSubstitute.ApproveSeasonAsync(seasonId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonReviewResult(false, "Season not found."));
+            .Returns(new CampAdminMutationResult(false, "Season not found."));
 
         var act = () => ((ICampSeeding)_service).ApproveSeasonAsync(seasonId, TestActorId, null,
             TestContext.Current.CancellationToken);
