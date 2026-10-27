@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Globalization;
 using Humans.Base;
 using Humans.Base.Configuration;
@@ -23,8 +22,8 @@ using Microsoft.Extensions.Options;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// A Singleton or hosted service that constructor-injects a Scoped service throws at startup under
-/// <c>ValidateScopes</c>, and the deployment answers 503. Such a Singleton takes <c>IServiceScopeFactory</c> instead.
+/// Email and form-binding infrastructure registrations. Captive dependencies and cycles across the whole
+/// container are <see cref="SectionServiceResolutionTests"/>.
 /// </summary>
 public sealed class ServiceProviderValidationTests
 {
@@ -59,36 +58,6 @@ public sealed class ServiceProviderValidationTests
         var settings = services.GetRequiredService<IOptions<EmailSettings>>().Value;
 
         new Uri($"{settings.BaseUrl}/Account/MagicLinkConfirm").AbsolutePath.Should().Be(expectedPath);
-    }
-
-    [HumansFact]
-    public void NoSingletonConstructorInjectsAScopedService()
-    {
-        var services = new ServiceCollection();
-        Extensions.InfrastructureServiceCollectionExtensions
-            .AddHumansInfrastructure(services, BuildMinimalConfiguration(), new StubHostEnvironment());
-
-        var scopedServiceTypes = services
-            .Where(d => d.Lifetime == ServiceLifetime.Scoped && !d.IsKeyedService)
-            .Select(d => d.ServiceType)
-            .ToHashSet();
-
-        var captives = services
-            .Where(d => d.Lifetime == ServiceLifetime.Singleton)
-            .Select(d => d.IsKeyedService ? d.KeyedImplementationType : d.ImplementationType)
-            .Where(t => t is not null)
-            .Distinct()
-            .SelectMany(t => Constructors(t!)
-                .SelectMany(c => c.GetParameters())
-                .Where(p => p.GetCustomAttribute<FromKeyedServicesAttribute>() is null)
-                .Where(p => scopedServiceTypes.Contains(p.ParameterType))
-                .Select(p => $"{t!.Name}.{p.Name} ({p.ParameterType.Name})"))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        captives.Should().BeEmpty(
-            because: "a Singleton holding a Scoped service fails ValidateScopes at host "
-                     + "startup — take IServiceScopeFactory and resolve per call instead");
     }
 
     [HumansTheory]
@@ -172,9 +141,6 @@ public sealed class ServiceProviderValidationTests
             CultureInfo.CurrentUICulture = originalCulture;
         }
     }
-
-    private static IEnumerable<ConstructorInfo> Constructors(Type type) =>
-        type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
 
     private static IConfiguration BuildMinimalConfiguration()
     {
