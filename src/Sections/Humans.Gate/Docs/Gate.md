@@ -46,10 +46,10 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   after verifying the shared supervisor override PIN (`Gate:SupervisorPin`) server-side — a forged
   `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
   (overrides refused, never a free pass).
-- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier#1075_: the claim step is
+- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier/Humans#1075_: the claim step is
   bypassed (the terminal scans as the shared gate account), though the table, service methods,
   admin page, and views remain in place should per-person claim return. Design retained in git
-  history (peterdrier#1071/#1073/#1074): claim vs override decoupled via `AdminEnrolled`,
+  history (peterdrier/Humans#1071/#1073/#1074): claim vs override decoupled via `AdminEnrolled`,
   three-factor `AuthorizeOverrideAsync`, double-entry first-time set, audited set/reset
   (`GateStaffPinSet`/`GateStaffPinReset`); PIN values never logged.
 - **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
@@ -134,7 +134,7 @@ kept separate so they can diverge. The supervisor override on `Decision` is auth
 shared override PIN (`Gate:SupervisorPin`), brute-force throttled via `GatePinThrottle` on a
 single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin` PIN routes — plus
 the claim flow's `EndShift` POST and its name-search endpoint `/Gate/Search` — remain but are
-unreachable since peterdrier#1075 — nothing links to them; the Staff PINs page (`Admin`) is linked from the admin nav, but the PINs it manages serve only the bypassed claim flow. Deletion is planned:
+unreachable since peterdrier/Humans#1075 — nothing links to them; the Staff PINs page (`Admin`) is linked from the admin nav, but the PINs it manages serve only the bypassed claim flow. Deletion is planned:
 nobodies-collective/Humans#933.)
 
 ## Invariants
@@ -157,7 +157,7 @@ nobodies-collective/Humans#933.)
   non-self-resetting lockout; a correct PIN clears it) on the single `override:shared` bucket. A
   lockout blocks only overrides — scanning and every other card continue — so a fumbled PIN can
   never stop the line, while the shared PIN can't be ground through the ~10k space at the kiosk.
-- Scan **attribution is the shared gate account** (peterdrier#1075): the personal-PIN claim flow is
+- Scan **attribution is the shared gate account** (peterdrier/Humans#1075): the personal-PIN claim flow is
   bypassed, so the leaderboard and `ScannedByUserId` no longer identify individual staffers.
 - An admit with a matched guest immediately writes the guest's Attended participation row for the
   active event's year — consumed-Early-Entry guards (Camps) and other attendance readers see a gate
@@ -181,7 +181,7 @@ nobodies-collective/Humans#933.)
   ("Do not admit · if disputed, get the gate lead"), the ID-confirm card has a "Wrong ticket — scan
   again" escape and a visible auto-clear countdown, the override panel has a Cancel button, and the
   freshness line taps to reload. (The two-tap "End shift" handover button and the claim keypad's
-  "← Not you?" went with the bypassed claim flow — peterdrier#1075; `GateController.EndShift`
+  "← Not you?" went with the bypassed claim flow — peterdrier/Humans#1075; `GateController.EndShift`
   remains but nothing links to it, since scans now attribute to the shared gate account and there
   is no per-operator session to hand over.)
 - **Logout escape hatch** — the route-restriction middleware hides every normal logout affordance from
@@ -202,7 +202,7 @@ nobodies-collective/Humans#933.)
   event/year for the shift roster pre-fill and the Attended-participation write); and Shifts' `IShiftService.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
-  peterdrier#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
+  peterdrier/Humans#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserService` (scanner name; supervisor/claim display names; leaderboard
   rendering via `<vc:human>`).
@@ -226,10 +226,10 @@ nobodies-collective/Humans#933.)
 - `Gate:RetentionDays` — retention window in days for `gate_scan_events` (default 365);
   `<= 0` disables the purge.
 - `Gate:RosterTeamId` — **optional** GUID of the Shifts department/team that staffs the gate.
-  When set, `/Gate/Claim` (unreachable since peterdrier#1075) shows that team's signed-up
+  When set, `/Gate/Claim` (unreachable since peterdrier/Humans#1075) shows that team's signed-up
   volunteers as one-tap picks; the `/Gate/Search` name search remains for anyone not on the
   roster (burner-name matching only — never email; each result shows a masked org-public email
-  as a disambiguator, peterdrier#1073). Unset → search only (no behaviour change). Only
+  as a disambiguator, peterdrier/Humans#1073). Unset → search only (no behaviour change). Only
   volunteers whose gate **shift starts within ±2 hours of now** (event-local time, from
   `EventSettings.TimeZoneId`) are shown, so the list tracks shift change rather than the whole
   event roster. De-dupes one pick per human; excludes refused/bailed/cancelled/no-show signups.

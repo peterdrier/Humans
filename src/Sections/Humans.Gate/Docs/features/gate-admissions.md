@@ -9,16 +9,16 @@
 
 # Gate Admissions — gate ticket scanning that decides entry
 
-> Status: **SHIPPED** (peterdrier#1066 plus follow-ups) — this design draft is kept for the
+> Status: **SHIPPED** (peterdrier/Humans#1066 plus follow-ups) — this design draft is kept for the
 > rationale. The posture change and the new public surface were signed off by Peter
 > (attendance-gateway posture 2026-07-02). The authoritative current-state doc is
 > [`Gate.md`](../Gate.md); where this draft and shipped behaviour
 > disagree, that doc wins. Notable post-draft changes: personal staff/supervisor PINs were
-> shipped, then disabled (peterdrier#1075) in favour of a shared override PIN
-> (`Gate:SupervisorPin`, peterdrier#1079); scans attribute to the shared gate account (no
-> claim step); an admit writes the guest's Attended participation row (peterdrier#1081); a
+> shipped, then disabled (peterdrier/Humans#1075) in favour of a shared override PIN
+> (`Gate:SupervisorPin`, peterdrier/Humans#1079); scans attribute to the shared gate account (no
+> claim step); an admit writes the guest's Attended participation row (peterdrier/Humans#1081); a
 > mirror ledger + one-off vendor check-in backfill page recover unsent vendor check-ins
-> (peterdrier#1080–#1083). Type/namespace names below (e.g. `Humans.Domain.Entities.*`,
+> (peterdrier/Humans#1080–#1083). Type/namespace names below (e.g. `Humans.Domain.Entities.*`,
 > `Humans.Infrastructure.*`) are the draft-era layout and no longer exist — the section now
 > owns its types under `Humans.Gate.*`.
 
@@ -188,4 +188,4 @@ Two independent reviews (correctness/architecture + security/privacy/ops) ran on
    paths (currently strict: stop + async fix link). _Done, after iteration —
    shipped as per-staffer enrolled PINs, then replaced by the shared override PIN
    (`Gate:SupervisorPin`) on the too-early / unconfirmed-EE / child-waiver paths
-   (peterdrier#1075 / peterdrier#1079)._
+   (peterdrier/Humans#1075 / peterdrier/Humans#1079)._

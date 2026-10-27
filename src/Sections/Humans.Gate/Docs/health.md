@@ -26,7 +26,7 @@ history is exportable and erasable under GDPR; account merges re-point their sca
 | Configure the gate | `/Settings#gate` (tab posts to `POST /Gate/Admin`) | Cutoff + minor age (peterdrier/Humans#1634) |
 | Staff PINs *(dormant)* | `GET /Gate/Admin`, `POST /Gate/Admin/SetPin`, `POST /Gate/Admin/ResetPin` | Linked from the admin nav ("Staff PINs"), but the PINs it manages serve only the bypassed claim flow |
 | Recover missed vendor mirrors | `GET/POST /Gate/Admin/VendorCheckInBackfill` (`RunOne`, `Run`) | Temp page — remove after use |
-| Who is scanning? *(retired)* | `Claim` GET/POST, `ClaimPin`, `EndShift`, `/Gate/Search` | Unreachable since peterdrier#1075; deletion tracked in nobodies-collective/Humans#933, shelved for the 2027 gate rewrite |
+| Who is scanning? *(retired)* | `Claim` GET/POST, `ClaimPin`, `EndShift`, `/Gate/Search` | Unreachable since peterdrier/Humans#1075; deletion tracked in nobodies-collective/Humans#933, shelved for the 2027 gate rewrite |
 | Housekeeping | `GateRetentionJob`, `GateVendorCheckInJob`, `IUserDataContributor`, `IUserMerge` | Retention purge; fire-and-forget mirror; GDPR export/erase; merge re-point |
 
 ### Structure
@@ -88,7 +88,7 @@ recorded, not a structural need.
 
 ### Seams
 
-- **Per-person claim flow** (peterdrier#1075 bypassed it; nobodies-collective/Humans#933 tracks
+- **Per-person claim flow** (peterdrier/Humans#1075 bypassed it; nobodies-collective/Humans#933 tracks
   deletion, shelved by Peter with all gate work until the 2027 rewrite): the
   `Claim`/`ClaimPin`/`EndShift`/`Search` actions, `gate_staff_pins` + PIN service methods,
   `AuthorizeOverrideAsync`, roster pre-fill (`Gate:RosterTeamId`, Shifts read), and the Staff
