@@ -11,6 +11,16 @@
 The payments connector. Wraps the Stripe.NET SDK behind `IStripeService` so no other
 production assembly names a Stripe type. Owns no tables and no UI.
 
+- **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
+  webhook; Tickets gets each payment's fee breakdown.
+- **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
+  it checked, or throws — never a silent failure, never a decision about what a payment means.
+- **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries, no
+  cache; the webhook registrar exists only for PR previews.
+- **Out of scope:** payouts and chargebacks (dashboard-manual), invoicing (Store/Holded) and
+  payment bookkeeping (Store). Refunds are in scope, through one guarded path only
+  (nobodies-collective/Humans#1254, not built yet).
+
 ## Concepts
 
 - A **Stripe account** is one merchant account with one API key. Two are in use: the
@@ -60,8 +70,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   `StoreCheckoutWebhookEvent` and `StoreCheckoutSessionData` — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
-- `Humans.Stripe` is the only production project with a `Stripe.net` package reference —
-  convention only; no test enforces it.
+- `Humans.Stripe` is the only production project with a `Stripe.net` package reference.
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - Checkout Session creation is `[ExternalWrite]`; a state-changing caller detaches request
   cancellation at the call boundary.
@@ -96,9 +105,9 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   recording, transitioning and reconciling a payment is Store's.
 - The webhook registrar **cannot** run outside a `*.n.burn.camp` host, and **cannot** run
   at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` (never set in QA or production).
-- Refunds, payouts and chargebacks **cannot** be issued from the app — they are
-  dashboard-manual by design
-  ([`memory/architecture/refunds-manual-via-dashboard.md`](../../../../memory/architecture/refunds-manual-via-dashboard.md)).
+- Payouts and chargebacks **cannot** be issued from the app. Refunds cannot either until the
+  guarded refund path (nobodies-collective/Humans#1254) ships, and then only through it
+  ([`memory/architecture/stripe-money-out.md`](../../../../memory/architecture/stripe-money-out.md)).
 
 ## Triggers
 

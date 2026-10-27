@@ -112,8 +112,9 @@ Docs/                         Stripe.md (invariants), data-access.md, health.md 
   the next sync pass or page load asks again.
 - **No caching decorator.** Every call exists to see Stripe's *current* state; a cached
   reconciliation list would be worse than none.
-- **No refunds, payouts or chargebacks.** Dashboard-manual by standing decision
-  (`memory/architecture/refunds-manual-via-dashboard.md`).
+- **No payouts or chargebacks.** Dashboard-manual by standing decision
+  (`memory/architecture/stripe-money-out.md`). Refunds are in scope through one guarded path,
+  not built yet (nobodies-collective/Humans#1254).
 - **No `.Contracts` leaf project.** There is no cycle for it to break.
 - **No scope introspection.** Stripe exposes no endpoint that reports a restricted key's
   scopes; the smoke probe can only confirm the scopes used are present.
