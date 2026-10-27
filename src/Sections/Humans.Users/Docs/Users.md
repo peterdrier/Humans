@@ -112,7 +112,7 @@ The rows still load into `UserInfo.EventParticipations` (`[Obsolete(HUM_USER_PAR
 
 ### AccountMergeRequest
 
-Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates.
+Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates. Admin merge, accept, dismiss and reconcile operations return internal refusal results for their request/account guards. Expected refusals retain operator feedback and log Warning with identifiers; unexpected dependency failures propagate. The fan-out, final tombstone, retry behavior and dismissal transaction retain their existing ordering.
 
 **Table:** `account_merge_requests`
 

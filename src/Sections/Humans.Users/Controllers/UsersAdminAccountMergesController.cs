@@ -88,16 +88,14 @@ internal sealed class UsersAdminAccountMergesController(
         var (error, admin) = await RequireCurrentUserAsync(ct);
         if (error is not null) return error;
 
-        try
+        var result = await mergeService.MergeAsync(survivorUserId, archivedUserId, admin.Id, notes, null, ct);
+        if (result.Refusal is { } refusal)
         {
-            await mergeService.MergeAsync(survivorUserId, archivedUserId, admin.Id, notes, null, ct);
+            logger.LogWarning("Merge refused for {Survivor} <- {Archived} by {AdminId}: {Reason}", survivorUserId, archivedUserId, admin.Id, refusal);
+            SetError($"Merge failed: {refusal}");
+        }
+        else
             SetSuccess("Accounts merged. The archived account has been tombstoned.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Failed to merge {Survivor} <- {Archived}", survivorUserId, archivedUserId);
-            SetError($"Merge failed: {ex.Message}");
-        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -109,16 +107,14 @@ internal sealed class UsersAdminAccountMergesController(
         var (error, admin) = await RequireCurrentUserAsync(ct);
         if (error is not null) return error;
 
-        try
+        var result = await mergeService.AcceptAsync(requestId, admin.Id, survivorUserId, notes, ct);
+        if (result.Refusal is { } refusal)
         {
-            await mergeService.AcceptAsync(requestId, admin.Id, survivorUserId, notes, ct);
+            logger.LogWarning("Merge refused for merge request {RequestId} by {AdminId}: {Reason}", requestId, admin.Id, refusal);
+            SetError($"Merge failed: {refusal}");
+        }
+        else
             SetSuccess("Account merge completed. The archived account has been tombstoned.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Failed to accept merge request {RequestId}", requestId);
-            SetError($"Merge failed: {ex.Message}");
-        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -130,16 +126,14 @@ internal sealed class UsersAdminAccountMergesController(
         var (error, admin) = await RequireCurrentUserAsync(ct);
         if (error is not null) return error;
 
-        try
+        var result = await mergeService.RejectAsync(requestId, admin.Id, notes, ct);
+        if (result.Refusal is { } refusal)
         {
-            await mergeService.RejectAsync(requestId, admin.Id, notes, ct);
+            logger.LogWarning("Dismiss refused for merge request {RequestId} by {AdminId}: {Reason}", requestId, admin.Id, refusal);
+            SetError($"Dismiss failed: {refusal}");
+        }
+        else
             SetSuccess("Merge request dismissed. No changes were made.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Failed to dismiss merge request {RequestId}", requestId);
-            SetError($"Dismiss failed: {ex.Message}");
-        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -151,16 +145,14 @@ internal sealed class UsersAdminAccountMergesController(
         var (error, admin) = await RequireCurrentUserAsync(ct);
         if (error is not null) return error;
 
-        try
+        var result = await mergeService.ReconcileMergedRequestAsync(requestId, admin.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await mergeService.ReconcileMergedRequestAsync(requestId, admin.Id, ct);
+            logger.LogWarning("Close refused for merge request {RequestId} by {AdminId}: {Reason}", requestId, admin.Id, refusal);
+            SetError($"Close failed: {refusal}");
+        }
+        else
             SetSuccess("Orphan merge request closed; the accounts were already merged.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Failed to close merge request {RequestId}", requestId);
-            SetError($"Close failed: {ex.Message}");
-        }
 
         return RedirectToAction(nameof(Index));
     }

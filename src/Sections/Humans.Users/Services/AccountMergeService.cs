@@ -66,16 +66,16 @@ internal sealed class AccountMergeService(
         return ids;
     }
 
-    public async Task AcceptAsync(
+    public async Task<AccountMergeResult> AcceptAsync(
         Guid requestId, Guid adminUserId, Guid survivorUserId,
         string? notes = null, CancellationToken ct = default)
     {
-        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct)
-            ?? throw new InvalidOperationException("Merge request not found.");
+        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct);
+        if (request is null) return new(Refusal: "Merge request not found.");
         if (request.Status != AccountMergeRequestStatus.Pending)
-            throw new InvalidOperationException("Merge request is not pending.");
+            return new(Refusal: "Merge request is not pending.");
         if (survivorUserId != request.TargetUserId && survivorUserId != request.SourceUserId)
-            throw new InvalidOperationException("Survivor must be one of the request's two accounts.");
+            return new(Refusal: "Survivor must be one of the request's two accounts.");
 
         var archivedUserId = survivorUserId == request.TargetUserId
             ? request.SourceUserId : request.TargetUserId;
@@ -86,26 +86,25 @@ internal sealed class AccountMergeService(
             ? request.PendingEmailId : (Guid?)null;
 
         // MergeAsync.CloseRequestsForPairAsync closes this request (and any siblings) as Accepted.
-        await MergeAsync(survivorUserId, archivedUserId, adminUserId, notes, pendingEmailToVerify, ct);
+        return await MergeAsync(survivorUserId, archivedUserId, adminUserId, notes, pendingEmailToVerify, ct);
     }
 
-    public async Task MergeAsync(
+    public async Task<AccountMergeResult> MergeAsync(
         Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
         string? notes = null, Guid? pendingEmailIdToVerify = null,
         CancellationToken ct = default)
     {
         if (survivorUserId == archivedUserId)
-            throw new InvalidOperationException("Survivor and archived users are the same.");
+            return new(Refusal: "Survivor and archived users are the same.");
 
-        var survivor = await userService.GetRawUserInfoAsync(survivorUserId, ct)
-            ?? throw new InvalidOperationException($"Survivor user {survivorUserId} not found.");
-        var archived = await userService.GetRawUserInfoAsync(archivedUserId, ct)
-            ?? throw new InvalidOperationException($"Archived user {archivedUserId} not found.");
+        var survivor = await userService.GetRawUserInfoAsync(survivorUserId, ct);
+        if (survivor is null) return new(Refusal: $"Survivor user {survivorUserId} not found.");
+        var archived = await userService.GetRawUserInfoAsync(archivedUserId, ct);
+        if (archived is null) return new(Refusal: $"Archived user {archivedUserId} not found.");
         if (survivor.IsMerged)
-            throw new InvalidOperationException($"Survivor user {survivorUserId} is already tombstoned.");
+            return new(Refusal: $"Survivor user {survivorUserId} is already tombstoned.");
         if (archived.IsMerged)
-            throw new InvalidOperationException(
-                $"Archived user {archivedUserId} is already tombstoned (merged into {archived.MergedToUserId}).");
+            return new(Refusal: $"Archived user {archivedUserId} is already tombstoned (merged into {archived.MergedToUserId}).");
 
         var now = clock.GetCurrentInstant();
 
@@ -137,6 +136,7 @@ internal sealed class AccountMergeService(
 
         // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
         await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
+        return new();
     }
 
     private static AccountMergeRequestSnapshot ToSnapshot(
@@ -189,16 +189,16 @@ internal sealed class AccountMergeService(
         }
     }
 
-    public async Task RejectAsync(
+    public async Task<AccountMergeResult> RejectAsync(
         Guid requestId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
-        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct)
-            ?? throw new InvalidOperationException("Merge request not found.");
+        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct);
+        if (request is null) return new(Refusal: "Merge request not found.");
 
         if (request.Status != AccountMergeRequestStatus.Pending)
         {
-            throw new InvalidOperationException("Merge request is not pending.");
+            return new(Refusal: "Merge request is not pending.");
         }
 
         var now = clock.GetCurrentInstant();
@@ -228,15 +228,16 @@ internal sealed class AccountMergeService(
 
         // After commit.
         await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);
+        return new();
     }
 
-    public async Task ReconcileMergedRequestAsync(
+    public async Task<AccountMergeResult> ReconcileMergedRequestAsync(
         Guid requestId, Guid adminUserId, CancellationToken ct = default)
     {
-        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct)
-            ?? throw new InvalidOperationException("Merge request not found.");
+        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct);
+        if (request is null) return new(Refusal: "Merge request not found.");
         if (request.Status != AccountMergeRequestStatus.Pending)
-            throw new InvalidOperationException("Merge request is not pending.");
+            return new(Refusal: "Merge request is not pending.");
 
         var source = await userService.GetRawUserInfoAsync(request.SourceUserId, ct);
         var target = await userService.GetRawUserInfoAsync(request.TargetUserId, ct);
@@ -246,8 +247,7 @@ internal sealed class AccountMergeService(
             source?.MergedToUserId == request.TargetUserId ||
             target?.MergedToUserId == request.SourceUserId;
         if (!mergedIntoEachOther)
-            throw new InvalidOperationException(
-                "These two accounts are not merged into each other — resolve this request via Merge or Dismiss instead.");
+            return new(Refusal: "These two accounts are not merged into each other — resolve this request via Merge or Dismiss instead.");
 
         await CloseRequestsForPairAsync(
             request.TargetUserId, request.SourceUserId, adminUserId,
@@ -258,6 +258,7 @@ internal sealed class AccountMergeService(
             nameof(AccountMergeRequest), request.Id,
             $"Reconciled orphan merge request — accounts already merged (source {request.SourceUserId}, target {request.TargetUserId}).",
             adminUserId);
+        return new();
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
