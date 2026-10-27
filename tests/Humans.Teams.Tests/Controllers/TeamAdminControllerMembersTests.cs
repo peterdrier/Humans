@@ -1,4 +1,10 @@
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -25,6 +31,78 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamAdminControllerMembersTests
 {
+    [HumansTheory]
+    [InlineData(false, "")]
+    [InlineData(true, "")]
+    [InlineData(false, "2026-02-31")]
+    [InlineData(true, "2026-02-31")]
+    public async Task EarlyEntryForms_InvalidDatesRedisplayWithoutMutation(bool edit, string date)
+    {
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, [], EarlyEntryEnabled: true);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.GetEarlyEntryGrantsForTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<TeamEarlyEntryGrantInfo>());
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
+            users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http, ActionDescriptor = new ControllerActionDescriptor() },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        var formType = edit ? typeof(EditTeamEarlyEntryInput) : typeof(AddTeamEarlyEntryInput);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(formType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = formType
+        });
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["UserId"] = userId.ToString(),
+            ["GrantId"] = Guid.NewGuid().ToString(),
+            ["EntryDate"] = date,
+            ["ProjectName"] = "Build"
+        };
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = edit
+            ? await controller.EditEarlyEntry(team.Slug, (EditTeamEarlyEntryInput)model, TestContext.Current.CancellationToken)
+            : await controller.AddEarlyEntry(team.Slug, (AddTeamEarlyEntryInput)model, TestContext.Current.CancellationToken);
+
+        var view = result.Should().BeOfType<ViewResult>().Which;
+        view.ViewName.Should().Be(nameof(TeamAdminController.EarlyEntry));
+        view.Model.Should().BeOfType<TeamEarlyEntryPageViewModel>().Which.TeamName.Should().Be(team.Name);
+        controller.ModelState["EntryDate"]!.Errors.Should().ContainSingle();
+        teams.ReceivedCalls().Should().NotContain(c =>
+            string.Equals(c.GetMethodInfo().Name, nameof(ITeamManagementService.AddEarlyEntryGrantAsync), StringComparison.Ordinal)
+            || string.Equals(c.GetMethodInfo().Name, nameof(ITeamManagementService.EditEarlyEntryGrantAsync), StringComparison.Ordinal));
+        controller.TempData.Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData(false, false, true)]
     [InlineData(true, false, true)]

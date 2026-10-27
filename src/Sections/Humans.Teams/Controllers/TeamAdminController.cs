@@ -711,11 +711,13 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
+        if (!ModelState.IsValid)
+            return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
+
         var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
-        if (!ModelState.IsValid || !parsed.Success)
+        if (!parsed.Success)
         {
-            if (!parsed.Success)
-                ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
+            ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
@@ -749,11 +751,13 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
+        if (!ModelState.IsValid)
+            return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
+
         var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
-        if (!ModelState.IsValid || !parsed.Success)
+        if (!parsed.Success)
         {
-            if (!parsed.Success)
-                ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
+            ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
