@@ -290,8 +290,8 @@ internal sealed class GateService(
     {
         if (!IsValidPin(pin))
             return GatePinSetResult.InvalidPin;
-        // A self-enrolled claim PIN carries no override authority (AdminEnrolled false), so cold-setting a
-        // supervisor's PIN at the kiosk gains attribution only.
+        // AdminEnrolled false: AuthorizeOverrideAsync (uncalled outside tests, dormant with the claim flow,
+        // nobodies-collective/Humans#933) rejects a self-enrolled PIN.
         await StorePinAsync(userId, pin, adminEnrolled: false, ct);
         // Actor is the claimed staffer; the PIN value is never logged.
         await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
@@ -303,7 +303,7 @@ internal sealed class GateService(
     {
         if (!IsValidPin(pin))
             return false;
-        // The only path that confers override authority.
+        // The only PIN AuthorizeOverrideAsync accepts (uncalled outside tests; see SetOwnPinAsync).
         await StorePinAsync(userId, pin, adminEnrolled: true, ct);
         await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
             "Admin set a staffer's gate PIN (override-enrolled)", actorUserId);

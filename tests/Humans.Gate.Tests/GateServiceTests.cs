@@ -277,7 +277,7 @@ public class GateServiceTests
         StubTicket();
 
         // The child-without-ID waiver is a supervisor override — it admits only when an
-        // authorizing supervisor was recorded (the controller sets this after AuthorizeOverrideAsync).
+        // authorizing supervisor was recorded (the controller sets this after verifying the shared Gate:SupervisorPin).
         (await RecordAsync(idConfirmed: false, child: true, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedChildWithAdult);
     }
@@ -684,7 +684,7 @@ public class GateServiceTests
         var sup = Guid.NewGuid();
         _roles.HasActiveRoleAsync(sup, RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns(true);
 
-        // A supervisor may now self-enrol a CLAIM PIN (attribution — everyone can)...
+        // A supervisor may self-enrol a CLAIM PIN (attribution — everyone can)...
         (await _svc.SetOwnPinAsync(sup, "2580")).Should().Be(GatePinSetResult.Ok);
         (await _svc.VerifyPinAsync(sup, "2580")).Should().BeTrue();          // can claim the scanner
         // ...but a self-set PIN never carries override authority (AdminEnrolled = false).

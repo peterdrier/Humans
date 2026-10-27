@@ -17,8 +17,8 @@ internal sealed class GateStaffPin
     public Instant UpdatedAt { get; set; }
 
     /// <summary>
-    /// True only for an admin-set PIN, the one that can carry override authority. A kiosk self-enrolment gets false, so
-    /// cold-setting a supervisor's PIN at the anonymous kiosk gains attribution only.
+    /// True only for an admin-set PIN, the only kind <c>AuthorizeOverrideAsync</c> accepts (nothing outside tests calls it;
+    /// kiosk overrides use the shared <c>Gate:SupervisorPin</c>). A kiosk self-enrolment gets false.
     /// </summary>
     public bool AdminEnrolled { get; set; }
 }
