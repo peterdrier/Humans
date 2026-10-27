@@ -807,7 +807,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitEventAsync_WindowClosed_ThrowsAndWritesNothing()
+    public async Task SubmitEventAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
     {
         _repo.Settings = new EventGuideSettings
         {
@@ -819,18 +819,25 @@ public sealed class EventServiceTests
 
         var act = () => _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).Should().BeFalse();
         _repo.Events.Should().NotContain(guideEvent);
+        guideEvent.SubmittedAt.Should().Be(default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_WindowClosed_Throws()
+    public async Task BulkImportAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
     {
         var act = () => _service.BulkImportAsync(
             Guid.NewGuid(), Guid.NewGuid(), [], new LocalDate(2026, 7, 1), 6, DateTimeZone.Utc,
             TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await act();
+        result.RefusalKey.Should().Be("Events_SubmissionWindowClosed");
+        result.HasErrors.Should().BeTrue();
+        result.CreatedCount.Should().Be(0);
+        result.UpdatedCount.Should().Be(0);
+        _repo.Events.Should().BeEmpty();
     }
 
     [HumansFact]

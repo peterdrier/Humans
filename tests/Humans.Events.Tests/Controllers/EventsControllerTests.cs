@@ -790,8 +790,54 @@ public class EventsControllerTests
         _guide.ReceivedCalls().Should().NotContain(c => string.Equals(c.GetMethodInfo().Name, nameof(IEventManagement.BulkImportAsync), StringComparison.Ordinal));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("individual")]
+    [Xunit.InlineData("barrio")]
+    [Xunit.InlineData("csv")]
+    public async Task SubmissionWindowClosesAfterPreflight_ShowsTheLocalizedRefusal(string route)
+    {
+        var userId = Guid.NewGuid();
+        var camp = new CampInfo(Guid.NewGuid(), "camp", "camp@example.org", "", false, 0, []);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        StubEditableGuideSettings();
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(false);
+        _guide.BulkImportAsync(camp.Id, userId, Arg.Any<IReadOnlyList<BulkCsvRow>>(),
+                Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<DateTimeZone>(), Arg.Any<CancellationToken>())
+            .Returns(new BulkImportResult([], 0, 0, RefusalKey: "Events_SubmissionWindowClosed"));
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        const string csv = "Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,LocationNote,Host,IsRecurring,RecurrenceDays,PriorityRank\n,Camp,,Music,Description,Workshop,2026-08-01,09:30,60,,,false,,1\n";
+        using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(csv));
+        var file = new FormFile(stream, 0, stream.Length, "file", "events.csv");
+
+        var result = route switch
+        {
+            "individual" => await controller.Create(new IndividualEventFormViewModel
+            {
+                Title = "Music", Description = "Description", VenueId = Guid.NewGuid(),
+                CategoryId = Guid.NewGuid(), StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+            }),
+            "barrio" => await controller.BarrioCreate(camp.Slug, new CampEventFormViewModel
+            {
+                Title = "Music", Description = "Description", CategoryId = Guid.NewGuid(),
+                StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+            }),
+            _ => await controller.BulkUploadImport(camp.Slug, file)
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("MySubmissions");
+        controller.TempData["ErrorMessage"].Should().Be("Events_SubmissionWindowClosed");
+        controller.TempData.Should().NotContainKey("SuccessMessage");
+        controller.TempData.Should().NotContainKey("BulkErrors_camp");
+    }
+
     private void StubEditableGuideSettings()
     {
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(true);
         var settingsId = Guid.NewGuid();
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new EventGuideSettingsView(
