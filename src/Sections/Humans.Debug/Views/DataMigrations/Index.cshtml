@@ -21,60 +21,115 @@
 {
     <p class="text-muted">No section registers a data migration.</p>
 }
-
-@foreach (var report in Model)
+else
 {
-    var migration = report.Migration;
-    var status = report.Status;
-    <div class="card mb-4" id="@migration.Key">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <strong>@migration.Title</strong>
-                <div class="small text-muted">
-                    <code>@migration.Key</code> · @migration.Section · retires: @migration.Retires
-                </div>
-            </div>
-            @if (status.Done)
-            {
-                <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Done</span>
-            }
-            else
-            {
-                <form method="post" asp-action="Apply" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="key" value="@migration.Key" />
-                    <button type="submit" class="btn btn-warning btn-sm"
-                            data-confirm="Apply @migration.Key to @status.Pending row(s)?">
-                        Apply (@status.Pending)
-                    </button>
-                </form>
-            }
-        </div>
-        @if (!status.Done)
+    @* Keys contain dots, which a CSS selector would read as classes, so element ids use the position and the
+       key travels in data-key for the #key fragment Apply redirects back to. *@
+    <ul class="nav nav-tabs" id="migrationTabs" role="tablist">
+        @for (var i = 0; i < Model.Count; i++)
         {
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            @foreach (var column in status.Columns)
-                            {
-                                <th>@column</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in status.PendingRows)
-                        {
-                            <tr>
-                                @foreach (var cell in row)
+            var migration = Model[i].Migration;
+            var status = Model[i].Status;
+            var isActive = i == 0;
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(isActive ? "active" : "")" id="migrationTabs-tab-@i" data-key="@migration.Key"
+                        data-bs-toggle="tab" data-bs-target="#migrationTabs-panel-@i" type="button" role="tab"
+                        aria-controls="migrationTabs-panel-@i" aria-selected="@(isActive ? "true" : "false")">
+                    @migration.Title
+                    @if (status.Done)
+                    {
+                        <i class="fa-solid fa-circle-check text-success ms-1" title="Done"></i>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark ms-1">@status.Pending</span>
+                    }
+                </button>
+            </li>
+        }
+    </ul>
+
+    <div class="tab-content pt-3" id="migrationTabsContent">
+        @for (var i = 0; i < Model.Count; i++)
+        {
+            var migration = Model[i].Migration;
+            var status = Model[i].Status;
+            var isActive = i == 0;
+            <div class="tab-pane fade @(isActive ? "show active" : "")" id="migrationTabs-panel-@i" role="tabpanel"
+                 aria-labelledby="migrationTabs-tab-@i">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div class="small text-muted">
+                        <code>@migration.Key</code> · @migration.Section · retires: @migration.Retires
+                    </div>
+                    @if (status.Done)
+                    {
+                        <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Done</span>
+                    }
+                    else
+                    {
+                        <form method="post" asp-action="Apply" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="key" value="@migration.Key" />
+                            <button type="submit" class="btn btn-warning btn-sm"
+                                    data-confirm="Apply @migration.Key to @status.Pending row(s)?">
+                                Apply (@status.Pending)
+                            </button>
+                        </form>
+                    }
+                </div>
+                @if (!status.Done)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    @foreach (var column in status.Columns)
+                                    {
+                                        <th>@column</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in status.PendingRows)
                                 {
-                                    <td>@cell</td>
+                                    <tr>
+                                        @foreach (var cell in row)
+                                        {
+                                            <td>@cell</td>
+                                        }
+                                    </tr>
                                 }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </div>
         }
     </div>
+
+    @* Bootstrap does not read the fragment, so without this an Apply would land back on the first tab. *@
+    <script>
+        (function () {
+            var strip = document.getElementById('migrationTabs');
+
+            function activateFromHash() {
+                var key = decodeURIComponent(window.location.hash.slice(1));
+                if (!key) return;
+                var button = Array.from(strip.querySelectorAll('[data-key]')).find(function (b) {
+                    return b.dataset.key === key;
+                });
+                if (button) bootstrap.Tab.getOrCreateInstance(button).show();
+            }
+
+            // Bootstrap's bundle loads at the end of _Layout, after this element.
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!window.bootstrap) return;
+                activateFromHash();
+                window.addEventListener('hashchange', activateFromHash);
+                strip.addEventListener('shown.bs.tab', function (e) {
+                    history.replaceState(null, '', '#' + encodeURIComponent(e.target.dataset.key));
+                });
+            });
+        })();
+    </script>
 }
