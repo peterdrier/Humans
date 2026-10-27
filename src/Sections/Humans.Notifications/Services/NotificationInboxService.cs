@@ -1,10 +1,8 @@
-using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -13,8 +11,7 @@ namespace Humans.Notifications.Services;
 internal sealed class NotificationInboxService(
     INotificationRepository repo,
     IUserService userService,
-    IClock clock,
-    IMemoryCache cache) : INotificationInboxService, IUserDataContributor
+    IClock clock) : INotificationInboxService, IUserDataContributor
 {
     internal const string Notifications = "Notifications";
 
@@ -91,8 +88,6 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
-        if (outcome.Success)
-            InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
     }
 
@@ -101,8 +96,6 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
-        if (outcome.Success)
-            InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
     }
 
@@ -111,8 +104,6 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         var outcome = await repo.MarkReadAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
-        if (outcome.Success)
-            InvalidateBadgeCaches(outcome.AffectedUserIds);
         return ToActionResult(outcome);
     }
 
@@ -120,9 +111,7 @@ internal sealed class NotificationInboxService(
         Guid userId,
         CancellationToken ct = default)
     {
-        var updated = await repo.MarkAllReadAsync(userId, clock.GetCurrentInstant(), ct);
-        if (updated > 0)
-            InvalidateBadgeCaches([userId]);
+        await repo.MarkAllReadAsync(userId, clock.GetCurrentInstant(), ct);
     }
 
     public async Task BulkResolveAsync(
@@ -130,9 +119,7 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         if (notificationIds.Count == 0) return;
-        var affected = await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
-        if (affected.Count > 0)
-            InvalidateBadgeCaches(affected);
+        await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
     }
 
     public async Task BulkDismissAsync(
@@ -140,9 +127,7 @@ internal sealed class NotificationInboxService(
         CancellationToken ct = default)
     {
         if (notificationIds.Count == 0) return;
-        var affected = await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
-        if (affected.Count > 0)
-            InvalidateBadgeCaches(affected);
+        await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
     }
 
     public async Task<string?> ClickThroughAsync(
@@ -151,8 +136,6 @@ internal sealed class NotificationInboxService(
     {
         var outcome = await repo.ClickThroughAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
         if (outcome.NotFound) return null;
-        if (outcome.MarkedRead)
-            InvalidateBadgeCaches([userId]);
         return outcome.ActionUrl;
     }
 
@@ -160,32 +143,20 @@ internal sealed class NotificationInboxService(
         Guid userId, NotificationSource source,
         CancellationToken ct = default, string? sourceKey = null)
     {
-        var updated = await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct, sourceKey);
-        if (updated)
-            InvalidateBadgeCaches([userId]);
+        await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct, sourceKey);
     }
 
     public async Task ResolveBySourceKeyAsync(
         NotificationSource source, string sourceKey, Guid? resolvedByUserId,
         CancellationToken ct = default)
     {
-        var affected = await repo.ResolveBySourceKeyAsync(
+        await repo.ResolveBySourceKeyAsync(
             source, sourceKey, clock.GetCurrentInstant(), resolvedByUserId, ct);
-        if (affected.Count > 0)
-            InvalidateBadgeCaches(affected);
     }
-
-    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     public Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default) =>
-        cache.GetOrCreateAsync(
-            CacheKeys.NotificationBadgeCounts(userId),
-            async entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
-                return await repo.GetUnreadBadgeCountsAsync(userId, ct);
-            });
+        repo.GetUnreadBadgeCountsAsync(userId, ct);
 
     /// <summary>Replaced by meters. Their old actionable rows have no resolution path, so they are purged outright.</summary>
     private static readonly NotificationSource[] RetiredSources =
@@ -202,11 +173,9 @@ internal sealed class NotificationInboxService(
         var resolved = await repo.DeleteResolvedOlderThanAsync(now - ResolvedRetentionPeriod, ct);
         var stale = await repo.DeleteUnresolvedInformationalOlderThanAsync(
             now - InformationalRetentionPeriod, ct);
-        InvalidateBadgeCaches(stale.AffectedUserIds);
         var retired = await repo.DeleteUnresolvedBySourcesAsync(RetiredSources, ct);
-        InvalidateBadgeCaches(retired.AffectedUserIds);
 
-        return (resolved, stale.Deleted, retired.Deleted);
+        return (resolved, stale, retired);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -312,11 +281,4 @@ internal sealed class NotificationInboxService(
     private static NotificationActionResult ToActionResult(NotificationMutationOutcome outcome) =>
         new(outcome.Success, NotFound: outcome.NotFound, Forbidden: outcome.Forbidden);
 
-    private void InvalidateBadgeCaches(IEnumerable<Guid> userIds)
-    {
-        foreach (var userId in userIds)
-        {
-            cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
-        }
-    }
 }

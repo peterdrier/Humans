@@ -546,40 +546,45 @@ internal sealed class SurveyService(
             => values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v);
     }
 
-    public async Task OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var status = await repo.GetStatusAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
-        if (status == SurveyStatus.Open) return;
+        var status = await repo.GetStatusAsync(surveyId, ct);
+        if (status is null)
+            return new(Refusal: "Survey not found.");
+        if (status == SurveyStatus.Open) return new();
         // A submission pending approval can only become Open via ApproveAndSendAsync — that is
         // the one step that also sends invitations and records the approval (Workgroups §11).
         if (status == SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("A survey pending approval must be approved or rejected, not opened directly.");
+            return new(Refusal: "A survey pending approval must be approved or rejected, not opened directly.");
         if (status == SurveyStatus.Closed)
         {
-            var survey = await repo.GetByIdAsync(surveyId, ct)
-                ?? throw new InvalidOperationException("Survey not found.");
+            var survey = await repo.GetByIdAsync(surveyId, ct);
+            if (survey is null)
+                return new(Refusal: "Survey not found.");
             if (survey.IsAsociadoVote == true)
-                throw new InvalidOperationException("A closed Asociado vote cannot be reopened.");
+                return new(Refusal: "A closed Asociado vote cannot be reopened.");
         }
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Open, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyOpened, AuditEntityTypes.Survey, surveyId, "Opened survey", actorUserId);
+        return new();
     }
 
-    public async Task CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var status = await repo.GetStatusAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
-        if (status == SurveyStatus.Closed) return;
+        var status = await repo.GetStatusAsync(surveyId, ct);
+        if (status is null)
+            return new(Refusal: "Survey not found.");
+        if (status == SurveyStatus.Closed) return new();
         // Closing a pending submission would walk it out of the approval gate: Closed reopens
         // through OpenAsync, so PendingApproval → Closed → Open would reach Open with no approval
         // recorded and no invitations sent. Approve or reject it instead.
         if (status == SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("A survey pending approval must be approved or rejected, not closed.");
+            return new(Refusal: "A survey pending approval must be approved or rejected, not closed.");
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(AuditAction.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
+        return new();
     }
 
     public async Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default)
@@ -642,20 +647,23 @@ internal sealed class SurveyService(
         return new SurveySubmitResult(true);
     }
 
-    public async Task<SendResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
     {
         if (!viewer.IsBoardOrAdmin)
-            throw new InvalidOperationException("Only Board/Admin may approve a survey.");
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+            return new(Refusal: "Only Board/Admin may approve a survey.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new(Refusal: "Survey not found.");
         if (survey.Status != SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("Only a survey pending approval can be approved.");
+            return new(Refusal: "Only a survey pending approval can be approved.");
 
         // Send validates the audience, and Open is not a state the author can edit out of — so a
         // misconfigured audience has to fail here, before approval is persisted, leaving the
         // survey in the queue where the Board can reject it back to the author.
-        ValidateAudienceConfiguration(
+        var audienceError = AudienceConfigurationError(
             survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+        if (audienceError is not null)
+            return new(Refusal: audienceError.DiagnosticMessage);
 
         // Well-formed is not the same as non-empty: a Team audience whose team has since been
         // deleted passes configuration and resolves to nobody. Resolve here too, so that case
@@ -663,7 +671,7 @@ internal sealed class SurveyService(
         var recipients = await ResolveRecipientIdsAsync(
             survey.AudienceType!.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0)
-            throw new InvalidOperationException("This survey's audience resolves to nobody to invite.");
+            return new(Refusal: "This survey's audience resolves to nobody to invite.");
 
         var now = clock.GetCurrentInstant();
         await repo.ApproveAsync(surveyId, now, ct);
@@ -673,28 +681,31 @@ internal sealed class SurveyService(
 
         // CancellationToken.None, not ct: approval is persisted, and a request-scoped token firing mid-send would
         // leave the survey Open with a partial invitation set.
-        return await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None);
+        var sent = await SendInvitesAsync(surveyId, viewer.UserId, CancellationToken.None);
+        return new(Send: sent, Refusal: sent.Refusal);
     }
 
-    public async Task RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
     {
         if (!viewer.IsBoardOrAdmin)
-            throw new InvalidOperationException("Only Board/Admin may reject a survey.");
+            return new(Refusal: "Only Board/Admin may reject a survey.");
         if (string.IsNullOrWhiteSpace(note))
-            throw new InvalidOperationException("A rejection note is required.");
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+            return new(Refusal: "A rejection note is required.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new(Refusal: "Survey not found.");
         if (survey.Status != SurveyStatus.PendingApproval)
-            throw new InvalidOperationException("Only a survey pending approval can be rejected.");
+            return new(Refusal: "Only a survey pending approval can be rejected.");
 
         var now = clock.GetCurrentInstant();
         var trimmedNote = note.Trim();
         if (trimmedNote.Length > 4000)
-            throw new InvalidOperationException("A rejection note must be 4000 characters or fewer.");
+            return new(Refusal: "A rejection note must be 4000 characters or fewer.");
         await repo.RejectAsync(surveyId, trimmedNote, now, ct);
         await auditLog.LogAsync(AuditAction.SurveyRejected, AuditEntityTypes.Survey, surveyId,
             $"Rejected survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}': {trimmedNote}",
             viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
+        return new();
     }
 
     public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)
@@ -719,14 +730,16 @@ internal sealed class SurveyService(
 
     public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var survey = await repo.GetByIdAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var survey = await repo.GetByIdAsync(surveyId, ct);
+        if (survey is null)
+            return new SendResult(0, 0, 0, "Survey not found.");
         if (survey.Status != SurveyStatus.Open)
-            throw new InvalidOperationException("Invitations can only be sent for an Open survey.");
-        var audienceType = survey.AudienceType
-            ?? throw new InvalidOperationException("Survey has no audience to invite.");
-        ValidateAudienceConfiguration(
-            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+            return new SendResult(0, 0, 0, "Invitations can only be sent for an Open survey.");
+        var audienceError = AudienceConfigurationError(
+            survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
+        if (audienceError is not null)
+            return new SendResult(0, 0, 0, audienceError.DiagnosticMessage);
+        var audienceType = survey.AudienceType!.Value;
 
         var now = clock.GetCurrentInstant();
         var target = await ResolveRecipientIdsAsync(
@@ -1050,13 +1063,14 @@ internal sealed class SurveyService(
     {
         // Load one authoritative definition for branching, normalization, required validation, and
         // persistence preparation. The caller must persist the returned answers without reloading it.
-        var survey = await repo.GetByIdAsync(submission.SurveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var survey = await repo.GetByIdAsync(submission.SurveyId, ct);
+        if (survey is null)
+            return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.NotFound);
 
         // The service is the authoritative gate: the controller's window checks are UX, this one is the rule.
         if (!SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, clock.GetCurrentInstant()))
         {
-            throw new InvalidOperationException("Survey is not open for responses.");
+            return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.Closed);
         }
         if (survey.IsAsociadoVote == true)
         {
@@ -1064,13 +1078,11 @@ internal sealed class SurveyService(
                 || submission.UserId is not { } userId
                 || submission.InvitationId is null)
             {
-                throw new InvalidOperationException(
-                    "Asociado votes require an eligible Asociado with completion tracking.");
+                return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.Ineligible);
             }
             if (!await IsEligibleAsociadoAsync(userId, ct))
             {
-                throw new InvalidOperationException(
-                    "Only an active, approved Asociado may answer this vote.");
+                return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.Ineligible);
             }
         }
 
@@ -1236,15 +1248,13 @@ internal sealed class SurveyService(
                 continue;
             }
 
-            try
-            {
-                answer = NormalizeAnswer(question, answer);
-            }
-            catch (InvalidOperationException ex)
+            var normalized = NormalizeAnswer(question, answer);
+            answer = normalized.Answer;
+            if (normalized.Refusal is { } refusal)
             {
                 logger.LogWarning(
                     "Rejected wizard answer for survey {SurveyId} question {QuestionId}: {Reason}",
-                    state.SurveyId, id, ex.Message);
+                    state.SurveyId, id, refusal);
                 invalidAnswers.Add(id);
             }
 
@@ -1366,6 +1376,11 @@ internal sealed class SurveyService(
             state.Culture,
             SurveyWizardFlow.ToAnswerInputs(state.Answers));
         var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.Refusal is { } submissionRefusal)
+        {
+            logger.LogWarning("Survey final submission refused for {SurveyId}: {Outcome}", state.SurveyId, submissionRefusal);
+            return new SurveyWizardAdvanceResult(submissionRefusal, []);
+        }
         if (prepared.AlreadyCompleted)
         {
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
@@ -1550,20 +1565,21 @@ internal sealed class SurveyService(
             unavailable.ToList());
     }
 
-    public async Task SetRankedAvailabilityAsync(
+    public async Task<SurveySaveResult> SetRankedAvailabilityAsync(
         Guid surveyId,
         Guid questionId,
         IReadOnlyList<string> unavailableValues,
         SurveyViewer viewer,
         CancellationToken ct = default)
     {
-        var detail = await GetForEditAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var detail = await GetForEditAsync(surveyId, ct);
+        if (detail is null)
+            return new(Error: new(null, "Survey not found."));
         if (detail.Status != SurveyStatus.Closed)
-            throw new InvalidOperationException("Candidate availability can only change after the vote closes.");
+            return new(Error: new(null, "Candidate availability can only change after the vote closes."));
         var question = detail.Editable.Questions.FirstOrDefault(candidate => candidate.Id == questionId);
         if (question?.Type != SurveyQuestionType.RankedChoice)
-            throw new InvalidOperationException("Ranked-choice question not found.");
+            return new(Error: new(null, "Ranked-choice question not found."));
         var known = question.Options.Select(option => option.Value).ToHashSet(StringComparer.Ordinal);
         var normalized = unavailableValues
             .Where(known.Contains)
@@ -1574,12 +1590,12 @@ internal sealed class SurveyService(
                 ? candidate with { RankedUnavailableOptionValues = normalized }
                 : candidate)
             .ToList();
-        (await UpdateCoreAsync(
+        return await UpdateCoreAsync(
             surveyId,
             detail.Editable with { Questions = updatedQuestions },
             viewer,
             allowRankedAvailabilityChanges: true,
-            ct)).RequireSuccess();
+            ct);
     }
 
     private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch
@@ -1870,9 +1886,9 @@ internal sealed class SurveyService(
                     var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
                     var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
                     var distribution = new List<RatingBucket>();
-                    for (var v = min; v <= max; v++)
+                    for (long v = min; v <= max; v++)
                     {
-                        distribution.Add(new RatingBucket(v, values.Count(rv => rv == v)));
+                        distribution.Add(new RatingBucket((int)v, values.Count(rv => rv == v)));
                     }
 
                     double? average = values.Count > 0 ? values.Average() : null;
@@ -2146,18 +2162,15 @@ internal sealed class SurveyService(
                 && question.Type != SurveyQuestionType.Information)
             .Select(a =>
             {
-                try
-                {
-                    return NormalizeAnswer(questions[a.QuestionId], a);
-                }
-                catch (InvalidOperationException ex)
+                var normalized = NormalizeAnswer(questions[a.QuestionId], a);
+                if (normalized.Refusal is { } refusal)
                 {
                     logger.LogWarning(
                         "Rejected answer for survey {SurveyId} question {QuestionId}: {Reason}",
-                        survey.Id, a.QuestionId, ex.Message);
+                        survey.Id, a.QuestionId, refusal);
                     invalidAnswers.Add(a.QuestionId);
-                    return a;
                 }
+                return normalized.Answer;
             })
             .ToList();
         // Invalid answers cannot drive branching; an invalid answer that is itself hidden is ignored.
@@ -2177,7 +2190,7 @@ internal sealed class SurveyService(
             visibleAnswers.Where(a => invalidAnswers.Contains(a.QuestionId)).Select(a => a.QuestionId).ToList());
     }
 
-    private static SurveyAnswerInput NormalizeAnswer(QuestionInput question, SurveyAnswerInput answer)
+    private static (SurveyAnswerInput Answer, string? Refusal) NormalizeAnswer(QuestionInput question, SurveyAnswerInput answer)
     {
         var choices = question.Type is SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice
             ? answer.SelectedOptionValues
@@ -2187,21 +2200,26 @@ internal sealed class SurveyService(
                 .ToList()
             : [];
         if (question.Type == SurveyQuestionType.SingleChoice && choices.Count > 1)
-            throw new InvalidOperationException("A single-choice question permits only one option.");
+            return (answer, "A single-choice question permits only one option.");
 
         var rating = question.Type == SurveyQuestionType.Rating ? answer.RatingValue : null;
         if (rating is { } value && (value < (question.RatingMin ?? 1) || value > (question.RatingMax ?? 5)))
-            throw new InvalidOperationException("The rating is outside the question's range.");
+            return (answer, "The rating is outside the question's range.");
 
         var text = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
             && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null;
         if (text is not null && text.EnumerateRunes().Count() > 4000)
-            throw new InvalidOperationException("A text answer must be 4000 characters or fewer.");
+            return (answer, "A text answer must be 4000 characters or fewer.");
 
         var grid = question.Type == SurveyQuestionType.Grid
             ? NormalizeGridSelections(question.GridRows, question.Options, question.GridSelectionMode, answer.GridSelections)
             : null;
-        return answer with
+        (RankedAnswer? Answer, string? Refusal) ranked = question.Type == SurveyQuestionType.RankedChoice
+            ? NormalizeRankedAnswer(question, answer.RankedValue)
+            : (null, null);
+        if (ranked.Refusal is { } rankedRefusal) return (answer, rankedRefusal);
+
+        var normalized = answer with
         {
             SelectedOptionValues = choices,
             TextValue = text,
@@ -2209,9 +2227,9 @@ internal sealed class SurveyService(
             GridSelections = grid?.Count > 0
                 ? grid.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal)
                 : null,
-            RankedValue = question.Type == SurveyQuestionType.RankedChoice
-                ? NormalizeRankedAnswer(question, answer.RankedValue) : null,
+            RankedValue = ranked.Answer,
         };
+        return (normalized, null);
     }
 
     private sealed record VisibleAnswerPreparation(
@@ -2223,7 +2241,8 @@ internal sealed class SurveyService(
         IReadOnlyList<QuestionInput> Questions,
         IReadOnlyList<Guid> MissingRequired,
         IReadOnlyList<Guid> InvalidAnswers,
-        bool AlreadyCompleted);
+        bool AlreadyCompleted,
+        SurveyWizardOutcome? Refusal = null);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer
@@ -2354,14 +2373,6 @@ internal sealed class SurveyService(
             IsMerged: false,
             State: UserState.Active,
         };
-
-    private static void ValidateAudienceConfiguration(
-        SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
-    {
-        var error = AudienceConfigurationError(type, teamId, loggedInSince, requireAudience);
-        if (error is not null)
-            throw new InvalidOperationException(error.DiagnosticMessage);
-    }
 
     private static SurveyAuthoringError? AudienceConfigurationError(
         SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
@@ -2649,6 +2660,7 @@ internal sealed class SurveyService(
 
             var error = question.Type switch
             {
+                SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice => ValidateChoiceQuestion(question),
                 SurveyQuestionType.Information => ValidateInformationQuestion(question),
                 SurveyQuestionType.RankedChoice => ValidateRankedQuestion(question),
                 SurveyQuestionType.Grid => ValidateGridQuestion(question),
@@ -2657,6 +2669,16 @@ internal sealed class SurveyService(
             if (error is not null) return error;
         }
         return null;
+
+        static SurveyAuthoringError? ValidateChoiceQuestion(SurveyQuestion question)
+        {
+            if (question.Options.Count == 0)
+                return new("Surveys_Validation_ChoiceOptionEmpty",
+                    $"Choice question {question.Id} must have at least one option.", question.Id);
+
+            return ValidateStableValues(question.Options.Select(option => option.Value),
+                $"Choice question {question.Id} option", question.Id, "Surveys_Validation_ChoiceOption");
+        }
 
         static SurveyAuthoringError? ValidateInformationQuestion(SurveyQuestion question)
         {
@@ -2828,14 +2850,14 @@ internal sealed class SurveyService(
         return null;
     }
 
-    private static RankedAnswer? NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
+    private static (RankedAnswer? Answer, string? Refusal) NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
     {
-        if (answer is null) return null;
+        if (answer is null) return (null, null);
         var authored = question.Options.OrderBy(option => option.Order).Select(option => option.Value).ToList();
         return NormalizeRankedAnswer(authored, question.RankedSettings, answer);
     }
 
-    private static RankedAnswer? NormalizeRankedAnswer(
+    private static (RankedAnswer? Answer, string? Refusal) NormalizeRankedAnswer(
         IReadOnlyList<string> authored,
         RankedQuestionSettings? settings,
         RankedAnswer answer)
@@ -2848,7 +2870,7 @@ internal sealed class SurveyService(
             .Where(known.Contains)
             .ToList();
         if (suppliedKnownValues.Distinct(StringComparer.Ordinal).Count() != suppliedKnownValues.Count)
-            throw new InvalidOperationException("A ranked-choice option may appear only once in a ballot.");
+            return (null, "A ranked-choice option may appear only once in a ballot.");
 
         var authoredPositions = authored
             .Select((value, index) => (value, index))
@@ -2862,7 +2884,7 @@ internal sealed class SurveyService(
                 .OrderBy(value => authoredPositions[value])
                 .ToList();
             if (!settings.AllowEqualRanks && valid.Count > 1)
-                throw new InvalidOperationException("This ranked-choice question does not allow equal ranks.");
+                return (null, "This ranked-choice question does not allow equal ranks.");
             if (valid.Count > 0) groups.Add(valid);
         }
 
@@ -2871,8 +2893,8 @@ internal sealed class SurveyService(
             .OrderBy(value => authoredPositions[value])
             .ToList();
         if (!settings.AllowReject && rejected.Count > 0)
-            throw new InvalidOperationException("This ranked-choice question does not allow rejection.");
-        return groups.Count == 0 && rejected.Count == 0 ? null : new RankedAnswer(groups, rejected);
+            return (null, "This ranked-choice question does not allow rejection.");
+        return (groups.Count == 0 && rejected.Count == 0 ? null : new RankedAnswer(groups, rejected), null);
     }
 
     private static Dictionary<string, List<string>> NormalizeGridSelections(

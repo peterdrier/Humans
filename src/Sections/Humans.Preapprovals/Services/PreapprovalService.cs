@@ -77,10 +77,11 @@ internal sealed partial class PreapprovalService(
     public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
         await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
 
-    public async Task<GrantStamp> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
+    public async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
     {
-        var grant = await repository.GetGrantAsync(grantId, ct)
-            ?? throw new InvalidOperationException($"Pre-approval {grantId} does not exist.");
+        var grant = await repository.GetGrantAsync(grantId, ct);
+        if (grant is null)
+            return new(Refusal: $"Pre-approval {grantId} does not exist.");
 
         if (grant.Status == GrantStatus.Claimed && grant.ExpenseReportId == expenseReportId)
         {
@@ -88,7 +89,7 @@ internal sealed partial class PreapprovalService(
             await AuditGrantAsync(AuditAction.PreapprovalGrantClaimed, grant,
                 $"Re-stamped for expense report {expenseReportId} (resubmit): cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
                 actorUserId, expenseReportId);
-            return Stamp(grant);
+            return new(Stamp: Stamp(grant));
         }
 
         var reason = grant.Status switch
@@ -102,7 +103,7 @@ internal sealed partial class PreapprovalService(
             _ => $"pre-approval is {grant.Status}"
         };
         if (reason is not null)
-            throw new InvalidOperationException($"Pre-approval {grantId} cannot be claimed: {reason}.");
+            return new(Refusal: $"Pre-approval {grantId} cannot be claimed: {reason}.");
 
         grant.Status = GrantStatus.Claimed;
         grant.ExpenseReportId = expenseReportId;
@@ -113,12 +114,13 @@ internal sealed partial class PreapprovalService(
         await AuditGrantAsync(AuditAction.PreapprovalGrantClaimed, grant,
             $"Claimed by expense report {expenseReportId}: cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
             actorUserId, expenseReportId);
-        return Stamp(grant);
+        return new(Stamp: Stamp(grant));
     }
 
-    public async Task ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
+    public async Task<PreapprovalWriteResult> ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
     {
-        var grant = await HeldByAsync(grantId, expenseReportId, ct);
+        var (grant, refusal) = await HeldByAsync(grantId, expenseReportId, ct);
+        if (grant is null) return new(Refusal: refusal);
 
         grant.Status = GrantStatus.Open;
         grant.UpdatedAt = clock.GetCurrentInstant();
@@ -128,11 +130,13 @@ internal sealed partial class PreapprovalService(
             $"Released by withdrawal of expense report {expenseReportId}; open again until {grant.Program.ClaimBy.ToInvariantDate()}.",
             actorUserId, expenseReportId);
         await NotifyFileByAsync(ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, ct);
+        return new();
     }
 
-    public async Task ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
+    public async Task<PreapprovalWriteResult> ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
     {
-        var grant = await HeldByAsync(grantId, expenseReportId, ct);
+        var (grant, refusal) = await HeldByAsync(grantId, expenseReportId, ct);
+        if (grant is null) return new(Refusal: refusal);
 
         grant.Status = GrantStatus.Consumed;
         grant.UpdatedAt = clock.GetCurrentInstant();
@@ -141,18 +145,18 @@ internal sealed partial class PreapprovalService(
         await AuditGrantAsync(AuditAction.PreapprovalGrantConsumed, grant,
             $"Consumed by approval of expense report {expenseReportId}: {Euros(grant.MaxAmount)}.",
             actorUserId, expenseReportId);
+        return new();
     }
 
-    private async Task<PreapprovalGrant> HeldByAsync(Guid grantId, Guid expenseReportId, CancellationToken ct)
+    private async Task<(PreapprovalGrant? Grant, string? Refusal)> HeldByAsync(Guid grantId, Guid expenseReportId, CancellationToken ct)
     {
-        var grant = await repository.GetGrantAsync(grantId, ct)
-            ?? throw new InvalidOperationException($"Pre-approval {grantId} does not exist.");
+        var grant = await repository.GetGrantAsync(grantId, ct);
+        if (grant is null) return (null, $"Pre-approval {grantId} does not exist.");
         if (grant.Status == GrantStatus.Revoked)
-            throw new InvalidOperationException($"Pre-approval {grantId} cannot be used: pre-approval revoked.");
+            return (null, $"Pre-approval {grantId} cannot be used: pre-approval revoked.");
         if (grant.Status != GrantStatus.Claimed || grant.ExpenseReportId != expenseReportId)
-            throw new InvalidOperationException(
-                $"Pre-approval {grantId} is not held by expense report {expenseReportId} (status {grant.Status}).");
-        return grant;
+            return (null, $"Pre-approval {grantId} is not held by expense report {expenseReportId} (status {grant.Status}).");
+        return (grant, null);
     }
 
     private static GrantStamp Stamp(PreapprovalGrant grant) => new(

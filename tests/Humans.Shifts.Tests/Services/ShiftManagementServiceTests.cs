@@ -1193,6 +1193,17 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task GetKnobsAsync_AbortedReadPropagatesCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        Func<Task> read = () => _service.GetKnobsAsync(Guid.NewGuid(), cancellation.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task SaveKnobsAsync_NoRowYet_CreatesOneOnDemand()
     {
         var eventId = Guid.NewGuid();

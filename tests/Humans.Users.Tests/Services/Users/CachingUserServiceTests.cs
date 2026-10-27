@@ -1171,7 +1171,7 @@ public class CachingUserServiceTests
         await PrimeAsync(sut, SampleUserInfo(userId));
 
         _inner.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(true, profileId, "uploads/profile-pictures/old.png"));
+            .Returns(new UserProfileAnonymizeResult(true));
 
         StubRefreshEntry(userId, new Profile
         {
@@ -1188,7 +1188,6 @@ public class CachingUserServiceTests
         var result = await sut.AnonymizeProfileForDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
-        result.PreviousProfilePictureKey.Should().Be("uploads/profile-pictures/old.png");
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.FirstName.Should().Be("Deleted");

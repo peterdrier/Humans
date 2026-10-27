@@ -338,6 +338,7 @@ internal sealed class RegisterExistingViewModel
     public Guid CoordinatorUserId { get; set; }
 
     /// <summary>The register is backdated to it.</summary>
+    [BindRequired]
     public LocalDate RegisteredOn { get; set; }
 
     public WorkgroupBudgetFormViewModel Budget { get; set; } = new();

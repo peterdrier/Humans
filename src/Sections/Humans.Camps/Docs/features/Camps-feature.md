@@ -113,6 +113,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Approve transitions season to Active status
 - Reject requires notes explaining the reason
 - Records reviewer ID and timestamp
+- Missing or already-reviewed seasons return an admin refusal without a transition or audit; dependency failures remain errors. Reactivation refuses a missing or ineligible season, and deletion refuses a missing camp; these expected outcomes likewise preserve state and do not disguise dependency failures.
 
 ### US-20.7: Manage Seasons
 **As a** CampAdmin or Admin
@@ -177,7 +178,8 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** the role list can evolve year over year without code changes
 
 **Acceptance Criteria:**
-- CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact.
+- CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact. Create/edit validation refusals redisplay the submitted form with their reason; operational failures show a generic error and are logged with the exception.
+- Membership decisions, season closures and role assignments finish their notifications after saving even if the browser disconnects. Notification preparation and delivery failures are logged without failing the committed mutation.
 - Per-camp role assignments live on the Camp Members page (`/Camps/{slug}/Edit/Members`), one block per active role definition, ordered by `SortOrder`. The role heading carries a `{filled}/{SlotCount} filled` count, a `required` badge when applicable, and (for managers) an info-icon button that collapses/expands the role description so it no longer crowds the panel. Filled slots render as a wrap of avatar pills (one `<vc:human>` avatar+name per assignee, each with an inline unassign button for managers). When the role has empty slots, a `+` button reveals a single collapsed `<vc:human-search>` typeahead form (search-as-you-type, burner-name match via `scope="Name"`); the per-empty-slot repeated picker is gone.
 - The picker excludes humans already filling the same role from its suggestions (`exclude-user-ids`), so leads can't accidentally re-assign the same human.
 - Add-member and role-picker posts retain the displayed season year, including on redirect. They require that year's Active/Full season; callers without a year use the active event year. A legacy assignment by member ID uses that member's season within the camp. Other open years are never substituted.

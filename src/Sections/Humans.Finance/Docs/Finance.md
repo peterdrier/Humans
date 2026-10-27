@@ -177,6 +177,8 @@ Fields: `LastSyncAt`, `Status` (`Idle / Running / Error` string), `LastError`, `
 
 Replaces `profiles.Iban` (Users), which is no longer written. Until the `finance.iban-to-payment-details` data migration (on `/Debug/DataMigrations`) has copied a member's legacy value, a member without a row reads `ProfileInfo.Iban` — the `[Obsolete]` field kept for exactly this reader (`HUM_PROFILE_IBAN`). Once production reports the migration done, a retirement PR deletes the migration, the fallback and the obsolete field, and a drop PR removes `profiles.Iban`.
 
+Account merges preserve the survivor’s effective payment details first, otherwise the source’s, including values still only on legacy profiles. An explicit cleared row on either account suppresses that account’s legacy value; retries preserve the same result.
+
 Payment-detail reads, sets and clears resolve merged member IDs through `IUserService` before selecting the row. A write through an archived source ID updates the survivor's row rather than recreating source details. IBAN reveals audit that same resolved owner; the requested source ID never substitutes for the owner of the data revealed.
 
 ### HoldedMatchStatus

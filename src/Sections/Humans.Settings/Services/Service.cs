@@ -31,22 +31,25 @@ internal sealed class Service(
         Guid id, CancellationToken cancellationToken = default) =>
         ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken));
 
-    public async Task SaveEventSettingsAsync(
+    public async Task<EventSettingsSaveResult> SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        ValidateEventDates(settings);
+        if (ValidateEventDates(settings) is { } dateError)
+            return new(false, dateError);
+
         if (settings.Status == EventSettingsStatus.Active
             && await repository.AnyOtherActiveEventSettingsAsync(settings.Id, cancellationToken))
         {
-            throw new InvalidOperationException(
-                "Only one event settings row can be Active at a time — deactivate the current one first.");
+            logger.LogWarning("Rejected event settings {EventId}: another row is already active", settings.Id);
+            return new(false, "Only one event settings row can be Active at a time — deactivate the current one first.");
         }
 
         if (settings.EarlyEntryStartOffset is { } eeStartOffset
             && (eeStartOffset < settings.BuildStartOffset || eeStartOffset >= 0))
         {
-            throw new InvalidOperationException(
-                "Early entry start offset must be between build start and 0 (exclusive).");
+            logger.LogWarning("Rejected event settings {EventId}: early entry start {EarlyEntryStartOffset} is outside build start {BuildStartOffset} and 0 (exclusive)",
+                settings.Id, eeStartOffset, settings.BuildStartOffset);
+            return new(false, "Early entry start offset must be between build start and 0 (exclusive).");
         }
 
         await repository.UpsertEventSettingsAsync(
@@ -62,6 +65,7 @@ internal sealed class Service(
 
         // Consuming sections cache dates derived from this row; tell them.
         NotifyChangeListeners(settings.Id);
+        return new(true);
     }
 
     /// <inheritdoc />
@@ -69,7 +73,9 @@ internal sealed class Service(
     public async Task CreateActiveEventAsync(
         EventSettingsInfo settings, CancellationToken cancellationToken = default)
     {
-        ValidateEventDates(settings);
+        if (ValidateEventDates(settings) is { } dateError)
+            throw new InvalidOperationException(dateError);
+
         var current = await repository.GetActiveEventSettingsAsync(cancellationToken);
         if (current is not null && current.Id != settings.Id)
         {
@@ -85,13 +91,13 @@ internal sealed class Service(
         NotifyChangeListeners(settings.Id);
     }
 
-    private void ValidateEventDates(EventSettingsInfo settings)
+    private string? ValidateEventDates(EventSettingsInfo settings)
     {
         if (settings.EventEndOffset < 0 || settings.StrikeEndOffset < settings.EventEndOffset)
         {
             logger.LogWarning("Rejected event settings {EventId}: event end {EventEndOffset} or strike end {StrikeEndOffset} invert the event windows",
                 settings.Id, settings.EventEndOffset, settings.StrikeEndOffset);
-            throw new InvalidOperationException("Event end must be on or after gate opening, and strike end must be on or after event end.");
+            return "Event end must be on or after gate opening, and strike end must be on or after event end.";
         }
 
         int[] offsets = [0, settings.BuildStartOffset, settings.EventEndOffset, settings.StrikeEndOffset,
@@ -111,9 +117,10 @@ internal sealed class Service(
             {
                 logger.LogWarning("Rejected event settings {EventId}: gate date {GateDate} and offset {Offset} exceed the supported calendar range",
                     settings.Id, LocalDatePattern.Iso.Format(settings.GateOpeningDate), offset);
-                throw new InvalidOperationException("Event dates must stay within the supported calendar range.", ex);
+                return "Event dates must stay within the supported calendar range.";
             }
         }
+        return null;
     }
 
     /// <inheritdoc />

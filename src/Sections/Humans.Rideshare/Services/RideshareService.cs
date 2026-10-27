@@ -71,6 +71,11 @@ internal sealed class RideshareService(
         if (ValidateTrip(save) is { } tripRefusal) return new(Refusal: tripRefusal);
         var settings = await repository.GetSettingsAsync(year, ct);
         if (settings is null) return new(Refusal: new("Rideshare_Error_NotSetUp", year));
+        var inverseDirection = Flip(save.Direction);
+        var inverseDeparture = save.Direction == RideshareDirection.Inbound
+            ? settings.OutboundWindowStart
+            : settings.InboundWindowStart;
+        if (ValidateTrip(save, inverseDeparture) is { } inverseRefusal) return new(Refusal: inverseRefusal);
         var (member, pointRefusal) = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
         var (waypoints, waypointRefusal) = await GeocodeWaypointsAsync(save.WaypointLabels, [], ct);
@@ -83,10 +88,6 @@ internal sealed class RideshareService(
         Apply(original, save, member, waypoints);
 
         // The inverse leg: same car, same people, opposite way, first day of the other window.
-        var inverseDirection = Flip(save.Direction);
-        var inverseDeparture = save.Direction == RideshareDirection.Inbound
-            ? settings.OutboundWindowStart
-            : settings.InboundWindowStart;
         var inverse = NewTrip(userId, year, inverseDirection, inverseDeparture, now);
         Apply(inverse, save, member, reversedWaypoints);
 
@@ -282,7 +283,7 @@ internal sealed class RideshareService(
             if (interest.Message is not null)
                 body += $"\n\"{interest.Message}\"";
             return (Notice(culture, titleKey, name), body);
-        }, ct);
+        });
         return new(interest.Id);
     }
 
@@ -309,8 +310,7 @@ internal sealed class RideshareService(
             // The rider accepting a driver's answer to their pin tells the driver, not a rider.
             (culture, name) => (Notice(culture, interest.RequestId is null ? "Rideshare_NoticeAccepted" : "Rideshare_NoticeOfferAccepted", name),
                 Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
-                    interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))),
-            ct);
+                    interest.Trip.DepartureDate.ToWeekdayDayMonth(), SeatsText(interest.Seats, culture))));
         return new();
     }
 
@@ -333,8 +333,7 @@ internal sealed class RideshareService(
             (culture, name) => (Notice(culture, "Rideshare_NoticeUpdate"),
                 Notice(culture, interest.RequestId is null
                     ? "Rideshare_NoticeDeclinedOffer"
-                    : "Rideshare_NoticeDeclinedRider", name)),
-            ct);
+                    : "Rideshare_NoticeDeclinedRider", name)));
         return new();
     }
 
@@ -541,10 +540,13 @@ internal sealed class RideshareService(
         return null;
     }
 
-    private static RideshareRefusal? ValidateTrip(TripSave save)
+    private static RideshareRefusal? ValidateTrip(TripSave save, LocalDate? departure = null)
     {
         if (save.ExpectedDurationDays < 1)
             return new("Rideshare_Error_DurationMinimum");
+        if (Period.Between(departure ?? save.DepartureDate, LocalDate.MaxIsoValue, PeriodUnits.Days).Days
+            < save.ExpectedDurationDays - 1)
+            return new("Rideshare_InvalidDate");
         if (save.SeatsOffered < 1)
             return new("Rideshare_Error_OfferSeatsMinimum");
         return null;
@@ -662,15 +664,15 @@ internal sealed class RideshareService(
         s.Year, s.DestinationLabel, s.DestinationLatitude, s.DestinationLongitude,
         s.InboundWindowStart, s.InboundWindowEnd, s.OutboundWindowStart, s.OutboundWindowEnd);
 
-    // Notifications are best-effort: a failed send never rolls back the interest write.
+    // The interest write is committed: browser cancellation must not interrupt its notification.
     private async Task NotifyAsync(
         NotificationSource source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
-        Func<CultureInfo, string, (string Title, string Body)> content, CancellationToken ct)
+        Func<CultureInfo, string, (string Title, string Body)> content)
     {
         try
         {
-            var name = (await users.GetUserInfoAsync(actorUserId, ct))?.BurnerName;
-            var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, ct))?.PreferredLanguage;
+            var name = (await users.GetUserInfoAsync(actorUserId, CancellationToken.None))?.BurnerName;
+            var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, CancellationToken.None))?.PreferredLanguage;
             var language = preferredLanguage.IsSupportedCultureCode()
                 ? preferredLanguage!
                 : CultureCatalog.DefaultCultureCode;
@@ -688,11 +690,7 @@ internal sealed class RideshareService(
             await notifications.SendAsync(
                 source, notificationClass, NotificationPriority.Normal, title, [recipientUserId],
                 body: body, actionUrl: MineUrl,
-                actionLabel: actionLabel, cancellationToken: ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
+                actionLabel: actionLabel, cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {

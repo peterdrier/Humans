@@ -91,12 +91,15 @@ internal sealed class PaymentDetailsService(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // The survivor's IBAN wins. One still only on its legacy profile counts as its own, so it is
-        // copied first rather than overwritten by the source's row.
-        if (await repo.GetAsync(mergedToUserId, ct) is null
-            && LegacyIban(await users.GetRawUserInfoAsync(mergedToUserId, ct)) is { } legacy)
+        // The survivor's legacy value beats the source's row; a recorded removal on either
+        // account beats that account's legacy value.
+        if (await repo.GetAsync(mergedToUserId, ct) is null)
         {
-            await repo.TryInsertAsync(mergedToUserId, legacy, now, ct);
+            var legacy = LegacyIban(await users.GetRawUserInfoAsync(mergedToUserId, ct));
+            if (legacy is null && await repo.GetAsync(mergedFromUserId, ct) is null)
+                legacy = LegacyIban(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
+            if (legacy is not null)
+                await repo.TryInsertAsync(mergedToUserId, legacy, now, ct);
         }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }

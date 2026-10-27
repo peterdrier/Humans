@@ -95,7 +95,9 @@ internal sealed class EmailProblemsService(
                 continue;
 
             // Plain verified row; the next OAuth sign-in attaches the provider tag.
-            await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
+            var emailAddition = await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
+            if (emailAddition.ErrorKey is not null)
+                throw new InvalidOperationException("Could not add the verified email address.");
             await audit.LogAsync(
                 AuditAction.LegacyIdentityEmailBackfilled, nameof(User), info.Id,
                 $"Backfilled verified UserEmail row from legacy User.Email column: {legacy}",

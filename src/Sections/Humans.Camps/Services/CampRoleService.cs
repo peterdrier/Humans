@@ -42,16 +42,17 @@ internal sealed class CampRoleService(
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
 
-    public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
+    public async Task<CampAdminMutationResult> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
-        var slug = NormalizeAndValidateSlug(input.Slug);
+        if (ValidateDefinitionInput(input.SlotCount, input.MinimumRequired, input.Slug) is { } error)
+            return new(false, error);
+        var slug = input.Slug.Trim().ToLowerInvariant();
 
         if (await repo.DefinitionNameExistsAsync(input.Name, excludingId: null, ct))
-            throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
+            return new(false, $"A camp role definition named '{input.Name}' already exists.");
 
         if (await repo.DefinitionSlugExistsAsync(slug, excludingId: null, ct))
-            throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
+            return new(false, $"A camp role definition with slug '{slug}' already exists.");
 
         var now = clock.GetCurrentInstant();
         var def = new CampRoleDefinition
@@ -75,30 +76,21 @@ internal sealed class CampRoleService(
             $"Created camp role definition '{def.Name}'.",
             actorUserId);
 
-        return def;
+        return new(true);
     }
 
-    private static void ValidateMinimumRequired(int slotCount, int minimumRequired)
+    private static string? ValidateDefinitionInput(int slotCount, int minimumRequired, string slug)
     {
         if (minimumRequired < 0 || minimumRequired > slotCount)
-            throw new ArgumentException(
-                $"MinimumRequired must satisfy 0 ≤ MinimumRequired ≤ SlotCount (got SlotCount={slotCount}, MinimumRequired={minimumRequired}).",
-                nameof(minimumRequired));
-    }
-
-    private static string NormalizeAndValidateSlug(string slug)
-    {
+            return $"MinimumRequired must satisfy 0 ≤ MinimumRequired ≤ SlotCount (got SlotCount={slotCount}, MinimumRequired={minimumRequired}).";
         if (string.IsNullOrWhiteSpace(slug))
-            throw new ArgumentException("Slug is required.", nameof(slug));
+            return "Slug is required.";
         var normalized = slug.Trim().ToLowerInvariant();
         if (!SlugHelper.IsValidKebabSlug(normalized))
-            throw new ArgumentException(
-                "Slug must be kebab-case (lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens; max 60 chars).",
-                nameof(slug));
+            return "Slug must be kebab-case (lowercase letters, digits, and hyphens; no leading, trailing, or consecutive hyphens; max 60 chars).";
         // "create" would route to CampAdminController.CreateRole instead of RolesDrillDown.
-        if (string.Equals(normalized, "create", StringComparison.Ordinal))
-            throw new InvalidOperationException("\"create\" is reserved and cannot be used as a camp role slug.");
-        return normalized;
+        return string.Equals(normalized, "create", StringComparison.Ordinal)
+            ? "\"create\" is reserved and cannot be used as a camp role slug." : null;
     }
 
     private static CampRoleDefinitionInfo CreateCampRoleDefinitionInfo(CampRoleDefinition definition) =>
@@ -117,8 +109,9 @@ internal sealed class CampRoleService(
 
     public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
-        var slug = NormalizeAndValidateSlug(input.Slug);
+        if (ValidateDefinitionInput(input.SlotCount, input.MinimumRequired, input.Slug) is { } error)
+            return UpdateCampRoleDefinitionResult.Rejected(error);
+        var slug = input.Slug.Trim().ToLowerInvariant();
 
         var existing = await repo.GetDefinitionByIdAsync(id, ct);
         if (existing is null) return UpdateCampRoleDefinitionResult.NotFound;
@@ -132,16 +125,16 @@ internal sealed class CampRoleService(
                 || existing.SortOrder != input.SortOrder
                 || existing.MinimumRequired != input.MinimumRequired)
             {
-                throw new InvalidOperationException(
+                return UpdateCampRoleDefinitionResult.Rejected(
                     $"Camp role '{existing.Name}' is a system role; only SlotCount and Description can be changed.");
             }
         }
 
         if (await repo.DefinitionNameExistsAsync(input.Name, excludingId: id, ct))
-            throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
+            return UpdateCampRoleDefinitionResult.Rejected($"A camp role definition named '{input.Name}' already exists.");
 
         if (await repo.DefinitionSlugExistsAsync(slug, excludingId: id, ct))
-            throw new InvalidOperationException($"A camp role definition with slug '{slug}' already exists.");
+            return UpdateCampRoleDefinitionResult.Rejected($"A camp role definition with slug '{slug}' already exists.");
 
         var now = clock.GetCurrentInstant();
         var updated = await repo.UpdateDefinitionAsync(id, def =>
@@ -280,17 +273,14 @@ internal sealed class CampRoleService(
             actorUserId,
             relatedEntityId: campMemberId, relatedEntityType: nameof(CampMember));
 
+        // Assignment is committed; request cancellation must not skip its notification.
         try
         {
             var culture = CultureInfo.GetCultureInfo("en");
             try
             {
-                var language = (await userService.GetUserInfoAsync(memberLookup.UserId, ct))?.PreferredLanguage;
+                var language = (await userService.GetUserInfoAsync(memberLookup.UserId, CancellationToken.None))?.PreferredLanguage;
                 culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
             }
             catch (Exception ex)
             {
@@ -303,11 +293,7 @@ internal sealed class CampRoleService(
                 priority: NotificationPriority.Normal,
                 title: string.Format(culture, NoticeResources.GetString("Camps_Notification_RoleAssigned", culture)!, def.Name),
                 recipientUserIds: [memberLookup.UserId],
-                cancellationToken: ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
+                cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -627,10 +613,13 @@ internal sealed class CampRoleService(
     /// <inheritdoc />
     async Task ICampRoleSeeding.CreateDefinitionForSeedAsync(
         string name, string slug, string? description, int slotCount, int minimumRequired,
-        int sortOrder, Guid actorUserId, CancellationToken cancellationToken) =>
-        await CreateDefinitionAsync(
+        int sortOrder, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        var result = await CreateDefinitionAsync(
             new CreateCampRoleDefinitionInput(name, slug, description, slotCount, minimumRequired, sortOrder),
             actorUserId, cancellationToken);
+        if (!result.Succeeded) throw new InvalidOperationException(result.ErrorMessage);
+    }
 
     /// <inheritdoc />
     Task<int> ICampRoleSeeding.SeedSystemRolesAsync(Guid actorUserId, CancellationToken cancellationToken) =>

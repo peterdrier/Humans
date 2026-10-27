@@ -1086,6 +1086,53 @@ public sealed class CampaignServiceTests
         persisted!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Failed);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("wave")]
+    [Xunit.InlineData("resend")]
+    [Xunit.InlineData("retry")]
+    public async Task QueueingAuditFailure_LeavesGrantFailedAndRetryable(string operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["AUDIT-RETRY"]);
+        var user = SeedUser();
+        var team = SeedTeam("Audit failure");
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(ct);
+        Guid grantId = default;
+        if (!string.Equals(operation, "wave", StringComparison.Ordinal))
+        {
+            await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+            var grant = await CampaignsDb.CampaignGrants.SingleAsync(ct);
+            grantId = grant.Id;
+            grant.LatestEmailStatus = EmailOutboxStatus.Failed;
+            await SaveAllAsync(ct);
+        }
+        _emailService.ClearReceivedCalls();
+        var failure = new IOException("Audit unavailable");
+        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), _actorId, Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(failure));
+        Func<Task> send = operation switch
+        {
+            "wave" => () => _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct),
+            "resend" => () => _service.ResendToGrantAsync(_actorId, grantId, ct),
+            _ => () => _service.RetryAllFailedAsync(_actorId, campaign.Id, ct),
+        };
+
+        (await send.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        ClearAllTrackers();
+        (await CampaignsDb.CampaignGrants.SingleAsync(ct)).LatestEmailStatus.Should().Be(EmailOutboxStatus.Failed);
+        await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+
+        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), _actorId, Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.CompletedTask);
+        await _service.RetryAllFailedAsync(_actorId, campaign.Id, ct);
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        ClearAllTrackers();
+        (await CampaignsDb.CampaignGrants.SingleAsync(ct)).LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
+    }
+
     [HumansFact]
     public async Task RetryAllFailedAsync_EnqueuesEmailsForFailedGrantsOnly()
     {

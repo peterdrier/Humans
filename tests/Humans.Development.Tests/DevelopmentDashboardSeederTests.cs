@@ -78,9 +78,12 @@ public class DevelopmentDashboardSeederTests
             .Returns(_ => SignupResult.Ok(Guid.NewGuid()));
 
         var eventSettingsSeeding = Substitute.For<IEventSettingsSeeding>();
+        var userEmails = Substitute.For<IUserEmailService>();
+        userEmails.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         var sut = new DevelopmentDashboardSeeder(
             shifts, Substitute.For<ISettingsService>(), eventSettingsSeeding, signups,
-            Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, Substitute.For<IUserEmailService>(),
+            Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, userEmails,
             Substitute.For<IUserWrite>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 
@@ -147,9 +150,12 @@ public class DevelopmentDashboardSeederTests
         signups.RefuseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>())
             .Returns(_ => SignupResult.Ok(Guid.NewGuid()));
 
+        var userEmails = Substitute.For<IUserEmailService>();
+        userEmails.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         var sut = new DevelopmentDashboardSeeder(
             shifts, store, store, signups,
-            Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, Substitute.For<IUserEmailService>(),
+            Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, userEmails,
             Substitute.For<IUserWrite>(), profileEditor, userManager, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 

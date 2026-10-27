@@ -74,6 +74,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca)
+- Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
 - Effective notification email is resolved through `IUserEmailService.GetNotificationTargetEmailsAsync` so verified-email and forwarding rules apply
 
 ### US-28.5: Conversation Thread
@@ -108,7 +109,7 @@ See [`src/Sections/Humans.Issues/Docs/Issues.md`](../Issues.md) for full field-l
 
 Uploads use atomic `IFileStorage.SaveAsync`. If saving the Issue row fails, the upload is deleted; cleanup failures are logged and the original persistence failure propagates.
 
-Retention and GDPR erasure commit report removal before non-cancellable screenshot cleanup; storage failures are logged without reversing the committed operation.
+Retention commits report removal before best-effort screenshot cleanup. GDPR erasure deletes owned screenshots first and propagates storage failures while the report keys remain available for retry. Once deletion begins, screenshot and row removal finish without caller cancellation.
 
 Direct screenshot reads reuse the viewer-scoped issue read before static-file serving. Anonymous and out-of-scope viewers receive 404; permitted reads must match the stored screenshot path and disable caching.
 

@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Revisar ara</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>Pendent d'aprovació:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>El teu compte està pendent d'aprovació per part de la Junta Directiva. Rebràs una notificació quan s'hagi processat.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>La teva sol·licitud de {0}:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>
@@ -770,4 +764,8 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>S’ha desat la teva informació mèdica.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar la informació mèdica.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Sol·licitar ser col·laborador o associat</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Voluntari</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Ja no es poden modificar les adreces de correu d’aquest compte.</value>
+  </data>
 </root>

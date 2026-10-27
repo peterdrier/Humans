@@ -8,13 +8,6 @@ public record TeamResourceSummary(bool HasMailGroup, int DriveResourceCount)
     public static TeamResourceSummary Empty { get; } = new(false, 0);
 }
 
-public record UserTeamGoogleResource(
-    string TeamName,
-    string TeamSlug,
-    string ResourceName,
-    GoogleResourceType ResourceType,
-    string? Url);
-
 public record GoogleResourceSnapshot(
     Guid Id,
     Guid TeamId,

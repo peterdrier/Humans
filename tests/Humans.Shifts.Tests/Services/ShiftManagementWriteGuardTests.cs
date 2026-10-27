@@ -496,15 +496,16 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(-15)]
     [InlineData(0)]
-    public async Task CreateBuildStrikeShifts_Throws_WhenBuildDayOffsetIsOutsideTheBuildWindow(int dayOffset)
+    public async Task CreateBuildStrikeShifts_ReturnsRefusal_WhenBuildDayOffsetIsOutsideTheBuildWindow(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
 
-        var act = () => _service.CreateBuildStrikeShiftsAsync(
+        var result = await _service.CreateBuildStrikeShiftsAsync(
             new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, [new DayStaffingInput(dayOffset, 1, 2)]));
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*outside the build period*");
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("outside the build period");
         ShiftsDb.Shifts.Should().BeEmpty();
     }
 
@@ -526,15 +527,16 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(6)]
     [InlineData(10)]
-    public async Task CreateBuildStrikeShifts_Throws_WhenStrikeDayOffsetIsOutsideTheStrikeWindow(int dayOffset)
+    public async Task CreateBuildStrikeShifts_ReturnsRefusal_WhenStrikeDayOffsetIsOutsideTheStrikeWindow(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Strike);
         await SaveAllAsync(Ct);
 
-        var act = () => _service.CreateBuildStrikeShiftsAsync(
+        var result = await _service.CreateBuildStrikeShiftsAsync(
             new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, [new DayStaffingInput(dayOffset, 1, 2)]));
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*outside the strike period*");
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("outside the strike period");
     }
 
     [HumansTheory]
@@ -578,9 +580,10 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         }
         else
         {
-            var error = await Record.ExceptionAsync(() => _service.CreateBuildStrikeShiftsAsync(input));
+            var result = await _service.CreateBuildStrikeShiftsAsync(input);
             ShiftsDb.Shifts.Should().BeEmpty();
-            error.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Contain("outside the all period");
+            result.Succeeded.Should().BeFalse();
+            result.Message.Should().Contain("outside the all period");
             _views.Evictions.Should().Be(0);
             (await _views.IsRotaCachedAsync(rota.Id)).Should().BeTrue();
         }

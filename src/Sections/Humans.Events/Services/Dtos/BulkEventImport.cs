@@ -23,16 +23,15 @@ internal sealed record BulkCsvRow(
 internal sealed record BulkImportRowError(int RowNumber, string Title, IReadOnlyList<string> Errors);
 
 /// <summary>
-/// Outcome of a barrio bulk import. When <see cref="Errors"/> is non-empty the
-/// import was rejected wholesale and nothing was written.
+/// A refusal or row-validation errors reject the import wholesale, with nothing written.
 /// </summary>
 internal sealed record BulkImportResult(
     IReadOnlyList<BulkImportRowError> Errors,
     int CreatedCount,
-    int UpdatedCount)
+    int UpdatedCount,
+    string? RefusalKey = null)
 {
-    /// <summary>True when validation failed and no events were persisted.</summary>
-    public bool HasErrors => Errors.Count > 0;
+    public bool HasErrors => RefusalKey is not null || Errors.Count > 0;
 }
 
 /// <summary>CSV parsing returns no importable rows when any header or cell is invalid.</summary>

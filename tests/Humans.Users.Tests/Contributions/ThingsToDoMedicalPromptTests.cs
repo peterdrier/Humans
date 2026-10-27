@@ -103,6 +103,26 @@ public class ThingsToDoMedicalPromptTests
         entries.Should().NotContain(e => e.Key == "dietary-medical" || e.Key == "dietary");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AbortedNudgeRead_PropagatesCancellation(bool medical)
+    {
+        var id = StubUser(dietary: null, medical: null);
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        if (medical)
+            _cantina.GetDietaryProfileAsync(id, aborted.Token)
+                .Returns(Task.FromCanceled<DietaryProfileInfo?>(aborted.Token));
+        else
+            _userService.GetUserInfoAsync(id, aborted.Token)
+                .Returns(ValueTask.FromCanceled<UserInfo?>(aborted.Token));
+
+        var load = () => _sut.EntriesAsync(_services, Principal(id), aborted.Token).AsTask();
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     private Guid StubUser(string? dietary, string? medical, bool declined = false)
     {
         var userId = Guid.NewGuid();

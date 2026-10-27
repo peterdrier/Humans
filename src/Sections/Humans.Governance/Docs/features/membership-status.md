@@ -17,6 +17,8 @@
 
 Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()`. [Shared Logic](#shared-logic) lists who consumes it and who computes their own buckets instead.
 
+These are reporting buckets for consent-review and language statistics, not admission or access states. “Pending Approval” means the review annotation is outstanding; it does not block Volunteer admission. `ComputeStatusAsync` and `GetMembershipSnapshotAsync` instead classify from stored account state, active affiliations and elapsed consent deadlines, independently of review.
+
 ## The 6 Buckets
 
 | Status | Criteria | Badge Color |
@@ -32,7 +34,7 @@ Every human in the system falls into exactly one of 6 mutually exclusive status 
 
 **Priority order:** PendingDeletion > IncompleteSignup (no profile) > Suspended > PendingApproval > MissingConsents/Active. Rejected signups (Consent's review `RejectedAt` set) fall out at the PendingApproval step and land in IncompleteSignup.
 
-## State Diagram
+## Reporting Bucket Transitions
 
 ```
 Incomplete Signup → (completes profile) → Pending Approval

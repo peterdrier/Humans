@@ -75,7 +75,9 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 - **Vendor check-in mirror** — on an admit `GateService.RecordDecisionAsync` enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
-  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority.
+  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority. Enqueue
+  failures are logged without failing the already-recorded admit response; the mirror ledger is
+  marked only after enqueue succeeds.
   **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
   with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
   AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
@@ -215,9 +217,8 @@ nobodies-collective/Humans#933.)
   the two writers commute. Without this write the consumed-Early-Entry guards (Camps) never learn
   of a gate check-in, because the vendor mirror is best-effort and off by default.
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
-- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
-  `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors — both now serve only the
-  unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
+- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor? — now serves
+  only the unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 
 ## Configuration
 

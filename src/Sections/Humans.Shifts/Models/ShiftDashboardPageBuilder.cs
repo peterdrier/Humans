@@ -25,7 +25,7 @@ internal sealed class ShiftDashboardPageBuilder(
     IWebHostEnvironment environment,
     IClock clock)
 {
-    public async Task<ShiftDashboardViewModel> BuildAsync(ShiftDashboardPageRequest request)
+    public async Task<ShiftDashboardViewModel> BuildAsync(ShiftDashboardPageRequest request, CancellationToken ct = default)
     {
         var es = request.EventSettings;
 
@@ -37,15 +37,15 @@ internal sealed class ShiftDashboardPageBuilder(
             request.ActiveEnd,
             request.Period,
             request.SubPeriod,
-            includeRestricted: true);
-        var staffing = await shiftManagement.GetStaffingSnapshotAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod);
-        var overview = await shiftManagement.GetDashboardOverviewAsync(es.Id, request.Period, request.SubPeriod);
-        var coordinatorActivity = await shiftManagement.GetCoordinatorActivityAsync(es.Id, request.Period, request.SubPeriod);
-        var trends = await shiftManagement.GetDashboardTrendsAsync(es.Id, TrendWindow.All, request.Period, request.SubPeriod);
-        var dailyDeptStaffing = await shiftManagement.GetDailyDepartmentStaffingAsync(es.Id, request.Period, request.SubPeriod);
-        var shiftDurationBreakdown = await shiftManagement.GetShiftDurationBreakdownAsync(es.Id, request.Period, request.SubPeriod);
-        var coverageHeatmap = await shiftManagement.GetCoverageHeatmapAsync(es.Id, request.Period, request.SubPeriod);
-        var deptTuples = await shiftManagement.GetDepartmentsWithRotasAsync(es.Id);
+            includeRestricted: true, ct: ct);
+        var staffing = await shiftManagement.GetStaffingSnapshotAsync(es.Id, request.DepartmentId, request.Period, request.SubPeriod, ct);
+        var overview = await shiftManagement.GetDashboardOverviewAsync(es.Id, request.Period, request.SubPeriod, ct);
+        var coordinatorActivity = await shiftManagement.GetCoordinatorActivityAsync(es.Id, request.Period, request.SubPeriod, ct);
+        var trends = await shiftManagement.GetDashboardTrendsAsync(es.Id, TrendWindow.All, request.Period, request.SubPeriod, ct);
+        var dailyDeptStaffing = await shiftManagement.GetDailyDepartmentStaffingAsync(es.Id, request.Period, request.SubPeriod, ct);
+        var shiftDurationBreakdown = await shiftManagement.GetShiftDurationBreakdownAsync(es.Id, request.Period, request.SubPeriod, ct);
+        var coverageHeatmap = await shiftManagement.GetCoverageHeatmapAsync(es.Id, request.Period, request.SubPeriod, ct);
+        var deptTuples = await shiftManagement.GetDepartmentsWithRotasAsync(es.Id, ct);
 
         return new ShiftDashboardViewModel
         {

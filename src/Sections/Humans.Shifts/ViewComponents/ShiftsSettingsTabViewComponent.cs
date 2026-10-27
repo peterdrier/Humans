@@ -16,7 +16,7 @@ internal sealed class ShiftsSettingsTabViewComponent(
         var active = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (active is null) return View(new EventSettingsViewModel());
 
-        var knobs = await shiftMgmt.GetKnobsAsync(active.Id);
+        var knobs = await shiftMgmt.GetKnobsAsync(active.Id, HttpContext.RequestAborted);
         return View(EventSettingsFormMapper.ToViewModel(knobs));
     }
 }
