@@ -124,9 +124,7 @@ internal sealed class ShiftSignupService(
 
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        shiftMgmt.InvalidateDashboardCaches(localEs.Id);
-        viewInvalidator.InvalidateUser(userId);
-        viewInvalidator.InvalidateShift(shiftId);
+        InvalidateSignupCaches(localEs.Id, userId, shiftId);
         var shiftDate = FormatAuditDay(calendar, shift.DayOffset);
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         await auditLogService.LogAsync(
@@ -184,9 +182,7 @@ internal sealed class ShiftSignupService(
 
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
-        viewInvalidator.InvalidateUser(signup.UserId);
-        viewInvalidator.InvalidateShift(signup.ShiftId);
+        InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'",
@@ -209,9 +205,7 @@ internal sealed class ShiftSignupService(
         signup.Refuse(reviewerUserId, clock, reason);
 
         await repo.SaveChangesAsync();
-        shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
-        viewInvalidator.InvalidateUser(signup.UserId);
-        viewInvalidator.InvalidateShift(signup.ShiftId);
+        InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
 
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
@@ -262,9 +256,7 @@ internal sealed class ShiftSignupService(
         signup.Bail(actorUserId, clock, reason);
 
         await repo.SaveChangesAsync();
-        shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
-        viewInvalidator.InvalidateUser(signup.UserId);
-        viewInvalidator.InvalidateShift(signup.ShiftId);
+        InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
@@ -325,9 +317,7 @@ internal sealed class ShiftSignupService(
 
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        shiftMgmt.InvalidateDashboardCaches(calendar.Id);
-        viewInvalidator.InvalidateUser(userId);
-        viewInvalidator.InvalidateShift(shiftId);
+        InvalidateSignupCaches(calendar.Id, userId, shiftId);
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
             $"shift '{shift.Rota.Name}' on {FormatAuditDay(calendar, shift.DayOffset)}",
@@ -441,10 +431,7 @@ internal sealed class ShiftSignupService(
 
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        shiftMgmt.InvalidateDashboardCaches(calendar.Id);
-        viewInvalidator.InvalidateUser(userId);
-        // A range touches every shift in the rota.
-        viewInvalidator.InvalidateRota(rotaId);
+        InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
             await auditLogService.LogAsync(
@@ -492,9 +479,7 @@ internal sealed class ShiftSignupService(
         signup.MarkNoShow(reviewerUserId, clock);
 
         await repo.SaveChangesAsync();
-        shiftMgmt.InvalidateDashboardCaches(calendar.Id);
-        viewInvalidator.InvalidateUser(signup.UserId);
-        viewInvalidator.InvalidateShift(signup.ShiftId);
+        InvalidateSignupCaches(calendar.Id, signup.UserId, signup.ShiftId);
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'",
@@ -518,9 +503,7 @@ internal sealed class ShiftSignupService(
         signup.Remove(removedByUserId, clock, reason);
 
         await repo.SaveChangesAsync();
-        shiftMgmt.InvalidateDashboardCaches(signup.Shift.Rota.EventSettingsId);
-        viewInvalidator.InvalidateUser(signup.UserId);
-        viewInvalidator.InvalidateShift(signup.ShiftId);
+        InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'" +
@@ -622,9 +605,7 @@ internal sealed class ShiftSignupService(
 
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        shiftMgmt.InvalidateDashboardCaches(calendar.Id);
-        viewInvalidator.InvalidateUser(userId);
-        viewInvalidator.InvalidateRota(rotaId);
+        InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
         await AuditRangeSignupsAsync(userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
 
         if (autoConfirm)
@@ -634,6 +615,21 @@ internal sealed class ShiftSignupService(
         }
 
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
+    }
+
+    private void InvalidateSignupCaches(Guid eventSettingsId, Guid userId, Guid shiftId)
+    {
+        shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
+        viewInvalidator.InvalidateUser(userId);
+        viewInvalidator.InvalidateShift(shiftId);
+    }
+
+    private void InvalidateRangeSignupCaches(Guid eventSettingsId, Guid userId, Guid rotaId)
+    {
+        shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
+        viewInvalidator.InvalidateUser(userId);
+        // A range touches every shift in the rota.
+        viewInvalidator.InvalidateRota(rotaId);
     }
 
     private RangeSignupCandidateSelection PruneDuplicateRangeShifts(
@@ -911,9 +907,7 @@ internal sealed class ShiftSignupService(
             {
                 await repo.SaveChangesAsync();
                 enrollment.Dispose();
-                shiftMgmt.InvalidateDashboardCaches(calendar.Id);
-                viewInvalidator.InvalidateUser(skippedAtCapacity[0].UserId);
-                viewInvalidator.InvalidateRota(skippedAtCapacity[0].Shift.RotaId);
+                InvalidateRangeSignupCaches(calendar.Id, skippedAtCapacity[0].UserId, skippedAtCapacity[0].Shift.RotaId);
 
                 foreach (var skipped in skippedAtCapacity)
                 {
@@ -929,9 +923,7 @@ internal sealed class ShiftSignupService(
 
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        shiftMgmt.InvalidateDashboardCaches(calendar.Id);
-        viewInvalidator.InvalidateUser(approved[0].UserId);
-        viewInvalidator.InvalidateRota(approved[0].Shift.RotaId);
+        InvalidateRangeSignupCaches(calendar.Id, approved[0].UserId, approved[0].Shift.RotaId);
 
         foreach (var approvedSignup in approved)
         {
@@ -974,9 +966,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
-        shiftMgmt.InvalidateDashboardCaches(signups[0].Shift.Rota.EventSettingsId);
-        viewInvalidator.InvalidateUser(signups[0].UserId);
-        viewInvalidator.InvalidateRota(signups[0].Shift.RotaId);
+        InvalidateRangeSignupCaches(signups[0].Shift.Rota.EventSettingsId, signups[0].UserId, signups[0].Shift.RotaId);
 
         foreach (var signup in signups)
         {
@@ -1026,9 +1016,7 @@ internal sealed class ShiftSignupService(
         }
 
         await repo.SaveChangesAsync();
-        shiftMgmt.InvalidateDashboardCaches(firstSignup.Shift.Rota.EventSettingsId);
-        viewInvalidator.InvalidateUser(firstSignup.UserId);
-        viewInvalidator.InvalidateRota(firstSignup.Shift.RotaId);
+        InvalidateRangeSignupCaches(firstSignup.Shift.Rota.EventSettingsId, firstSignup.UserId, firstSignup.Shift.RotaId);
 
         foreach (var signup in signups)
         {
