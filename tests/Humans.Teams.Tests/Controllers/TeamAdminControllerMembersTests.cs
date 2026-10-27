@@ -32,6 +32,59 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamAdminControllerMembersTests
 {
     [HumansTheory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    public async Task RoleDefinitionWrite_UnexpectedDatabaseFailure_Propagates(int write, bool ajax)
+    {
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var failure = new Microsoft.EntityFrameworkCore.DbUpdateException("Private database diagnostic");
+        teams.CreateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default)
+            .ReturnsForAnyArgs(Task.FromException<TeamRoleDefinitionMutationResult>(failure));
+        teams.UpdateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(Task.FromException<TeamRoleDefinitionMutationResult>(failure));
+        teams.DeleteRoleDefinitionAsync(default, default).ReturnsForAnyArgs(Task.FromException<TeamRoleDefinitionMutationResult>(failure));
+
+        Func<Task<IActionResult>> act = () => write switch
+        {
+            0 => controller.CreateRole(team.Slug, new CreateRoleDefinitionModel { Name = "Role" }),
+            1 => controller.EditRole(team.Slug, roleId,
+                new EditRoleDefinitionModel { Name = "Role", SlotCount = 1, Priorities = ["None"] }),
+            _ => controller.DeleteRole(team.Slug, roleId)
+        };
+
+        (await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().NotContainKey("ErrorMessage");
+        controller.TempData.Should().NotContainKey("SuccessMessage");
+    }
+
+    [HumansTheory]
     [InlineData(true, 2000)]
     [InlineData(false, 2000)]
     [InlineData(true, 2001)]
@@ -236,6 +289,11 @@ public class TeamAdminControllerMembersTests
         var form = context.Result.Model!;
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
         if (omitted is null) controller.ModelState.AddModelError("EstimatedHours", "Invalid hours");
+
+        teams.CreateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default)
+            .ReturnsForAnyArgs(new TeamRoleDefinitionMutationResult());
+        teams.UpdateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(new TeamRoleDefinitionMutationResult());
 
         var result = edit
             ? await controller.EditRole(team.Slug, Guid.NewGuid(), (EditRoleDefinitionModel)form)

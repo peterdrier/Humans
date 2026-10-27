@@ -327,7 +327,7 @@ internal sealed class CachingTeamService(
             teamId, pageContent, callsToAction, isPublicPage,
             showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken));
 
-    public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
+    public Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
         Guid teamId,
         string name,
         string? description,
@@ -341,9 +341,9 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.CreateRoleDefinitionAsync(
             teamId, name, description, slotCount, priorities, sortOrder,
-            period, actorUserId, isPublic, estimatedHours, cancellationToken));
+            period, actorUserId, isPublic, estimatedHours, cancellationToken), static result => result.Succeeded);
 
-    public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
+    public Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId,
         string name,
         string? description,
@@ -359,13 +359,13 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateRoleDefinitionAsync(
             roleDefinitionId, name, description, slotCount, priorities, sortOrder,
-            isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken));
+            isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken), static result => result.Succeeded);
 
-    public Task DeleteRoleDefinitionAsync(
+    public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId,
         Guid actorUserId,
         CancellationToken cancellationToken = default) =>
-        MutateAsync(inner => inner.DeleteRoleDefinitionAsync(roleDefinitionId, actorUserId, cancellationToken));
+        MutateAsync(inner => inner.DeleteRoleDefinitionAsync(roleDefinitionId, actorUserId, cancellationToken), static result => result.Succeeded);
 
     public Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId,

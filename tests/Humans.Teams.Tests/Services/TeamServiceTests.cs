@@ -1858,7 +1858,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateRoleDefinitionAsync_TeamNotFound_Throws()
+    public async Task CreateRoleDefinitionAsync_TeamNotFound_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -1866,12 +1866,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.CreateRoleDefinitionAsync(
             Guid.NewGuid(), "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Team*not found*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*Team*not found*");
     }
 
     [HumansFact]
-    public async Task CreateRoleDefinitionAsync_DuplicateName_Throws()
+    public async Task CreateRoleDefinitionAsync_DuplicateName_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -1884,12 +1885,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.CreateRoleDefinitionAsync(
             team.Id, existingName, null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already exists*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*already exists*");
     }
 
     [HumansFact]
-    public async Task CreateRoleDefinitionAsync_ActorLacksPermission_Throws()
+    public async Task CreateRoleDefinitionAsync_ActorLacksPermission_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var team = SeedTeam("Alpha");
@@ -1898,8 +1900,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.CreateRoleDefinitionAsync(
             team.Id, "Lead", null, 1, [SlotPriority.None], 0, RolePeriod.YearRound, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*permission*");
     }
 
     [HumansTheory]
@@ -1918,7 +1921,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         definition.Priorities = [SlotPriority.None];
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        Func<Task> act = update
+        Func<Task<TeamRoleDefinitionMutationResult>> act = update
             ? () => _service.UpdateRoleDefinitionAsync(
                 definition.Id, "Changed", null, 1, [(SlotPriority)priority], 0, false,
                 RolePeriod.Event, actor.Id, cancellationToken: TestContext.Current.CancellationToken)
@@ -1926,7 +1929,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
                 team.Id, "Changed", null, 1, [(SlotPriority)priority], 0,
                 RolePeriod.Event, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*priority*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*priority*");
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking()
             .SingleAsync(TestContext.Current.CancellationToken);
@@ -1949,17 +1954,17 @@ public sealed class TeamServiceTests : TeamsTestHarness
             [SlotPriority.Critical, SlotPriority.Important], 5, RolePeriod.Event, actor.Id,
             isPublic: false, cancellationToken: TestContext.Current.CancellationToken);
 
-        result.TeamId.Should().Be(team.Id);
-        result.Name.Should().Be("Lead");
-        result.SlotCount.Should().Be(2);
-        result.SortOrder.Should().Be(5);
-        result.IsPublic.Should().BeFalse();
-        result.Period.Should().Be(RolePeriod.Event);
-        result.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        result.Definition!.TeamId.Should().Be(team.Id);
+        result.Definition!.Name.Should().Be("Lead");
+        result.Definition!.SlotCount.Should().Be(2);
+        result.Definition!.SortOrder.Should().Be(5);
+        result.Definition!.IsPublic.Should().BeFalse();
+        result.Definition!.Period.Should().Be(RolePeriod.Event);
+        result.Definition!.CreatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_DefinitionNotFound_Throws()
+    public async Task UpdateRoleDefinitionAsync_DefinitionNotFound_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -1967,12 +1972,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateRoleDefinitionAsync(
             Guid.NewGuid(), "Lead", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Role definition*not found*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*Role definition*not found*");
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_ActorLacksPermission_Throws()
+    public async Task UpdateRoleDefinitionAsync_ActorLacksPermission_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var team = SeedTeam("Alpha");
@@ -1982,12 +1988,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateRoleDefinitionAsync(
             def.Id, "Lead", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*permission*");
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_Throws()
+    public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -2002,8 +2009,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var act = () => _service.UpdateRoleDefinitionAsync(
             second.Id, "Original", null, 1, [SlotPriority.None], 0, false, RolePeriod.YearRound, actor.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already exists*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*already exists*");
     }
 
     [HumansFact]
@@ -2055,19 +2063,20 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteRoleDefinitionAsync_NotFound_Throws()
+    public async Task DeleteRoleDefinitionAsync_NotFound_ReturnsRefusal()
     {
         var actor = SeedUser();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var act = () => _service.DeleteRoleDefinitionAsync(Guid.NewGuid(), actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Role definition*not found*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*Role definition*not found*");
     }
 
     [HumansFact]
-    public async Task DeleteRoleDefinitionAsync_ActorLacksPermission_Throws()
+    public async Task DeleteRoleDefinitionAsync_ActorLacksPermission_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var team = SeedTeam("Alpha");
@@ -2076,8 +2085,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var act = () => _service.DeleteRoleDefinitionAsync(def.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*permission*");
     }
 
     [HumansFact]

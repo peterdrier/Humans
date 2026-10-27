@@ -441,6 +441,18 @@ internal sealed class TeamAdminController(
         return View(viewModel);
     }
 
+    private static List<SlotPriority>? ParseRolePriorities(IEnumerable<string> values)
+    {
+        var priorities = new List<SlotPriority>();
+        foreach (var value in values)
+        {
+            if (!Enum.TryParse<SlotPriority>(value, ignoreCase: true, out var priority))
+                return null;
+            priorities.Add(priority);
+        }
+        return priorities;
+    }
+
     [HttpPost("Roles/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
@@ -457,23 +469,22 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var priorities = model.Priorities
-                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
-                .ToList();
-
-            await _teamService.CreateRoleDefinitionAsync(
+        var priorities = ParseRolePriorities(model.Priorities);
+        var result = priorities is null
+            ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
+            : await _teamService.CreateRoleDefinitionAsync(
                 team.Id, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.Period, user.Id, model.IsPublic,
                 model.EstimatedHours);
 
-            SetSuccess($"Role '{model.Name}' created.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        if (result.Refusal is { } refusal)
         {
-            logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Role creation refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
+        {
+            SetSuccess($"Role '{model.Name}' created.");
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -497,33 +508,32 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
-            var priorities = model.Priorities
-                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
-                .ToList();
-
-            await _teamService.UpdateRoleDefinitionAsync(
+        var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
+        var priorities = ParseRolePriorities(model.Priorities);
+        var result = priorities is null
+            ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
+            : await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
                 model.IsPublic, canToggleManagement, model.EstimatedHours);
 
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Role update refused for role {RoleId} in team {TeamId} by user {UserId}: {Reason}",
+                roleId, team.Id, user.Id, refusal);
+            if (isAjax)
+                return Json(new { success = false, message = refusal });
+
+            SetError(refusal);
+        }
+        else
+        {
             if (isAjax)
                 return Json(new { success = true, message = $"Role '{model.Name}' updated." });
 
             SetSuccess($"Role '{model.Name}' updated.");
-            return RedirectToAction(nameof(Roles), new { slug });
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            if (isAjax)
-                return Json(new { success = false, message = ex.Message });
-
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Roles), new { slug });
-        }
+        return RedirectToAction(nameof(Roles), new { slug });
     }
 
     [HttpPost("Roles/{roleId}/Delete")]
@@ -536,15 +546,16 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
-            SetSuccess("Role deleted.");
+            logger.LogWarning("Role deletion refused for role {RoleId} in team {TeamId} by user {UserId}: {Reason}",
+                roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        else
         {
-            logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            SetError(ex.Message);
+            SetSuccess("Role deleted.");
         }
 
         return RedirectToAction(nameof(Roles), new { slug });

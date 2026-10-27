@@ -1317,27 +1317,30 @@ internal sealed class TeamService(
             relatedEntityId: userId, relatedEntityType: nameof(User));
     }
 
-    public async Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
+    public async Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+        var team = await repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is null)
+            return new(Refusal: $"Team {teamId} not found");
 
-        ValidateSlotCountAndPriorities(slotCount, priorities);
-        ValidateRoleName(name);
+        if (SlotCountAndPrioritiesRefusal(slotCount, priorities) is { } prioritiesRefusal)
+            return new(Refusal: prioritiesRefusal);
+        if (RoleNameRefusal(name) is { } nameRefusal)
+            return new(Refusal: nameRefusal);
 
         var lowerName = name.ToLowerInvariant();
         var nameExists = await repo.RoleDefinitionNameExistsAsync(teamId, lowerName, excludingId: null, cancellationToken);
         if (nameExists)
-            throw new InvalidOperationException($"A role definition with name '{name}' already exists for this team");
+            return new(Refusal: $"A role definition with name '{name}' already exists for this team");
 
         var canManage = await CanUserApproveRequestsForTeamAsync(teamId, actorUserId, cancellationToken);
         if (!canManage)
-            throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
+            return new(Refusal: "User does not have permission to manage role definitions for this team");
 
         var now = clock.GetCurrentInstant();
         var definition = new TeamRoleDefinition
@@ -1364,10 +1367,10 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
-        return definition;
+        return new(Definition: definition);
     }
 
-    public async Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
+    public async Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
@@ -1375,30 +1378,40 @@ internal sealed class TeamService(
         int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
+        if (definition is null)
+            return new(Refusal: $"Role definition {roleDefinitionId} not found");
         var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
-            throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
+            return new(Refusal: "User does not have permission to manage role definitions for this team");
 
-        ValidateSlotCountAndPriorities(slotCount, priorities);
+        if (SlotCountAndPrioritiesRefusal(slotCount, priorities) is { } prioritiesRefusal)
+            return new(Refusal: prioritiesRefusal);
 
         if (!canToggleManagement)
             isManagement = definition.IsManagement;
 
         if (slotCount < definition.Assignments.Count)
-            throw new InvalidOperationException(
-                $"Cannot reduce slot count to {slotCount} — {definition.Assignments.Count} slots are currently filled");
+            return new(Refusal: $"Cannot reduce slot count to {slotCount} — {definition.Assignments.Count} slots are currently filled");
 
         if (!string.Equals(definition.Name, name, StringComparison.Ordinal))
         {
-            ValidateRoleName(name);
+            if (RoleNameRefusal(name) is { } nameRefusal)
+                return new(Refusal: nameRefusal);
             var lowerName = name.ToLowerInvariant();
             var nameExists = await repo.RoleDefinitionNameExistsAsync(definition.TeamId, lowerName, excludingId: roleDefinitionId, cancellationToken);
             if (nameExists)
-                throw new InvalidOperationException($"A role definition with name '{name}' already exists for this team");
+                return new(Refusal: $"A role definition with name '{name}' already exists for this team");
+        }
+
+        if (isManagement && !definition.IsManagement)
+        {
+            var existingManagement = await repo.OtherRoleHasIsManagementAsync(
+                definition.TeamId, roleDefinitionId, cancellationToken);
+            if (existingManagement)
+                return new(Refusal: "Another role in this team is already marked as the management role");
         }
 
         definition.Name = name;
@@ -1407,14 +1420,6 @@ internal sealed class TeamService(
         definition.EstimatedHours = estimatedHours;
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
-
-        if (isManagement && !definition.IsManagement)
-        {
-            var existingManagement = await repo.OtherRoleHasIsManagementAsync(
-                definition.TeamId, roleDefinitionId, cancellationToken);
-            if (existingManagement)
-                throw new InvalidOperationException("Another role in this team is already marked as the management role");
-        }
 
         var clearingIsManagement = definition.IsManagement && !isManagement;
 
@@ -1432,23 +1437,24 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
-        return definition;
+        return new(Definition: definition);
     }
 
-    public async Task DeleteRoleDefinitionAsync(
+    public async Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
+        if (definition is null)
+            return new(Refusal: $"Role definition {roleDefinitionId} not found");
         var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         if (definition.IsManagement && definition.Assignments.Count > 0)
-            throw new InvalidOperationException("Cannot delete the management role while members are assigned to it. Unassign all members first.");
+            return new(Refusal: "Cannot delete the management role while members are assigned to it. Unassign all members first.");
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
-            throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
+            return new(Refusal: "User does not have permission to manage role definitions for this team");
 
         await repo.RemoveRoleDefinitionAsync(definition, cancellationToken);
 
@@ -1457,6 +1463,8 @@ internal sealed class TeamService(
             $"Role definition '{definition.Name}' deleted from team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
+
+        return new();
     }
 
     public async Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
@@ -2254,25 +2262,27 @@ internal sealed class TeamService(
             request.ReviewNotes);
     }
 
-    private static void ValidateRoleName(string name)
+    private static string? RoleNameRefusal(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new InvalidOperationException("Role name cannot be empty");
+            return "Role name cannot be empty";
 
         if (name.Length > 100)
-            throw new InvalidOperationException("Role name cannot exceed 100 characters");
+            return "Role name cannot exceed 100 characters";
+        return null;
     }
 
-    private static void ValidateSlotCountAndPriorities(int slotCount, List<SlotPriority> priorities)
+    private static string? SlotCountAndPrioritiesRefusal(int slotCount, List<SlotPriority> priorities)
     {
         if (slotCount < 1)
-            throw new InvalidOperationException("Slot count must be at least 1");
+            return "Slot count must be at least 1";
 
         if (priorities.Count != slotCount)
-            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
+            return $"Priorities count ({priorities.Count}) must match slot count ({slotCount})";
 
         if (priorities.Any(priority => !Enum.IsDefined(priority)))
-            throw new InvalidOperationException("Each slot priority must be a defined priority value");
+            return "Each slot priority must be a defined priority value";
+        return null;
     }
 
     public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(

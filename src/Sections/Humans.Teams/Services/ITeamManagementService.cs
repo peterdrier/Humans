@@ -231,14 +231,14 @@ internal interface ITeamManagementService : ITeamManagement
         Guid updatedByUserId,
         CancellationToken cancellationToken = default);
 
-    Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
+    Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
-    Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
+    Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
@@ -247,7 +247,7 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Also deletes its assignments.</summary>
-    Task DeleteRoleDefinitionAsync(
+    Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -351,6 +351,11 @@ internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? R
 }
 
 internal sealed record TeamDeactivationResult(string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
+
+internal sealed record TeamRoleDefinitionMutationResult(TeamRoleDefinition? Definition = null, string? Refusal = null)
 {
     public bool Succeeded => Refusal is null;
 }
