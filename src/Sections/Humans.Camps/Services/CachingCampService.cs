@@ -496,7 +496,7 @@ internal sealed class CachingCampService(
         WithInnerRolesAsync(inner => inner.BuildDrillDownAsync(roleDefinitionId, year, ct));
 
     // A new definition has no assignments yet, so nothing cached changes.
-    Task<CampRoleDefinition> ICampRoleService.CreateDefinitionAsync(
+    Task<CampAdminMutationResult> ICampRoleService.CreateDefinitionAsync(
         CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
         WithInnerRolesAsync(inner => inner.CreateDefinitionAsync(input, actorUserId, ct));
 

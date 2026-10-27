@@ -318,7 +318,7 @@ Admin EE slot-cap updates reject malformed number binding with HTTP 400 before m
 - **Cancellation.** Camp-management and camp-event authorization preflights, camp edit/members/registration/contact GETs, global-search result rows, the admin dashboard and CSV export, `MyCampsViewComponent`, and CampAdmin role-definition and camp-management member mutations pass request cancellation through their reads and writes. A cancelled request is rethrown without an error toast or failure log; `MyCampsViewComponent` still hides on operational failures. POST redisplay helpers keep their existing boundary.
 - Admin pending/withdrawn description previews cut at 100 UTF-16 units without splitting surrogate pairs.
 - Camps sends full localized notice copy to Notifications, which bounds stored previews by Unicode character and retains oversized titles in the body.
-- Expected guard refusals (membership, historical-name and image scope, admin approve/reject/reactivate/delete, role-definition create/edit) log Warning with reason and identifiers, no exception; an unexpected role-edit result logs Error.
+- Expected guard refusals (membership, historical-name and image scope, admin approve/reject/reactivate/delete, role-definition create/edit) log Warning with reason and identifiers, no exception; an unexpected role-edit result logs Error. Role-definition create/edit return validation refusals as results (duplicate name/slug, invalid slug or minimum-required count, immutable system fields). Unexpected failures log Error and show a generic form error; they never expose exception text as validation feedback. Seed creation still throws on a refusal.
 
 ### Touch-and-clean guidance
 

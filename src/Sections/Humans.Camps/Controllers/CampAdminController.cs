@@ -337,15 +337,15 @@ internal sealed class CampAdminController(
         {
             var input = new CreateCampRoleDefinitionInput(
                 form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
-            await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
+            var result = await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
+            if (!result.Succeeded)
+            {
+                logger.LogWarning("CreateRole rejected for actor {UserId}: {Reason}", user.Id, result.ErrorMessage);
+                ModelState.AddModelError(string.Empty, result.ErrorMessage!);
+                return View("RoleForm", form);
+            }
             SetSuccess($"Created camp role '{form.Name}'.");
             return RedirectToAction(nameof(Roles));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("CreateRole rejected for actor {UserId}: {Reason}", user.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("RoleForm", form);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -403,13 +403,14 @@ internal sealed class CampAdminController(
                 return NotFound();
             }
 
+            if (result.Status == UpdateCampRoleDefinitionStatus.Rejected)
+            {
+                logger.LogWarning("EditRole rejected for role {RoleId} by actor {UserId}: {Reason}", id, user.Id, result.ErrorMessage);
+                ModelState.AddModelError(string.Empty, result.ErrorMessage!);
+                return View("RoleForm", form);
+            }
+
             throw new System.Diagnostics.UnreachableException($"Unexpected camp role update status '{result.Status}'.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("EditRole rejected for role {RoleId} by actor {UserId}: {Reason}", id, user.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("RoleForm", form);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

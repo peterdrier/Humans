@@ -301,9 +301,10 @@ public class CampAdminControllerTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
         var reason = edit ? "Camp role 'Worker' is a system role; only SlotCount and Description can be changed."
             : "A camp role definition with slug 'worker' already exists.";
-        var failure = new InvalidOperationException(reason);
-        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
-        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(false, reason));
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(UpdateCampRoleDefinitionResult.Rejected(reason));
         var logger = Substitute.For<ILogger<CampAdminController>>();
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
         var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
@@ -318,6 +319,34 @@ public class CampAdminControllerTests
         args[3].Should().BeNull();
         args[2]!.ToString().Should().Contain(actorId.ToString()).And.Contain(reason);
         if (edit) args[2]!.ToString().Should().Contain(roleId.ToString());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RoleForm_UnexpectedInvalidOperation_LogsErrorAndHidesExceptionMessage(bool edit)
+    {
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
+        var failure = new InvalidOperationException("Database connection is unavailable.");
+        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var logger = Substitute.For<ILogger<CampAdminController>>();
+        var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
+        var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = edit ? await controller.EditRole(roleId, form, ct) : await controller.CreateRole(form, ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
+        controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should()
+            .Be(edit ? "Failed to update role definition." : "Failed to create role definition.");
+        var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(LogLevel.Error);
+        args[3].Should().BeSameAs(failure);
     }
 
     [HumansFact]
