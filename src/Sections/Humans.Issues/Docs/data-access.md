@@ -16,9 +16,7 @@ Repository: `IIssuesRepository`.
 | Issues | R/W |
 | IssueComments | R/W |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `NavBadge:Issues:{userId:N}` (`IssuesService.BadgeCacheKey`, evicted in-service) | 2 min | yes | yes | yes |
+Actionable badge counts query the repository directly for the viewer’s queues and own reports; no count cache or invalidation is needed.
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
 `IRoleAssignmentService`, `IEmailService`,

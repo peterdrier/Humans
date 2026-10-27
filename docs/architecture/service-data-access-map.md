@@ -366,7 +366,6 @@ separately below the key table.
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
-| `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | IssuesService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenDigest}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
@@ -404,7 +403,7 @@ separately below the key table.
 
 1. **Nav-badge caches are owned by services.** `FeedbackBadgeCount` is populated by
    `FeedbackService`, and `NavBadge:Voting:{userId}` by `ApplicationDecisionService`.
-   Notifications reads unread recipient counts directly without a badge cache.
+   Notifications reads unread recipient counts and Issues reads actionable counts directly, without badge caches.
 
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
    `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,

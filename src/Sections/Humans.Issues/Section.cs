@@ -15,8 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Issues;
 
 /// <summary>
-/// No caching decorator: the service owns the per-viewer badge count cache and evicts it on every count-shifting
-/// write.
+/// Issue reads, including per-viewer actionable counts, query the repository directly.
 /// </summary>
 public sealed class Section : ISection
 {
