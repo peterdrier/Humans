@@ -2794,11 +2794,10 @@ public class SurveyServiceTests
             ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en",
             [Ans(questionId, "yes")]);
 
-        var act = async () => await CreateService().AdvanceWizardAsync(
+        var result = await CreateService().AdvanceWizardAsync(
             WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*completion tracking*");
+        result.Outcome.Should().Be(SurveyWizardOutcome.Ineligible);
         await _repo.DidNotReceive().FinalizeIdentifiedResponseAsync(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
@@ -3757,6 +3756,62 @@ public class SurveyServiceTests
             .Should().ContainSingle().Which.Should().Be("monday");
         await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("deadline", (int)SurveyWizardOutcome.Closed)]
+    [InlineData("missing", (int)SurveyWizardOutcome.NotFound)]
+    [InlineData("eligibility", (int)SurveyWizardOutcome.Ineligible)]
+    [InlineData("identity", (int)SurveyWizardOutcome.Ineligible)]
+    public async Task AdvanceWizardAsync_returns_final_gate_refusals_without_finalizing(
+        string refusal, int expectedValue)
+    {
+        var expected = (SurveyWizardOutcome)expectedValue;
+        var survey = SurveyWith(SurveyStatus.Open, null, null);
+        survey.Questions = [ChoiceQuestion(Guid.NewGuid(), survey.Id, SurveyQuestionType.SingleChoice, 0)];
+        survey.ClosesAt = _clock.GetCurrentInstant() + Duration.FromMinutes(1);
+        var actor = Guid.NewGuid();
+        var state = WizardState(survey.Id);
+        state.Started = true;
+        if (refusal is "eligibility" or "identity")
+        {
+            survey.IsAsociadoVote = true;
+            state.UserId = actor;
+            if (string.Equals(refusal, "eligibility", StringComparison.Ordinal))
+            {
+                state.Anonymity = ResponseAnonymity.CompletionTracked;
+                state.InvitationId = Guid.NewGuid();
+                _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+                    new ValueTask<UserInfo?>(Asociado(actor)),
+                    new ValueTask<UserInfo?>(UserWithLastLogin(actor, null, UserState.Suspended)));
+            }
+            else
+                _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+                    new ValueTask<UserInfo?>(Asociado(actor)));
+        }
+        var loads = 0;
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++loads > 1)
+            {
+                if (string.Equals(refusal, "missing", StringComparison.Ordinal)) return null;
+                if (string.Equals(refusal, "deadline", StringComparison.Ordinal)) _clock.Advance(Duration.FromMinutes(2));
+            }
+            return survey;
+        });
+
+        var logger = Substitute.For<ILogger<SurveyService>>();
+        var result = await CreateService(logger).AdvanceWizardAsync(state, 1, false, [], ct: TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(expected);
+        var log = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        log[0].Should().Be(LogLevel.Warning);
+        log[3].Should().BeNull();
+        log[2]!.ToString().Should().Contain(survey.Id.ToString()).And.Contain(expected.ToString());
+        _repo.ReceivedCalls().Should().NotContain(call =>
+            call.GetMethodInfo().Name == nameof(ISurveyRepository.AddResponseWithAnswersAndSaveAsync)
+            || call.GetMethodInfo().Name == nameof(ISurveyRepository.FinalizeIdentifiedResponseAsync)
+            || call.GetMethodInfo().Name == nameof(ISurveyRepository.FinalizeCompletionTrackedResponseAsync));
     }
 
     [HumansFact]

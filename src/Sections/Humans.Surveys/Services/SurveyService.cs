@@ -1063,13 +1063,14 @@ internal sealed class SurveyService(
     {
         // Load one authoritative definition for branching, normalization, required validation, and
         // persistence preparation. The caller must persist the returned answers without reloading it.
-        var survey = await repo.GetByIdAsync(submission.SurveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var survey = await repo.GetByIdAsync(submission.SurveyId, ct);
+        if (survey is null)
+            return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.NotFound);
 
         // The service is the authoritative gate: the controller's window checks are UX, this one is the rule.
         if (!SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, clock.GetCurrentInstant()))
         {
-            throw new InvalidOperationException("Survey is not open for responses.");
+            return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.Closed);
         }
         if (survey.IsAsociadoVote == true)
         {
@@ -1077,13 +1078,11 @@ internal sealed class SurveyService(
                 || submission.UserId is not { } userId
                 || submission.InvitationId is null)
             {
-                throw new InvalidOperationException(
-                    "Asociado votes require an eligible Asociado with completion tracking.");
+                return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.Ineligible);
             }
             if (!await IsEligibleAsociadoAsync(userId, ct))
             {
-                throw new InvalidOperationException(
-                    "Only an active, approved Asociado may answer this vote.");
+                return new([], [], [], [], AlreadyCompleted: false, Refusal: SurveyWizardOutcome.Ineligible);
             }
         }
 
@@ -1377,6 +1376,11 @@ internal sealed class SurveyService(
             state.Culture,
             SurveyWizardFlow.ToAnswerInputs(state.Answers));
         var prepared = await PrepareSubmissionAsync(submission, ct);
+        if (prepared.Refusal is { } submissionRefusal)
+        {
+            logger.LogWarning("Survey final submission refused for {SurveyId}: {Outcome}", state.SurveyId, submissionRefusal);
+            return new SurveyWizardAdvanceResult(submissionRefusal, []);
+        }
         if (prepared.AlreadyCompleted)
         {
             return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
@@ -2237,7 +2241,8 @@ internal sealed class SurveyService(
         IReadOnlyList<QuestionInput> Questions,
         IReadOnlyList<Guid> MissingRequired,
         IReadOnlyList<Guid> InvalidAnswers,
-        bool AlreadyCompleted);
+        bool AlreadyCompleted,
+        SurveyWizardOutcome? Refusal = null);
 
     private static List<SurveyAnswer> MapAnswers(Guid responseId, IReadOnlyList<SurveyAnswerInput> answers)
         => answers.Select(a => new SurveyAnswer
