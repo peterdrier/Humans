@@ -142,28 +142,27 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [InlineData("SetPrimary", true)]
-    [InlineData("SetEmailVisibility", true)]
-    [InlineData("DeleteEmail", false)]
-    [InlineData("ClearPrimary", true)]
-    [InlineData("Unlink", false)]
-    [InlineData("AdminSetPrimary", false)]
-    [InlineData("AdminSetVisibility", false)]
-    [InlineData("AdminDeleteEmail", false)]
-    [InlineData("AdminClearPrimary", false)]
-    [InlineData("AdminUnlink", false)]
-    public async Task EmailMutation_RejectionLogsWarningWithReasonWithoutException(string action, bool validationFailure)
+    [InlineData("SetPrimary")]
+    [InlineData("SetEmailVisibility")]
+    [InlineData("DeleteEmail")]
+    [InlineData("ClearPrimary")]
+    [InlineData("Unlink")]
+    [InlineData("AdminSetPrimary")]
+    [InlineData("AdminSetVisibility")]
+    [InlineData("AdminDeleteEmail")]
+    [InlineData("AdminClearPrimary")]
+    [InlineData("AdminUnlink")]
+    public async Task EmailMutation_RefusalLogsWarningWithReasonWithoutException(string action)
     {
         const string reason = "Email mutation rejected by a guardrail";
-        Exception rejection = validationFailure ? new ValidationException(reason) : new InvalidOperationException(reason);
         _userEmailService.SetPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<UpdateEmailResult>(rejection));
+            .Returns(new UpdateEmailResult(false, reason));
         _userEmailService.SetVisibilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<UpdateEmailResult>(rejection));
+            .Returns(new UpdateEmailResult(false, reason));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new DeleteEmailResult(false, reason));
         _userEmailService.ClearPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
+            .Returns(false);
         _userEmailService.UnlinkAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UnlinkEmailResult(false, reason));
         var emailId = Guid.NewGuid();
@@ -186,15 +185,15 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var expectedError = action is "SetPrimary" or "SetEmailVisibility" or "ClearPrimary"
-            ? "Common_Error"
+        var expectedError = action is "ClearPrimary" or "AdminClearPrimary"
+            ? "Users_EmailGrid_ClearPrimaryRejected"
             : reason;
         _controller.TempData["ErrorMessage"].Should().Be(expectedError);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
-        arguments[2]!.ToString().Should().Contain(reason).And.Contain(emailId.ToString());
+        arguments[2]!.ToString().Should().Contain(expectedError).And.Contain(emailId.ToString());
     }
 
     [HumansTheory]
@@ -703,11 +702,29 @@ public class ProfileEmailsControllerGridTests
     [InlineData("admin-unlink", false)]
     [InlineData("admin-delete", true)]
     [InlineData("admin-unlink", true)]
-    public async Task EmailRemoval_DependencyFailuresPropagateWithoutRefusalFeedback(string action, bool validation)
+    [InlineData("primary", false)]
+    [InlineData("primary", true)]
+    [InlineData("admin-primary", false)]
+    [InlineData("admin-primary", true)]
+    [InlineData("visibility", false)]
+    [InlineData("visibility", true)]
+    [InlineData("admin-visibility", false)]
+    [InlineData("admin-visibility", true)]
+    [InlineData("clear", false)]
+    [InlineData("clear", true)]
+    [InlineData("admin-clear", false)]
+    [InlineData("admin-clear", true)]
+    public async Task EmailMutation_DependencyFailuresPropagateWithoutRefusalFeedback(string action, bool validation)
     {
         var row = Guid.NewGuid();
         Exception failure = validation ? new ValidationException("Private dependency diagnostic")
             : new InvalidOperationException("Private dependency diagnostic");
+        _userEmailService.SetPrimaryAsync(_userId, row, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UpdateEmailResult>(failure));
+        _userEmailService.SetVisibilityAsync(_userId, row, Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UpdateEmailResult>(failure));
+        _userEmailService.ClearPrimaryAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(failure));
         _userEmailService.DeleteEmailAsync(_userId, row, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<DeleteEmailResult>(failure));
         _userEmailService.UnlinkAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
@@ -716,6 +733,12 @@ public class ProfileEmailsControllerGridTests
         {
             _ = action switch
             {
+                "primary" => await _controller.SetPrimary(row, TestContext.Current.CancellationToken),
+                "admin-primary" => await _controller.AdminSetPrimary(_userId, row, TestContext.Current.CancellationToken),
+                "visibility" => await _controller.SetEmailVisibility(row, null),
+                "admin-visibility" => await _controller.AdminSetVisibility(_userId, row, null, TestContext.Current.CancellationToken),
+                "clear" => await _controller.ClearPrimary(row, TestContext.Current.CancellationToken),
+                "admin-clear" => await _controller.AdminClearPrimary(_userId, row, TestContext.Current.CancellationToken),
                 "delete" => await _controller.DeleteEmail(row),
                 "admin-delete" => await _controller.AdminDeleteEmail(_userId, row, TestContext.Current.CancellationToken),
                 "unlink" => await _controller.Unlink(row, TestContext.Current.CancellationToken),
