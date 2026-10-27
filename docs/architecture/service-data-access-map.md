@@ -363,7 +363,6 @@ separately below the key table.
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
 | `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | FeedbackService (evicts its own key) |
-| `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationInboxService** (`GetUnreadBadgeCountsAsync`) | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
@@ -403,9 +402,9 @@ separately below the key table.
 
 ### Cache Issues / Notes
 
-1. **Nav-badge caches are owned by services.** `NotificationBadge:{userId}` is
-   populated by `NotificationInboxService`, `FeedbackBadgeCount` by
+1. **Nav-badge caches are owned by services.** `FeedbackBadgeCount` is populated by
    `FeedbackService`, and `NavBadge:Voting:{userId}` by `ApplicationDecisionService`.
+   Notifications reads unread recipient counts directly without a badge cache.
 
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
    `CachingTicketQueryService` keeps user holdings in `Tickets.UserHoldings`,

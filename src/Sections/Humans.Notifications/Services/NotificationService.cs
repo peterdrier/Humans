@@ -1,10 +1,8 @@
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -16,7 +14,6 @@ internal sealed class NotificationService(
     IRoleAssignmentService roleAssignmentService,
     ICommunicationPreferenceService preferenceService,
     IClock clock,
-    IMemoryCache cache,
     ILogger<NotificationService> logger) : INotificationService, IUserMerge
 {
     public Task SendAsync(
@@ -98,32 +95,13 @@ internal sealed class NotificationService(
         }
 
         await repo.AddAsync(notification, cancellationToken);
-        InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
 
         logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to role '{RoleName}' ({Count} recipients)",
             source, title, roleName, notification.Recipients.Count);
     }
 
-    private void InvalidateBadgeCaches(IEnumerable<Guid> userIds)
-    {
-        foreach (var userId in userIds)
-        {
-            cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
-        }
-    }
-
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct)
-    {
-        try
-        {
-            await repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, ct);
-        }
-        finally
-        {
-            // The save may commit before its acknowledgement fails.
-            InvalidateBadgeCaches([sourceUserId, targetUserId]);
-        }
-    }
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
+        repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, ct);
 }

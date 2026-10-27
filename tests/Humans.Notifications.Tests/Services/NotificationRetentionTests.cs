@@ -3,7 +3,6 @@ using Humans.Notifications.Services;
 using AwesomeAssertions;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -21,7 +20,6 @@ public class NotificationRetentionTests : IDisposable
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly FakeClock _clock;
-    private readonly IMemoryCache _cache;
     private readonly INotificationRetention _retention;
 
     public NotificationRetentionTests()
@@ -32,17 +30,15 @@ public class NotificationRetentionTests : IDisposable
 
         _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 10, 12, 0));
-        _cache = new MemoryCache(new MemoryCacheOptions());
 
         var repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
         _retention = new NotificationInboxService(
-            repo, Substitute.For<IUserService>(), _clock, _cache);
+            repo, Substitute.For<IUserService>(), _clock);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
-        _cache.Dispose();
         GC.SuppressFinalize(this);
     }
 

@@ -49,10 +49,10 @@ Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-s
   name, because a dozen sections emit and must not reference the whole section. Shape 6 lives
   in the section's own `Contracts/` folder: its only consumer, Backdoor, already references
   the section project, as it does for every section it serves.
-- **One dispatch path.** Build rows, apply the preference filter, persist, evict the badges of
-  whoever received something. Explicit recipients get a row each; a role gets one shared row.
+- **One dispatch path.** Build rows, apply the preference filter, persist.
+  Explicit recipients get a row each; a role gets one shared row.
 - **One inbox service** for shapes 2, 3, 4, 7 and 9: read models, per-row transitions, the
-  retention cutoffs, the GDPR contribution, the one cached read (badge counts).
+  retention cutoffs, the GDPR contribution, live badge counts.
 - **One meter provider** for shape 5, reaching every count through the owning section's read
   interface.
 - **One thin adapter** for shape 6, composing the inbox's unread tab with the meters.
@@ -71,8 +71,7 @@ Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-s
 - An `Actionable` notification cannot be dismissed, singly or in bulk — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:83`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:176`.
 - Only a recipient can resolve, dismiss, mark read or click through a notification — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:54`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:80`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:103`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:152`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:205`.
 - Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:21`.
-- Every transition made on a human's behalf evicts the badge cache of each user it touched —
-  `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:103`; the nightly purge is the exception (seams).
+- Badge counts read committed recipient state directly through `NotificationInboxService.GetUnreadBadgeCountsAsync`, including after a transition, merge or purge.
 - The purge deletes resolved rows past 7 days, unresolved informational rows past 30 days and
   unresolved rows of retired sources, and nothing else — `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:214`.
 - Meters are computed on read and never stored — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:230`.
@@ -85,17 +84,14 @@ Specified or known, not built; reserved, not ranked:
 - **The Notification Board redesign** (`Docs/features/notification-board.md`, approved) replaces
   the stored inbox with an in-memory board of section-published entries and retires the
   `NotificationSource` enum. Until its phase 4 lands, `notification-inbox.md` describes what runs.
-- **The purge leaves badges stale** for up to the two-minute TTL: the three delete methods
-  report counts, not affected users.
 - **Role fan-out takes no `sourceKey`**, so `ResolveBySourceKeyAsync` can never clear it.
 - **Dispatch is described as fire-and-forget but is not wrapped**; an emit failure reaches the
   caller.
 
 ## 6. Deliberately not done
 
-- **No caching decorator.** Both services cache one thing and evict it in-band on their own
-  writes; a decorator would sit between a service and its own invalidation.
-- **No real-time push.** A two-minute badge is enough at this scale.
+- **No caching decorator.** Inbox and badge counts read current rows; meter counts retain their own short-TTL caches.
+- **No real-time push.** Badge counts refresh on navigation.
 - **No stored meter.** A slow count is the owning section's to fix with a narrow read.
 - **No `GroupKey`.** Shared-versus-individual is decided by which dispatch method is called.
 - **Digests stay email.** Summaries are not work items.
