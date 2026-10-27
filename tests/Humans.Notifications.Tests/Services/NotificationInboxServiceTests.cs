@@ -112,7 +112,6 @@ public class NotificationInboxServiceTests : IDisposable
         var repo = Substitute.For<INotificationRepository>();
         repo.GetUnreadBadgeCountsAsync(_userId, ct)
             .Returns(snapshot.Task, Task.FromResult((Actionable: 0, Informational: 0)));
-        repo.MarkAllReadAsync(_userId, Arg.Any<Instant>(), ct).Returns(1);
         var service = new NotificationInboxService(repo, _userService, _clock);
 
         var beforeWrite = service.GetUnreadBadgeCountsAsync(_userId, ct);
@@ -124,7 +123,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PurgeExpiredAsync_InvalidatesAllRecipientsOfStaleAndRetiredNotifications()
+    public async Task PurgeExpiredAsync_UpdatesBadgesForAllRecipientsOfStaleAndRetiredNotifications()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var otherUserId = Guid.NewGuid();
@@ -157,9 +156,9 @@ public class NotificationInboxServiceTests : IDisposable
         var ct = Xunit.TestContext.Current.CancellationToken;
         var repo = Substitute.For<INotificationRepository>();
         repo.DeleteUnresolvedInformationalOlderThanAsync(Arg.Any<Instant>(), ct)
-            .Returns((1, (IReadOnlyList<Guid>)new[] { _userId }));
+            .Returns(1);
         repo.DeleteUnresolvedBySourcesAsync(Arg.Any<IReadOnlyList<NotificationSource>>(), ct)
-            .Returns<Task<(int Deleted, IReadOnlyList<Guid> AffectedUserIds)>>(_ =>
+            .Returns<Task<int>>(_ =>
                 throw new InvalidOperationException("Retention storage failed."));
         repo.GetUnreadBadgeCountsAsync(_userId, ct).Returns((0, 1), (0, 0));
         var service = new NotificationInboxService(repo, _userService, _clock);

@@ -175,7 +175,7 @@ internal sealed class NotificationInboxService(
             now - InformationalRetentionPeriod, ct);
         var retired = await repo.DeleteUnresolvedBySourcesAsync(RetiredSources, ct);
 
-        return (resolved, stale.Deleted, retired.Deleted);
+        return (resolved, stale, retired);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
