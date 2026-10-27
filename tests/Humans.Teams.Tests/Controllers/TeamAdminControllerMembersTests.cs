@@ -36,6 +36,7 @@ public class TeamAdminControllerMembersTests
     [InlineData(1, false)]
     [InlineData(1, true)]
     [InlineData(2, false)]
+    [InlineData(3, false)]
     public async Task RoleDefinitionWrite_UnexpectedDatabaseFailure_Propagates(int write, bool ajax)
     {
         var userId = Guid.NewGuid();
@@ -55,6 +56,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
+        if (write == 3) http.User.AddIdentity(new ClaimsIdentity([new Claim(ClaimTypes.Role, RoleNames.Admin)]));
         if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
@@ -71,12 +73,16 @@ public class TeamAdminControllerMembersTests
             .ReturnsForAnyArgs(Task.FromException<TeamRoleDefinitionMutationResult>(failure));
         teams.DeleteRoleDefinitionAsync(default, default).ReturnsForAnyArgs(Task.FromException<TeamRoleDefinitionMutationResult>(failure));
 
+        teams.ToggleRoleIsManagementAsync(default, default)
+            .ReturnsForAnyArgs(Task.FromException<TeamRoleDefinitionMutationResult>(failure));
+
         Func<Task<IActionResult>> act = () => write switch
         {
             0 => controller.CreateRole(team.Slug, new CreateRoleDefinitionModel { Name = "Role" }),
             1 => controller.EditRole(team.Slug, roleId,
                 new EditRoleDefinitionModel { Name = "Role", SlotCount = 1, Priorities = ["None"] }),
-            _ => controller.DeleteRole(team.Slug, roleId)
+            2 => controller.DeleteRole(team.Slug, roleId),
+            _ => controller.ToggleManagement(team.Slug, roleId)
         };
 
         (await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>()).Which.Should().BeSameAs(failure);

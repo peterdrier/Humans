@@ -576,17 +576,19 @@ internal sealed class TeamAdminController(
             return Forbid();
         }
 
-        try
+        var result = await _teamService.ToggleRoleIsManagementAsync(roleId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            var result = await _teamService.ToggleRoleIsManagementAsync(roleId, user.Id);
-            SetSuccess(result.IsManagement
-                ? $"'{result.RoleName}' is now the management role. Members assigned to it will become Coordinators."
-                : $"'{result.RoleName}' is no longer the management role.");
+            logger.LogWarning("Management-role toggle refused for role {RoleId} in team {TeamId} by user {UserId}: {Reason}",
+                roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        else
         {
-            logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            SetError(ex.Message);
+            var role = result.Definition!;
+            SetSuccess(role.IsManagement
+                ? $"'{role.Name}' is now the management role. Members assigned to it will become Coordinators."
+                : $"'{role.Name}' is no longer the management role.");
         }
 
         return RedirectToAction(nameof(Roles), new { slug });

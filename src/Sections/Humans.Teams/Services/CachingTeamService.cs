@@ -367,12 +367,12 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.DeleteRoleDefinitionAsync(roleDefinitionId, actorUserId, cancellationToken), static result => result.Succeeded);
 
-    public Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+    public Task<TeamRoleDefinitionMutationResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId,
         Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.ToggleRoleIsManagementAsync(
-            roleDefinitionId, actorUserId, cancellationToken));
+            roleDefinitionId, actorUserId, cancellationToken), static result => result.Succeeded);
 
     public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId,

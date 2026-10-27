@@ -1467,28 +1467,29 @@ internal sealed class TeamService(
         return new();
     }
 
-    public async Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+    public async Task<TeamRoleDefinitionMutationResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+        var definition = await repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken);
+        if (definition is null)
+            return new(Refusal: $"Role definition {roleDefinitionId} not found");
         var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
         var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
-            throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
+            return new(Refusal: "User does not have permission to manage role definitions for this team");
 
         var isManagement = !definition.IsManagement;
         if (isManagement)
         {
             if (definition.Assignments.Count > 0)
-                throw new InvalidOperationException("Cannot set IsManagement while members are assigned to the role");
+                return new(Refusal: "Cannot set IsManagement while members are assigned to the role");
 
             var existingManagement = await repo.OtherRoleHasIsManagementAsync(
                 definition.TeamId, roleDefinitionId, cancellationToken);
             if (existingManagement)
-                throw new InvalidOperationException("Another role in this team is already marked as the management role");
+                return new(Refusal: "Another role in this team is already marked as the management role");
         }
 
         var clearingIsManagement = definition.IsManagement && !isManagement && definition.Assignments.Count > 0;
@@ -1505,7 +1506,7 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
-        return new TeamRoleManagementToggleResult(definition.Name, definition.IsManagement);
+        return new(Definition: definition);
     }
 
     public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(

@@ -2108,19 +2108,20 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_DefinitionNotFound_Throws()
+    public async Task ToggleRoleIsManagementAsync_DefinitionNotFound_ReturnsRefusal()
     {
         var actor = SeedUser();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var act = () => _service.ToggleRoleIsManagementAsync(Guid.NewGuid(), actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Role definition*not found*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*Role definition*not found*");
     }
 
     [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_ActorLacksPermission_Throws()
+    public async Task ToggleRoleIsManagementAsync_ActorLacksPermission_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         var team = SeedTeam("Alpha");
@@ -2129,12 +2130,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*permission*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*permission*");
     }
 
     [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_PromotingWithAssignments_Throws()
+    public async Task ToggleRoleIsManagementAsync_PromotingWithAssignments_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -2148,12 +2150,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*members are assigned*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*members are assigned*");
     }
 
     [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_PromotingWhenAnotherManagementExists_Throws()
+    public async Task ToggleRoleIsManagementAsync_PromotingWhenAnotherManagementExists_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -2165,8 +2168,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var act = () => _service.ToggleRoleIsManagementAsync(def.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already marked as the management role*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*already marked as the management role*");
     }
 
     [HumansFact]
@@ -2181,7 +2185,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var result = await _service.ToggleRoleIsManagementAsync(def.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        result.IsManagement.Should().BeTrue();
+        result.Definition!.IsManagement.Should().BeTrue();
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id, TestContext.Current.CancellationToken);
         stored.IsManagement.Should().BeTrue();
@@ -2199,7 +2203,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         var result = await _service.ToggleRoleIsManagementAsync(def.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        result.IsManagement.Should().BeFalse();
+        result.Definition!.IsManagement.Should().BeFalse();
     }
 
     [HumansFact]

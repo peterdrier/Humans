@@ -329,7 +329,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var result = await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.IsManagement.Should().BeFalse();
+        result.Definition!.IsManagement.Should().BeFalse();
 
         ClearAllTrackers();
 
@@ -341,7 +341,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_SetWithAssignedMembers_Throws()
+    public async Task ToggleRoleIsManagementAsync_SetWithAssignedMembers_ReturnsRefusal()
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -354,8 +354,9 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var act = () => _service.ToggleRoleIsManagementAsync(role.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Cannot set IsManagement*");
+        var refused = await act();
+        refused.Succeeded.Should().BeFalse();
+        refused.Refusal.Should().Match("*Cannot set IsManagement*");
     }
 
     [HumansFact]

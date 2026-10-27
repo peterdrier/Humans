@@ -252,7 +252,7 @@ internal interface ITeamManagementService : ITeamManagement
         CancellationToken cancellationToken = default);
 
     /// <summary>Can't be enabled while members are assigned to the role.</summary>
-    Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+    Task<TeamRoleDefinitionMutationResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -310,10 +310,6 @@ internal sealed record TeamRoleReconciliationMembership(
     TeamMemberRole Role,
     SystemTeamType SystemTeamType,
     bool HasManagementRoleAssignment);
-
-internal sealed record TeamRoleManagementToggleResult(
-    string RoleName,
-    bool IsManagement);
 
 internal enum TeamJoinOutcome
 {
