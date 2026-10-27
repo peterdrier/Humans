@@ -156,7 +156,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> UpdateYearAsync(
+    public async Task<BudgetYearMutationResult> UpdateYearAsync(
         Guid yearId,
         string year,
         string name,
@@ -169,10 +169,10 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         var budgetYear = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (budgetYear is null)
-            return false;
+            return new($"Budget year {yearId} not found");
 
         if (budgetYear.Status == BudgetYearStatus.Closed)
-            throw new InvalidOperationException("Cannot modify a closed budget year.");
+            return new("Cannot modify a closed budget year.");
 
         if (!string.Equals(budgetYear.Year, year, StringComparison.Ordinal))
         {
@@ -201,10 +201,10 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         budgetYear.UpdatedAt = now;
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return new();
     }
 
-    public async Task<bool> UpdateYearStatusAsync(
+    public async Task<BudgetYearMutationResult> UpdateYearStatusAsync(
         Guid yearId,
         BudgetYearStatus status,
         Guid actorUserId,
@@ -215,7 +215,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsDeleted, ct);
         if (year is null)
-            return false;
+            return new($"Budget year {yearId} not found");
 
         var oldStatus = year.Status;
 
@@ -246,10 +246,10 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             actorUserId, now);
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return new();
     }
 
-    public async Task<bool> SoftDeleteYearAsync(
+    public async Task<BudgetYearMutationResult> SoftDeleteYearAsync(
         Guid yearId,
         Guid actorUserId,
         Instant now,
@@ -259,10 +259,10 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (year is null)
-            return false;
+            return new($"Budget year {yearId} not found");
 
         if (year.Status == BudgetYearStatus.Active)
-            throw new InvalidOperationException("Cannot delete an active budget year. Close it first.");
+            return new("Cannot delete an active budget year. Close it first.");
 
         year.IsDeleted = true;
         year.DeletedAt = now;
@@ -274,7 +274,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             actorUserId, now);
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return new();
     }
 
     public async Task<int> SyncDepartmentCategoriesAsync(

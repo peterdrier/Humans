@@ -26,8 +26,8 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, CancellationToken ct = default);
 
-    /// <summary>Audits each changed field. False when the year does not exist.</summary>
-    Task<bool> UpdateYearAsync(
+    /// <summary>Audits each changed field; returns a refusal when the year is missing or Closed.</summary>
+    Task<BudgetYearMutationResult> UpdateYearAsync(
         Guid yearId,
         string year,
         string name,
@@ -37,10 +37,9 @@ internal interface IBudgetRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Activating closes every other Active year in the same save, auditing each. False when the year is missing or
-    /// archived.
+    /// Activating closes every other Active year in the same save, auditing each. Refuses missing or archived years.
     /// </summary>
-    Task<bool> UpdateYearStatusAsync(
+    Task<BudgetYearMutationResult> UpdateYearStatusAsync(
         Guid yearId,
         BudgetYearStatus status,
         Guid actorUserId,
@@ -48,10 +47,9 @@ internal interface IBudgetRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Archives (sets <c>IsDeleted</c> and Closed). Throws <see cref="InvalidOperationException"/> on an Active year:
-    /// close it first. False when the year does not exist.
+    /// Archives (sets <c>IsDeleted</c> and Closed). Refuses Active or missing years.
     /// </summary>
-    Task<bool> SoftDeleteYearAsync(
+    Task<BudgetYearMutationResult> SoftDeleteYearAsync(
         Guid yearId,
         Guid actorUserId,
         Instant now,
@@ -258,3 +256,8 @@ internal sealed record TicketingWeeklyActualsInput(
     decimal StripeFeeTax,
     decimal StripeFeesTaxUnknown,
     decimal StripeFeesUntaxed);
+
+internal sealed record BudgetYearMutationResult(string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}

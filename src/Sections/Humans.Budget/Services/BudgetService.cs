@@ -161,38 +161,37 @@ internal sealed class BudgetService(
             Groups: []);
     }
 
-    public async Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
+    public async Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.UpdateYearStatusAsync(yearId, status, actorUserId, now);
-        if (!ok)
-            throw new InvalidOperationException($"Budget year {yearId} not found");
+        var result = await repository.UpdateYearStatusAsync(yearId, status, actorUserId, now);
+        if (!result.Succeeded) return result;
 
         logger.LogInformation(
             "Updated budget year {YearId} status to {NewStatus}",
             yearId, status);
+        return result;
     }
 
-    public async Task UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
+    public async Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.UpdateYearAsync(
+        var result = await repository.UpdateYearAsync(
             yearId, year, name, string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim(), actorUserId, now);
-        if (!ok)
-            throw new InvalidOperationException($"Budget year {yearId} not found");
+        return result;
     }
 
-    public async Task DeleteYearAsync(Guid yearId, Guid actorUserId)
+    public async Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.SoftDeleteYearAsync(yearId, actorUserId, now);
-        if (!ok)
-            throw new InvalidOperationException($"Budget year {yearId} not found");
+        var result = await repository.SoftDeleteYearAsync(yearId, actorUserId, now);
+        if (!result.Succeeded) return result;
 
         logger.LogInformation("Archived budget year {YearId}", yearId);
+        return result;
     }
 
     private async Task<List<BudgetableTeamRef>> GetBudgetableTeamsAsync() =>

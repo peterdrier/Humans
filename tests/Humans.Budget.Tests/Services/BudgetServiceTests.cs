@@ -470,6 +470,44 @@ public sealed class BudgetServiceTests
             descriptor, metadata, value: null);
     }
 
+    [HumansTheory]
+    [InlineData("status", false)]
+    [InlineData("update", false)]
+    [InlineData("archive", false)]
+    [InlineData("status", true)]
+    [InlineData("update", true)]
+    [InlineData("archive", true)]
+    public async Task YearMutations_ShowRefusalsAndPropagateDependencyFailures(string action, bool refused)
+    {
+        var (controller, budget, actor) = CreateAdminController(true);
+        var failure = new InvalidOperationException("Private persistence diagnostic");
+        Task<BudgetYearMutationResult> OutcomeAsync() => refused
+            ? Task.FromResult(new BudgetYearMutationResult("Budget year not found"))
+            : Task.FromException<BudgetYearMutationResult>(failure);
+        budget.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, actor).Returns(_ => OutcomeAsync());
+        budget.UpdateYearAsync(_yearId, "2026", "Budget", null, actor).Returns(_ => OutcomeAsync());
+        budget.DeleteYearAsync(_yearId, actor).Returns(_ => OutcomeAsync());
+        Task<IActionResult> ActAsync() => action switch
+        {
+            "status" => controller.UpdateYearStatus(_yearId, BudgetYearStatus.Active),
+            "update" => controller.UpdateYear(_yearId, "2026", "Budget", null),
+            _ => controller.DeleteYear(_yearId)
+        };
+
+        if (refused)
+        {
+            (await ActAsync()).Should().BeOfType<RedirectToActionResult>();
+            controller.TempData["ErrorMessage"]!.ToString().Should().EndWith("Budget year not found");
+            controller.TempData.Should().ContainSingle();
+        }
+        else
+        {
+            Func<Task> act = async () => await ActAsync();
+            (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+            controller.TempData.Should().BeEmpty();
+        }
+    }
+
     private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
     {
         var viewerId = Guid.NewGuid();
@@ -1056,8 +1094,9 @@ public sealed class BudgetServiceTests
         var existingAudit = await _repository.GetAuditLogAsync(_yearId);
 
         // A Reactivate form opened while Closed may be submitted after archiving.
-        var reactivate = () => _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
-        await reactivate.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+        var reactivate = await _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
+        reactivate.Succeeded.Should().BeFalse();
+        reactivate.Refusal.Should().Match("*not found*");
 
         var active = await _service.GetActiveYearAsync();
         active.Should().NotBeNull();
@@ -1071,13 +1110,24 @@ public sealed class BudgetServiceTests
             .Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task UpdateYearStatusAsync_missing_year_throws()
+    [HumansTheory]
+    [InlineData("status")]
+    [InlineData("update")]
+    [InlineData("archive")]
+    public async Task YearMutations_MissingYearReturnsRefusalWithoutAudit(string action)
     {
-        var act = () => _service.UpdateYearStatusAsync(Guid.NewGuid(), BudgetYearStatus.Active, Guid.NewGuid());
+        var id = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var result = action switch
+        {
+            "status" => await _service.UpdateYearStatusAsync(id, BudgetYearStatus.Active, actor),
+            "update" => await _service.UpdateYearAsync(id, "2026", "Budget", null, actor),
+            _ => await _service.DeleteYearAsync(id, actor)
+        };
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be($"Budget year {id} not found");
+        (await _repository.GetAuditLogAsync(id)).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1146,10 +1196,12 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        var act = () => _service.DeleteYearAsync(_yearId, Guid.NewGuid());
+        var result = await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*active*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Cannot delete an active budget year. Close it first.");
+        (await _repository.GetAuditLogAsync(_yearId)).Should().BeEmpty();
+        (await _service.GetYearByIdAsync(_yearId))!.IsDeleted.Should().BeFalse();
     }
 
     [HumansFact]
@@ -1887,6 +1939,14 @@ public sealed class BudgetServiceTests
         var actor = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();
         var ct = TestContext.Current.CancellationToken;
+        if (string.Equals(mutation, "update-year", StringComparison.Ordinal))
+        {
+            var result = await _repository.UpdateYearAsync(_yearId, "2027", "Renamed", null, actor, now, ct);
+            result.Succeeded.Should().BeFalse();
+            result.Refusal.Should().Be("Cannot modify a closed budget year.");
+            (await _repository.GetAuditLogAsync(_yearId)).Should().BeEmpty();
+            return;
+        }
         Func<Task> act = mutation switch
         {
             "create-group" => () => _repository.CreateGroupAsync(_yearId, "New", false, actor, now, ct),
@@ -1901,7 +1961,6 @@ public sealed class BudgetServiceTests
             "sync-departments" => () => _repository.SyncDepartmentCategoriesAsync(_yearId, [new BudgetableTeamRef(Guid.NewGuid(), "Team")], actor, now, ct),
             "ensure-ticketing-group" => () => _repository.EnsureTicketingGroupAsync(_yearId, actor, now, ct),
             "update-ticketing-projection" => () => _repository.UpdateTicketingProjectionAsync(new TicketingProjectionUpdate(ticketingGroupId, null, null, 0, 0m, 0m, 10, 0m, 0m, 0m), actor, now, ct),
-            "update-year" => () => _repository.UpdateYearAsync(_yearId, "2027", "Renamed", null, actor, now, ct),
             "sync-ticketing-actuals" => () => _repository.SyncTicketingActualsAsync(_yearId, [], Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             "refresh-ticketing-projections" => () => _repository.RefreshTicketingProjectionsAsync(_yearId, Clock.GetCurrentInstant().InUtc().Date, actor, now, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null)
