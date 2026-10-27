@@ -540,7 +540,7 @@ internal sealed class ShiftManagementService(
         foreach (var dayOffset in dailyStaffing.Keys)
         {
             if (dayOffset < periodStart || dayOffset > periodEnd)
-                throw new InvalidOperationException($"Day offset {dayOffset} is outside the {rota.Period.ToString().ToLowerInvariant()} period ({periodStart} to {periodEnd})");
+                return ShiftGenerationResult.Failure($"Day offset {dayOffset} is outside the {rota.Period.ToString().ToLowerInvariant()} period ({periodStart} to {periodEnd})");
         }
 
         // Additive: days that already have shifts are skipped.

@@ -372,7 +372,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 
 ## Triggers
 
-- Coordinator staffing-period, rota-deletion and range-bail guardrail rejections remain Warning logs with their identifiers and reason, without exception stacks.
+- Coordinator staffing-period, shift generation/creation, rota-move, rota-deletion and range-bail guardrail rejections return results and remain Warning logs with their identifiers and reason, without exception stacks. Build/strike dates outside their period return a refusal before any insertion. Unexpected staffing, shift-creation and rota-move dependency exceptions propagate instead of being displayed as guardrail feedback.
 
 - Personal calendar feed summaries localize the Pending marker through the existing Shifts resource set; authored rota and department names remain unchanged.
 - Every signup state change writes an audit log entry and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationEmitter`. Action set: `AuditAction.ShiftSignup{Created,Confirmed,Refused,Voluntold,Bailed,Cancelled,NoShow,Reassigned}`. `ShiftSignupCreated` fires on every self-signup (Pending or Confirmed) so the creation moment is always traceable; `ShiftSignupConfirmed` fires only on the later Pending → Confirmed transition by an approver. `ShiftSignupReassigned` fires once per account-merge fold (re-FK of signups from source to target).
