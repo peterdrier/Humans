@@ -1249,15 +1249,13 @@ internal sealed class SurveyService(
                 continue;
             }
 
-            try
-            {
-                answer = NormalizeAnswer(question, answer);
-            }
-            catch (InvalidOperationException ex)
+            var normalized = NormalizeAnswer(question, answer);
+            answer = normalized.Answer;
+            if (normalized.Refusal is { } refusal)
             {
                 logger.LogWarning(
                     "Rejected wizard answer for survey {SurveyId} question {QuestionId}: {Reason}",
-                    state.SurveyId, id, ex.Message);
+                    state.SurveyId, id, refusal);
                 invalidAnswers.Add(id);
             }
 
@@ -2160,18 +2158,15 @@ internal sealed class SurveyService(
                 && question.Type != SurveyQuestionType.Information)
             .Select(a =>
             {
-                try
-                {
-                    return NormalizeAnswer(questions[a.QuestionId], a);
-                }
-                catch (InvalidOperationException ex)
+                var normalized = NormalizeAnswer(questions[a.QuestionId], a);
+                if (normalized.Refusal is { } refusal)
                 {
                     logger.LogWarning(
                         "Rejected answer for survey {SurveyId} question {QuestionId}: {Reason}",
-                        survey.Id, a.QuestionId, ex.Message);
+                        survey.Id, a.QuestionId, refusal);
                     invalidAnswers.Add(a.QuestionId);
-                    return a;
                 }
+                return normalized.Answer;
             })
             .ToList();
         // Invalid answers cannot drive branching; an invalid answer that is itself hidden is ignored.
@@ -2191,7 +2186,7 @@ internal sealed class SurveyService(
             visibleAnswers.Where(a => invalidAnswers.Contains(a.QuestionId)).Select(a => a.QuestionId).ToList());
     }
 
-    private static SurveyAnswerInput NormalizeAnswer(QuestionInput question, SurveyAnswerInput answer)
+    private static (SurveyAnswerInput Answer, string? Refusal) NormalizeAnswer(QuestionInput question, SurveyAnswerInput answer)
     {
         var choices = question.Type is SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice
             ? answer.SelectedOptionValues
@@ -2201,21 +2196,26 @@ internal sealed class SurveyService(
                 .ToList()
             : [];
         if (question.Type == SurveyQuestionType.SingleChoice && choices.Count > 1)
-            throw new InvalidOperationException("A single-choice question permits only one option.");
+            return (answer, "A single-choice question permits only one option.");
 
         var rating = question.Type == SurveyQuestionType.Rating ? answer.RatingValue : null;
         if (rating is { } value && (value < (question.RatingMin ?? 1) || value > (question.RatingMax ?? 5)))
-            throw new InvalidOperationException("The rating is outside the question's range.");
+            return (answer, "The rating is outside the question's range.");
 
         var text = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
             && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null;
         if (text is not null && text.EnumerateRunes().Count() > 4000)
-            throw new InvalidOperationException("A text answer must be 4000 characters or fewer.");
+            return (answer, "A text answer must be 4000 characters or fewer.");
 
         var grid = question.Type == SurveyQuestionType.Grid
             ? NormalizeGridSelections(question.GridRows, question.Options, question.GridSelectionMode, answer.GridSelections)
             : null;
-        return answer with
+        (RankedAnswer? Answer, string? Refusal) ranked = question.Type == SurveyQuestionType.RankedChoice
+            ? NormalizeRankedAnswer(question, answer.RankedValue)
+            : (null, null);
+        if (ranked.Refusal is { } rankedRefusal) return (answer, rankedRefusal);
+
+        var normalized = answer with
         {
             SelectedOptionValues = choices,
             TextValue = text,
@@ -2223,9 +2223,9 @@ internal sealed class SurveyService(
             GridSelections = grid?.Count > 0
                 ? grid.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.Ordinal)
                 : null,
-            RankedValue = question.Type == SurveyQuestionType.RankedChoice
-                ? NormalizeRankedAnswer(question, answer.RankedValue) : null,
+            RankedValue = ranked.Answer,
         };
+        return (normalized, null);
     }
 
     private sealed record VisibleAnswerPreparation(
@@ -2845,14 +2845,14 @@ internal sealed class SurveyService(
         return null;
     }
 
-    private static RankedAnswer? NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
+    private static (RankedAnswer? Answer, string? Refusal) NormalizeRankedAnswer(QuestionInput question, RankedAnswer? answer)
     {
-        if (answer is null) return null;
+        if (answer is null) return (null, null);
         var authored = question.Options.OrderBy(option => option.Order).Select(option => option.Value).ToList();
         return NormalizeRankedAnswer(authored, question.RankedSettings, answer);
     }
 
-    private static RankedAnswer? NormalizeRankedAnswer(
+    private static (RankedAnswer? Answer, string? Refusal) NormalizeRankedAnswer(
         IReadOnlyList<string> authored,
         RankedQuestionSettings? settings,
         RankedAnswer answer)
@@ -2865,7 +2865,7 @@ internal sealed class SurveyService(
             .Where(known.Contains)
             .ToList();
         if (suppliedKnownValues.Distinct(StringComparer.Ordinal).Count() != suppliedKnownValues.Count)
-            throw new InvalidOperationException("A ranked-choice option may appear only once in a ballot.");
+            return (null, "A ranked-choice option may appear only once in a ballot.");
 
         var authoredPositions = authored
             .Select((value, index) => (value, index))
@@ -2879,7 +2879,7 @@ internal sealed class SurveyService(
                 .OrderBy(value => authoredPositions[value])
                 .ToList();
             if (!settings.AllowEqualRanks && valid.Count > 1)
-                throw new InvalidOperationException("This ranked-choice question does not allow equal ranks.");
+                return (null, "This ranked-choice question does not allow equal ranks.");
             if (valid.Count > 0) groups.Add(valid);
         }
 
@@ -2888,8 +2888,8 @@ internal sealed class SurveyService(
             .OrderBy(value => authoredPositions[value])
             .ToList();
         if (!settings.AllowReject && rejected.Count > 0)
-            throw new InvalidOperationException("This ranked-choice question does not allow rejection.");
-        return groups.Count == 0 && rejected.Count == 0 ? null : new RankedAnswer(groups, rejected);
+            return (null, "This ranked-choice question does not allow rejection.");
+        return (groups.Count == 0 && rejected.Count == 0 ? null : new RankedAnswer(groups, rejected), null);
     }
 
     private static Dictionary<string, List<string>> NormalizeGridSelections(
