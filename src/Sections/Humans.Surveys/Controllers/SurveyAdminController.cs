@@ -114,18 +114,13 @@ internal sealed class SurveyAdminController(
         var auth = await authorizationService.AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.Submit));
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
+        if (result.Succeeded)
+            SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
+        else
         {
-            var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
-            if (result.Succeeded)
-                SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
-            else
-                SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Survey submit-for-approval rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(localizer["Surveys_SubmitFailed"]);
+            logger.LogWarning("Survey submit-for-approval rejected for {SurveyId}: {Reason}", id, result.ErrorKey);
+            SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
         }
         // Index, not Edit: a successful submit leaves the survey PendingApproval, which the
         // authorization handler no longer lets an ordinary author edit.
@@ -276,20 +271,14 @@ internal sealed class SurveyAdminController(
         var access = await RequirePreviewAsync(id, ct);
         if (access.Error is not null) return access.Error;
 
-        try
+        var result = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
+        if (result.RecipientEmail is not null)
+            SetSuccess(localizer["Surveys_PreviewEmailQueued", result.RecipientEmail]);
+        else
         {
-            var result = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
-            if (result.RecipientEmail is not null)
-                SetSuccess(localizer["Surveys_PreviewEmailQueued", result.RecipientEmail]);
-            else
-                SetError(localizer[result.ErrorKey ?? "Surveys_PreviewQueueFailed"]);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
-                id, actorId, ex.Message);
-            SetError(localizer["Surveys_PreviewQueueFailed"]);
+            logger.LogWarning("Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
+                id, actorId, result.ErrorKey);
+            SetError(localizer[result.ErrorKey ?? "Surveys_PreviewQueueFailed"]);
         }
 
         // Send is Board-only, so an author who rehearsed their own invitation goes to the builder.
@@ -309,31 +298,22 @@ internal sealed class SurveyAdminController(
         var access = await RequirePreviewAsync(id, ct);
         if (access.Error is not null) return access.Error;
 
-        try
+        var result = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
+        if (result.Preview is null)
         {
-            var result = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
-            if (result.Preview is null)
-            {
-                SetError(localizer[result.ErrorKey ?? "Surveys_PreviewFailed"]);
-                return RedirectToAction(nameof(Edit), new { id });
-            }
-            var message = result.Preview;
-            return View("EmailPreview", new SurveyEmailPreviewViewModel
-            {
-                SurveyId = id,
-                Recipient = message.RecipientEmail,
-                Subject = message.Subject,
-                HtmlBody = message.HtmlBody,
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
-                id, actorId, ex.Message);
-            SetError(localizer["Surveys_PreviewFailed"]);
+            logger.LogWarning("Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
+                id, actorId, result.ErrorKey);
+            SetError(localizer[result.ErrorKey ?? "Surveys_PreviewFailed"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
+        var message = result.Preview;
+        return View("EmailPreview", new SurveyEmailPreviewViewModel
+        {
+            SurveyId = id,
+            Recipient = message.RecipientEmail,
+            Subject = message.Subject,
+            HtmlBody = message.HtmlBody,
+        });
     }
 
     [HttpPost("Save")]
@@ -362,32 +342,21 @@ internal sealed class SurveyAdminController(
             if (!auth.Succeeded) return Forbid();
         }
 
-        Guid id;
-        try
+        var input = model.ToEditInput(Zone);
+        var result = model.Id is null
+            ? await surveyService.CreateAsync(input, actorId.Value, ct)
+            : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actorId.Value), ct);
+        if (!result.Succeeded)
         {
-            var input = model.ToEditInput(Zone);
-            var result = model.Id is null
-                ? await surveyService.CreateAsync(input, actorId.Value, ct)
-                : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actorId.Value), ct);
-            if (!result.Succeeded)
-            {
-                var error = result.Error;
-                logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, error?.DiagnosticMessage);
-                ModelState.AddModelError(string.Empty, error?.Key is { } key
-                    ? localizer[key, error.Args].Value
-                    : localizer["Surveys_Validation_SaveFailed"].Value);
-                await PrepareBuilderForRenderAsync(model, ct);
-                return View("Builder", model);
-            }
-            id = result.SurveyId!.Value;
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Survey save failed for {SurveyId}: {Reason}", model.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, localizer["Surveys_Validation_SaveFailed"]);
+            var error = result.Error;
+            logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, error?.DiagnosticMessage);
+            ModelState.AddModelError(string.Empty, error?.Key is { } key
+                ? localizer[key, error.Args].Value
+                : localizer["Surveys_Validation_SaveFailed"].Value);
             await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
+        var id = result.SurveyId!.Value;
 
         // The save is already committed: a translation failure must not re-render the builder as unsaved (a re-submit
         // would double-create), so it reports and redirects.

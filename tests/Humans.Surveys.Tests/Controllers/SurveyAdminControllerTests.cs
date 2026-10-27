@@ -88,7 +88,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Save_retains_the_form_with_localized_refusal_and_hides_dependency_diagnostics(bool dependencyFailure)
+    public async Task Save_localizes_refusals_and_propagates_dependency_failures(bool dependencyFailure)
     {
         var actor = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -109,14 +109,23 @@ public sealed class SurveyAdminControllerTests
             Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Entered title" },
         };
 
+        if (dependencyFailure)
+        {
+            Func<Task> act = async () => await sut.Save(model, "save-translate", Xunit.TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private storage diagnostic");
+            sut.ModelState.Should().BeEmpty();
+            sut.TempData.Should().BeEmpty();
+            await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default);
+            return;
+        }
+
         var result = await sut.Save(model, "save-translate", Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Which;
         view.ViewName.Should().Be("Builder");
         view.Model.Should().BeSameAs(model);
         var error = sut.ModelState[string.Empty]!.Errors.Should().ContainSingle().Subject.ErrorMessage;
-        error.Should().Be(dependencyFailure ? localizer["Surveys_Validation_SaveFailed"].Value
-            : localizer["Surveys_Validation_SubjectLength", 200, "ca"].Value);
+        error.Should().Be(localizer["Surveys_Validation_SubjectLength", 200, "ca"].Value);
         sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
         await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default);
     }
@@ -529,7 +538,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Preview_dependency_failure_uses_translated_feedback(bool send)
+    public async Task Preview_dependency_failure_propagates_without_refusal_feedback(bool send)
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -545,13 +554,16 @@ public sealed class SurveyAdminControllerTests
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId,
             localizer: localizer);
 
-        if (send)
-            await sut.SendPreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
-        else
-            await sut.PreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
+        Func<Task> act = async () =>
+        {
+            if (send)
+                await sut.SendPreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
+            else
+                await sut.PreviewEmail(surveyId, preview, Xunit.TestContext.Current.CancellationToken);
+        };
 
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer[send ? "Surveys_PreviewQueueFailed" : "Surveys_PreviewFailed"].Value);
-        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private preview diagnostic");
+        sut.TempData.Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -808,7 +820,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_dependency_failure_uses_translated_feedback()
+    public async Task Submit_dependency_failure_propagates_without_refusal_feedback()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -821,10 +833,10 @@ public sealed class SurveyAdminControllerTests
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId,
             localizer: localizer);
 
-        await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
+        Func<Task> act = async () => await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Surveys_SubmitFailed"].Value);
-        sut.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private provider diagnostic");
+        sut.TempData.Should().BeEmpty();
     }
 
     [HumansTheory]
