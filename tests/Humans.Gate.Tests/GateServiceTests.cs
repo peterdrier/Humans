@@ -513,6 +513,38 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task Gdpr_ExportOmitsBarcodeAndOtherPeoplesIds()
+    {
+        var supervisor = Guid.NewGuid();
+        StubTicket(matchedUserId: GuestId);
+        await RecordAsync(idConfirmed: true, overrideBy: supervisor);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            (await _svc.ContributeForUserAsync(GuestId, default)).Single().Data);
+
+        json.Should().NotContain(Barcode)
+            .And.NotContain(AgentId.ToString())
+            .And.NotContain(supervisor.ToString());
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_ClientScanAtNeverDecidesTheVerdict()
+    {
+        StubTicket(matchedUserId: GuestId);
+        await _svc.SaveSettingsAsync(new GateSettingsDto(
+            Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
+
+        // A device clock claiming a post-cutoff scan cannot admit early: server time decides.
+        var r = await _svc.RecordDecisionAsync(
+            new GateDecisionInput(Barcode, IdConfirmed: true, ChildWithAdult: false, LaneId: "L1",
+                ClientScanAt: Clock.GetCurrentInstant().Plus(Duration.FromHours(12)), Note: null,
+                OverrideByUserId: null),
+            AgentId);
+
+        r.Verdict.Should().Be(GateVerdict.RejectedTooEarly);
+    }
+
+    [HumansFact]
     public async Task Merge_ReassignsScansToSurvivor()
     {
         StubTicket(matchedUserId: GuestId);
