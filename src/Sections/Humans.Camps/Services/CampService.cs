@@ -601,6 +601,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     public async Task<CampAdminMutationResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default)
     {
+        if (notes is { Length: > 2000 })
+        {
+            return new(false, "Review notes must be 2000 characters or fewer.");
+        }
+
         string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;
@@ -633,6 +638,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     public async Task<CampAdminMutationResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default)
     {
+        if (notes is { Length: > 2000 })
+        {
+            return new(false, "Review notes must be 2000 characters or fewer.");
+        }
+
         string? refusal = null;
         var now = _clock.GetCurrentInstant();
         var year = 0;

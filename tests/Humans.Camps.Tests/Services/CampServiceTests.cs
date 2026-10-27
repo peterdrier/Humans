@@ -410,6 +410,45 @@ public sealed class CampServiceTests : CampsTestHarness
         AuditLog.ReceivedCalls().Count().Should().Be(auditCalls);
     }
 
+    [HumansTheory]
+    [InlineData(true, 2000)]
+    [InlineData(false, 2000)]
+    [InlineData(true, 2001)]
+    [InlineData(false, 2001)]
+    public async Task SeasonReview_EnforcesStoredNoteLimitBeforeChangingSeason(bool approve, int length)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCampAsync();
+        var season = await CampsDb.CampSeasons.SingleAsync(s => s.CampId == camp.Id, ct);
+        var updatedAt = season.UpdatedAt;
+        var auditCalls = AuditLog.ReceivedCalls().Count();
+        var notes = new string('x', length);
+
+        var result = approve
+            ? await _service.ApproveSeasonAsync(season.Id, TestActorId, notes, ct)
+            : await _service.RejectSeasonAsync(season.Id, TestActorId, notes, ct);
+
+        await CampsDb.Entry(season).ReloadAsync(ct);
+        if (length > 2000)
+        {
+            result.Succeeded.Should().BeFalse();
+            result.ErrorMessage.Should().Be("Review notes must be 2000 characters or fewer.");
+            season.Status.Should().Be(CampSeasonStatus.Pending);
+            season.ReviewNotes.Should().BeNull();
+            season.ReviewedByUserId.Should().BeNull();
+            season.ResolvedAt.Should().BeNull();
+            season.UpdatedAt.Should().Be(updatedAt);
+            AuditLog.ReceivedCalls().Count().Should().Be(auditCalls);
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            season.Status.Should().Be(approve ? CampSeasonStatus.Active : CampSeasonStatus.Rejected);
+            season.ReviewNotes.Should().Be(notes);
+        }
+    }
+
     [HumansFact]
     public async Task ApproveSeasonAsync_PendingSeason_SetsActive()
     {
