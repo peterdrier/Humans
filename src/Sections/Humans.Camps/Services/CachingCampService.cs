@@ -441,13 +441,15 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task SetCampSeasonEeSlotCountAsync(
+    public Task<CampAdminMutationResult> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
-            await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
+            if (result.Succeeded)
+                await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+            return result;
         });
 
     public Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(

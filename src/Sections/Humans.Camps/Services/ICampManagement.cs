@@ -109,7 +109,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// Allowed to drop below the current granted-count: existing grants are retained
     /// but no new grants can be issued until the granted-count falls back under the cap.
     /// </summary>
-    Task SetCampSeasonEeSlotCountAsync(
+    Task<CampAdminMutationResult> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
         CancellationToken cancellationToken = default);
 

@@ -38,6 +38,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public CachingCampServiceTests()
     {
         _innerSubstitute = Substitute.For<ICampManagement, IUserMerge>();
+        _innerSubstitute.SetCampSeasonEeSlotCountAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
         _innerSubstitute.ReactivateSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new CampAdminMutationResult(true));
         _innerSubstitute.DeleteCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())

@@ -64,12 +64,52 @@ public class CampAdminControllerTests
             $"Camp contact and lead list exported for 2026: {(hasSeason ? 1 : 0)} rows", actorId);
     }
 
+    [HumansFact]
+    public async Task EeSlotCount_DependencyFailurePropagatesWithoutValidationFeedback()
+    {
+        var camps = Substitute.For<ICampManagement>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        var failure = new InvalidOperationException("Storage unavailable");
+        camps.SetCampSeasonEeSlotCountAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<CampAdminMutationResult>(failure));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+
+        Func<Task> act = async () => await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 3, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("EE slot count cannot be negative.")]
+    [InlineData("Camp season not found.")]
+    public async Task EeSlotCount_ExpectedRefusalShowsReasonWithoutSuccess(string reason)
+    {
+        var camps = Substitute.For<ICampManagement>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        camps.SetCampSeasonEeSlotCountAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(false, reason));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+
+        (await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 3, TestContext.Current.CancellationToken))
+            .Should().BeOfType<RedirectToActionResult>();
+
+        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(reason);
+        controller.TempData.Should().ContainSingle();
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EeSlotCount_RejectsMalformedBinding_ButAcceptsExplicitZero(bool malformed)
     {
         var camps = Substitute.For<ICampManagement>();
+        camps.SetCampSeasonEeSlotCountAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
         var users = Substitute.For<IUserService>();
         var actorId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();

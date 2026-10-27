@@ -1662,19 +1662,19 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // the registered IUserDataContributor, which refreshes after this returns.
     }
 
-    public async Task SetCampSeasonEeSlotCountAsync(
+    public async Task<CampAdminMutationResult> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         if (slotCount < 0)
-            throw new ArgumentOutOfRangeException(nameof(slotCount), "EE slot count cannot be negative.");
+            return new(false, "EE slot count cannot be negative.");
 
         var result = await _repo.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, cancellationToken);
         if (result is null)
-            throw new InvalidOperationException("Camp season not found.");
+            return new(false, "Camp season not found.");
 
         var (oldValue, newValue, campId) = result.Value;
-        if (oldValue == newValue) return;
+        if (oldValue == newValue) return new(true);
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonEeSlotCountChanged,
@@ -1682,6 +1682,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             $"EE slot count changed from {oldValue} to {newValue}.",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        return new(true);
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(

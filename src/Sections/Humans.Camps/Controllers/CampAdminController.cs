@@ -165,25 +165,18 @@ internal sealed class CampAdminController(
         if (user is null) return Unauthorized();
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        try
+        var result = await campService.SetCampSeasonEeSlotCountAsync(
+            seasonId, slotCount, user.Id, cancellationToken);
+        if (result.Succeeded)
         {
-            await campService.SetCampSeasonEeSlotCountAsync(
-                seasonId, slotCount, user.Id, cancellationToken);
             SetSuccess($"EE slot count set to {slotCount}.");
         }
-        catch (ArgumentOutOfRangeException)
+        else
         {
             logger.LogWarning(
-                "EE slot count must be non-negative for season {SeasonId} (actor {UserId})",
-                seasonId, user.Id);
-            SetError("EE slot count cannot be negative.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Failed to set EE slot count on season {SeasonId}: {Reason}",
-                seasonId, ex.Message);
-            SetError(ex.Message);
+                "Failed to set EE slot count on season {SeasonId} for actor {UserId}: {Reason}",
+                seasonId, user.Id, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));
