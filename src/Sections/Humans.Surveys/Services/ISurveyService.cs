@@ -162,7 +162,7 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// Strikes ranked options from the count of a Closed survey. Rewrites no stored ballot;
     /// audit-logged as a survey update.
     /// </summary>
-    Task SetRankedAvailabilityAsync(
+    Task<SurveySaveResult> SetRankedAvailabilityAsync(
         Guid surveyId,
         Guid questionId,
         IReadOnlyList<string> unavailableValues,

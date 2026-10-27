@@ -1563,20 +1563,21 @@ internal sealed class SurveyService(
             unavailable.ToList());
     }
 
-    public async Task SetRankedAvailabilityAsync(
+    public async Task<SurveySaveResult> SetRankedAvailabilityAsync(
         Guid surveyId,
         Guid questionId,
         IReadOnlyList<string> unavailableValues,
         SurveyViewer viewer,
         CancellationToken ct = default)
     {
-        var detail = await GetForEditAsync(surveyId, ct)
-            ?? throw new InvalidOperationException("Survey not found.");
+        var detail = await GetForEditAsync(surveyId, ct);
+        if (detail is null)
+            return new(Error: new(null, "Survey not found."));
         if (detail.Status != SurveyStatus.Closed)
-            throw new InvalidOperationException("Candidate availability can only change after the vote closes.");
+            return new(Error: new(null, "Candidate availability can only change after the vote closes."));
         var question = detail.Editable.Questions.FirstOrDefault(candidate => candidate.Id == questionId);
         if (question?.Type != SurveyQuestionType.RankedChoice)
-            throw new InvalidOperationException("Ranked-choice question not found.");
+            return new(Error: new(null, "Ranked-choice question not found."));
         var known = question.Options.Select(option => option.Value).ToHashSet(StringComparer.Ordinal);
         var normalized = unavailableValues
             .Where(known.Contains)
@@ -1587,12 +1588,12 @@ internal sealed class SurveyService(
                 ? candidate with { RankedUnavailableOptionValues = normalized }
                 : candidate)
             .ToList();
-        (await UpdateCoreAsync(
+        return await UpdateCoreAsync(
             surveyId,
             detail.Editable with { Questions = updatedQuestions },
             viewer,
             allowRankedAvailabilityChanges: true,
-            ct)).RequireSuccess();
+            ct);
     }
 
     private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch

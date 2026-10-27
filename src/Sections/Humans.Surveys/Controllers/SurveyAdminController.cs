@@ -522,22 +522,22 @@ internal sealed class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
-        try
+        var result = await surveyService.SetRankedAvailabilityAsync(
+            id,
+            questionId,
+            unavailableValues ?? [],
+            CurrentViewer(actorId.Value),
+            ct);
+        if (result.Succeeded)
         {
-            await surveyService.SetRankedAvailabilityAsync(
-                id,
-                questionId,
-                unavailableValues ?? [],
-                CurrentViewer(actorId.Value),
-                ct);
             SetSuccess("Candidate availability updated; ranked results were recalculated.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
             logger.LogWarning(
                 "Ranked availability update rejected for survey {SurveyId}, question {QuestionId}: {Reason}",
-                id, questionId, ex.Message);
-            SetError(ex.Message);
+                id, questionId, result.Error?.DiagnosticMessage);
+            SetError(result.Error?.DiagnosticMessage ?? "Candidate availability could not be updated.");
         }
         return RedirectToAction(nameof(Results), new { id });
     }

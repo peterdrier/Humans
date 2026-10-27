@@ -515,8 +515,10 @@ public sealed class SurveyAdminControllerTests
         await teams.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task RankedAvailability_logs_a_rejected_update()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RankedAvailability_logs_refusals_and_propagates_dependency_failures(bool dependencyFailure)
     {
         var surveyId = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -528,7 +530,9 @@ public sealed class SurveyAdminControllerTests
                 Arg.Any<IReadOnlyList<string>>(),
                 Arg.Is<SurveyViewer>(v => v.UserId == actorId),
                 Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("The vote is still open."));
+            .Returns(_ => dependencyFailure
+                ? throw new InvalidOperationException("The vote is still open.")
+                : new SurveySaveResult(Error: new(null, "The vote is still open.")));
         var logger = new CapturingLogger<SurveyAdminController>();
         var http = new DefaultHttpContext
         {
@@ -547,6 +551,16 @@ public sealed class SurveyAdminControllerTests
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
         };
+
+        if (dependencyFailure)
+        {
+            Func<Task> act = async () => await sut.RankedAvailability(
+                surveyId, questionId, [], Xunit.TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("The vote is still open.");
+            sut.TempData.Should().BeEmpty();
+            logger.Entries.Should().BeEmpty();
+            return;
+        }
 
         var result = await sut.RankedAvailability(
             surveyId,

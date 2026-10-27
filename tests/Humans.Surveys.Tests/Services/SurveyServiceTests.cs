@@ -5041,9 +5041,11 @@ public class SurveyServiceTests
             .Do(call => captured = call.Arg<Survey>());
         var actor = Guid.NewGuid();
 
-        await CreateService().SetRankedAvailabilityAsync(
+        var result = await CreateService().SetRankedAvailabilityAsync(
             survey.Id, questionId, ["c", "unknown"], Board(actor), TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
+        result.SurveyId.Should().Be(survey.Id);
         captured!.Questions.Single().RankedUnavailableOptionValues.Should().Equal("c");
         await _audit.Received(1).LogAsync(
             AuditAction.SurveyUpdated,
@@ -5054,20 +5056,28 @@ public class SurveyServiceTests
             actor);
     }
 
-    [HumansFact]
-    public async Task SetRankedAvailabilityAsync_refuses_while_the_vote_is_open()
+    [HumansTheory]
+    [Xunit.InlineData("open", "Candidate availability can only change after the vote closes.")]
+    [Xunit.InlineData("missing-survey", "Survey not found.")]
+    [Xunit.InlineData("missing-question", "Ranked-choice question not found.")]
+    [Xunit.InlineData("wrong-question-type", "Ranked-choice question not found.")]
+    public async Task SetRankedAvailabilityAsync_refuses_invalid_targets_without_writes(string target, string reason)
     {
-        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Asociados, null);
+        var survey = SurveyWith(string.Equals(target, "open", StringComparison.Ordinal) ? SurveyStatus.Open : SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
         var questionId = Guid.NewGuid();
-        survey.Questions = [RankedQuestion(questionId, survey.Id)];
-        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var question = RankedQuestion(questionId, survey.Id);
+        if (string.Equals(target, "wrong-question-type", StringComparison.Ordinal)) question.Type = SurveyQuestionType.ShortText;
+        survey.Questions = [question];
+        if (!string.Equals(target, "missing-survey", StringComparison.Ordinal))
+            _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var act = async () => await CreateService().SetRankedAvailabilityAsync(
-            survey.Id, questionId, ["b"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
+        var result = await CreateService().SetRankedAvailabilityAsync(
+            survey.Id, string.Equals(target, "missing-question", StringComparison.Ordinal) ? Guid.NewGuid() : questionId,
+            ["b"], Board(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*only change after the vote closes*");
+        result.Succeeded.Should().BeFalse();
+        result.Error!.DiagnosticMessage.Should().Be(reason);
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
