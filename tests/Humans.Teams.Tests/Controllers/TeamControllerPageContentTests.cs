@@ -439,7 +439,7 @@ public class TeamControllerPageContentTests
     [InlineData("Leave", true)]
     [InlineData("Withdraw", false)]
     [InlineData("Withdraw", true)]
-    public async Task MemberActionErrors_UseSpanishResourcesAndUnknownFailureFallback(string action, bool unknown)
+    public async Task MemberActionErrors_LocalizeRefusalsAndPropagateDependencyFailures(string action, bool unknown)
     {
         var originalCulture = CultureInfo.CurrentUICulture;
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es");
@@ -490,17 +490,23 @@ public class TeamControllerPageContentTests
                 Url = Substitute.For<IUrlHelper>()
             };
 
-            var result = action switch
+            Task<IActionResult> ActAsync() => action switch
             {
-                "Join" => await controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
-                "Leave" => await controller.Leave(team.Slug),
-                _ => await controller.WithdrawRequest(Guid.NewGuid())
+                "Join" => controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
+                "Leave" => controller.Leave(team.Slug),
+                _ => controller.WithdrawRequest(Guid.NewGuid())
             };
 
-            result.Should().BeOfType<RedirectToActionResult>();
-            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(unknown
-                ? "No se pudo completar esta acción del equipo. Inténtalo de nuevo."
-                : action switch
+            if (unknown)
+            {
+                Func<Task> act = async () => await ActAsync();
+                await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(key);
+                controller.TempData.Should().BeEmpty();
+                return;
+            }
+
+            (await ActAsync()).Should().BeOfType<RedirectToActionResult>();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(action switch
                 {
                     "Join" => "Ya tiene una solicitud pendiente para este equipo.",
                     "Leave" => "No formas parte de este equipo.",

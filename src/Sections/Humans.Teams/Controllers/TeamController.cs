@@ -501,26 +501,18 @@ internal sealed class TeamController(
             return View(model);
         }
 
-        try
+        var result = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
+        if (result.ErrorKey is not null)
         {
-            var result = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
-            if (result.ErrorKey is not null)
-            {
-                SetError(localizer[result.ErrorKey].Value);
-                return RedirectToAction(nameof(Details), new { slug });
-            }
-            SetSuccess(result.Outcome == TeamJoinOutcome.RequestSubmitted
-                ? localizer["Teams_Team_JoinRequestSubmitted"].Value
-                : localizer["Teams_Team_Joined"].Value);
+            logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, result.ErrorKey);
+            SetError(localizer[result.ErrorKey].Value);
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+        SetSuccess(result.Outcome == TeamJoinOutcome.RequestSubmitted
+            ? localizer["Teams_Team_JoinRequestSubmitted"].Value
+            : localizer["Teams_Team_Joined"].Value);
 
-            return RedirectToAction(nameof(Details), new { slug });
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetError(localizer["Teams_ActionFailed"].Value);
-            return RedirectToAction(nameof(Details), new { slug });
-        }
+        return RedirectToAction(nameof(Details), new { slug });
     }
 
     [HttpPost("{slug}/Leave")]
@@ -539,23 +531,15 @@ internal sealed class TeamController(
             return NotFound();
         }
 
-        try
+        var result = await teamService.LeaveTeamAsync(team.Id, user.Id);
+        if (!result.Succeeded)
         {
-            var result = await teamService.LeaveTeamAsync(team.Id, user.Id);
-            if (!result.Succeeded)
-            {
-                SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
-                return RedirectToAction(nameof(Details), new { slug });
-            }
-            SetSuccess(localizer["Teams_Team_Left"].Value);
-            return RedirectToAction(nameof(Index));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to leave team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetError(localizer["Teams_ActionFailed"].Value);
+            logger.LogWarning("Failed to leave team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, result.ErrorKey);
+            SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
+        SetSuccess(localizer["Teams_Team_Left"].Value);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Requests/{id}/Withdraw")]
@@ -568,21 +552,14 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        try
+        var result = await teamService.WithdrawJoinRequestAsync(id, user.Id);
+        if (!result.Succeeded)
         {
-            var result = await teamService.WithdrawJoinRequestAsync(id, user.Id);
-            if (!result.Succeeded)
-            {
-                SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
-                return RedirectToAction(nameof(MyTeams));
-            }
-            SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
+            logger.LogWarning("Failed to withdraw join request {RequestId} for user {UserId}: {Reason}", id, user.Id, result.ErrorKey);
+            SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
+            return RedirectToAction(nameof(MyTeams));
         }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to withdraw join request {RequestId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetError(localizer["Teams_ActionFailed"].Value);
-        }
+        SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
 
         return RedirectToAction(nameof(MyTeams));
     }
