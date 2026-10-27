@@ -1151,6 +1151,68 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("ApproveMember", NotificationSource.CampMembershipApproved)]
+    [InlineData("RejectMember", NotificationSource.CampMembershipRejected)]
+    [InlineData("RejectSeason", NotificationSource.CampMembershipSeasonClosed)]
+    [InlineData("WithdrawSeason", NotificationSource.CampMembershipSeasonClosed)]
+    public async Task CommittedMembershipChange_FinishesNoticeAfterRequestCancellation(string action, NotificationSource source)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var requestCancellation = new CancellationTokenSource();
+        await SeedSettingsAsync();
+        var camp = await CreateTestCampAsync();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Requester");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
+        ClearAllTrackers();
+        var season = await CampsDb.CampSeasons.SingleAsync(row => row.CampId == camp.Id, ct);
+        if (string.Equals(action, "RejectSeason", StringComparison.Ordinal))
+        {
+            season.Status = CampSeasonStatus.Pending;
+            await SaveAllAsync(ct);
+        }
+        var actorId = Guid.NewGuid();
+        AuditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            actorId, Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(async _ => await requestCancellation.CancelAsync());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult<UserInfo?>(null);
+        });
+        Notifier.ClearReceivedCalls();
+
+        var succeeded = action switch
+        {
+            "ApproveMember" => (await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, actorId, requestCancellation.Token)).Succeeded,
+            "RejectMember" => (await _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, actorId, requestCancellation.Token)).Succeeded,
+            "RejectSeason" => (await _service.RejectSeasonAsync(season.Id, actorId, "Closed", requestCancellation.Token)).Succeeded,
+            _ => (await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorId, requestCancellation.Token)).Succeeded,
+        };
+
+        succeeded.Should().BeTrue();
+        requestCancellation.IsCancellationRequested.Should().BeTrue();
+        var notice = Notifier.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(source);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(userId);
+        notice[10].Should().Be(CancellationToken.None);
+        var member = await CampsDb.CampMembers.AsNoTracking().SingleAsync(row => row.Id == request.CampMemberId, ct);
+        member.Status.Should().Be(action switch
+        {
+            "ApproveMember" => CampMemberStatus.Active,
+            "RejectMember" => CampMemberStatus.Removed,
+            _ => CampMemberStatus.Pending,
+        });
+        var storedSeason = await CampsDb.CampSeasons.AsNoTracking().SingleAsync(row => row.Id == season.Id, ct);
+        storedSeason.Status.Should().Be(action switch
+        {
+            "RejectSeason" => CampSeasonStatus.Rejected,
+            "WithdrawSeason" => CampSeasonStatus.Withdrawn,
+            _ => CampSeasonStatus.Active,
+        });
+    }
+
+    [HumansTheory]
     [InlineData("approve")]
     [InlineData("reject")]
     [InlineData("close")]

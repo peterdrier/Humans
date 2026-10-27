@@ -298,6 +298,35 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task CommittedRoleAssignment_FinishesNoticeAfterRequestCancellation()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        using var request = new CancellationTokenSource();
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+        _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+        AuditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(async _ => await request.CancelAsync());
+        _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ValueTask.FromResult<UserInfo?>(null);
+        });
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, request.Token);
+
+        outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+        request.IsCancellationRequested.Should().BeTrue();
+        var notice = Notifier.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(NotificationSource.CampRoleAssigned);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(member.UserId);
+        notice[10].Should().Be(CancellationToken.None);
+        (await CampsDb.CampRoleAssignments.AsNoTracking().SingleAsync(ct)).CampMemberId.Should().Be(member.Id);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
