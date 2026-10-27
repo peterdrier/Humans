@@ -105,7 +105,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
   "Dev Human 007","2024-05-27","2024-05-29, 2024-06-01",Vegetarian,"Peanut, Tree nut","","Other","MSG"
   ```
-- `ArrivesOn` is an ISO date (e.g. `2024-05-27`) for the human's earliest on-site day within the week.
+- `ArrivesOn` is an ISO date (e.g. `2024-05-27`) for the human's arrival day: the day before their first confirmed shift of the event, even when that is before the week.
 - `NoShift` lists the calendar dates within the week on which the human had no scheduled shift — formatted as ISO dates (e.g. `2024-05-29`), comma-and-space-separated, wrapped in double quotes. Empty when the human has a scheduled shift every day of the week.
 - UTF-8 BOM (`﻿`) prepended for Excel-friendliness.
 - RFC 4180 quoting: fields containing commas, quotes, or newlines are wrapped in double quotes; embedded double quotes are escaped by doubling.
@@ -145,7 +145,7 @@ A volunteer is **on-site for day X** iff they have at least one `ShiftSignup` wi
 
 - **Statuses that count:** `Confirmed`.
 - **Statuses that do NOT count:** `Pending`, `Refused`, `Bailed`, `NoShow`, `Cancelled`.
-- **Arrival-day rule:** each human is also fed (counted on-site, with no shift) on the day before their **first confirmed shift across the whole event**: `arrivalDay = firstConfirmedShiftDay − 1`. The service scans from build start to find the true first confirmed shift, so a human whose only relation to the requested week is their arrival day still appears. The rule applies to the weekly roster, the per-day mini-summary, the daily drill-down, and both CSVs. The arrival day is a real on-site day, so it feeds `ArrivesOn` and is not listed under `NoShift`.
+- **Arrival-day rule:** each human is also fed (counted on-site, with no shift) on the day before their **first confirmed shift across the whole event**: `arrivalDay = firstConfirmedShiftDay − 1`. The service scans from build start to find the true first confirmed shift, so a human whose only relation to the requested week is their arrival day still appears. The rule applies to the weekly roster, the per-day mini-summary, the daily drill-down, and both CSVs. The arrival day is every human's `ArrivesOn`; when it falls in the week it is a real on-site day and is not listed under `NoShift`.
 - **All-day shifts are single-day** (08:00–18:00 per existing `Shift.AllDayWindowStart/End`). There is **no multi-day expansion** — an all-day shift on `DayOffset = 3` contributes to day 3 only, never to day 2 or day 4.
 - **Past days are NOT excluded** — the cantina may need historical lookups. Future days ARE included.
 - **Active event only.** The query filters to signups whose `Shift` belongs to the currently active event.
@@ -219,7 +219,7 @@ Header:
 Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther
 ```
 
-`ArrivesOn` is the human's earliest on-site day within the requested week, formatted as an ISO `yyyy-MM-dd` date, e.g. `2024-05-27`. `NoShift` lists the calendar dates within the same week on which the human had no scheduled shift, same format, comma-and-space-separated, wrapped in double quotes whenever the cell contains a comma. `NoShift` is empty when the human has a scheduled shift every day of the week.
+`ArrivesOn` is the human's arrival day (the day before their first confirmed shift of the event, even when that is before the requested week), formatted as an ISO `yyyy-MM-dd` date, e.g. `2024-05-27`. `NoShift` lists the calendar dates within the same week on which the human had no scheduled shift, same format, comma-and-space-separated, wrapped in double quotes whenever the cell contains a comma. `NoShift` is empty when the human has a scheduled shift every day of the week.
 
 (Note: "no shift" is the cantina semantic — the human could still be on-site that day, working informally or at barrio.)
 

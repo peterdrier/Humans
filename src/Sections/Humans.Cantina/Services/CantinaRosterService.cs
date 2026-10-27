@@ -74,21 +74,24 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var daysOnSiteByUserId = BuildDaysOnSiteByUserId(perDay, weekStartOffset, weekStartDate);
 
-        // Arrival-day feeding: the day before a human's FIRST confirmed shift of the whole event, not just this week,
-        // so scan from build start and inject arrivals that land in the visible week.
+        // Arrival day: the day before a human's FIRST confirmed shift of the whole event, not just this week, so scan
+        // from build start. It is every cohort member's ArrivesOn, and is fed as an on-site day when it lands in the week.
+        var arrivesOnByUser = new Dictionary<Guid, LocalDate>();
         if (burn is not null && weekStartDate is { } anchor)
         {
-            // Only in-week arrivals are injected, so a first shift past weekStartOffset+7 can't matter.
+            // Every cohort member has a confirmed shift by weekStartOffset+7 (an arrival-only human's first shift is
+            // that day), so a later first shift belongs to nobody on this roster.
             var firstConfirmedOffsetByUser =
                 await BuildFirstConfirmedOffsetByUserAsync(
                     burn, weekStartOffset + DaysPerWeek, onSiteByOffset, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 var arrivalOffset = minOffset - 1;
+                var arrivalDate = anchor.PlusDays(arrivalOffset - weekStartOffset);
+                arrivesOnByUser[userId] = arrivalDate;
                 if (arrivalOffset < weekStartOffset || arrivalOffset > weekStartOffset + DaysPerWeek - 1)
                     continue;
 
-                var arrivalDate = anchor.PlusDays(arrivalOffset - weekStartOffset);
                 if (!daysOnSiteByUserId.TryGetValue(userId, out var list))
                 {
                     list = new List<LocalDate>(capacity: DaysPerWeek);
@@ -115,7 +118,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var weekDays = BuildWeekDays(weekStartDate);
 
-        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, dietById, daysOnSiteByUserId, weekDays);
+        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, dietById, daysOnSiteByUserId, arrivesOnByUser, weekDays);
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueProfiles, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
@@ -407,6 +410,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         IReadOnlyDictionary<Guid, UserInfo> userInfoById,
         IReadOnlyDictionary<Guid, DietaryProfileInfo> dietById,
         IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
+        IReadOnlyDictionary<Guid, LocalDate> arrivesOnByUser,
         IReadOnlyList<LocalDate> weekDays)
     {
         var people = new List<RosterPersonDto>(uniqueUserIds.Count);
@@ -420,7 +424,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             people.Add(new RosterPersonDto(
                 UserId: id,
                 BurnerName: ResolveBurnerName(info),
-                ArrivesOn: daysList[0],
+                ArrivesOn: arrivesOnByUser.GetValueOrDefault(id, daysList[0]),
                 NoShift: BuildNoShiftDays(daysList, weekDays),
                 DietaryPreference: profile?.DietaryPreference,
                 Allergies: profile?.Allergies ?? [],

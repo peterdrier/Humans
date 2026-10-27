@@ -72,15 +72,16 @@ The layout matches.
   Refused, Bailed, NoShow and Cancelled never count. The roster reads the cohort only through
   `IShiftService.GetOnSiteUserIdsForDayAsync`, which asks for confirmed signups only
   (`src/Sections/Humans.Shifts/Services/ShiftManagementService.cs:2066`).
-- **Arrival day** = the day before a human's first confirmed shift of the whole event. It feeds
-  the person into the cohort, sets `ArrivesOn`, and is never listed under `NoShift`. The scan
+- **Arrival day** = the day before a human's first confirmed shift of the whole event. It is every
+  roster person's `ArrivesOn`, even when it falls before the visible week. Inside the week it
+  feeds the person into the cohort and is never listed under `NoShift`. The scan
   starts at the event's build start, so a human whose only relation to the visible week is their
-  arrival still appears (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:309`).
+  arrival still appears (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:312`).
 - **No clamp.** An arrival day before the event's first day is shown as-is, negative offset and
-  all (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:87`).
+  all (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:89`).
 - **Weekly aggregates count unique humans**, never a sum of days: the cohort is a dictionary keyed
   by user id before any total is taken
-  (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:102`).
+  (`src/Sections/Humans.Cantina/Services/CantinaRosterService.cs:105`).
 - **A member counts as answered only with a non-empty preference** (`DietaryProfileInfo.HasPreference`,
   `src/Sections/Humans.Cantina/Contracts/ICantinaService.cs:27`). A member who declined counts as
   unanswered on the roster.
@@ -156,9 +157,6 @@ The layout matches.
   look duplicative and are not: the week load must stay decoupled from the event bounds, while
   the arrival scan must start at build start to find a *true* first shift. Merging them naively
   changes which humans get an arrival day.
-- **`ArrivesOn` is the earliest on-site day *within the requested week***, which equals the true
-  arrival day only for humans who arrive that week. For a multi-week attendee it is simply their
-  first day in the window. The name overpromises; the CSV spec is the accurate description.
 - **`CantinaResource.cs` must stay in `namespace Humans.Cantina`.** The SDK derives the resx
   manifest name from the adjacent same-named `.cs` file's namespace. A tidier
   `Humans.Cantina.Resources` makes every Cantina string render as its raw key at runtime.

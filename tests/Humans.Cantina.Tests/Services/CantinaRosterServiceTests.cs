@@ -252,7 +252,7 @@ public class CantinaRosterServiceTests
         p.UserId.Should().Be(userId);
         p.BurnerName.Should().Be("AlicePrime");
         p.DietaryPreference.Should().Be("Omnivore");
-        p.ArrivesOn.Should().Be(GateOpening);
+        p.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
         p.NoShift.Should().HaveCount(6);
         p.NoShift.Should().Equal(
             GateOpening.PlusDays(1),
@@ -292,7 +292,7 @@ public class CantinaRosterServiceTests
 
         result.People.Should().HaveCount(1);
         var p = result.People[0];
-        p.ArrivesOn.Should().Be(GateOpening);
+        p.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
         p.NoShift.Should().HaveCount(4);
         p.NoShift.Should().Equal(
             GateOpening.PlusDays(1),
@@ -334,7 +334,7 @@ public class CantinaRosterServiceTests
         p.AllergyOtherText.Should().BeNull();
         p.Intolerances.Should().BeEmpty();
         p.IntoleranceOtherText.Should().BeNull();
-        p.ArrivesOn.Should().Be(GateOpening);
+        p.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
         p.NoShift.Should().HaveCount(4);
     }
 
@@ -451,7 +451,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_ArrivesOn_IsEarliestOnSiteDay_AndNoShift_IsComplement()
+    public async Task GetWeeklyRoster_ArrivesOn_IsTheDayBeforeTheFirstShift_AndNoShift_IsComplement()
     {
         // Single human on-site Mon + Wed + Sat (days 0, 2, 5).
         // Also verifies the cohort-exclusion invariant: a known human with NO
@@ -474,7 +474,7 @@ public class CantinaRosterServiceTests
 
         var p = result.People[0];
         p.UserId.Should().Be(onSiteUserId);
-        p.ArrivesOn.Should().Be(GateOpening);
+        p.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
         p.NoShift.Should().HaveCount(4);
         p.NoShift.Should().Equal(
             GateOpening.PlusDays(1),
@@ -559,14 +559,10 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_FirstShiftInPriorWeek_NoSpuriousArrivalInLaterWeek()
+    public async Task GetWeeklyRoster_FirstShiftInPriorWeek_ArrivesOnIsTheTrueArrival_AndNoArrivalFedThisWeek()
     {
-        // Guards the GLOBAL-minimum logic. Human has confirmed shifts on offset
-        // 2 (a prior week) AND offset 8 (the viewed week, offsets 7..13).
-        // Their global min is 2 → arrival offset 1, which is NOT in the viewed
-        // week. So viewing week 7, no arrival day must be injected — their
-        // earliest in-week day is the offset-8 shift, and offset 7 (index 0)
-        // must have zero on-site.
+        // Confirmed shifts on offset 2 (a prior week) and offset 8 (the viewed week, offsets 7..13). The arrival is
+        // offset 1, outside the viewed week: ArrivesOn still reports it, but no arrival day is fed this week.
         var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 14);
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
@@ -580,9 +576,7 @@ public class CantinaRosterServiceTests
         var result = await _service.GetWeeklyRosterAsync(7, ct: Xunit.TestContext.Current.CancellationToken);
 
         var person = result.People.Single(p => p.UserId == id);
-        // ArrivesOn must be the first shift IN this week, not a spurious arrival
-        // day derived from the prior-week global minimum.
-        person.ArrivesOn.Should().Be(GateOpening.PlusDays(8));
+        person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
         result.Days[0].TotalOnSite.Should().Be(0);
     }
 
