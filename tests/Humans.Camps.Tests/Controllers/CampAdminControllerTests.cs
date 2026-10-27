@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Csv;
 using Humans.Base.Enums;
@@ -88,6 +91,59 @@ public class CampAdminControllerTests
             result.Should().BeOfType<RedirectToActionResult>();
             await camps.Received(1).SetCampSeasonEeSlotCountAsync(seasonId, 0, actorId, ct);
         }
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(CampAdminController.OpenSeason), "year", null)]
+    [InlineData(nameof(CampAdminController.OpenSeason), "year", "invalid")]
+    [InlineData(nameof(CampAdminController.SetNameLockDate), "year", null)]
+    [InlineData(nameof(CampAdminController.SetNameLockDate), "year", "invalid")]
+    [InlineData(nameof(CampAdminController.SetCampSeasonEeSlotCount), "slotCount", null)]
+    public async Task NumericAdminForms_RejectMissingOrMalformedNumbersBeforeMutation(
+        string action, string field, string? submitted)
+    {
+        var camps = Substitute.For<ICampManagement>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
+        var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var parameter = typeof(CampAdminController).GetMethod(action)!.GetParameters()
+            .Single(p => string.Equals(p.Name, field, StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>())
+            .GetMetadataForParameter(parameter);
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter
+        };
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = parameter
+        });
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (submitted is not null)
+            fields[field] = submitted;
+        await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+
+        var result = action switch
+        {
+            nameof(CampAdminController.OpenSeason) => await controller.OpenSeason(0),
+            nameof(CampAdminController.SetNameLockDate) => await controller.SetNameLockDate(0, "2027-05-01"),
+            nameof(CampAdminController.SetCampSeasonEeSlotCount) =>
+                await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 0, TestContext.Current.CancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        camps.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]

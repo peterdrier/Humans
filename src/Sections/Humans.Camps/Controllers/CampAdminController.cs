@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
@@ -86,10 +87,11 @@ internal sealed class CampAdminController(
 
     [HttpPost("OpenSeason")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> OpenSeason([FromForm] int year)
+    public async Task<IActionResult> OpenSeason([FromForm, BindRequired] int year)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         try
         {
@@ -128,10 +130,11 @@ internal sealed class CampAdminController(
 
     [HttpPost("SetNameLockDate")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetNameLockDate(int year, string lockDate)
+    public async Task<IActionResult> SetNameLockDate([BindRequired] int year, string lockDate)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(lockDate);
         if (!parseResult.Success)
@@ -156,7 +159,7 @@ internal sealed class CampAdminController(
     [HttpPost("SetCampSeasonEeSlotCount/{seasonId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
-        Guid seasonId, int slotCount, CancellationToken cancellationToken)
+        Guid seasonId, [BindRequired] int slotCount, CancellationToken cancellationToken)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
