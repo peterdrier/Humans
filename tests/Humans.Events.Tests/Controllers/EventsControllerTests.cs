@@ -818,13 +818,20 @@ public class EventsControllerTests
         {
             "individual" => await controller.Create(new IndividualEventFormViewModel
             {
-                Title = "Music", Description = "Description", VenueId = Guid.NewGuid(),
-                CategoryId = Guid.NewGuid(), StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+                Title = "Music",
+                Description = "Description",
+                VenueId = Guid.NewGuid(),
+                CategoryId = Guid.NewGuid(),
+                StartDate = new DateTime(2026, 8, 1),
+                DurationMinutes = 60
             }),
             "barrio" => await controller.BarrioCreate(camp.Slug, new CampEventFormViewModel
             {
-                Title = "Music", Description = "Description", CategoryId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+                Title = "Music",
+                Description = "Description",
+                CategoryId = Guid.NewGuid(),
+                StartDate = new DateTime(2026, 8, 1),
+                DurationMinutes = 60
             }),
             _ => await controller.BulkUploadImport(camp.Slug, file)
         };

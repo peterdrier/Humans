@@ -515,11 +515,11 @@ public class TeamControllerPageContentTests
 
             (await ActAsync()).Should().BeOfType<RedirectToActionResult>();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(action switch
-                {
-                    "Join" => "Ya tiene una solicitud pendiente para este equipo.",
-                    "Leave" => "No formas parte de este equipo.",
-                    _ => "Esta solicitud para unirte no está disponible o ya no está pendiente."
-                });
+            {
+                "Join" => "Ya tiene una solicitud pendiente para este equipo.",
+                "Leave" => "No formas parte de este equipo.",
+                _ => "Esta solicitud para unirte no está disponible o ya no está pendiente."
+            });
         }
         finally
         {
