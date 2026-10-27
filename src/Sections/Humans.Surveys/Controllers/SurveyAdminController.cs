@@ -405,9 +405,18 @@ internal sealed class SurveyAdminController(
                     localizer["Surveys_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
                 : localizer["Surveys_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
+            SetError(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"]);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Survey translation failed after saving survey {SurveyId}", id);
             SetError(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"]);
         }
     }

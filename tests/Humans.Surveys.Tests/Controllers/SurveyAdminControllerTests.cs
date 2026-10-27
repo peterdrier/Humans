@@ -130,23 +130,50 @@ public sealed class SurveyAdminControllerTests
         await surveys.DidNotReceiveWithAnyArgs().PreFillTranslationsAsync(default, default!, default);
     }
 
-    [HumansFact]
-    public async Task Save_translation_failure_reports_the_committed_save_without_exposing_the_exception()
+    [HumansTheory]
+    [Xunit.InlineData("validation")]
+    [Xunit.InlineData("io")]
+    [Xunit.InlineData("http")]
+    [Xunit.InlineData("provider-cancellation")]
+    [Xunit.InlineData("request-cancellation")]
+    public async Task Save_translation_failure_reports_the_committed_save_without_exposing_the_exception(string failureKind)
     {
         var actor = Guid.NewGuid();
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         surveys.CreateAsync(Arg.Any<SurveyEditInput>(), actor, Arg.Any<CancellationToken>())
             .Returns(new SurveySaveResult(id));
-        surveys.PreFillTranslationsAsync(id, Arg.Any<IReadOnlyList<string>>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
-            .Returns<int>(_ => throw new InvalidOperationException("Private translation diagnostic"));
+        using var request = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        Exception failure = failureKind switch
+        {
+            "io" => new IOException("Private translation diagnostic"),
+            "http" => new HttpRequestException("Private translation diagnostic"),
+            "provider-cancellation" or "request-cancellation" => new OperationCanceledException("Private translation diagnostic"),
+            _ => new InvalidOperationException("Private translation diagnostic")
+        };
+        surveys.PreFillTranslationsAsync(id, Arg.Any<IReadOnlyList<string>>(), Arg.Any<SurveyViewer>(), request.Token)
+            .Returns<int>(_ =>
+            {
+                if (string.Equals(failureKind, "request-cancellation", StringComparison.Ordinal)) request.Cancel();
+                throw failure;
+            });
         var localizer = SpanishLocalizer();
         var sut = CreateController(surveys, userId: actor, localizer: localizer);
 
-        var result = await sut.Save(new SurveyBuilderViewModel
+        var model = new SurveyBuilderViewModel
         {
             Title = new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Saved" },
-        }, "save-translate", Xunit.TestContext.Current.CancellationToken);
+        };
+        if (string.Equals(failureKind, "request-cancellation", StringComparison.Ordinal))
+        {
+            Func<Task> act = async () => await sut.Save(model, "save-translate", request.Token);
+            (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+            sut.TempData.Should().BeEmpty();
+            await surveys.Received(1).CreateAsync(Arg.Any<SurveyEditInput>(), actor, request.Token);
+            return;
+        }
+
+        var result = await sut.Save(model, "save-translate", request.Token);
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
         redirect.ActionName.Should().Be(nameof(SurveyAdminController.Edit));
