@@ -524,7 +524,7 @@ internal sealed class UserService(
         var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
-            throw new ValidationException("Please enter a valid email address.");
+            return Refuse("Validation_EmailAddress");
 
         using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);
         var rows = await repo.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, ct);
@@ -534,15 +534,14 @@ internal sealed class UserService(
             if (command.IgnoreExisting)
                 return new UserEmailAddResult(existing.Id, Added: false, IsConflict: false);
 
-            throw new ValidationException("This email address is already in your account.");
+            return Refuse("Users_Profile_EmailAlreadyAdded");
         }
 
         var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
 
-        var user = await repo.GetByIdAsync(userId, ct)
-            ?? throw new InvalidOperationException("User not found.");
-        if (UserStateEvaluator.IsTombstone(user))
-            throw new InvalidOperationException("Cannot add email addresses to a deleted or merged account.");
+        var user = await repo.GetByIdAsync(userId, ct);
+        if (user is null || UserStateEvaluator.IsTombstone(user))
+            return Refuse("Users_EmailUpdate_AccountUnavailable");
 
         var now = clock.GetCurrentInstant();
         var row = new UserEmail
@@ -564,6 +563,12 @@ internal sealed class UserService(
         // The row has committed; finish its required invariant repairs after a browser disconnect.
         await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
         return new UserEmailAddResult(row.Id, Added: true, isConflict);
+
+        UserEmailAddResult Refuse(string key)
+        {
+            logger.LogWarning("Email addition refused for user {UserId}: {ErrorKey}", userId, key);
+            return new UserEmailAddResult(Guid.Empty, Added: false, IsConflict: false, ErrorKey: key);
+        }
     }
 
     public async Task<UpdateEmailResult> UpdateUserEmailAsync(

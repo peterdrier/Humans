@@ -1092,6 +1092,22 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task AddEmailAsync_OwnerRefusal_DoesNotGenerateVerificationToken()
+    {
+        var userId = Guid.NewGuid();
+        _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
+        _userService.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.Empty, false, false, "Users_EmailUpdate_AccountUnavailable"));
+
+        var result = await _service.AddEmailAsync(userId, "member@example.com", Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Users_EmailUpdate_AccountUnavailable");
+        result.Token.Should().BeEmpty();
+        await _userManager.DidNotReceive().GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task AddVerifiedEmailAsync_FirstRow_SetsIsPrimaryTrueEvenForGmail()
     {
         // Magic-link signup with a non-Workspace email goes through AddVerifiedEmailAsync;

@@ -470,6 +470,55 @@ public class ProfileEmailsControllerGridTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task AdminEmailAddition_ExpectedRefusal_DoesNotAuditOrSend(bool verified)
+    {
+        var targetId = Guid.NewGuid();
+        const string email = "added@example.com";
+        const string errorKey = "Users_EmailUpdate_AccountUnavailable";
+        _userManager.FindByIdAsync(targetId.ToString()).Returns(new User { Id = targetId });
+        _userEmailService.AddEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, errorKey));
+        _userEmailService.AddVerifiedEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.Empty, false, false, errorKey));
+
+        var result = verified
+            ? await _controller.AdminAddVerifiedEmail(targetId, email, TestContext.Current.CancellationToken)
+            : await _controller.AdminAddEmail(targetId, email, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        _controller.TempData["ErrorMessage"].Should().Be(errorKey);
+        _controller.TempData.Should().NotContainKey("SuccessMessage");
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminEmailAddition_UnexpectedFailure_Propagates(bool verified)
+    {
+        var targetId = Guid.NewGuid();
+        const string email = "added@example.com";
+        _userManager.FindByIdAsync(targetId.ToString()).Returns(new User { Id = targetId });
+        var failure = new InvalidOperationException("Dependency failed");
+        _userEmailService.AddEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AddEmailResult>(failure));
+        _userEmailService.AddVerifiedEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UserEmailAddResult>(failure));
+
+        Func<Task<IActionResult>> act = () => verified
+            ? _controller.AdminAddVerifiedEmail(targetId, email, TestContext.Current.CancellationToken)
+            : _controller.AdminAddEmail(targetId, email, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        _controller.TempData.Should().NotContainKey("ErrorMessage");
+        _controller.TempData.Should().NotContainKey("SuccessMessage");
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task AdminAddEmail_CommittedAddition_AuditsBeforeQueueAndFinishesAfterDisconnect(bool queueFails)
     {
         var targetId = Guid.NewGuid();

@@ -263,7 +263,9 @@ internal sealed class DevelopmentDashboardSeeder(
                     $"Failed to create seeded dev user '{email}': {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
             }
 
-            await userEmailService.AddVerifiedEmailAsync(user.Id, email, cancellationToken);
+            var emailAddition = await userEmailService.AddVerifiedEmailAsync(user.Id, email, cancellationToken);
+            if (emailAddition.ErrorKey is not null)
+                throw new InvalidOperationException("Could not add the verified email address.");
 
             users.Add(user);
         }

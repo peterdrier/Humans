@@ -128,6 +128,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Invariants
 
+- Workspace provisioning and account linking check Users' verified-email addition result before identity reconciliation, team resync, success audits or credential notices. A refusal aborts the workflow through its existing failure handling; a duplicate address without a refusal remains an idempotent no-op. Provisioning still captures the recovery address before creating the Workspace account or adding its email row.
+
 - Activity-log resource-name filtering combines linked resource ids with a case-insensitive literal match on unlinked descriptions. Escaped matching runs before the database row limit; the growing log is never loaded into memory for this search.
 
 - Persisted resource errors are bounded to 2000 UTF-16 units; sync-log descriptions (including their job prefix) and errors are bounded to 4000. Bounds preserve surrogate pairs so long vendor failures cannot prevent failure-state or audit-row persistence.

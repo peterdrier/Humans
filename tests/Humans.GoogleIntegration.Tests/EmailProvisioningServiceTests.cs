@@ -143,6 +143,8 @@ public class EmailProvisioningServiceTests
         var userService = Substitute.For<IUserService>();
         var workspace = Substitute.For<IGoogleWorkspaceUserService>();
         var userEmail = Substitute.For<IUserEmailService>();
+        userEmail.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         var teamService = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var emailMessages = TestGoogleIntegrationEmails.Create();
@@ -179,6 +181,30 @@ public class EmailProvisioningServiceTests
     {
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Target", lastName: "Two")));
+    }
+
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_EmailAdditionRefused_DoesNotReportProvisioningSuccess()
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        StubTargetUser(f, userId);
+        f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        f.UserEmailService.AddVerifiedEmailAsync(userId, "person@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.Empty, false, false, "Users_EmailUpdate_AccountUnavailable"));
+
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailEditDto>());
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", userId);
+
+        result.Success.Should().BeFalse();
+        await f.UserEmailService.Received(1).AddVerifiedEmailAsync(userId, "person@nobodies.team", Arg.Any<CancellationToken>());
+        f.Audit.ReceivedCalls().Should().BeEmpty();
+        f.Emails.ReceivedCalls().Should().BeEmpty();
+        f.Notifications.ReceivedCalls().Should().BeEmpty();
+        await f.UserEmailService.Received(1).GetUserEmailsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

@@ -545,25 +545,17 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        try
+        var result = await userEmailService.AddEmailAsync(id, email, ct);
+        if (result.ErrorKey is { } errorKey)
         {
-            var result = await userEmailService.AddEmailAsync(id, email, ct);
-            if (result.ErrorKey is { } errorKey)
-            {
-                SetError(LocalizeEmailRefusal(errorKey));
-                return RedirectToAction(nameof(AdminEmails), new { id });
-            }
+            logger.LogWarning("Admin email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
+                id, actor.Id, errorKey);
+            SetError(LocalizeEmailRefusal(errorKey));
+            return RedirectToAction(nameof(AdminEmails), new { id });
+        }
 
-            // The address committed: finish its audit and verification queueing even after a disconnect.
-            await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning(
-                "Admin failed to add email for user {UserId} ({Email}): {Reason}",
-                id, email, ex.Message);
-            SetError(ex.Message);
-        }
+        // The address committed: finish its audit and verification queueing even after a disconnect.
+        await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -620,17 +612,16 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        try
+        var result = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+        if (result.ErrorKey is { } errorKey)
         {
-            var inserted = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-            await ReportVerifiedEmailAddAsync(inserted, userId, email, actor.Id);
+            logger.LogWarning("Admin verified email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
+                userId, actor.Id, errorKey);
+            SetError(LocalizeEmailRefusal(errorKey));
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        else
         {
-            logger.LogWarning(
-                "Admin failed to add verified email for user {UserId} ({Email}): {Reason}",
-                userId, email, ex.Message);
-            SetError(ex.Message);
+            await ReportVerifiedEmailAddAsync(result.Added, userId, email, actor.Id);
         }
 
         return RedirectToAction(nameof(AdminEmails), new { id = userId });
