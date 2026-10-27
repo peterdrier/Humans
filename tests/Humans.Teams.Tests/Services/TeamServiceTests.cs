@@ -1390,6 +1390,84 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
     }
 
+    [HumansTheory]
+    [InlineData("request", 1, false)]
+    [InlineData("direct", 2, true)]
+    [InlineData("approve", 2, true)]
+    [InlineData("reject", 1, false)]
+    [InlineData("add", 1, true)]
+    public async Task JoinNotifications_FinishAfterCommittedChangesDespiteRequestCancellation(
+        string action, int expectedNotices, bool expectsEmail)
+    {
+        var user = SeedUser();
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var team = SeedTeam("Alpha", requiresApproval: action is not "direct");
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = action is "approve" or "reject" ? SeedJoinRequest(team.Id, user.Id) : null;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var info = await _userService.GetUserInfoAsync(user.Id, TestContext.Current.CancellationToken);
+        using var aborted = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        if (action is not "request")
+            AuditLog.WhenForAnyArgs(x => x.LogAsync(default, default!, default, default!, default(Guid)))
+                .Do(_ => aborted.Cancel());
+        async ValueTask<UserInfo?> LookupUserAsync(CancellationToken ct)
+        {
+            if (action is "request")
+                await aborted.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+            return info;
+        }
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(call => LookupUserAsync(call.Arg<CancellationToken>()));
+        _userService.GetUserInfosAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                    new Dictionary<Guid, UserInfo> { [user.Id] = info! });
+            });
+
+        switch (action)
+        {
+            case "request":
+                (await _service.RequestToJoinTeamAsync(team.Id, user.Id, null, aborted.Token)).ErrorKey.Should().BeNull();
+                break;
+            case "direct":
+                (await _service.JoinTeamDirectlyAsync(team.Id, user.Id, aborted.Token)).ErrorKey.Should().BeNull();
+                break;
+            case "approve":
+                await _service.ApproveJoinRequestAsync(request!.Id, coordinator.Id, null, aborted.Token);
+                break;
+            case "reject":
+                await _service.RejectJoinRequestAsync(request!.Id, coordinator.Id, "No space", aborted.Token);
+                break;
+            case "add":
+                await _service.AddMemberToTeamAsync(team.Id, user.Id, coordinator.Id, aborted.Token);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(action));
+        }
+
+        aborted.IsCancellationRequested.Should().BeTrue();
+        ClearAllTrackers();
+        if (action is "request" or "reject")
+        {
+            var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(
+                r => r.UserId == user.Id, TestContext.Current.CancellationToken);
+            stored.Status.Should().Be(action is "request" ? TeamJoinRequestStatus.Pending : TeamJoinRequestStatus.Rejected);
+        }
+        else
+            (await TeamsDb.TeamMembers.AnyAsync(m => m.TeamId == team.Id && m.UserId == user.Id && m.LeftAt == null,
+                TestContext.Current.CancellationToken)).Should().BeTrue();
+        var notices = Notifier.ReceivedCalls().Where(c => c.GetArguments()[0] is NotificationSource).ToList();
+        notices.Should().HaveCount(expectedNotices);
+        notices.Should().OnlyContain(c => (CancellationToken)c.GetArguments()[c.GetArguments().Length - 1]! == CancellationToken.None);
+        var emails = _emailService.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal)).ToList();
+        emails.Should().HaveCount(expectsEmail ? 1 : 0);
+        emails.Should().OnlyContain(c => (CancellationToken)c.GetArguments()[c.GetArguments().Length - 1]! == CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task RemoveMemberAsync_TeamNotFound_ReturnsRefusal()
     {

@@ -588,6 +588,9 @@ internal sealed class TeamService(
         await repo.AddRequestAsync(request, cancellationToken);
         joinRequest.Dispose();
 
+        // The join request is committed; finish its notices even if the browser disconnects.
+        cancellationToken = CancellationToken.None;
+
         logger.LogInformation("User {UserId} requested to join team {TeamId}", userId, teamId);
         await SendTeamJoinRequestSubmittedNotificationAsync(team, userId, cancellationToken);
 
@@ -635,6 +638,9 @@ internal sealed class TeamService(
 
         if (!success)
             return new TeamDirectJoinResult(ErrorKey: "Teams_Team_AlreadyMember");
+
+        // The mutation is committed; finish its notices even if the browser disconnects.
+        cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
             AuditAction.TeamJoinedDirectly, nameof(Team), teamId,
@@ -943,6 +949,9 @@ internal sealed class TeamService(
         if (!success)
             throw new InvalidOperationException("User is already a member of this team");
 
+        // The mutation is committed; finish its notices even if the browser disconnects.
+        cancellationToken = CancellationToken.None;
+
         await auditLogService.LogAsync(
             AuditAction.TeamJoinRequestApproved, nameof(Team), request.TeamId,
             $"Join request for {request.Team.Name} approved",
@@ -999,6 +1008,9 @@ internal sealed class TeamService(
         var rejected = await repo.RejectRequestAsync(requestId, approverUserId, reason, now, cancellationToken);
         if (!rejected)
             throw new InvalidOperationException("Can only reject pending requests");
+
+        // The mutation is committed; finish its notices even if the browser disconnects.
+        cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
             AuditAction.TeamJoinRequestRejected, nameof(Team), request.TeamId,
@@ -1244,6 +1256,9 @@ internal sealed class TeamService(
 
         if (!success)
             throw new InvalidOperationException("User is already a member of this team");
+
+        // The mutation is committed; finish its notices even if the browser disconnects.
+        cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
             AuditAction.TeamMemberAdded, nameof(Team), teamId,
