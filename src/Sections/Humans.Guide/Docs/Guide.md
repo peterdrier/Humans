@@ -69,6 +69,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
 - Guide content is `GuideFiles.All`: `README`, `GettingStarted`, `Glossary`, the sections enumerated in `GuideFiles.Sections`, plus the plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). One markdown file under `docs/guide/` per stem, in both directions. Nothing is authored in-app.
+- Concrete app paths in inline code become links only outside existing anchors and code blocks. Explicit Markdown links keep their authored destination, including a code-formatted label; linkification never nests anchors.
 - Cache key is `guide:<FileStem>`; the cached value is the segmented `GuideDocument`, never rendered HTML — filtering happens before rendering, so rendering is per request. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.

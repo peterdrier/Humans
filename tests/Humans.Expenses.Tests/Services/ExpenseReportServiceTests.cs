@@ -88,6 +88,8 @@ public sealed partial class ExpenseReportServiceTests
 
     public ExpenseReportServiceTests()
     {
+        _preapprovalWrites.ReleaseAsync(default, default, default, default).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovalWrites.ConsumeAsync(default, default, default, default).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so the
@@ -2524,48 +2526,6 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CategoryRequiresCoordinatorEndorsementAsync_True_WhenCategoryTeamHasCoordinator()
-    {
-        var teamId = Guid.NewGuid();
-        var categoryId = Guid.NewGuid();
-        var coordinatorUserId = Guid.NewGuid();
-
-        _budgetService.GetCategoryByIdAsync(categoryId)
-            .Returns(MakeCategorySnapshot(categoryId, teamId));
-        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(MakeTeamInfo(teamId, [(coordinatorUserId, TeamMemberRole.Coordinator)]));
-
-        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, TestContext.Current.CancellationToken);
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryTeamHasNoCoordinator()
-    {
-        var teamId = Guid.NewGuid();
-        var categoryId = Guid.NewGuid();
-
-        _budgetService.GetCategoryByIdAsync(categoryId)
-            .Returns(MakeCategorySnapshot(categoryId, teamId));
-        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(MakeTeamInfo(teamId, [(Guid.NewGuid(), TeamMemberRole.Member)]));
-
-        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, TestContext.Current.CancellationToken);
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task CategoryRequiresCoordinatorEndorsementAsync_False_WhenCategoryHasNoTeam()
-    {
-        var categoryId = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(categoryId)
-            .Returns(MakeCategorySnapshot(categoryId, teamId: null));
-
-        var result = await _sut.CategoryRequiresCoordinatorEndorsementAsync(categoryId, TestContext.Current.CancellationToken);
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
     public async Task CoordinatorEndorseAsync_FlipsToCoordinatorEndorsed()
     {
         var (_, category) = SetupActiveYear();
@@ -2605,7 +2565,6 @@ public sealed partial class ExpenseReportServiceTests
         result.Succeeded.Should().BeFalse();
         result.Error!.OperatorMessage.Should().Contain("not booked to a budget category");
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
-        (await _sut.CategoryRequiresCoordinatorEndorsementAsync(null, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]

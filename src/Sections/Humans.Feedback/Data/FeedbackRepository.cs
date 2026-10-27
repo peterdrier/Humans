@@ -135,7 +135,7 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
@@ -167,11 +167,6 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        return ownReports
-            .Select(r => r.ScreenshotStoragePath)
-            .OfType<string>()
-            .ToList();
     }
 
     public async Task ReassignToUserAsync(

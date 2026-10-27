@@ -200,25 +200,27 @@ internal sealed class EventService(
             Events: events);
     }
 
-    public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
+    public async Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
-        await EnsureSubmissionWindowOpenAsync(ct);
+        if (!await IsSubmissionWindowOpenAsync(ct)) return false;
         await EnsureValidRecurrenceDaysAsync(guideEvent.IsRecurring, guideEvent.RecurrenceDays, ct);
         guideEvent.Submit(clock);
         await repo.AddEventAsync(guideEvent, ct);
 
         // A null actionUrl opts out: bulk import would otherwise send one email per CSV row.
         if (lifecycleActionUrl is not null)
-            await SendLifecycleEmailAsync(guideEvent, EventStatus.Pending, reason: null, lifecycleActionUrl, ct);
+            await SendLifecycleEmailAsync(guideEvent, EventStatus.Pending, reason: null, lifecycleActionUrl);
+        return true;
     }
 
     private async Task SendLifecycleEmailAsync(
-        Event guideEvent, EventStatus newStatus, string? reason, string actionUrl, CancellationToken ct)
+        Event guideEvent, EventStatus newStatus, string? reason, string actionUrl)
     {
-        // The caller already persisted the change: an email failure must not report the operation failed.
+        // The change is committed: request cancellation must not skip its notification.
+        // Lookup and delivery failures remain best effort.
         try
         {
-            var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, ct);
+            var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, CancellationToken.None);
             if (submitter?.Email is null)
             {
                 logger.LogWarning(
@@ -307,11 +309,12 @@ internal sealed class EventService(
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    private async Task EnsureSubmissionWindowOpenAsync(CancellationToken ct)
+    private async Task<bool> IsSubmissionWindowOpenAsync(CancellationToken ct)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        if (settings is null || !settings.IsSubmissionOpenAt(clock.GetCurrentInstant()))
-            throw new InvalidOperationException("The event submission window is closed.");
+        if (settings is not null && settings.IsSubmissionOpenAt(clock.GetCurrentInstant())) return true;
+        logger.LogWarning("Event submission refused: the submission window is closed or not configured");
+        return false;
     }
 
     private async Task EnsureValidRecurrenceDaysAsync(bool isRecurring, string? recurrenceDays, CancellationToken ct)
@@ -353,7 +356,8 @@ internal sealed class EventService(
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
         CancellationToken ct = default)
     {
-        await EnsureSubmissionWindowOpenAsync(ct);
+        if (!await IsSubmissionWindowOpenAsync(ct))
+            return new BulkImportResult([], 0, 0, RefusalKey: "Events_SubmissionWindowClosed");
         return await new EventBulkImporter(repo, clock, localizer).ImportAsync(
             campId, submitterUserId, rows, gateOpeningDate, eventEndOffset, timeZone, ct);
     }
@@ -504,7 +508,7 @@ internal sealed class EventService(
                 _ => null
             };
             if (lifecycleStatus.HasValue)
-                await SendLifecycleEmailAsync(guideEvent, lifecycleStatus.Value, reason, submitterEditUrl, ct);
+                await SendLifecycleEmailAsync(guideEvent, lifecycleStatus.Value, reason, submitterEditUrl);
         }
 
         return ModerationOutcome.Applied;

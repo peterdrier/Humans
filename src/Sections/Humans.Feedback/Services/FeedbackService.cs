@@ -328,25 +328,15 @@ internal sealed class FeedbackService(
     /// <summary>Own reports and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        var screenshotKeys = await repository.EraseForUserAsync(userId, ct);
-        cache.Remove(BadgeCacheKey);
-
-        // The screenshots are the reporter's own uploads — they go with the rows.
+        var reports = await repository.GetForUserExportAsync(userId, ct);
+        var screenshotKeys = reports.Where(r => r.UserId == userId)
+            .Select(r => r.ScreenshotStoragePath).OfType<string>().Distinct(StringComparer.Ordinal);
+        ct = CancellationToken.None;
         foreach (var key in screenshotKeys)
-        {
-            try
-            {
-                // The rows have committed; cancellation must not strand their screenshots.
-                await fileStorage.DeleteAsync(key, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                // A stranded blob must not abort the cascade — the row it hangs off is already gone.
-                logger.LogWarning(ex,
-                    "Failed to delete feedback screenshot {Key} during GDPR erasure for user {UserId}",
-                    key, userId);
-            }
-        }
+            await fileStorage.DeleteAsync(key, ct);
+
+        await repository.EraseForUserAsync(userId, ct);
+        cache.Remove(BadgeCacheKey);
     }
 
     private async Task<FeedbackCrossDomainLookups> StitchCrossDomainNavsAsync(

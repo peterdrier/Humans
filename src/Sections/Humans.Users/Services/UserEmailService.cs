@@ -107,19 +107,20 @@ internal sealed class UserEmailService(
         var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
         if (!new EmailAddressAttribute().IsValid(email))
-            return new AddEmailResult(Guid.Empty, string.Empty, false, "Validation_EmailAddress");
+            return Refuse("Validation_EmailAddress");
 
         var held = await repository.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, cancellationToken);
         if (held.Any(e => e.UserId == userId))
-            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailAlreadyAdded");
+            return Refuse("Users_Profile_EmailAlreadyAdded");
 
         if (await MergeService.HasPendingForUserAndEmailAsync(
                 userId, normalizedEmail, alternateEmail, cancellationToken))
-            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailMergePending");
+            return Refuse("Users_Profile_EmailMergePending");
 
         // FindByIdAsync, not cache: UserManager token APIs read SecurityStamp directly and cache-rehydrated Users lack it.
-        var user = await userManager.FindByIdAsync(userId.ToString())
-            ?? throw new InvalidOperationException("User not found.");
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            return Refuse("Users_EmailUpdate_AccountUnavailable");
 
         // Through IUserManagement so its caching decorator refreshes UserInfo.
         var addResult = await userService.AddUserEmailAsync(
@@ -131,8 +132,11 @@ internal sealed class UserEmailService(
                 IgnoreExisting: true),
             cancellationToken);
 
+        if (addResult.ErrorKey is { } errorKey)
+            return new AddEmailResult(Guid.Empty, string.Empty, false, errorKey);
+
         if (!addResult.Added)
-            return new AddEmailResult(Guid.Empty, string.Empty, false, "Users_Profile_EmailAlreadyAdded");
+            return Refuse("Users_Profile_EmailAlreadyAdded");
 
         var token = await userManager.GenerateUserTokenAsync(
             user,
@@ -140,6 +144,12 @@ internal sealed class UserEmailService(
             $"{EmailVerificationTokenPurpose}:{addResult.EmailId}");
 
         return new AddEmailResult(addResult.EmailId, token, addResult.IsConflict);
+
+        AddEmailResult Refuse(string key)
+        {
+            logger.LogWarning("Email addition refused for user {UserId}: {ErrorKey}", userId, key);
+            return new AddEmailResult(Guid.Empty, string.Empty, false, key);
+        }
     }
 
     public async Task<VerifyEmailResult> VerifyEmailAsync(
@@ -242,8 +252,9 @@ internal sealed class UserEmailService(
     public async Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken)
-            ?? throw new InvalidOperationException("Email not found.");
+        var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        if (email is null)
+            return new DeleteEmailResult(false, "Users_EmailUpdate_NotFound");
 
         if (!string.IsNullOrEmpty(email.Provider))
         {
@@ -295,7 +306,7 @@ internal sealed class UserEmailService(
             mergedFromUserId, mergedToUserId, now, ct);
     }
 
-    public async Task<bool> AddVerifiedEmailAsync(
+    public async Task<UserEmailAddResult> AddVerifiedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {
         var result = await userService.AddUserEmailAsync(
@@ -307,7 +318,7 @@ internal sealed class UserEmailService(
                 IgnoreExisting: true),
             cancellationToken);
 
-        return result.Added;
+        return result;
     }
 
     public async Task<string?> GetNobodiesTeamEmailAsync(
@@ -463,13 +474,15 @@ internal sealed class UserEmailService(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {
         // Idempotent: retried imports must not re-add the row.
-        await userService.AddUserEmailAsync(
+        var result = await userService.AddUserEmailAsync(
             userId,
             new UserEmailAddCommand(
                 email,
                 IsVerified: true,
                 IgnoreExisting: true),
             cancellationToken);
+        if (result.ErrorKey is not null)
+            throw new InvalidOperationException("Could not add the provisioned email address.");
     }
 
     // Reads the table, not the cache: the decision must see this call's row state. Any verified

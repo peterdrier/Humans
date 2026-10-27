@@ -744,12 +744,11 @@ graph LR
     TRes -. "lazy" .-> Role
     Cal -. "lazy" .-> Team
     Metrics -. "lazy" .-> User
-    Metrics -. "lazy" .-> Consent
 
     %% ── Edge styling ──
     %% Eager edges come first, then the lazy block; linkStyle indexes the lazy block by position.
     %% Recompute the indices whenever edges change.
-    linkStyle 381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402 stroke:#f97316,stroke-width:2.5px
+    linkStyle 389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409 stroke:#f97316,stroke-width:2.5px
 ```
 
 
@@ -781,7 +780,7 @@ Other notable one-way lazy edges:
 - **Team → GoogleSyncOutbox** — enqueues transactional-outbox Google-sync events on membership/role changes; one-way.
 - **ShiftManagement → Role / User / Camp / Tickets**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
 - **Team → WorkspaceIdentity**, **UserEmail → WorkspaceIdentity** — one-way lazy resolution of `IGoogleIntegrationService` / `IGoogleIntegrationWrite`.
-- **Calendar → Team**, **HumansMetrics → User / Consent** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
+- **Calendar → Team**, **HumansMetrics → User** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 

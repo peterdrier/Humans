@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Consulter maintenant</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>En attente d'approbation :</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>Votre compte est en attente d'approbation par le Conseil d'administration. Une fois approuvé, vous serez inscrit dans l'équipe des Bénévoles et recevrez l'accès aux ressources de l'organisation.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>Votre candidature {0} :</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>
@@ -770,4 +764,8 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Vos informations médicales ont été enregistrées.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les informations médicales.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Postuler pour devenir colaborador ou asociado</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Bénévole</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Les adresses e-mail de ce compte ne peuvent plus être modifiées.</value>
+  </data>
 </root>

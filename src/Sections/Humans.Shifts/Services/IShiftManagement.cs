@@ -34,7 +34,7 @@ internal interface IShiftManagement
     Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile);
 
     /// <summary>Null until a rota or knob edit creates the row. The active event is Settings' concept.</summary>
-    Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId);
+    Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>Inserts the row on demand.</summary>
     Task SaveKnobsAsync(
@@ -94,17 +94,17 @@ internal interface IShiftManagement
         LocalDate? toDate = null,
         CancellationToken ct = default);
 
-    Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null);
+    Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>
     /// Teams with at least one pending signup. A non-null <paramref name="period"/> counts only that period's signups.
     /// </summary>
-    Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null);
+    Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>Only the signups series is scoped to <paramref name="period"/>; ticket sales and logins aren't.</summary>
     Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null);
+        BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>Call after signup mutations.</summary>
     void InvalidateDashboardCaches(Guid eventSettingsId);
@@ -114,18 +114,18 @@ internal interface IShiftManagement
     /// <paramref name="period"/>.
     /// </summary>
     Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
-        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null);
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>
     /// Full-day shifts share one bucket; others bucket by whole hours. Empty when <paramref name="period"/> is null: the
     /// dashboard's "All" view omits it.
     /// </summary>
     Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
-        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null);
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>Each cell is slot fill on one calendar day, from the shifts overlapping it.</summary>
     Task<CoverageHeatmap> GetCoverageHeatmapAsync(
-        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null);
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
     /// <summary>Matches existing names case-insensitively.</summary>
     Task<ShiftTagSummary> GetOrCreateTagAsync(string name);

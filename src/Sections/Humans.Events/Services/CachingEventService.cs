@@ -211,11 +211,8 @@ internal sealed class CachingEventService(
     public Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.BuildBulkUploadTemplateAsync(campId, campName, ct));
 
-    public async Task SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
-        // Submission is Pending, not Approved: no cache change.
-    }
+    public Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
 
     public Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
         MutateAsync(async () =>

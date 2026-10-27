@@ -7,7 +7,6 @@ using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Configuration;
 using Humans.Base.Enums;
@@ -501,26 +500,18 @@ internal sealed class TeamController(
             return View(model);
         }
 
-        try
+        var result = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
+        if (result.ErrorKey is not null)
         {
-            var result = await teamService.JoinTeamAsync(team.Id, user.Id, model.Message);
-            if (result.ErrorKey is not null)
-            {
-                SetError(localizer[result.ErrorKey].Value);
-                return RedirectToAction(nameof(Details), new { slug });
-            }
-            SetSuccess(result.Outcome == TeamJoinOutcome.RequestSubmitted
-                ? localizer["Teams_Team_JoinRequestSubmitted"].Value
-                : localizer["Teams_Team_Joined"].Value);
+            logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, result.ErrorKey);
+            SetError(localizer[result.ErrorKey].Value);
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+        SetSuccess(result.Outcome == TeamJoinOutcome.RequestSubmitted
+            ? localizer["Teams_Team_JoinRequestSubmitted"].Value
+            : localizer["Teams_Team_Joined"].Value);
 
-            return RedirectToAction(nameof(Details), new { slug });
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to join team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetError(localizer["Teams_ActionFailed"].Value);
-            return RedirectToAction(nameof(Details), new { slug });
-        }
+        return RedirectToAction(nameof(Details), new { slug });
     }
 
     [HttpPost("{slug}/Leave")]
@@ -539,23 +530,15 @@ internal sealed class TeamController(
             return NotFound();
         }
 
-        try
+        var result = await teamService.LeaveTeamAsync(team.Id, user.Id);
+        if (!result.Succeeded)
         {
-            var result = await teamService.LeaveTeamAsync(team.Id, user.Id);
-            if (!result.Succeeded)
-            {
-                SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
-                return RedirectToAction(nameof(Details), new { slug });
-            }
-            SetSuccess(localizer["Teams_Team_Left"].Value);
-            return RedirectToAction(nameof(Index));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to leave team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, ex.Message);
-            SetError(localizer["Teams_ActionFailed"].Value);
+            logger.LogWarning("Failed to leave team {TeamId} for user {UserId}: {Reason}", team.Id, user.Id, result.ErrorKey);
+            SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
+        SetSuccess(localizer["Teams_Team_Left"].Value);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Requests/{id}/Withdraw")]
@@ -568,21 +551,14 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        try
+        var result = await teamService.WithdrawJoinRequestAsync(id, user.Id);
+        if (!result.Succeeded)
         {
-            var result = await teamService.WithdrawJoinRequestAsync(id, user.Id);
-            if (!result.Succeeded)
-            {
-                SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
-                return RedirectToAction(nameof(MyTeams));
-            }
-            SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
+            logger.LogWarning("Failed to withdraw join request {RequestId} for user {UserId}: {Reason}", id, user.Id, result.ErrorKey);
+            SetError(result.ErrorKey is null ? localizer["Teams_ActionFailed"].Value : localizer[result.ErrorKey].Value);
+            return RedirectToAction(nameof(MyTeams));
         }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to withdraw join request {RequestId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetError(localizer["Teams_ActionFailed"].Value);
-        }
+        SetSuccess(localizer["Teams_Team_RequestWithdrawn"].Value);
 
         return RedirectToAction(nameof(MyTeams));
     }
@@ -669,27 +645,26 @@ internal sealed class TeamController(
         {
             var result = await teamService.CreateTeamWithGoogleGroupAsync(
                 model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
+            if (!result.Succeeded)
+            {
+                var reason = result.Conflict == TeamUpdateConflict.GroupPrefixTaken
+                    ? "This Google Group prefix is already in use by another team."
+                    : result.ErrorMessage!;
+                logger.LogWarning("Failed to create team: {Reason}", reason);
+                if (result.Conflict == TeamUpdateConflict.GroupPrefixTaken)
+                    ModelState.AddModelError("GoogleGroupPrefix", reason);
+                else
+                    SetError(reason);
+                await PopulateEligibleParentsAsync(model, excludeTeamId: null);
+                return View(model);
+            }
             var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team.Id, result.Team.Name);
+            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
 
             SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
             if (result.GroupWarning is not null)
                 SetError(result.GroupWarning);
             return RedirectToAction(nameof(Summary));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to create team: {Reason}", ex.Message);
-            SetError(ex.Message);
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-            return View(model);
-        }
-        catch (DbUpdateException ex)
-        {
-            logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
-            ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-            return View(model);
         }
         catch (Exception ex)
         {
@@ -792,17 +767,16 @@ internal sealed class TeamController(
             return currentUserError;
         }
 
-        try
+        var result = await teamService.DeleteTeamAsync(id, currentUser!.Id);
+        if (result.Refusal is { } refusal)
         {
-            await teamService.DeleteTeamAsync(id, currentUser!.Id);
-            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
-
-            SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
+            logger.LogWarning("Refused team deactivation {TeamId} by admin {AdminId}: {Reason}", id, currentUser.Id, refusal);
+            SetError(refusal);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to deactivate team {TeamId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
+            SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
         }
 
         return RedirectToAction(nameof(Summary));

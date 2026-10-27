@@ -142,30 +142,29 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [InlineData("SetPrimary", true)]
-    [InlineData("SetEmailVisibility", true)]
-    [InlineData("DeleteEmail", false)]
-    [InlineData("ClearPrimary", true)]
-    [InlineData("Unlink", false)]
-    [InlineData("AdminSetPrimary", false)]
-    [InlineData("AdminSetVisibility", false)]
-    [InlineData("AdminDeleteEmail", false)]
-    [InlineData("AdminClearPrimary", false)]
-    [InlineData("AdminUnlink", false)]
-    public async Task EmailMutation_RejectionLogsWarningWithReasonWithoutException(string action, bool validationFailure)
+    [InlineData("SetPrimary")]
+    [InlineData("SetEmailVisibility")]
+    [InlineData("DeleteEmail")]
+    [InlineData("ClearPrimary")]
+    [InlineData("Unlink")]
+    [InlineData("AdminSetPrimary")]
+    [InlineData("AdminSetVisibility")]
+    [InlineData("AdminDeleteEmail")]
+    [InlineData("AdminClearPrimary")]
+    [InlineData("AdminUnlink")]
+    public async Task EmailMutation_RefusalLogsWarningWithReasonWithoutException(string action)
     {
         const string reason = "Email mutation rejected by a guardrail";
-        Exception rejection = validationFailure ? new ValidationException(reason) : new InvalidOperationException(reason);
         _userEmailService.SetPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<UpdateEmailResult>(rejection));
+            .Returns(new UpdateEmailResult(false, reason));
         _userEmailService.SetVisibilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<UpdateEmailResult>(rejection));
+            .Returns(new UpdateEmailResult(false, reason));
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<DeleteEmailResult>(rejection));
+            .Returns(new DeleteEmailResult(false, reason));
         _userEmailService.ClearPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(rejection));
+            .Returns(false);
         _userEmailService.UnlinkAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<UnlinkEmailResult>(rejection));
+            .Returns(new UnlinkEmailResult(false, reason));
         var emailId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
@@ -186,17 +185,15 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var expectedError = action is "SetPrimary" or "SetEmailVisibility" or "ClearPrimary"
-            ? "Common_Error"
-            : (string.Equals(action, "Unlink", StringComparison.Ordinal) || string.Equals(action, "DeleteEmail", StringComparison.Ordinal))
-                ? validationFailure ? "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error"
-                : reason;
+        var expectedError = action is "ClearPrimary" or "AdminClearPrimary"
+            ? "Users_EmailGrid_ClearPrimaryRejected"
+            : reason;
         _controller.TempData["ErrorMessage"].Should().Be(expectedError);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
-        arguments[2]!.ToString().Should().Contain(reason).And.Contain(emailId.ToString());
+        arguments[2]!.ToString().Should().Contain(expectedError).And.Contain(emailId.ToString());
     }
 
     [HumansTheory]
@@ -473,6 +470,55 @@ public class ProfileEmailsControllerGridTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task AdminEmailAddition_ExpectedRefusal_DoesNotAuditOrSend(bool verified)
+    {
+        var targetId = Guid.NewGuid();
+        const string email = "added@example.com";
+        const string errorKey = "Users_EmailUpdate_AccountUnavailable";
+        _userManager.FindByIdAsync(targetId.ToString()).Returns(new User { Id = targetId });
+        _userEmailService.AddEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, errorKey));
+        _userEmailService.AddVerifiedEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.Empty, false, false, errorKey));
+
+        var result = verified
+            ? await _controller.AdminAddVerifiedEmail(targetId, email, TestContext.Current.CancellationToken)
+            : await _controller.AdminAddEmail(targetId, email, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        _controller.TempData["ErrorMessage"].Should().Be(errorKey);
+        _controller.TempData.Should().NotContainKey("SuccessMessage");
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminEmailAddition_UnexpectedFailure_Propagates(bool verified)
+    {
+        var targetId = Guid.NewGuid();
+        const string email = "added@example.com";
+        _userManager.FindByIdAsync(targetId.ToString()).Returns(new User { Id = targetId });
+        var failure = new InvalidOperationException("Dependency failed");
+        _userEmailService.AddEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AddEmailResult>(failure));
+        _userEmailService.AddVerifiedEmailAsync(targetId, email, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UserEmailAddResult>(failure));
+
+        Func<Task<IActionResult>> act = () => verified
+            ? _controller.AdminAddVerifiedEmail(targetId, email, TestContext.Current.CancellationToken)
+            : _controller.AdminAddEmail(targetId, email, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        _controller.TempData.Should().NotContainKey("ErrorMessage");
+        _controller.TempData.Should().NotContainKey("SuccessMessage");
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task AdminAddEmail_CommittedAddition_AuditsBeforeQueueAndFinishesAfterDisconnect(bool queueFails)
     {
         var targetId = Guid.NewGuid();
@@ -699,6 +745,64 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
+    [InlineData("delete", false)]
+    [InlineData("admin-delete", false)]
+    [InlineData("unlink", false)]
+    [InlineData("admin-unlink", false)]
+    [InlineData("admin-delete", true)]
+    [InlineData("admin-unlink", true)]
+    [InlineData("primary", false)]
+    [InlineData("primary", true)]
+    [InlineData("admin-primary", false)]
+    [InlineData("admin-primary", true)]
+    [InlineData("visibility", false)]
+    [InlineData("visibility", true)]
+    [InlineData("admin-visibility", false)]
+    [InlineData("admin-visibility", true)]
+    [InlineData("clear", false)]
+    [InlineData("clear", true)]
+    [InlineData("admin-clear", false)]
+    [InlineData("admin-clear", true)]
+    public async Task EmailMutation_DependencyFailuresPropagateWithoutRefusalFeedback(string action, bool validation)
+    {
+        var row = Guid.NewGuid();
+        Exception failure = validation ? new ValidationException("Private dependency diagnostic")
+            : new InvalidOperationException("Private dependency diagnostic");
+        _userEmailService.SetPrimaryAsync(_userId, row, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UpdateEmailResult>(failure));
+        _userEmailService.SetVisibilityAsync(_userId, row, Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UpdateEmailResult>(failure));
+        _userEmailService.ClearPrimaryAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(failure));
+        _userEmailService.DeleteEmailAsync(_userId, row, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<DeleteEmailResult>(failure));
+        _userEmailService.UnlinkAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<UnlinkEmailResult>(failure));
+        Func<Task> act = async () =>
+        {
+            _ = action switch
+            {
+                "primary" => await _controller.SetPrimary(row, TestContext.Current.CancellationToken),
+                "admin-primary" => await _controller.AdminSetPrimary(_userId, row, TestContext.Current.CancellationToken),
+                "visibility" => await _controller.SetEmailVisibility(row, null),
+                "admin-visibility" => await _controller.AdminSetVisibility(_userId, row, null, TestContext.Current.CancellationToken),
+                "clear" => await _controller.ClearPrimary(row, TestContext.Current.CancellationToken),
+                "admin-clear" => await _controller.AdminClearPrimary(_userId, row, TestContext.Current.CancellationToken),
+                "delete" => await _controller.DeleteEmail(row),
+                "admin-delete" => await _controller.AdminDeleteEmail(_userId, row, TestContext.Current.CancellationToken),
+                "unlink" => await _controller.Unlink(row, TestContext.Current.CancellationToken),
+                _ => await _controller.AdminUnlink(_userId, row, TestContext.Current.CancellationToken)
+            };
+        };
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        _controller.TempData.Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("Users_EmailUpdate_NotFound", false)]
+    [InlineData("Users_EmailUpdate_NotFound", true)]
     [InlineData("Users_EmailGrid_DeleteRejectedHasProvider", false)]
     [InlineData("Users_EmailGrid_DeletePrimaryBlocked", false)]
     [InlineData("Users_EmailDelete_LastVerifiedBlocked", false)]
@@ -837,8 +941,6 @@ public class ProfileEmailsControllerGridTests
     [InlineData(false)]
     public async Task UnlinkLinkedAccount_RefusalIsLocalizedAndKeepsLogin(bool lastSignInMethod)
     {
-        // The only verified row carries the OAuth tag, so unlinking would leave no way back in.
-        // UnlinkAsync refuses with a ValidationException; the controller flashes an error.
         var rowId = Guid.NewGuid();
         const string provider = "Google";
         const string providerKey = "google-sub-only";
@@ -855,10 +957,18 @@ public class ProfileEmailsControllerGridTests
                 ? Task.FromResult(new UnlinkEmailResult(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"))
                 : Task.FromException<UnlinkEmailResult>(new InvalidOperationException("Private unlink operation diagnostic")));
 
+        if (!lastSignInMethod)
+        {
+            Func<Task> act = async () => await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private unlink operation diagnostic");
+            _controller.TempData.Should().BeEmpty();
+            await _userManager.DidNotReceive().RemoveLoginAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+            return;
+        }
+
         var result = await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
 
-        _controller.TempData["ErrorMessage"].Should().Be(lastSignInMethod
-            ? "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod" : "Common_Error");
+        _controller.TempData["ErrorMessage"].Should().Be("Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
 
         // The Identity login row must remain untouched — the service refused
         // before any mutation, and the controller never bypasses it.

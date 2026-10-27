@@ -1,6 +1,7 @@
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.MailerLite.Tests.Services;
 
@@ -64,6 +65,27 @@ public class MailerLiteGdprContributorTests
         await EraseAsync();
 
         await _mailerLite.Received(1)
+            .DeleteSubscriberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("frank@gmail.com", true)]
+    [InlineData("frank@googlemail.com", true)]
+    [InlineData("Frank@GMAIL.COM", false)]
+    [InlineData("Frank@GOOGLEMAIL.COM", false)]
+    public async Task EraseForUserAsync_DeletesBothGmailDomainAliases(string address, bool verified)
+    {
+        Emails(verified ? null : address, verified ? [address] : []);
+
+        await EraseAsync();
+
+        await _mailerLite.Received(1).DeleteSubscriberAsync(
+            Arg.Is<string>(email => email.Equals("frank@gmail.com", StringComparison.OrdinalIgnoreCase)),
+            Arg.Any<CancellationToken>());
+        await _mailerLite.Received(1).DeleteSubscriberAsync(
+            Arg.Is<string>(email => email.Equals("frank@googlemail.com", StringComparison.OrdinalIgnoreCase)),
+            Arg.Any<CancellationToken>());
+        await _mailerLite.Received(2)
             .DeleteSubscriberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 

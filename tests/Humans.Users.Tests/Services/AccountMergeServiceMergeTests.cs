@@ -4,7 +4,6 @@ using Humans.Users.Data;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
 using Humans.AuditLog.Contracts;
-using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
@@ -21,7 +20,6 @@ public class AccountMergeServiceMergeTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly INotificationService _notify = Substitute.For<INotificationService>();
     private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
@@ -37,7 +35,7 @@ public class AccountMergeServiceMergeTests
         new(
             mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoRefresher,
             NullLogger<AccountMergeService>.Instance, _clock,
-            _userMerges, _userService, _notify);
+            _userMerges, _userService);
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
@@ -134,53 +132,35 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task MergeAsync_SurvivorEqualsArchived_Throws()
+    public async Task MergeAsync_SurvivorEqualsArchived_ReturnsRefusal()
     {
         var id = Guid.NewGuid();
         var act = () => BuildSut().MergeAsync(id, id, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     [HumansFact]
-    public async Task MergeAsync_ArchivedMissing_Throws()
+    public async Task MergeAsync_ArchivedMissing_ReturnsRefusal()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
             .Returns(UserInfoFactory.Create(new User { Id = tgt }, [], [], [], null, [], [], [], []));
         // archived (src) returns null by default — Substitute.For<>'s default for ValueTask<UserInfo?> is null
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await act()).Refusal.Should().NotBeNull();
     }
 
     [HumansFact]
-    public async Task MergeAsync_ArchivedAlreadyTombstoned_Throws()
+    public async Task MergeAsync_ArchivedAlreadyTombstoned_ReturnsRefusal()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
         SetupUsers(src, tgt, sourceTombstoned: true);
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*tombstoned*");
+        (await act()).Refusal.Should().Contain("tombstoned");
     }
 
     [HumansFact]
-    public async Task MergeAsync_RefreshesNotificationsAfterTombstone()
-    {
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
-        SetupUsers(src, tgt);
-
-        await BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
-
-        Received.InOrder(() =>
-        {
-            _ = _userService.AnonymizeForMergeAsync(src, tgt,
-                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
-            _notify.InvalidateBadgeCachesForUsers(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(src) && ids.Contains(tgt)));
-        });
-        _notify.Received(1).InvalidateBadgeCachesForUsers(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(src) && ids.Contains(tgt)));
-    }
-
-    [HumansFact]
-    public async Task MergeAsync_FanOutThrows_StillRefreshesNotifications()
+    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstoned()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
@@ -191,8 +171,9 @@ public class AccountMergeServiceMergeTests
 
         var act = () => BuildSut().MergeAsync(tgt, src, admin, ct: TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        _notify.Received(1).InvalidateBadgeCachesForUsers(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(src) && ids.Contains(tgt)));
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        await _userService.DidNotReceive().AnonymizeForMergeAsync(
+            src, tgt, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -226,7 +207,7 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task ReconcileMergedRequestAsync_Throws_WhenNeitherAccountMerged()
+    public async Task ReconcileMergedRequestAsync_ReturnsRefusal_WhenNeitherAccountMerged()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
         var req = new AccountMergeRequest
@@ -245,12 +226,11 @@ public class AccountMergeServiceMergeTests
 
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not merged into each other*");
+        (await act()).Refusal.Should().Contain("not merged into each other");
     }
 
     [HumansFact]
-    public async Task ReconcileMergedRequestAsync_Throws_WhenOneAccountMergedIntoThirdParty()
+    public async Task ReconcileMergedRequestAsync_ReturnsRefusal_WhenOneAccountMergedIntoThirdParty()
     {
         // Source merged into an UNRELATED third account, target still active.
         // The A<->B request must NOT be closeable — that conflict is still unresolved.
@@ -271,8 +251,7 @@ public class AccountMergeServiceMergeTests
 
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not merged into each other*");
+        (await act()).Refusal.Should().Contain("not merged into each other");
         await _mergeRepo.DidNotReceive().UpdateAsync(Arg.Any<AccountMergeRequest>(), Arg.Any<CancellationToken>());
     }
 }

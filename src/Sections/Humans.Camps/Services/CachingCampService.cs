@@ -214,20 +214,22 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task ApproveSeasonAsync(
+    public Task<CampAdminMutationResult> ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            if (result.Succeeded) await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            return result;
         });
 
-    public Task RejectSeasonAsync(
+    public Task<CampAdminMutationResult> RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.RejectSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken));
+            if (result.Succeeded) await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            return result;
         });
 
     public Task<CampUpdateResult> WithdrawSeasonAsync(
@@ -239,11 +241,12 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ReactivateSeasonAsync(seasonId, actorUserId: actorUserId, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.ReactivateSeasonAsync(seasonId, actorUserId: actorUserId, cancellationToken));
+            if (result.Succeeded) await InvalidateBySeasonAsync(seasonId, cancellationToken);
+            return result;
         });
 
     public Task<CampUpdateResult> MarkSeasonFullAsync(
@@ -265,12 +268,13 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.DeleteCampAsync(campId, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.DeleteCampAsync(campId, actorUserId: actorUserId, cancellationToken));
             // Tombstone without flipping warmth — preserves the all-rows invariant.
             DeleteKey(campId);
+            return result;
         });
 
     public Task<CampUpdateResult> AddHistoricalNameAsync(
@@ -437,13 +441,15 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task SetCampSeasonEeSlotCountAsync(
+    public Task<CampAdminMutationResult> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
-            await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+            var result = await WithInnerAsync(inner => inner.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, actorUserId, cancellationToken));
+            if (result.Succeeded)
+                await InvalidateBySeasonAsync(campSeasonId, cancellationToken);
+            return result;
         });
 
     public Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
@@ -492,7 +498,7 @@ internal sealed class CachingCampService(
         WithInnerRolesAsync(inner => inner.BuildDrillDownAsync(roleDefinitionId, year, ct));
 
     // A new definition has no assignments yet, so nothing cached changes.
-    Task<CampRoleDefinition> ICampRoleService.CreateDefinitionAsync(
+    Task<CampAdminMutationResult> ICampRoleService.CreateDefinitionAsync(
         CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
         WithInnerRolesAsync(inner => inner.CreateDefinitionAsync(input, actorUserId, ct));
 
@@ -756,8 +762,11 @@ internal sealed class CachingCampService(
     }
 
     /// <inheritdoc />
-    Task ICampSeeding.ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken) =>
-        ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken);
+    async Task ICampSeeding.ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken)
+    {
+        var result = await ApproveSeasonAsync(seasonId, reviewedByUserId, notes, cancellationToken);
+        if (!result.Succeeded) throw new InvalidOperationException(result.ErrorMessage);
+    }
 
     /// <inheritdoc />
     async Task ICampSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(

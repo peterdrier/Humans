@@ -36,10 +36,7 @@ public sealed record UserProfileSaveResult(
     string? PreviousProfilePictureKey,
     string? CurrentProfilePictureKey);
 
-public sealed record UserProfileAnonymizeResult(
-    bool Anonymized,
-    Guid? ProfileId,
-    string? PreviousProfilePictureKey);
+public sealed record UserProfileAnonymizeResult(bool Anonymized);
 
 public sealed record UserProfileLanguagesSaveResult(
     bool Saved,

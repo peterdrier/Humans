@@ -141,7 +141,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - One pending application per person per program across every id they have held; a second
   submit edits it.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
-  for it (a rejected report resubmitting). Release and consume need the holding report.
+  for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction.
 - Grant-level admin routes 404 for a grant of another program, so a manager of A never acts
   on B's grants (`PreapprovalsAdminController.ManageAsync`, `ControllerTests`).
 - Grant admin actions reject invalid form binding with 400 after identity, program permission
@@ -223,10 +223,10 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 | Interface | Methods | Notes |
 |---|---:|---|
 | `IPreapprovalService` (public) | 3 | `ListClaimableForUserAsync`, `GetGrantAsync`, `ListManagedGrantIdsAsync` (the grants a named manager may first-review in Expenses). Returns `GrantOption` or ids, never entities. |
-| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `GrantStamp`). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
+| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with a `GrantStamp` on successful claims). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
 | `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking, reminders. |
 
-`GrantOption`, `GrantStamp` and `GrantStatus` are the public types beside them.
+`GrantOption`, `GrantStamp`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
 
 ### For (A) Migrated sections
 

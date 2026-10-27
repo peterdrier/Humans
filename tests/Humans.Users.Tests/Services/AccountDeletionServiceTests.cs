@@ -39,7 +39,7 @@ public class AccountDeletionServiceTests
     public AccountDeletionServiceTests()
     {
         _userService.AnonymizeProfileForDeletionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(false, null, null));
+            .Returns(new UserProfileAnonymizeResult(false));
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
         _service = new AccountDeletionService(

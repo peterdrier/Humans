@@ -265,7 +265,7 @@
                         }
                         else if (info?.Profile is not null)
                         {
-                            <span class="badge bg-light text-dark border">@Model.Tiers.GetValueOrDefault(m.UserId, MembershipTier.Volunteer)</span>
+                            <span class="badge bg-light text-dark border">@Localizer.EnumDisplay(Model.Tiers.GetValueOrDefault(m.UserId, MembershipTier.Volunteer))</span>
                         }
                     </span>
                 </li>

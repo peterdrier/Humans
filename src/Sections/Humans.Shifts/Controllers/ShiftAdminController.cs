@@ -154,23 +154,18 @@ internal sealed class ShiftAdminController(
         if (teamError is not null) return teamError;
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        try
+        var result = await shiftMgmt.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
+            rotaId,
+            team.Id,
+            model.Days
+                .Select(d => new DayStaffingInput(d.DayOffset, d.MinVolunteers, d.MaxVolunteers))
+                .ToList()));
+        if (result.Succeeded)
+            SetSuccess(result.Message);
+        else
         {
-            var result = await shiftMgmt.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
-                rotaId,
-                team.Id,
-                model.Days
-                    .Select(d => new DayStaffingInput(d.DayOffset, d.MinVolunteers, d.MaxVolunteers))
-                    .ToList()));
-            if (result.Succeeded)
-                SetSuccess(result.Message);
-            else
-                SetError(result.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to configure staffing for rota {RotaId} in team {TeamId}: {Reason}", rotaId, team.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to configure staffing for rota {RotaId} in team {TeamId}: {Reason}", rotaId, team.Id, result.Message);
+            SetError(result.Message);
         }
 
         return RedirectToAction(nameof(Index), new { slug });
@@ -196,25 +191,20 @@ internal sealed class ShiftAdminController(
             timeSlots.Add(new ShiftTimeSlotInput(parsed, slot.DurationHours));
         }
 
-        try
+        var result = await shiftMgmt.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
+            rotaId,
+            team.Id,
+            model.StartDayOffset,
+            model.EndDayOffset,
+            timeSlots,
+            model.MinVolunteers,
+            model.MaxVolunteers));
+        if (result.Succeeded)
+            SetSuccess(result.Message);
+        else
         {
-            var result = await shiftMgmt.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
-                rotaId,
-                team.Id,
-                model.StartDayOffset,
-                model.EndDayOffset,
-                timeSlots,
-                model.MinVolunteers,
-                model.MaxVolunteers));
-            if (result.Succeeded)
-                SetSuccess(result.Message);
-            else
-                SetError(result.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Failed to generate shifts for rota {RotaId} in team {TeamId}", rotaId, team.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to generate shifts for rota {RotaId} in team {TeamId}: {Reason}", rotaId, team.Id, result.Message);
+            SetError(result.Message);
         }
 
         return RedirectToAction(nameof(Index), new { slug });
@@ -239,28 +229,23 @@ internal sealed class ShiftAdminController(
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        try
+        var result = await shiftMgmt.CreateShiftAsync(new CreateShiftInput(
+            model.RotaId,
+            team.Id,
+            model.Description,
+            model.DayOffset,
+            parsedTime,
+            model.DurationHours,
+            model.MinVolunteers,
+            model.MaxVolunteers,
+            model.AdminOnly,
+            IsAllDay: false));
+        if (result.Succeeded)
+            SetSuccess(result.Message);
+        else
         {
-            var result = await shiftMgmt.CreateShiftAsync(new CreateShiftInput(
-                model.RotaId,
-                team.Id,
-                model.Description,
-                model.DayOffset,
-                parsedTime,
-                model.DurationHours,
-                model.MinVolunteers,
-                model.MaxVolunteers,
-                model.AdminOnly,
-                IsAllDay: false));
-            if (result.Succeeded)
-                SetSuccess(result.Message);
-            else
-                SetError(result.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Failed to create shift for rota {RotaId} in team {TeamId}", model.RotaId, team.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to create shift for rota {RotaId} in team {TeamId}: {Reason}", model.RotaId, team.Id, result.Message);
+            SetError(result.Message);
         }
 
         return RedirectToAction(nameof(Index), new { slug });
@@ -341,27 +326,19 @@ internal sealed class ShiftAdminController(
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        try
+        var result = await shiftMgmt.MoveRotaToTeamAsync(new MoveRotaInput(
+            rotaId,
+            team.Id,
+            model.TargetTeamId,
+            user.Id));
+        if (result.Succeeded)
         {
-            var result = await shiftMgmt.MoveRotaToTeamAsync(new MoveRotaInput(
-                rotaId,
-                team.Id,
-                model.TargetTeamId,
-                user.Id));
-            if (result.Succeeded)
-            {
-                SetSuccess(result.Message);
-                return RedirectToAction(nameof(Index), new { slug = result.RedirectSlug });
-            }
+            SetSuccess(result.Message);
+            return RedirectToAction(nameof(Index), new { slug = result.RedirectSlug });
+        }
 
-            SetError(result.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(ex, "Failed to move rota {RotaId} to team {TargetTeamId}", rotaId, model.TargetTeamId);
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Index), new { slug });
-        }
+        logger.LogWarning("Failed to move rota {RotaId} to team {TargetTeamId}: {Reason}", rotaId, model.TargetTeamId, result.Message);
+        SetError(result.Message);
 
         return RedirectToAction(nameof(Index), new { slug });
     }

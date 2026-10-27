@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
@@ -43,15 +44,15 @@ internal sealed class CampAdminController(
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
-        try
+        var result = await campService.ApproveSeasonAsync(seasonId, user.Id, notes);
+        if (result.Succeeded)
         {
-            await campService.ApproveSeasonAsync(seasonId, user.Id, notes);
             SetSuccess("Season approved.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to approve camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to approve camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));
@@ -70,15 +71,15 @@ internal sealed class CampAdminController(
             return RedirectToAction(nameof(Index));
         }
 
-        try
+        var result = await campService.RejectSeasonAsync(seasonId, user.Id, notes);
+        if (result.Succeeded)
         {
-            await campService.RejectSeasonAsync(seasonId, user.Id, notes);
             SetSuccess("Season rejected.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to reject camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to reject camp season {SeasonId} for admin {UserId}: {Reason}", seasonId, user.Id, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));
@@ -86,10 +87,11 @@ internal sealed class CampAdminController(
 
     [HttpPost("OpenSeason")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> OpenSeason([FromForm] int year)
+    public async Task<IActionResult> OpenSeason([FromForm, BindRequired] int year)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         try
         {
@@ -128,10 +130,11 @@ internal sealed class CampAdminController(
 
     [HttpPost("SetNameLockDate")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetNameLockDate(int year, string lockDate)
+    public async Task<IActionResult> SetNameLockDate([BindRequired] int year, string lockDate)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(lockDate);
         if (!parseResult.Success)
@@ -156,31 +159,24 @@ internal sealed class CampAdminController(
     [HttpPost("SetCampSeasonEeSlotCount/{seasonId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
-        Guid seasonId, int slotCount, CancellationToken cancellationToken)
+        Guid seasonId, [BindRequired] int slotCount, CancellationToken cancellationToken)
     {
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        try
+        var result = await campService.SetCampSeasonEeSlotCountAsync(
+            seasonId, slotCount, user.Id, cancellationToken);
+        if (result.Succeeded)
         {
-            await campService.SetCampSeasonEeSlotCountAsync(
-                seasonId, slotCount, user.Id, cancellationToken);
             SetSuccess($"EE slot count set to {slotCount}.");
         }
-        catch (ArgumentOutOfRangeException)
+        else
         {
             logger.LogWarning(
-                "EE slot count must be non-negative for season {SeasonId} (actor {UserId})",
-                seasonId, user.Id);
-            SetError("EE slot count cannot be negative.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Failed to set EE slot count on season {SeasonId}: {Reason}",
-                seasonId, ex.Message);
-            SetError(ex.Message);
+                "Failed to set EE slot count on season {SeasonId} for actor {UserId}: {Reason}",
+                seasonId, user.Id, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));
@@ -193,15 +189,15 @@ internal sealed class CampAdminController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
-        try
+        var result = await campService.ReactivateSeasonAsync(seasonId, actorUserId: user.Id);
+        if (result.Succeeded)
         {
-            await campService.ReactivateSeasonAsync(seasonId, actorUserId: user.Id);
             SetSuccess("Season status updated.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to reactivate camp season {SeasonId}: {Reason}", seasonId, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to reactivate camp season {SeasonId}: {Reason}", seasonId, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         if (!string.IsNullOrEmpty(returnSlug))
@@ -240,15 +236,15 @@ internal sealed class CampAdminController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
-        try
+        var result = await campService.DeleteCampAsync(campId, actorUserId: user.Id);
+        if (result.Succeeded)
         {
-            await campService.DeleteCampAsync(campId, actorUserId: user.Id);
             SetSuccess("Camp deleted.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to delete camp {CampId}: {Reason}", campId, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to delete camp {CampId}: {Reason}", campId, result.ErrorMessage);
+            SetError(result.ErrorMessage!);
         }
 
         return RedirectToAction(nameof(Index));
@@ -337,15 +333,15 @@ internal sealed class CampAdminController(
         {
             var input = new CreateCampRoleDefinitionInput(
                 form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
-            await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
+            var result = await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
+            if (!result.Succeeded)
+            {
+                logger.LogWarning("CreateRole rejected for actor {UserId}: {Reason}", user.Id, result.ErrorMessage);
+                ModelState.AddModelError(string.Empty, result.ErrorMessage!);
+                return View("RoleForm", form);
+            }
             SetSuccess($"Created camp role '{form.Name}'.");
             return RedirectToAction(nameof(Roles));
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("CreateRole rejected for actor {UserId}: {Reason}", user.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("RoleForm", form);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -403,13 +399,14 @@ internal sealed class CampAdminController(
                 return NotFound();
             }
 
+            if (result.Status == UpdateCampRoleDefinitionStatus.Rejected)
+            {
+                logger.LogWarning("EditRole rejected for role {RoleId} by actor {UserId}: {Reason}", id, user.Id, result.ErrorMessage);
+                ModelState.AddModelError(string.Empty, result.ErrorMessage!);
+                return View("RoleForm", form);
+            }
+
             throw new System.Diagnostics.UnreachableException($"Unexpected camp role update status '{result.Status}'.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("EditRole rejected for role {RoleId} by actor {UserId}: {Reason}", id, user.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("RoleForm", form);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

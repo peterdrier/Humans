@@ -125,9 +125,9 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Recategorise after push.** `UpdateIncomingDocTag` outbox events drain to a log line —
   Holded v2 has no tag endpoint, so the correction is made inside Holded and mirrored back.
   The enum member survives so pre-existing rows drain instead of poisoning the queue.
-- **"Waiting on the coordinator" in the queue.** `CategoryRequiresCoordinatorEndorsementAsync`
-  computes whether a category has a coordinator and has no production caller; it is reserved for
-  telling the two review states apart, not for gating approval.
+- **"Waiting on the coordinator" in the queue.** The queue does not distinguish reports
+  waiting for a coordinator from those waiting for Finance; coordinator presence never gates
+  Finance approval.
 
 ## 6. Deliberately not done
 

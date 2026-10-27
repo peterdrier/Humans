@@ -76,9 +76,12 @@ public class TeamControllerPageContentTests
 
     [HumansTheory]
     [InlineData("create", false, false)]
+    [InlineData("create-group", false, false)]
     [InlineData("edit", false, false)]
     [InlineData("delete", false, false)]
     [InlineData("create", true, false)]
+    [InlineData("create-database", true, false)]
+    [InlineData("create-dependency", true, false)]
     [InlineData("edit", true, false)]
     [InlineData("edit-database", true, false)]
     [InlineData("edit-dependency", true, false)]
@@ -100,25 +103,30 @@ public class TeamControllerPageContentTests
         const string reason = "The team hierarchy does not permit this change";
         var editCase = action;
         if (action.StartsWith("edit-", StringComparison.Ordinal)) action = "edit";
+        if (action.StartsWith("create-", StringComparison.Ordinal)) action = "create";
         var conflict = editCase switch
         {
             "edit-slug" => Humans.Teams.Data.TeamUpdateConflict.SlugTaken,
             "edit-custom" => Humans.Teams.Data.TeamUpdateConflict.CustomSlugTaken,
-            "edit-group" => Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken,
+            "create-group" or "edit-group" => Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken,
             _ => Humans.Teams.Data.TeamUpdateConflict.None
         };
         Exception failure = editCase switch
         {
-            "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
-            "edit-dependency" => new InvalidOperationException(reason),
+            "create-database" or "edit-database" => new Microsoft.EntityFrameworkCore.DbUpdateException("Database unavailable", new Exception("CustomSlug is mentioned but is not a unique violation")),
+            "create-dependency" or "edit-dependency" => new InvalidOperationException(reason),
+            "delete" when unexpected => new InvalidOperationException("Private dependency failure"),
             _ => unexpected ? new IOException("Database unavailable") : new InvalidOperationException(reason)
         };
         teams.CreateTeamWithGoogleGroupAsync("", null, false)
-            .ReturnsForAnyArgs(Task.FromException<TeamWithGroupResult>(failure));
+            .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
+                : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false)
             .ReturnsForAnyArgs(unexpected ? Task.FromException<TeamUpdateResult>(failure)
                 : Task.FromResult(new TeamUpdateResult(Conflict: conflict, ErrorMessage: conflict == Humans.Teams.Data.TeamUpdateConflict.None ? reason : null)));
-        teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(Task.FromException(failure));
+        teams.DeleteTeamAsync(teamId, Guid.Empty).ReturnsForAnyArgs(unexpected
+            ? Task.FromException<TeamDeactivationResult>(failure)
+            : Task.FromResult(new TeamDeactivationResult(reason)));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
@@ -197,7 +205,7 @@ public class TeamControllerPageContentTests
             Humans.Teams.Data.TeamUpdateConflict.GroupPrefixTaken => "GoogleGroupPrefix",
             _ => string.Empty
         };
-        if (string.Equals(action, "edit", StringComparison.Ordinal))
+        if (string.Equals(action, "edit", StringComparison.Ordinal) || conflict != Humans.Teams.Data.TeamUpdateConflict.None)
         {
             controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expectedReason);
             controller.TempData.Should().NotContainKey("SuccessMessage");
@@ -439,7 +447,7 @@ public class TeamControllerPageContentTests
     [InlineData("Leave", true)]
     [InlineData("Withdraw", false)]
     [InlineData("Withdraw", true)]
-    public async Task MemberActionErrors_UseSpanishResourcesAndUnknownFailureFallback(string action, bool unknown)
+    public async Task MemberActionErrors_LocalizeRefusalsAndPropagateDependencyFailures(string action, bool unknown)
     {
         var originalCulture = CultureInfo.CurrentUICulture;
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es");
@@ -490,22 +498,28 @@ public class TeamControllerPageContentTests
                 Url = Substitute.For<IUrlHelper>()
             };
 
-            var result = action switch
+            Task<IActionResult> ActAsync() => action switch
             {
-                "Join" => await controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
-                "Leave" => await controller.Leave(team.Slug),
-                _ => await controller.WithdrawRequest(Guid.NewGuid())
+                "Join" => controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
+                "Leave" => controller.Leave(team.Slug),
+                _ => controller.WithdrawRequest(Guid.NewGuid())
             };
 
-            result.Should().BeOfType<RedirectToActionResult>();
-            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(unknown
-                ? "No se pudo completar esta acción del equipo. Inténtalo de nuevo."
-                : action switch
-                {
-                    "Join" => "Ya tiene una solicitud pendiente para este equipo.",
-                    "Leave" => "No formas parte de este equipo.",
-                    _ => "Esta solicitud para unirte no está disponible o ya no está pendiente."
-                });
+            if (unknown)
+            {
+                Func<Task> act = async () => await ActAsync();
+                await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(key);
+                controller.TempData.Should().BeEmpty();
+                return;
+            }
+
+            (await ActAsync()).Should().BeOfType<RedirectToActionResult>();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(action switch
+            {
+                "Join" => "Ya tiene una solicitud pendiente para este equipo.",
+                "Leave" => "No formas parte de este equipo.",
+                _ => "Esta solicitud para unirte no está disponible o ya no está pendiente."
+            });
         }
         finally
         {

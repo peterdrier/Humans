@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Xunit;
 using Microsoft.Extensions.Options;
 using Humans.Base.Configuration;
 using Humans.Guide.Services;
@@ -63,6 +64,18 @@ public class GuideRendererTests
 
         html.Should().Contain("/Profile/Me/Edit");
         html.Should().NotContain("target=\"_blank\"");
+    }
+
+    [HumansTheory]
+    [InlineData("[`/Profile/Me`](Profiles.md)", "href=\"/Guide/Profiles\"")]
+    [InlineData("<pre><code>/Profile/Me</code></pre>", "<pre><code>")]
+    public void Render_AppPathInLinkOrCodeBlock_IsNotAutolinked(string markdown, string expected)
+    {
+        var html = CreateRenderer().Render(markdown, "Profiles");
+
+        html.Should().Contain(expected);
+        html.Should().Contain("/Profile/Me");
+        html.Should().NotContain("guide-app-path");
     }
 
     [HumansFact]

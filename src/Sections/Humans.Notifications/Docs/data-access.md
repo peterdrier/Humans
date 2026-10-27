@@ -18,10 +18,6 @@ Repository: `INotificationRepository`.
 | Notifications | R/W |
 | NotificationRecipients | R/W |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `NotificationBadge:{userId}` | 2 min | | | yes (on dispatch) |
-
 Cross-section calls via `INotificationEmitter`, `IRoleAssignmentService`,
 `ICommunicationPreferenceService`, `IClock`. Implements `IUserMerge`.
 
@@ -33,10 +29,6 @@ Repository: `INotificationRepository`.
 |-------|-----|
 | Notifications | R/W |
 | NotificationRecipients | R/W |
-
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `NotificationBadge:{userId}` | 2 min | | | yes |
 
 Low-level emitter used by `NotificationService` and direct callers
 (`TeamService`, `CampService`, `CampRoleService`, `CampContactService`)
@@ -52,11 +44,7 @@ Repository: `INotificationRepository`.
 | Notifications | R/W (shared resolution/dismissal) |
 | NotificationRecipients | R/W (per-user read state) |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `NotificationBadge:{userId}` | 2 min | yes | yes | yes (on read/dismiss) |
-
-Resolve/dismiss share class-scoped single and bulk repository writes; the service selects the eligible class.
+Resolve/dismiss share class-scoped single and bulk repository writes; the service selects the eligible class. Unread badge counts query this repository directly on each read.
 
 Cross-section calls via `IUserService`. Implements `IUserDataContributor`.
 

@@ -51,6 +51,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 **Acceptance Criteria:**
 - Date of birth field on profile edit page
 - Only month and day shown in the birthday calendar (privacy)
+- Profile cards likewise show only the localized month and day, without a weekday or year; February 29 is supported.
 - DOB only visible to the member themselves and board members
 - DOB included in GDPR data export
 - Field is optional
@@ -99,7 +100,7 @@ The read path lives in `IProfilePictureService.GetProfilePictureAsync` and is th
 2. Otherwise reads the filesystem store at the stored key (or the legacy key when none). A hit is returned immediately.
 3. On a filesystem miss it returns `null` — there is no DB-column fallback.
 
-Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes bytes before committing their content-type metadata, then the editor cleans superseded files without request cancellation. `IProfilePictureService` only reads pictures and migration snapshots. Removal/anonymization clears the content-type gate before best-effort file cleanup; failures are logged and stale files remain inaccessible through the read path.
+Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes bytes before committing their content-type metadata, then the editor cleans superseded files without request cancellation. `IProfilePictureService` only reads pictures and migration snapshots. Ordinary picture removal clears the content-type gate before best-effort file cleanup. GDPR erasure deletes the resolved legacy or versioned file before anonymizing the profile; a storage failure propagates with the picture metadata intact so the deletion cascade can retry.
 
 ## Routes
 

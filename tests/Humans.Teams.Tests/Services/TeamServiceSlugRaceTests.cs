@@ -28,7 +28,7 @@ public class TeamServiceSlugRaceTests
     /// must retry with the next suffix rather than bubble an exception.
     /// </summary>
     [HumansFact]
-    public async Task CreateTeamAsync_WhenFirstPersistReturnsFalse_RetriesWithSuffixedSlug()
+    public async Task CreateTeamAsync_WhenFirstPersistReportsSlugConflict_RetriesWithSuffixedSlug()
     {
         var repo = BuildRepoForRace(firstAttemptSucceeds: false);
         var service = BuildService(repo);
@@ -40,7 +40,7 @@ public class TeamServiceSlugRaceTests
 
         created.Name.Should().Be("Design");
         created.Slug.Should().Be("design-2",
-            because: "the first persist returned false (simulated unique-constraint race), so the loop must advance to the suffixed slug");
+            because: "the first persist reported a slug conflict, so the loop must advance to the suffixed slug");
 
         // Sanity: two persist attempts, both from the retry loop.
         await repo.Received(2).AddTeamWithRequiresApprovalOverrideAsync(
@@ -64,6 +64,22 @@ public class TeamServiceSlugRaceTests
             Arg.Any<Team>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task CreateTeamWithGoogleGroup_PrefixConflict_DoesNotRetryOrProvision()
+    {
+        var repo = BuildRepoForRace(firstAttemptSucceeds: true);
+        repo.AddTeamWithRequiresApprovalOverrideAsync(Arg.Any<Team>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(TeamUpdateConflict.GroupPrefixTaken);
+        var service = BuildService(repo);
+
+        var result = await service.CreateTeamWithGoogleGroupAsync("Design", null, false,
+            googleGroupPrefix: "design", cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        result.Conflict.Should().Be(TeamUpdateConflict.GroupPrefixTaken);
+        result.Team.Should().BeNull();
+        await repo.Received(1).AddTeamWithRequiresApprovalOverrideAsync(Arg.Any<Team>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
     private static ITeamRepository BuildRepoForRace(bool firstAttemptSucceeds)
     {
         var repo = Substitute.For<ITeamRepository>();
@@ -81,7 +97,7 @@ public class TeamServiceSlugRaceTests
             .Returns(_ =>
             {
                 callCount++;
-                return callCount == 1 ? firstAttemptSucceeds : true;
+                return callCount == 1 && !firstAttemptSucceeds ? TeamUpdateConflict.SlugTaken : TeamUpdateConflict.None;
             });
 
         return repo;

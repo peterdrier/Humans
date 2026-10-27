@@ -120,7 +120,6 @@ internal sealed class ProfileViewModel
     public bool RemoveProfilePicture { get; set; }
 
     public MembershipStatus MembershipStatus { get; set; }
-    public bool IsApproved { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
 
@@ -157,7 +156,7 @@ internal sealed class ProfileViewModel
             if (parsed is null)
                 return null;
 
-            return parsed.Value.ToWeekdayDayMonth();
+            return parsed.Value.ToMonthDay();
         }
     }
 

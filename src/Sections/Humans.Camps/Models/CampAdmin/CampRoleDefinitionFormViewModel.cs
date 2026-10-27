@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Camps.Models;
 
@@ -18,12 +19,15 @@ internal sealed class CampRoleDefinitionFormViewModel : IValidatableObject
     [StringLength(2000)]
     public string? Description { get; set; }
 
+    [BindRequired]
     [Range(1, 100)]
     public int SlotCount { get; set; } = 1;
 
+    [BindRequired]
     [Range(0, 100)]
     public int MinimumRequired { get; set; } = 1;
 
+    [BindRequired]
     public int SortOrder { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext _)

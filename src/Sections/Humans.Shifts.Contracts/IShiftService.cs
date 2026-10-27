@@ -39,7 +39,7 @@ public interface IShiftService : IApplicationService
         LocalDate? startDate = null, LocalDate? endDate = null,
         ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null,
-        bool includeRestricted = false);
+        bool includeRestricted = false, CancellationToken ct = default);
 
     /// <summary>Includes full shifts.</summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default);

@@ -636,14 +636,15 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await _service.GetTeamAsync(team.Id, ct);
         var before = _service.BulkInvalidations;
 
-        // Inner is an unconfigured NSubstitute mock; approve returns default (null) — fine for this assertion.
-        await (write switch
+        // An unconfigured inner mock can return no result; invalidation must still run.
+        Task mutation = write switch
         {
             nameof(CachingTeamService.JoinTeamAsync) => _service.JoinTeamAsync(team.Id, Guid.NewGuid(), null, ct),
             nameof(CachingTeamService.WithdrawJoinRequestAsync) => _service.WithdrawJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct),
             nameof(CachingTeamService.RejectJoinRequestAsync) => _service.RejectJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), "reason", ct),
             _ => _service.ApproveJoinRequestAsync(Guid.NewGuid(), Guid.NewGuid(), null, ct),
-        });
+        };
+        await mutation;
 
         _service.BulkInvalidations.Should().BeGreaterThan(before);
     }

@@ -17,6 +17,7 @@ internal sealed class GuestAccountController(
     IUserService userService,
     ICommunicationPreferenceManagement commPrefService,
     IEnumerable<ICommunicationPreferenceLock> locks,
+    IUnsubscribeService unsubscribeService,
     IClock clock,
     ILogger<GuestAccountController> logger,
     IStringLocalizer<EmailResource> localizer) : HumansControllerBase(userService)
@@ -96,13 +97,9 @@ internal sealed class GuestAccountController(
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);
 
-        var result = commPrefService.ValidateUnsubscribeToken(utoken);
-        if (result.Status != TokenValidationStatus.Valid)
-            return (null, null, false);
-
-        var userInfo = await FindUserInfoByIdAsync(result.UserId, ct);
-        return userInfo is { IsGdprAnonymized: false }
-            ? (userInfo.Id, result.Category, true)
+        var result = await unsubscribeService.ValidateTokenAsync(utoken, ct);
+        return result.IsValid && !result.IsLegacy
+            ? (result.UserId, result.Category, true)
             : (null, null, false);
     }
 

@@ -167,4 +167,5 @@
   <data name="Calendar_NoAuditHistory" xml:space="preserve"><value>Aucun historique d’audit.</value></data>
   <data name="Calendar_IcalCreate" xml:space="preserve"><value>Créer mon URL de flux</value></data>
   <data name="Calendar_OwningTeamUnavailable" xml:space="preserve"><value>Choisis une équipe active comme responsable de cet événement.</value></data>
+  <data name="Calendar_Source_Workgroups" xml:space="preserve"><value>Groupes de travail</value></data>
 </root>

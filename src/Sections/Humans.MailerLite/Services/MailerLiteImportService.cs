@@ -1,3 +1,4 @@
+using Humans.Base.Helpers;
 using Humans.Email.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Data;
@@ -404,7 +405,7 @@ internal sealed class MailerLiteImportService(
     private static HashSet<string> WebsiteSubscriberEmails(IEnumerable<MailerLiteSubscriber> websiteSubs) =>
         websiteSubs
             .Select(s => s.Email)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .ToHashSet(NormalizingEmailComparer.Instance);
 
     /// <summary>
     /// Opted in by the erroneous import, no consent before <see cref="BadImportCutoff"/>, and in the Website group

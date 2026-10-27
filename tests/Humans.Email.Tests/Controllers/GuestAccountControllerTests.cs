@@ -3,6 +3,7 @@ using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 using Humans.Email.Controllers;
 using Humans.Email.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -26,6 +27,7 @@ public class GuestAccountControllerTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceManagement _commPrefService = Substitute.For<ICommunicationPreferenceManagement>();
     private readonly ICommunicationPreferenceLock _lock = Substitute.For<ICommunicationPreferenceLock>();
+    private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>();
 
@@ -42,6 +44,7 @@ public class GuestAccountControllerTests
             _userService,
             _commPrefService,
             [_lock],
+            new UnsubscribeService(_userService, _commPrefService, _dataProtection, NullLogger<UnsubscribeService>.Instance),
             _clock,
             NullLogger<GuestAccountController>.Instance,
             _localizer);
@@ -181,6 +184,32 @@ public class GuestAccountControllerTests
             Assert.IsType<ChallengeResult>(await controller.CommunicationPreferences("pre-erasure-token"));
 
         await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+        await _commPrefService.DidNotReceive().UpdatePreferenceAsync(Arg.Any<Guid>(),
+            Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommunicationPreferences_LegacyToken_DoesNotGrantPreferenceAccess(bool update)
+    {
+        var user = new User { Id = Guid.NewGuid(), BurnerName = "Human" };
+        var controller = BuildSut(user);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var token = _dataProtection.CreateProtector("CampaignUnsubscribe")
+            .ToTimeLimitedDataProtector().Protect(user.Id.ToString(), TimeSpan.FromDays(1));
+        _commPrefService.ValidateUnsubscribeToken(token)
+            .Returns((TokenValidationStatus.Invalid, Guid.Empty, default(MessageCategory)));
+
+        if (update)
+            Assert.IsType<UnauthorizedResult>(await controller.UpdatePreference(
+                MessageCategory.Marketing, false, false, token));
+        else
+            Assert.IsType<ChallengeResult>(await controller.CommunicationPreferences(token));
+
+        await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _commPrefService.DidNotReceive().UpdatePreferenceAsync(Arg.Any<Guid>(),
             Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<CancellationToken>());

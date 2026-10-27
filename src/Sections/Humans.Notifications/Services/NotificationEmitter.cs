@@ -1,10 +1,8 @@
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Base.Caching;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Teams.Contracts;
 
@@ -15,7 +13,6 @@ internal sealed class NotificationEmitter(
     INotificationRepository repo,
     ICommunicationPreferenceService preferenceService,
     IClock clock,
-    IMemoryCache cache,
     ILogger<NotificationEmitter> logger) : INotificationEmitter
 {
     internal static (string Title, string? Body) FitCopyToStorage(string title, string? body)
@@ -102,10 +99,6 @@ internal sealed class NotificationEmitter(
         }
 
         await repo.AddRangeAsync(notifications, cancellationToken);
-        foreach (var n in notifications)
-        {
-            cache.Remove(CacheKeys.NotificationBadgeCounts(n.Recipients.Single().UserId));
-        }
 
         logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to {Count} individual recipient(s)",

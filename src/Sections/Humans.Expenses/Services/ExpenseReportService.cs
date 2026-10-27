@@ -414,7 +414,12 @@ internal sealed class ExpenseReportService(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                     TransactionScopeAsyncFlowOption.Enabled);
-                await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct);
+                var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct);
+                if (release.Refusal is { } releaseRefusal)
+                {
+                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
+                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                }
                 await repo.UpdateDraftAsync(updated, ct);
                 scope.Complete();
             }
@@ -911,16 +916,13 @@ internal sealed class ExpenseReportService(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                     TransactionScopeAsyncFlowOption.Enabled);
-                GrantStamp stamp;
-                try
+                var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct);
+                if (claim.Refusal is { } refusal)
                 {
-                    stamp = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    logger.LogWarning(ex, "Pre-approval {GrantId} refused the claim by report {ReportId}", grantId, reportId);
+                    logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
                     return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
                 }
+                var stamp = claim.Stamp!;
                 var ok = await repo.SubmitAsync(
                     reportId, legalName, payeeIban, now,
                     grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
@@ -1001,7 +1003,12 @@ internal sealed class ExpenseReportService(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                     TransactionScopeAsyncFlowOption.Enabled);
-                await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
+                var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
+                if (release.Refusal is { } releaseRefusal)
+                {
+                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
+                    return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                }
                 var ok = await repo.WithdrawAsync(reportId, now, ct);
                 if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
                 scope.Complete();
@@ -1394,13 +1401,10 @@ internal sealed class ExpenseReportService(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                     TransactionScopeAsyncFlowOption.Enabled);
-                try
+                var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
+                if (consumption.Refusal is { } refusal)
                 {
-                    await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    logger.LogWarning(ex, "Pre-approval {GrantId} refused consumption by report {ReportId}", consumedGrantId, reportId);
+                    logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
                     return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
                 }
                 ok = await repo.ApproveAsync(
@@ -1485,22 +1489,6 @@ internal sealed class ExpenseReportService(
             return ExpenseMutationResult.Success;
 
         }, "Error re-queuing Holded push for expense report {ReportId}", reportId);
-
-    internal async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
-        Guid? categoryId, CancellationToken ct = default)
-    {
-        // A report booked to an account outside the budget has no category, so no coordinator.
-        if (categoryId is null) return false;
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
-        if (category is null || category.TeamId is null)
-            return false;
-
-        var team = await teamService.GetTeamAsync(category.TeamId.Value, ct);
-        if (team is null)
-            return false;
-
-        return team.Members.Any(m => m.Role == TeamMemberRole.Coordinator);
-    }
 
     /// <summary>
     /// The service half of the edit gate. A member edits only their own Draft. A finance admin edits on their behalf,

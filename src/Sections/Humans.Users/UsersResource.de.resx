@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Jetzt prüfen</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>Genehmigung ausstehend:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>Ihr Konto wartet auf die Genehmigung durch den Vorstand. Nach der Genehmigung werden Sie dem Volunteers-Team zugewiesen und erhalten Zugang zu den Organisationsressourcen.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>Ihre {0}-Bewerbung:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>
@@ -770,4 +764,8 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Deine medizinischen Angaben wurden gespeichert.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht gespeichert werden.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Als Colaborador oder Asociado bewerben</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Freiwillige</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Für dieses Konto können keine E-Mail-Adressen mehr geändert werden.</value>
+  </data>
 </root>

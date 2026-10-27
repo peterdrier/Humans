@@ -244,6 +244,7 @@ public class AccountProvisioningServiceTests
         private readonly Dictionary<Guid, UserEmail> _emails = new();
 
         public bool ThrowOnAddVerified { get; set; }
+        public bool RefuseAddVerified { get; set; }
         public bool ThrowOnAddProvisioned { get; set; }
 
         public void Seed(UserEmail email) => _emails[email.Id] = email;
@@ -306,10 +307,13 @@ public class AccountProvisioningServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<bool> AddVerifiedAsync(Guid userId, string email, Instant now)
+        public Task<UserEmailAddResult> AddVerifiedAsync(Guid userId, string email, Instant now)
         {
             if (ThrowOnAddVerified)
                 throw new InvalidOperationException("boom");
+
+            if (RefuseAddVerified)
+                return Task.FromResult(new UserEmailAddResult(Guid.Empty, false, false, "Users_EmailUpdate_AccountUnavailable"));
 
             var normalized = EmailNormalization.NormalizeForComparison(email);
             foreach (var ue in _emails.Values)
@@ -317,7 +321,7 @@ public class AccountProvisioningServiceTests
                 if (ue.UserId != userId) continue;
                 var existing = EmailNormalization.NormalizeForComparison(ue.Email);
                 if (string.Equals(existing, normalized, StringComparison.OrdinalIgnoreCase))
-                    return Task.FromResult(false);
+                    return Task.FromResult(new UserEmailAddResult(ue.Id, false, false));
             }
 
             var row = new UserEmail
@@ -333,7 +337,7 @@ public class AccountProvisioningServiceTests
                 UpdatedAt = now,
             };
             _emails[row.Id] = row;
-            return Task.FromResult(true);
+            return Task.FromResult(new UserEmailAddResult(row.Id, true, false));
         }
 
         private static string? GetAlternateEmail(string normalizedEmail)
@@ -944,10 +948,13 @@ public class AccountProvisioningServiceTests
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
-    [HumansFact]
-    public async Task CompleteMagicLinkSignupAsync_AddVerifiedEmailFailureRollsBackUser()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task CompleteMagicLinkSignupAsync_AddVerifiedEmailFailureRollsBackUser(bool refusal)
     {
-        _userEmailFake.ThrowOnAddVerified = true;
+        _userEmailFake.ThrowOnAddVerified = !refusal;
+        _userEmailFake.RefuseAddVerified = refusal;
 
         var result = await _service.CompleteMagicLinkSignupAsync(
             "rollback@example.com", "Rollback", "First", "Last", Xunit.TestContext.Current.CancellationToken);

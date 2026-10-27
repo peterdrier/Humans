@@ -23,7 +23,7 @@ internal interface ICampRoleService : IApplicationService
     /// </summary>
     Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default);
 
-    Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
+    Task<CampAdminMutationResult> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
     Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
@@ -102,12 +102,16 @@ internal enum UpdateCampRoleDefinitionStatus
 {
     Updated,
     NotFound,
+    Rejected,
 }
 
-internal sealed record UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStatus Status, string SuccessMessage)
+internal sealed record UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStatus Status, string SuccessMessage, string? ErrorMessage = null)
 {
     public static UpdateCampRoleDefinitionResult Updated(string name) =>
         new(UpdateCampRoleDefinitionStatus.Updated, $"Updated camp role '{name}'.");
+
+    public static UpdateCampRoleDefinitionResult Rejected(string errorMessage) =>
+        new(UpdateCampRoleDefinitionStatus.Rejected, string.Empty, errorMessage);
 
     public static UpdateCampRoleDefinitionResult NotFound { get; } =
         new(UpdateCampRoleDefinitionStatus.NotFound, string.Empty);
