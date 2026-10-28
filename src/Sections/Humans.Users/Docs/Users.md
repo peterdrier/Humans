@@ -644,6 +644,8 @@ Users' one-off copies are **data migrations** (`SectionDataMigrations : ISection
 |-----|--------|---------------|
 | `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration) | `LegacyIdentityEmailBackfilled` |
 
+The legacy-email scan and migration share the same eligibility selection: a non-tombstone with a nonempty legacy address and no case-insensitive matching verified `UserEmail`. Profile-less accounts remain eligible.
+
 Email Problems remediation buttons use the shared `data-confirm` handler: each click prompts once, and cancellation prevents submission.
 
 ## Actors & Roles
