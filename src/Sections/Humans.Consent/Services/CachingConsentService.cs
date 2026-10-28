@@ -1,8 +1,6 @@
 using Humans.Base.Caching;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using NodaTime;
-using Humans.Users.Contracts;
 
 namespace Humans.Consent.Services;
 
@@ -13,9 +11,6 @@ namespace Humans.Consent.Services;
 /// signal from Users.
 /// </summary>
 internal sealed class CachingConsentService(
-    ILegalDocumentSyncManagement legalDocumentSync,
-    IUserService userService,
-    IClock clock,
     IServiceScopeFactory scopeFactory,
     ILogger<CachingConsentService> logger)
     : TrackedCache<Guid, UserConsentInfo>("Consent.UserConsentInfo", warmOnStartup: false, logger), IConsentManagement
@@ -44,8 +39,8 @@ internal sealed class CachingConsentService(
 
         // Misses go in one bulk inner call, not a LoadRowAsync per id (N scopes, N rounds of reads). Id lists are
         // read before the load, so an entry is never tagged newer than its data.
-        var infos = await userService.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
-        IReadOnlyList<Guid> UserIdsOf(Guid id) => infos.TryGetValue(id, out var info) ? info.AllUserIds : [id];
+        var chains = await GetUserIdChainsAsync(userIds, ct).ConfigureAwait(false);
+        IReadOnlyList<Guid> UserIdsOf(Guid id) => chains.GetValueOrDefault(id) ?? [id];
 
         var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         // A HashSet, because result is filled only after the bulk call and can't catch a repeated miss.
@@ -84,16 +79,13 @@ internal sealed class CachingConsentService(
         return result;
     }
 
-    public async Task<IReadOnlyList<RequiredConsentRow>> GetRequiredConsentRowsForUserAsync(
-        Guid userId, Guid teamId, CancellationToken ct = default)
-    {
-        // Both halves are cache hits when warm. BuildOrdered is shared with the inner ConsentService, so both
-        // produce the same rows.
-        var documents = await legalDocumentSync.GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
-        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
+    public Task<IReadOnlyList<RequiredConsentRow>> GetRequiredConsentRowsForUserAsync(
+        Guid userId, Guid teamId, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetRequiredConsentRowsForUserAsync(userId, teamId, ct));
 
-        return RequiredConsentRows.BuildOrdered(documents, consentedVersionIds, clock.GetCurrentInstant());
-    }
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetUserIdChainsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetUserIdChainsAsync(userIds, ct));
 
     public Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetConsentDashboardAsync(userId, ct));
@@ -164,7 +156,7 @@ internal sealed class CachingConsentService(
     }
 
     private async Task<IReadOnlyList<Guid>> GetUserIdsAsync(Guid userId, CancellationToken ct) =>
-        (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+        (await GetUserIdChainsAsync([userId], ct)).GetValueOrDefault(userId) ?? [userId];
 
     private async Task<TResult> WithInnerAsync<TResult>(Func<IConsentManagement, Task<TResult>> action)
     {

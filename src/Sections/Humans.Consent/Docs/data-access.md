@@ -129,10 +129,12 @@ lives in the decorator.
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, UserConsentInfo>` (`Consent.UserConsentInfo`, lazy, no warmup) | Per-User | yes (consented-version-set reads) | yes (lazy load) | yes (synchronous per-user evict on submit, by the inner `ConsentService` and the decorator; an entry whose `UserInfo.AllUserIds` changed since it was built reloads on read, which covers account merge) |
+| `TrackedCache<Guid, UserConsentInfo>` (`Consent.UserConsentInfo`, lazy, no warmup) | Per-User | yes (consented-version-set reads) | yes (lazy load) | yes (synchronous per-user evict on submit, by the inner `ConsentService` and the decorator; an entry whose merge-chain id list changed since it was built reloads on read, which covers account merge) |
 
-Implements `IConsentManagement`, `IConsentService`. Richer record reads (dashboards, history,
-record counts) pass through to the inner service. Surfaced on
+Implements `IConsentManagement`, `IConsentService`. The inner service supplies live
+merge-chain ids through `GetUserIdChainsAsync`; the decorator resolves no Users
+service. Required-consent row composition and richer record reads (dashboards,
+history, record counts) pass through to the inner service. Surfaced on
 `/Debug/CacheStats`.
 
 ### ConsentReviewService (Scoped, internal; implements `IConsentWrite` + `IUserDataContributor`)
