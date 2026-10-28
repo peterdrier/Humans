@@ -83,6 +83,7 @@ internal sealed class DevLoginController(
         try
         {
             resolvedUserId = await personaSeeder.EnsurePersonaAsync(info.Slug, info.DisplayName, id);
+            await personaSeeder.EnsureActiveEventAsync();
             // Re-blank the legal names on every sign-in so the onboarding name gate re-triggers.
             if (string.Equals(info.Slug, "no-name", StringComparison.OrdinalIgnoreCase))
                 await personaSeeder.ResetLegalNamesAsync(resolvedUserId);

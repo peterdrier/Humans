@@ -59,6 +59,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 - **Per-PR previews are the exception, and only the entrypoint can name them.** A preview container runs the same `Staging` environment name as QA, so the discriminator lives where the difference is already known: `docker-entrypoint.sh` derives `PR_ID` from Coolify's container name/FQDN, points the connection string at `humans_pr_{N}`, and defaults `DevAuth__AllowAdmin=true` **inside that same block** - the flag means "this container is on a throwaway PR database", so it must follow the switch actually happening, not `PR_ID` alone. A container that could not switch (no `DB_PASSWORD`, or a hand-supplied connection string) is still on the inherited QA connection, and anonymous Admin over QA data is exactly the escalation this invariant closes. QA's `deploy-qa.sh` never sets the flag. It is only a *default*, so a deploy that wants a preview without Admin can set it to `false`.
 - **Every write goes through the owning section's service.** No `DbContext`, no repository, no cross-section table access - held by the section's csproj (no `Humans.Infrastructure` reference, no EF Core package) and by every seeder taking only application-service dependencies. Not pinned by a test, deliberately - the section has no tables, and an absence has no behaviour to regress.
 - **Persona seeding is idempotent and repairs.** `EnsurePersonaAsync` returns the existing user when there is one, and `EnsureActiveAsync` runs on *every* sign-in: it submits any missing required consents through the canonical consent path and lifts a consent suspension, because personas hold governance roles and the nightly `SuspendNonCompliantMembersJob` suspends them otherwise (nobodies-collective/Humans#867).
+- **Every persona sign-in ensures an active event.** With none active, `EnsureActiveEventAsync` creates a placeholder event 60 days out, because Shifts and City Planning answer 404 or "no active event" without one and the Playwright suite runs against whatever QA holds. An event already active is never touched. Covered by `DevPersonaSeederTests`.
 - **The `no-name` persona is re-blanked on every sign-in** so the onboarding name gate (#812) re-triggers each time.
 - **The `guest` persona is never reused** - each click mints a new profileless account, so parallel testers do not collide.
 
@@ -86,7 +87,7 @@ Development is a pure consumer and depends on more sections than any other:
 | Teams | `ITeamService`, `ITeamWrite`, `ITeamSeeding`, `ISystemTeamSync` |
 | Camps | `ICampService`, `ICampSeeding`, `ICampRoleSeeding` |
 | Shifts | `IShiftSeeding`, `IShiftSignupSeeding` |
-| Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the seeded event's active state |
+| Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the dashboard's seeded event, and the placeholder event persona sign-in creates when none is active |
 | Audit Log | `IAuditLogService` |
 | Consent | `IConsentSubmission` (`Contracts/` folder) |
 | Governance | `IMembershipCalculator` (contracts leaf) |

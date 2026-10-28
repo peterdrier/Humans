@@ -8,6 +8,7 @@ using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using Humans.Development.Services;
 using Microsoft.AspNetCore.Identity;
@@ -43,6 +44,8 @@ public class DevPersonaSeederTests
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
     private readonly ICampRoleSeeding _campRoles = Substitute.For<ICampRoleSeeding>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly IEventSettingsSeeding _eventSeeding = Substitute.For<IEventSettingsSeeding>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
@@ -72,6 +75,8 @@ public class DevPersonaSeederTests
         _camps,
         _campSeeding,
         _campRoles,
+        _settings,
+        _eventSeeding,
         _consents,
         _membershipCalculator,
         _humanLifecycle,
@@ -263,5 +268,29 @@ public class DevPersonaSeederTests
             Arg.Is<ProfileSaveRequest>(r =>
                 r.BurnerName == "Dev Board" && r.FirstName.Length == 0 && r.LastName.Length == 0),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureActiveEventAsync_NoActiveEvent_SeedsOneAfterToday()
+    {
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+
+        await BuildSut().EnsureActiveEventAsync();
+
+        await _eventSeeding.Received(1).CreateActiveEventAsync(
+            Arg.Is<EventSettingsInfo>(e => e.GateOpeningDate == new LocalDate(2026, 9, 11) && e.Year == 2026),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsureActiveEventAsync_ActiveEventExists_LeavesItAlone()
+    {
+        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(Guid.NewGuid(), "Real event", 2026, "Europe/Madrid", new LocalDate(2026, 7, 1),
+                -25, 6, 9, -25, -16, -9, -4, new Dictionary<int, int>(), null, null));
+
+        await BuildSut().EnsureActiveEventAsync();
+
+        await _eventSeeding.DidNotReceiveWithAnyArgs().CreateActiveEventAsync(default!, default);
     }
 }

@@ -68,7 +68,7 @@ test.describe('Shift Preference Wizard (33-shift-preference-wizard)', () => {
     // Save
     await page.click('#saveBtn');
 
-    // Should redirect back to same page with success message
-    await expect(page).toHaveURL(/\/Profile\/Me\/ShiftInfo/);
+    await expect(page).toHaveURL(/\/Shifts\/ShiftInfo/);
+    await expect(page.locator('.alert-success')).toBeVisible();
   });
 });

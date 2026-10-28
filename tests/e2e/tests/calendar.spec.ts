@@ -7,7 +7,7 @@ test.describe('Community calendar', () => {
     await page.goto('/Calendar');
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('text=All times shown in')).toBeVisible();
+    await expect(page.getByLabel('Time zone')).toBeVisible();
   });
 
   test('events admin can open the create-event form', async ({ page }) => {

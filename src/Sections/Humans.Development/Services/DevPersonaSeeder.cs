@@ -9,6 +9,7 @@ using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Identity;
@@ -33,6 +34,8 @@ internal sealed class DevPersonaSeeder(
     ICampService campService,
     ICampSeeding campSeeding,
     ICampRoleSeeding campRoleSeeding,
+    ISettingsService settingsService,
+    IEventSettingsSeeding eventSettingsSeeding,
     IConsentSubmission consentService,
     IMembershipCalculator membershipCalculator,
     IHumanLifecycleService humanLifecycleService,
@@ -538,6 +541,37 @@ internal sealed class DevPersonaSeeder(
 
         await teamWrite.SetMemberRoleAsync(teamId, userId, expectedRole, userId);
         return true;
+    }
+
+    private static readonly Guid DevEventId = Guid.Parse("6b1f3c2e-8d4a-4f7e-9c35-2a7d1e0b5f48");
+
+    /// <summary>
+    /// Shifts and City Planning answer 404 or "no active event" without one, so a fresh dev or QA database gets a
+    /// placeholder. An event that is already active, real or not, is left alone.
+    /// </summary>
+    public async Task EnsureActiveEventAsync()
+    {
+        if (await settingsService.GetActiveEventSettingsAsync() is not null)
+            return;
+
+        var gateOpening = clock.GetCurrentInstant().InUtc().Date.PlusDays(60);
+        await eventSettingsSeeding.CreateActiveEventAsync(new EventSettingsInfo(
+            Id: DevEventId,
+            EventName: $"Dev test event {gateOpening.Year}",
+            Year: gateOpening.Year,
+            TimeZoneId: "Europe/Madrid",
+            GateOpeningDate: gateOpening,
+            BuildStartOffset: -25,
+            EventEndOffset: 6,
+            StrikeEndOffset: 9,
+            FirstCrewStartOffset: -25,
+            SetupWeekStartOffset: -16,
+            PreEventWeekStartOffset: -9,
+            FinishingWeekendStartOffset: -4,
+            EarlyEntryCapacity: new Dictionary<int, int>(),
+            BarriosEarlyEntryAllocation: null,
+            EarlyEntryClose: null));
+        logger.LogInformation("DEV: no active event, seeded {EventId}", DevEventId);
     }
 
     public async Task EnsureCityPlanningTeamAsync(Guid userId)

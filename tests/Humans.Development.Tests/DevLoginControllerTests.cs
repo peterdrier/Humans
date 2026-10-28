@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.AuditLog.Contracts;
@@ -241,6 +242,8 @@ public class DevLoginControllerTests
         Substitute.For<ICampService>(),
         Substitute.For<ICampSeeding>(),
         Substitute.For<ICampRoleSeeding>(),
+        Substitute.For<ISettingsService>(),
+        Substitute.For<IEventSettingsSeeding>(),
         Substitute.For<IConsentSubmission>(),
         Substitute.For<IMembershipCalculator>(),
         Substitute.For<IHumanLifecycleService>(),
