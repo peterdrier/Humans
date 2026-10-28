@@ -2249,19 +2249,12 @@ internal sealed class TeamService(
         IReadOnlyDictionary<Guid, UserInfo> usersById)
     {
         usersById.TryGetValue(request.UserId, out var user);
-        return new TeamJoinRequestSnapshot(
-            request.Id,
-            request.TeamId,
-            request.Team?.Name,
-            request.UserId,
-            user?.BurnerName,
-            user?.Email,
-            user?.ProfilePictureUrl,
-            request.Status,
-            request.Message,
-            request.RequestedAt,
-            request.ResolvedAt,
-            request.ReviewNotes);
+        return ToJoinRequestSnapshot(request) with
+        {
+            UserDisplayName = user?.BurnerName,
+            UserEmail = user?.Email,
+            UserProfilePictureUrl = user?.ProfilePictureUrl
+        };
     }
 
     private static string? RoleNameRefusal(string name)
