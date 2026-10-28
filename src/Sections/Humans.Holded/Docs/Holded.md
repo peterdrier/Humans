@@ -6,6 +6,20 @@
 
 # Holded (section) — Section Invariants
 
+## Purpose
+
+Holded (the company) is a SaaS vendor that holds the association's accounting books and records.
+This section is our interface and conduit to that vendor. It does two jobs and keeps them apart:
+it keeps a cached copy of the book so no page ever waits on Holded, and it is the one connector
+other sections use to book, pay and invoice. Holded's API has quotas, so keeping that cache
+current and metering every call against the allowance is part of the job.
+
+Good looks like: every balance a member or admin sees comes from the cache, the cache is never
+silently short, and every call is counted. The section's own pages show the cached copies and the
+API-call accounting, nothing more. Out of scope: summaries and decisions about money (Finance owns
+them; Expenses and Store decide in their own lanes), keying anything by member, and mirroring the
+bank feed.
+
 The **ledger mirror**: a local, re-derivable copy of Holded's daybook and chart of accounts,
 plus the sync that maintains it and the `/Holded` admin screen. Every cross-section ledger
 read is served from this cache — zero Holded calls per page view. The HTTP connector belongs
@@ -140,7 +154,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 ## Architecture
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`) for the mirror, `IHoldedNightlySync` for the job, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`) for the mirror, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

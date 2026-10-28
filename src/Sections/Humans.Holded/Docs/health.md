@@ -62,15 +62,15 @@ Written fresh from the shapes, not from today's folders.
 Contracts/                    what other sections may hold
   IHoldedClient + its DTOs      shapes 5–13 — the telephone
   IHoldedService                shapes 1–2 — the mirror's cross-section read
-  IHoldedNightlySync            shape 2 — the nightly body
   HoldedApiException            the connector's transient-vs-permanent failure classification
-Services/HoldedClient           one class: the retry, auth, metering and paging machinery is shared
-                                by every shape group, so splitting it buys nothing
+Services/HoldedClient           one class today: the retry, auth, metering and paging machinery is
+                                shared by every shape group. A split by caller world is an open
+                                option (debt HOLDED-1), not a priority
 Services/Service                shapes 1–4: sweep, reconcile, and the read models
 Services/HoldedCallLog          the in-process meter the client fills and Service drains
 Services/HoldedNightlySync      shape 2's body: this section's sweep (Finance runs its own doc sync)
-Jobs/HoldedSyncJob              the Hangfire shim over it — public only because Hangfire needs the
-                                concrete type; SectionJobs names it and the cron
+Services/IHoldedNightlySync     shape 2 — the nightly body, internal: only the job calls it
+Jobs/HoldedSyncJob              the Hangfire shim over it; SectionJobs names it and the cron
 Data/Repository                 the only code that touches HoldedDbContext
 Domain/                         the mirrored tables; internal, and they stay internal
 Controllers/HoldedController    translation only, no arithmetic
