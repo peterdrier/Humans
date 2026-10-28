@@ -193,7 +193,7 @@ A guided three-step UX that replaces the single-page profile form for the Volunt
 
 ### Dispatcher
 
-Step selection first resolves the surviving user and checks saved required names, then checks that user’s Volunteer consents. A nameless profile cannot be Complete even when no documents are required; a merged alias uses the survivor’s completion state.
+Step selection first resolves the surviving user and checks saved required names, then checks that user’s Volunteer consents. A nameless profile cannot be Complete even when no documents are required; a merged alias uses the survivor’s completion state. When current consents are missing, any prior explicit signature sends a returning member directly to Consents, even if every required document version has since changed. A member with no prior signature still gets the Shifts step unless they have a current signup or the session skip flag.
 
 `OnboardingWidgetController.Index` is the canonical entry point. It calls `IOnboardingWidgetState.GetCurrentStepAsync` and redirects to the action for the user's next incomplete step (or `Home/Index` once everything is done). Layouts, the post-signup redirect, and the onboarding banner all link to `Index` rather than to a specific step, so a refresh / direct nav lands on whichever step is current.
 
