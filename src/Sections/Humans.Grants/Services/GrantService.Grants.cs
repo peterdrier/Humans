@@ -31,17 +31,9 @@ internal sealed partial class GrantService
             .ToList();
         if (grants.Count == 0) return new(Value: []);
 
-        await repository.AddGrantsAsync(grants, ct);
-        // The grants committed; finish their audit and notices after the browser disconnects.
-        ct = CancellationToken.None;
-        foreach (var grant in grants)
-        {
-            await AuditGrantAsync(AuditAction.GrantIssued, grant,
-                $"Issued under \"{program.Name}\" ({program.Year}){ExpirySuffix(grant, program)}" +
-                $"{(grants.Count > 1 ? $" (batch of {grants.Count})" : "")}.",
-                actorUserId);
-            await AnnounceIssuedAsync(grant, program, ct);
-        }
+        await PersistIssuedGrantsAsync(program, grants, actorUserId,
+            grant => $"Issued under \"{program.Name}\" ({program.Year}){ExpirySuffix(grant, program)}" +
+                $"{(grants.Count > 1 ? $" (batch of {grants.Count})" : "")}.", ct);
         return new(grants.Select(g => g.Id).ToList());
     }
 
@@ -84,14 +76,23 @@ internal sealed partial class GrantService
         if (live is not null) return new(live.Id);
 
         var grant = NewGrant(program, userId, sourceRef, expiresOn: null, actorUserId, clock.GetCurrentInstant());
-        await repository.AddGrantsAsync([grant], ct);
-        ct = CancellationToken.None;
-        await AuditGrantAsync(AuditAction.GrantIssued, grant,
-            $"Issued under \"{program.Name}\" ({program.Year}) by source {program.SourceKey}" +
-            $"{(sourceRef is null ? "" : $", ref {sourceRef}")}{ExpirySuffix(grant, program)}.",
-            actorUserId);
-        await AnnounceIssuedAsync(grant, program, ct);
+        await PersistIssuedGrantsAsync(program, [grant], actorUserId,
+            issued => $"Issued under \"{program.Name}\" ({program.Year}) by source {program.SourceKey}" +
+                $"{(sourceRef is null ? "" : $", ref {sourceRef}")}{ExpirySuffix(issued, program)}.", ct);
         return new(grant.Id);
+    }
+
+    private async Task PersistIssuedGrantsAsync(
+        GrantProgram program, IReadOnlyList<Grant> grants, Guid actorUserId,
+        Func<Grant, string> describe, CancellationToken ct)
+    {
+        await repository.AddGrantsAsync(grants, ct);
+        // The grants committed; finish their audit and notices after the browser disconnects.
+        foreach (var grant in grants)
+        {
+            await AuditGrantAsync(AuditAction.GrantIssued, grant, describe(grant), actorUserId);
+            await AnnounceIssuedAsync(grant, program, CancellationToken.None);
+        }
     }
 
     public async Task<GrantRevokeResult> RevokeAsync(
