@@ -15,9 +15,9 @@ internal sealed class TeamsEmails(
 {
     private readonly EmailSettings _settings = settings.Value;
 
-    public EmailMessage AddedToTeam(string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)
+    public EmailMessage AddedToTeam(Guid userId, string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             Lf("Teams_Email_AddedToTeam_Subject", teamName),
             Lf("Teams_Email_AddedToTeam_Body", Encode(userName), Encode(teamName),
                 ResourcesSection(resources), Encode($"{_settings.BaseUrl}/Teams/{teamSlug}")),

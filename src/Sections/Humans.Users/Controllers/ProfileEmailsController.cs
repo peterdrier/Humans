@@ -100,13 +100,13 @@ internal sealed class ProfileEmailsController(
         var info = await _userService.GetUserInfoAsync(user.Id);
 
         var message = emailMessages.EmailVerification(
+            user.Id,
             trimmedEmail,
             info?.BurnerName ?? string.Empty,
             verificationUrl!,
             result.IsConflict,
             user.PreferredLanguage.IsSupportedCultureCode()
-                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode) with
-        { UserId = user.Id };
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
         await emailService.SendAsync(message);
     }
 
@@ -180,28 +180,22 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        try
+        var result = await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
+        if (!result.Succeeded)
         {
-            var result = await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
-            if (!result.Succeeded)
-            {
-                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-                return RedirectToAction(nameof(Emails));
-            }
-            // SetPrimaryAsync takes no actor, so the controller audits.
-            await auditLogService.LogAsync(
-                AuditAction.UserEmailPrimarySet,
-                nameof(User), user.Id,
-                $"Set primary email row {emailId}",
-                user.Id,
-                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-            SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
+            logger.LogWarning("Email SetPrimary refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, user.Id, user.Id, result.ErrorKey);
+            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+            return RedirectToAction(nameof(Emails));
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
+        // SetPrimaryAsync takes no actor, so the controller audits.
+        await auditLogService.LogAsync(
+            AuditAction.UserEmailPrimarySet,
+            nameof(User), user.Id,
+            $"Set primary email row {emailId}",
+            user.Id,
+            relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+        SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -220,22 +214,16 @@ internal sealed class ProfileEmailsController(
 
         var parsedVisibility = ParseEmailVisibility(visibility);
 
-        try
+        var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+        if (!result.Succeeded)
         {
-            var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
-            if (!result.Succeeded)
-            {
-                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-                return RedirectToAction(nameof(Emails));
-            }
-            await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
-            SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
+            logger.LogWarning("Email SetEmailVisibility refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, user.Id, user.Id, result.ErrorKey);
+            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+            return RedirectToAction(nameof(Emails));
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Failed to set email visibility for email {EmailId} and user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
+        await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
+        SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -269,23 +257,16 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        try
+        var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
+        if (deleted.Succeeded)
         {
-            var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
-            if (deleted.Succeeded)
-            {
-                await LogSelfEmailDeletedAsync(user.Id, emailId);
-                SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
-            }
-            else
-            {
-                SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
-            }
+            await LogSelfEmailDeletedAsync(user.Id, emailId);
+            SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
+            logger.LogWarning("Email deletion refused for email {EmailId}, user {UserId}: {Reason}", emailId, user.Id, deleted.ErrorKey);
+            SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
         }
 
         return RedirectToAction(nameof(Emails));
@@ -311,21 +292,13 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        try
-        {
-            var ok = await userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
-            SetPrimaryEmailClearedResult(ok);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Failed to clear primary flag on email {EmailId} for user {UserId}: {Reason}", emailId, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
+        var ok = await userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
+        SetPrimaryEmailClearedResult(ok, user.Id, emailId, user.Id);
 
         return RedirectToAction(nameof(Emails));
     }
 
-    private void SetPrimaryEmailClearedResult(bool ok)
+    private void SetPrimaryEmailClearedResult(bool ok, Guid userId, Guid emailId, Guid actorId)
     {
         if (ok)
         {
@@ -333,6 +306,8 @@ internal sealed class ProfileEmailsController(
             return;
         }
 
+        logger.LogWarning("Clear primary email refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+            emailId, userId, actorId, "Users_EmailGrid_ClearPrimaryRejected");
         SetError(localizer["Users_EmailGrid_ClearPrimaryRejected"].Value);
     }
 
@@ -368,16 +343,8 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        try
-        {
-            var result = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
-            SetEmailUnlinkedResult(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to unlink email {EmailId} for user {UserId}: {Reason}", id, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
-        }
+        var result = await userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+        SetEmailUnlinkedResult(result, user.Id, id, user.Id);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -388,8 +355,12 @@ internal sealed class ProfileEmailsController(
         return message.ResourceNotFound ? sharedLocalizer[key].Value : message.Value;
     }
 
-    private void SetEmailUnlinkedResult(UnlinkEmailResult result)
+    private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid emailId, Guid actorId)
     {
+        if (!result.Succeeded || result.ErrorKey is not null)
+            logger.LogWarning("Email unlink refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, userId, actorId, result.ErrorKey ?? "Users_EmailGrid_UnlinkRejected");
+
         if (result.ErrorKey is { } errorKey)
         {
             SetError(LocalizeEmailRefusal(errorKey));
@@ -442,49 +413,39 @@ internal sealed class ProfileEmailsController(
             string.Equals(r.Provider, provider, StringComparison.Ordinal)
             && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
 
-        try
+        if (matching is not null)
         {
-            if (matching is not null)
+            var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
+            SetEmailUnlinkedResult(result, user.Id, matching.Id, user.Id);
+        }
+        else
+        {
+            // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
+            // email this login may be the only way in.
+            if (rawRows.Count(r => r.IsVerified) < 1)
             {
-                var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
-                SetEmailUnlinkedResult(result);
+                SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
+                return RedirectToAction(nameof(Emails));
+            }
+
+            var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
+            if (removeLogin.Succeeded)
+            {
+                await auditLogService.LogAsync(
+                    AuditAction.UserEmailUnlinked,
+                    nameof(User), user.Id,
+                    $"Unlinked orphan {provider} login (no matching UserEmail row)",
+                    user.Id);
+                SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
             }
             else
             {
-                // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
-                // email this login may be the only way in.
-                if (rawRows.Count(r => r.IsVerified) < 1)
-                {
-                    SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
-                    return RedirectToAction(nameof(Emails));
-                }
-
-                var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
-                if (removeLogin.Succeeded)
-                {
-                    await auditLogService.LogAsync(
-                        AuditAction.UserEmailUnlinked,
-                        nameof(User), user.Id,
-                        $"Unlinked orphan {provider} login (no matching UserEmail row)",
-                        user.Id);
-                    SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
-                }
-                else
-                {
-                    logger.LogWarning(
-                        "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
-                        user.Id, provider,
-                        string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-                    SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
-                }
+                logger.LogWarning(
+                    "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
+                    user.Id, provider,
+                    string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
+                SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
             }
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Failed to unlink provider {Provider} for user {UserId}: {Reason}",
-                provider, user.Id, ex.Message);
-            SetError(sharedLocalizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -524,28 +485,22 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
+        var result = await userEmailService.SetPrimaryAsync(id, emailId, ct);
+        if (!result.Succeeded)
         {
-            var result = await userEmailService.SetPrimaryAsync(id, emailId, ct);
-            if (!result.Succeeded)
-            {
-                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-                return RedirectToAction(nameof(AdminEmails), new { id });
-            }
-            // SetPrimaryAsync takes no actor, so the controller audits.
-            await auditLogService.LogAsync(
-                AuditAction.UserEmailPrimarySet,
-                nameof(User), id,
-                $"Admin set primary email row {emailId}",
-                actor.Id,
-                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-            SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
+            logger.LogWarning("Email AdminSetPrimary refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, id, actor.Id, result.ErrorKey);
+            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+            return RedirectToAction(nameof(AdminEmails), new { id });
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to set primary email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        // SetPrimaryAsync takes no actor, so the controller audits.
+        await auditLogService.LogAsync(
+            AuditAction.UserEmailPrimarySet,
+            nameof(User), id,
+            $"Admin set primary email row {emailId}",
+            actor.Id,
+            relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+        SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -562,16 +517,8 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
-        {
-            var ok = await userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
-            SetPrimaryEmailClearedResult(ok);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to clear primary flag on email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        var ok = await userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
+        SetPrimaryEmailClearedResult(ok, id, emailId, actor.Id);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -598,25 +545,17 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        try
+        var result = await userEmailService.AddEmailAsync(id, email, ct);
+        if (result.ErrorKey is { } errorKey)
         {
-            var result = await userEmailService.AddEmailAsync(id, email, ct);
-            if (result.ErrorKey is { } errorKey)
-            {
-                SetError(LocalizeEmailRefusal(errorKey));
-                return RedirectToAction(nameof(AdminEmails), new { id });
-            }
+            logger.LogWarning("Admin email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
+                id, actor.Id, errorKey);
+            SetError(LocalizeEmailRefusal(errorKey));
+            return RedirectToAction(nameof(AdminEmails), new { id });
+        }
 
-            // The address committed: finish its audit and verification queueing even after a disconnect.
-            await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning(
-                "Admin failed to add email for user {UserId} ({Email}): {Reason}",
-                id, email, ex.Message);
-            SetError(ex.Message);
-        }
+        // The address committed: finish its audit and verification queueing even after a disconnect.
+        await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -673,17 +612,16 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        try
+        var result = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+        if (result.ErrorKey is { } errorKey)
         {
-            var inserted = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-            await ReportVerifiedEmailAddAsync(inserted, userId, email, actor.Id);
+            logger.LogWarning("Admin verified email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
+                userId, actor.Id, errorKey);
+            SetError(LocalizeEmailRefusal(errorKey));
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        else
         {
-            logger.LogWarning(
-                "Admin failed to add verified email for user {UserId} ({Email}): {Reason}",
-                userId, email, ex.Message);
-            SetError(ex.Message);
+            await ReportVerifiedEmailAddAsync(result.Added, userId, email, actor.Id);
         }
 
         return RedirectToAction(nameof(AdminEmails), new { id = userId });
@@ -758,16 +696,8 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
-        {
-            var result = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
-            SetEmailUnlinkedResult(result);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to unlink email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        var result = await userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
+        SetEmailUnlinkedResult(result, id, emailId, actor.Id);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -784,16 +714,8 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
-        {
-            var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
-            await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
-        }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to delete email {EmailId} for user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
+        await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
@@ -802,6 +724,8 @@ internal sealed class ProfileEmailsController(
     {
         if (!deleted.Succeeded)
         {
+            logger.LogWarning("Admin email deletion refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, userId, actorId, deleted.ErrorKey);
             SetError(LocalizeEmailRefusal(deleted.ErrorKey ?? "Users_EmailGrid_DeleteRejectedHasProvider"));
             return;
         }
@@ -828,21 +752,15 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
+        var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+        if (!result.Succeeded)
         {
-            var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
-            if (!result.Succeeded)
-            {
-                SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-                return RedirectToAction(nameof(AdminEmails), new { id });
-            }
-            await SetAdminEmailVisibilityChangedResultAsync(id, emailId, actor.Id, visibility);
+            logger.LogWarning("Email AdminSetVisibility refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                emailId, id, actor.Id, result.ErrorKey);
+            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+            return RedirectToAction(nameof(AdminEmails), new { id });
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
-        {
-            logger.LogWarning("Admin failed to set email visibility for email {EmailId} and user {UserId}: {Reason}", emailId, id, ex.Message);
-            SetError(ex.Message);
-        }
+        await SetAdminEmailVisibilityChangedResultAsync(id, emailId, actor.Id, visibility);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }

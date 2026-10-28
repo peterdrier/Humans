@@ -25,7 +25,7 @@ public sealed class GrantsAdminAuthorizationTests
         methods.Should().HaveCount(overloads);
         foreach (var method in methods)
         {
-            var attribute = method.GetCustomAttribute<AuthorizeAttribute>();
+            var attribute = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             attribute.Should().NotBeNull($"{action} must name its policy");
             attribute.Policy.Should().Be(policy);
         }
@@ -56,7 +56,7 @@ public sealed class GrantsAdminAuthorizationTests
         posts.Should().NotBeEmpty();
         foreach (var post in posts)
         {
-            var attribute = post.GetCustomAttribute<AuthorizeAttribute>();
+            var attribute = post.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             attribute.Should().NotBeNull($"{post.Name} modifies data");
             attribute.Policy.Should().NotBeNullOrEmpty($"{post.Name} modifies data");
             post.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull($"{post.Name} is a POST");

@@ -4,11 +4,11 @@ namespace Humans.Cantina.Services.Dtos;
 
 /// <summary>
 /// Deliberately has no <c>MedicalConditions</c>: the cached profile the service reads carries it, and this record is
-/// where it stops. Every person has at least one on-site day in the week, so <paramref name="ArrivesOn"/> is
-/// non-nullable.
+/// where it stops.
 /// </summary>
 /// <remarks>
-/// <paramref name="ArrivesOn"/> is the first on-site day in the window, the true arrival only when it falls this week.
+/// <paramref name="ArrivesOn"/> is the true arrival day, the day before the first confirmed shift of the event, even
+/// when it falls before this week.
 /// <paramref name="NoShift"/> is days with no signup, not days off site: the human may be around, working informally.
 /// </remarks>
 internal sealed record RosterPersonDto(

@@ -10,12 +10,11 @@ directly. Owns `CalendarEvents`, `CalendarEventExceptions`,
 `ICalendarService` is wrapped by
 `Humans.Calendar.Services.CachingCalendarService` (Singleton decorator
 inheriting `TrackedCache<Guid, CalendarEventInfo>`, warmed on startup).
-The decorator exposes the cross-section read surface as
-`ICalendarQueries` and is its only implementation — it answers them
-from its snapshot, so the inner does not implement that interface at all. Writes
-delegate to the inner service then refresh the affected event row. `CalendarRepository` does not join the `Teams`
-table — the decorator stitches team names via `ITeamService` at the
-application layer.
+The decorator exposes `ICalendarQueries` and is its only implementation.
+Window reads pass its event snapshot to the inner's `ComposeOccurrencesAsync`;
+detail reads project the cached row. Writes delegate to the inner service then
+refresh the affected event row. `CalendarRepository` does not join the `Teams`
+table — the inner stitches team names through `ITeamService`.
 
 ### CalendarService (Scoped — wrapped by CachingCalendarService Singleton decorator)
 
@@ -26,10 +25,11 @@ Repository: `ICalendarRepository`.
 | CalendarEvents | R/W |
 | CalendarEventExceptions | R/W |
 
-Cross-section calls via `IAuditLogService`. Team names are stitched by the
-decorator (`ITeamService`), on the read path the inner does not serve.
-Recurrence expansion is in-section and static (`CalendarOccurrenceExpander`),
-not an injected dependency.
+Cross-section calls use `IAuditLogService` and `ITeamService` (owner validation
+and live display names). `ComposeOccurrencesAsync` filters and expands supplied
+cached events through the static `CalendarOccurrenceExpander`, then resolves
+`ICalendarFeedContributor` implementations in a fresh scope for unfiltered
+community windows. Contributor results remain live and uncached.
 
 ### CachingCalendarService (Singleton, `Humans.Calendar.Services`)
 
@@ -37,11 +37,10 @@ not an injected dependency.
 |-------|------|------|-------|------------|
 | `TrackedCache<Guid, CalendarEventInfo>` (`Calendar.Event`, warmed on startup) | Per-Entity | yes | yes | yes (per-event `ReplaceAsync` after each delegated write) |
 
-Implements `ICalendarService`, `ICalendarQueries`. Resolves the keyed
-Scoped inner per-call; resolves `ITeamService` for occurrence team
-names, and (when `teamId` is null) `IEnumerable<ICalendarFeedContributor>`
-for community-calendar items — fanned out fresh per call, never cached, and
-never routed through the repository. Surfaced on `/Debug/CacheStats`.
+Implements `ICalendarService`, `ICalendarQueries`. Resolves only the keyed
+Scoped inner per call. Window composition delegates to that inner with the
+cached event snapshot; the decorator never resolves Teams or contributors.
+Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -91,8 +90,8 @@ sections in each section's own `Section.cs`):
 - **`EventService`** (Events) — approved event-guide entries the user has favourited (moderation un-approval drops an event from the feed without touching the favourite row). No hosting/ownership path. `GetPublicItemsForWindowAsync` returns `[]` — nothing public yet.
 - **`WorkgroupCalendarContributor`** (Workgroups) — meetings of the active workgroups the user belongs to; dormant groups are excluded. `GetPublicItemsForWindowAsync` returns the `IsPublic` meetings of active workgroups that overlap the window.
 
-`GetPublicItemsForWindowAsync` results are consumed by `CachingCalendarService.GetOccurrencesInWindowAsync`
-(Calendar section, above), not by `ICalFeedService` — the two fan-outs share the
+`GetPublicItemsForWindowAsync` results are consumed by `CalendarService.ComposeOccurrencesAsync`
+(from the cached snapshot supplied by the decorator), not by `ICalFeedService` — the two fan-outs share the
 interface and contributor registrations but serve different surfaces (personal
 feed vs. community calendar).
 

@@ -10,17 +10,19 @@ public interface IPreapprovalWrite : IApplicationService
 {
     /// <summary>
     /// Open → Claimed. Idempotent for the report already holding the grant (a rejected report resubmitting), which
-    /// also skips the deadline: it was filed in time. Throws <see cref="InvalidOperationException"/> with the reason
-    /// when the grant is not claimable.
+    /// also skips the deadline: it was filed in time. A refusal leaves the grant unchanged.
     /// </summary>
-    Task<GrantStamp> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
+    Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
 
     /// <summary>
     /// Claimed → Open when the holding report is withdrawn before approval or drops the grant. The report id stays on
     /// the grant for the trail.
     /// </summary>
-    Task ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
+    Task<PreapprovalWriteResult> ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
 
     /// <summary>Claimed → Consumed when the holding report is approved. Terminal; the amount and report id are kept.</summary>
-    Task ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
+    Task<PreapprovalWriteResult> ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct);
 }
+
+/// <summary>A refusal leaves the grant unchanged. A successful claim includes its booking stamp.</summary>
+public sealed record PreapprovalWriteResult(GrantStamp? Stamp = null, string? Refusal = null);

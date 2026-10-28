@@ -7,7 +7,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Jobs;
@@ -34,7 +33,7 @@ internal sealed class GateService(
     GateVendorMirrorLedger mirrorLedger,
     IConfiguration configuration,
     ILogger<GateService> logger,
-    IClock clock) : IGateService, IGateScanRetention, IUserMerge, IUserDataContributor
+    IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     internal const string GateScans = "GateScans";
 
@@ -142,9 +141,17 @@ internal sealed class GateService(
     /// </summary>
     private void MirrorVendorCheckIn(string vendorTicketId)
     {
-        backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
-        if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
-            mirrorLedger.TryMarkSent(vendorTicketId);
+        try
+        {
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
+                mirrorLedger.TryMarkSent(vendorTicketId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Vendor check-in mirror could not be enqueued for admitted ticket {VendorTicketId}", vendorTicketId);
+        }
     }
 
     /// <summary>
@@ -282,8 +289,8 @@ internal sealed class GateService(
     {
         if (!IsValidPin(pin))
             return GatePinSetResult.InvalidPin;
-        // A self-enrolled claim PIN carries no override authority (AdminEnrolled false), so cold-setting a
-        // supervisor's PIN at the kiosk gains attribution only.
+        // AdminEnrolled false: AuthorizeOverrideAsync (uncalled outside tests, dormant with the claim flow,
+        // nobodies-collective/Humans#933) rejects a self-enrolled PIN.
         await StorePinAsync(userId, pin, adminEnrolled: false, ct);
         // Actor is the claimed staffer; the PIN value is never logged.
         await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
@@ -295,7 +302,7 @@ internal sealed class GateService(
     {
         if (!IsValidPin(pin))
             return false;
-        // The only path that confers override authority.
+        // The only PIN AuthorizeOverrideAsync accepts (uncalled outside tests; see SetOwnPinAsync).
         await StorePinAsync(userId, pin, adminEnrolled: true, ct);
         await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
             "Admin set a staffer's gate PIN (override-enrolled)", actorUserId);
@@ -326,21 +333,6 @@ internal sealed class GateService(
         await repository.DeleteStaffPinAsync(userId, ct);
         await auditLog.LogAsync(AuditAction.GateStaffPinReset, nameof(GateStaffPin), userId,
             "Admin reset a staffer's gate PIN", actorUserId);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default)
-    {
-        // A self-set claim PIN can't authorize an override, so listing those would offer dead picks.
-        var supervisors = new HashSet<Guid>();
-        foreach (var role in SupervisorRoles)
-            foreach (var id in await roles.GetActiveUserIdsInRoleAsync(role, ct))
-                supervisors.Add(id);
-
-        var enrolled = new List<Guid>();
-        foreach (var id in supervisors)
-            if (await repository.GetStaffPinAsync(id, ct) is { AdminEnrolled: true })
-                enrolled.Add(id);
-        return enrolled;
     }
 
     private async Task<bool> IsSupervisorAsync(Guid userId, CancellationToken ct)

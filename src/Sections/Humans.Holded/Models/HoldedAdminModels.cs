@@ -4,12 +4,10 @@ using NodaTime;
 
 namespace Humans.Holded.Models;
 
-/// <summary><paramref name="CreditorBindings"/> is a repository count from Finance, not a live Holded read.</summary>
-internal sealed record HoldedOverviewVm(
-    HoldedAdminOverview Overview, HoldedDocSyncInfo DocSync, int? CreditorBindings);
+internal sealed record HoldedOverviewVm(HoldedAdminOverview Overview, HoldedDocSyncInfo DocSync);
 
-/// <summary>The cache plus one live call (GET /usage). The controller joins Finance's parts on, since this section
-/// never references Finance.</summary>
+/// <summary>The cache plus one live call (GET /usage). The controller joins Finance's parts on: this service reads
+/// nothing of Finance's.</summary>
 internal sealed record HoldedAdminOverview(
     bool ApiReachable,
     HoldedUsageDto? Usage,

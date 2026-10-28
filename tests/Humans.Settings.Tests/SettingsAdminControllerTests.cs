@@ -30,6 +30,12 @@ public sealed class SettingsAdminControllerTests
     private readonly ISettingsWriteService _settings = Substitute.For<ISettingsWriteService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
+    public SettingsAdminControllerTests()
+    {
+        _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+    }
+
     private SettingsAdminController BuildSut()
     {
         var controller = new SettingsAdminController(_settings, _users);
@@ -173,13 +179,10 @@ public sealed class SettingsAdminControllerTests
     [HumansFact]
     public async Task Index_Post_ActivationConflict_FlashesTheConflictAndRedirectsToTheTab()
     {
-        // Checking Active on an inactive row while another cycle is Active is an ordinary
-        // operator conflict. The service says so by throwing; there is no GET to re-render,
-        // so the message travels as a flash on the way back to the tab.
         const string Conflict =
             "Only one event settings row can be Active at a time — deactivate the current one first.";
         _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new InvalidOperationException(Conflict)));
+            .Returns(new EventSettingsSaveResult(false, Conflict));
         var sut = BuildSut();
         var id = Guid.NewGuid();
 
@@ -187,6 +190,20 @@ public sealed class SettingsAdminControllerTests
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
         sut.TempData[TempDataKeys.ErrorMessage].Should().Be(Conflict);
+    }
+
+    [HumansFact]
+    public async Task Index_Post_DependencyFailurePropagatesWithoutAnOperatorConflictFlash()
+    {
+        var failure = new InvalidOperationException("Storage operation failed");
+        _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EventSettingsSaveResult>(failure));
+        var sut = BuildSut();
+
+        Func<Task> act = async () => await sut.Index(MakeForm(Guid.NewGuid(), isActive: true), TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        sut.TempData.Should().BeEmpty();
     }
 
     [HumansFact]

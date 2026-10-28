@@ -17,7 +17,7 @@ public sealed class ExpensesEmailsTests
     public void ReportApproved_StampsSystem_AndLinksTheReport()
     {
         var reportId = Guid.NewGuid();
-        var msg = Create().ReportApproved("a@x.com", "Alice <A>", reportId, 1234.5m, "ES79****789", "de");
+        var msg = Create().ReportApproved(Guid.NewGuid(), "a@x.com", "Alice <A>", reportId, 1234.5m, "ES79****789", "de");
 
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice <A>");

@@ -33,14 +33,13 @@ internal interface IGateService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(Guid rosterTeamId, CancellationToken ct = default);
 
-    // Personal device PINs: the claim flow has no reachable page since peterdrier#1075; deletion is tracked in
+    // Personal device PINs: the claim flow has no reachable page since peterdrier/Humans#1075; deletion is tracked in
     // nobodies-collective/Humans#933. Kiosk overrides use the shared Gate:SupervisorPin at the controller.
 
     Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Stores <c>AdminEnrolled = false</c>: the PIN attributes scans but never authorizes an override. Rejects trivial
-    /// PINs.
+    /// Stores <c>AdminEnrolled = false</c>, which <c>AuthorizeOverrideAsync</c> never accepts. Rejects trivial PINs.
     /// </summary>
     Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default);
 
@@ -52,15 +51,12 @@ internal interface IGateService : IApplicationService
 
     /// <summary>
     /// True only for an admin-enrolled PIN that matches, held by a current gate-supervisor role holder. Verify only:
-    /// never enrols.
+    /// never enrols. No production caller (dormant with the claim flow, nobodies-collective/Humans#933).
     /// </summary>
     Task<bool> AuthorizeOverrideAsync(Guid supervisorUserId, string pin, CancellationToken ct = default);
 
     /// <summary>They re-enrol on the next claim.</summary>
     Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
-
-    /// <summary>Supervisors with an admin-enrolled PIN; authority is re-checked by <see cref="AuthorizeOverrideAsync"/>.</summary>
-    Task<IReadOnlyList<Guid>> GetEnrolledSupervisorIdsAsync(CancellationToken ct = default);
 }
 
 internal sealed record GateRosterEntry(Guid UserId, string DisplayName);

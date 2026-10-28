@@ -39,8 +39,6 @@
   <data name="Users_Profile_ActionRequired" xml:space="preserve"><value>Action Required:</value></data>
   <data name="Users_Profile_PendingConsents" xml:space="preserve"><value>You have {0} pending consent(s) to review.</value><comment>{0} = pending count</comment></data>
   <data name="Users_Profile_ReviewNow" xml:space="preserve"><value>Review now</value></data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve"><value>Pending Approval:</value></data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve"><value>Your account is awaiting Board approval. Once approved, you'll be enrolled in the Volunteers team and receive access to organizational resources.</value></data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve"><value>Your {0} application:</value><comment>{0} = tier name (Colaborador/Asociado)</comment></data>
   <data name="Users_Profile_TierApplicationDetails" xml:space="preserve"><value>View details</value></data>
   <data name="Users_Profile_Information" xml:space="preserve"><value>Profile Information</value></data>
@@ -397,4 +395,12 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Your medical info has been saved.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Failed to save medical info.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Apply for Colaborador or Asociado</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Volunteer</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>This account is no longer available for email changes.</value>
+  </data>
+  <data name="Users_Search_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Users_Search_ExactName" xml:space="preserve"><value>Exact Name</value></data>
+  <data name="Users_Search_Interests" xml:space="preserve"><value>Interests</value></data>
+  <data name="Users_Search_Pronouns" xml:space="preserve"><value>Pronouns</value></data>
 </root>

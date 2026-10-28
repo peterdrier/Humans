@@ -26,20 +26,20 @@ internal sealed class GovernanceEmailPreviews(GovernanceEmails emails) : IEmailP
         return
         [
             new EmailPreviewSample("application-approved", "Application Approved",
-                emails.ApplicationApproved(email, name, MembershipTier.Colaborador, culture)),
+                emails.ApplicationApproved(Guid.Empty, email, name, MembershipTier.Colaborador, culture)),
             new EmailPreviewSample("application-rejected", "Application Rejected",
-                emails.ApplicationRejected(email, name, MembershipTier.Asociado, SampleReason, culture)),
+                emails.ApplicationRejected(Guid.Empty, email, name, MembershipTier.Asociado, SampleReason, culture)),
             new EmailPreviewSample("term-renewal-reminder", "Term Renewal Reminder",
-                emails.TermRenewalReminder(email, name, "Colaborador", SampleClosesAt.Date, culture)),
+                emails.TermRenewalReminder(Guid.Empty, email, name, "Colaborador", SampleClosesAt.Date, culture)),
 
             // Official on the opened sample, indicative on the reminder, so the gallery shows
             // the "not counted" caveat in both of its states rather than only the empty one.
             new EmailPreviewSample("assembly-vote-opened", "Assembly Vote Opened",
-                emails.AssemblyVoteOpened(email, name, SampleVoteTitle, SampleClosesAt, isOfficial: true, voteUrl, culture)),
+                emails.AssemblyVoteOpened(Guid.Empty, email, name, SampleVoteTitle, SampleClosesAt, isOfficial: true, voteUrl, culture)),
             new EmailPreviewSample("assembly-vote-reminder", "Assembly Vote Reminder (indicative)",
-                emails.AssemblyVoteReminder(email, name, SampleVoteTitle, SampleClosesAt, isOfficial: false, voteUrl, culture)),
+                emails.AssemblyVoteReminder(Guid.Empty, email, name, SampleVoteTitle, SampleClosesAt, isOfficial: false, voteUrl, culture)),
             new EmailPreviewSample("assembly-vote-cancelled", "Assembly Vote Cancelled",
-                emails.AssemblyVoteCancelled(email, name, SampleVoteTitle, "The motion was withdrawn by the Board", culture)),
+                emails.AssemblyVoteCancelled(Guid.Empty, email, name, SampleVoteTitle, "The motion was withdrawn by the Board", culture)),
         ];
     }
 }

@@ -233,8 +233,8 @@ moves next (they establish the slots the data moves reuse), then the data moves 
 - **Stop conditions** (worker reports, main thread decides, nothing is forced): a move needs a cycle
   that only a new `.Contracts` leaf can break, a hard rule fights the move, or a copy would need to
   read something not on `UserInfo`.
-- **Steward:** at ready-for-review the builder hands the PR to a thin steward session
-  ([`steward-thin-session`](../../../memory/process/steward-thin-session.md)); five review-round commits max.
+- **PR tending:** the builder tends its own PR ([`.claude/steward.md`](../../../.claude/steward.md));
+  five review-round commits max.
 
 ## 6. Resolved with Peter
 

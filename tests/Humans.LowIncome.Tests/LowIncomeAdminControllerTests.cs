@@ -45,7 +45,13 @@ public sealed class LowIncomeAdminControllerTests
         };
     }
 
-    private static ArgumentException TooLong(string reason) => new("too long", nameof(reason));
+    public LowIncomeAdminControllerTests()
+    {
+        _grants.IssueAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GrantIssueResult(Guid.NewGuid()));
+        _grants.RevokeAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GrantRevokeResult(false));
+    }
 
     private static string? Message(Controller c, string key) => c.TempData[key] as string;
 
@@ -53,7 +59,7 @@ public sealed class LowIncomeAdminControllerTests
     public void EveryAction_IsAdminOnly()
     {
         var type = typeof(LowIncomeAdminController);
-        type.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()
+        type.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).Cast<AuthorizeAttribute>()
             .Select(a => a.Policy).Should().Equal(PolicyNames.AdminOnly);
         foreach (var name in new[] { nameof(LowIncomeAdminController.Grant), nameof(LowIncomeAdminController.Remove) })
             type.GetMethod(name)!.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()
@@ -83,26 +89,34 @@ public sealed class LowIncomeAdminControllerTests
         Message(controller, TempDataKeys.SuccessMessage).Should().NotBeNull();
     }
 
-    [HumansFact]
-    public async Task Remove_PassesTheReason_ReportsWhenNothingHeld()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Remove_PassesTheReason_ReportsWhetherAGrantWasHeld(bool held)
     {
         var person = Guid.NewGuid();
-        _grants.RevokeAsync(Section.SourceKey, person, "Moved away", _actor, Arg.Any<CancellationToken>()).Returns(false);
+        _grants.RevokeAsync(Section.SourceKey, person, "Moved away", _actor, Arg.Any<CancellationToken>()).Returns(new GrantRevokeResult(held));
         var controller = NewController();
 
         await controller.Remove(person, "Moved away", CancellationToken.None);
 
-        Message(controller, TempDataKeys.ErrorMessage).Should().Contain("no Low Income grant");
+        if (held) Message(controller, TempDataKeys.SuccessMessage).Should().Contain("removed");
+        else Message(controller, TempDataKeys.ErrorMessage).Should().Contain("no Low Income grant");
     }
 
-    [HumansFact]
-    public async Task NoOpenProgram_IsShownAsAnError_NotThrown()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task NoOpenProgram_IsShownAsAnError_NotThrown(bool revoke)
     {
         _grants.IssueAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("none"));
+            .Returns(new GrantIssueResult(Guid.Empty, GrantWriteRefusal.NoOpenProgram));
+        _grants.RevokeAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GrantRevokeResult(false, GrantWriteRefusal.NoOpenProgram));
         var controller = NewController();
 
-        await controller.Grant(Guid.NewGuid(), CancellationToken.None);
+        if (revoke) await controller.Remove(Guid.NewGuid(), null, CancellationToken.None);
+        else await controller.Grant(Guid.NewGuid(), CancellationToken.None);
 
         Message(controller, TempDataKeys.ErrorMessage).Should().Contain("no open Grants program");
     }
@@ -112,13 +126,38 @@ public sealed class LowIncomeAdminControllerTests
     {
         var person = Guid.NewGuid();
         _grants.RevokeAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(TooLong("x"));
+            .Returns(new GrantRevokeResult(false, GrantWriteRefusal.ReasonTooLong));
         var controller = NewController();
 
         await controller.Remove(person, new string('x', 501), CancellationToken.None);
 
         Message(controller, TempDataKeys.ErrorMessage).Should().Contain("too long");
-        _logger.Warnings.Should().ContainSingle().Which.Should().BeOfType<ArgumentException>();
+        _logger.Warnings.Should().ContainSingle().Which.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task SourceDependencyFailurePropagatesWithoutRefusalFeedback(bool revoke, bool argumentFailure)
+    {
+        Exception failure = argumentFailure ? new ArgumentException("Private dependency diagnostic", nameof(argumentFailure))
+            : new InvalidOperationException("Private dependency diagnostic");
+        _grants.IssueAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(failure);
+        _grants.RevokeAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(failure);
+        var controller = NewController();
+        Func<Task> act = async () =>
+        {
+            if (revoke) await controller.Remove(Guid.NewGuid(), "Reason", CancellationToken.None);
+            else await controller.Grant(Guid.NewGuid(), CancellationToken.None);
+        };
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        controller.TempData.Should().BeEmpty();
+        _logger.Warnings.Should().BeEmpty();
     }
 
     [HumansFact]

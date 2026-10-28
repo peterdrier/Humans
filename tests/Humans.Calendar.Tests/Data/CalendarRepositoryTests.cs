@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -125,6 +126,79 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task OccurrenceService_RejectsRangesWhoseInheritedDurationOverflows(bool allDay, bool invalidOriginal)
+    {
+        var ev = BuildEvent();
+        ev.RecurrenceRule = "FREQ=DAILY;COUNT=1";
+        ev.RecurrenceTimezone = allDay ? null : "UTC";
+        ev.IsAllDay = allDay;
+        var date = new LocalDate(2026, 6, 15);
+        if (allDay)
+        {
+            ev.StartUtc = null;
+            ev.EndUtc = null;
+            ev.StartDate = date;
+            ev.EndDateExclusive = date.PlusDays(1);
+        }
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
+        var boundary = Instant.MaxValue.Minus(Duration.FromMinutes(30));
+        var dto = new OverrideOccurrenceDto(
+            allDay ? null : invalidOriginal ? ev.StartUtc : boundary,
+            null, null, null, null, null,
+            allDay ? invalidOriginal ? date : LocalDate.MaxIsoValue : null);
+
+        var result = await CreateService().OverrideOccurrenceAsync(ev.Id,
+            allDay ? null : invalidOriginal ? boundary : ev.StartUtc,
+            dto, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken,
+            allDay ? invalidOriginal ? LocalDate.MaxIsoValue : date : null);
+
+        result.Should().BeFalse();
+        (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!
+            .Exceptions.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SeriesUpdate_RejectsDurationThatWouldOverflowAnExistingMovedOccurrence(bool allDay)
+    {
+        var ev = BuildEvent();
+        ev.RecurrenceRule = "FREQ=DAILY;COUNT=1";
+        ev.RecurrenceTimezone = allDay ? null : "UTC";
+        ev.IsAllDay = allDay;
+        var date = new LocalDate(2026, 6, 15);
+        if (allDay)
+        {
+            ev.StartUtc = null;
+            ev.EndUtc = null;
+            ev.StartDate = date;
+            ev.EndDateExclusive = date.PlusDays(1);
+        }
+        await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
+        var service = CreateService();
+        var saved = await service.OverrideOccurrenceAsync(ev.Id, ev.StartUtc,
+            new OverrideOccurrenceDto(allDay ? null : Instant.MaxValue.Minus(Duration.FromHours(2)),
+                null, null, null, null, null, allDay ? LocalDate.MaxIsoValue.PlusDays(-1) : null),
+            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken, ev.StartDate);
+        saved.Should().BeTrue();
+
+        var result = await service.UpdateEventWithResultAsync(ev.Id,
+            new CreateCalendarEventDto(ev.Title, null, null, null, ev.OwningTeamId,
+                ev.StartUtc, allDay ? null : ev.StartUtc!.Value.Plus(Duration.FromHours(3)),
+                allDay, ev.RecurrenceRule, ev.RecurrenceTimezone, ev.StartDate,
+                allDay ? date.PlusDays(2) : null), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        var stored = (await _repo.GetEventByIdAsync(ev.Id, Xunit.TestContext.Current.CancellationToken))!;
+        stored.EndUtc.Should().Be(ev.EndUtc);
+        stored.EndDateExclusive.Should().Be(ev.EndDateExclusive);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
@@ -238,7 +312,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     private CalendarService CreateService() => new(_repo, Humans.Calendar.Tests.Services.CalendarServiceValidationTests.ActiveTeams(),
         new FakeClock(Instant.FromUtc(2026, 3, 1, 0, 0)),
         Substitute.For<IAuditLogService>(),
-        NullLogger<CalendarService>.Instance);
+        NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());
 
     public void Dispose()
     {

@@ -32,5 +32,9 @@ internal sealed record ConsentDashboardHistoryItem(
 /// <summary>Adds the consent dashboard, whose records the section's view renders directly.</summary>
 internal interface IConsentManagement : IConsentService, IConsentSubmission, IApplicationService
 {
+    /// <summary>Current merge-chain ids keyed only by the requested ids; unknown ids stand alone.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetUserIdChainsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
     Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default);
 }

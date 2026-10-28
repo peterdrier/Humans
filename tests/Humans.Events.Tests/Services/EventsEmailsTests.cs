@@ -24,13 +24,13 @@ public sealed class EventsEmailsTests
     {
         var emails = Create();
 
-        emails.EventLifecycle(new EventLifecycleNotification(EventStatus.Pending, "Bob", "My Event"), "bob@x.com")
+        emails.EventLifecycle(Guid.NewGuid(), new EventLifecycleNotification(EventStatus.Pending, "Bob", "My Event"), "bob@x.com")
             .TemplateName.Should().Be("event_submitted");
-        emails.EventLifecycle(new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event"), "bob@x.com")
+        emails.EventLifecycle(Guid.NewGuid(), new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event"), "bob@x.com")
             .TemplateName.Should().Be("event_approved");
-        emails.EventLifecycle(new EventLifecycleNotification(EventStatus.Rejected, "Bob", "My Event"), "bob@x.com")
+        emails.EventLifecycle(Guid.NewGuid(), new EventLifecycleNotification(EventStatus.Rejected, "Bob", "My Event"), "bob@x.com")
             .TemplateName.Should().Be("event_rejected");
-        emails.EventLifecycle(new EventLifecycleNotification(EventStatus.ResubmitRequested, "Bob", "My Event"), "bob@x.com")
+        emails.EventLifecycle(Guid.NewGuid(), new EventLifecycleNotification(EventStatus.ResubmitRequested, "Bob", "My Event"), "bob@x.com")
             .TemplateName.Should().Be("event_resubmit_requested");
     }
 
@@ -38,6 +38,7 @@ public sealed class EventsEmailsTests
     public void EventLifecycle_RoutesToTheSubmitterWithNoCategory()
     {
         var msg = Create().EventLifecycle(
+            Guid.NewGuid(),
             new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event"), "bob@x.com");
 
         msg.RecipientEmail.Should().Be("bob@x.com");
@@ -50,6 +51,7 @@ public sealed class EventsEmailsTests
     public void EventLifecycle_RendersInTheSubmittersCulture()
     {
         var msg = Create().EventLifecycle(
+            Guid.NewGuid(),
             new EventLifecycleNotification(EventStatus.Approved, "Bob", "My Event", Culture: "es"), "bob@x.com");
 
         msg.Subject.Should().Be("Tu evento ha sido aprobado");
@@ -59,6 +61,7 @@ public sealed class EventsEmailsTests
     public void EventLifecycle_EncodesTheSubmitterNameAndTitle()
     {
         var msg = Create().EventLifecycle(
+            Guid.NewGuid(),
             new EventLifecycleNotification(EventStatus.Rejected, "Daniel <Admin>", "Lights & sound", "Too <loud>", "/edit"),
             "bob@x.com");
 
@@ -113,6 +116,7 @@ public sealed class EventsEmailsTests
     private static object SampleArgument(ParameterInfo parameter, EventStatus status)
     {
         var type = parameter.ParameterType;
+        if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(EventLifecycleNotification))
             return new EventLifecycleNotification(status, "Sally Smith", "Sample", "Reason", "/Events/Mine", "en");
         if (type == typeof(string)) return "sample@example.com";

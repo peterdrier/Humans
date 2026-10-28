@@ -196,7 +196,7 @@ internal sealed class GateController(
         return View(rows);
     }
 
-    // Settings live in /Settings#gate; this page stays for staff PIN admin.
+    // GET is the Staff PINs page; the POST is the save target of the /Settings#gate tab.
     [HttpGet("Admin")]
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public IActionResult Admin() => View();

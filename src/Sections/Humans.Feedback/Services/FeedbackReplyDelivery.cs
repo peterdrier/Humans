@@ -87,11 +87,11 @@ internal sealed class FeedbackReplyDelivery(
             !string.IsNullOrWhiteSpace(recipientEmail))
         {
             await emailService.SendAsync(emailMessages.FeedbackResponse(
-                recipientEmail, reporter.BurnerName,
+                reporter.Id, recipientEmail, reporter.BurnerName,
                 report.Description, message.Content,
                 reporter.PreferredLanguage.IsSupportedCultureCode()
                     ? reporter.PreferredLanguage : CultureCatalog.DefaultCultureCode) with
-            { UserId = reporter.Id, DeliveryId = message.Id }, ct);
+            { DeliveryId = message.Id }, ct);
             return true;
         }
         else

@@ -90,7 +90,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   `ResolvedByUserId`, with an audit row naming the reporter as actor.
   (`Services/IssuesService.cs:436`)
 - A new issue and a reporter's comment notify the queue's role-holders; Admins are notified
-  only when no role owns the queue. (`Services/IssuesService.cs:964`)
+  only when no role owns the queue. (`Services/IssuesService.cs:965`)
 - `Section` may be changed only while the issue is non-terminal.
   (`Services/IssuesService.cs:616`)
 - An unrouted section value is stored as null (the Admin queue), never refused; only an
@@ -101,8 +101,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   (`Services/IssuesService.cs:156`)
 - The actionable badge counts `Triage` and `Open` only — `InProgress` needs no picking up.
   (`Data/IssuesRepository.cs:110`)
-- Whenever a viewer's actionable count could have moved, both badge caches are dropped.
-  (`Services/IssuesService.cs:197`, `:544`, `:634`)
+- Actionable badge counts read current rows through `GetActionableCountForViewerAsync`; no count cache can republish stale state after a mutation.
 - The activity thread has no table of its own: it is `issue_comments` merged with the
   `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:396`)
 
@@ -112,8 +111,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
 
 ## 6. Deliberately not done
 
-- **No caching decorator.** Per-handler triage queues are not a hot read path; the only cache
-  is the 2-minute per-viewer badge count the service owns directly.
+- **No caching decorator.** Queue reads and per-viewer badge counts query current rows.
 - **No issue-events table.** The audit log is the event source for the thread; a parallel
   events schema would be a second truth.
 - **No cross-section FK constraints and no navigation properties.**

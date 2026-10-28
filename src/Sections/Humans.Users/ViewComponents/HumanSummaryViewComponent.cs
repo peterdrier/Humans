@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Models;
 using Humans.Teams.Contracts;
@@ -13,8 +12,7 @@ namespace Humans.Users.ViewComponents;
 /// identity context without hovering.
 /// </summary>
 public sealed class HumanSummaryViewComponent(
-    IUserService userService, ITeamService teamService, IGovernanceService governanceService,
-    IConsentService consentService) : ViewComponent
+    IUserService userService, ITeamService teamService, IGovernanceService governanceService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
@@ -54,9 +52,8 @@ public sealed class HumanSummaryViewComponent(
             .ToList();
 
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
-        var isApproved = (await consentService.GetConsentReviewAsync(userId, ct)).IsApproved;
 
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isApproved);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier);
 
         return View("Default", vm);
     }

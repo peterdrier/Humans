@@ -86,7 +86,6 @@ public class CreditorPayabilityTests
         ContactId = "c1",
         ContactName = "Paul Vivien",
         Description = "ER: Van hire",
-        Notes = $"Expense report {ReportId}",
         Date = FixedNow,
         Subtotal = total,
         Tax = 0m,

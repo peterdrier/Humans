@@ -155,7 +155,7 @@ public class RideshareArchitectureTests
 
     private static string? PolicyFor<TController>()
     {
-        var authorize = typeof(TController).GetCustomAttribute<AuthorizeAttribute>();
+        var authorize = typeof(TController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         authorize.Should().NotBeNull(because: $"{typeof(TController).Name} must not be reachable anonymously");
         return authorize.Policy;
     }

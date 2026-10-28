@@ -7,8 +7,8 @@ internal interface ICommunicationPreferenceManagement
     : ICommunicationPreferenceService, ICommunicationPreferenceWrite, IApplicationService
 {
     /// <summary>
-    /// Idempotent. Audits the actor when given, else the service. Returns false and writes nothing when Ticketing
-    /// is locked by a matched ticket order.
+    /// Idempotent. Audits the actor when given, else the service. Returns false and writes nothing when an
+    /// <see cref="ICommunicationPreferenceLock"/> locks the category for the human.
     /// </summary>
     Task<bool> UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,

@@ -91,7 +91,7 @@ public class MailerLiteArchitectureTests
 
         foreach (var controller in controllers)
         {
-            var authorize = controller.GetCustomAttributes<AuthorizeAttribute>(inherit: true).ToList();
+            var authorize = controller.GetCustomAttributes<AuthorizeAttribute>(inherit: false).ToList();
             authorize.Should().ContainSingle(
                 $"{controller.Name} must carry exactly one [Authorize]");
             authorize[0].Policy.Should().Be(PolicyNames.AdminOnly,

@@ -74,6 +74,7 @@ internal sealed class SendReConsentReminderJob(
                     {
                         var language = user.PreferredLanguage;
                         await emailService.SendAsync(emailMessages.ReConsentReminder(
+                            user.Id,
                             effectiveEmail,
                             user.BurnerName,
                             requiredDocNames,

@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace Humans.Email.Tests.Controllers;
@@ -27,6 +27,7 @@ public sealed class ComposerSelfSendTests
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ILogger<ComposerSelfSendService> _logger = Substitute.For<ILogger<ComposerSelfSendService>>();
 
     private ComposerSelfSendService BuildService()
     {
@@ -35,7 +36,7 @@ public sealed class ComposerSelfSendTests
         localizer["Email_ComposerSelfTest_DefaultSubject"].Returns(new LocalizedString("d", "[Test] Preview"));
         return new ComposerSelfSendService(
             _userEmails, Substitute.For<IUserService>(), _email, _audit, localizer,
-            NullLogger<ComposerSelfSendService>.Instance);
+            _logger);
     }
 
     private EmailPreviewController BuildController(bool signedIn)
@@ -79,6 +80,44 @@ public sealed class ComposerSelfSendTests
     }
 
     [HumansFact]
+    public async Task SendMarkdownToSelf_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
+    {
+        GivenAddress("me@example.com");
+        var failure = new InvalidOperationException("Audit unavailable");
+        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(failure));
+
+        var result = await BuildController(signedIn: true)
+            .SendMarkdownToSelf("Private subject", "Private message", CancellationToken.None);
+
+        result.Should().BeOfType<JsonResult>().Which.Value.Should().BeEquivalentTo(new { email = "me@example.com" });
+        await _email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        var log = _logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)
+                && Equals(call.GetArguments()[0], LogLevel.Critical))
+            .GetArguments();
+        log[3].Should().BeSameAs(failure);
+        log[2]!.ToString().Should().Contain(UserId.ToString())
+            .And.NotContain("Private subject").And.NotContain("Private message").And.NotContain("me@example.com");
+    }
+
+    [HumansFact]
+    public async Task SendMarkdownToSelf_QueueFailure_PropagatesWithoutSuccessAudit()
+    {
+        GivenAddress("me@example.com");
+        var failure = new InvalidOperationException("Queue unavailable");
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(failure));
+
+        var send = () => BuildController(signedIn: true)
+            .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
+
+        (await send.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
+    [HumansFact]
     public async Task SendMarkdownToSelf_WithoutSubject_UsesTheDefaultTestSubject()
     {
         GivenAddress("me@example.com");
@@ -116,7 +155,7 @@ public sealed class ComposerSelfSendTests
     [HumansFact]
     public void SendMarkdownToSelf_RequiresAuthenticationAndIsRateLimited()
     {
-        typeof(EmailPreviewController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(EmailPreviewController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         typeof(EmailPreviewController).GetMethod(nameof(EmailPreviewController.SendMarkdownToSelf))!
             .GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName
             .Should().Be(EmailPreviewController.SelfSendRateLimitPolicy);

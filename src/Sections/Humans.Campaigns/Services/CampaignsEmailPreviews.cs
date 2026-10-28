@@ -18,7 +18,6 @@ internal sealed class CampaignsEmailPreviews(CampaignsEmails emails) : IEmailPre
             new EmailPreviewSample("campaign-code", "Campaign Code",
                 emails.CampaignCode(new CampaignCodeEmailRequest(
                     UserId: Guid.Empty,
-                    CampaignGrantId: Guid.Empty,
                     CampaignId: Guid.Empty,
                     RecipientEmail: persona.Email,
                     RecipientName: persona.Name,

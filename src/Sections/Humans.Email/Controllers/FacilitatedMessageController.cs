@@ -22,7 +22,8 @@ internal sealed class FacilitatedMessageController(
     ICommunicationPreferenceService commPrefService,
     IAuditLogService auditLogService,
     IStringLocalizer<EmailResource> localizer,
-    IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> sharedLocalizer,
+    ILogger<FacilitatedMessageController> logger) : HumansControllerBase(userService)
 {
     private const string ProfileController = "ProfileView";
     private const string ViewProfileAction = "ViewProfile";
@@ -102,6 +103,7 @@ internal sealed class FacilitatedMessageController(
         }
 
         var message = emailMessages.FacilitatedMessage(
+            targetUser.Id,
             request.RecipientEmail,
             request.RecipientDisplayName,
             request.SenderDisplayName,
@@ -112,11 +114,21 @@ internal sealed class FacilitatedMessageController(
 
         await emailService.SendAsync(message, CancellationToken.None);
 
-        await auditLogService.LogAsync(
-            AuditAction.FacilitatedMessageSent,
-            "User", targetUser.Id,
-            $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
-            currentUser.Id);
+        try
+        {
+            await auditLogService.LogAsync(
+                AuditAction.FacilitatedMessageSent,
+                "User", targetUser.Id,
+                $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
+                currentUser.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Facilitated-message audit failed AFTER queueing a message to user {RecipientUserId} from user {SenderUserId} " +
+                "(contact info shared: {IncludeContactInfo}). Email is queued; reconcile audit trail.",
+                targetUser.Id, currentUser.Id, model.IncludeContactInfo);
+        }
 
         SetSuccess(string.Format(
             localizer["Email_SendMessage_Success"].Value,

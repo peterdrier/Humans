@@ -45,8 +45,8 @@
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <!-- ICantinaService (Contracts/ folder): the dietary gate, the missing-dietary banner and the
-         volunteer badges. Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
+    <!-- ICantinaService (Contracts/ folder): the missing-dietary banner, volunteer search and the
+         admin badges. Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
     <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--

@@ -401,6 +401,41 @@ public class ShiftAdminControllerTests
 
     [HumansTheory]
     [InlineData("ConfigureStaffing")]
+    [InlineData("GenerateShifts")]
+    [InlineData("CreateShift")]
+    [InlineData("MoveRota")]
+    public async Task StaffingMutations_DoNotPresentUnexpectedFailuresAsGuardrailRefusals(string action)
+    {
+        var rota = MakeRota(TeamId);
+        var failure = new InvalidOperationException("Unexpected persistence details");
+        _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
+            .Returns(Task.FromException<ShiftGenerationResult>(failure));
+        _shiftMgmt.GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>())
+            .Returns(Task.FromException<ShiftGenerationResult>(failure));
+        _shiftMgmt.CreateShiftAsync(Arg.Any<CreateShiftInput>())
+            .Returns(Task.FromException<ShiftMutationResult>(failure));
+        _shiftMgmt.MoveRotaToTeamAsync(Arg.Any<MoveRotaInput>())
+            .Returns(Task.FromException<RotaMoveResult>(failure));
+        var ctrl = BuildSut();
+        var act = async () => action switch
+        {
+            "ConfigureStaffing" => await ctrl.ConfigureStaffing(Slug, rota.Id, new StaffingGridModel()),
+            "GenerateShifts" => await ctrl.GenerateShifts(Slug, rota.Id, new GenerateEventShiftsModel()),
+            "CreateShift" => await ctrl.CreateShift(Slug, new CreateShiftModel { RotaId = rota.Id, StartTime = "09:00" }),
+            "MoveRota" => await ctrl.MoveRota(Slug, rota.Id, new MoveRotaModel { TargetTeamId = Guid.NewGuid() }),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        ctrl.TempData.Should().BeEmpty();
+        _logger.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("ConfigureStaffing")]
+    [InlineData("GenerateShifts")]
+    [InlineData("CreateShift")]
+    [InlineData("MoveRota")]
     [InlineData("DeleteRota")]
     [InlineData("BailRange")]
     public async Task GuardrailRejection_LogsWarningWithReasonWithoutException(string action)
@@ -409,7 +444,10 @@ public class ShiftAdminControllerTests
         var rota = MakeRota(TeamId);
         _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
         _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
-            .Returns(Task.FromException<ShiftGenerationResult>(new InvalidOperationException(reason)));
+            .Returns(ShiftGenerationResult.Failure(reason));
+        _shiftMgmt.GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>()).Returns(ShiftGenerationResult.Failure(reason));
+        _shiftMgmt.CreateShiftAsync(Arg.Any<CreateShiftInput>()).Returns(ShiftMutationResult.Failure(reason));
+        _shiftMgmt.MoveRotaToTeamAsync(Arg.Any<MoveRotaInput>()).Returns(RotaMoveResult.Failure(reason));
         _shiftMgmt.DeleteRotaAsync(rota.Id, UserId).Returns(new ShiftDeletionResult("Shifts_Delete_ConfirmedSignups", 2));
         _localizer["Shifts_Delete_ConfirmedSignups", Arg.Any<object[]>()]
             .Returns(new LocalizedString("Shifts_Delete_ConfirmedSignups", reason));
@@ -422,6 +460,9 @@ public class ShiftAdminControllerTests
         var result = action switch
         {
             "ConfigureStaffing" => await ctrl.ConfigureStaffing(Slug, rota.Id, new StaffingGridModel()),
+            "GenerateShifts" => await ctrl.GenerateShifts(Slug, rota.Id, new GenerateEventShiftsModel()),
+            "CreateShift" => await ctrl.CreateShift(Slug, new CreateShiftModel { RotaId = rota.Id, StartTime = "09:00" }),
+            "MoveRota" => await ctrl.MoveRota(Slug, rota.Id, new MoveRotaModel { TargetTeamId = Guid.NewGuid() }),
             "DeleteRota" => await ctrl.DeleteRota(Slug, rota.Id),
             "BailRange" => await ctrl.BailRange(Slug, signupBlockId, null),
             _ => throw new ArgumentOutOfRangeException(nameof(action))

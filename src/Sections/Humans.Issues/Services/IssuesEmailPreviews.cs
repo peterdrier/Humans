@@ -17,7 +17,7 @@ internal sealed class IssuesEmailPreviews(IssuesEmails emails) : IEmailPreviewCo
         return
         [
             new EmailPreviewSample("issue-comment", "Issue Comment",
-                emails.IssueComment(email, name, SampleTitle, SampleComment, "/Issues/00000000-0000-0000-0000-000000000000", culture)),
+                emails.IssueComment(Guid.Empty, email, name, SampleTitle, SampleComment, "/Issues/00000000-0000-0000-0000-000000000000", culture)),
         ];
     }
 }

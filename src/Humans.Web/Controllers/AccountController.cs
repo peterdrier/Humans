@@ -10,9 +10,12 @@ using Humans.Base.Constants;
 using Humans.Base;
 using Humans.Web.Services;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Controllers;
 
+// Sign-in flows run before there is a principal.
+[AllowAnonymous]
 public class AccountController(
     SignInManager<User> signInManager,
     IUserService userService,

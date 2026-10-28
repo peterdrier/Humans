@@ -20,6 +20,7 @@ internal enum WorkgroupNoticeKind
 /// variable line: reasons for Refused and Withdrawn, the disposition and note, the delivered document's title.
 /// </summary>
 internal sealed record WorkgroupNoticeRequest(
+    Guid RecipientUserId,
     string RecipientEmail,
     string? RecipientName,
     WorkgroupNoticeKind Kind,

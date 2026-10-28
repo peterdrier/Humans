@@ -1,4 +1,8 @@
 using System.Reflection;
+using Humans.Base.Interfaces;
+using Humans.Web.Extensions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
@@ -11,7 +15,9 @@ using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -52,6 +58,16 @@ public class AuthorizationPolicyTests : IDisposable
     public void Dispose()
     {
         _serviceProvider.Dispose();
+    }
+
+    [HumansFact]
+    public void Fallback_policy_requires_an_authenticated_user()
+    {
+        var options = _serviceProvider.GetRequiredService<IOptions<AuthorizationOptions>>().Value;
+
+        options.FallbackPolicy.Should().NotBeNull("an endpoint with no authorization metadata must not be public");
+        options.FallbackPolicy!.Requirements.Should().ContainSingle()
+            .Which.Should().BeOfType<DenyAnonymousAuthorizationRequirement>();
     }
 
     public static TheoryData<string, string, bool> RolePolicyCases => new()
@@ -421,7 +437,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     private static string FeedbackControllerPolicy =>
         SectionType("Humans.Feedback.Controllers.FeedbackController")
-            .GetCustomAttribute<AuthorizeAttribute>()?.Policy
+            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)?.Policy
         ?? throw new InvalidOperationException(
             "FeedbackController must carry a policy-bearing [Authorize] attribute.");
 
@@ -537,6 +553,45 @@ public class AuthorizationPolicyTests : IDisposable
 
         result.Succeeded.Should().BeTrue();
         await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(UserState.Active), true, true)]
+    [InlineData(nameof(UserState.Active), false, false)]
+    [InlineData(nameof(UserState.Bare), true, false)]
+    [InlineData(nameof(UserState.Suspended), true, false)]
+    [InlineData(nameof(UserState.AdminSuspended), true, false)]
+    [InlineData(nameof(UserState.DeletePending), true, false)]
+    [InlineData(nameof(UserState.Rejected), true, false)]
+    [InlineData(nameof(UserState.Deleted), true, false)]
+    [InlineData(nameof(UserState.Merged), true, false)]
+    [InlineData(null, true, false)]
+    [InlineData("Unknown", true, false)]
+    [InlineData(null, false, false)]
+    public async Task CityPlanningHub_RequiresActiveMembershipOnConnectAndNegotiate(
+        string? state, bool authenticated, bool allowed)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Services.AddSignalR();
+        await using var app = builder.Build();
+        foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())
+            contributor.MapEndpoints(app);
+        var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/hubs/city-planning", StringComparison.Ordinal) == true)
+            .ToList();
+        endpoints.Should().HaveCount(2);
+        var user = authenticated ? CreateUserWithRoles(RoleNames.Admin) : new ClaimsPrincipal(new ClaimsIdentity());
+        if (state is not null)
+            ((ClaimsIdentity)user.Identity!).AddClaim(new Claim(RoleAssignmentClaimsTransformation.UserStateClaimType, state));
+        var provider = _serviceProvider.GetRequiredService<IAuthorizationPolicyProvider>();
+        foreach (var endpoint in endpoints)
+        {
+            var policy = await AuthorizationPolicy.CombineAsync(provider, endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
+            policy.Should().NotBeNull();
+            var result = await _authorizationService.AuthorizeAsync(user, resource: null, policy!);
+            result.Succeeded.Should().Be(allowed, endpoint.RoutePattern.RawText);
+        }
     }
 
     [HumansFact]

@@ -29,8 +29,6 @@ internal interface ITeamResourceManagement : ITeamResourceService, IApplicationS
 
     Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default);
 
-    Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamResourcesAsync(Guid userId, CancellationToken ct = default);
-
     /// <summary>Includes inactive rows.</summary>
     Task<int> GetResourceCountAsync(CancellationToken ct = default);
 

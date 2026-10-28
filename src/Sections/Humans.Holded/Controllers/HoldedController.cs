@@ -25,7 +25,7 @@ internal sealed class HoldedController(
         var overview = await admin.GetOverviewAsync(ct);
         var docSync = await holdedFinance.GetDocSyncInfoAsync(ct);
 
-        return View(new HoldedOverviewVm(overview, docSync, docSync.CreditorBindingCount));
+        return View(new HoldedOverviewVm(overview, docSync));
     }
 
     /// <summary>Any account in the chart. Figures are in the association's point of view (+ money in, − money

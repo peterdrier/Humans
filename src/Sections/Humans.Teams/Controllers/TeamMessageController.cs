@@ -26,7 +26,8 @@ internal sealed class TeamMessageController(
     IEmailMessageFactory emailMessages,
     IAuditLogService auditLogService,
     IStringLocalizer<TeamsResource> localizer,
-    IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> sharedLocalizer,
+    ILogger<TeamMessageController> logger) : HumansControllerBase(userService)
 {
     private const string ProfileController = "ProfileView";
     private const string ViewProfileAction = "ViewProfile";
@@ -118,6 +119,7 @@ internal sealed class TeamMessageController(
         }
 
         await emailService.SendAsync(emailMessages.FacilitatedMessage(
+            targetUser.Id,
             targetUser.Email,
             targetUser.BurnerName,
             sender.BurnerName,
@@ -131,13 +133,23 @@ internal sealed class TeamMessageController(
 
         // Name and link the team; never copy its address into the audit text.
         var contactInfo = model.IncludeContactInfo ? "yes" : "no";
-        await auditLogService.LogAsync(
-            AuditAction.FacilitatedMessageSent,
-            "User", targetUser.Id,
-            $"Message sent to {targetUser.BurnerName} from team {team.TeamName} (contact info shared: {contactInfo})",
-            currentUser.Id,
-            relatedEntityId: team.TeamId,
-            relatedEntityType: "Team");
+        try
+        {
+            await auditLogService.LogAsync(
+                AuditAction.FacilitatedMessageSent,
+                "User", targetUser.Id,
+                $"Message sent to {targetUser.BurnerName} from team {team.TeamName} (contact info shared: {contactInfo})",
+                currentUser.Id,
+                relatedEntityId: team.TeamId,
+                relatedEntityType: "Team");
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Facilitated-message audit failed AFTER queueing a message to user {RecipientUserId} from user {SenderUserId} as team {TeamId} " +
+                "(contact info shared: {IncludeContactInfo}). Email is queued; reconcile audit trail.",
+                targetUser.Id, currentUser.Id, team.TeamId, model.IncludeContactInfo);
+        }
 
         SetSuccess(string.Format(localizer["Teams_SendMessage_Success"].Value, targetUser.BurnerName));
 

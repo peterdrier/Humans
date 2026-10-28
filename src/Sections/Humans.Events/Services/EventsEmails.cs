@@ -12,7 +12,7 @@ internal sealed class EventsEmails(
     IStringLocalizer<EventsResource> localizer,
     ILogger<EventsEmails> logger)
 {
-    public EmailMessage EventLifecycle(EventLifecycleNotification request, string userEmail)
+    public EmailMessage EventLifecycle(Guid userId, EventLifecycleNotification request, string userEmail)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -35,7 +35,7 @@ internal sealed class EventsEmails(
                 Encode(request.ActionUrl ?? string.Empty));
 
             return new EmailMessage(
-                userEmail, request.UserName, localizer[key + "_Subject"].Value, body, request.TemplateName());
+                userEmail, request.UserName, userId, localizer[key + "_Subject"].Value, body, request.TemplateName());
         }
     }
 

@@ -77,7 +77,7 @@ public static partial class IbanFormatter
 
     // The same shape in any case, with separators between characters. Word-bounded, so a candidate
     // never starts or ends inside a longer token such as a Holded doc id or a hash.
-    [GeneratedRegex(@"\b[A-Za-z]{2}[0-9]{2}(?:[\s-]*[A-Za-z0-9]){11,30}\b",
+    [GeneratedRegex(@"\b[A-Za-z][\s-]*[A-Za-z][\s-]*[0-9][\s-]*[0-9](?:[\s-]*[A-Za-z0-9]){11,30}\b",
         RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex IbanCandidate();
 }

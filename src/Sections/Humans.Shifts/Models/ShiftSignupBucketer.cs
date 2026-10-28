@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
@@ -11,6 +13,8 @@ internal sealed record ShiftSignupBuckets(
 
 internal static class ShiftSignupBucketer
 {
+    private static readonly ResourceManager Resources = new(typeof(ShiftsResource));
+
     internal static IReadOnlyList<Guid> GetTeamIds(IReadOnlyList<ShiftSignup> signups) =>
         signups
             .Where(s => s.Shift?.Rota is not null)
@@ -44,7 +48,7 @@ internal static class ShiftSignupBucketer
             var item = new MySignupItem
             {
                 Signup = signup,
-                DepartmentName = teamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, "Unknown"),
+                DepartmentName = teamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, Resources.GetString("Shifts_Signup_UnknownTeam", CultureInfo.CurrentUICulture)!),
                 AbsoluteStart = signup.Shift.GetAbsoluteStart(eventSettings),
                 AbsoluteEnd = signup.Shift.GetAbsoluteEnd(eventSettings)
             };

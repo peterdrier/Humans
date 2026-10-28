@@ -56,6 +56,7 @@ internal sealed class RotaCoordinatorMessageService(
         var summary = await DispatchToRecipientsAsync(
             groups,
             buildRequest: (recipient, shiftGroups, language) => new CoordinatorRotaMessageRequest(
+                RecipientUserId: recipient.Id,
                 RecipientEmail: recipient.Email!,
                 RecipientName: recipient.BurnerName,
                 SenderName: sender.BurnerName,
@@ -75,12 +76,12 @@ internal sealed class RotaCoordinatorMessageService(
         if (summary.Skipped > 0) auditSuffix += $" ({summary.Skipped} skipped: no email or missing user)";
         if (summary.Failed > 0) auditSuffix += $" ({summary.Failed} failed: enqueue error)";
 
-        await auditLogService.LogAsync(
+        await AuditDispatchAsync(
             AuditAction.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
             $"Requested rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) on '{rota.Name}'"
                 + auditSuffix,
-            senderUserId);
+            senderUserId, summary.Requested);
 
         // Every enqueue threw. The audit row already records it; fail so the controller shows no success toast.
         if (summary.Requested == 0 && summary.Failed > 0)
@@ -118,6 +119,7 @@ internal sealed class RotaCoordinatorMessageService(
         var summary = await DispatchToRecipientsAsync(
             groups,
             buildRequest: (recipient, shiftGroups, language) => new CoordinatorTeamRotasMessageRequest(
+                RecipientUserId: recipient.Id,
                 RecipientEmail: recipient.Email!,
                 RecipientName: recipient.BurnerName,
                 SenderName: sender.BurnerName,
@@ -136,20 +138,36 @@ internal sealed class RotaCoordinatorMessageService(
         if (summary.Skipped > 0) auditSuffix += $" ({summary.Skipped} skipped: no email or missing user)";
         if (summary.Failed > 0) auditSuffix += $" ({summary.Failed} failed: enqueue error)";
 
-        await auditLogService.LogAsync(
+        await AuditDispatchAsync(
             AuditAction.CoordinatorTeamRotasMessageSent,
             // Persisted literal: memory/code/type-name-as-persisted-string.md.
             "Team", teamId,
             $"Requested team-wide rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) "
                 + $"across {groups.Count} rota(s) in '{team.Name}'"
                 + auditSuffix,
-            senderUserId);
+            senderUserId, summary.Requested);
 
         if (summary.Requested == 0 && summary.Failed > 0)
             return TeamRotasMessageDispatchResult.Failure(
                 $"Failed to enqueue any emails ({summary.Failed} enqueue error(s)); check server logs.");
 
         return TeamRotasMessageDispatchResult.Success(summary.Requested, groups.Count, team.Name);
+    }
+
+    private async Task AuditDispatchAsync(
+        AuditAction action, string entityType, Guid entityId, string description, Guid actorUserId, int requested)
+    {
+        try
+        {
+            await auditLogService.LogAsync(action, entityType, entityId, description, actorUserId);
+        }
+        catch (Exception ex) when (requested > 0)
+        {
+            // Retrying the dispatch would duplicate email requests already accepted by the outbox.
+            logger.LogCritical(ex,
+                "Coordinator message audit failed after {RequestedCount} successful email requests: {Action} on {EntityType} {EntityId}, sender {SenderUserId}",
+                requested, action, entityType, entityId, actorUserId);
+        }
     }
 
     public async Task<TeamRotasRecipientPreview> GetTeamRotasRecipientPreviewAsync(

@@ -19,7 +19,7 @@ public sealed class SettingsArchitectureTests
 
         foreach (var controller in surfaces)
         {
-            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>();
+            var authorize = controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             authorize.Should().NotBeNull(
                 because: $"{controller.Name} writes the app-wide event values");
             authorize.Policy.Should().Be(PolicyNames.AdminOnly,

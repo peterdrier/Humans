@@ -32,7 +32,7 @@ internal sealed class AgentController(
     [ValidateAntiForgeryToken]
     public async Task Ask([FromBody] AgentAskRequest body, CancellationToken cancellationToken)
     {
-        var (missing, user) = await RequireCurrentUserAsync();
+        var (missing, user) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null)
         {
             Response.StatusCode = StatusCodes.Status401Unauthorized;

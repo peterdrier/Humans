@@ -22,9 +22,9 @@ public class ThingsToDoViewComponent(
         {
             try
             {
-                entries.AddRange(await contributor.EntriesAsync(services, UserClaimsPrincipal));
+                entries.AddRange(await contributor.EntriesAsync(services, UserClaimsPrincipal, HttpContext.RequestAborted));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {
                 logger.LogError(ex, "Failed to load ThingsToDo entries from {Contributor}", contributor.GetType().Name);
             }

@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Shifts.Contracts;
 using NodaTime;
 
@@ -14,6 +16,8 @@ internal sealed record ShiftSignupSummaryBuckets(
 /// </summary>
 internal static class ShiftSignupSummaryBucketer
 {
+    private static readonly ResourceManager Resources = new(typeof(ShiftsResource));
+
     public static ShiftSignupSummaryBuckets Build(
         IReadOnlyList<ShiftSignupSummary> signups,
         IReadOnlyDictionary<Guid, string> teamNames,
@@ -27,7 +31,7 @@ internal static class ShiftSignupSummaryBucketer
         {
             var row = new ShiftSignupsRow(
                 signup,
-                teamNames.GetValueOrDefault(signup.TeamId, "Unknown"));
+                teamNames.GetValueOrDefault(signup.TeamId, Resources.GetString("Shifts_Signup_UnknownTeam", CultureInfo.CurrentUICulture)!));
 
             switch (signup.Status)
             {

@@ -247,9 +247,9 @@ EmailMessage WorkspaceCredentials(
 
 // EmailProvisioningService (Step 5)
 await emailService.SendAsync(emailMessages.WorkspaceCredentials(
-    recoveryEmail, userName, workspaceEmail, tempPassword, culture));
+    userId, recoveryEmail, userName, workspaceEmail, tempPassword, culture));
 ```
-`workspace_credentials` is on `TimeSensitiveTemplates`, so `OutboxEmailService` gives it an immediate drain.
+`WorkspaceCredentials` sets `EmailMessage.Urgent`, so `OutboxEmailService` gives it an immediate drain.
 
 ## Security Considerations
 

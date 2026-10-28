@@ -39,6 +39,8 @@ public class GoogleAdminServiceTests
         _userService = Substitute.For<IUserService>();
         _workspaceIdentities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         _userEmailService = Substitute.For<IUserEmailService>();
+        _userEmailService.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         _auditLogService = Substitute.For<IAuditLogService>();
 
         teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())

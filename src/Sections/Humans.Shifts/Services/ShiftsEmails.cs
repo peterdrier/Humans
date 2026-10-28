@@ -28,7 +28,7 @@ internal sealed class ShiftsEmails(
             var shiftSectionHtml = ShiftSection(
                 request.IncludeShifts, "Shifts_Email_CoordinatorRotaMessage_ShiftsIntro", shiftListHtml);
 
-            return new EmailMessage(request.RecipientEmail, request.RecipientName,
+            return new EmailMessage(request.RecipientEmail, request.RecipientName, request.RecipientUserId,
                 Lf("Shifts_Email_CoordinatorRotaMessage_Subject", request.RotaName),
                 Lf("Shifts_Email_CoordinatorRotaMessage_Body",
                     Encode(request.RecipientName),
@@ -70,7 +70,7 @@ internal sealed class ShiftsEmails(
             shiftGroupsHtml = ShiftSection(
                 request.IncludeShifts, "Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro", shiftGroupsHtml);
 
-            return new EmailMessage(request.RecipientEmail, request.RecipientName,
+            return new EmailMessage(request.RecipientEmail, request.RecipientName, request.RecipientUserId,
                 Lf("Shifts_Email_CoordinatorTeamRotasMessage_Subject", request.TeamName),
                 Lf("Shifts_Email_CoordinatorTeamRotasMessage_Body",
                     Encode(request.RecipientName),

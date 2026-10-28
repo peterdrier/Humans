@@ -871,7 +871,7 @@ internal sealed class Service(
                 ? burnerName
                 : null;
 
-            contactId = await client.UpsertContactAsync(new HoldedContactInput
+            contactId = await client.CreateContactAsync(new HoldedContactInput
             {
                 Name = legalName,
                 TradeName = tradeName,
@@ -1201,6 +1201,7 @@ internal sealed class Service(
             {
                 var language = member.PreferredLanguage;
                 await emailService.SendAsync(emails.SepaPayoutGenerated(
+                    member.Id,
                     recipient, member.BurnerName, t.Amount, t.IbanMasked,
                     language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
             }
@@ -1278,6 +1279,7 @@ internal sealed class Service(
 
             var language = member.PreferredLanguage;
             await emailService.SendAsync(emails.SepaPayoutWithdrawn(
+                member.Id,
                 recipient, member.BurnerName, t.Amount, t.IbanMasked, announcedOn,
                 language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
         }

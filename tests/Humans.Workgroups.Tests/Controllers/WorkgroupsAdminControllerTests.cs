@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Primitives;
@@ -27,6 +28,53 @@ namespace Humans.Workgroups.Tests.Controllers;
 public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 {
     private readonly ILogger<WorkgroupsAdminController> _logger = Substitute.For<ILogger<WorkgroupsAdminController>>();
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("not-a-date")]
+    [InlineData("2025-03-01")]
+    public async Task RegisterExisting_RequiresExplicitValidRegistrationDate(string? registeredOn)
+    {
+        var service = Substitute.For<IWorkgroupService>();
+        service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        var controller = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting), service: service);
+        controller.Url = Substitute.For<IUrlHelper>();
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Application.Name"] = "Group",
+            ["Application.Purpose"] = "Purpose",
+            ["Application.Deliverable"] = "Report",
+            ["CoordinatorUserId"] = SeedUser("Coordinator").ToString()
+        };
+        if (registeredOn is not null) fields["RegisteredOn"] = registeredOn;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(RegisterExistingViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (RegisterExistingViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+        var result = await controller.RegisterExisting(model, Ct);
+
+        if (!string.Equals(registeredOn, "2025-03-01", StringComparison.Ordinal))
+        {
+            controller.ModelState[nameof(RegisterExistingViewModel.RegisteredOn)]!.Errors.Should().NotBeEmpty();
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            await service.DidNotReceiveWithAnyArgs().RegisterExistingAsync(default, default!);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            await service.Received(1).RegisterExistingAsync(Arg.Any<Guid>(),
+                Arg.Is<WorkgroupBootstrap>(b => b.RegisteredAt == new LocalDate(2025, 3, 1).AtMidnight().InUtc().ToInstant()),
+                Arg.Any<CancellationToken>());
+        }
+    }
 
     [HumansTheory]
     [InlineData(false, false)]

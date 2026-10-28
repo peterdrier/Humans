@@ -75,6 +75,48 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }
 
+    [HumansTheory]
+    [InlineData("urgent", false)]
+    [InlineData("overview", false)]
+    [InlineData("overview", true)]
+    [InlineData("coordinators", false)]
+    [InlineData("coordinators", true)]
+    [InlineData("trends", false)]
+    [InlineData("trends", true)]
+    [InlineData("daily", false)]
+    [InlineData("heatmap", false)]
+    [InlineData("duration", false)]
+    public async Task DashboardReads_AbortColdLoadsWithoutCachingPartialResults(string read, bool filterSubPeriod)
+    {
+        var es = await SeedEventAsync();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var ct = cancellation.Token;
+        var subPeriod = filterSubPeriod ? BuildSubPeriod.SetupWeek : (BuildSubPeriod?)null;
+        Func<Task> load = read switch
+        {
+            "urgent" => () => _service.GetUrgentShiftsAsync(es.Id, ct: ct),
+            "overview" => () => _service.GetDashboardOverviewAsync(es.Id, ShiftPeriod.Build, subPeriod, ct),
+            "coordinators" => () => _service.GetCoordinatorActivityAsync(es.Id, ShiftPeriod.Build, subPeriod, ct),
+            "trends" => () => _service.GetDashboardTrendsAsync(es.Id, TrendWindow.All, ShiftPeriod.Build, subPeriod, ct),
+            "daily" => () => _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build, ct: ct),
+            "heatmap" => () => _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Build, ct: ct),
+            "duration" => () => _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Build, ct: ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(read))
+        };
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+        var cacheKey = read switch
+        {
+            "overview" => ShiftManagementService.OverviewCacheKey(es.Id, ShiftPeriod.Build),
+            "coordinators" => ShiftManagementService.CoordinatorActivityCacheKey(es.Id, ShiftPeriod.Build),
+            "trends" => ShiftManagementService.TrendsCacheKey(es.Id, TrendWindow.All, ShiftPeriod.Build),
+            _ => null
+        };
+        if (cacheKey is not null)
+            Cache.TryGetValue(cacheKey, out _).Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task GetDashboardOverview_EmptyDatabase_ReturnsZeroCounters()
     {

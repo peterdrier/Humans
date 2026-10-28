@@ -9,7 +9,7 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     public IEnumerable<AdminNavGroup> Groups() =>
     [
         new("Issues", [
-            new("Issues", "Issues", "Index", null, null, "fa-solid fa-bug", PolicyNames.AdminOnly, Weight: 0)
+            new("Issues", "Issues", "Index", null, null, "fa-solid fa-bug", PolicyNames.AnyAdminRole, Weight: 0)
         ])
     ];
 }

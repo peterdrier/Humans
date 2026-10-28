@@ -165,4 +165,9 @@
   <data name="Store_DepartmentOnly" xml:space="preserve"><value>Only departments can have team orders.</value></data>
   <data name="Store_TeamOrderExists" xml:space="preserve"><value>This department already has a Store order for the active event year.</value></data>
   <data name="Store_CreateOrderFailed" xml:space="preserve"><value>Could not create the order.</value></data>
+  <data name="Store_UnknownProduct" xml:space="preserve"><value>(unknown product)</value></data>
+  <data name="Store_UnknownTeam" xml:space="preserve"><value>(unknown team)</value></data>
+  <data name="Store_UnknownCamp" xml:space="preserve"><value>(unknown camp)</value></data>
+  <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(unknown)</value></data>
+  <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Camp order</value></data>
 </root>

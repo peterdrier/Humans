@@ -62,7 +62,6 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
 
         var emailService = new OutboxEmailService(
             new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options)),
-            Substitute.For<IUserEmailService>(),
             bodyComposer,
             Substitute.For<IImmediateOutboxProcessor>(),
             _transport,

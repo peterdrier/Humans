@@ -439,6 +439,17 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task DeleteEmailAsync_MissingOrForeignRowReturnsRefusalWithoutMutation()
+    {
+        var result = await _service.DeleteEmailAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_EmailUpdate_NotFound");
+        _userService.ReceivedCalls().Should().BeEmpty();
+        _googleIdentity.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task DeleteEmailAsync_RejectsProviderAttachedRow()
     {
         // Provider-attached rows MUST go through UnlinkAsync (which removes both
@@ -1078,6 +1089,22 @@ public class UserEmailServiceTests
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AddEmailAsync_OwnerRefusal_DoesNotGenerateVerificationToken()
+    {
+        var userId = Guid.NewGuid();
+        _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
+        _userService.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.Empty, false, false, "Users_EmailUpdate_AccountUnavailable"));
+
+        var result = await _service.AddEmailAsync(userId, "member@example.com", Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Users_EmailUpdate_AccountUnavailable");
+        result.Token.Should().BeEmpty();
+        await _userManager.DidNotReceive().GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

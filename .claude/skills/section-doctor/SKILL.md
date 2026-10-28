@@ -1,7 +1,7 @@
 ---
 name: section-doctor
-description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (scripted), inventories every file, derives the target shape before any scan, works parallel reading threads into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report and Needs-Peter queue live in its own docs/health/runs/ file, and a session-only purpose/surface/debt review is shown in the session; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
-argument-hint: "[resume] [--section=<Name>] [--budget=2.5h] [--mutation]"
+description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (scripted), inventories every file, derives the target shape before any scan, works parallel reading threads into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report and Needs-Peter queue live in its own docs/health/runs/ file, and a purpose/surface/debt review is posted as a PR comment; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
+argument-hint: "[unattended] [resume] [--section=<Name>] [--budget=2.5h] [--mutation]"
 ---
 
 # Section Doctor
@@ -50,6 +50,7 @@ instruction it followed. This skill outranks a run's own judgment about process.
 |---|---|
 | *(none)* | daily run: select a section live (Phase 2), doctor it |
 | `resume` | no new work — work the Needs-Peter queue (see Resume) |
+| `unattended` | the scheduled daily run: nobody is watching (see Unattended runs); combines with the forms below |
 | `--section=<Name>` | skip the selector, doctor this section (the blocked set still applies) |
 | `--budget=<duration>` | override budget (default 2.5h); wall-clock, checked between items with real `date` reads |
 | `--mutation` | run section-scoped Stryker in the Tests thread (`memory/process/stryker-concurrency-coverage.md`) |
@@ -59,6 +60,21 @@ records it as skipped. Nothing installs a toolchain; the environment provides th
 and reforge or it does not. **No compiler is a docs-only run, not a failed one**
 (`memory/process/section-doctor-no-sdk.md`): reading threads run, strikes stay in docs, comments and
 resx, code findings queue, the run file's header and the PR body say so.
+
+## Unattended runs
+
+The daily routine invokes `unattended`. Its prompt carries nothing else; every rule for the
+scheduled run lives here.
+
+- Read this file first and follow it end to end. Every phase runs except Phase 8.
+- Phase 7 completes in full: push, the PR with its `## Needs Peter` block, the PR-number backfill.
+  Never merge anything.
+- Remotes: `origin` is `peterdrier/Humans`, the only PR target. `upstream` is
+  `nobodies-collective/Humans`, where most issues live; issue comments go wherever the issue is.
+  Skill issues ("When the skill is wrong") go on `peterdrier/Humans`.
+- The `verify-migrations-apply` CI job is disabled and irrelevant: never a failure to fix, never
+  a reason to wait.
+- The section review goes on the PR (Phase 7b), and the run stewards its own PR (Phase 9).
 
 ## Tooling
 
@@ -157,7 +173,8 @@ Rename the session `section-doctor: <Section> — <yyyy-mm-dd>` via `set_session
 tool exists (load it with ToolSearch if deferred); skip silently otherwise. It requires
 `session_id`: take `ccr.id` from `get_session` called with no arguments. Confirm the returned
 title changed; on an error retry once, and if that fails too, note it in the run file's Retro
-and carry on.
+and carry on. Inside a Claude project thread (the `mcp__hearthbot__rename_thread` tool exists),
+also rename the thread `Section-doctor: <Section>`.
 
 ### Phase 3: Assess
 
@@ -428,13 +445,20 @@ test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
   close/edit/relabel recommendation. It ends with the attribution footer. `## Worked` in the run
   file names the issues commented on.
 
-### Phase 7b: Section review (session-only)
+### Phase 7b: Section review (PR comment)
 
-Every run, once the PR is up, writes one markdown file, `$RUNDIR/section-review.md`, and shows it
-in the session (`SendUserFile`, `display: render`; `status: proactive` on an unattended run). It
-is never committed and never linked from the PR or the run file. It dies with the session.
-Peter comments on it in chat or in the section itself. The run acts on none of it: no strike, no
-ledger row, no Needs-Peter item. Changes come back as a new session. Contents, in order:
+Every run, once the PR is up, writes `$RUNDIR/section-review.md` and posts it as one PR comment,
+right after the cost comment: first line `<!-- section-review -->`, then `## Section review`,
+then the file. Over 60,000 characters, it splits into consecutive comments at a heading. An
+interactive run also shows the file in the session. A run inside a Claude project thread (the
+`mcp__hearthbot__post_message` tool exists) also copies it to
+`/mnt/project-files/section-doctor/<date>-<Section>-section-review.md`, titled
+`# <Section> section review, <date>` with the PR reference under it, and attaches that copy to a
+thread message, so Peter reads and answers it in the app. It is never committed and never linked from
+the run file: the PR is where Peter already looks, it survives the session, and it stays out of
+`main`, where a purpose draft not yet ruled on would read as settled. Peter answers on the PR, in
+the thread or in a later session. The run acts on none of it: no strike, no ledger row, no Needs-Peter item.
+Contents, in order:
 
 1. **Purpose, vision, intention.** Read them from the section's main doc (`Docs/<Section>.md`).
    Where the doc states them, quote them and flag any drift from the code. Where it doesn't,
@@ -450,11 +474,13 @@ ledger row, no Needs-Peter item. Changes come back as a new session. Contents, i
 
    For each: who uses it, why it exists, and a verdict of keep, shrink or question, with enough
    context to judge it cold.
-3. **Section debt.** `Docs/debt.yml` rows, the section's open issues with today's state, and
+3. **Jobs,** when the section has any: each recurring and fire-and-forget job, its schedule or
+   trigger, what it does, and its gating config. Omit the heading when there are none.
+4. **Section debt.** `Docs/debt.yml` rows, the section's open issues with today's state, and
    debt that lives only in the code (`[Obsolete]`, `Grandfathered`, baselines naming the
    section, transitional duplicates, reforge hot spots). For each: what it is, why it is still
    there, and what fixing it takes.
-4. **Questions,** numbered and answerable in a word.
+5. **Questions,** numbered and answerable in a word.
 
 Write in plain language with no run-internal numbering. Ids (`S1`, `D1`, …) are stable within
 the file.
@@ -468,10 +494,26 @@ the Resume grep gate. Unattended runs skip this; unanswered items carry forward,
 ### Phase 9: Stand down
 
 Stop working; the worktree stays until the PR is merged or closed, and everything a later session
-needs is derivable from the branch name and the run file. Review rounds run under
-the `pd:steward` skill, `.claude/steward.md` and `memory/process/review-round-budget.md`: a bot finding is a
-sample of a class — grep the branch for its siblings before fixing the reported line; every push is
-`doctor.py push` followed by a check that the PR head advanced; a thread is resolved only after
+needs is derivable from the branch name and the run file. The session that opened the PR tends
+it, under `.claude/steward.md` and `memory/process/review-round-budget.md`; never hand it off.
+
+An unattended run adds these limits, lower than the round budget:
+
+- Once the PR is up, subscribe to its activity, post `@codex review` once and note the creation
+  time.
+- On each wake read the real `date`. Stop at whichever comes first: three hours after PR creation,
+  three Codex review rounds handled, or the PR merged or closed. A round is one Codex review and
+  the fix push answering it. Never re-request `@codex review` after a fix push
+  (`memory/process/pr-review-feedback-handling.md`). To stop: unsubscribe, post one PR comment listing what is still open (also added to the
+  run file's `## Needs Peter`), and end. A quiet PR simply ends at the deadline; nothing is
+  scheduled to reach it.
+- Fix only what this run's own diff caused: a finding on a line the run changed, or a CI failure
+  its changes produced. Anything else gets a one-line reply saying it predates the run, and is
+  neither fixed nor filed. CI red on `main` too is one PR comment, no fix.
+
+In both modes: a bot finding is a sample of a class — grep the branch for its siblings before
+fixing the reported line; every push is `doctor.py push` followed by a check that the PR head
+advanced; a thread is resolved only after
 `doctor.py resolve-check <sha>` passes for the commit the reply cites and the named line reads as
 claimed. At the round cap, unfixed findings are listed in the cap comment and the run file's
 `## Needs Peter`, never resolved. No scheduled self check-ins (`memory/process/no-scheduled-pr-checkins.md`).

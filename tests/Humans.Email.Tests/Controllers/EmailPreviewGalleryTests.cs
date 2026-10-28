@@ -25,7 +25,7 @@ public sealed class EmailPreviewGalleryTests
         {
             Asked.Add(persona);
             return [.. ids.Select(id => new EmailPreviewSample(id, $"Sample {id}",
-                new EmailMessage(persona.Email, persona.Name, $"Subject {id}", "<p>Contributed</p>", id)))];
+                new EmailMessage(persona.Email, persona.Name, Guid.Empty, $"Subject {id}", "<p>Contributed</p>", id)))];
         }
     }
 

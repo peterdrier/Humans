@@ -98,6 +98,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   the buckets do not sum to the balance transaction's total fee (an unrecognised fee type), the
   read logs a Warning and still returns the known buckets.
 
+- Store-session diagnostics mask valid human-formatted IBANs in provider-controlled fields, including whitespace or hyphens within country codes and check digits.
+
 ## Negative Access Rules
 
 - This section **cannot** write any table — it holds no `DbContext` and no repository.

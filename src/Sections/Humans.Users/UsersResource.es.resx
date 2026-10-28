@@ -57,12 +57,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Revisar ahora</value>
   </data>
-  <data name="Users_Profile_PendingApproval" xml:space="preserve">
-    <value>Pendiente de aprobación:</value>
-  </data>
-  <data name="Users_Profile_PendingApprovalDescription" xml:space="preserve">
-    <value>Su cuenta está pendiente de aprobación por la Junta Directiva. Una vez aprobada, se le inscribirá en el equipo de Voluntarios y recibirá acceso a los recursos de la organización.</value>
-  </data>
   <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
     <value>Su solicitud de {0}:</value>
     <comment>{0} = tier name (Colaborador/Asociado)</comment>
@@ -770,4 +764,12 @@
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Tu información médica se ha guardado.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información médica.</value></data>
   <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Solicitar ser colaborador o asociado</value></data>
+  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Voluntario</value></data>
+  <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
+    <value>Esta cuenta ya no está disponible para cambiar sus direcciones de correo.</value>
+  </data>
+  <data name="Users_Search_Name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Users_Search_ExactName" xml:space="preserve"><value>Nombre exacto</value></data>
+  <data name="Users_Search_Interests" xml:space="preserve"><value>Intereses</value></data>
+  <data name="Users_Search_Pronouns" xml:space="preserve"><value>Pronombres</value></data>
 </root>

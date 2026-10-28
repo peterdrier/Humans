@@ -20,6 +20,19 @@
 Gate ticket scanning that **decides entry** at the event door and writes the durable
 admission record. Distinct from the read-only `Scanner` section, which must never check anyone in.
 
+**Purpose:** one fast, fail-safe admission decision per ticket at the door. The server clock
+decides, and the result is one append-only record: Humans is the system of record for gate
+admission.
+
+**Good looks like:** an agent scans, sees a red, amber or green card, confirms the photo ID with
+Yes or No, and moves on. Nobody is silently admitted when settings are missing. Every admit and
+override can be traced afterwards.
+
+**Deliberate choices:** the vendor mirror is best-effort and off unless enabled; scans are purged
+after the retention window.
+
+**Out of scope:** undoing an admit (nobodies-collective/Humans#906).
+
 ## Concepts
 
 - **Gate scan** — a staffer scans a Ticket Tailor QR on the rugged tablet. The Gate service
@@ -37,7 +50,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   `Instant.MinValue` "not configured" sentinel. While unset, **every scan fails safe to AMBER**
   (`CutoffNotConfigured` → `Unresolved`) rather than silently admitting everyone, and the terminal
   shows a loud "cutoff not set" banner. **Operational step:** an admin must set the general-entry
-  cutoff in `Gate ▸ Admin` before opening the doors. To run with no Early-Entry gating at all,
+  cutoff in `Settings ▸ Gate` (`/Settings#gate`) before opening the doors. To run with no Early-Entry gating at all,
   set the cutoff to a past instant (explicitly "general entry already open") — never leave it unset.
 - **Server-authoritative decision** — `RecordDecisionAsync` re-evaluates server-side, so a client
   "ID confirmed" can never turn a STOP into an admit. `scannedByUserId` is the authenticated gate
@@ -46,10 +59,10 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   after verifying the shared supervisor override PIN (`Gate:SupervisorPin`) server-side — a forged
   `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
   (overrides refused, never a free pass).
-- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier#1075_: the claim step is
+- **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier/Humans#1075_: the claim step is
   bypassed (the terminal scans as the shared gate account), though the table, service methods,
   admin page, and views remain in place should per-person claim return. Design retained in git
-  history (peterdrier#1071/#1073/#1074): claim vs override decoupled via `AdminEnrolled`,
+  history (peterdrier/Humans#1071/#1073/#1074): claim vs override decoupled via `AdminEnrolled`,
   three-factor `AuthorizeOverrideAsync`, double-entry first-time set, audited set/reset
   (`GateStaffPinSet`/`GateStaffPinReset`); PIN values never logged.
 - **Supervisor override** — a too-early scan (e.g. a Friday Early-Entry ticket scanned on Wednesday)
@@ -68,14 +81,13 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 - **Dedupe authority** — a unique index on `GateScanEvent.AdmitDedupeKey` (the barcode for admit
   verdicts, null otherwise) makes the first admit per barcode win atomically across all lanes;
   Postgres excludes nulls so reject rows never collide. An explicit pre-check covers the common case.
-  _Known test gap:_ the concurrent index-collision path isn't covered by unit tests (the EF in-memory
-  provider can't enforce unique indexes) — a Postgres-backed race test is tracked in the debt-ledger
-  inbox (2026-06-29).
 - Only a violation of `ix_gate_scan_events_admit_dedupe_key` becomes a duplicate-admit outcome; unrelated persistence failures propagate.
 - **Vendor check-in mirror** — on an admit `GateService.RecordDecisionAsync` enqueues `GateVendorCheckInJob`
   (fire-and-forget) which calls Tickets' `ITicketVendorMirror.CreateCheckInAsync` (TicketTailor
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
-  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority.
+  the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority. Enqueue
+  failures are logged without failing the already-recorded admit response; the mirror ledger is
+  marked only after enqueue succeeds.
   **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
   with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
   AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
@@ -107,7 +119,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
   supervisor on an override admit), `AdmitDedupeKey?`. Cross-section links are bare Guid columns
   (no nav/FK); `GuestUserId`/`ScannedByUserId`/`OverrideByUserId` are re-pointed on account merge.
 - **`gate_settings`** (owned) — singleton (`Id` = 1). `GeneralEntryOpensAt` (UTC `Instant`),
-  `MinorAgeThresholdYears`.
+  `MinorAgeThresholdYears` (stored and edited; nothing reads it yet).
 - **`gate_staff_pins`** (owned) — one row per staffer, key = bare `UserId`. `PinHash`
   (Identity `IPasswordHasher`), `CreatedAt`, `UpdatedAt`, `AdminEnrolled` (override authority —
   see the PIN bullet above). The merge survivor keeps its PIN.
@@ -122,7 +134,7 @@ admission record. Distinct from the read-only `Scanner` section, which must neve
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
 | `/Gate/Leaderboard` | GET | `ScannerAccess` | Service tally DTOs rendered directly, ordered by admitted then total scans (descending); names resolved by the Human component |
-| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | Staff PIN admin — settings (cutoff, minor age threshold) moved to `/Settings#gate` (peterdrier/Humans#1634) |
+| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | GET = Staff PINs page; POST = saves the cutoff + minor-age settings submitted from `/Settings#gate` (peterdrier/Humans#1634) |
 | `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
 | `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
 | `/Gate/Admin/VendorCheckInBackfill` | GET | `AdminOnly` | One-off vendor check-in backfill page (temp — remove after use) |
@@ -133,9 +145,9 @@ policy rather than the read-only `ScannerAccess`, so the gate's admit surface ne
 Scanner read gate. Both are satisfied by the shared gate-terminal account today; they are
 kept separate so they can diverge. The supervisor override on `Decision` is authorized by the
 shared override PIN (`Gate:SupervisorPin`), brute-force throttled via `GatePinThrottle` on a
-single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin`/`Admin` PIN routes — plus
+single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin` PIN routes — plus
 the claim flow's `EndShift` POST and its name-search endpoint `/Gate/Search` — remain but are
-unreachable since peterdrier#1075 — nothing links to them. Deletion is planned:
+unreachable since peterdrier/Humans#1075 — nothing links to them; the Staff PINs page (`Admin`) has no nav entry either, and the PINs it manages serve only the bypassed claim flow. Deletion is planned:
 nobodies-collective/Humans#933.)
 
 ## Invariants
@@ -158,7 +170,7 @@ nobodies-collective/Humans#933.)
   non-self-resetting lockout; a correct PIN clears it) on the single `override:shared` bucket. A
   lockout blocks only overrides — scanning and every other card continue — so a fumbled PIN can
   never stop the line, while the shared PIN can't be ground through the ~10k space at the kiosk.
-- Scan **attribution is the shared gate account** (peterdrier#1075): the personal-PIN claim flow is
+- Scan **attribution is the shared gate account** (peterdrier/Humans#1075): the personal-PIN claim flow is
   bypassed, so the leaderboard and `ScannedByUserId` no longer identify individual staffers.
 - An admit with a matched guest immediately writes the guest's Attended participation row for the
   active event's year — consumed-Early-Entry guards (Camps) and other attendance readers see a gate
@@ -182,7 +194,7 @@ nobodies-collective/Humans#933.)
   ("Do not admit · if disputed, get the gate lead"), the ID-confirm card has a "Wrong ticket — scan
   again" escape and a visible auto-clear countdown, the override panel has a Cancel button, and the
   freshness line taps to reload. (The two-tap "End shift" handover button and the claim keypad's
-  "← Not you?" went with the bypassed claim flow — peterdrier#1075; `GateController.EndShift`
+  "← Not you?" went with the bypassed claim flow — peterdrier/Humans#1075; `GateController.EndShift`
   remains but nothing links to it, since scans now attribute to the shared gate account and there
   is no per-operator session to hand over.)
 - **Logout escape hatch** — the route-restriction middleware hides every normal logout affordance from
@@ -203,38 +215,34 @@ nobodies-collective/Humans#933.)
   event/year for the shift roster pre-fill and the Attended-participation write); and Shifts' `IShiftService.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
-  peterdrier#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
+  peterdrier/Humans#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserService` (scanner name; supervisor/claim display names; leaderboard
   rendering via `<vc:human>`).
-- **Tickets** — `ITicketWrite.RecordParticipationAsync` (Tickets owns participation since Users
-  decomposition commit 13) — on an
+- **Tickets** — `ITicketWrite.RecordParticipationAsync` — on an
   admit with a matched guest, `GateService` projects the check-in onto the guest's
   `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).
   Same upsert the ticket sync uses; its Attended-is-permanent / CheckedInAt-write-once rules make
   the two writers commute. Without this write the consumed-Early-Entry guards (Camps) never learn
   of a gate check-in, because the vendor mirror is best-effort and off by default.
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
-- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor?) and
-  `GetActiveUserIdsInRoleAsync` (enumerate enrolled supervisors — both now serve only the
-  unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
+- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor? — now serves
+  only the unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 
 ## Configuration
 
 - `Gate:SupervisorPin` — the shared supervisor override PIN (one PIN for all supervisors),
   required for the too-early / unconfirmed-EE override and the child-without-ID waiver. **Unset →
   overrides fail closed** (refused with a "not configured" card) — set it before doors open.
-  _(History: retired 2026-07-01 in favour of per-staffer enrolled PINs, restored after
-  peterdrier#1075 dropped the per-staffer PIN flow.)_
 - `Gate:VendorMirrorEnabled` — default off; gates the TicketTailor check-in mirror (see Vendor
   check-in mirror above).
 - `Gate:RetentionDays` — retention window in days for `gate_scan_events` (default 365);
   `<= 0` disables the purge.
 - `Gate:RosterTeamId` — **optional** GUID of the Shifts department/team that staffs the gate.
-  When set, `/Gate/Claim` (unreachable since peterdrier#1075) shows that team's signed-up
+  When set, `/Gate/Claim` (unreachable since peterdrier/Humans#1075) shows that team's signed-up
   volunteers as one-tap picks; the `/Gate/Search` name search remains for anyone not on the
   roster (burner-name matching only — never email; each result shows a masked org-public email
-  as a disambiguator, peterdrier#1073). Unset → search only (no behaviour change). Only
+  as a disambiguator, peterdrier/Humans#1073). Unset → search only (no behaviour change). Only
   volunteers whose gate **shift starts within ±2 hours of now** (event-local time, from
   `EventSettings.TimeZoneId`) are shown, so the list tracks shift change rather than the whole
   event roster. De-dupes one pick per human; excludes refused/bailed/cancelled/no-show signups.
@@ -244,9 +252,9 @@ nobodies-collective/Humans#933.)
 **Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
 except `Section`; there is no `GateResource` because the kiosk carries no resource keys
 (every string is inline English by design — a staff-facing, single-locale terminal).
-`IGateScanRetention` lives in the project's `Contracts/` folder.
+There is no `Contracts/` folder: nothing outside the section calls into it.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
-`IUserDataContributor` and `IGateScanRetention`.
+`IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
 **Jobs:** both in `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
 section's own `SectionJobs` (`ISectionJobs`, discovered by Shell — cron `45 3 * * *`);
@@ -257,7 +265,7 @@ person), mirroring the read-through Scanner section.
 **Layout:** the tablet-facing views (`Claim`, scan terminal `Index`, `Leaderboard`) use the
 **chromeless kiosk layout** `_GateLayout` — full-bleed, no admin nav/sidebar/breadcrumb, so the
 rugged tablet shows only the gate UI. It lives in the section's own `Views/Shared/`. The
-admin settings page (`Admin`) overrides back to Shell's `_AdminLayout` (a desktop admin task); the
+Staff PINs page (`Admin`) overrides back to Shell's `_AdminLayout` (a desktop admin task); the
 vendor check-in backfill page lives outside the kiosk folder and gets it from the Shell's layout rule. The shared
 `GateTerminal` system account (no roles/teams) sees only this kiosk; on the device, Edge Assigned
 Access removes browser chrome too.
@@ -265,6 +273,5 @@ Access removes browser chrome too.
 at `/_content/Humans.Gate/…`. `GatePageRenderTests` (in the local-only
 `Humans.Integration.Tests`, self-skipped under CI) asserts both the `?v=` cache-buster and a
 200 on each file.
-**Status:** new section (gate-scanner feature). Attendance-gateway posture signed off by Peter
-(2026-07-02): a gate admit is the check-in of record and writes the Attended participation row
-directly (see Users under Cross-Section Dependencies).
+**Status:** attendance-gateway posture signed off by Peter: a gate admit is the check-in of record
+and writes the Attended participation row directly (see Tickets under Cross-Section Dependencies).

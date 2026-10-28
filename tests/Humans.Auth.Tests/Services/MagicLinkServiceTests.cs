@@ -110,7 +110,7 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
-                m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin
+                m.TemplateName == AuthEmails.MagicLinkLoginTemplate
                 && m.RecipientEmail == "alice@work.com"
                 && m.RecipientName == "Alice"
                 && m.Subject == $"Auth_Email_MagicLinkLogin_Subject#{recipientCulture}"
@@ -145,7 +145,7 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
-                m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin
+                m.TemplateName == AuthEmails.MagicLinkLoginTemplate
                 && m.RecipientEmail == "alice@gmail.com"
                 && m.RecipientName == "Alice"),
             Arg.Any<CancellationToken>());
@@ -160,7 +160,7 @@ public sealed class MagicLinkServiceTests : IDisposable
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
-                m.TemplateName == TimeSensitiveTemplates.MagicLinkSignup
+                m.TemplateName == AuthEmails.MagicLinkSignupTemplate
                 && m.RecipientEmail == "newperson@example.com"
                 && m.HtmlBody.Contains("/Account/MagicLinkSignup", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
@@ -197,7 +197,7 @@ public sealed class MagicLinkServiceTests : IDisposable
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.DidNotReceive().SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.MagicLinkLogin),
+            Arg.Is<EmailMessage>(m => m.TemplateName == AuthEmails.MagicLinkLoginTemplate),
             Arg.Any<CancellationToken>());
     }
 
@@ -212,7 +212,7 @@ public sealed class MagicLinkServiceTests : IDisposable
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.DidNotReceive().SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.MagicLinkSignup),
+            Arg.Is<EmailMessage>(m => m.TemplateName == AuthEmails.MagicLinkSignupTemplate),
             Arg.Any<CancellationToken>());
     }
 
@@ -336,7 +336,7 @@ public sealed class MagicLinkServiceTests : IDisposable
         await _service.SendMagicLinkAsync("alice@work.com", null, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.TemplateName == TimeSensitiveTemplates.MagicLinkSignup),
+            Arg.Is<EmailMessage>(m => m.TemplateName == AuthEmails.MagicLinkSignupTemplate),
             Arg.Any<CancellationToken>());
     }
 

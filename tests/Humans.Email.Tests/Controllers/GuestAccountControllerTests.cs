@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 using Humans.Email.Controllers;
@@ -27,7 +26,7 @@ public class GuestAccountControllerTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceManagement _commPrefService = Substitute.For<ICommunicationPreferenceManagement>();
-    private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
+    private readonly ICommunicationPreferenceLock _lock = Substitute.For<ICommunicationPreferenceLock>();
     private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>();
@@ -44,8 +43,8 @@ public class GuestAccountControllerTests
         var ctrl = new GuestAccountController(
             _userService,
             _commPrefService,
+            [_lock],
             new UnsubscribeService(_userService, _commPrefService, _dataProtection, NullLogger<UnsubscribeService>.Instance),
-            _ticketQueryService,
             _clock,
             NullLogger<GuestAccountController>.Instance,
             _localizer);
@@ -132,8 +131,8 @@ public class GuestAccountControllerTests
             .Returns((TokenValidationStatus.Valid, archivedId, MessageCategory.Marketing));
         _commPrefService.GetPreferencesReadOnlyAsync(survivor.Id, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<CommunicationPreferenceSnapshot>());
-        _ticketQueryService.GetUserTicketHoldingsAsync(survivor.Id, Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(0, []));
+        _lock.GetLockedCategoriesAsync(survivor.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>([]));
 
         if (update)
         {
@@ -150,7 +149,7 @@ public class GuestAccountControllerTests
         {
             Assert.IsType<ViewResult>(await controller.CommunicationPreferences("pre-merge-token"));
             await _commPrefService.Received(1).GetPreferencesReadOnlyAsync(survivor.Id, Arg.Any<CancellationToken>());
-            await _ticketQueryService.Received(1).GetUserTicketHoldingsAsync(survivor.Id, Arg.Any<CancellationToken>());
+            await _lock.Received(1).GetLockedCategoriesAsync(survivor.Id, Arg.Any<CancellationToken>());
             await _commPrefService.DidNotReceive().GetPreferencesReadOnlyAsync(archivedId, Arg.Any<CancellationToken>());
         }
     }
@@ -175,8 +174,8 @@ public class GuestAccountControllerTests
             .Returns((TokenValidationStatus.Valid, userId, MessageCategory.Marketing));
         _commPrefService.GetPreferencesReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<CommunicationPreferenceSnapshot>());
-        _ticketQueryService.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(0, []));
+        _lock.GetLockedCategoriesAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>([]));
 
         if (update)
             Assert.IsType<UnauthorizedResult>(await controller.UpdatePreference(
@@ -253,10 +252,10 @@ public class GuestAccountControllerTests
         }
         _commPrefService.GetPreferencesReadOnlyAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(call => ReadPreferencesAsync(call.Arg<CancellationToken>()));
-        _ticketQueryService.GetUserTicketHoldingsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        _lock.GetLockedCategoriesAsync(user.Id, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new UserTicketHoldings(0, []);
+            return Task.FromResult<IReadOnlyCollection<MessageCategory>>([]);
         });
         Func<Task<IActionResult>> load = () => ctrl.CommunicationPreferences(tokenMode ? "valid-token" : null);
         Assert.IsType<ViewResult>(await load());

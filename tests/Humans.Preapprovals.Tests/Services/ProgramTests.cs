@@ -78,6 +78,26 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         result.Refusal!.Key.Should().Be(PreapprovalErrorKeys.KindLocked);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Edit_KindChange_AuditsOldAndNewSizingRules(bool toFixed)
+    {
+        var before = toFixed ? ProgramKind.PerGrantAmount : ProgramKind.FixedPerPerson;
+        var after = toFixed ? ProgramKind.FixedPerPerson : ProgramKind.PerGrantAmount;
+        var program = await SeedProgramAsync(kind: before, perPerson: toFixed ? null : 300m);
+        var actor = SeedUser("Board");
+
+        var result = await NewService().UpdateProgramAsync(program.Id,
+            Save(kind: after, perPerson: toFixed ? 300m : null), actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var db = OpenContext();
+        (await db.Programs.SingleAsync(p => p.Id == program.Id, Ct)).Kind.Should().Be(after);
+        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramEdited, AuditEntityTypes.Program, program.Id,
+            Arg.Is<string>(description => description.Contains($"kind {before} → {after}")), actor);
+    }
+
     [HumansFact]
     public async Task Edit_CeilingBelowCommitted_RefusedWithCommittedAmount()
     {

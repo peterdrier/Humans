@@ -674,6 +674,7 @@ public sealed class FeedbackServiceTests
             UserId = otherId,
             Category = FeedbackCategory.Bug,
             Description = "theirs",
+            ScreenshotStoragePath = "uploads/feedback/foreign/shot.png",
             PageUrl = "/theirs",
             Status = FeedbackStatus.Resolved,
             ResolvedByUserId = erasedId,
@@ -700,7 +701,7 @@ public sealed class FeedbackServiceTests
         _fileStorage.DeleteAsync("uploads/feedback/x/shot.png", Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
-                // Cancellation arrives after the repository has committed the erasure.
+                // Once file deletion begins, cancellation must not skip the remaining erasure.
                 await erasureCancellation.CancelAsync();
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
                 screenshotDeleted = true;
@@ -714,6 +715,7 @@ public sealed class FeedbackServiceTests
         (await FeedbackDb.FeedbackReports.AsNoTracking().AnyAsync(r => r.UserId == erasedId, ct))
             .Should().BeFalse();
         screenshotDeleted.Should().BeTrue();
+        await _fileStorage.DidNotReceive().DeleteAsync("uploads/feedback/foreign/shot.png", Arg.Any<CancellationToken>());
         await _fileStorage.Received(1).DeleteAsync("uploads/feedback/x/shot.png", CancellationToken.None);
 
         // The other human's thread survives with the erased user detached everywhere.
@@ -725,6 +727,30 @@ public sealed class FeedbackServiceTests
             .FirstAsync(m => m.Id == foreignReply.Id, ct);
         reply.Content.Should().Be("their thread keeps this");
         reply.SenderUserId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_ScreenshotFailure_RetainsTheReportForRetry()
+    {
+        var userId = Guid.NewGuid();
+        const string key = "uploads/feedback/retry/shot.png";
+        var report = await SeedReportAsync(userId, "mine", "/mine");
+        report.ScreenshotStoragePath = key;
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var attempts = 0;
+        _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(_ =>
+            ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
+
+        var erase = () => _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await erase.Should().ThrowAsync<IOException>();
+
+        (await FeedbackDb.FeedbackReports.AsNoTracking().SingleAsync(
+            r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken))
+            .ScreenshotStoragePath.Should().Be(key);
+        await erase();
+        (await FeedbackDb.FeedbackReports.AsNoTracking().AnyAsync(
+            r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        await _fileStorage.Received(2).DeleteAsync(key, CancellationToken.None);
     }
 
     [HumansFact]

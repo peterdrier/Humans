@@ -15,9 +15,9 @@ internal sealed class OnboardingEmails(
 {
     private readonly EmailSettings _settings = settings.Value;
 
-    public EmailMessage SignupRejected(string userEmail, string userName, string? reason, string? culture = null)
+    public EmailMessage SignupRejected(Guid userId, string userEmail, string userName, string? reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Onboarding_Email_SignupRejected_Subject"),
             Lf("Onboarding_Email_SignupRejected_Body", Encode(userName), ReasonLine(reason), _settings.AdminAddress),
             "signup_rejected", MessageCategory.System));

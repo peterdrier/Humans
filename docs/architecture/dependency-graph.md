@@ -16,7 +16,7 @@ this service-to-service diagram; the Backdoor node below represents only
 - Dashed orange arrow labelled `(lazy)` = resolved on-demand via `IServiceProvider.GetRequiredService<T>()` / `Lazy<T>`. This pattern breaks DI cycles where two services legitimately call each other. A healthy graph minimizes them.
 - Public contracts: edges into a section that go through its `I<Section>Service` (or `I<Section>Write`) contract are collapsed onto the owning service node. The node names the implementing service; the contract is the cross-section consumption surface.
 - Services with zero cross-section service edges don't appear in the diagram; they are listed under "Services with no cross-section edges" below so the verifier can account for every service.
-- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IEventSettingsChangeListener`, `IMailerLiteAudience`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
+- Fan-out contributor interfaces (`IEnumerable<ICalendarFeedContributor>`, `IEarlyEntryProvider`, `IEventSettingsChangeListener`, `IMailerLiteAudience`, `ICommunicationPreferenceLock`, `IUserMerge`, `IUserDataContributor`) are not drawn as edges — each implementation's own deps are.
 
 ## Mermaid diagram
 
@@ -139,6 +139,7 @@ graph LR
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
     TicketTransfer[TicketTransferService]:::tickets
+    TicketPrefLock[TicketingPreferenceLock]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
     EventPart[EventParticipationService]:::tickets
@@ -276,7 +277,6 @@ graph LR
     UEmail --> Audit
     CommPref --> Audit
     CommPref --> User
-    CommPref --> TicketQ
     EmailProblems --> Audit
     Unsub --> User
     CF --> Team
@@ -432,6 +432,7 @@ graph LR
     TicketTransfer --> UEmail
     TicketTransfer --> Email
     TicketTransfer --> Audit
+    TicketPrefLock --> TicketQ
     AttendeeImport --> UEmail
     AttendeeImport --> AcctProv
     AttendeeImport --> User
@@ -551,11 +552,9 @@ graph LR
     CalFeedToken --> Audit
 
     %% Email
-    Email --> UEmail
     Email --> Metrics
     EmailOutbox --> SettingsSvc
     EmailOutbox --> Audit
-    EmailOutboxProc --> Campaign
     EmailOutboxProc --> Metrics
     ComposerSelfSend --> UEmail
     ComposerSelfSend --> User
@@ -745,12 +744,11 @@ graph LR
     TRes -. "lazy" .-> Role
     Cal -. "lazy" .-> Team
     Metrics -. "lazy" .-> User
-    Metrics -. "lazy" .-> Consent
 
     %% ── Edge styling ──
     %% Eager edges come first, then the lazy block; linkStyle indexes the lazy block by position.
     %% Recompute the indices whenever edges change.
-    linkStyle 381,382,383,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402 stroke:#f97316,stroke-width:2.5px
+    linkStyle 389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409 stroke:#f97316,stroke-width:2.5px
 ```
 
 
@@ -782,7 +780,7 @@ Other notable one-way lazy edges:
 - **Team → GoogleSyncOutbox** — enqueues transactional-outbox Google-sync events on membership/role changes; one-way.
 - **ShiftManagement → Role / User / Camp / Tickets**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
 - **Team → WorkspaceIdentity**, **UserEmail → WorkspaceIdentity** — one-way lazy resolution of `IGoogleIntegrationService` / `IGoogleIntegrationWrite`.
-- **Calendar → Team**, **HumansMetrics → User / Consent** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
+- **Calendar → Team**, **HumansMetrics → User** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 

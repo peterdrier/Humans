@@ -73,7 +73,6 @@ public class ProfileViewControllerPopoverTests
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
-            _consentService,
             _authorizationService);
 
         var identity = new ClaimsIdentity([
@@ -172,6 +171,7 @@ public class ProfileViewControllerPopoverTests
             DisplayName = "Active Human",
             Email = "active@example.com",
             PreferredLanguage = "en",
+            State = UserState.Active,
         };
         var profile = new Profile
         {
@@ -184,7 +184,6 @@ public class ProfileViewControllerPopoverTests
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));
-        _reviews[id] = ConsentReviewStubs.Approved(id);
 
         var result = await _controller.Popover(id, TestContext.Current.CancellationToken);
 

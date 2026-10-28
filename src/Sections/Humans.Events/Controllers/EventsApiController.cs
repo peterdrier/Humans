@@ -28,6 +28,7 @@ internal sealed class EventsApiController(
     ILogger<EventsApiController> logger)
     : ApiControllerBase(users)
 {
+    [AllowAnonymous]
     [HttpGet("events")]
     public async Task<IActionResult> GetEvents(
         [FromQuery] int? day,
@@ -67,6 +68,7 @@ internal sealed class EventsApiController(
         return Ok(results);
     }
 
+    [AllowAnonymous]
     [HttpGet("events/{id:guid}")]
     public async Task<IActionResult> GetEvent(Guid id)
     {
@@ -88,6 +90,7 @@ internal sealed class EventsApiController(
         return Ok(BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName, submitterName));
     }
 
+    [AllowAnonymous]
     [HttpGet("barrios")]
     public async Task<IActionResult> GetBarrios()
     {
@@ -113,6 +116,7 @@ internal sealed class EventsApiController(
         return Ok(barrioGroups);
     }
 
+    [AllowAnonymous]
     [HttpGet("barrios/{id:guid}")]
     public async Task<IActionResult> GetBarrio(Guid id)
     {
@@ -141,6 +145,7 @@ internal sealed class EventsApiController(
             }).ToList()));
     }
 
+    [AllowAnonymous]
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories()
     {

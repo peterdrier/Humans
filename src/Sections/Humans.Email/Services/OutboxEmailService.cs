@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Net;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
@@ -12,7 +11,6 @@ namespace Humans.Email.Services;
 
 internal sealed class OutboxEmailService(
     IEmailOutboxRepository outboxRepo,
-    IUserEmailService userEmailService,
     IEmailBodyComposer bodyComposer,
     IImmediateOutboxProcessor immediateProcessor,
     IEmailTransport transport,
@@ -25,10 +23,7 @@ internal sealed class OutboxEmailService(
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var userId = message.UserId
-            ?? (await userEmailService.FindByAddressAsync(
-                    message.RecipientEmail, aliased: false, verifiedOnly: true, cancellationToken))
-                .FirstOrDefault()?.UserId;
+        var userId = message.UserId;
 
         var category = message.Category;
 
@@ -98,9 +93,9 @@ internal sealed class OutboxEmailService(
             PlainTextBody = plainText,
             TemplateName = message.TemplateName,
             UserId = userId,
-            CampaignGrantId = message.CampaignGrantId,
             ReplyTo = message.ReplyTo,
             ExtraHeaders = extraHeadersJson,
+            Urgent = message.Urgent,
             Status = EmailOutboxStatus.Queued,
             CreatedAt = clock.GetCurrentInstant()
         };
@@ -111,9 +106,7 @@ internal sealed class OutboxEmailService(
         metrics.RecordEmailQueued(message.TemplateName);
         logger.LogInformation("Email queued: {TemplateName} to {Recipient}", message.TemplateName, message.RecipientEmail);
 
-        // Derived from the template name, not a message field: the same list the
-        // repository orders the batch by, so drain and queue order cannot drift.
-        if (TimeSensitiveTemplates.Names.Contains(message.TemplateName, StringComparer.Ordinal))
+        if (message.Urgent)
         {
             try
             {

@@ -1,3 +1,5 @@
+using Xunit;
+using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.Users.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -666,6 +668,27 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserInfosAsync_DelayedMiss_DoesNotReplaceARefreshedUser()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var pending = new TaskCompletionSource<UserInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetAllUserInfosAsync(ct).Returns([]);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(pending.Task),
+                new ValueTask<UserInfo?>(SampleUserInfo(userId, "Fresh")));
+        var sut = CreateSut();
+        await ((IHostedService)sut).StartAsync(ct);
+
+        var read = sut.GetUserInfosAsync([userId], ct).AsTask();
+        await sut.RefreshAsync(userId, ct);
+        pending.SetResult(SampleUserInfo(userId, "Old"));
+        await read;
+
+        (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Fresh");
+    }
+
+    [HumansFact]
     public async Task GetUserInfosAsync_PartialHit_OnlyMissesDelegated()
     {
         // Warm hits served from the dict, misses loaded per-id from the inner service.
@@ -945,9 +968,16 @@ public class CachingUserServiceTests
         results.Should().HaveCount(1);
     }
 
-    [HumansFact]
-    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup()
+    [HumansTheory]
+    [InlineData("en", "User ID")]
+    [InlineData("es", "ID de usuario")]
+    [InlineData("de", "Benutzer-ID")]
+    [InlineData("it", "ID utente")]
+    [InlineData("fr", "ID utilisateur")]
+    [InlineData("ca", "ID d'usuari")]
+    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup(string culture, string label)
     {
+        using var scope = new CultureScope(culture);
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
@@ -956,7 +986,7 @@ public class CachingUserServiceTests
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be("User ID");
+        results[0].MatchField.Should().Be(label);
     }
 
     [HumansFact]
@@ -1171,7 +1201,7 @@ public class CachingUserServiceTests
         await PrimeAsync(sut, SampleUserInfo(userId));
 
         _inner.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(true, profileId, "uploads/profile-pictures/old.png"));
+            .Returns(new UserProfileAnonymizeResult(true));
 
         StubRefreshEntry(userId, new Profile
         {
@@ -1188,7 +1218,6 @@ public class CachingUserServiceTests
         var result = await sut.AnonymizeProfileForDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Anonymized.Should().BeTrue();
-        result.PreviousProfilePictureKey.Should().Be("uploads/profile-pictures/old.png");
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.FirstName.Should().Be("Deleted");

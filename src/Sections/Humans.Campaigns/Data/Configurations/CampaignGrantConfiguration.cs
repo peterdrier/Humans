@@ -11,9 +11,11 @@ internal sealed class CampaignGrantConfiguration : IEntityTypeConfiguration<Camp
         builder.ToTable("campaign_grants");
         builder.HasKey(g => g.Id);
 
+#pragma warning disable CS0618 // the retired column stays mapped until its drop is approved
         builder.Property(g => g.LatestEmailStatus)
             .HasConversion<string>()
             .HasMaxLength(20);
+#pragma warning restore CS0618
 
         builder.Property(g => g.RedeemedAt);
 

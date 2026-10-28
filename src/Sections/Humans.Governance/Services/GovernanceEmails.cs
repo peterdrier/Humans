@@ -20,46 +20,46 @@ internal sealed class GovernanceEmails(
 {
     private readonly EmailSettings _settings = settings.Value;
 
-    public EmailMessage ApplicationApproved(string userEmail, string userName, MembershipTier tier, string? culture = null)
+    public EmailMessage ApplicationApproved(Guid userId, string userEmail, string userName, MembershipTier tier, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Governance_Email_ApplicationApproved_Subject"),
             Lf("Governance_Email_ApplicationApproved_Body", Encode(userName), tier, _settings.BaseUrl),
             "application_approved", MessageCategory.Governance));
 
-    public EmailMessage ApplicationRejected(string userEmail, string userName, MembershipTier tier, string reason, string? culture = null)
+    public EmailMessage ApplicationRejected(Guid userId, string userEmail, string userName, MembershipTier tier, string reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             L("Governance_Email_ApplicationRejected_Subject"),
             Lf("Governance_Email_ApplicationRejected_Body", Encode(userName), tier, ReasonLine(reason), _settings.AdminAddress),
             "application_rejected", MessageCategory.Governance));
 
-    public EmailMessage TermRenewalReminder(string userEmail, string userName, string tierName, LocalDate expiresAt, string? culture = null)
+    public EmailMessage TermRenewalReminder(Guid userId, string userEmail, string userName, string tierName, LocalDate expiresAt, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            userEmail, userName,
+            userEmail, userName, userId,
             Lf("Governance_Email_TermRenewalReminder_Subject", tierName),
             Lf("Governance_Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt.ToDate()), _settings.BaseUrl),
             "term_renewal_reminder", MessageCategory.Governance));
 
-    public EmailMessage AssemblyVoteOpened(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
+    public EmailMessage AssemblyVoteOpened(Guid userId, string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, userName,
+            toEmail, userName, userId,
             Lf("Governance_Email_AssemblyVoteOpened_Subject", voteTitle),
             Lf("Governance_Email_AssemblyVoteOpened_Body", Encode(userName), Encode(voteTitle),
                 Encode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), IndicativeNote(isOfficial)),
             "assembly_vote_opened", MessageCategory.System));
 
-    public EmailMessage AssemblyVoteReminder(string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
+    public EmailMessage AssemblyVoteReminder(Guid userId, string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, userName,
+            toEmail, userName, userId,
             Lf("Governance_Email_AssemblyVoteReminder_Subject", voteTitle),
             Lf("Governance_Email_AssemblyVoteReminder_Body", Encode(userName), Encode(voteTitle),
                 Encode(closesAt.ToDateTime()), AbsoluteUrl(voteUrl), IndicativeNote(isOfficial)),
             "assembly_vote_reminder", MessageCategory.System));
 
-    public EmailMessage AssemblyVoteCancelled(string toEmail, string userName, string voteTitle, string reason, string? culture = null)
+    public EmailMessage AssemblyVoteCancelled(Guid userId, string toEmail, string userName, string voteTitle, string reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
-            toEmail, userName,
+            toEmail, userName, userId,
             Lf("Governance_Email_AssemblyVoteCancelled_Subject", voteTitle),
             Lf("Governance_Email_AssemblyVoteCancelled_Body", Encode(userName), Encode(voteTitle), Lf("Governance_Email_ReasonLine", Encode(reason))),
             "assembly_vote_cancelled", MessageCategory.System));

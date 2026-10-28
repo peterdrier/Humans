@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
+using NSubstitute.ExceptionExtensions;
 using NodaTime;
 using NSubstitute;
 
@@ -32,6 +34,7 @@ public sealed class TeamMessageControllerTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ILogger<TeamMessageController> _logger = Substitute.For<ILogger<TeamMessageController>>();
     private readonly Guid _viewerId = Guid.NewGuid();
     private readonly Guid _targetId = Guid.NewGuid();
     private readonly Guid _teamId = Guid.NewGuid();
@@ -45,7 +48,7 @@ public sealed class TeamMessageControllerTests
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new TeamMessageController(
-            _users, _teamOptions, _commPrefs, _emailService, _emailMessages, _audit, localizer, shared);
+            _users, _teamOptions, _commPrefs, _emailService, _emailMessages, _audit, localizer, shared, _logger);
 
         var http = new DefaultHttpContext
         {
@@ -65,10 +68,10 @@ public sealed class TeamMessageControllerTests
         _teamOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>())
             .Returns([new TeamMessageOption(_teamId, "Infrastructure", "infra@nobodies.team")]);
         _emailMessages.FacilitatedMessage(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
-            .Returns(ci => new EmailMessage("target@example.com", "Target", "Subject", "Body", "facilitated_message",
-                ReplyTo: ci.ArgAt<string?>(7)));
+            .Returns(ci => new EmailMessage("target@example.com", "Target", ci.ArgAt<Guid?>(0), "Subject", "Body",
+                "facilitated_message", ReplyTo: ci.ArgAt<string?>(8)));
     }
 
     private static UserInfo Info(Guid id, string name, string email, string language = "en") =>
@@ -193,15 +196,36 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _emailMessages.Received(1).FacilitatedMessage(
-            "target@example.com", "Target", "Coordinator", "Hello", true, "coordinator@example.com",
+            _targetId, "target@example.com", "Target", "Coordinator", "Hello", true, "coordinator@example.com",
             expectedCulture, "infra@nobodies.team");
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team"), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team" && m.UserId == _targetId), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("from team Infrastructure", StringComparison.Ordinal)
                 && !d.Contains("infra@nobodies.team", StringComparison.Ordinal)),
             _viewerId, _teamId, "Team");
+    }
+
+    [HumansFact]
+    public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
+    {
+        var failure = new InvalidOperationException("Audit unavailable");
+        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(failure);
+
+        var result = await _controller.SendMessage(
+            _teamId, _targetId, new TeamSendMessageViewModel { Message = "Hello" }, Ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
+        _controller.TempData.Should().ContainKey(Humans.Base.Constants.TempDataKeys.SuccessMessage);
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        var log = _logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .GetArguments();
+        log[0].Should().Be(LogLevel.Critical);
+        log[3].Should().BeSameAs(failure);
+        log[2]!.ToString().Should().Contain(_targetId.ToString()).And.Contain(_viewerId.ToString());
     }
 
     [HumansFact]
@@ -211,7 +235,7 @@ public sealed class TeamMessageControllerTests
     [HumansFact]
     public void Controller_IsAuthorizedAndUsesTheTeamsRoute()
     {
-        typeof(TeamMessageController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(TeamMessageController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         typeof(TeamMessageController).GetCustomAttribute<RouteAttribute>()!.Template.Should().Be("Teams");
         var actions = typeof(TeamMessageController).GetMethods()
             .Where(m => string.Equals(m.Name, nameof(TeamMessageController.SendMessage), StringComparison.Ordinal))

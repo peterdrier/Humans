@@ -9,9 +9,9 @@ namespace Humans.Store.Services;
 /// </summary>
 internal static class EventZoneToday
 {
-    public static async Task<LocalDate> TodayInEventZoneAsync(this ISettingsService settingsService, IClock clock)
+    public static async Task<LocalDate> TodayInEventZoneAsync(this ISettingsService settingsService, IClock clock, CancellationToken ct = default)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         var tz = activeEvent is null
             ? DateTimeZone.Utc
             : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;

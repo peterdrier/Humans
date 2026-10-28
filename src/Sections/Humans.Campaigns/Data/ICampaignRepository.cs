@@ -56,12 +56,8 @@ internal interface ICampaignRepository : IRepository
     Task<IReadOnlyList<CampaignGrant>> GetAllGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>Read-only; status changes go through <see cref="UpdateGrantStatusAsync"/>.</summary>
+    /// <summary>Read-only.</summary>
     Task<GrantWithSendContext?> GetGrantForResendAsync(Guid grantId, CancellationToken ct = default);
-
-    /// <summary>Read-only; status changes go through <see cref="UpdateGrantStatusAsync"/>.</summary>
-    Task<IReadOnlyList<GrantWithSendContext>> GetFailedGrantsForRetryAsync(
-        Guid campaignId, CancellationToken ct = default);
 
     /// <summary>Null when the grant does not exist.</summary>
     Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default);
@@ -71,13 +67,6 @@ internal interface ICampaignRepository : IRepository
 
     /// <summary>Commits immediately, one grant at a time.</summary>
     Task AddGrantAndSaveAsync(CampaignGrant grant, CancellationToken ct = default);
-
-    /// <summary>Commits immediately, one grant at a time. False when the grant does not exist.</summary>
-    Task<bool> UpdateGrantStatusAsync(
-        Guid grantId,
-        EmailOutboxStatus? status,
-        Instant latestEmailAt,
-        CancellationToken ct = default);
 
     /// <summary>
     /// One grant per redemption, so N orders with the same code redeem N grants. Active and Completed campaigns only;
@@ -125,8 +114,7 @@ internal sealed record CampaignCodeTrackingGrantRow(
     Guid GrantId,
     Guid UserId,
     string? Code,
-    Instant? RedeemedAt,
-    EmailOutboxStatus? LatestEmailStatus);
+    Instant? RedeemedAt);
 
 internal sealed record GrantExportRow(
     string CampaignTitle,

@@ -64,7 +64,7 @@ fix the script, not the SVG.
   (every round side by side); look at it, it goes in the PR body.
 - Commit the master, derived assets, archive, `history.png`, docs; push; open the PR against
   `origin/main` with `history.png` in the body (rendered images, not code).
-- Hand off to the steward (`pd:steward`) or stop, per `steward-thin-session`.
+- Tend the PR yourself per `.claude/steward.md`, or stop.
 
 ## Don'ts
 - Don't change palette, subject, geometry or the transparent-navbar / baked-tile split without Peter.

@@ -10,7 +10,7 @@ Folder: `src/Sections/Humans.Consent/Services/` — Legal and
 `DocumentVersions` (`ConsentRecords`, the third table on this context, is
 owned by the same section's [Consent](#consent) repository below). The inner `ILegalDocumentSyncManagement` is wrapped by
 `Humans.Consent.Services.CachingLegalDocumentSyncService`
-(Singleton decorator inheriting `TrackedCache<Guid, LegalDocumentInfo>`,
+(Singleton decorator inheriting `TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>`,
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
 the per-version lookup, invalidated wholesale after any persisted
@@ -83,11 +83,11 @@ builder (`ReConsentsRequired`), `ITeamService` (team membership) and
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via its own `InvalidateAll`, called directly by `LegalDocumentSyncService` after each successful write) |
+| `TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via its own `InvalidateAll`, called directly by `LegalDocumentSyncService` after each successful write) |
 
 Implements `ILegalDocumentSyncManagement`.
-Warm resolves team display names via `ITeamService` through a fresh DI
-scope per warm. Surfaced on `/Debug/CacheStats`.
+Warm reads the inner service’s enriched all-team snapshot through a fresh DI
+scope; the inner service alone resolves team display names. Surfaced on `/Debug/CacheStats`.
 
 ---
 
@@ -129,10 +129,12 @@ lives in the decorator.
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, UserConsentInfo>` (`Consent.UserConsentInfo`, lazy, no warmup) | Per-User | yes (consented-version-set reads) | yes (lazy load) | yes (synchronous per-user evict on submit, by the inner `ConsentService` and the decorator; an entry whose `UserInfo.AllUserIds` changed since it was built reloads on read, which covers account merge) |
+| `TrackedCache<Guid, UserConsentInfo>` (`Consent.UserConsentInfo`, lazy, no warmup) | Per-User | yes (consented-version-set reads) | yes (lazy load) | yes (synchronous per-user evict on submit, by the inner `ConsentService` and the decorator; an entry whose merge-chain id list changed since it was built reloads on read, which covers account merge) |
 
-Implements `IConsentManagement`, `IConsentService`. Richer record reads (dashboards, history,
-record counts) pass through to the inner service. Surfaced on
+Implements `IConsentManagement`, `IConsentService`. The inner service supplies live
+merge-chain ids through `GetUserIdChainsAsync`; the decorator resolves no Users
+service. Required-consent row composition and richer record reads (dashboards,
+history, record counts) pass through to the inner service. Surfaced on
 `/Debug/CacheStats`.
 
 ### ConsentReviewService (Scoped, internal; implements `IConsentWrite` + `IUserDataContributor`)

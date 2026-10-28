@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -124,9 +123,9 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
                 && m.RetryCount < maxRetries
                 && (m.NextRetryAt == null || m.NextRetryAt <= now)
                 && (m.PickedUpAt == null || m.PickedUpAt < staleThreshold))
-            // Time-sensitive mail jumps the queue: a member is waiting on it, and bulk mail drains at
-            // one send per second. FIFO still holds within each class.
-            .OrderBy(m => TimeSensitiveTemplates.Names.Contains(m.TemplateName) ? 0 : 1) // arch:db-sort-ok outbox priority claim batch (Take)
+            // Urgent mail jumps the queue: a member is waiting on it, and bulk mail drains at one send per
+            // second. FIFO still holds within each class.
+            .OrderBy(m => m.Urgent == true ? 0 : 1) // arch:db-sort-ok outbox priority claim batch (Take)
             .ThenBy(m => m.CreatedAt) // arch:db-sort-ok outbox FIFO within priority class (Take)
             .Take(batchSize)
             .ToListAsync(ct);

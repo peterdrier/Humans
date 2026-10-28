@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Issues.ViewComponents;
 
-/// <summary>No IMemoryCache here: <c>IssuesService</c> owns the per-viewer count cache.</summary>
+/// <summary>Reads the viewer’s current actionable count through the section service.</summary>
 internal sealed class IssuesUserMenuViewComponent(IIssuesService issuesService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

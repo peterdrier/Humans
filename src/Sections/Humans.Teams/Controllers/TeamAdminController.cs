@@ -42,15 +42,23 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        if (!ModelState.IsValid)
         {
-            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+            logger.LogWarning("Rejected invalid join request approval form for request {RequestId} in team {TeamId} by user {UserId}",
+                requestId, team.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
+        var result = await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+        if (result.Succeeded)
+        {
             SetSuccess(localizer["Teams_TeamAdmin_RequestApproved"].Value);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        else
         {
-            logger.LogWarning(ex, "Failed to approve join request {RequestId} for team {TeamId} by user {UserId}", requestId, team.Id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to approve join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
+                requestId, team.Id, user.Id, result.Refusal);
+            SetError(result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -66,21 +74,29 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid join request rejection form for request {RequestId} in team {TeamId} by user {UserId}",
+                requestId, team.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         if (string.IsNullOrWhiteSpace(model.Notes))
         {
             SetError(localizer["Teams_TeamAdmin_ProvideRejectionReason"].Value);
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        try
+        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes!);
+        if (result.Succeeded)
         {
-            await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(localizer["Teams_TeamAdmin_RequestRejected"].Value);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}", requestId, team.Id, user.Id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
+                requestId, team.Id, user.Id, result.Refusal);
+            SetError(result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -280,16 +296,14 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        try
+        var result = await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
+            logger.LogWarning("Refused member addition {MemberUserId} to team {TeamId} by user {UserId}: {Reason}", model.UserId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess(localizer["Teams_TeamAdmin_MemberAdded"].Value);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Failed to add member {MemberUserId} to team {TeamId} by user {UserId}: {Reason}", model.UserId, team.Id, user.Id, ex.Message);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Members), new { slug });
     }
@@ -390,7 +404,7 @@ internal sealed class TeamAdminController(
         var memberUserIds = members.Select(m => m.UserId).ToList();
         var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
 
-        var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
+        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
 
         var teamMembers = members.Select(m => new TeamMemberViewModel
         {
@@ -427,6 +441,18 @@ internal sealed class TeamAdminController(
         return View(viewModel);
     }
 
+    private static List<SlotPriority>? ParseRolePriorities(IEnumerable<string> values)
+    {
+        var priorities = new List<SlotPriority>();
+        foreach (var value in values)
+        {
+            if (!Enum.TryParse<SlotPriority>(value, ignoreCase: true, out var priority))
+                return null;
+            priorities.Add(priority);
+        }
+        return priorities;
+    }
+
     [HttpPost("Roles/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
@@ -443,23 +469,22 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var priorities = model.Priorities
-                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
-                .ToList();
-
-            await _teamService.CreateRoleDefinitionAsync(
+        var priorities = ParseRolePriorities(model.Priorities);
+        var result = priorities is null
+            ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
+            : await _teamService.CreateRoleDefinitionAsync(
                 team.Id, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.Period, user.Id, model.IsPublic,
                 model.EstimatedHours);
 
-            SetSuccess($"Role '{model.Name}' created.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        if (result.Refusal is { } refusal)
         {
-            logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
-            SetError(ex.Message);
+            logger.LogWarning("Role creation refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
+        {
+            SetSuccess($"Role '{model.Name}' created.");
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -483,33 +508,32 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
-            var priorities = model.Priorities
-                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
-                .ToList();
-
-            await _teamService.UpdateRoleDefinitionAsync(
+        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
+        var priorities = ParseRolePriorities(model.Priorities);
+        var result = priorities is null
+            ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
+            : await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
                 model.IsPublic, canToggleManagement, model.EstimatedHours);
 
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Role update refused for role {RoleId} in team {TeamId} by user {UserId}: {Reason}",
+                roleId, team.Id, user.Id, refusal);
+            if (isAjax)
+                return Json(new { success = false, message = refusal });
+
+            SetError(refusal);
+        }
+        else
+        {
             if (isAjax)
                 return Json(new { success = true, message = $"Role '{model.Name}' updated." });
 
             SetSuccess($"Role '{model.Name}' updated.");
-            return RedirectToAction(nameof(Roles), new { slug });
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            if (isAjax)
-                return Json(new { success = false, message = ex.Message });
-
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Roles), new { slug });
-        }
+        return RedirectToAction(nameof(Roles), new { slug });
     }
 
     [HttpPost("Roles/{roleId}/Delete")]
@@ -522,15 +546,16 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
-            SetSuccess("Role deleted.");
+            logger.LogWarning("Role deletion refused for role {RoleId} in team {TeamId} by user {UserId}: {Reason}",
+                roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        else
         {
-            logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            SetError(ex.Message);
+            SetSuccess("Role deleted.");
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -546,22 +571,24 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        if (!RoleChecks.IsTeamsAdmin(User) && !RoleChecks.IsAdmin(User))
+        if (!(await AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded)
         {
             return Forbid();
         }
 
-        try
+        var result = await _teamService.ToggleRoleIsManagementAsync(roleId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            var result = await _teamService.ToggleRoleIsManagementAsync(roleId, user.Id);
-            SetSuccess(result.IsManagement
-                ? $"'{result.RoleName}' is now the management role. Members assigned to it will become Coordinators."
-                : $"'{result.RoleName}' is no longer the management role.");
+            logger.LogWarning("Management-role toggle refused for role {RoleId} in team {TeamId} by user {UserId}: {Reason}",
+                roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
+        else
         {
-            logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
-            SetError(ex.Message);
+            var role = result.Definition!;
+            SetSuccess(role.IsManagement
+                ? $"'{role.Name}' is now the management role. Members assigned to it will become Coordinators."
+                : $"'{role.Name}' is no longer the management role.");
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -711,11 +738,13 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
+        if (!ModelState.IsValid)
+            return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
+
         var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
-        if (!ModelState.IsValid || !parsed.Success)
+        if (!parsed.Success)
         {
-            if (!parsed.Success)
-                ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
+            ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
@@ -749,11 +778,13 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
+        if (!ModelState.IsValid)
+            return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
+
         var parsed = LocalDatePattern.Iso.Parse(input.EntryDate);
-        if (!ModelState.IsValid || !parsed.Success)
+        if (!parsed.Success)
         {
-            if (!parsed.Success)
-                ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
+            ModelState.AddModelError(nameof(input.EntryDate), "Enter a valid date (yyyy-MM-dd).");
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 

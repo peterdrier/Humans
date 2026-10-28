@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
@@ -35,7 +36,7 @@ public class CalendarServiceAuditTests
         CalendarServiceValidationTests.ActiveTeams(),
         new FakeClock(Now),
         _audit,
-        NullLogger<CalendarService>.Instance);
+        NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());
 
     [HumansFact]
     public async Task CreateEventWithResultAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()

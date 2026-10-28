@@ -219,7 +219,7 @@ public sealed class RoleAssignmentsControllerTests
     [HumansFact]
     public void Authorization_IsHumanAdminBoardOrAdmin_AndEveryPostIsAntiForgeryProtected()
     {
-        typeof(RoleAssignmentsController).GetCustomAttribute<AuthorizeAttribute>()!
+        typeof(RoleAssignmentsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
 
         foreach (var post in typeof(RoleAssignmentsController).GetMethods()

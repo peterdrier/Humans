@@ -13,11 +13,22 @@ public class ShiftViewServiceTests
     private readonly IVolunteerTrackingRepository _tracking = Substitute.For<IVolunteerTrackingRepository>();
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
     private readonly EventCalendarResolver _calendarResolver;
+    private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
 
     public ShiftViewServiceTests() => _calendarResolver = new(_settingsService);
 
     private ShiftViewService CreateSut() =>
-        new(_management, _tracking, _calendarResolver);
+        new(_management, _tracking, _calendarResolver, _shiftManagement);
+
+    [HumansFact]
+    public void EventSettingsChanged_EvictsThatEventsDashboardCaches()
+    {
+        var eventSettingsId = Guid.NewGuid();
+
+        CreateSut().EventSettingsChanged(eventSettingsId);
+
+        _shiftManagement.Received(1).InvalidateDashboardCaches(eventSettingsId);
+    }
 
     private void StubActiveCalendar(EventSettingsInfo? calendar) =>
         _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);

@@ -8,7 +8,8 @@ namespace Humans.Backdoor.Filters;
 
 /// <summary>
 /// Installs the key's owner (id and active roles) as the request principal. A missing header and an unknown or revoked
-/// key are both 401, deliberately indistinguishable.
+/// key are both 401, deliberately indistinguishable. Controllers carrying it are <c>[AllowAnonymous]</c>: the
+/// authenticated-by-default fallback policy runs before MVC filters and would reject the request first.
 /// </summary>
 internal sealed class BackdoorApiKeyAuthFilter(
     IBackdoorApiKeyService keys) : IAsyncAuthorizationFilter

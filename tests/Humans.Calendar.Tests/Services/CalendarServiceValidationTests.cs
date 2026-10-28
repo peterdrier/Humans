@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -21,9 +21,9 @@ namespace Humans.Calendar.Tests.Services;
 ///
 /// <para>Covers:</para>
 /// <list type="bullet">
-///   <item><see cref="CalendarService.ValidateRecurrenceRule"/> — rejects malformed
+///   <item><see cref="CalendarService.RecurrenceRuleRefusal"/> — rejects malformed
 ///     RRULEs so they cannot persist and blow up later occurrence expansion.</item>
-///   <item><see cref="CalendarService.ValidateTimezone"/> — rejects unknown timezone
+///   <item><see cref="CalendarService.TimezoneRefusal"/> — rejects unknown timezone
 ///     IDs at the service boundary so non-controller callers can't slip past the
 ///     web-layer guard and crash inside occurrence expansion.</item>
 ///   <item>NodaTime Tzdb contract — <c>GetZoneOrNull</c> returns null for unknown IDs
@@ -85,7 +85,11 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=YEARLY;BYDAY=54MO", true, true)]
     [InlineData("FREQ=YEARLY;BYDAY=-54TU", false, false)]
     [InlineData("FREQ=MONTHLY;BYDAY=MO,0SA", true, true)]
-    public async Task EventWithResultAsync_InvalidWeekdayOrdinal_is_rejected_before_persistence(
+    [InlineData("FREQ=3;COUNT=1", true, false)]
+    [InlineData("FREQ=3;COUNT=1", true, true)]
+    [InlineData("FREQ=3;COUNT=1", false, false)]
+    [InlineData("FREQ=3;COUNT=1", false, true)]
+    public async Task EventWithResultAsync_InvalidRecurrence_is_rejected_before_persistence(
         string rule, bool allDay, bool update)
     {
         var repo = Substitute.For<ICalendarRepository>();
@@ -175,27 +179,27 @@ public class CalendarServiceValidationTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    [InlineData("FREQ=DAILY")]
+    [InlineData("FREQ=SECONDLY")]
+    [InlineData("FREQ=MINUTELY")]
+    [InlineData("FREQ=HOURLY")]
+    [InlineData("freq=daily")]
     [InlineData("FREQ=MONTHLY;BYDAY=1MO")]
     [InlineData("FREQ=MONTHLY;BYDAY=-1FR")]
     [InlineData("FREQ=YEARLY;BYDAY=53WE")]
     [InlineData("FREQ=YEARLY;BYDAY=-53SU")]
     [InlineData("FREQ=WEEKLY;BYDAY=TU;COUNT=4")]
     [InlineData("FREQ=WEEKLY;UNTIL=20240201T000000Z")]
-    public void ValidateRecurrenceRule_valid_input_does_not_throw(string? rrule)
+    public void RecurrenceRuleRefusal_valid_input_returns_null(string? rrule)
     {
-        var act = () => CalendarService.ValidateRecurrenceRule(rrule);
-        act.Should().NotThrow();
+        CalendarService.RecurrenceRuleRefusal(rrule).Should().BeNull();
     }
 
     [HumansTheory]
     [InlineData("FREQ=NOT_A_REAL_FREQ")]
     [InlineData("FREQ=WEEKLY;BYDAY=XX")]
-    public void ValidateRecurrenceRule_malformed_input_throws_ValidationException(string rrule)
+    public void RecurrenceRuleRefusal_malformed_input_returns_reason(string rrule)
     {
-        var act = () => CalendarService.ValidateRecurrenceRule(rrule);
-        act.Should().Throw<ValidationException>()
-            .WithMessage("*Recurrence rule is malformed*");
+        CalendarService.RecurrenceRuleRefusal(rrule).Should().Contain("Recurrence rule is malformed");
     }
 
     [HumansTheory]
@@ -204,20 +208,17 @@ public class CalendarServiceValidationTests
     [InlineData("  ")]
     [InlineData("Europe/Madrid")]
     [InlineData("UTC")]
-    public void ValidateTimezone_valid_input_does_not_throw(string? tz)
+    public void TimezoneRefusal_valid_input_returns_null(string? tz)
     {
-        var act = () => CalendarService.ValidateTimezone(tz);
-        act.Should().NotThrow();
+        CalendarService.TimezoneRefusal(tz).Should().BeNull();
     }
 
     [HumansTheory]
     [InlineData("Europe/Madird")]
     [InlineData("Not/A/Real/Zone")]
-    public void ValidateTimezone_unknown_input_throws_ValidationException(string tz)
+    public void TimezoneRefusal_unknown_input_returns_reason(string tz)
     {
-        var act = () => CalendarService.ValidateTimezone(tz);
-        act.Should().Throw<ValidationException>()
-            .WithMessage("*Recurrence timezone is unknown*");
+        CalendarService.TimezoneRefusal(tz).Should().Contain("Recurrence timezone is unknown");
     }
 
     // The three tests below document the NodaTime Tzdb contract the CalendarController
@@ -303,7 +304,7 @@ public class CalendarServiceValidationTests
         var logger = Substitute.For<ILogger<CalendarService>>();
         var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
-            Substitute.For<IAuditLogService>(), logger);
+            Substitute.For<IAuditLogService>(), logger, Substitute.For<IServiceScopeFactory>());
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -334,7 +335,7 @@ public class CalendarServiceValidationTests
         var logger = Substitute.For<ILogger<CalendarService>>();
         var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
-            Substitute.For<IAuditLogService>(), logger);
+            Substitute.For<IAuditLogService>(), logger, Substitute.For<IServiceScopeFactory>());
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -390,8 +391,7 @@ public class CalendarServiceValidationTests
     [InlineData("freq=daily;until=20260603t100000z", true)]
     public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
     {
-        var validate = () => CalendarService.ValidateRecurrenceRule(rule);
-        validate.Should().NotThrow();
+        CalendarService.RecurrenceRuleRefusal(rule).Should().BeNull();
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);
@@ -756,7 +756,8 @@ public class CalendarServiceValidationTests
             teams ?? ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
-            logger ?? NullLogger<CalendarService>.Instance);
+            logger ?? NullLogger<CalendarService>.Instance,
+            Substitute.For<IServiceScopeFactory>());
     }
 
     // The failure is swallowed, so the Critical log carrying the audit exception is the only

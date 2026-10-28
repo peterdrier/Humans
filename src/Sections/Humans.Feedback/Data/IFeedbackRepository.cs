@@ -59,10 +59,9 @@ internal interface IFeedbackRepository : IRepository
 
     /// <summary>
     /// GDPR Art. 17: hard-deletes the user's own reports (messages cascade) and detaches them from messages and triage
-    /// fields on other people's reports, whose text is not theirs to erase. Returns the deleted reports' screenshot
-    /// storage keys so the caller can drop the files.
+    /// fields on other people's reports, whose text is not theirs to erase.
     /// </summary>
-    Task<IReadOnlyList<string>> EraseForUserAsync(Guid userId, CancellationToken ct = default);
+    Task EraseForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>One transaction. Plain re-FK: reports and messages are unique events, no dedup.</summary>
     Task ReassignToUserAsync(

@@ -1,5 +1,5 @@
-using Humans.Gate.Contracts;
 using Humans.Gate.Jobs;
+using Humans.Gate.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -14,7 +14,7 @@ namespace Humans.Gate.Tests;
 /// </summary>
 public class GateRetentionJobTests
 {
-    private readonly IGateScanRetention _retention = Substitute.For<IGateScanRetention>();
+    private readonly IGateService _retention = Substitute.For<IGateService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 
     private GateRetentionJob Job(params (string Key, string? Value)[] config) =>

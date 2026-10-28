@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
@@ -17,6 +19,8 @@ internal sealed class StoreOrderReader(
     IClock clock,
     ISettingsService settingsService) : IApplicationService
 {
+    private static readonly ResourceManager Resources = new(typeof(StoreResource));
+
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
     public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
     {
@@ -57,7 +61,7 @@ internal sealed class StoreOrderReader(
             var t = totalsByLine[l.Id];
             return new OrderLineDto(
                 l.Id, l.OrderId, l.ProductId,
-                productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
+                productNames.GetValueOrDefault(l.ProductId, Resources.GetString("Store_UnknownProduct", CultureInfo.CurrentUICulture)!),
                 l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
                 t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
         }).ToList();
@@ -95,13 +99,13 @@ internal sealed class StoreOrderReader(
         if (o.TeamId is { } tid)
         {
             var team = await teamService.GetTeamAsync(tid, ct);
-            return team?.Name ?? "(unknown team)";
+            return team?.Name ?? Resources.GetString("Store_UnknownTeam", CultureInfo.CurrentUICulture)!;
         }
         if (o.CampSeasonId is { } sid)
         {
             var season = await campService.GetCampSeasonByIdAsync(sid, ct);
-            return season?.Name ?? "(unknown camp)";
+            return season?.Name ?? Resources.GetString("Store_UnknownCamp", CultureInfo.CurrentUICulture)!;
         }
-        return "(unknown)";
+        return Resources.GetString("Store_UnknownCounterparty", CultureInfo.CurrentUICulture)!;
     }
 }

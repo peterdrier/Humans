@@ -10,6 +10,7 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -33,7 +34,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     private readonly Dictionary<Guid, EventSettings> _calendars = [];
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
 
-    private RotaCoordinatorMessageService CreateSut()
+    private RotaCoordinatorMessageService CreateSut(ILogger<RotaCoordinatorMessageService>? logger = null)
     {
         _settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
@@ -43,7 +44,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             });
         return new(_repo, _teamService, _userService, _emailService, _emailMessages, _auditLog,
             new EventCalendarResolver(_settingsService), _clock,
-            NullLogger<RotaCoordinatorMessageService>.Instance);
+            logger ?? NullLogger<RotaCoordinatorMessageService>.Instance);
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
@@ -63,6 +64,53 @@ public sealed class RotaCoordinatorMessageServiceTests
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
         EarlyEntryClose: src.EarlyEntryClose);
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Dispatch_AuditFailureAfterRequestingEmails_KeepsSuccessAndLogsCritical(bool teamWide)
+    {
+        var teamId = StubTeam();
+        var es = StubEvent();
+        var recipient = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+        var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [recipient])]);
+        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+            .Returns([rota]);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
+        StubUsers(sender, recipient);
+        var failure = new InvalidOperationException("Audit unavailable");
+        _auditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(failure));
+        var logger = Substitute.For<ILogger<RotaCoordinatorMessageService>>();
+        var service = CreateSut(logger);
+
+        if (teamWide)
+        {
+            var result = await service.SendTeamRotasMessageAsync(teamId, sender, "Private message", false,
+                TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
+            result.Succeeded.Should().BeTrue();
+            result.RecipientCount.Should().Be(1);
+        }
+        else
+        {
+            var result = await service.SendRotaMessageAsync(rota.Id, sender, "Private message", false,
+                Xunit.TestContext.Current.CancellationToken);
+            result.Succeeded.Should().BeTrue();
+            result.RecipientCount.Should().Be(1);
+        }
+
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        var log = logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .GetArguments();
+        log[0].Should().Be(LogLevel.Critical);
+        log[3].Should().BeSameAs(failure);
+        log[2]!.ToString().Should().Contain((teamWide ? teamId : rota.Id).ToString())
+            .And.Contain(sender.ToString()).And.NotContain("Private message");
+    }
 
     [HumansFact]
     public async Task SendRotaMessageAsync_RejectsBlankMessage()

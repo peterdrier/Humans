@@ -11,6 +11,7 @@ internal enum GrantNoticeKind
 
 /// <summary>Pure data, so the builder stays I/O-free.</summary>
 internal sealed record GrantNoticeRequest(
+    Guid RecipientUserId,
     string RecipientEmail,
     string? RecipientName,
     GrantNoticeKind Kind,

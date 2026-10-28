@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Threading;
@@ -29,6 +31,7 @@ internal sealed class Service(
     ILogger<Service> logger) : IStoreAccountingRead
 {
     private static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+    private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
     private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
 
@@ -538,7 +541,7 @@ internal sealed class Service(
             return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await settingsService.TodayInEventZoneAsync(clock);
+        var today = await settingsService.TodayInEventZoneAsync(clock, ct);
         var deadlinePassed = today > product.OrderableUntil;
 
         var line = new OrderLine
@@ -576,7 +579,7 @@ internal sealed class Service(
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await settingsService.TodayInEventZoneAsync(clock);
+        var today = await settingsService.TodayInEventZoneAsync(clock, ct);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
         await repo.RemoveLineAsync(lineId, ct);
@@ -655,7 +658,8 @@ internal sealed class Service(
             return new CheckoutSessionResult(null, errorKey, maximumAmount);
         }
 
-        var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}";
+        var name = order.CounterpartyName ?? Resources.GetString("Store_CheckoutCampOrder", CultureInfo.CurrentUICulture)!;
+        var description = $"Nobodies Collective - {name}";
         var sessionUrl = await stripeService.CreateCheckoutSessionAsync(
             storeOrderId: order.Id,
             amountEur: amountEur,

@@ -51,7 +51,7 @@ System and Campaign Codes are always locked on — users cannot opt out. These c
 
 ### Ticketing Locking
 
-When a user has a matched `TicketAttendee` record (auto-matched by email), their Ticketing preference is locked on. Purchase confirmations and event information are mandatory for ticket attendees. Users without a ticket attendee match can opt in/out freely.
+When a user has a matched `TicketAttendee` record (auto-matched by email), their Ticketing preference is locked on. Tickets reports this through Email's `ICommunicationPreferenceLock` fan-out (`TicketingPreferenceLock`). Purchase confirmations and event information are mandatory for ticket attendees. Users without a ticket attendee match can opt in/out freely.
 
 ### Facilitated Messages Opt-Out
 

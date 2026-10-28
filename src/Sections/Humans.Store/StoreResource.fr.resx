@@ -120,4 +120,9 @@
   <data name="Store_DepartmentOnly" xml:space="preserve"><value>Seuls les départements peuvent avoir des commandes d’équipe.</value></data>
   <data name="Store_TeamOrderExists" xml:space="preserve"><value>Ce département a déjà une commande de la boutique pour l’année de l’événement actif.</value></data>
   <data name="Store_CreateOrderFailed" xml:space="preserve"><value>Impossible de créer la commande.</value></data>
+  <data name="Store_UnknownProduct" xml:space="preserve"><value>(produit inconnu)</value></data>
+  <data name="Store_UnknownTeam" xml:space="preserve"><value>(équipe inconnue)</value></data>
+  <data name="Store_UnknownCamp" xml:space="preserve"><value>(camp inconnu)</value></data>
+  <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(inconnu)</value></data>
+  <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Commande du camp</value></data>
 </root>

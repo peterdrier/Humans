@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Base.Controllers;
@@ -9,7 +10,9 @@ namespace Humans.Base.Controllers;
 /// <see cref="HumansControllerBase"/> (<c>memory/code/controller-base-conventions.md</c>). Use the cache-resident
 /// helpers below, not new <c>UserManager.GetUserAsync(User)</c> calls; an action that needs a tracked <c>User</c>
 /// entity injects <c>UserManager</c> itself.
+/// Authenticated by default; a public action or controller says so with <c>[AllowAnonymous]</c>.
 /// </summary>
+[Authorize]
 public abstract class ApiControllerBase(IUserService userService) : ControllerBase
 {
     protected IUserService UserService => userService;

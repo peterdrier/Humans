@@ -25,11 +25,8 @@ public class OnboardingWidgetStateTests
         // Default: no skip flag set (new user fresh through the widget). Individual
         // tests override this when exercising the skip-active path.
         _session.ShiftSkipActive.Returns(false);
-        // Default: no signed required consents (new user). Individual tests
-        // override this when exercising the returning-member path.
-        _consents.GetRequiredConsentRowsForUserAsync(
-                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
+        _consents.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
         _shiftView.GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(call.ArgAt<Guid>(0))));
     }
@@ -193,6 +190,29 @@ public class OnboardingWidgetStateTests
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PriorSignatureOnReplacedVersion_ReturnsConsents_ForTheSurvivingUser(bool mergedAlias)
+    {
+        var userId = Guid.NewGuid();
+        var inputId = mergedAlias ? Guid.NewGuid() : userId;
+        var ct = TestContext.Current.CancellationToken;
+        _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns([new RequiredConsentRow(Guid.NewGuid(), "Replacement document", Signed: false)]);
+        _consents.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { Guid.NewGuid() });
+        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn());
+
+        var step = await BuildSut().GetCurrentStepAsync(inputId, ct);
+
+        Assert.Equal(OnboardingWidgetStep.Consents, step);
+        await _consents.Received(1).GetConsentedVersionIdsAsync(userId, ct);
+    }
+
     [HumansFact]
     public async Task ProfileWithSignedRequiredConsent_ReturnsConsents_NotShifts()
     {
@@ -202,16 +222,11 @@ public class OnboardingWidgetStateTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var signedDocId = Guid.NewGuid();
-        var unsignedDocId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _consents.GetRequiredConsentRowsForUserAsync(
-                userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns([
-                new RequiredConsentRow(signedDocId, "Code of Conduct", Signed: true),
-                new RequiredConsentRow(unsignedDocId, "Privacy Policy", Signed: false)
-            ]);
+        _consents.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { signedDocId });
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);

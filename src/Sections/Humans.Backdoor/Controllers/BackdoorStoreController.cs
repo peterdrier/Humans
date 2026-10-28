@@ -4,6 +4,7 @@ using Humans.Base.Extensions;
 using Humans.Store.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
@@ -11,6 +12,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[AllowAnonymous]
 internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserService users)
     : ApiControllerBase(users)
 {

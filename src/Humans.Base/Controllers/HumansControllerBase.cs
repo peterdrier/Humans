@@ -1,10 +1,13 @@
 using System.Security.Claims;
 using Humans.Base.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 
 namespace Humans.Base.Controllers;
 
+/// <summary>Authenticated by default; a public action or controller says so with <c>[AllowAnonymous]</c>.</summary>
+[Authorize]
 public abstract class HumansControllerBase(IUserService userService) : Controller
 {
     protected IUserService UserService => userService;

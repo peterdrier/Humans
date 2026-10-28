@@ -86,6 +86,88 @@
   <data name="Common_Save" xml:space="preserve">
     <value>Guardar cambios</value>
   </data>
+
+  <!-- Language names: Unicode CLDR; English catalog labels retained. -->
+  <data name="Language_AF" xml:space="preserve"><value>afrikáans</value></data>
+  <data name="Language_AM" xml:space="preserve"><value>amárico</value></data>
+  <data name="Language_AR" xml:space="preserve"><value>árabe</value></data>
+  <data name="Language_AZ" xml:space="preserve"><value>azerbaiyano</value></data>
+  <data name="Language_BE" xml:space="preserve"><value>bielorruso</value></data>
+  <data name="Language_BG" xml:space="preserve"><value>búlgaro</value></data>
+  <data name="Language_BN" xml:space="preserve"><value>bengalí</value></data>
+  <data name="Language_BS" xml:space="preserve"><value>bosnio</value></data>
+  <data name="Language_CA" xml:space="preserve"><value>catalán</value></data>
+  <data name="Language_CS" xml:space="preserve"><value>checo</value></data>
+  <data name="Language_CY" xml:space="preserve"><value>galés</value></data>
+  <data name="Language_DA" xml:space="preserve"><value>danés</value></data>
+  <data name="Language_DE" xml:space="preserve"><value>alemán</value></data>
+  <data name="Language_EL" xml:space="preserve"><value>griego</value></data>
+  <data name="Language_EN" xml:space="preserve"><value>inglés</value></data>
+  <data name="Language_EO" xml:space="preserve"><value>esperanto</value></data>
+  <data name="Language_ES" xml:space="preserve"><value>español</value></data>
+  <data name="Language_ET" xml:space="preserve"><value>estonio</value></data>
+  <data name="Language_EU" xml:space="preserve"><value>euskera</value></data>
+  <data name="Language_FA" xml:space="preserve"><value>persa</value></data>
+  <data name="Language_FI" xml:space="preserve"><value>finés</value></data>
+  <data name="Language_FR" xml:space="preserve"><value>francés</value></data>
+  <data name="Language_GA" xml:space="preserve"><value>irlandés</value></data>
+  <data name="Language_GL" xml:space="preserve"><value>gallego</value></data>
+  <data name="Language_GU" xml:space="preserve"><value>guyaratí</value></data>
+  <data name="Language_HA" xml:space="preserve"><value>hausa</value></data>
+  <data name="Language_HE" xml:space="preserve"><value>hebreo</value></data>
+  <data name="Language_HI" xml:space="preserve"><value>hindi</value></data>
+  <data name="Language_HR" xml:space="preserve"><value>croata</value></data>
+  <data name="Language_HU" xml:space="preserve"><value>húngaro</value></data>
+  <data name="Language_HY" xml:space="preserve"><value>armenio</value></data>
+  <data name="Language_ID" xml:space="preserve"><value>indonesio</value></data>
+  <data name="Language_IS" xml:space="preserve"><value>islandés</value></data>
+  <data name="Language_IT" xml:space="preserve"><value>italiano</value></data>
+  <data name="Language_JA" xml:space="preserve"><value>japonés</value></data>
+  <data name="Language_KA" xml:space="preserve"><value>georgiano</value></data>
+  <data name="Language_KK" xml:space="preserve"><value>kazajo</value></data>
+  <data name="Language_KM" xml:space="preserve"><value>jemer</value></data>
+  <data name="Language_KN" xml:space="preserve"><value>canarés</value></data>
+  <data name="Language_KO" xml:space="preserve"><value>coreano</value></data>
+  <data name="Language_KU" xml:space="preserve"><value>kurdo</value></data>
+  <data name="Language_LA" xml:space="preserve"><value>latín</value></data>
+  <data name="Language_LT" xml:space="preserve"><value>lituano</value></data>
+  <data name="Language_LV" xml:space="preserve"><value>letón</value></data>
+  <data name="Language_MK" xml:space="preserve"><value>macedonio</value></data>
+  <data name="Language_ML" xml:space="preserve"><value>malayálam</value></data>
+  <data name="Language_MN" xml:space="preserve"><value>mongol</value></data>
+  <data name="Language_MR" xml:space="preserve"><value>maratí</value></data>
+  <data name="Language_MS" xml:space="preserve"><value>malayo</value></data>
+  <data name="Language_MT" xml:space="preserve"><value>maltés</value></data>
+  <data name="Language_MY" xml:space="preserve"><value>birmano</value></data>
+  <data name="Language_NE" xml:space="preserve"><value>nepalí</value></data>
+  <data name="Language_NL" xml:space="preserve"><value>neerlandés</value></data>
+  <data name="Language_NO" xml:space="preserve"><value>noruego</value></data>
+  <data name="Language_PA" xml:space="preserve"><value>punyabí</value></data>
+  <data name="Language_PL" xml:space="preserve"><value>polaco</value></data>
+  <data name="Language_PS" xml:space="preserve"><value>pastún</value></data>
+  <data name="Language_PT" xml:space="preserve"><value>portugués</value></data>
+  <data name="Language_RO" xml:space="preserve"><value>rumano</value></data>
+  <data name="Language_RU" xml:space="preserve"><value>ruso</value></data>
+  <data name="Language_SI" xml:space="preserve"><value>cingalés</value></data>
+  <data name="Language_SK" xml:space="preserve"><value>eslovaco</value></data>
+  <data name="Language_SL" xml:space="preserve"><value>esloveno</value></data>
+  <data name="Language_SO" xml:space="preserve"><value>somalí</value></data>
+  <data name="Language_SQ" xml:space="preserve"><value>albanés</value></data>
+  <data name="Language_SR" xml:space="preserve"><value>serbio</value></data>
+  <data name="Language_SV" xml:space="preserve"><value>sueco</value></data>
+  <data name="Language_SW" xml:space="preserve"><value>suajili</value></data>
+  <data name="Language_TA" xml:space="preserve"><value>tamil</value></data>
+  <data name="Language_TE" xml:space="preserve"><value>telugu</value></data>
+  <data name="Language_TH" xml:space="preserve"><value>tailandés</value></data>
+  <data name="Language_TL" xml:space="preserve"><value>filipino</value></data>
+  <data name="Language_TR" xml:space="preserve"><value>turco</value></data>
+  <data name="Language_UK" xml:space="preserve"><value>ucraniano</value></data>
+  <data name="Language_UR" xml:space="preserve"><value>urdu</value></data>
+  <data name="Language_UZ" xml:space="preserve"><value>uzbeko</value></data>
+  <data name="Language_VI" xml:space="preserve"><value>vietnamita</value></data>
+  <data name="Language_ZH" xml:space="preserve"><value>chino</value></data>
+  <data name="Language_ZU" xml:space="preserve"><value>zulú</value></data>
+
   <data name="Common_Edit" xml:space="preserve">
     <value>Editar</value>
   </data>

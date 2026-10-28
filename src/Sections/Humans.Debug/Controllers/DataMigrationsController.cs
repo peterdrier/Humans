@@ -31,6 +31,6 @@ internal sealed class DataMigrationsController(
             return NotFound();
 
         SetSuccess($"{key}: {rows} row(s) written.");
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), null, key);
     }
 }

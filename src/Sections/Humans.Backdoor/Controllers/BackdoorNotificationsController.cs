@@ -3,6 +3,7 @@ using Humans.Base.Controllers;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
@@ -13,6 +14,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/notifications")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[AllowAnonymous]
 internal sealed class BackdoorNotificationsController(INotificationInboxRead inbox, IUserService users)
     : ApiControllerBase(users)
 {

@@ -1,5 +1,4 @@
 using Humans.Email.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
@@ -8,7 +7,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.ViewComponents;
@@ -21,9 +19,7 @@ public sealed class ProfileCardViewComponent(
     IUserEmailService userEmailService,
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
-    IMembershipCalculator membershipCalculator,
-    ICommunicationPreferenceService commPrefService,
-    IConsentService consentService) : ViewComponent
+    ICommunicationPreferenceService commPrefService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
@@ -85,9 +81,6 @@ public sealed class ProfileCardViewComponent(
             })
             .ToList();
 
-        var membershipSnapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
-        var review = await consentService.GetConsentReviewAsync(userId, ct);
-
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var pictureUrl = hasCustomPicture
             ? Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
@@ -102,8 +95,6 @@ public sealed class ProfileCardViewComponent(
             CustomProfilePictureUrl = pictureUrl,
             BurnerName = profile?.BurnerName ?? string.Empty,
             Pronouns = profile?.Pronouns,
-            MembershipStatus = membershipSnapshot.Status,
-            IsApproved = profile is not null && review.IsApproved,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
             BirthdayMonth = profile?.BirthdayMonth,
@@ -116,8 +107,6 @@ public sealed class ProfileCardViewComponent(
             EmergencyContactName = canViewLegalName ? profile?.EmergencyContactName : null,
             EmergencyContactPhone = canViewLegalName ? profile?.EmergencyContactPhone : null,
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
-            HasPendingConsents = membershipSnapshot.PendingConsentCount > 0,
-            PendingConsentCount = membershipSnapshot.PendingConsentCount,
             ViewMode = viewMode,
             CanViewLegalName = canViewLegalName,
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel

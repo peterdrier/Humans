@@ -1,12 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  loginAsCoordinator,
-  loginAsTeamsAdmin,
-  loginAsBoard,
-  loginAsVolunteer,
-  expectBlocked,
-  postWithCsrf,
-} from '../helpers/auth';
+import { loginAs, expectBlocked, postWithCsrf } from '../helpers/auth';
 
 /**
  * Team join request authorization tests (#341).
@@ -26,7 +19,7 @@ const FAKE_REQUEST_ID = '00000000-0000-0000-0000-000000000000';
 
 test.describe('Teams Auth — Coordinator positive cases (#341)', () => {
   test('coordinator can access Members page for their department', async ({ page }) => {
-    await loginAsCoordinator(page);
+    await loginAs(page, 'coordinator');
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     // Should NOT be blocked — coordinator owns this department
@@ -35,7 +28,7 @@ test.describe('Teams Auth — Coordinator positive cases (#341)', () => {
   });
 
   test('coordinator can access Members page for sub-team of their department', async ({ page }) => {
-    await loginAsCoordinator(page);
+    await loginAs(page, 'coordinator');
     await page.goto(`/Teams/${SUBTEAM_SLUG}/Members`);
 
     // Should NOT be blocked — coordinator of parent department has access
@@ -46,7 +39,7 @@ test.describe('Teams Auth — Coordinator positive cases (#341)', () => {
 
 test.describe('Teams Auth — Coordinator negative cases (#341)', () => {
   test('coordinator cannot access Members page for another department', async ({ page }) => {
-    await loginAsCoordinator(page);
+    await loginAs(page, 'coordinator');
 
     // "volunteers" is a system team the coordinator does NOT coordinate
     await expectBlocked(page, '/Teams/volunteers/Members');
@@ -55,7 +48,7 @@ test.describe('Teams Auth — Coordinator negative cases (#341)', () => {
 
 test.describe('Teams Auth — Coordinator POST cases (#341)', () => {
   test('coordinator can POST approve on their department (auth passes)', async ({ page }) => {
-    await loginAsCoordinator(page);
+    await loginAs(page, 'coordinator');
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     // POST with valid CSRF token — auth check should pass (request not found is OK)
@@ -71,7 +64,7 @@ test.describe('Teams Auth — Coordinator POST cases (#341)', () => {
   });
 
   test('coordinator cannot POST approve on another department', async ({ page }) => {
-    await loginAsCoordinator(page);
+    await loginAs(page, 'coordinator');
     // Navigate to own department first to get a valid CSRF token
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
@@ -94,7 +87,7 @@ test.describe('Teams Auth — Coordinator POST cases (#341)', () => {
 // nobodies-collective/Humans#1332; TeamsAdmin and Board below cover the policy.
 test.describe('Teams Auth — TeamsAdmin and Board positive cases (#341)', () => {
   test('TeamsAdmin can access Members page for any team', async ({ page }) => {
-    await loginAsTeamsAdmin(page);
+    await loginAs(page, 'teams-admin');
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     expect(page.url()).toContain(`/Teams/${DEPT_SLUG}/Members`);
@@ -102,7 +95,7 @@ test.describe('Teams Auth — TeamsAdmin and Board positive cases (#341)', () =>
   });
 
   test('Board can access Members page for any team', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     expect(page.url()).toContain(`/Teams/${DEPT_SLUG}/Members`);
@@ -112,12 +105,12 @@ test.describe('Teams Auth — TeamsAdmin and Board positive cases (#341)', () =>
 
 test.describe('Teams Auth — Volunteer negative cases (#341)', () => {
   test('volunteer cannot access Members page for any team', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await expectBlocked(page, `/Teams/${DEPT_SLUG}/Members`);
   });
 
   test('volunteer cannot POST approve action (with valid CSRF)', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     // Navigate to home page to get a valid CSRF token (volunteers can't access Members)
     await page.goto('/');
 
@@ -132,7 +125,7 @@ test.describe('Teams Auth — Volunteer negative cases (#341)', () => {
   });
 
   test('volunteer cannot POST reject action (with valid CSRF)', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/');
 
     const response = await postWithCsrf(
@@ -152,7 +145,7 @@ test.describe('Teams Auth — Management UI verification (#341)', () => {
    * deferred — there is no public API endpoint or UI for non-admin audit access.
    */
   test('teams-admin Members page shows management controls that trigger audited actions', async ({ page }) => {
-    await loginAsTeamsAdmin(page);
+    await loginAs(page, 'teams-admin');
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
     // The Members page should load successfully with management capabilities

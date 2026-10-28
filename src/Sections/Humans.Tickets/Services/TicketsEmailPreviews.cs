@@ -17,16 +17,16 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails) : IEmailPreview
         return
         [
             new EmailPreviewSample("ticket-transfer-requested", "Ticket Transfer Requested",
-                emails.TicketTransferRequested(email, name, SampleReceiver, SampleTicket, culture)),
+                emails.TicketTransferRequested(Guid.Empty, email, name, SampleReceiver, SampleTicket, culture)),
             new EmailPreviewSample("ticket-transfer-team-notification", "Ticket Transfer — Team Notification",
                 emails.TicketTransferTeamNotification(name, SampleReceiver, "alex@example.com", SampleTicket, SampleReason, SampleReviewUrl)),
 
             // Both branches of the decision, so the gallery shows the cancellation reason
             // rather than only the empty success body.
             new EmailPreviewSample("ticket-transfer-decision-approved", "Ticket Transfer Complete",
-                emails.TicketTransferDecision(email, name, successful: true, SampleTicket, SampleReceiver, reason: null, culture)),
+                emails.TicketTransferDecision(Guid.Empty, email, name, successful: true, SampleTicket, SampleReceiver, reason: null, culture)),
             new EmailPreviewSample("ticket-transfer-decision-rejected", "Ticket Transfer Cancelled",
-                emails.TicketTransferDecision(email, name, successful: false, SampleTicket, SampleReceiver, SampleReason, culture)),
+                emails.TicketTransferDecision(Guid.Empty, email, name, successful: false, SampleTicket, SampleReceiver, SampleReason, culture)),
         ];
     }
 }

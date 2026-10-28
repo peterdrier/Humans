@@ -17,7 +17,7 @@ internal sealed class FeedbackEmailPreviews(FeedbackEmails emails) : IEmailPrevi
         return
         [
             new EmailPreviewSample("feedback-response", "Feedback Response",
-                emails.FeedbackResponse(email, name, SampleDescription, SampleResponse, culture)),
+                emails.FeedbackResponse(Guid.Empty, email, name, SampleDescription, SampleResponse, culture)),
         ];
     }
 }

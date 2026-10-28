@@ -15,11 +15,11 @@ internal sealed class ConsentEmailPreviews(ConsentEmails emails) : IEmailPreview
         [
             // One doc and many, because the subject line branches on the count.
             new EmailPreviewSample("reconsent-required", "Re-Consent Required (single doc)",
-                emails.ReConsentsRequired(email, name, [SampleDocs[0]], culture)),
+                emails.ReConsentsRequired(Guid.Empty, email, name, [SampleDocs[0]], culture)),
             new EmailPreviewSample("reconsents-required", "Re-Consents Required (multiple docs)",
-                emails.ReConsentsRequired(email, name, SampleDocs, culture)),
+                emails.ReConsentsRequired(Guid.Empty, email, name, SampleDocs, culture)),
             new EmailPreviewSample("reconsent-reminder", "Re-Consent Reminder",
-                emails.ReConsentReminder(email, name, SampleDocs, 14, culture)),
+                emails.ReConsentReminder(Guid.Empty, email, name, SampleDocs, 14, culture)),
         ];
     }
 }

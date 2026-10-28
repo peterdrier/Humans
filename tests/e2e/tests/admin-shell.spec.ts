@@ -1,22 +1,13 @@
-import { test, expect, type Page } from '@playwright/test';
-import {
-  loginAsBoard,
-  loginAsConsentCoordinator,
-  loginAsFinanceAdmin,
-  loginAsHumanAdmin,
-  loginAsTicketAdmin,
-  loginAsVolunteerCoordinator,
-} from '../helpers/auth';
+import { test, expect } from '@playwright/test';
+import { loginAs, type Persona } from '../helpers/auth';
 
 /**
  * Admin shell coverage (#604) — verifies the sidebar-driven /Admin surface.
  *
  * Source-of-truth for the group/item map is every section's
  * src/Sections/{Section}/SectionAdminNav.cs, merged by AdminNavComposition. Per-item
- * policies determine which roles see which items; only role-based-policy items
- * are asserted here (no environment-gated Development items, no
- * requirement-based policies such as ShiftDepartmentManager or
- * CampComplianceAccess, no claim-dependent variants).
+ * policies determine which roles see which items. Each role's sidebar row set is
+ * asserted exactly, so a gate change shows up here and the matrix moves with it.
  *
  * The full-Admin row and the AdminOnly pages (/Debug/*) it reached are covered
  * in-process instead — the E2E suite cannot mint an Admin session against a
@@ -30,18 +21,20 @@ import {
  */
 interface SidebarExpectation {
   name: string;
-  login: (page: Page) => Promise<void>;
+  persona: Persona;
   groups: { label: string; items: string[] }[];
 }
 
 const sidebarMatrix: SidebarExpectation[] = [
   {
     name: 'board',
-    login: loginAsBoard,
+    persona: 'board',
     groups: [
       { label: 'Audit', items: ['Audit log'] },
+      { label: 'Consent', items: ['Legal documents'] },
       { label: 'Google', items: ['Resource sync'] },
       { label: 'Governance', items: ['Voting', 'Applications'] },
+      { label: 'Issues', items: ['Issues'] },
       { label: 'Onboarding', items: ['Review'] },
       { label: 'Scanner', items: ['Scanner'] },
       { label: 'Surveys', items: ['Surveys'] },
@@ -52,105 +45,81 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'humanAdmin',
-    login: loginAsHumanAdmin,
+    persona: 'human-admin',
     groups: [
+      { label: 'Issues', items: ['Issues'] },
+      { label: 'Surveys', items: ['Surveys'] },
       { label: 'Users', items: ['Humans', 'Roles'] },
     ],
   },
   {
     name: 'ticketAdmin',
-    login: loginAsTicketAdmin,
+    persona: 'ticket-admin',
     groups: [
       { label: 'Gate', items: ['Terminal'] },
+      { label: 'Issues', items: ['Issues'] },
       { label: 'Scanner', items: ['Scanner'] },
+      { label: 'Surveys', items: ['Surveys'] },
       { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster'] },
     ],
   },
   {
     name: 'consentCoordinator',
-    login: loginAsConsentCoordinator,
+    persona: 'consent-coordinator',
     groups: [
+      { label: 'Issues', items: ['Issues'] },
       { label: 'Onboarding', items: ['Review'] },
+      { label: 'Surveys', items: ['Surveys'] },
     ],
   },
   {
     name: 'volunteerCoordinator',
-    login: loginAsVolunteerCoordinator,
+    persona: 'volunteer-coordinator',
     groups: [
       { label: 'Early Entry', items: ['Early entry'] },
+      { label: 'Issues', items: ['Issues'] },
       { label: 'Onboarding', items: ['Review'] },
       { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats'] },
+      { label: 'Surveys', items: ['Surveys'] },
     ],
   },
   {
     name: 'financeAdmin',
-    login: loginAsFinanceAdmin,
+    persona: 'finance-admin',
     groups: [
       { label: 'Budget', items: ['Overview'] },
       { label: 'Expenses', items: ['Review'] },
       { label: 'Finance', items: ['Holded connector'] },
       { label: 'Holded', items: ['Holded'] },
+      { label: 'Issues', items: ['Issues'] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments'] },
+      { label: 'Surveys', items: ['Surveys'] },
     ],
   },
 ];
 
-// Note: 'Development' is intentionally omitted — its items are env-gated
-// (env.IsDevelopment()), so the group renders only on local dev, and
-// the comment at the top of this file scopes us to role-based-policy items.
-const ALL_GROUP_LABELS = [
-  'Agent',
-  'Audit',
-  'Backdoor',
-  'Barrios',
-  'Budget',
-  'Campaigns',
-  'Cantina',
-  'City Planning',
-  'Consent',
-  'Debug',
-  'Early Entry',
-  'Email',
-  'Events',
-  'Expenses',
-  'Finance',
-  'Gate',
-  'Google',
-  'Governance',
-  'Holded',
-  'Issues',
-  'MailerLite',
-  'Onboarding',
-  'Rideshare',
-  'Scanner',
-  'Settings',
-  'Shifts',
-  'Store',
-  'Surveys',
-  'Tickets',
-  'Users',
-  'Workgroups',
-];
+// Groups a persona can also reach through QA data rather than its role: program managers
+// (Grants, Pre-approvals), team coordinators (Shifts) and camp leads (Barrios). Left out of the
+// exact comparison so a persona added to a program or team on QA doesn't fail the matrix.
+const DATA_DEPENDENT_GROUPS = ['Barrios', 'Grants', 'Pre-approvals', 'Shifts'];
 
 test.describe('Admin shell — sidebar visibility matrix', () => {
   for (const role of sidebarMatrix) {
     test(`${role.name}: sees expected sidebar rows + tabs`, async ({ page }) => {
-      await role.login(page);
+      await loginAs(page, role.persona);
       await page.goto('/Admin');
 
       const sidebar = page.locator('aside.sidebar');
       await expect(sidebar).toBeVisible();
 
       const rowSelector = (label: string) => `nav.sidebar-rows a[data-group="${label}"]`;
-      const expectedGroups = new Set(role.groups.map(g => g.label));
 
-      for (const label of ALL_GROUP_LABELS) {
-        if (expectedGroups.has(label)) continue;
-        await expect(
-          sidebar.locator(rowSelector(label)),
-          `${role.name} should NOT see group '${label}'`,
-        ).toHaveCount(0);
-      }
+      // The exact row set, so a group the role gains or loses fails here by name.
+      const roleOnly = (labels: string[]) => labels.filter(l => !DATA_DEPENDENT_GROUPS.includes(l)).sort();
+      const rows = await sidebar.locator('nav.sidebar-rows a[data-group]').evaluateAll(
+        els => els.map(el => el.getAttribute('data-group')!),
+      );
+      expect(roleOnly(rows), `${role.name} sidebar rows`).toEqual(roleOnly(role.groups.map(g => g.label)));
 
       for (const group of role.groups) {
         const row = sidebar.locator(rowSelector(group.label));
@@ -175,7 +144,7 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
 
 test.describe('Admin shell — rows and tabs', () => {
   test('a group row lands on its first page, marks itself active and shows the tabs', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     const sidebar = page.locator('aside.sidebar');
@@ -194,7 +163,7 @@ test.describe('Admin shell — chrome', () => {
     // horizontally scrolling row strip beneath the topbar (NOT a Bootstrap offcanvas).
     // Log in at desktop width first — the nav dropdown the auth helper waits
     // for is collapsed behind the mobile hamburger at <768px.
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.setViewportSize({ width: 480, height: 800 });
     await page.goto('/Admin');
 
@@ -214,7 +183,7 @@ test.describe('Admin shell — chrome', () => {
   });
 
   test('exit-admin link navigates to member home', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     const exit = page.locator('a.exit-admin').first();
@@ -228,7 +197,7 @@ test.describe('Admin shell — chrome', () => {
   });
 
   test('dashboard tiles render: active profiles, shift coverage', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     // Tiles from _DashboardStats. The "Active humans" tile was renamed to

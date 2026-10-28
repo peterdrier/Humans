@@ -14,8 +14,10 @@ tables implements that interface and registers itself beside the service
 that owns the data, so who is in the list is never decided here. Plus
 `IUserService` for one read: the export envelope names the surviving
 account and the archived ids merged into it, so a slice keyed to an
-archived id reads as this person's row. Contributors still resolve the
-merge for themselves — the orchestrator does not resolve it for them.
+archived id reads as this person's row. `GdprService` resolves the surviving
+account once and passes the survivor id to every contributor's
+`ContributeForUserAsync`, and the survivor plus the whole chain
+(`UserInfo.AllUserIds`) to `ContributeForIdentityChainAsync`.
 `ExportForUserAsync` reads each contributor's slice; `EraseForUserAsync`
 runs each contributor's `EraseForUserAsync` (its own write) for the id
 the caller passes in. The roster of contributors and the export section
@@ -28,8 +30,9 @@ each contributor's own section also lists it in that section's
 
 ## Controllers
 
-`MemberDataController` and `UserController` (`Controllers/`) hold no data and no cache. They
-inject `IUserService` (current-user lookup via `HumansControllerBase`), `IGdprService`
-(`MemberDataController`, the export) and Users.Contracts' `IAccountDeletionService`
+`GuestDataController`, `MemberDataController` and `UserController` (`Controllers/`) hold no
+data and no cache. They inject `IUserService` (current-user lookup via `HumansControllerBase`),
+`IGdprService` (the download controllers `GuestDataController` and `MemberDataController`;
+the export) and Users.Contracts' `IAccountDeletionService`
 (request and cancel). The deletion timestamps stay on `users`, written by Users behind
 `IUserWrite`; Gdpr never touches them.

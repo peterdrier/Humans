@@ -460,6 +460,43 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _fileStorage.Files.Should().NotContainKey(versionedKey);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task EraseForUserAsync_PictureDeleteFailure_RetainsMetadataForRetry(bool versioned)
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: false);
+        var key = versioned ? "uploads/profile-pictures/versioned.png" : PicKey(profileId, "image/png");
+        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
+        profile.ProfilePictureContentType = "image/png";
+        profile.ProfilePictureStorageKey = versioned ? key : null;
+        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fileStorage.SaveAsync(key, [4, 5, 6], Xunit.TestContext.Current.CancellationToken);
+        var attempts = 0;
+        _pictureStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(call =>
+            ++attempts == 1
+                ? Task.FromException(new IOException("File temporarily unavailable"))
+                : _fileStorage.DeleteAsync(key, call.ArgAt<CancellationToken>(1)));
+
+        var erase = () => _storageUserService.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await erase.Should().ThrowAsync<IOException>();
+
+        var retained = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
+        retained.ProfilePictureContentType.Should().Be("image/png");
+        retained.ProfilePictureStorageKey.Should().Be(versioned ? key : null);
+        _fileStorage.Files.Should().ContainKey(key);
+        await _communicationPreferenceRepository.DidNotReceive().DeleteAllForUserAsync(userId, Arg.Any<CancellationToken>());
+
+        await erase();
+
+        _fileStorage.Files.Should().NotContainKey(key);
+        var erased = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
+        erased.ProfilePictureContentType.Should().BeNull();
+        erased.ProfilePictureStorageKey.Should().BeNull();
+        attempts.Should().Be(2);
+    }
+
     [HumansFact]
     public async Task SaveProfileAsync_RemoveProfilePicture_ClearsContentTypeAndDeletesFile()
     {

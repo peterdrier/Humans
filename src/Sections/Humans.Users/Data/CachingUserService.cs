@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -25,6 +27,8 @@ internal sealed class CachingUserService(
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
     IUserManagement, IUserInfoSliceRefresher, IEntityNameContributor
 {
+    private static readonly ResourceManager SearchResources = new(typeof(UsersResource));
+
     /// <summary>DI key of the undecorated inner service, so the decorator can resolve it without resolving itself.</summary>
     public const string InnerServiceKey = "user-inner";
 
@@ -179,26 +183,11 @@ internal sealed class CachingUserService(
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
         var result = new Dictionary<Guid, UserInfo>(userIds.Count);
-        List<Guid>? misses = null;
-        foreach (var id in userIds)
+        foreach (var id in userIds.Distinct())
         {
-            if (TryGet(id, out var hit))
-                result[id] = Stamp(Resolve(hit));
-            else
-                (misses ??= []).Add(id);
-        }
-
-        if (misses is not null)
-        {
-            foreach (var id in misses)
-            {
-                var info = await LoadRowAsync(id, ct).ConfigureAwait(false);
-                if (info is not null)
-                {
-                    Set(id, info);
-                    result[id] = Stamp(Resolve(info));
-                }
-            }
+            var info = await GetAsync(id, ct).ConfigureAwait(false);
+            if (info is not null)
+                result[id] = Stamp(Resolve(info));
         }
 
         return result;
@@ -256,7 +245,7 @@ internal sealed class CachingUserService(
                         ProfileId: byId.Profile.Id,
                         BurnerName: byId.BurnerName,
                         ProfilePictureUrl: byId.ProfilePictureUrl,
-                        MatchField: "User ID",
+                        MatchField: SearchResources.GetString("Users_AdminHuman_UserId", CultureInfo.CurrentUICulture),
                         MatchSnippet: null,
                         MatchedEmail: null,
                         Score: 100) // Exact id hit — top relevance (sole result, so ordering is moot).

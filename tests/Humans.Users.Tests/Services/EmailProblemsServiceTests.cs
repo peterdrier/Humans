@@ -19,6 +19,8 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     public EmailProblemsServiceTests()
         : base(Instant.FromUtc(2026, 5, 5, 12, 0))
     {
+        _userEmailService.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_allInfos.ToArray()));
     }

@@ -1,6 +1,5 @@
 using Humans.Base.Caching;
 using Humans.Consent.Contracts;
-using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Consent.Domain;
@@ -15,7 +14,7 @@ internal sealed class CachingLegalDocumentSyncService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingLegalDocumentSyncService> logger)
-    : TrackedCache<Guid, LegalDocumentInfo>("Legal.LegalDocumentInfo", warmOnStartup: true, logger),
+    : TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>("Legal.LegalDocumentInfo", warmOnStartup: true, logger),
         ILegalDocumentSyncManagement
 {
     public const string InnerServiceKey = "legal-document-sync-inner";
@@ -24,16 +23,14 @@ internal sealed class CachingLegalDocumentSyncService(
         new Dictionary<Guid, Guid>();
 
     public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
+        IReadOnlyCollection<Guid>? teamIds, CancellationToken cancellationToken = default)
     {
         var docs = await GetActiveRequiredDocumentsAsync(cancellationToken);
-        if (teamIds.Count == 0)
-            return [];
+        if (teamIds is null) return docs.Values.ToList();
 
         var filter = teamIds as IReadOnlySet<Guid> ?? new HashSet<Guid>(teamIds);
         return docs.Values
             .Where(d => filter.Contains(d.TeamId))
-            .Select(ToActiveRequiredSnapshot)
             .ToList();
     }
 
@@ -120,7 +117,7 @@ internal sealed class CachingLegalDocumentSyncService(
         Clear();
     }
 
-    private async Task<IReadOnlyDictionary<Guid, LegalDocumentInfo>> GetActiveRequiredDocumentsAsync(
+    private async Task<IReadOnlyDictionary<Guid, ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsAsync(
         CancellationToken ct)
     {
         await EnsureWarmedAsync(ct);
@@ -131,29 +128,13 @@ internal sealed class CachingLegalDocumentSyncService(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncManagement>(InnerServiceKey);
-        var allDocs = await inner.GetActiveDocumentsAsync(ct);
-        var docs = allDocs
-            .Where(d => d.IsActive && d.IsRequired)
-            .ToList();
-
-        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
-        var teamIds = docs.Select(d => d.TeamId).Distinct().ToList();
-        var teams = teamIds.Count == 0
-            ? new Dictionary<Guid, TeamInfo>()
-            : await teamService.GetTeamsWithParentsAsync(teamIds, ct);
+        var docs = await inner.GetActiveRequiredDocumentsForTeamsAsync(null, ct);
 
         var versionIndex = new Dictionary<Guid, Guid>();
 
         foreach (var info in docs)
         {
-            var teamName = teams.TryGetValue(info.TeamId, out var team) ? team.Name : string.Empty;
-            var cacheInfo = new LegalDocumentInfo(
-                info.Id,
-                info.Name,
-                info.TeamId,
-                teamName,
-                info.LastSyncedAt,
-                info.Versions.OrderBy(v => v.EffectiveFrom).ToList());
+            var cacheInfo = info with { Versions = info.Versions.OrderBy(v => v.EffectiveFrom).ToList() };
 
             Set(cacheInfo.Id, cacheInfo);
             foreach (var v in cacheInfo.Versions)
@@ -163,17 +144,8 @@ internal sealed class CachingLegalDocumentSyncService(
         _versionToDocument = versionIndex;
     }
 
-    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredSnapshot(LegalDocumentInfo info) =>
-        new(
-            info.Id,
-            info.Name,
-            info.TeamId,
-            info.TeamName,
-            info.LastSyncedAt,
-            info.Versions);
-
     private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(
-        LegalDocumentVersionSnapshot version, LegalDocumentInfo document) =>
+        LegalDocumentVersionSnapshot version, ActiveRequiredLegalDocumentSnapshot document) =>
         new(
             version.Id,
             document.Id,

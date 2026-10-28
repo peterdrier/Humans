@@ -66,16 +66,16 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        try
+        var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
+        var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
+        if (result.Succeeded)
         {
-            var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
-            var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
-            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.EmailsQueued, result.Failed]);
+            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.Send!.EmailsQueued, result.Send.Failed]);
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Survey approval rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Survey approval rejected for {SurveyId}: {Reason}", id, result.Refusal);
+            SetError(result.Refusal!);
         }
         return RedirectToAction(nameof(Queue));
     }
@@ -88,19 +88,16 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        try
+        var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
+        var result = await surveyService.RejectAsync(id, viewer, note, ct);
+        if (!result.Succeeded)
         {
-            var viewer = new SurveyViewer(actorId.Value, RoleChecks.IsAdminOrBoard(User));
-            await surveyService.RejectAsync(id, viewer, note, ct);
-            SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
+            logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, result.Refusal);
+            ModelState.AddModelError(string.Empty, result.Refusal!);
             ViewData[$"RejectionNote:{id}"] = note;
             return await Queue(ct);
         }
+        SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
         return RedirectToAction(nameof(Queue));
     }
 
@@ -117,18 +114,13 @@ internal sealed class SurveyAdminController(
         var auth = await authorizationService.AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.Submit));
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
+        if (result.Succeeded)
+            SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
+        else
         {
-            var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
-            if (result.Succeeded)
-                SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
-            else
-                SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Survey submit-for-approval rejected for {SurveyId}: {Reason}", id, ex.Message);
-            SetError(localizer["Surveys_SubmitFailed"]);
+            logger.LogWarning("Survey submit-for-approval rejected for {SurveyId}: {Reason}", id, result.ErrorKey);
+            SetError(localizer[result.ErrorKey ?? "Surveys_SubmitFailed"]);
         }
         // Index, not Edit: a successful submit leaves the survey PendingApproval, which the
         // authorization handler no longer lets an ordinary author edit.
@@ -279,20 +271,14 @@ internal sealed class SurveyAdminController(
         var access = await RequirePreviewAsync(id, ct);
         if (access.Error is not null) return access.Error;
 
-        try
+        var result = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
+        if (result.RecipientEmail is not null)
+            SetSuccess(localizer["Surveys_PreviewEmailQueued", result.RecipientEmail]);
+        else
         {
-            var result = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
-            if (result.RecipientEmail is not null)
-                SetSuccess(localizer["Surveys_PreviewEmailQueued", result.RecipientEmail]);
-            else
-                SetError(localizer[result.ErrorKey ?? "Surveys_PreviewQueueFailed"]);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
-                id, actorId, ex.Message);
-            SetError(localizer["Surveys_PreviewQueueFailed"]);
+            logger.LogWarning("Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
+                id, actorId, result.ErrorKey);
+            SetError(localizer[result.ErrorKey ?? "Surveys_PreviewQueueFailed"]);
         }
 
         // Send is Board-only, so an author who rehearsed their own invitation goes to the builder.
@@ -312,31 +298,22 @@ internal sealed class SurveyAdminController(
         var access = await RequirePreviewAsync(id, ct);
         if (access.Error is not null) return access.Error;
 
-        try
+        var result = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
+        if (result.Preview is null)
         {
-            var result = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
-            if (result.Preview is null)
-            {
-                SetError(localizer[result.ErrorKey ?? "Surveys_PreviewFailed"]);
-                return RedirectToAction(nameof(Edit), new { id });
-            }
-            var message = result.Preview;
-            return View("EmailPreview", new SurveyEmailPreviewViewModel
-            {
-                SurveyId = id,
-                Recipient = message.RecipientEmail,
-                Subject = message.Subject,
-                HtmlBody = message.HtmlBody,
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning(
-                "Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
-                id, actorId, ex.Message);
-            SetError(localizer["Surveys_PreviewFailed"]);
+            logger.LogWarning("Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
+                id, actorId, result.ErrorKey);
+            SetError(localizer[result.ErrorKey ?? "Surveys_PreviewFailed"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
+        var message = result.Preview;
+        return View("EmailPreview", new SurveyEmailPreviewViewModel
+        {
+            SurveyId = id,
+            Recipient = message.RecipientEmail,
+            Subject = message.Subject,
+            HtmlBody = message.HtmlBody,
+        });
     }
 
     [HttpPost("Save")]
@@ -365,32 +342,21 @@ internal sealed class SurveyAdminController(
             if (!auth.Succeeded) return Forbid();
         }
 
-        Guid id;
-        try
+        var input = model.ToEditInput(Zone);
+        var result = model.Id is null
+            ? await surveyService.CreateAsync(input, actorId.Value, ct)
+            : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actorId.Value), ct);
+        if (!result.Succeeded)
         {
-            var input = model.ToEditInput(Zone);
-            var result = model.Id is null
-                ? await surveyService.CreateAsync(input, actorId.Value, ct)
-                : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actorId.Value), ct);
-            if (!result.Succeeded)
-            {
-                var error = result.Error;
-                logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, error?.DiagnosticMessage);
-                ModelState.AddModelError(string.Empty, error?.Key is { } key
-                    ? localizer[key, error.Args].Value
-                    : localizer["Surveys_Validation_SaveFailed"].Value);
-                await PrepareBuilderForRenderAsync(model, ct);
-                return View("Builder", model);
-            }
-            id = result.SurveyId!.Value;
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Survey save failed for {SurveyId}: {Reason}", model.Id, ex.Message);
-            ModelState.AddModelError(string.Empty, localizer["Surveys_Validation_SaveFailed"]);
+            var error = result.Error;
+            logger.LogWarning("Survey save rejected for {SurveyId}: {Reason}", model.Id, error?.DiagnosticMessage);
+            ModelState.AddModelError(string.Empty, error?.Key is { } key
+                ? localizer[key, error.Args].Value
+                : localizer["Surveys_Validation_SaveFailed"].Value);
             await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
+        var id = result.SurveyId!.Value;
 
         // The save is already committed: a translation failure must not re-render the builder as unsaved (a re-submit
         // would double-create), so it reports and redirects.
@@ -439,9 +405,18 @@ internal sealed class SurveyAdminController(
                     localizer["Surveys_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
                 : localizer["Surveys_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning("Survey translation failed for {SurveyId}: {Reason}", id, ex.Message);
+            SetError(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"]);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Survey translation failed after saving survey {SurveyId}", id);
             SetError(localizer["Surveys_Admin_Builder_Saved_TranslationFailed"]);
         }
     }
@@ -453,8 +428,8 @@ internal sealed class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
-        await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
-        return continueToSend
+        var opened = await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
+        return opened && continueToSend
             ? RedirectToAction(nameof(Send), new { id })
             : RedirectToAction(nameof(Edit), new { id });
     }
@@ -508,15 +483,15 @@ internal sealed class SurveyAdminController(
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
 
-        try
+        var result = await surveyService.SendInvitesAsync(id, actorId.Value, ct);
+        if (result.Succeeded)
         {
-            var result = await surveyService.SendInvitesAsync(id, actorId.Value, ct);
             SetSuccess($"Sent {result.InvitationsCreated} new invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            logger.LogWarning("Send invites rejected for survey {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Send invites rejected for survey {SurveyId}: {Reason}", id, result.Refusal);
+            SetError(result.Refusal!);
         }
         return RedirectToAction(nameof(Send), new { id });
     }
@@ -547,22 +522,22 @@ internal sealed class SurveyAdminController(
     {
         var actorId = GetCurrentUserId();
         if (actorId is null) return Forbid();
-        try
+        var result = await surveyService.SetRankedAvailabilityAsync(
+            id,
+            questionId,
+            unavailableValues ?? [],
+            CurrentViewer(actorId.Value),
+            ct);
+        if (result.Succeeded)
         {
-            await surveyService.SetRankedAvailabilityAsync(
-                id,
-                questionId,
-                unavailableValues ?? [],
-                CurrentViewer(actorId.Value),
-                ct);
             SetSuccess("Candidate availability updated; ranked results were recalculated.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
             logger.LogWarning(
                 "Ranked availability update rejected for survey {SurveyId}, question {QuestionId}: {Reason}",
-                id, questionId, ex.Message);
-            SetError(ex.Message);
+                id, questionId, result.Error?.DiagnosticMessage);
+            SetError(result.Error?.DiagnosticMessage ?? "Candidate availability could not be updated.");
         }
         return RedirectToAction(nameof(Results), new { id });
     }
@@ -608,18 +583,18 @@ internal sealed class SurveyAdminController(
         return auth.Succeeded ? null : Forbid();
     }
 
-    private async Task RunStatusTransitionAsync(Guid id, Func<Task> transition, string success)
+    private async Task<bool> RunStatusTransitionAsync(Guid id, Func<Task<SurveyReviewResult>> transition, string success)
     {
-        try
+        var result = await transition();
+        if (!result.Succeeded)
         {
-            await transition();
-            SetSuccess(success);
+            logger.LogWarning("Status transition rejected for survey {SurveyId}: {Reason}", id, result.Refusal);
+            SetError(result.Refusal!);
+            return false;
         }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("Status transition rejected for survey {SurveyId}: {Reason}", id, ex.Message);
-            SetError(ex.Message);
-        }
+
+        SetSuccess(success);
+        return true;
     }
 
     private async Task<IReadOnlyList<SurveyTeamOption>> LoadTeamsAsync(CancellationToken ct)

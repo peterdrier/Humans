@@ -156,7 +156,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - Rows referencing a `Withdrawn` event are rejected (Withdrawn events cannot be reactivated via bulk upload)
 - Rows absent from the CSV are left untouched — bulk upload does not delete or withdraw events
 - Invalid headers or cells return structured refusal keys with physical file-row arguments. The controller localizes all errors together; parse failure supplies no importable rows and never displays dependency diagnostics.
-- Upload is rejected if the submission window is closed
+- Upload is rejected if the submission window is closed, including when it closes after controller preflight; no rows are written and the uploader sees the localized closed-window message.
 - Only Camp Leads, Workshop Leads, CampAdmin, and Admin may access the bulk upload routes for a given barrio slug
 
 #### Routes
@@ -290,7 +290,7 @@ Hard deletion is not supported; `Withdrawn` is the terminal state for events rem
 | Moderation: Rejected | Submitter — rejection with reason |
 | Moderation: ResubmitRequested | Submitter — edit request with reason |
 
-All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure. Lifecycle notifications run after persistence; failures looking up the recipient or preparing/sending the message are logged and do not fail the committed submission or moderation.
+All emails use the existing `EmailOutboxMessage` / `ProcessEmailOutboxJob` infrastructure. Lifecycle notifications run after persistence; failures looking up the recipient or preparing/sending the message are logged and do not fail the committed submission or moderation. A browser disconnect after the save cannot cancel recipient lookup or delivery; cancellation before the save is still honored.
 
 ## Route Summary
 

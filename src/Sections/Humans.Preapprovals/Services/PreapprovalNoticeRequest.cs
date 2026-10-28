@@ -26,6 +26,7 @@ internal enum PreapprovalNoticeKind
 /// in the recipient's culture.
 /// </summary>
 internal sealed record PreapprovalNoticeRequest(
+    Guid RecipientUserId,
     string RecipientEmail,
     string? RecipientName,
     PreapprovalNoticeKind Kind,

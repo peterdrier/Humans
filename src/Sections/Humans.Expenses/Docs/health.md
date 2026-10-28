@@ -108,7 +108,7 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1353`);
+  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1354`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
   (`Services/ExpenseReportService.cs:968`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a
@@ -125,9 +125,9 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Recategorise after push.** `UpdateIncomingDocTag` outbox events drain to a log line —
   Holded v2 has no tag endpoint, so the correction is made inside Holded and mirrored back.
   The enum member survives so pre-existing rows drain instead of poisoning the queue.
-- **"Waiting on the coordinator" in the queue.** `CategoryRequiresCoordinatorEndorsementAsync`
-  computes whether a category has a coordinator and has no production caller; it is reserved for
-  telling the two review states apart, not for gating approval.
+- **"Waiting on the coordinator" in the queue.** The queue does not distinguish reports
+  waiting for a coordinator from those waiting for Finance; coordinator presence never gates
+  Finance approval.
 
 ## 6. Deliberately not done
 

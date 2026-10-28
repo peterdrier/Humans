@@ -322,7 +322,7 @@ See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full 
 
 ### 8a. User-Scoped Sections Must Contribute to the GDPR Export
 
-Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Gdpr/DownloadData` or `/Guest/DownloadData`.
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Gdpr.Contracts`) so the GDPR Article 15 data export (`IGdprService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Gdpr/DownloadData` or `/Gdpr/Guest/DownloadData`.
 
 Adding a new user-scoped section to §8 above requires three coupled steps — all three, in any order, before the PR can land:
 
@@ -362,6 +362,7 @@ The fanouts:
 | `IEarlyEntryService` (`EarlyEntryService`) | `IEarlyEntryProvider` (`Humans.EarlyEntry`, `Contracts/` folder) | Camps, Shifts, Teams | a user's assembled early-entry grants |
 | any holder of bare Guids | `IEntityNameContributor` (`Humans.Base.Interfaces`) | `CachingTeamService` (Teams), `CachingUserService` (Users) | `Guid → EntityName(type, display name, slug?)` for the ids on one page |
 | the `/Email/EmailPreview` gallery (`EmailController`) | `IEmailPreviewContributor` (`Humans.Email.Contracts`) | every section that sends email | one rendered sample per template a section sends |
+| the preference toggles (`CommunicationPreferenceService`) | `ICommunicationPreferenceLock` (`Humans.Email.Contracts`) | `TicketingPreferenceLock` (Tickets) | the categories a human may not change on the member and guest pages |
 
 `IEntityNameContributor` is the one that lives in Base rather than in a consumer's contracts leaf, because it has more than one consumer and they must not reference each other (nobodies-collective/Humans#1059). It inverts the arrow that used to make AuditLog reference Teams and GoogleIntegration just to print names: sections point at the Base contract, and the consumer names no section. Wide-fan-in sections that must not gain outbound links — Audit, Auth, Search — are exactly its intended callers.
 

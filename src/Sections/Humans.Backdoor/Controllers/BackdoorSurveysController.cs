@@ -8,6 +8,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
@@ -18,6 +19,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/surveys")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[AllowAnonymous]
 internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUserService users)
     : ApiControllerBase(users)
 {

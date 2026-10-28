@@ -8,6 +8,7 @@
   src/Sections/*/SectionAdminNav.cs
   src/Sections/*/SectionAdminTiles.cs
   src/Humans.Web/Controllers/AdminController.cs
+  src/Humans.Web/Services/HumansMetricsService.cs
   src/Humans.Web/Views/Shared/_AdminLayout.cshtml
   src/Humans.Web/Views/_ViewStart.cshtml
 -->
@@ -41,7 +42,7 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 | Admin | Full access — every group and every item |
 | Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Pre-approvals (Programs), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync) |
 | HumanAdmin | Users (Humans, Roles) |
-| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster), Scanner, Gate (Terminal, Staff PINs) |
+| TicketAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster), Scanner, Gate (Terminal) |
 | FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Holded connector), Holded, Pre-approvals (Programs), Store (Catalog, Summary, Payments, Order years) |
 | StoreAdmin | Store (Catalog, Summary, Payments, Order years) |
 | EventsAdmin | Events (Dashboard, Moderation, Categories, Venues, Export) |
@@ -63,6 +64,7 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 - The admin shell renders only on restricted pages: a page members share renders in the member layout for everyone. On a restricted page, a user outside `AnyAdminRole` who passed its gate gets the shell without the Dashboard row.
 - The admin shell adds no new authorization policies; it reuses existing `PolicyNames.*` constants defined in the Auth section.
 - The `body.admin-shell` CSS class scopes all admin-shell styles — no styles bleed into member-facing pages.
+- Shell’s `humans.humans_total` status gauge follows stored account state: Active → active; Suspended/AdminSuspended → suspended; Bare → pending; all other states → inactive. `humans.pending_volunteers` counts Bare accounts awaiting required names. Consent review annotations do not affect these counts; scheduled deletions remain a separate gauge.
 
 ## Negative Access Rules
 

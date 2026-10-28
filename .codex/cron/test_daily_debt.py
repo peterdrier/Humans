@@ -25,17 +25,44 @@ class QuotaPolicyTests(unittest.TestCase):
             "primary": {"usedPercent": 0, "windowDurationMins": 300} if secondary else week,
             "secondary": week if secondary else None}}}
 
-    def test_one_and_half_days_allows_eighteen_percent_exactly(self):
+    def test_one_and_half_days_allows_thirty_percent_exactly(self):
         for secondary in (False, True):
-            self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(18, secondary=secondary), 1000000))
-            self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(19, secondary=secondary), 1000000))
+            self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(30, secondary=secondary), 1000000))
+            self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(31, secondary=secondary), 1000000))
 
     def test_window_start_and_end_and_reset_rollover(self):
         self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(0, 7), 1000000))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(1, 7), 1000000))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(12, 7), 1000000))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(13, 7), 1000000))
         self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(83, 0.01), 1000000))
         self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(85, 0.01), 1000000))
         self.assertIn("stale", run_goal.quota_stop_reason(self.snapshot(0, 0), 1000000))
+
+    def test_reported_post_reset_stop_gets_daily_allowance(self):
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(1, 6.9925), 1000000))
+
+    def test_cutoff_stays_fixed_until_weekly_reset(self):
+        policy = {}
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(12, 7), 1000000, policy))
+        # Advancing half a day must not release more quota during this run.
+        self.assertIn("cutoff", run_goal.quota_stop_reason(
+            self.snapshot(13, 7), 1000000 + 43200, policy))
+        self.assertIsNone(run_goal.quota_stop_reason(
+            self.snapshot(12, 7), 1000000 + 43200, policy))
+
+    def test_weekly_reset_replaces_previous_runs_cutoff(self):
+        policy = {}
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(30), 1000000, policy))
+        self.assertIsNone(run_goal.quota_stop_reason(
+            self.snapshot(12, 12.5), 1000000 + 5.5 * 86400, policy))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(
+            self.snapshot(13, 12.5), 1000000 + 5.5 * 86400, policy))
+
+    def test_new_run_releases_next_day_and_keeps_weekly_reserve(self):
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(24, 6), 1000000, {}))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(25, 6), 1000000, {}))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(84, 1), 1000000, {}))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(85, 1), 1000000, {}))
 
     def test_missing_malformed_and_other_exhausted_window(self):
         self.assertIn("unavailable", run_goal.quota_stop_reason({}, 1000000))
@@ -142,6 +169,7 @@ count_file.write_text(str(count + 1))
 thread = "fixture-thread" if count == 0 else "fixture-repair" + (str(count) if count > 1 else "")
 started = 0
 quota_reads = 0
+weekly_reset = time.time() + 5.5 * 86400
 objective = None
 
 def emit(method, params):
@@ -175,9 +203,9 @@ for line in sys.stdin:
         if scenario == "quota-error" or (scenario == "quota-error-after-round" and quota_reads > 1):
             print(json.dumps({"id": request["id"], "error": {"code": -32000, "message": "fixture quota unavailable"}}), flush=True)
             continue
-        used = 19 if scenario == "quota-skip" or quota_reads > (2 if scenario == "quota-continue" else 1) else 0
+        used = 31 if scenario == "quota-skip" or quota_reads > (2 if scenario == "quota-continue" else 1) else 0
         result = {"rateLimits": {"primary": {"usedPercent": used, "windowDurationMins": 10080,
-                  "resetsAt": time.time() + 5.5 * 86400}}}
+                  "resetsAt": weekly_reset}}}
     elif method == "thread/start":
         assert params["sandbox"] == "danger-full-access"
         assert params["approvalPolicy"] == "never"

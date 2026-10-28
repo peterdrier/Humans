@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
+using NSubstitute.ExceptionExtensions;
 using NodaTime;
 using NSubstitute;
 
@@ -30,6 +32,7 @@ public sealed class FacilitatedMessageControllerTests
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly ICommunicationPreferenceService _commPrefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly ILogger<FacilitatedMessageController> _logger = Substitute.For<ILogger<FacilitatedMessageController>>();
     private readonly Guid _viewerId = Guid.NewGuid();
     private readonly Guid _targetId = Guid.NewGuid();
     private readonly FacilitatedMessageController _controller;
@@ -42,7 +45,7 @@ public sealed class FacilitatedMessageControllerTests
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new FacilitatedMessageController(
-            _users, _emailService, _emailMessages, _commPrefs, _audit, localizer, shared);
+            _users, _emailService, _emailMessages, _commPrefs, _audit, localizer, shared, _logger);
 
         var http = new DefaultHttpContext
         {
@@ -60,9 +63,10 @@ public sealed class FacilitatedMessageControllerTests
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [_targetId] = target });
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
         _emailMessages.FacilitatedMessage(
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
-            .Returns(new EmailMessage("target@example.com", "Target", "Subject", "Body", "facilitated_message"));
+            .Returns(ci => new EmailMessage("target@example.com", "Target", ci.ArgAt<Guid?>(0), "Subject", "Body",
+                "facilitated_message"));
     }
 
     private static UserInfo Info(Guid id, string name, string email, string language = "en") =>
@@ -71,6 +75,27 @@ public sealed class FacilitatedMessageControllerTests
             null, null, email, [], [], [], null, []);
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+
+    [HumansFact]
+    public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
+    {
+        var failure = new InvalidOperationException("Audit unavailable");
+        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(failure);
+
+        var result = await _controller.SendMessage(
+            _targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
+        _controller.TempData.Should().ContainKey(Humans.Base.Constants.TempDataKeys.SuccessMessage);
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        var log = _logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .GetArguments();
+        log[0].Should().Be(LogLevel.Critical);
+        log[3].Should().BeSameAs(failure);
+        log[2]!.ToString().Should().Contain(_targetId.ToString()).And.Contain(_viewerId.ToString());
+    }
 
     [HumansFact]
     public async Task Get_ShowsTheComposerForAnotherMember()
@@ -149,9 +174,9 @@ public sealed class FacilitatedMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _emailMessages.Received(1).FacilitatedMessage(
-            "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", "en");
+            _targetId, "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", "en");
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.ReplyTo == null), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.ReplyTo == null && m.UserId == _targetId), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             AuditAction.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("contact info shared: yes", StringComparison.Ordinal)),
@@ -177,13 +202,13 @@ public sealed class FacilitatedMessageControllerTests
         await _controller.SendMessage(_targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
 
         _emailMessages.Received(1).FacilitatedMessage(
-            "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", expectedCulture);
+            _targetId, "target@example.com", "Target", "Viewer", "Hello", true, "viewer@example.com", expectedCulture);
     }
 
     [HumansFact]
     public void Controller_IsAuthorizedAndUsesTheEmailRoute()
     {
-        typeof(FacilitatedMessageController).GetCustomAttribute<AuthorizeAttribute>().Should().NotBeNull();
+        typeof(FacilitatedMessageController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         foreach (var method in typeof(FacilitatedMessageController).GetMethods()
                      .Where(m => string.Equals(m.Name, nameof(FacilitatedMessageController.SendMessage), StringComparison.Ordinal)))
         {

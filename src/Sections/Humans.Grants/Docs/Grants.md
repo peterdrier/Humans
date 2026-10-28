@@ -75,10 +75,11 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 - A person holds at most one live grant per program (filtered unique index); issuing to a holder is skipped (manual) or returns the existing id (source write).
 - A managers' program is filled only by hand; a source program only through `IGrantWrite` with the matching source key. A closed program takes no new grants either way.
-- At most one program per source key is open at a time (refused on create and edit), so `IGrantWrite` callers pass only their key and Grants resolves the program. No open program for the key is an `InvalidOperationException`.
+- At most one program per source key is open at a time (refused on create and edit), so `IGrantWrite` callers pass only their key and Grants resolves the program. Source issue/revoke return `GrantIssueResult` / `GrantRevokeResult`: no open program and overlong source references/reasons are typed refusals before mutation, audit or notices. Existing live grant IDs and the no-live-grant revoke outcome remain explicit. Dependency failures propagate.
 - A program's issuer and status must be defined enum values; anything else is refused on create and edit.
 - Expiry is computed at read time from `ExpiresOn ?? program.GrantsExpireOn` against today in Europe/Madrid; no job flips state.
 - Revoking keeps the row (who, when, why); a revoked grant cannot be resent or revoked again.
+- Manual and source issuance share one persist/audit/notice pipeline. Persistence retains caller cancellation; after commit, audit and notices finish independently of browser cancellation. Their distinct batch and source-reference audit descriptions are preserved.
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`).
 - A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend.
 - Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all six cultures.

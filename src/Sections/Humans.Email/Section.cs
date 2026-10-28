@@ -40,6 +40,7 @@ public sealed class Section : ISection
         services.AddScoped<IEmailMessageFactory, EmailMessageFactory>();
         services.AddScoped<IEmailPreviewContributor, FacilitatedMessagePreviews>();
         services.AddScoped<IEmailService, OutboxEmailService>();
+        services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();
         services.AddScoped<ComposerSelfSendService>();
 
         // The composer's "Send to me" is an open, authenticated send: cap it per member on top of the

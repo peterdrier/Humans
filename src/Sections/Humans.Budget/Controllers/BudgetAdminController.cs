@@ -205,18 +205,15 @@ internal sealed class BudgetAdminController(
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            await budgetService.UpdateYearStatusAsync(id, status, user.Id);
+        var result = await budgetService.UpdateYearStatusAsync(id, status, user.Id);
+        if (result.Succeeded)
             SetSuccess($"Budget year status updated to {status}.");
-            return RedirectToAction(nameof(Admin));
-        }
-        catch (Exception ex)
+        else
         {
-            logger.LogError(ex, "Error updating budget year {YearId} status to {Status}", id, status);
-            SetError($"Failed to update status: {ex.Message}");
-            return RedirectToAction(nameof(Admin));
+            logger.LogWarning("Budget year status change refused for {YearId}, actor {UserId}: {Reason}", id, user.Id, result.Refusal);
+            SetError($"Failed to update status: {result.Refusal}");
         }
+        return RedirectToAction(nameof(Admin));
     }
 
     [HttpPost("Years/{id:guid}/Update")]
@@ -226,18 +223,15 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        try
-        {
-            await budgetService.UpdateYearAsync(id, year, name, vendorEventId, user.Id);
+        var result = await budgetService.UpdateYearAsync(id, year, name, vendorEventId, user.Id);
+        if (result.Succeeded)
             SetSuccess("Budget year updated.");
-            return RedirectToAction(nameof(Admin));
-        }
-        catch (Exception ex)
+        else
         {
-            logger.LogError(ex, "Error updating budget year {YearId}", id);
-            SetError($"Failed to update budget year: {ex.Message}");
-            return RedirectToAction(nameof(Admin));
+            logger.LogWarning("Budget year update refused for {YearId}, actor {UserId}: {Reason}", id, user.Id, result.Refusal);
+            SetError($"Failed to update budget year: {result.Refusal}");
         }
+        return RedirectToAction(nameof(Admin));
     }
 
     [HttpPost("Years/{id:guid}/Delete")]
@@ -247,18 +241,15 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        try
-        {
-            await budgetService.DeleteYearAsync(id, user.Id);
+        var result = await budgetService.DeleteYearAsync(id, user.Id);
+        if (result.Succeeded)
             SetSuccess("Budget year deleted.");
-            return RedirectToAction(nameof(Admin));
-        }
-        catch (Exception ex)
+        else
         {
-            logger.LogError(ex, "Error deleting budget year {YearId}", id);
-            SetError($"Failed to delete budget year: {ex.Message}");
-            return RedirectToAction(nameof(Admin));
+            logger.LogWarning("Budget year archive refused for {YearId}, actor {UserId}: {Reason}", id, user.Id, result.Refusal);
+            SetError($"Failed to delete budget year: {result.Refusal}");
         }
+        return RedirectToAction(nameof(Admin));
     }
 
     [HttpPost("Groups/Create")]

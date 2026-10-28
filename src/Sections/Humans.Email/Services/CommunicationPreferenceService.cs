@@ -4,7 +4,6 @@ using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Gdpr.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -19,7 +18,7 @@ internal sealed class CommunicationPreferenceService(
     ICommunicationPreferenceRepository repository,
     IUserService userService,
     IUnsubscribeTokenProvider tokenProvider,
-    ITicketService ticketService,
+    IEnumerable<ICommunicationPreferenceLock> locks,
     IClock clock,
     IAuditLogService auditLog,
     ILogger<CommunicationPreferenceService> logger)
@@ -114,10 +113,9 @@ internal sealed class CommunicationPreferenceService(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
         Guid? actorUserId = null, CancellationToken cancellationToken = default)
     {
-        if (category == MessageCategory.Ticketing && IsTicketingLocked(category,
-                (await ticketService.GetUserTicketHoldingsAsync(userId, cancellationToken)).HasTicketAttendeeMatch))
+        if ((await GetLockedCategoriesAsync(locks, userId, cancellationToken)).Contains(category))
         {
-            logger.LogWarning("Attempted to change locked Ticketing preference for ticket holder {UserId} — refused", userId);
+            logger.LogWarning("Attempted to change locked preference {Category} for user {UserId} — refused", category, userId);
             return false;
         }
 
@@ -126,9 +124,15 @@ internal sealed class CommunicationPreferenceService(
         return true;
     }
 
-    /// <summary>Shared with the preference pages, which render the locked row read-only.</summary>
-    internal static bool IsTicketingLocked(MessageCategory category, bool hasTicketOrder) =>
-        category == MessageCategory.Ticketing && hasTicketOrder;
+    /// <summary>Shared with the preference pages, which render a locked row read-only.</summary>
+    internal static async Task<IReadOnlySet<MessageCategory>> GetLockedCategoriesAsync(
+        IEnumerable<ICommunicationPreferenceLock> locks, Guid userId, CancellationToken ct)
+    {
+        var locked = new HashSet<MessageCategory>();
+        foreach (var source in locks)
+            locked.UnionWith(await source.GetLockedCategoriesAsync(userId, ct));
+        return locked;
+    }
 
     private async Task UpdatePreferenceCoreAsync(
         Guid userId, MessageCategory category, bool optedOut, bool? inboxEnabled, string source,

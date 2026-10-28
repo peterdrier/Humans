@@ -29,13 +29,6 @@
             </div>
         }
 
-        @if (Model.IsOwnProfile && !Model.IsApproved)
-        {
-            <div class="alert alert-info" role="alert">
-                <strong>@Localizer["Users_Profile_PendingApproval"]</strong> @Localizer["Users_Profile_PendingApprovalDescription"]
-            </div>
-        }
-
         @if (Model.IsOwnProfile && Model.TierApplicationStatus != null)
         {
             var alertClass = Model.TierApplicationStatus switch

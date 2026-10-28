@@ -1,3 +1,4 @@
+using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
@@ -40,6 +41,18 @@ internal sealed class MailerLiteGdprContributor(
 
         if (await userEmailService.GetPrimaryEmailAsync(userId, ct) is { } primary)
             addresses.Add(primary);
+
+        // Import matching treats these domains as equivalent, but MailerLite deletion targets an exact address.
+        foreach (var address in addresses.ToList())
+        {
+            var normalized = EmailNormalization.NormalizeForComparison(address);
+            const string gmailSuffix = "@gmail.com";
+            if (!normalized.EndsWith(gmailSuffix, StringComparison.Ordinal))
+                continue;
+
+            addresses.Add(normalized);
+            addresses.Add(string.Concat(normalized.AsSpan(0, normalized.Length - gmailSuffix.Length), "@googlemail.com"));
+        }
 
         foreach (var address in addresses)
             await mailerLiteService.DeleteSubscriberAsync(address, ct);

@@ -12,26 +12,24 @@ namespace Humans.Campaigns.Tests.Services;
 public sealed class CampaignsEmailsTests
 {
     private static CampaignCodeEmailRequest Request(
-        Guid userId, Guid grantId, Guid campaignId,
+        Guid userId, Guid campaignId,
         string subject = "S {{Name}}", string body = "Hi {{Name}} {{Code}}",
         string code = "ABC", string? replyTo = "reply@x.com") =>
-        new(userId, grantId, campaignId, "zoe@x.com", "Zoe", subject, body, code, replyTo);
+        new(userId, campaignId, "zoe@x.com", "Zoe", subject, body, code, replyTo);
 
     [HumansFact]
-    public void CampaignCode_CarriesUserGrantReplyToAndCampaignCategory()
+    public void CampaignCode_CarriesUserReplyToAndCampaignCategory()
     {
         var userId = Guid.NewGuid();
-        var grantId = Guid.NewGuid();
         var campaignId = Guid.NewGuid();
 
-        var msg = new CampaignsEmails().CampaignCode(Request(userId, grantId, campaignId));
+        var msg = new CampaignsEmails().CampaignCode(Request(userId, campaignId));
 
         msg.RecipientEmail.Should().Be("zoe@x.com");
         msg.TemplateName.Should().Be("campaign_code");
         msg.Category.Should().Be(MessageCategory.CampaignCodes);
         msg.ReplyTo.Should().Be("reply@x.com");
         msg.UserId.Should().Be(userId);
-        msg.CampaignGrantId.Should().Be(grantId);
         msg.CampaignId.Should().Be(campaignId);
         msg.Subject.Should().Be("S Zoe");
         msg.HtmlBody.Should().Contain("Zoe").And.Contain("ABC");
@@ -42,7 +40,6 @@ public sealed class CampaignsEmailsTests
     {
         var msg = new CampaignsEmails().CampaignCode(new CampaignCodeEmailRequest(
             UserId: Guid.NewGuid(),
-            CampaignGrantId: Guid.NewGuid(),
             CampaignId: Guid.NewGuid(),
             RecipientEmail: "zoe@x.com",
             RecipientName: "Daniel <Admin>",
@@ -62,7 +59,7 @@ public sealed class CampaignsEmailsTests
     [HumansFact]
     public void CampaignCode_DoesNotExpandPlaceholdersInsideInsertedValues()
     {
-        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(),
             subject: "{{Code}} / {{Name}} / {{Code}} / {{code}}",
             body: "**{{Code}}** / {{Name}}", code: "Value {{Name}} & $1")
             with
@@ -81,7 +78,7 @@ public sealed class CampaignsEmailsTests
     {
         const string name = "![portrait](https://example.org/tracker.png)";
         const string code = "`[redeem](https://example.org/redirect)`";
-        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: code)
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(), body: body, code: code)
             with
         { RecipientName = name };
 
@@ -98,7 +95,7 @@ public sealed class CampaignsEmailsTests
     public void CampaignCode_AuthoredDestinationsAreSanitizedAfterSubstitution(string body, string url, bool allowed)
     {
         var message = new CampaignsEmails().CampaignCode(Request(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), body: body, code: url));
+            Guid.NewGuid(), Guid.NewGuid(), body: body, code: url));
 
         message.HtmlBody.Contains(url, StringComparison.Ordinal).Should().Be(allowed);
     }
@@ -113,7 +110,7 @@ public sealed class CampaignsEmailsTests
         var code = string.Concat(Enumerable.Repeat(astral ? "🎟" : "X", 100));
         var prefix = new string('S', prefixLength) + " ";
         var fullSubject = prefix + code;
-        var request = Request(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+        var request = Request(Guid.NewGuid(), Guid.NewGuid(),
             subject: prefix + "{{Code}}", body: "Ready.", code: code);
 
         var message = new CampaignsEmails().CampaignCode(request);
@@ -170,7 +167,7 @@ public sealed class CampaignsEmailsTests
     private static object SampleArgument(ParameterInfo parameter)
     {
         var type = parameter.ParameterType;
-        if (type == typeof(CampaignCodeEmailRequest)) return Request(Guid.Empty, Guid.Empty, Guid.Empty);
+        if (type == typeof(CampaignCodeEmailRequest)) return Request(Guid.Empty, Guid.Empty);
         throw new NotSupportedException(
             $"CampaignsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");
     }

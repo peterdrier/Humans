@@ -96,7 +96,9 @@ internal sealed class EmailProvisioningService(
                 recoveryEmail);
 
             // Flips the notification target. Do NOT move above the recovery-email capture.
-            await userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
+            var emailAddition = await userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
+            if (emailAddition.ErrorKey is not null)
+                throw new InvalidOperationException("Could not add the verified email address.");
 
             // Half-completed-prior-provisioning recovery: if an unverified row predated this call, verify it, and designate it explicitly if it is not the identity.
             var rows = await userEmailService.GetUserEmailsAsync(userId);
@@ -133,7 +135,7 @@ internal sealed class EmailProvisioningService(
                 try
                 {
                     await emailService.SendAsync(emailMessages.WorkspaceCredentials(
-                        recoveryEmail, user.BurnerName, fullEmail, tempPassword,
+                        userId, recoveryEmail, user.BurnerName, fullEmail, tempPassword,
                         language));
                     credentialsQueued = true;
                 }

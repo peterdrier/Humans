@@ -12,7 +12,6 @@
 | `CampaignController.Activate` / `Complete` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.SendWave` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.Resend` (`Grants/{grantId}/Resend`) | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `CampaignController.RetryAllFailed` | Action | `Admin` | `PolicyNames.AdminOnly` |
 
 | View component | Slot | Audience | Source |
 |---|---|---|---|

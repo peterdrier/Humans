@@ -147,7 +147,7 @@ internal sealed partial class PreapprovalService
                 infos.TryGetValue(id, out var person);
                 var language = person?.PreferredLanguage;
                 await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
-                    address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
+                    id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
                     url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
             }
         }

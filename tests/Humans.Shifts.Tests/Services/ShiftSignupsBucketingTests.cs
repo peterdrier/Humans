@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using Xunit;
+using Humans.Base.Extensions;
+using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -39,6 +42,37 @@ public class ShiftSignupsBucketingTests
         IsShiftBrowsingOpen: true);
 
     private readonly Guid _userId = Guid.NewGuid();
+
+    [HumansTheory]
+    [InlineData("en", "Unknown")]
+    [InlineData("es", "Equipo desconocido")]
+    [InlineData("de", "Unbekanntes Team")]
+    [InlineData("it", "Squadra sconosciuta")]
+    [InlineData("fr", "Équipe inconnue")]
+    [InlineData("ca", "Equip desconegut")]
+    public void Missing_team_names_use_the_ui_language_in_both_member_views(string culture, string expected)
+    {
+        using var scope = new CultureScope(culture);
+        var summary = MakeSignup(SignupStatus.Pending, dayOffset: 1, startHour: 8, durationHours: 4);
+        var signup = new ShiftSignup
+        {
+            Status = SignupStatus.Pending,
+            Shift = new Shift
+            {
+                DayOffset = 1,
+                StartTime = new LocalTime(8, 0),
+                Duration = Duration.FromHours(4),
+                Rota = new Rota { TeamId = summary.TeamId }
+            }
+        };
+        var noTeams = new Dictionary<Guid, string>();
+
+        var card = ShiftSignupSummaryBucketer.Build([summary], noTeams, TestNow);
+        var mine = ShiftSignupBucketer.Build([signup], TestEvent, noTeams, TestNow);
+
+        card.Pending.Should().ContainSingle().Which.DepartmentName.Should().Be(expected);
+        mine.Pending.Should().ContainSingle().Which.DepartmentName.Should().Be(expected);
+    }
 
     [HumansFact]
     public async Task InProgressConfirmedShift_BucketedAsUpcoming()

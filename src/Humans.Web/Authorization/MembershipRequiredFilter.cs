@@ -82,9 +82,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        if (context.ActionDescriptor is ControllerActionDescriptor cad &&
-            (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true) ||
-             cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true)))
+        if (context.ActionDescriptor is ControllerActionDescriptor cad && IsPublicEndpoint(cad))
         {
             return next();
         }
@@ -126,14 +124,22 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         context.Result = state switch
         {
             UserState.DeletePending => new RedirectToActionResult("Deletion", "User", null),
-            UserState.Suspended or UserState.AdminSuspended
-                or UserState.Rejected
-                => new RedirectToActionResult("Status", "User", null),
+            UserState walled when walled.IsWalled() => new RedirectToActionResult("Status", "User", null),
             // Bare or null (not yet named / unseeded) → name entry.
             _ => new RedirectToActionResult("Index", "OnboardingWidget", null),
         };
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// An <c>[AllowAnonymous]</c> endpoint is reachable in any account state, with one exception: <c>Home/Index</c>
+    /// is the public landing page and the member dashboard on one route, so a signed-in user is still routed by
+    /// state (here) and by name (<see cref="NameRequiredFilter"/>).
+    /// </summary>
+    internal static bool IsPublicEndpoint(ControllerActionDescriptor cad) =>
+        (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true)
+         || cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true))
+        && cad is not { ControllerName: "Home", ActionName: "Index" };
 
     /// <summary>True when the principal came from a Backdoor API key rather than a sign-in cookie.</summary>
     internal static bool IsMachineRequest(ClaimsPrincipal user) =>

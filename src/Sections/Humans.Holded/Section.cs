@@ -50,7 +50,7 @@ public sealed class Section : ISection
         services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
-        services.AddScoped<IHoldedNightlySync, Services.HoldedNightlySync>();
+        services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();
     }

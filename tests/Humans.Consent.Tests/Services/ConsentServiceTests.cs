@@ -92,10 +92,14 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     lastName: "Last",
                     createdAt: Clock.GetCurrentInstant())));
 
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => ResolveUserInfosAsync(
+                call.ArgAt<IReadOnlyCollection<Guid>>(0), call.ArgAt<CancellationToken>(1)));
+
         var services = new ServiceCollection();
         services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) =>
             _service ?? throw new InvalidOperationException("ConsentService is built below, before any test runs."));
-        _cache = new CachingConsentService(_legalDocumentSyncService, _userService, Clock,
+        _cache = new CachingConsentService(
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingConsentService>.Instance);
 
@@ -110,6 +114,18 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             _metrics,
             Clock,
             NullLogger<ConsentService>.Instance);
+    }
+
+    private async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveUserInfosAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken ct)
+    {
+        var infos = new Dictionary<Guid, UserInfo>();
+        foreach (var id in ids)
+        {
+            if (await _userService.GetUserInfoAsync(id, ct) is { } info)
+                infos[id] = info;
+        }
+        return infos;
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(

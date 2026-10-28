@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsBoard } from '../helpers/auth';
+import { loginAs } from '../helpers/auth';
 
 test.describe('Profile (02-profiles)', () => {
   test('US-2.1: profile view page shows status and team memberships', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Profile');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
@@ -12,7 +12,7 @@ test.describe('Profile (02-profiles)', () => {
   });
 
   test('US-2.2: edit page has all form sections', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Profile/Me/Edit');
 
     // General info section
@@ -36,11 +36,10 @@ test.describe('Profile (02-profiles)', () => {
   });
 
   test('GDPR: privacy page loads with data export and deletion options', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Consent/MyData');
 
-    if (!page.url().includes('/Consent/MyData')) return; // onboarding redirect — skip gracefully
-
+    expect(new URL(page.url()).pathname).toBe('/Consent/MyData');
     await expect(page.locator('h1, h2, h3, h4').first()).toBeVisible();
     // Data export link
     await expect(page.getByText('Download', { exact: false }).first()).toBeVisible();
@@ -51,7 +50,7 @@ test.describe('Profile (02-profiles)', () => {
   // them and there is no E2E persona left for it since #1332. The negative half stays —
   // a volunteer still serves.
   test('issue-659: non-admin POST to AdminVerifyEmail is blocked', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Profile/Me/Edit');
 
     const csrf = await page
@@ -81,23 +80,14 @@ test.describe('Profile (02-profiles)', () => {
   });
 
   test('US-9.2: board can view human detail with admin actions', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Users/Admin');
 
-    // Human list loads
     await expect(page.locator('h1, h2').first()).toBeVisible();
 
-    // Find a View link in the table body and navigate to detail page
-    const viewLink = page.locator('table tbody a').filter({ hasText: /^View$/ }).first();
-    const isVisible = await viewLink.isVisible({ timeout: 3000 }).catch(() => false);
-    if (isVisible) {
-      const href = await viewLink.getAttribute('href');
-      if (href) {
-        await page.goto(href);
-        await expect(page.locator('h1, h2').first()).toBeVisible();
-        // Should see admin action buttons (Suspend Human or Unsuspend Human)
-        await expect(page.getByRole('button', { name: /Suspend Human|Unsuspend Human/ })).toBeVisible({ timeout: 5000 });
-      }
-    }
+    // The list always has rows: the dev personas themselves are humans on every host.
+    const viewLink = page.locator('.list-group-item a.btn').filter({ hasText: /^\s*View\s*$/ }).first();
+    await page.goto((await viewLink.getAttribute('href'))!);
+    await expect(page.getByRole('button', { name: /Suspend Human|Unsuspend Human/ })).toBeVisible();
   });
 });

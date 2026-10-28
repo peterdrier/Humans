@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Email.Contracts;
 using Humans.Email.Models;
 using Humans.Email.Services;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -17,8 +16,8 @@ namespace Humans.Email.Controllers;
 internal sealed class GuestAccountController(
     IUserService userService,
     ICommunicationPreferenceManagement commPrefService,
+    IEnumerable<ICommunicationPreferenceLock> locks,
     IUnsubscribeService unsubscribeService,
-    ITicketService ticketQueryService,
     IClock clock,
     ILogger<GuestAccountController> logger,
     IStringLocalizer<EmailResource> localizer) : HumansControllerBase(userService)
@@ -107,12 +106,11 @@ internal sealed class GuestAccountController(
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId, CancellationToken ct)
     {
         var prefs = await commPrefService.GetPreferencesReadOnlyAsync(userId, ct);
-        var hasTicketOrder = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct))
-            .HasTicketAttendeeMatch;
+        var locked = await CommunicationPreferenceService.GetLockedCategoriesAsync(locks, userId, ct);
 
         return new CommunicationPreferencesViewModel
         {
-            Categories = CategoryPreferenceItem.ForActiveCategories(prefs, hasTicketOrder),
+            Categories = CategoryPreferenceItem.ForActiveCategories(prefs, locked),
             TicketingYear = clock.GetCurrentInstant().InUtc().Year,
         };
     }

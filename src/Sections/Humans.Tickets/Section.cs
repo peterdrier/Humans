@@ -57,6 +57,7 @@ public sealed class Section : ISection, IIssueQueueOwner
 
         services.AddScoped<TicketsEmails>();
         services.AddScoped<IEmailPreviewContributor, TicketsEmailPreviews>();
+        services.AddScoped<ICommunicationPreferenceLock, TicketingPreferenceLock>();
 
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
 

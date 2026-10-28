@@ -38,6 +38,16 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public CachingCampServiceTests()
     {
         _innerSubstitute = Substitute.For<ICampManagement, IUserMerge>();
+        _innerSubstitute.SetCampSeasonEeSlotCountAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        _innerSubstitute.ReactivateSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        _innerSubstitute.DeleteCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        _innerSubstitute.ApproveSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        _innerSubstitute.RejectSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
         _settingsService = Substitute.For<ISettingsService>();
         var repo = new CampRepository(CampsDbFactory);
         var inner = new CampService(
@@ -108,6 +118,19 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     /// flow usually approves the season next and hides it; a cancellation between the two
     /// leaves the stale result indefinitely.
     /// </summary>
+    [HumansFact]
+    public async Task SeedApproval_ThrowsWhenTheSeasonReviewIsRefused()
+    {
+        var seasonId = Guid.NewGuid();
+        _innerSubstitute.ApproveSeasonAsync(seasonId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(false, "Season not found."));
+
+        var act = () => ((ICampSeeding)_service).ApproveSeasonAsync(seasonId, TestActorId, null,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Season not found.");
+    }
+
     [HumansFact]
     public async Task SeedingOptIn_ExplicitlyUsesTheAutomatedActorPath()
     {
@@ -561,7 +584,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampRoleService.RemoveAllForMemberAsync), (t, c, se, ct) => ((ICampRoleService)t._service).RemoveAllForMemberAsync(Guid.NewGuid(), TestActorId, ct) },
     };
 
-    private static readonly UpdateCampRoleDefinitionInput RoleInput =
+    private static readonly CampRoleDefinitionInput RoleInput =
         new("Role", "role", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
     /// <summary>Role writes that changed nothing (refused assignment, missing row) leave the snapshot alone.</summary>
@@ -573,7 +596,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         _roleInner.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(AssignCampRoleOutcome.SlotCapReached);
-        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<UpdateCampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<CampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(UpdateCampRoleDefinitionResult.NotFound);
         var roles = (ICampRoleService)_service;
 
@@ -786,7 +809,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                 Arg.Any<CampSeasonData>(), Arg.Any<List<string>?>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
             .Returns(new CampWriteResult<Camp>(camp));
-        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<UpdateCampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<CampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(UpdateCampRoleDefinitionResult.Updated("Role"));
         _roleInner.DeactivateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
         _roleInner.ReactivateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);

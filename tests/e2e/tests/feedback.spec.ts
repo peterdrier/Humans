@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsFeedbackAdmin, expectBlocked } from '../helpers/auth';
+import { loginAs, expectBlocked } from '../helpers/auth';
 
 // Feedback is retired (nobodies-collective/Humans#977): no creation path, no
 // reporter-facing view, every screen AdminOnly. These tests pin the lockdown —
@@ -8,7 +8,7 @@ import { loginAsVolunteer, loginAsFeedbackAdmin, expectBlocked } from '../helper
 // since #1332; FeedbackPageRenderTests renders /Feedback as Admin in-process.
 test.describe('Feedback (27-feedback-system, retired)', () => {
   test('no feedback submission modal is reachable from the help widget', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Teams');
 
     await expect(page.locator('#feedbackWidgetModal')).toHaveCount(0);
@@ -16,12 +16,12 @@ test.describe('Feedback (27-feedback-system, retired)', () => {
   });
 
   test('boundary: volunteer cannot access /Feedback', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await expectBlocked(page, '/Feedback');
   });
 
   test('boundary: FeedbackAdmin alone cannot access /Feedback', async ({ page }) => {
-    await loginAsFeedbackAdmin(page);
+    await loginAs(page, 'feedback-admin');
     await expectBlocked(page, '/Feedback');
   });
 });
