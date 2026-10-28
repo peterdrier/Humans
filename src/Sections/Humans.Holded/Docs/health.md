@@ -50,7 +50,7 @@ who the money moved to or from.
 
 Shapes 1–4 are the mirror; 5–13 are the connector. They share a project and nothing else: the
 mirror is the connector's only in-section caller (shape 12 and part of 11 and 13), and shapes 5–10
-exist for Finance, Expenses and Store. Shape 9 is the one connector read that is deliberately not
+exist for Finance, Expenses, Store and Workgroups. Shape 9 is the one connector read that is deliberately not
 mirrored: Finance's SEPA booking reads the bank feed live over a bounded window. That is the
 section's one real seam.
 
@@ -81,8 +81,8 @@ Views/Holded/                   all read-only, all admin
 Structural facts the layout should make obvious and currently does not:
 
 - **`IHoldedClient` is a leaf, not a section service.** It has no repository, no invariant of the
-  mirror's, and never touches `HoldedDbContext`. It lives in `Contracts` because Expenses, Finance
-  and Store call it directly.
+  mirror's, and never touches `HoldedDbContext`. It lives in `Contracts` because Expenses, Finance,
+  Store and Workgroups call it directly.
 - **`Models/HoldedAdminModels.cs` must stay internal.** The moment one type escapes, the admin
   screen becomes a cross-section contract.
 
@@ -142,7 +142,7 @@ Specified-but-unbuilt. Not to be built by a doctor run; recorded because items t
 callers are shaped by them.
 
 - **The connector wants to be its own section.** It is the whole of shapes 5–13, has no table,
-  no invariant of the mirror's, and its cross-section callers (Finance, Expenses, Store) do not
+  no invariant of the mirror's, and its cross-section callers (Finance, Expenses, Store, Workgroups) do not
   care about the ledger at all. Splitting it would leave `Humans.Holded` a genuinely small
   mirror. Nothing has decided this; the cost is a project split plus a rename across every
   calling section.
