@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;
@@ -19,6 +20,8 @@ internal sealed class BudgetService(
     IClock clock,
     ILogger<BudgetService> logger) : IBudgetManagement, IUserDataContributor
 {
+    private static readonly ResourceManager Resources = new(typeof(BudgetResource));
+
     /// <summary>GDPR export JSON key.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
 
@@ -564,7 +567,7 @@ internal sealed class BudgetService(
             .ToList();
 
         if (vatCredits > 0)
-            incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
+            incomeCategories.Add(new { Name = Resources.GetString("Budget_VatCredit", CultureInfo.CurrentUICulture)!, Total = vatCredits });
 
         var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
         var incomeSlices = incomeCategories
@@ -584,13 +587,13 @@ internal sealed class BudgetService(
             .ToList();
 
         if (vatExpenses > 0)
-            expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
+            expenseCategories.Add(new { Name = Resources.GetString("Budget_VatLiability", CultureInfo.CurrentUICulture)!, Total = vatExpenses });
 
         var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
         if (profit > 0)
         {
-            expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
-            expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
+            expenseCategories.Add(new { Name = Resources.GetString("Budget_CashReserves", CultureInfo.CurrentUICulture)!, Total = profit * 0.9m });
+            expenseCategories.Add(new { Name = Resources.GetString("Budget_SpanishTaxes", CultureInfo.CurrentUICulture)!, Total = profit * 0.1m });
         }
 
         var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
@@ -623,7 +626,8 @@ internal sealed class BudgetService(
             .Where(g => !g.IsTicketingGroup)
             .Select(g => new
             {
-                Name = $"{g.Name} Buffer",
+                Name = string.Format(CultureInfo.CurrentCulture,
+                    Resources.GetString("Budget_GroupBuffer", CultureInfo.CurrentUICulture)!, g.Name),
                 Raw = g.Categories.Sum(c =>
                     c.AllocatedAmount - c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount))
             })

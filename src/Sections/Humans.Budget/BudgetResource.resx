@@ -151,4 +151,7 @@
   <data name="Budget_YearStatus_Closed" xml:space="preserve"><value>Closed</value></data>
   <data name="Budget_ExpenditureType_CapEx" xml:space="preserve"><value>Capital expenditure</value></data>
   <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Operating expenditure</value></data>
+  <data name="Budget_CashReserves" xml:space="preserve"><value>Cash Reserves (90%)</value></data>
+  <data name="Budget_SpanishTaxes" xml:space="preserve"><value>Spanish Taxes (10%)</value></data>
+  <data name="Budget_GroupBuffer" xml:space="preserve"><value>{0} Buffer</value></data>
 </root>
