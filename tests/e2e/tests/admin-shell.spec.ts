@@ -41,10 +41,8 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Consent', items: ['Legal documents'] },
       { label: 'Google', items: ['Resource sync'] },
       { label: 'Governance', items: ['Voting', 'Applications'] },
-      { label: 'Grants', items: [] },
       { label: 'Issues', items: ['Issues'] },
       { label: 'Onboarding', items: ['Review'] },
-      { label: 'Pre-approvals', items: [] },
       { label: 'Scanner', items: ['Scanner'] },
       { label: 'Surveys', items: ['Surveys'] },
       { label: 'Tickets', items: ['Tickets', 'Onsite roster'] },
@@ -101,12 +99,16 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Finance', items: ['Holded connector'] },
       { label: 'Holded', items: ['Holded'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Pre-approvals', items: [] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
   },
 ];
+
+// Groups a persona can also reach through QA data rather than its role: program managers
+// (Grants, Pre-approvals), team coordinators (Shifts) and camp leads (Barrios). Left out of the
+// exact comparison so a persona added to a program or team on QA doesn't fail the matrix.
+const DATA_DEPENDENT_GROUPS = ['Barrios', 'Grants', 'Pre-approvals', 'Shifts'];
 
 test.describe('Admin shell — sidebar visibility matrix', () => {
   for (const role of sidebarMatrix) {
@@ -120,10 +122,11 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
       const rowSelector = (label: string) => `nav.sidebar-rows a[data-group="${label}"]`;
 
       // The exact row set, so a group the role gains or loses fails here by name.
+      const roleOnly = (labels: string[]) => labels.filter(l => !DATA_DEPENDENT_GROUPS.includes(l)).sort();
       const rows = await sidebar.locator('nav.sidebar-rows a[data-group]').evaluateAll(
-        els => els.map(el => el.getAttribute('data-group')!).sort(),
+        els => els.map(el => el.getAttribute('data-group')!),
       );
-      expect(rows, `${role.name} sidebar rows`).toEqual(role.groups.map(g => g.label).sort());
+      expect(roleOnly(rows), `${role.name} sidebar rows`).toEqual(roleOnly(role.groups.map(g => g.label)));
 
       for (const group of role.groups) {
         const row = sidebar.locator(rowSelector(group.label));
