@@ -2,6 +2,8 @@
 @inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["Users_ProfileEdit_Title"].Value;
+    var languageOptionsHtml = string.Join("", LanguageCatalog.Languages.Select(lang =>
+        $"<option value=\"{lang.Key}\">{System.Net.WebUtility.HtmlEncode(LanguageCatalog.GetDisplayName(lang.Key))} ({lang.Key})</option>"));
 }
 
 <div class="row">
@@ -279,7 +281,7 @@
                                                 <option value="">@Localizer["Users_ProfileEdit_SelectLanguage"]</option>
                                                 @foreach (var lang in LanguageCatalog.Languages)
                                                 {
-                                                    <option value="@lang.Key" selected="@(Model.EditableLanguages[i].LanguageCode == lang.Key ? "selected" : null)">@lang.Value (@lang.Key)</option>
+                                                    <option value="@lang.Key" selected="@(Model.EditableLanguages[i].LanguageCode == lang.Key ? "selected" : null)">@LanguageCatalog.GetDisplayName(lang.Key) (@lang.Key)</option>
                                                 }
                                             </select>
                                         </div>
@@ -795,7 +797,7 @@
             const addButton = document.getElementById('addLanguage');
             if (!container || !addButton) return;
 
-            const languageOptions = `@Html.Raw(string.Join("", LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
+            const languageOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(languageOptionsHtml));
 
             const _langLabels = {
                 languageLabel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_ProfileEdit_LanguageLabel"].Value)),

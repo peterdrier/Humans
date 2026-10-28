@@ -9,16 +9,22 @@ internal sealed class ShiftViewService : IShiftRowView
     private readonly IShiftManagementRepository _management;
     private readonly IVolunteerTrackingRepository _tracking;
     private readonly EventCalendarResolver _calendarResolver;
+    private readonly IShiftManagement _shiftManagement;
 
     public ShiftViewService(
         IShiftManagementRepository management,
         IVolunteerTrackingRepository tracking,
-        EventCalendarResolver calendarResolver)
+        EventCalendarResolver calendarResolver,
+        IShiftManagement shiftManagement)
     {
         _management = management;
         _tracking = tracking;
         _calendarResolver = calendarResolver;
+        _shiftManagement = shiftManagement;
     }
+
+    public void EventSettingsChanged(Guid eventSettingsId) =>
+        _shiftManagement.InvalidateDashboardCaches(eventSettingsId);
 
     public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default) =>
         (await GetUsersAsync([userId], ct).ConfigureAwait(false))[userId];

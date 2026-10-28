@@ -203,11 +203,10 @@ internal sealed class CachingShiftViewService(IServiceScopeFactory scopeFactory,
     {
         InvalidateAll();
 
-        // Only ShiftManagementService, which is Scoped, knows the dashboard keys. Sync on purpose: the listener is
-        // called inline on the Settings write path.
+        // Sync on purpose: Settings needs both view and dashboard eviction before its write returns.
         using var scope = scopeFactory.CreateScope();
-        scope.ServiceProvider.GetRequiredService<IShiftManagement>()
-            .InvalidateDashboardCaches(eventSettingsId);
+        scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey)
+            .EventSettingsChanged(eventSettingsId);
     }
 
     // No startup warm-up: misses take the inner's batch path, a fixed number of bulk reads.

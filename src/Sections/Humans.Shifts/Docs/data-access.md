@@ -144,8 +144,9 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | GeneralAvailability | R | IVolunteerTrackingRepository |
 | VolunteerBuildStatuses | R | IVolunteerTrackingRepository |
 
-Implements `IShiftView`. Pure read assembler — composes user + rota
-views from two repositories. Wrapped by `CachingShiftViewService`
+Implements the section-internal `IShiftRowView`: assembles user + rota
+views from two repositories and forwards Settings change callbacks to
+`IShiftManagement.InvalidateDashboardCaches` for event-keyed dashboard eviction. Wrapped by `CachingShiftViewService`
 which caches both projection types per-entity (per-user view and
 per-rota view). Service-keyed as `"shift-view-inner"` so the decorator
 can resolve it without self-recursion.
@@ -159,7 +160,9 @@ can resolve it without self-recursion.
 
 Implements `IShiftView`; its `Invalidate*` methods are called only by Shifts' own
 services, so nothing outside the section evicts it. Resolves the inner
-Scoped `IShiftView` via `IServiceScopeFactory` to honour scope rules.
+Scoped `IShiftRowView` via `IServiceScopeFactory` to honour scope rules.
+Settings change callbacks clear both view caches and synchronously delegate to that
+same keyed inner; the decorator resolves no other service.
 Both cache instances are surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)

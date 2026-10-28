@@ -23,9 +23,9 @@ internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
 
     Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
 
-    /// <summary>With team names stitched and version snapshots populated.</summary>
+    /// <summary>With team names stitched and version snapshots populated; null selects all teams.</summary>
     Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default);
+        IReadOnlyCollection<Guid>? teamIds, CancellationToken cancellationToken = default);
 }
 
 internal sealed record ActiveRequiredLegalDocumentSnapshot(

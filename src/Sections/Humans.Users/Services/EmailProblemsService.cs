@@ -56,18 +56,8 @@ internal sealed class EmailProblemsService(
                 EmailProblemKind.GhostExternalLogins, ghostId, null, null, null, null));
         }
 
-        // Legacy AspNetIdentity.Email populated but no matching verified UserEmail row.
-        foreach (var info in allInfos)
+        foreach (var (info, legacy) in GetUnmatchedLegacyEmails(allInfos))
         {
-            if (info.IsTombstone) continue; // scrubbed sentinel email — not a real hygiene problem
-
-            var legacy = info.IdentityEmailColumn;
-            if (string.IsNullOrEmpty(legacy)) continue;
-
-            var hasMatchingVerifiedRow = info.UserEmails.Any(e =>
-                e.IsVerified && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase));
-            if (hasMatchingVerifiedRow) continue;
-
             problems.Add(new EmailProblem(
                 EmailProblemKind.LegacyIdentityEmailNotInUserEmails,
                 info.Id, null, null, legacy, null));
@@ -82,18 +72,8 @@ internal sealed class EmailProblemsService(
         var allInfos = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var backfilled = new List<(Guid, string)>();
 
-        foreach (var info in allInfos)
+        foreach (var (info, legacy) in GetUnmatchedLegacyEmails(allInfos))
         {
-            // Never resurrect a tombstone's sentinel email as a verified row.
-            if (info.IsTombstone) continue;
-
-            var legacy = info.IdentityEmailColumn;
-            if (string.IsNullOrEmpty(legacy)) continue;
-
-            if (info.UserEmails.Any(e => e.IsVerified
-                && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
-                continue;
-
             // Plain verified row; the next OAuth sign-in attaches the provider tag.
             var emailAddition = await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
             if (emailAddition.ErrorKey is not null)
@@ -107,4 +87,19 @@ internal sealed class EmailProblemsService(
 
         return backfilled;
     }
+
+    private static IEnumerable<(UserInfo User, string Email)> GetUnmatchedLegacyEmails(IEnumerable<UserInfo> users)
+    {
+        foreach (var info in users)
+        {
+            // Never present or copy a tombstone's sentinel address as a real email.
+            if (info.IsTombstone) continue;
+            var legacy = info.IdentityEmailColumn;
+            if (string.IsNullOrEmpty(legacy)) continue;
+            if (info.UserEmails.Any(e => e.IsVerified
+                && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase))) continue;
+            yield return (info, legacy);
+        }
+    }
+
 }

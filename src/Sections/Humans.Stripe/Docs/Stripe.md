@@ -98,6 +98,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - The section references no other section. That is what makes `Humans.Store → Humans.Stripe`
   and `Humans.Tickets → Humans.Stripe` acyclic and a `.Contracts` leaf unnecessary.
 
+- Store-session diagnostics mask valid human-formatted IBANs in provider-controlled fields, including whitespace or hyphens within country codes and check digits.
+
 ## Negative Access Rules
 
 - A consumer **cannot** receive a Stripe SDK object: it sees only `StripePaymentDetails`,

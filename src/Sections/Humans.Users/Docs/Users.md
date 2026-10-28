@@ -232,6 +232,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 - **No merge status beyond `Pending` / `Accepted` / `Rejected`.** Dismiss reuses `Rejected`; a request auto-closed by a completed merge becomes `Accepted` with a note (`CloseRequestsForPairAsync`). Request rows are never deleted, so GDPR export and audit history stay intact.
 
 - User-row interceptor snapshots carry the stored `State`. Warm-cache user-field refreshes reuse the canonical `UserInfo` factory, including that state, while preserving profile, email, participation, login, preference, and merge-ID slices.
+- Single and batched `UserInfo` cache misses share guarded loading: a delayed source read cannot replace a refreshed or evicted entry with its older snapshot.
 - A failed or cancelled `UserInfo` cache reload evicts the affected user and marks the cache cold before propagating the failure; the next read reloads from source rather than retaining stale fields or omitting a newly created human.
 - Contact-field and profile-language saves resolve the owner before committing, so a failed lookup cannot strand committed changes outside cache refresh.
 - Profile fields, a supplied CV and the legacy identity name share one database save and the per-user save lock; failures or overlapping submissions cannot separate the experience declaration from its history. A null CV payload leaves history unchanged.
@@ -332,7 +333,7 @@ Everything else that once sat on `User`, `Profile` and `UserEmail` has moved to 
 - **Membership Tier** (Volunteer, Colaborador, Asociado) is Governance's; Users reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (popover, human summary, admin detail, duplicate accounts). **Communication Preferences** are Email's (see `Humans.Email/Docs/Email.md`). The profile and preference columns are frozen legacy.
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
 - **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
-- **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes.
+- **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes. Profile cards, summaries and both initial and dynamically added language options display language names in the viewer's UI culture across all six supported cultures; stored ISO codes and proficiency values stay unchanged.
 - **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admins act on candidates from the unified **Account Merges** page (`/Users/Admin/AccountMerges`).
 - **Email Problems** scans every UserEmail invariant violation (multi/zero IsPrimary, unverified rows, cross-user collisions, orphan rows, ghost AspNetUserLogins). Reads source-of-truth via `IUserService.GetAllUserInfosAsync` (the `UserInfo` cache). Read-only admin surface with deep-links into the per-user `/Profile/{userId}/Admin/Emails` diagnostic for orphan/ghost remediation; the cross-user merge action shares its kernel with `IAccountMergeService.AcceptAsync`.
 - **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
@@ -643,6 +644,8 @@ Users' one-off copies are **data migrations** (`SectionDataMigrations : ISection
 |-----|--------|---------------|
 | `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration) | `LegacyIdentityEmailBackfilled` |
 
+The legacy-email scan and migration share the same eligibility selection: a non-tombstone with a nonempty legacy address and no case-insensitive matching verified `UserEmail`. Profile-less accounts remain eligible.
+
 Email Problems remediation buttons use the shared `data-confirm` handler: each click prompts once, and cancellation prevents submission.
 
 ## Actors & Roles
@@ -668,7 +671,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 - Member communication-preference saves reject redirects. An expired or revoked session rolls back the changed checkbox and shows the existing failure feedback instead of confirming a save.
 
-- People-search bio and contribution-interest excerpts preserve complete Unicode characters at both context boundaries.
+- People-search bio and contribution-interest excerpts preserve complete Unicode characters at both context boundaries. Built-in match labels (including exact user-id matches and contact-field types) use the caller’s current UI culture in all six languages; authored custom contact labels remain verbatim. Labels are composed per search, so switching UI culture does not reuse labels from an earlier query.
 - Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.
 - Profile shift-history and sent-message visibility checks carry request cancellation through coordinator checks and no-show history reads.
 - Human-picker prefills pair the resolved name with the resolved account ID, so an archived account ID is never reposted as the selected value.

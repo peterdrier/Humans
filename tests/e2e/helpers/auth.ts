@@ -2,9 +2,11 @@ import { type Page, type APIResponse, type BrowserContext, expect } from '@playw
 import fs from 'fs';
 import path from 'path';
 
+const BASE_URL = process.env.BASE_URL || 'https://humans.n.burn.camp';
 const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-dropdown-menu)';
 
-// Single source of truth: every reusable persona slug (= /dev/login/{slug} segment).
+// Every persona the suite logs in (= the /dev/login/{slug} segment). auth.setup.ts captures each
+// one's cookie once per run; loginAs() reuses it.
 //
 // No 'admin': nobodies-collective/Humans#1332 makes GET /dev/login/admin a 404 on any host
 // that isn't Development or the in-process Testing host, so the E2E suite — which runs
@@ -17,6 +19,7 @@ export const PERSONAS = [
   'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
   'early-entry-admin', 'barrio-1-lead',
 ] as const;
+export type Persona = (typeof PERSONAS)[number];
 
 // Resolve relative to THIS file (not cwd): tests run via --config from a different cwd.
 const AUTH_DIR = path.join(__dirname, '..', 'playwright', '.auth');
@@ -30,14 +33,8 @@ export const authFile = (slug: string): string => path.join(AUTH_DIR, `${slug}.j
  * user clicks "Accept".
  */
 async function seedCookieConsent(page: Page): Promise<void> {
-  const targetUrl = process.env.BASE_URL || 'https://humans.n.burn.camp';
   await page.context().addCookies([
-    {
-      name: 'cookieConsent',
-      value: 'accepted',
-      url: targetUrl,
-      sameSite: 'Lax',
-    },
+    { name: 'cookieConsent', value: 'accepted', url: BASE_URL, sameSite: 'Lax' },
   ]);
 }
 
@@ -46,13 +43,12 @@ async function seedCookieConsent(page: Page): Promise<void> {
  * Used ONLY by auth.setup.ts to mint the per-persona cookie once per run —
  * this is the suite's sole coverage of the real login + seeding path.
  */
-export async function liveLoginAndSave(context: BrowserContext, slug: string): Promise<void> {
+export async function liveLoginAndSave(context: BrowserContext, slug: Persona): Promise<void> {
   const page = await context.newPage();
   await seedCookieConsent(page);
   await page.goto(`/dev/login/${slug}`, { waitUntil: 'domcontentloaded' });
-  // 90 s instead of 60 s: QA cold-start and seed-lock contention on the first
-  // persona occasionally push the response past 60 s, causing a flaky setup failure
-  // that Playwright then heals on retry. The extra headroom eliminates the retry.
+  // 90 s: a cold target and seed-lock contention on the first persona can push the
+  // response well past the default.
   await page.waitForSelector(NAV_SELECTOR, { timeout: 90_000 });
   // A non-Active persona still logs in and still renders the nav — it just lands on
   // the account-status wall (or the onboarding name gate) instead of the app. Fail the
@@ -66,43 +62,19 @@ export async function liveLoginAndSave(context: BrowserContext, slug: string): P
 }
 
 /**
- * Attach the persona's once-captured cookies to this test's context — no
- * /dev/login, no seeding, no SeedLock contention. The saved state includes the
- * cookie-consent cookie (seeded before capture), so the banner stays suppressed.
+ * Attach the persona's once-captured cookies to this test's context and land on the
+ * authenticated home — no /dev/login, no seeding, no SeedLock contention. The saved state
+ * includes the cookie-consent cookie, so the banner stays suppressed.
+ *
+ * 'coordinator' coordinates "Dev Test Department" (slug dev-test-department) and is a member
+ * of its sub-team "Dev Test SubTeam" (dev-test-subteam), and nothing else; both teams exist
+ * on every host once the persona has logged in.
  */
-async function loginAs(page: Page, slug: string): Promise<void> {
-  const state = JSON.parse(fs.readFileSync(authFile(slug), 'utf-8'));
+export async function loginAs(page: Page, persona: Persona): Promise<void> {
+  const state = JSON.parse(fs.readFileSync(authFile(persona), 'utf-8'));
   await page.context().addCookies(state.cookies);
-  // Land on the authenticated home, matching the old /dev/login flow's redirect,
-  // so callers that don't navigate themselves (e.g. login.spec) still see the nav.
   await page.goto('/');
 }
-
-export const loginAsVolunteer = (page: Page) => loginAs(page, 'volunteer');
-export const loginAsBoard = (page: Page) => loginAs(page, 'board');
-export const loginAsConsentCoordinator = (page: Page) => loginAs(page, 'consent-coordinator');
-export const loginAsTeamsAdmin = (page: Page) => loginAs(page, 'teams-admin');
-export const loginAsCampsAdmin = (page: Page) => loginAs(page, 'camps-admin');
-export const loginAsTicketsAdmin = (page: Page) => loginAs(page, 'tickets-admin');
-export const loginAsShiftsNoInfo = (page: Page) => loginAs(page, 'shifts-no-info');
-export const loginAsShiftsAdmin = (page: Page) => loginAs(page, 'shifts-admin');
-export const loginAsUsersAdmin = (page: Page) => loginAs(page, 'users-admin');
-export const loginAsFinanceAdmin = (page: Page) => loginAs(page, 'finance-admin');
-export const loginAsFeedbackAdmin = (page: Page) => loginAs(page, 'feedback-admin');
-export const loginAsCityPlanning = (page: Page) => loginAs(page, 'city-planning');
-
-/**
- * Login as a team coordinator. This persona is coordinator of "Dev Test Department"
- * (slug: dev-test-department) and member of its sub-team "Dev Test SubTeam"
- * (slug: dev-test-subteam). NOT a coordinator of any other department.
- */
-export const loginAsCoordinator = (page: Page) => loginAs(page, 'coordinator');
-
-export const loginAsEventsAdmin = (page: Page) => loginAs(page, 'events-admin');
-export const loginAsStoreAdmin = (page: Page) => loginAs(page, 'store-admin');
-export const loginAsCantinaAdmin = (page: Page) => loginAs(page, 'cantina-admin');
-export const loginAsEarlyEntryAdmin = (page: Page) => loginAs(page, 'early-entry-admin');
-export const loginAsBarrioLead = (page: Page) => loginAs(page, 'barrio-1-lead');
 
 /**
  * Extract an antiforgery token from the current page.
@@ -136,15 +108,13 @@ export async function postWithCsrf(
 }
 
 /**
- * Assert that a URL is blocked for the current user.
- * Handles four blocking mechanisms: redirect, 404, 403/Access Denied, or Forbid page.
+ * Assert that a URL is denied to the current user: cookie auth redirects a failed policy to
+ * /Account/AccessDenied (or /Account/Login when signed out), API endpoints answer 403.
+ * A 404 is not a denial — accepting one let a deleted route pass an authorization test.
  */
 export async function expectBlocked(page: Page, url: string): Promise<void> {
-  await page.goto(url);
-  const path = new URL(url, 'https://placeholder').pathname;
-  const isRedirected = !page.url().includes(path);
-  const is404 = await page.getByText('Page Not Found').isVisible().catch(() => false);
-  const isAccessDenied = await page.getByText('Access Denied').isVisible().catch(() => false);
-  const isForbid = await page.locator('.status-code-page, [data-status="403"]').isVisible().catch(() => false);
-  expect(isRedirected || is404 || isAccessDenied || isForbid).toBeTruthy();
+  const response = await page.goto(url);
+  const landed = new URL(page.url()).pathname;
+  const denied = /^\/Account\/(AccessDenied|Login)/i.test(landed) || response?.status() === 403;
+  expect(denied, `${url} should be denied; landed on ${page.url()} with status ${response?.status()}`).toBeTruthy();
 }

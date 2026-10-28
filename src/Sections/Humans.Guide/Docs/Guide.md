@@ -69,6 +69,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
 - Guide content is `GuideFiles.All`: `README`, `GettingStarted`, `Glossary`, the sections enumerated in `GuideFiles.Sections`, plus the plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). One markdown file under `docs/guide/` per stem, in both directions. Nothing is authored in-app.
+- Link and image rewrites use parsed HTML attributes, including single-quoted and unquoted URLs. Known sibling markdown links stay in-app; other relative markdown links resolve to GitHub. External links default to a new tab, preserve authored targets and `rel` tokens, and add `noopener` for new-tab targets. Rewriting preserves fragment styles and comments.
 - Concrete app paths in inline code become links only outside existing anchors and code blocks. Explicit Markdown links keep their authored destination, including a code-formatted label; linkification never nests anchors.
 - Cache key is `guide:<FileStem>`; the cached value is the segmented `GuideDocument`, never rendered HTML — filtering happens before rendering, so rendering is per request. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
@@ -89,7 +90,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - First `GET /Guide/*` on cold cache → `GuideContentService` fetches and segments every stem in `GuideFiles.All`; entries populated with sliding TTL. Queued cold reads recheck their requested page after acquiring the refresh lock and reuse it when a preceding load succeeded, even if other files failed.
 - `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten.
 - GitHub fetch failure for a stem that is still cached → the cached copy is kept (only successful fetches overwrite) and served; warning logged. A cached stem is served without any fetch at all.
-- A render failure on the request path (Markdig, or one of `GuideHtmlPostprocessor`'s timeout-bounded regexes) → translated to `GuideContentUnavailableException`; controller returns the same 503 `Unavailable.cshtml`, never a raw 500. The cached segments are left in place.
+- A render failure on the request path (Markdig, or `GuideHtmlPostprocessor`'s timeout-bounded path regex) → translated to `GuideContentUnavailableException`; controller returns the same 503 `Unavailable.cshtml`, never a raw 500. The cached segments are left in place.
 - GitHub fetch failure for the requested stem while it is *not* cached → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`. Other stems being cached does not rescue it — it only stops `PopulateAsync` throwing first.
 
 ## Cross-Section Dependencies

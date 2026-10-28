@@ -23,9 +23,9 @@ internal interface ICampRoleService : IApplicationService
     /// </summary>
     Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default);
 
-    Task<CampAdminMutationResult> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
+    Task<CampAdminMutationResult> CreateDefinitionAsync(CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
-    Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
+    Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
     Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
@@ -82,15 +82,7 @@ internal static class CampSystemRoles
     public const int WorkshopLeadMinimumRequired = 0;
 }
 
-internal sealed record CreateCampRoleDefinitionInput(
-    string Name,
-    string Slug,
-    string? Description,
-    int SlotCount,
-    int MinimumRequired,
-    int SortOrder);
-
-internal sealed record UpdateCampRoleDefinitionInput(
+internal sealed record CampRoleDefinitionInput(
     string Name,
     string Slug,
     string? Description,

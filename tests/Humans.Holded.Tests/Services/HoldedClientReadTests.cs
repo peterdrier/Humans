@@ -192,25 +192,6 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_reads_notes_and_leaves_a_missing_or_blank_one_null()
-    {
-        // Finance's duplicate matcher compares notes when the list carries them; a null must mean
-        // "not reported", never "blank", so it cannot be read as a mismatch.
-        var json = """
-            {"items":[
-              {"id":"doc-1","document_number":"F001","date":"2026-05-14","total":"1.00","notes":"Expense report 7"},
-              {"id":"doc-2","document_number":"F002","date":"2026-05-14","total":"1.00","notes":""},
-              {"id":"doc-3","document_number":"F003","date":"2026-05-14","total":"1.00"}
-            ],"cursor":null,"has_more":false}
-            """;
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
-
-        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
-
-        docs.Select(d => d.Notes).Should().Equal("Expense report 7", null, null);
-    }
-
-    [HumansFact]
     public async Task ListPurchaseDocuments_treats_a_non_array_lines_as_no_lines()
     {
         // Holded sends an absent sub-record as an empty array and is equally free to send an
@@ -404,6 +385,36 @@ public class HoldedClientReadTests
         // HoldedTransientException via the page cap, so the type alone would pass either way.
         (await act.Should().ThrowAsync<HoldedTransientException>())
             .WithMessage("*no cursor*");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("""{"status":0,"info":"Not allowed"}""")]
+    [Xunit.InlineData("""{"items":null,"cursor":null,"has_more":false}""")]
+    public async Task ListLedgerEntries_refuses_a_200_without_an_items_array(string body)
+    {
+        // Read leniently, this is an empty page, and an empty window deletes every cached line in it.
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body)));
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedTransientException>())
+            .WithMessage("*without a valid items array*");
+    }
+
+    [HumansFact]
+    public async Task ListLedgerEntries_refuses_a_page_with_a_null_item()
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"0.00","credit":"10.00"},null],"cursor":null,"has_more":false}
+            """)));
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedPermanentException>())
+            .WithMessage("*null item*");
     }
 
     [HumansFact]

@@ -42,9 +42,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         if (notification.ResolvedAt is not null)
             return new NotificationMutationOutcome(true, NotFound: false, Forbidden: false);
 
-        notification.ResolvedAt = now;
-        notification.ResolvedByUserId = actorUserId;
-        await ctx.SaveChangesAsync(ct);
+        await PersistResolutionAsync(ctx, [notification], now, actorUserId, ct);
 
         return new NotificationMutationOutcome(true, NotFound: false, Forbidden: false);
     }
@@ -98,15 +96,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                         n.Recipients.Any(r => r.UserId == userId))
             .ToListAsync(ct);
 
-        if (notifications.Count == 0) return;
-
-        foreach (var notification in notifications)
-        {
-            notification.ResolvedAt = now;
-            notification.ResolvedByUserId = userId;
-        }
-
-        await ctx.SaveChangesAsync(ct);
+        await PersistResolutionAsync(ctx, notifications, now, userId, ct);
     }
 
     public async Task<ClickThroughOutcome> ClickThroughAsync(
@@ -140,15 +130,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                         && n.Recipients.Any(r => r.UserId == userId))
             .ToListAsync(ct);
 
-        if (notifications.Count == 0) return;
-
-        foreach (var notification in notifications)
-        {
-            notification.ResolvedAt = now;
-            notification.ResolvedByUserId = userId;
-        }
-
-        await ctx.SaveChangesAsync(ct);
+        await PersistResolutionAsync(ctx, notifications, now, userId, ct);
     }
 
     public async Task ResolveBySourceKeyAsync(
@@ -162,6 +144,13 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                         && n.ResolvedAt == null)
             .ToListAsync(ct);
 
+        await PersistResolutionAsync(ctx, notifications, now, resolvedByUserId, ct);
+    }
+
+    private static async Task PersistResolutionAsync(
+        NotificationsDbContext ctx, IReadOnlyCollection<Notification> notifications,
+        Instant now, Guid? resolvedByUserId, CancellationToken ct)
+    {
         if (notifications.Count == 0) return;
 
         foreach (var notification in notifications)

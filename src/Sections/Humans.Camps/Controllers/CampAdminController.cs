@@ -331,7 +331,7 @@ internal sealed class CampAdminController(
 
         try
         {
-            var input = new CreateCampRoleDefinitionInput(
+            var input = new CampRoleDefinitionInput(
                 form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             var result = await campRoleService.CreateDefinitionAsync(input, user.Id, ct);
             if (!result.Succeeded)
@@ -385,7 +385,7 @@ internal sealed class CampAdminController(
 
         try
         {
-            var input = new UpdateCampRoleDefinitionInput(
+            var input = new CampRoleDefinitionInput(
                 form.Name, form.Slug, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             var result = await campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
             if (result.Status == UpdateCampRoleDefinitionStatus.Updated)

@@ -6,8 +6,8 @@ using NodaTime;
 namespace Humans.Calendar.Services;
 
 /// <summary>
-/// Answered only from <see cref="CachingCalendarService"/>'s snapshot, so it is not part of
-/// <see cref="ICalendarService"/>: the keyed inner could only implement it with unreachable code.
+/// Query facade over <see cref="CachingCalendarService"/>'s snapshot. The inner
+/// <see cref="ICalendarService"/> composes occurrences from the supplied cached events.
 /// </summary>
 internal interface ICalendarQueries : IApplicationService
 {
@@ -27,6 +27,10 @@ internal interface ICalendarService : IApplicationService
     Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default);
 
     Task<CalendarEventInfo?> GetEventInfoAsync(Guid id, CancellationToken ct = default);
+
+    Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
+        IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
+        Guid? teamId = null, CancellationToken ct = default);
 
 
     // Only the result-returning forms are published: a caller catching ValidationException to fill a form field

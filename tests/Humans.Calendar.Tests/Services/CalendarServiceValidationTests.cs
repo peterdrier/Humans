@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -84,7 +85,11 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=YEARLY;BYDAY=54MO", true, true)]
     [InlineData("FREQ=YEARLY;BYDAY=-54TU", false, false)]
     [InlineData("FREQ=MONTHLY;BYDAY=MO,0SA", true, true)]
-    public async Task EventWithResultAsync_InvalidWeekdayOrdinal_is_rejected_before_persistence(
+    [InlineData("FREQ=3;COUNT=1", true, false)]
+    [InlineData("FREQ=3;COUNT=1", true, true)]
+    [InlineData("FREQ=3;COUNT=1", false, false)]
+    [InlineData("FREQ=3;COUNT=1", false, true)]
+    public async Task EventWithResultAsync_InvalidRecurrence_is_rejected_before_persistence(
         string rule, bool allDay, bool update)
     {
         var repo = Substitute.For<ICalendarRepository>();
@@ -174,7 +179,10 @@ public class CalendarServiceValidationTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    [InlineData("FREQ=DAILY")]
+    [InlineData("FREQ=SECONDLY")]
+    [InlineData("FREQ=MINUTELY")]
+    [InlineData("FREQ=HOURLY")]
+    [InlineData("freq=daily")]
     [InlineData("FREQ=MONTHLY;BYDAY=1MO")]
     [InlineData("FREQ=MONTHLY;BYDAY=-1FR")]
     [InlineData("FREQ=YEARLY;BYDAY=53WE")]
@@ -296,7 +304,7 @@ public class CalendarServiceValidationTests
         var logger = Substitute.For<ILogger<CalendarService>>();
         var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
-            Substitute.For<IAuditLogService>(), logger);
+            Substitute.For<IAuditLogService>(), logger, Substitute.For<IServiceScopeFactory>());
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -327,7 +335,7 @@ public class CalendarServiceValidationTests
         var logger = Substitute.For<ILogger<CalendarService>>();
         var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
-            Substitute.For<IAuditLogService>(), logger);
+            Substitute.For<IAuditLogService>(), logger, Substitute.For<IServiceScopeFactory>());
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -748,7 +756,8 @@ public class CalendarServiceValidationTests
             teams ?? ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
-            logger ?? NullLogger<CalendarService>.Instance);
+            logger ?? NullLogger<CalendarService>.Instance,
+            Substitute.For<IServiceScopeFactory>());
     }
 
     // The failure is swallowed, so the Critical log carrying the audit exception is the only

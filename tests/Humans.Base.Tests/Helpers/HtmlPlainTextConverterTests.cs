@@ -25,6 +25,16 @@ public sealed class HtmlPlainTextConverterTests
         "Roster\nName\tShift\nAlice\tGate (https://humans.example/shift)\n\nSee you there.")]
     [InlineData("Before<table><tr><td>First</td><td>Second</td></tr></table>After",
         "Before\n\nFirst\tSecond\n\nAfter")]
+    [InlineData("<div>First</div><div>Second</div>", "First\n\nSecond")]
+    [InlineData("Before<blockquote>Quoted</blockquote>After", "Before\n\nQuoted\n\nAfter")]
+    [InlineData("<div>Outer<div>Inner</div>Tail</div><section>Next</section>",
+        "Outer\n\nInner\n\nTail\n\nNext")]
+    [InlineData("Before<p>Paragraph</p>After", "Before\n\nParagraph\n\nAfter")]
+    [InlineData("<div><p>First</p><p>Second</p></div><div>Third</div>",
+        "First\n\nSecond\n\nThird")]
+    [InlineData("<pre>one\n    two</pre><div>After</div>", "one\n    two\n\nAfter")]
+    [InlineData("<ul><li>First</li><li>Second</li></ul>", "First\nSecond")]
+    [InlineData("<span>Inline</span><strong>text</strong>", "Inlinetext")]
     public void Convert_PreservesReadableBlocksAndActionDestinations(string html, string expected)
     {
         HtmlPlainTextConverter.Convert(html).Should().Be(expected);

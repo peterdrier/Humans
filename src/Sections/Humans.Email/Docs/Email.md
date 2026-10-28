@@ -46,7 +46,7 @@
 | RecipientName | string? | Display name, max 256 characters to preserve accepted member names |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
-| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, and table captions with tab-separated cells and one line per row; when an unsubscribe URL is supplied, both HTML and plain text include the same localized label and URL, using the message culture rather than the ambient processing culture |
+| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, block-container and quote boundaries without duplicating paragraph spacing, preformatted line breaks and indentation, and table captions with tab-separated cells and one line per row; when an unsubscribe URL is supplied, both HTML and plain text include the same localized label and URL, using the message culture rather than the ambient processing culture |
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | Bare cross-section id — no FK constraint, no nav. The recipient the sender named on `EmailMessage.UserId`, never resolved from the address; null only for the three addresses no human owns (signup magic link, the ticket team's mailbox, a camp's contact address) |
 | CampaignGrantId | Guid? | Retained, unwritten since nobodies-collective/Humans#1243: set only on rows queued before; nothing reads it. Kept until a drop is approved |
@@ -146,7 +146,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
 | `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
 | `POST /Email/PreviewMarkdown` | Any authenticated human | `EmailPreviewController.PreviewMarkdown` — renders the caller's own typed subject/Markdown through the section-internal `IEmailPreviewManagement.RenderMarkdown`, for the `_EmailComposer` "Preview" button. Separate controller from `EmailController` because that one is `AdminOnly` at the class level and every compose form (not just admin ones) needs this. |
-| `POST /Email/SendMarkdownToSelf` | Any authenticated human, rate-limited 5/min per human (`EmailComposerSelfSend` policy, registered in `Section.cs`) | `EmailPreviewController.SendMarkdownToSelf` — the `_EmailComposer` "Send to me" button. Queues one email to the caller's own address; takes no recipient. 401 when signed out, 422 when the caller has no notification address. |
+| `POST /Email/SendMarkdownToSelf` | Any authenticated human, rate-limited 5/min per human (`EmailComposerSelfSend` policy, registered in `Section.cs`) | `EmailPreviewController.SendMarkdownToSelf` — the `_EmailComposer` "Send to me" button. Queues one email to the caller's own address; takes no recipient. A post-send audit failure retains the successful response and logs Critical with the user ID; queue failures still propagate. 401 when signed out, 422 when the caller has no notification address. |
 | `GET /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCountsPreview` — backfill review step (never-overwrite preview) |
 | `POST /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCounts` — backfill confirm step |
 | `GET /Email/Outbox` | authenticated | `MemberOutboxController.MyOutbox` — own outbox history; takes no user id. Exempt from the Active-membership gate (`MembershipRequiredFilter`), like the rest of own-profile maintenance. |
@@ -173,6 +173,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 | UsersAdmin, Board, Admin (`HumanAdminBoardOrAdmin` policy) | See a human's preferences read-only on `/Users/Admin/{id}` (`CommunicationPreferencesCardViewComponent`, an `AdminDetail` user part at weight 210, admin mode only). View another human's outbox (`GET /Email/Admin/{id}/Outbox`), reached from the "Email Outbox" card on `/Users/Admin/{id}` that Email contributes there as an `AdminDetail` user part (`OutboxCardViewComponent`, shown only to a `HumanAdminBoardOrAdmin` viewer in admin mode). Everyone else gets the 403 from the controller and no card. |
 
 ## Invariants
+
+- A queued personal facilitated message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient and contact-sharing details for reconciliation; queueing failures still propagate.
 
 - Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator and legacy fallback. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
 

@@ -86,6 +86,23 @@ public class AgentControllerTests
         }
     }
 
+    [HumansFact]
+    public async Task Ask_CancelsAtViewerResolutionBeforeTurnSetup()
+    {
+        using var request = new CancellationTokenSource();
+        var agent = Substitute.For<IAgentService>();
+        var controller = MakeController(agent, enabled: false);
+        controller.HttpContext.RequestAborted = request.Token;
+        var body = new AgentAskRequest { Message = "hi" };
+        await controller.Ask(body, request.Token);
+        controller.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+
+        await request.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Ask(body, request.Token));
+        agent.DidNotReceiveWithAnyArgs().AskAsync(default!, default);
+    }
+
     [HumansTheory]
     [InlineData("Conversations")]
     [InlineData("Conversation")]

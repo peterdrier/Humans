@@ -1,4 +1,5 @@
 using Humans.Shifts.Services.Dtos;
+using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Services;
 
@@ -6,7 +7,7 @@ namespace Humans.Shifts.Services;
 /// Keeps the EF rows for the section's own readers, which navigate Shift, Rota and EventSettings.
 /// <see cref="Humans.Shifts.Contracts.IShiftView"/> projects flat summaries off the same caches.
 /// </summary>
-internal interface IShiftRowView
+internal interface IShiftRowView : IEventSettingsChangeListener
 {
     /// <summary>Empty, never null, for an unknown user or no active event.</summary>
     ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default);

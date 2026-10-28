@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsBoard, loginAsVolunteer, expectBlocked } from '../helpers/auth';
+import { loginAs, expectBlocked } from '../helpers/auth';
 
 test.describe('Board (09-administration + 18-board-voting)', () => {
   // NOTE: there is no /Board route (no BoardController; GET /Board is 404 even
@@ -8,7 +8,7 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
   // /Board and passed vacuously: the 404 page has a heading, so `h1, h2` was
   // visible, and expectBlocked() treats "Page Not Found" as blocked.
   test('US-9.1: board dashboard loads with quick actions', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     // Assert a dashboard-specific element, not just a heading: the app uses
@@ -21,7 +21,7 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
   });
 
   test('US-9.2: humans list loads at /Users/Admin', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Users/Admin');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
   });
 
   test('US-18.1: voting dashboard loads', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Governance/BoardVoting');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
@@ -37,26 +37,29 @@ test.describe('Board (09-administration + 18-board-voting)', () => {
     expect(page.url()).not.toContain('/Error');
   });
 
-  test('nav: board sees the Admin link', async ({ page }) => {
-    await loginAsBoard(page);
+  // The top nav has two gated links: Volunteer (AppAccess, i.e. an Active member) and Admin
+  // (AnyAdminRole). Which roles make up AnyAdminRole is pinned in-process by
+  // AuthorizationPolicyTests; these two tests check the link renders on the real page.
+  test('nav: board sees the Volunteer and Admin links', async ({ page }) => {
+    await loginAs(page, 'board');
     await page.goto('/');
 
-    // The layout has no "Board" nav entry — the Admin link is gated on
-    // AnyAdminRole, which board satisfies. The old assertion ("sees Board, not
-    // Admin") described a nav that no longer exists and had been failing.
-    const nav = page.locator('nav');
-    await expect(nav.getByRole('link', { name: 'Admin' })).toBeVisible();
+    const nav = page.locator('nav ul.navbar-nav').first();
+    await expect(nav.getByRole('link', { name: 'Volunteer', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Admin', exact: true })).toBeVisible();
   });
 
-  test('nav: volunteer does not see the Admin link', async ({ page }) => {
-    await loginAsVolunteer(page);
+  test('nav: volunteer sees the Volunteer link but not Admin', async ({ page }) => {
+    await loginAs(page, 'volunteer');
     await page.goto('/');
 
-    await expect(page.locator('nav').getByRole('link', { name: 'Admin' })).toHaveCount(0);
+    const nav = page.locator('nav ul.navbar-nav').first();
+    await expect(nav.getByRole('link', { name: 'Volunteer', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Admin', exact: true })).toHaveCount(0);
   });
 
   test('boundary: volunteer cannot access board voting', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     // /Board does not exist, so the old target passed on a 404 without ever
     // exercising authorization. /Governance/BoardVoting is the real BoardOrAdmin route.
     await expectBlocked(page, '/Governance/BoardVoting');

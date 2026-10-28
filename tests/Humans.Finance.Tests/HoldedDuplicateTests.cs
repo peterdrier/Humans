@@ -99,7 +99,6 @@ public class HoldedDuplicateTests
             ContactId = contactId,
             ContactName = "Catherine Morgaine Ryan",
             Description = description,
-            Notes = null,
             Date = FixedNow,
             Subtotal = total,
             Tax = 0m,

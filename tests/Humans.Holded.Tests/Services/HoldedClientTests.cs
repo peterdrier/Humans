@@ -79,7 +79,7 @@ public class HoldedClientTests
             "purchase" => () => client.CreatePurchaseDocumentAsync(new()
             { ContactId = "contact-1", ContactName = "Alice", Date = date, Lines = [] },
                 Xunit.TestContext.Current.CancellationToken),
-            "contact" => () => client.UpsertContactAsync(new() { Name = "Alice" },
+            "contact" => () => client.CreateContactAsync(new() { Name = "Alice" },
                 Xunit.TestContext.Current.CancellationToken),
             _ => () => client.CreateSalesDocumentAsync(
                 string.Equals(operation, "invoice", StringComparison.Ordinal)
@@ -268,22 +268,10 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task DeleteContactAsync_sends_DELETE_to_the_contact_url()
-    {
-        HttpRequestMessage? seen = null;
-        var client = Make(new StubHandler(req => { seen = req; return new HttpResponseMessage(HttpStatusCode.NoContent); }));
-
-        await client.DeleteContactAsync("c-1", Xunit.TestContext.Current.CancellationToken);
-
-        seen!.Method.Should().Be(HttpMethod.Delete);
-        seen.RequestUri!.PathAndQuery.Should().Be("/api/v2/contacts/c-1");
-    }
-
-    [HumansFact]
     public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin
-        // card. A 4xx on a contact upsert can echo the IBAN we just sent
+        // card. A 4xx on a contact create can echo the IBAN we just sent
         // (memory/code/iban-mask-in-logs.md). ResponseBody keeps the untouched body.
         var body = """{"status":0,"info":"invalid iban ES9121000418450200051332"}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest, body));

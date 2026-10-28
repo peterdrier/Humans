@@ -134,6 +134,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Fixed kind: every grant is `PerPersonAmount`; an explicit amount is refused on issue and
   ignored on approve and apply. Per-grant kind: an amount is required on issue; an
   application carries `RequestedAmount` and the manager may approve less.
+- Single and batch issuance share persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point.
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that
   arrives anyway is 400.
@@ -171,7 +172,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`AuditAction.Preapproval*`), related to the program, the expense report, or the
-  affected user.
+  affected user. Program kind edits before the first grant include the old and new sizing
+  rules in the program-edit audit, alongside any per-person amount change.
 - The member program page localizes its breadcrumb navigation label in all six supported cultures.
 - Member notices and emails format amounts and claim deadlines in the recipient’s culture.
   Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.

@@ -19,9 +19,9 @@ are reflected, not just appended), refreshes the chart-of-accounts cache
 every sync (a drifted account gets one targeted full-history re-pull,
 capped per run and rotated by day), and drains the connector's
 API-call log (`HoldedApiCalls`, metering against `HoldedSectionOptions.MonthlyCallBudget`).
-All cross-section reads of ledger data (Finance's creditor balances,
-Expenses' creditor status) are served from this cache — no per-page
-Holded API calls.
+All cross-section reads of ledger data go through Finance (creditor
+balances and statements, which Expenses reads in turn) and are served from
+this cache — no per-page Holded API calls.
 
 ### HoldedService (Scoped — class name `Service`, implements `IHoldedService` + `IHoldedAdminService`)
 
@@ -34,13 +34,8 @@ Repository: `IHoldedMirrorRepository`.
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
 
-No cross-section service calls — `IHoldedClient` (this section's own `Contracts/` folder,
-namespace `Humans.Holded.Contracts` — the Holded API connector; its journal-affecting
-writes are `PayPurchaseDocumentAsync` and `PostLedgerEntryAsync`, called by
-Finance when a SEPA transfer is booked, plus `ListBankMovementsAsync` /
-`ReconcileBankMovementAsync` — `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`,
-the Sabadell bank feed nobodies-collective/Humans#1185 books SEPA transfers against; the
-feed is read live, not mirrored into a table) and `IHoldedCallLog`
+No cross-section service calls — `IHoldedClient` (this section's own connector, see
+[`Holded-connector.md`](Holded-connector.md)) and `IHoldedCallLog`
 (section-internal in-process call-log buffer drained into `HoldedApiCalls`)
 are its only outbound
 dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly

@@ -17,39 +17,20 @@ namespace Humans.Workgroups.Services;
 internal sealed class CachingWorkgroupService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingWorkgroupService> logger)
-    : IWorkgroupService, IUserDataContributor, IUserMerge
+    : TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>("Workgroups.Register", warmOnStartup: false, logger),
+      IWorkgroupService, IUserDataContributor, IUserMerge
 {
     public const string InnerServiceKey = "workgroups-inner";
 
     private const byte RegisterKey = 0;
 
-    private readonly TrackedCache<byte, IReadOnlyList<WorkgroupInfo>> _cache = new(
-        "Workgroups.Register", warmOnStartup: false, logger);
+    public ICacheStats RegisterCacheStats => this;
 
-    private readonly Lock _cacheGate = new();
-    private long _cacheGeneration;
+    public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default) =>
+        (await GetAsync(RegisterKey, ct))!;
 
-    public ICacheStats RegisterCacheStats => _cache;
-
-    public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default)
-    {
-        long generation;
-        lock (_cacheGate)
-        {
-            if (_cache.TryGet(RegisterKey, out var cached))
-                return cached;
-            generation = _cacheGeneration;
-        }
-
-        var register = await WithInnerAsync(inner => inner.GetRegisterAsync(ct));
-        lock (_cacheGate)
-        {
-            // A write may have cleared the cache while this register was loading.
-            if (generation == _cacheGeneration)
-                _cache.Set(RegisterKey, register);
-        }
-        return register;
-    }
+    protected override async ValueTask<IReadOnlyList<WorkgroupInfo>?> LoadRowAsync(byte key, CancellationToken ct) =>
+        await WithInnerAsync(inner => inner.GetRegisterAsync(ct));
 
     public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
         (await GetRegisterAsync(ct)).FirstOrDefault(w => string.Equals(w.Slug, slug, StringComparison.Ordinal));
@@ -289,16 +270,7 @@ internal sealed class CachingWorkgroupService(
         }
         finally
         {
-            ClearRegisterCache();
-        }
-    }
-
-    private void ClearRegisterCache()
-    {
-        lock (_cacheGate)
-        {
-            _cacheGeneration++;
-            _cache.Clear();
+            Clear();
         }
     }
 

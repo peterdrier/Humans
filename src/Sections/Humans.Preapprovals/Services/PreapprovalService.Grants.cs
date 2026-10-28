@@ -30,14 +30,8 @@ internal sealed partial class PreapprovalService
         var grant = NewGrant(program, beneficiaryUserId, sized.Value, Trimmed(label), GrantStatus.Open, now);
         grant.DecidedByUserId = actorUserId;
         grant.DecidedAt = now;
-        await repository.AddGrantsAsync([grant], ct);
-        // The grant committed; finish its audit and notices after the browser disconnects.
-        ct = CancellationToken.None;
-
-        await AuditGrantAsync(AuditAction.PreapprovalGrantIssued, grant,
-            $"Issued {Euros(grant.MaxAmount)} under \"{program.Name}\"{LabelSuffix(grant)} to {beneficiaryUserId}; claim by {program.ClaimBy.ToInvariantDate()}.",
-            actorUserId);
-        await AnnounceIssuedAsync(ToInfo(grant, program), ct);
+        await PersistIssuedGrantsAsync(program, [grant], actorUserId,
+            issued => $"Issued {Euros(issued.MaxAmount)} under \"{program.Name}\"{LabelSuffix(issued)} to {beneficiaryUserId}; claim by {program.ClaimBy.ToInvariantDate()}.", ct);
         return new(grant.Id);
     }
 
@@ -65,18 +59,22 @@ internal sealed partial class PreapprovalService
             g.DecidedAt = now;
             return g;
         }).ToList();
-        await repository.AddGrantsAsync(grants, ct);
-        // The grant committed; finish its audit and notices after the browser disconnects.
-        ct = CancellationToken.None;
+        await PersistIssuedGrantsAsync(program, grants, actorUserId,
+            grant => $"Issued {Euros(grant.MaxAmount)} under \"{program.Name}\" to {grant.BeneficiaryUserId} (batch of {grants.Count}); claim by {program.ClaimBy.ToInvariantDate()}.", ct);
+        return new(grants.Select(g => g.Id).ToList());
+    }
 
+    private async Task PersistIssuedGrantsAsync(
+        PreapprovalProgram program, IReadOnlyList<PreapprovalGrant> grants, Guid actorUserId,
+        Func<PreapprovalGrant, string> describe, CancellationToken ct)
+    {
+        await repository.AddGrantsAsync(grants, ct);
+        // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
         {
-            await AuditGrantAsync(AuditAction.PreapprovalGrantIssued, grant,
-                $"Issued {Euros(grant.MaxAmount)} under \"{program.Name}\" to {grant.BeneficiaryUserId} (batch of {grants.Count}); claim by {program.ClaimBy.ToInvariantDate()}.",
-                actorUserId);
-            await AnnounceIssuedAsync(ToInfo(grant, program), ct);
+            await AuditGrantAsync(AuditAction.PreapprovalGrantIssued, grant, describe(grant), actorUserId);
+            await AnnounceIssuedAsync(ToInfo(grant, program), CancellationToken.None);
         }
-        return new(grants.Select(g => g.Id).ToList());
     }
 
     public async Task<PreapprovalMutationResult<Guid>> ApplyAsync(

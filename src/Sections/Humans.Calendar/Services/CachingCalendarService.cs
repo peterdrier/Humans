@@ -1,7 +1,5 @@
 using Humans.Calendar.Services.Dtos;
 using Humans.Base.Caching;
-using Humans.Calendar.Contracts;
-using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -20,71 +18,13 @@ internal sealed class CachingCalendarService(
         Instant from, Instant to, DateTimeZone viewerZone, Guid? teamId = null, CancellationToken ct = default)
     {
         await EnsureWarmedAsync(ct);
-
-        var matched = CalendarOccurrenceExpander.FilterForWindow(
-            Snapshot().Select(kvp => kvp.Value),
-            from, to, teamId, viewerZone);
-
-        var teamNames = await ResolveTeamNamesAsync(matched, ct);
-        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger, viewerZone).ToList();
-
-        // Community items carry no team, so a ?teamId filter has nothing of theirs to show.
-        if (teamId is null)
-            occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
-
-        return CalendarOccurrenceExpander.OrderForDisplay(occurrences, viewerZone);
+        return await ComposeOccurrencesAsync(Snapshot().Select(kvp => kvp.Value).ToList(), from, to, viewerZone, teamId, ct);
     }
 
-    /// <summary>
-    /// Never cached. A throwing contributor is logged and skipped so it can't take down the community calendar.
-    /// </summary>
-    private async Task<IReadOnlyList<CalendarOccurrence>> FanOutContributorItemsAsync(
-        Instant from, Instant to, CancellationToken ct)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var contributors = scope.ServiceProvider.GetServices<ICalendarFeedContributor>();
-
-        var items = new List<CalendarOccurrence>();
-        foreach (var contributor in contributors)
-        {
-            IReadOnlyList<CalendarFeedItem> contributed;
-            try
-            {
-                contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex,
-                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
-                    contributor.GetType().Name, from, to);
-                continue;
-            }
-
-            items.AddRange(contributed.Select(ToOccurrence));
-        }
-
-        return items;
-    }
-
-    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item) => new(
-        EventId: Guid.Empty,
-        OccurrenceStartUtc: item.Start,
-        OccurrenceEndUtc: item.End,
-        IsAllDay: false,
-        Title: item.Summary,
-        Description: item.Description,
-        Location: item.Location,
-        LocationUrl: null,
-        OwningTeamId: Guid.Empty,
-        OwningTeamName: string.Empty,
-        IsRecurring: false,
-        OriginalOccurrenceStartUtc: null,
-        Source: item.Source,
-        Url: item.Url);
+    public Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
+        IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
+        Guid? teamId = null, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.ComposeOccurrencesAsync(events, from, to, viewerZone, teamId, ct));
 
     public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -179,21 +119,6 @@ internal sealed class CachingCalendarService(
 
     protected override async ValueTask<CalendarEventInfo?> LoadRowAsync(Guid key, CancellationToken ct) =>
         await WithInnerAsync(inner => inner.GetEventInfoAsync(key, ct));
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
-        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
-    {
-        if (events.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        return teamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-    }
 
     // A failed save may already have committed, so the old snapshot can't be trusted: the next read reloads all rows.
     private async Task<CalendarEventMutationResult> MutateWithResultAsync(

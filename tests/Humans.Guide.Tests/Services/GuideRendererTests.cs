@@ -20,11 +20,6 @@ public class GuideRendererTests
         Options.Create(Settings),
         new GuideHtmlPostprocessor());
 
-    // These four run markdown through the real Markdig pipeline rather than calling the
-    // postprocessor directly, which is the only thing pinning that Markdig's output is still
-    // the shape the postprocessor's regexes expect — HrefPattern wants a double-quoted href,
-    // and nothing else would notice if that stopped being true.
-
     [HumansFact]
     public void Render_SiblingMdLink_RewrittenToGuideRoute()
     {

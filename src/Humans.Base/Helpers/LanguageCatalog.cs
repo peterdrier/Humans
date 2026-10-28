@@ -1,11 +1,16 @@
+using System.Globalization;
+using System.Resources;
+
 namespace Humans.Base.Helpers;
 
 /// <summary>
-/// ISO 639-1 language code catalog with English display names.
+/// ISO 639-1 language code catalog with localized display names.
 /// Contains the most commonly spoken languages relevant to the community.
 /// </summary>
 public static class LanguageCatalog
 {
+    private static readonly ResourceManager DisplayNames = new(typeof(SharedResource));
+
     /// <summary>
     /// Sorted dictionary of ISO 639-1 code to English language name.
     /// </summary>
@@ -94,13 +99,17 @@ public static class LanguageCatalog
         };
 
     /// <summary>
-    /// Gets the display name for a language code, or the code itself if not found.
+    /// Gets the display name in the viewer's UI culture, or the code itself if unknown.
     /// </summary>
     public static string GetDisplayName(string? languageCode)
     {
         if (string.IsNullOrWhiteSpace(languageCode))
             return string.Empty;
 
-        return Languages.TryGetValue(languageCode, out var name) ? name : languageCode;
+        if (!Languages.TryGetValue(languageCode, out var englishName))
+            return languageCode;
+
+        return DisplayNames.GetString("Language_" + languageCode.ToUpperInvariant(), CultureInfo.CurrentUICulture)
+            ?? englishName;
     }
 }

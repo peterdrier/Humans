@@ -11,16 +11,12 @@ namespace Humans.Shifts.Tests.Services;
 public class CachingShiftViewServiceTests
 {
     private readonly IShiftRowView _inner = Substitute.For<IShiftRowView>();
-    private readonly IShiftManagement _management = Substitute.For<IShiftManagement>();
 
     private CachingShiftViewService CreateSut()
     {
         var services = new ServiceCollection();
         services.AddKeyedScoped<IShiftRowView>(
             CachingShiftViewService.InnerServiceKey, (_, _) => _inner);
-        // The event-settings listener resolves this in a scope to evict the
-        // coordinator-dashboard aggregates, which are keyed by event.
-        services.AddScoped(_ => _management);
         var provider = services.BuildServiceProvider();
         var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
         return new CachingShiftViewService(
@@ -382,7 +378,7 @@ public class CachingShiftViewServiceTests
     }
 
     [HumansFact]
-    public void EventSettingsChanged_EvictsThatEventsDashboardCaches()
+    public void EventSettingsChanged_ForwardsChangedEventToInner()
     {
         // The coordinator-dashboard aggregates sit on a sliding TTL and classify shifts off the
         // event's Settings calendar, so a gate-date or offset edit must evict them for that
@@ -391,6 +387,6 @@ public class CachingShiftViewServiceTests
 
         (CreateSut()).EventSettingsChanged(eventSettingsId);
 
-        _management.Received(1).InvalidateDashboardCaches(eventSettingsId);
+        _inner.Received(1).EventSettingsChanged(eventSettingsId);
     }
 }

@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Holded.Contracts;
+using Humans.Holded.Services;
 
 namespace Humans.Holded.Jobs;
 
@@ -9,7 +9,7 @@ namespace Humans.Holded.Jobs;
 /// rate-limited API, even when the 02:45 doc pull runs long.
 /// </summary>
 [DisableConcurrentExecution("holded-api", 300)]
-public class HoldedSyncJob(IHoldedNightlySync sync) : IRecurringJob
+internal sealed class HoldedSyncJob(IHoldedNightlySync sync) : IRecurringJob
 {
     public Task ExecuteAsync(CancellationToken cancellationToken = default) =>
         sync.RunAsync(cancellationToken);

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;
@@ -19,6 +20,8 @@ internal sealed class BudgetService(
     IClock clock,
     ILogger<BudgetService> logger) : IBudgetManagement, IUserDataContributor
 {
+    private static readonly ResourceManager Resources = new(typeof(BudgetResource));
+
     /// <summary>GDPR export JSON key.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
 
@@ -558,50 +561,34 @@ internal sealed class BudgetService(
 
         var incomeCategories = groups
             .SelectMany(g => g.Categories)
-            .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
-            .Where(c => c.Total > 0)
-            .OrderByDescending(c => c.Total)
+            .Select(c => (c.Name, Amount: c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount)))
+            .Where(c => c.Amount > 0)
+            .OrderByDescending(c => c.Amount)
             .ToList();
 
         if (vatCredits > 0)
-            incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
+            incomeCategories.Add((Resources.GetString("Budget_VatCredit", CultureInfo.CurrentUICulture)!, vatCredits));
 
-        var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
-        var incomeSlices = incomeCategories
-            .Select(c => new BudgetSliceResult
-            {
-                Name = c.Name,
-                Amount = c.Total,
-                Percentage = totalIncomeForSlices > 0 ? c.Total / totalIncomeForSlices * 100 : 0
-            })
-            .ToList();
+        var incomeSlices = BuildSlices(incomeCategories);
 
         var expenseCategories = groups
             .SelectMany(g => g.Categories)
-            .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
-            .Where(c => c.Total > 0)
-            .OrderByDescending(c => c.Total)
+            .Select(c => (c.Name, Amount: Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount))))
+            .Where(c => c.Amount > 0)
+            .OrderByDescending(c => c.Amount)
             .ToList();
 
         if (vatExpenses > 0)
-            expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
+            expenseCategories.Add((Resources.GetString("Budget_VatLiability", CultureInfo.CurrentUICulture)!, vatExpenses));
 
         var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
         if (profit > 0)
         {
-            expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
-            expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
+            expenseCategories.Add((Resources.GetString("Budget_CashReserves", CultureInfo.CurrentUICulture)!, profit * 0.9m));
+            expenseCategories.Add((Resources.GetString("Budget_SpanishTaxes", CultureInfo.CurrentUICulture)!, profit * 0.1m));
         }
 
-        var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
-        var expenseSlices = expenseCategories
-            .Select(c => new BudgetSliceResult
-            {
-                Name = c.Name,
-                Amount = c.Total,
-                Percentage = totalExpenseForSlices > 0 ? c.Total / totalExpenseForSlices * 100 : 0
-            })
-            .ToList();
+        var expenseSlices = BuildSlices(expenseCategories);
 
         return new BudgetSummaryResult
         {
@@ -623,7 +610,8 @@ internal sealed class BudgetService(
             .Where(g => !g.IsTicketingGroup)
             .Select(g => new
             {
-                Name = $"{g.Name} Buffer",
+                Name = string.Format(CultureInfo.CurrentCulture,
+                    Resources.GetString("Budget_GroupBuffer", CultureInfo.CurrentUICulture)!, g.Name),
                 Raw = g.Categories.Sum(c =>
                     c.AllocatedAmount - c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount))
             })
@@ -631,16 +619,14 @@ internal sealed class BudgetService(
             .ToList();
 
         var allExpenseEntries = summary.ExpenseSlices
-            .Select(s => new { s.Name, s.Amount })
-            .Concat(groupBuffers.Where(b => b.Raw < 0).Select(b => new { b.Name, Amount = Math.Abs(b.Raw) }))
+            .Select(s => (s.Name, s.Amount))
+            .Concat(groupBuffers.Where(b => b.Raw < 0).Select(b => (b.Name, Amount: Math.Abs(b.Raw))))
             .ToList();
-        var totalExpense = allExpenseEntries.Sum(s => s.Amount);
 
         var allIncomeEntries = summary.IncomeSlices
-            .Select(s => new { s.Name, s.Amount })
-            .Concat(groupBuffers.Where(b => b.Raw > 0).Select(b => new { b.Name, Amount = b.Raw }))
+            .Select(s => (s.Name, s.Amount))
+            .Concat(groupBuffers.Where(b => b.Raw > 0).Select(b => (b.Name, Amount: b.Raw)))
             .ToList();
-        var totalIncome = allIncomeEntries.Sum(s => s.Amount);
 
         return new BudgetSummaryResult
         {
@@ -648,23 +634,21 @@ internal sealed class BudgetService(
             TotalExpenses = summary.TotalExpenses,
             NetBalance = summary.NetBalance,
             TotalLineItems = summary.TotalLineItems,
-            IncomeSlices = allIncomeEntries
-                .Select(s => new BudgetSliceResult
-                {
-                    Name = s.Name,
-                    Amount = s.Amount,
-                    Percentage = totalIncome > 0 ? s.Amount / totalIncome * 100 : 0
-                })
-                .ToList(),
-            ExpenseSlices = allExpenseEntries
-                .Select(s => new BudgetSliceResult
-                {
-                    Name = s.Name,
-                    Amount = s.Amount,
-                    Percentage = totalExpense > 0 ? s.Amount / totalExpense * 100 : 0
-                })
-                .ToList()
+            IncomeSlices = BuildSlices(allIncomeEntries),
+            ExpenseSlices = BuildSlices(allExpenseEntries)
         };
+    }
+
+    private static IReadOnlyList<BudgetSliceResult> BuildSlices(
+        IReadOnlyCollection<(string Name, decimal Amount)> entries)
+    {
+        var total = entries.Sum(entry => entry.Amount);
+        return entries.Select(entry => new BudgetSliceResult
+        {
+            Name = entry.Name,
+            Amount = entry.Amount,
+            Percentage = total > 0 ? entry.Amount / total * 100 : 0
+        }).ToList();
     }
 
     // The repository materializes projected weeks, so they never lag one sync behind.

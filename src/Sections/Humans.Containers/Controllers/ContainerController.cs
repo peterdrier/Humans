@@ -78,7 +78,7 @@ internal sealed class ContainerController(
     [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
     public async Task<IActionResult> Create(string slug, ContainerFormModel model, CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
+        var (userError, user) = await RequireCurrentUserAsync(ct);
         if (userError is not null) return userError;
 
         var camp = await campService.GetCampBySlugAsync(slug, ct);
@@ -104,7 +104,7 @@ internal sealed class ContainerController(
     [RequestSizeLimit(55 * 1024 * 1024)] // 5 images × 10 MB plus multipart overhead; service enforces the per-image cap
     public async Task<IActionResult> Edit(string slug, Guid id, ContainerFormModel model, CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
+        var (userError, user) = await RequireCurrentUserAsync(ct);
         if (userError is not null) return userError;
 
         var (notFound, container) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Manage, ct);
@@ -126,7 +126,7 @@ internal sealed class ContainerController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(string slug, Guid id, CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
+        var (userError, user) = await RequireCurrentUserAsync(ct);
         if (userError is not null) return userError;
 
         var (notFound, _) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Manage, ct);

@@ -15,40 +15,21 @@ namespace Humans.Rideshare.Services;
 internal sealed class CachingRideshareService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingRideshareService> logger)
-    : IRideshareService, IUserDataContributor, IUserMerge
+    : TrackedCache<int, RideshareSnapshot>("Rideshare.Snapshot", warmOnStartup: false, logger),
+      IRideshareService, IUserDataContributor, IUserMerge
 {
     public const string InnerServiceKey = "rideshare-inner";
 
-    private readonly TrackedCache<int, RideshareSnapshot> _cache = new(
-        "Rideshare.Snapshot", warmOnStartup: false, logger);
-
-    private readonly Lock _cacheGate = new();
-    private long _cacheGeneration;
-
-    public ICacheStats SnapshotCacheStats => _cache;
+    public ICacheStats SnapshotCacheStats => this;
 
     public Task<int> GetActiveYearAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetActiveYearAsync(ct));
 
-    public async Task<RideshareSnapshot> GetSnapshotAsync(int year, CancellationToken ct = default)
-    {
-        long generation;
-        lock (_cacheGate)
-        {
-            if (_cache.TryGet(year, out var cached))
-                return cached;
-            generation = _cacheGeneration;
-        }
+    public async Task<RideshareSnapshot> GetSnapshotAsync(int year, CancellationToken ct = default) =>
+        (await GetAsync(year, ct))!;
 
-        var snapshot = await WithInnerAsync(inner => inner.GetSnapshotAsync(year, ct));
-        lock (_cacheGate)
-        {
-            // A write may have cleared the cache while this snapshot was loading.
-            if (generation == _cacheGeneration)
-                _cache.Set(year, snapshot);
-        }
-        return snapshot;
-    }
+    protected override async ValueTask<RideshareSnapshot?> LoadRowAsync(int key, CancellationToken ct) =>
+        await WithInnerAsync(inner => inner.GetSnapshotAsync(key, ct));
 
     public Task<RideshareMutationResult> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateOfferAsync(userId, year, save, ct));
@@ -122,16 +103,7 @@ internal sealed class CachingRideshareService(
         }
         finally
         {
-            ClearSnapshotCache();
-        }
-    }
-
-    private void ClearSnapshotCache()
-    {
-        lock (_cacheGate)
-        {
-            _cacheGeneration++;
-            _cache.Clear();
+            Clear();
         }
     }
 

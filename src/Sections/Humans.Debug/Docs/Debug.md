@@ -41,8 +41,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Users` | GET | Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
-| `/Debug/DataMigrations` | GET | Admin | Every registered data migration: section, key, title, what it retires, pending count and every pending row |
-| `/Debug/DataMigrations/Apply` | POST | Admin | Run one migration (`key`) for the acting admin; `data-confirm`, antiforgery, audited `DataMigrationApplied` |
+| `/Debug/DataMigrations` | GET | Admin | Every registered data migration, one tab per key: section, title, what it retires, pending count and every pending row |
+| `/Debug/DataMigrations/Apply` | POST | Admin | Run one migration (`key`) for the acting admin; `data-confirm`, antiforgery, audited `DataMigrationApplied`; redirects back to that migration's tab |
 | `/api/data-migrations` | GET | Anonymous | Data-migration progress JSON — keys, pending counts, done flags; never row data |
 | `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
 | `/Debug/Sections` | GET | Admin | The DI-published section catalog: every discovered section with its tables, contracts, resx set, seams, dependencies, and which of guide page / agent doc key / issue queue it has |

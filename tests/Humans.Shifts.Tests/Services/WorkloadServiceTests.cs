@@ -29,7 +29,8 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         var view = new ShiftViewService(
             repo,
             Substitute.For<IVolunteerTrackingRepository>(),
-            NewCalendarResolver());
+            NewCalendarResolver(),
+            Substitute.For<IShiftManagement>());
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => GetTeamInfosAsync());

@@ -247,7 +247,7 @@ internal static class RankedChoiceCounter
 
         foreach (var ballot in ballots)
         {
-            var groups = BuildBordaGroups(ballot, candidates);
+            var groups = BuildPreferenceGroups(ballot, candidates);
             var position = 0;
 
             foreach (var group in groups)
@@ -301,40 +301,21 @@ internal static class RankedChoiceCounter
         RankedBallot ballot,
         IReadOnlyList<string> candidates)
     {
-        var candidateSet = candidates.ToHashSet(StringComparer.Ordinal);
         var preferences = new Dictionary<string, int>(StringComparer.Ordinal);
         var rank = 0;
-
-        foreach (var group in ballot.RankGroups)
+        foreach (var group in BuildPreferenceGroups(ballot, candidates))
         {
-            var activeGroup = group.Where(candidateSet.Contains).Distinct(StringComparer.Ordinal).ToList();
-            foreach (var candidate in activeGroup)
+            foreach (var candidate in group)
             {
-                preferences.TryAdd(candidate, rank);
+                preferences[candidate] = rank;
             }
-
-            if (activeGroup.Count > 0)
-            {
-                rank++;
-            }
-        }
-
-        var unrankedRank = rank;
-        var rejectedRank = rank + 1;
-        foreach (var candidate in candidates)
-        {
-            if (!preferences.ContainsKey(candidate))
-            {
-                preferences[candidate] = ballot.Rejected.Contains(candidate)
-                    ? rejectedRank
-                    : unrankedRank;
-            }
+            rank++;
         }
 
         return preferences;
     }
 
-    private static IReadOnlyList<IReadOnlyList<string>> BuildBordaGroups(
+    private static IReadOnlyList<IReadOnlyList<string>> BuildPreferenceGroups(
         RankedBallot ballot,
         IReadOnlyList<string> candidates)
     {

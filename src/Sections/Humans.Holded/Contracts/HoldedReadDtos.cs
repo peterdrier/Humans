@@ -16,14 +16,14 @@ public sealed record HoldedPurchaseLineDto
     public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
-/// <summary>From GET v2/ledger-entries. <c>account</c> is the literal 400000xx number, not an internal id;
+/// <summary>From GET v2/ledger-entries. <c>account</c> is the 8-digit ledger number, not a Holded id;
 /// amounts are euros. <c>date</c> arrives as DD/MM/YYYY and is parsed to Madrid midnight.</summary>
 public sealed record HoldedLedgerLineDto
 {
     public required int EntryNumber { get; init; }
     public required int Line { get; init; }
     public required Instant Date { get; init; }        // `date` (dd/MM/yyyy, Madrid midnight)
-    public required int AccountNum { get; init; }      // `account` — literal 400000xx
+    public required int AccountNum { get; init; }      // `account`
     public required decimal Debit { get; init; }
     public required decimal Credit { get; init; }
     public string? Type { get; init; }                 // e.g. "purchase", "payment"
@@ -59,9 +59,6 @@ public sealed record HoldedPurchaseDocListItemDto
     public required string ContactName { get; init; }
     /// <summary>The doc's internal description; null when blank.</summary>
     public string? Description { get; init; }
-    /// <summary>Always null in practice: the v2 list carries no <c>notes</c>; only the single GET
-    /// (<see cref="HoldedPurchaseDocumentDto.Notes"/>) does. Kept in case Holded adds it.</summary>
-    public string? Notes { get; init; }
     public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }

@@ -30,16 +30,7 @@ public static class DateTimeDisplayExtensions
     private static DateTimeZone GetCurrentUserTimeZone()
     {
         var session = _httpContextAccessor?.HttpContext?.Session;
-        if (session is null) return DateTimeZone.Utc;
-
-        var sessionTz = session.GetString(SessionKey);
-        if (!string.IsNullOrEmpty(sessionTz))
-        {
-            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(sessionTz);
-            if (zone is not null) return zone;
-        }
-
-        return DateTimeZone.Utc;
+        return session?.GetUserTimeZone() ?? DateTimeZone.Utc;
     }
 
     /// <summary>

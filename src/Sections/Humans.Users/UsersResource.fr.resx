@@ -768,4 +768,8 @@
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>Les adresses e-mail de ce compte ne peuvent plus être modifiées.</value>
   </data>
+  <data name="Users_Search_Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="Users_Search_ExactName" xml:space="preserve"><value>Nom exact</value></data>
+  <data name="Users_Search_Interests" xml:space="preserve"><value>Centres d’intérêt</value></data>
+  <data name="Users_Search_Pronouns" xml:space="preserve"><value>Pronoms</value></data>
 </root>

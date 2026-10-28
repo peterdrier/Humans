@@ -220,6 +220,16 @@ internal sealed class ConsentService(
         return await repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetUserIdChainsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        var infos = await userService.GetUserInfosAsync(userIds, ct);
+        var idsByInput = new Dictionary<Guid, IReadOnlyList<Guid>>(userIds.Count);
+        foreach (var userId in userIds)
+            idsByInput[userId] = infos.TryGetValue(userId, out var info) ? info.AllUserIds : [userId];
+        return idsByInput;
+    }
+
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default)
     {
@@ -228,12 +238,7 @@ internal sealed class ConsentService(
             return new Dictionary<Guid, IReadOnlySet<Guid>>();
 
         // An archived input resolves to the survivor, whose own consents are then included.
-        var infos = await userService.GetUserInfosAsync(userIds, ct);
-        var idsByInput = new Dictionary<Guid, IReadOnlyList<Guid>>(userIds.Count);
-        foreach (var userId in userIds)
-        {
-            idsByInput[userId] = infos.TryGetValue(userId, out var info) ? info.AllUserIds : [userId];
-        }
+        var idsByInput = await GetUserIdChainsAsync(userIds, ct);
 
         if (idsByInput.All(kv => kv.Value.Count == 1 && kv.Value[0] == kv.Key))
         {

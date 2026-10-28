@@ -83,6 +83,23 @@ public class TrackedCacheReplacementTests
         (await sut.GetAsync(1, ct)).Should().Be("fresh");
     }
 
+    [HumansFact]
+    public void BulkPublication_KeepsItsOwnRows_ButStopsAfterAnInterveningMutation()
+    {
+        var sut = new ReplacementCache(warmOnStartup: false);
+        var publish = sut.BeginLoad();
+        publish(1, "old-one");
+        publish(2, "old-two");
+        sut.Replace(1, "fresh");
+        publish(3, "stale-three");
+
+        sut.AsReadOnlyDictionary.Should().BeEquivalentTo(new Dictionary<int, string>
+        {
+            [1] = "fresh",
+            [2] = "old-two"
+        });
+    }
+
     private sealed class ReplacementCache(bool warmOnStartup)
         : TrackedCache<int, string>("replacement-test", warmOnStartup, NullLogger.Instance)
     {
@@ -91,6 +108,8 @@ public class TrackedCacheReplacementTests
         public Task<string?>? PendingLoad { get; set; }
 
         public Task WarmAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
+
+        public Action<int, string> BeginLoad() => CreateLoadPublisher();
 
         protected override Task WarmAllAsync(CancellationToken ct)
         {

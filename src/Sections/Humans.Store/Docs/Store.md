@@ -204,6 +204,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Product creation and updates share one editable-field mapping, including trimmed names, year, pricing, VAT, deposits, revenue account, ordering cutoff and active state. Identity, creation/update timestamps and price-change audit handling remain owned by their respective write paths.
 
+- Add/remove line operations forward caller cancellation to the read-only event-timezone lookup before changing line rows or writing their audit entries.
 - Catalog and order-line/counterparty result wrappers surface only known Store validation/rule feedback. Unexpected dependency failures log Error with the exception and return no diagnostic text, selecting the controller's existing localized fallback (operator-only catalog uses its existing generic error). Cancellation still propagates.
 
 - Admin summary camp totals use the selected UI culture, matching the table’s row amounts. Camp-only totals, payment calculations and invariant sort keys remain unchanged.
@@ -217,6 +218,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
+- Order projections use the current UI culture for missing-product and missing-counterparty labels in all six supported cultures; stored names remain unchanged.
+- Stripe checkout localizes its camp-order fallback label in the current UI culture when no billing name is supplied; supplied names and the merchant prefix remain unchanged.
 
 - The Store index loads selected camp and department orders in batches through existing repository reads, then shares one product-name and live-price snapshot across the cards. Camp cards retain the highest-balance legacy order, and team cards retain the first matching order; viewer scoping is unchanged.
 - Store index and editable-order catalogs sort alphabetically by product name with ordinal comparison in the controller. Catalog service reads retain the source order.
@@ -297,7 +300,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - **Teams:** `ITeamService` for department lookups (team name, department check via `ParentTeamId is null`, coordinator check via `ManagementRoleHolderUserIds`). Existing methods only.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `StoreRoles.StoreAdmin` (this section), `FinanceRoles.FinanceAdmin`, `RoleNames.Admin`.
-- **Holded connector** (`Humans.Holded`, through its `Contracts/` folder): `IHoldedClient.UpsertContactAsync`, `CreateSalesDocumentAsync` / `ApproveSalesDocumentAsync` / `GetSalesDocumentAsync` (kind-parameterized over invoice vs sales receipt), `FindSalesDocumentIdsByTagAsync` for recovering an already-created document by its order tag, and `ListAccountingAccountsAsync` for the account-number → account-id resolution. Never the connector's internals — the vendor stays swappable (`memory/architecture/vendor-connectors-own-sections.md`).
+- **Holded connector** (`Humans.Holded`, through its `Contracts/` folder): `IHoldedClient.CreateContactAsync`, `CreateSalesDocumentAsync` / `ApproveSalesDocumentAsync` / `GetSalesDocumentAsync` (kind-parameterized over invoice vs sales receipt), `FindSalesDocumentIdsByTagAsync` for recovering an already-created document by its order tag, and `ListAccountingAccountsAsync` for the account-number → account-id resolution. Never the connector's internals — the vendor stays swappable (`memory/architecture/vendor-connectors-own-sections.md`).
 - **Stripe** (`Humans.Stripe`): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for ingestion of the four `checkout.session.*` events it handles (completed, async_payment_succeeded, async_payment_failed, expired). Checkout creation is marked `[ExternalWrite]` on both the Store wrapper and Stripe contract; the Pay action keeps its order read cancellable and passes `CancellationToken.None` for the vendor write.
 - **Users:** `IUserService` resolves the current user in `StoreController` and `StoreAdminController` (via `HumansControllerBase`).
 - **Audit Log:** `IAuditLogService` for every mutation.

@@ -499,13 +499,13 @@ internal sealed class CachingCampService(
 
     // A new definition has no assignments yet, so nothing cached changes.
     Task<CampAdminMutationResult> ICampRoleService.CreateDefinitionAsync(
-        CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
+        CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
         WithInnerRolesAsync(inner => inner.CreateDefinitionAsync(input, actorUserId, ct));
 
     // Name/SortOrder are baked into the role projection of every camp that assigns the
     // definition, and (de)activation drops or restores it there: no single camp to target.
     Task<UpdateCampRoleDefinitionResult> ICampRoleService.UpdateDefinitionAsync(
-        Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
+        Guid id, CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct) =>
         MutateRolesAsync(
             inner => inner.UpdateDefinitionAsync(id, input, actorUserId, ct),
             result => result.Status == UpdateCampRoleDefinitionStatus.Updated);

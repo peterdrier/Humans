@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsTicketsAdmin, loginAsVolunteer, expectBlocked } from '../helpers/auth';
+import { loginAs, expectBlocked } from '../helpers/auth';
 
 test.describe('Tickets (24-ticket-vendor-integration)', () => {
   test('ticket admin can access dashboard', async ({ page }) => {
-    await loginAsTicketsAdmin(page);
+    await loginAs(page, 'tickets-admin');
     await page.goto('/Tickets');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
@@ -11,7 +11,7 @@ test.describe('Tickets (24-ticket-vendor-integration)', () => {
   });
 
   test('orders page loads at /Tickets/Orders', async ({ page }) => {
-    await loginAsTicketsAdmin(page);
+    await loginAs(page, 'tickets-admin');
     await page.goto('/Tickets/Orders');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
@@ -19,7 +19,7 @@ test.describe('Tickets (24-ticket-vendor-integration)', () => {
   });
 
   test('boundary: volunteer cannot access /Tickets', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await expectBlocked(page, '/Tickets');
   });
 });

@@ -584,7 +584,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampRoleService.RemoveAllForMemberAsync), (t, c, se, ct) => ((ICampRoleService)t._service).RemoveAllForMemberAsync(Guid.NewGuid(), TestActorId, ct) },
     };
 
-    private static readonly UpdateCampRoleDefinitionInput RoleInput =
+    private static readonly CampRoleDefinitionInput RoleInput =
         new("Role", "role", null, SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
     /// <summary>Role writes that changed nothing (refused assignment, missing row) leave the snapshot alone.</summary>
@@ -596,7 +596,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         _roleInner.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(AssignCampRoleOutcome.SlotCapReached);
-        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<UpdateCampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<CampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(UpdateCampRoleDefinitionResult.NotFound);
         var roles = (ICampRoleService)_service;
 
@@ -809,7 +809,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                 Arg.Any<CampSeasonData>(), Arg.Any<List<string>?>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
             .Returns(new CampWriteResult<Camp>(camp));
-        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<UpdateCampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _roleInner.UpdateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<CampRoleDefinitionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(UpdateCampRoleDefinitionResult.Updated("Role"));
         _roleInner.DeactivateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
         _roleInner.ReactivateDefinitionAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);

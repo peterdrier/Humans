@@ -437,9 +437,11 @@ internal sealed partial class LegalDocumentSyncService(
     }
 
     public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
+        IReadOnlyCollection<Guid>? teamIds, CancellationToken cancellationToken = default)
     {
-        var documents = await repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
+        var documents = teamIds is null
+            ? await repository.GetActiveRequiredDocumentsAsync(cancellationToken)
+            : await repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
         if (documents.Count == 0) return [];
 
         var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();

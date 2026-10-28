@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using System.Globalization;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
@@ -1849,8 +1850,40 @@ public sealed class BudgetServiceTests
         summary.TotalIncome.Should().Be(131m);
         summary.TotalExpenses.Should().Be(-131m);
         summary.NetBalance.Should().Be(0m);
-        summary.IncomeSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Sales", "VAT Credits"]);
+        summary.IncomeSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Sales", "VAT Credit"]);
         summary.ExpenseSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Ops", "VAT Liability"]);
+    }
+
+    [HumansTheory]
+    [InlineData("en", "VAT Credit", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)", "Main Buffer")]
+    [InlineData("es", "IVA a compensar", "IVA a pagar", "Reservas de efectivo (90%)", "Impuestos españoles (10%)", "Margen de Main")]
+    [InlineData("de", "Mehrwertsteuer-Guthaben", "Mehrwertsteuer-Verbindlichkeit", "Liquiditätsreserven (90%)", "Spanische Steuern (10%)", "Main-Puffer")]
+    [InlineData("it", "Credito IVA", "IVA a debito", "Riserve di liquidità (90%)", "Imposte spagnole (10%)", "Margine di Main")]
+    [InlineData("fr", "Crédit de TVA", "TVA due", "Réserves de trésorerie (90%)", "Impôts espagnols (10%)", "Marge de Main")]
+    [InlineData("ca", "IVA a compensar", "IVA a pagar", "Reserves d'efectiu (90%)", "Impostos espanyols (10%)", "Marge de Main")]
+    public void ComputeBudgetSummaryWithBuffers_localizes_generated_labels(
+        string culture, string credit, string liability, string reserves, string taxes, string buffer)
+    {
+        using var scope = new CultureScope(culture);
+        var groupId = Guid.NewGuid();
+        IReadOnlyList<BudgetGroupDetail> groups =
+        [
+            new(groupId, Guid.NewGuid(), "Main", 0, false, false, false, null,
+            [
+                new(Guid.NewGuid(), groupId, "Sales", 0m, ExpenditureType.OpEx, null, 0,
+                [new(Guid.NewGuid(), Guid.NewGuid(), "Income", 110m, null, null, new LocalDate(2026, 5, 1), 10, false, false, 0)]),
+                new(Guid.NewGuid(), groupId, "Ops", 0m, ExpenditureType.OpEx, null, 0,
+                [new(Guid.NewGuid(), Guid.NewGuid(), "Equipment", -12.1m, null, null, new LocalDate(2026, 5, 1), 21, false, false, 0)])
+            ])
+        ];
+
+        var summary = _service.ComputeBudgetSummaryWithBuffers(groups);
+
+        summary.IncomeSlices.Select(slice => slice.Name).Should().BeEquivalentTo(["Sales", credit]);
+        summary.ExpenseSlices.Select(slice => slice.Name).Should().BeEquivalentTo(["Ops", liability, reserves, taxes, buffer]);
+        summary.TotalIncome.Should().Be(112.1m);
+        summary.TotalExpenses.Should().Be(-22.1m);
+        summary.NetBalance.Should().Be(90m);
     }
 
     [HumansFact]

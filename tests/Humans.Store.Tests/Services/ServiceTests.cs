@@ -74,6 +74,36 @@ public class ServiceTests
         await _repo.DidNotReceive().GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Line_edit_cancellation_during_event_zone_lookup_stops_before_mutation(bool remove)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open };
+        var product = MakeProduct();
+        var lineId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns(new LineContext(lineId, order.Id, Guid.NewGuid(), OrderState.Open, product.OrderableUntil));
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await cancellation.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (EventSettingsInfo?)BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
+        });
+
+        var act = () => remove
+            ? _service.RemoveLineAsync(order.Id, lineId, Guid.NewGuid(), cancellation.Token)
+            : _service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().RemoveLineAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()
     {
