@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -25,6 +27,8 @@ internal sealed class CachingUserService(
     ILogger<CachingUserService> logger) : TrackedCache<Guid, UserInfo>("User.UserInfo", warmOnStartup: true, logger),
     IUserManagement, IUserInfoSliceRefresher, IEntityNameContributor
 {
+    private static readonly ResourceManager SearchResources = new(typeof(UsersResource));
+
     /// <summary>DI key of the undecorated inner service, so the decorator can resolve it without resolving itself.</summary>
     public const string InnerServiceKey = "user-inner";
 
@@ -241,7 +245,7 @@ internal sealed class CachingUserService(
                         ProfileId: byId.Profile.Id,
                         BurnerName: byId.BurnerName,
                         ProfilePictureUrl: byId.ProfilePictureUrl,
-                        MatchField: "User ID",
+                        MatchField: SearchResources.GetString("Users_AdminHuman_UserId", CultureInfo.CurrentUICulture),
                         MatchSnippet: null,
                         MatchedEmail: null,
                         Score: 100) // Exact id hit — top relevance (sole result, so ordering is moot).

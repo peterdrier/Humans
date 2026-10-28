@@ -399,4 +399,8 @@
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>This account is no longer available for email changes.</value>
   </data>
+  <data name="Users_Search_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Users_Search_ExactName" xml:space="preserve"><value>Exact Name</value></data>
+  <data name="Users_Search_Interests" xml:space="preserve"><value>Interests</value></data>
+  <data name="Users_Search_Pronouns" xml:space="preserve"><value>Pronouns</value></data>
 </root>

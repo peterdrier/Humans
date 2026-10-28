@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using NodaTime;
 using Xunit;
@@ -8,6 +9,29 @@ namespace Humans.Users.Tests.Services.Profiles;
 
 public class PersonSearchMatcherTests
 {
+    [HumansTheory]
+    [InlineData("en", "Name", "City", "Other", "Legal Name")]
+    [InlineData("es", "Nombre", "Ciudad", "Otro", "Nombre legal")]
+    [InlineData("de", "Name", "Stadt", "Sonstiges", "Bürgerlicher Name")]
+    [InlineData("it", "Nome", "Città", "Altro", "Nome legale")]
+    [InlineData("fr", "Nom", "Ville", "Autre", "Nom légal")]
+    [InlineData("ca", "Nom", "Ciutat", "Altres", "Nom legal")]
+    public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(
+        string culture, string name, string city, string other, string legalName)
+    {
+        using var scope = new CultureScope(culture);
+        PersonSearchMatcher.Match(Human(burnerName: "Alice"), "Alice", PersonSearchFields.Name)!
+            .Field.Should().Be(name);
+        PersonSearchMatcher.Match(Human(firstName: "Alice"), "Alice", PersonSearchFields.LegalName)!
+            .Field.Should().Be(legalName);
+        PersonSearchMatcher.Match(Human(city: "Barcelona"), "Barcelona", PersonSearchFields.Bio)!
+            .Field.Should().Be(city);
+        PersonSearchMatcher.Match(Human(contactFields: [("12345", ContactFieldVisibility.AllActiveProfiles)]),
+            "12345", PersonSearchFields.Bio)!.Field.Should().Be(other);
+        PersonSearchMatcher.Match(Human(contactLabel: "City", contactFields: [("12345", ContactFieldVisibility.AllActiveProfiles)]),
+            "12345", PersonSearchFields.Bio)!.Field.Should().Be("City");
+    }
+
     private static readonly Instant At = Instant.FromUtc(2026, 1, 1, 0, 0);
 
     /// <summary>
@@ -30,6 +54,7 @@ public class PersonSearchMatcherTests
         string? consentCheckNotes = null,
         string? rejectionReason = null,
         string? emergencyContactName = null,
+        string? contactLabel = null,
         Instant? rejectedAt = null,
         IEnumerable<(string Value, ContactFieldVisibility Vis)>? contactFields = null,
         IEnumerable<(string Email, bool Verified, ContactFieldVisibility? Vis)>? emails = null,
@@ -78,6 +103,7 @@ public class PersonSearchMatcherTests
                 ProfileId = profileId,
                 FieldType = ContactFieldType.Other,
                 Value = c.Value,
+                CustomLabel = contactLabel,
                 Visibility = c.Vis,
                 DisplayOrder = i,
                 CreatedAt = At,

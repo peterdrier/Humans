@@ -5,7 +5,7 @@ namespace Humans.Users.Contracts;
 /// <param name="ProfileId">For <c>IContactFieldService</c>, which keys by profile id.</param>
 /// <param name="BurnerName">From <c>User.BurnerName</c>.</param>
 /// <param name="ProfilePictureUrl">Custom or upstream; null when none.</param>
-/// <param name="MatchField">Which bucket matched (<c>"Name"</c>, <c>"Bio"</c>, <c>"Email"</c>, …).</param>
+/// <param name="MatchField">Display label of the matching bucket, localized in the caller’s UI culture; custom contact labels remain verbatim.</param>
 /// <param name="MatchSnippet">For long-form matches (Bio, Interests, CV); null otherwise.</param>
 /// <param name="MatchedEmail">Only with the <c>PersonSearchFields.Admin</c> bit; always null otherwise.</param>
 /// <param name="Score">Higher is better. Results come back unordered: callers sort with <c>OrderByRelevance()</c>.</param>
