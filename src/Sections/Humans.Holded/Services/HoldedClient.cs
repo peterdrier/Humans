@@ -968,7 +968,6 @@ internal sealed class HoldedClient : IHoldedClient
         ContactId = Prop(n, "contact_id")?.GetValue<string>(),
         ContactName = Prop(n, "contact_name")?.GetValue<string>() ?? "",
         Description = Prop(n, "description")?.GetValue<string>(),
-        Notes = Prop(n, "notes")?.GetValue<string>() is { Length: > 0 } notes ? notes : null,
         Date = ParseIsoDate(Prop(n, "date")?.GetValue<string>() ?? ""),
         Subtotal = ReadDecimalV2(Prop(n, "subtotal")),
         Tax = ReadDecimalV2(Prop(n, "tax")),

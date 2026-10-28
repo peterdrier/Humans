@@ -59,9 +59,6 @@ public sealed record HoldedPurchaseDocListItemDto
     public required string ContactName { get; init; }
     /// <summary>The doc's internal description; null when blank.</summary>
     public string? Description { get; init; }
-    /// <summary>Always null in practice: the v2 list carries no <c>notes</c>; only the single GET
-    /// (<see cref="HoldedPurchaseDocumentDto.Notes"/>) does. Kept in case Holded adds it.</summary>
-    public string? Notes { get; init; }
     public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
