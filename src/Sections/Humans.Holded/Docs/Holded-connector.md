@@ -49,6 +49,17 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
   Repeated cursors fail immediately instead of refetching pages until the endpoint's cap.
+  A page with no `items` array, or with a null item, fails the read too: dropping either would
+  hand reconciliation an incomplete or empty list.
+- An accepted create (purchase, contact, sales document, expense account) must answer with a
+  nonblank id. A null body, a missing or blank id, or an unreadable success body fails as
+  `HoldedPermanentException`, so a caller records failure instead of repeating an accepted
+  create or persisting an unusable reference.
+- An accepted payment or ledger posting never throws on an unreadable id: it returns an
+  `unconfirmed:` reference instead, because the money already moved. A payment's id is the one
+  new `payments_detail` entry matching amount, date and treasury on a re-read of the document
+  (the POST answers `{"status":"paid"}` alone); an entry's id comes from its own response body.
+  Callers must not repeat a posting because its reference is unconfirmed.
 - Expense-account `account_num` and chart account `id` are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
 - Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. An absent `payments_pending` reads as 0, the safe direction (refuses a booking rather than over-paying).
@@ -60,6 +71,13 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   is never returned. `ListLedgerEntriesAsync` requests `end_date = to + 1 day` so its own `to`
   parameter stays inclusive for callers; without this, same-day entries never reach the ledger
   mirror even though account balances already include them.
+- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read live, never mirrored) carry
+  no `date` key: a line's date is `booking_date` (what Holded stamps on the payment leg and ledger
+  entry at reconciliation), falling back to `value_date`. Both are ISO 8601 with an offset and the
+  date part is taken as given, never shifted to Europe/Madrid. A line with neither date is skipped
+  and logged, except a **pending outgoing** one: it could be a SEPA rival, so it fails the read with
+  a `HoldedPermanentException` whose `BankMovementId` names it, unless the caller passes that id in
+  `skipUnreadableDateIds` (Finance does so after three stuck sweep runs, peterdrier/Humans#1946).
 - Currency is EUR-only. Multi-currency is out of scope.
 - Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
   documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —
@@ -68,7 +86,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   issued document — the same reason there is no doc-update endpoint below.
 - Contacts are **create-only**: `UpsertContactAsync` POSTs and never PUTs. v2's contact PUT is a
   full replacement (every omitted field, `supplier_record` included, resets), so a partial update
-  mints the contact a second creditor account.
+  mints the contact a second creditor account ([`holded-contact-put-is-full-replacement`](../../../../memory/code/holded-contact-put-is-full-replacement.md)).
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
   Holded (reclassify the line) and the ledger mirror picks the correction up.
 - The two deletes are `DELETE /api/v2/purchases/{id}` and `DELETE /api/v2/contacts/{id}`. A 404
@@ -78,8 +96,8 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 ## Cross-Section Dependencies
 
-Inbound: Expenses (doc push via outbox), Finance (provisioning, contacts, doc sync, bank feed), Workgroups
-(expense-account list), Store (sales-document issuance + chart read), Holded section (ledger/accounts/usage). Outbound: none — the connector owns no tables and no UI.
+Inbound: the consumers listed under Architecture, plus this section's own mirror
+(ledger, accounts, usage). Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 
@@ -90,7 +108,7 @@ section's `Section.cs`.
 
 **Consumers outside the section:** Expenses (`ExpenseHoldedPublisher` and
 `ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
-`IHoldedClient.IsConfigured`), Finance (`Service`), Workgroups (`WorkgroupService`) and Store
+`IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
 (`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over

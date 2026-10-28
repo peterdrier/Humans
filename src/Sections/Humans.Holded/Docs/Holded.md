@@ -16,18 +16,12 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **Mirror, not source**: every table is reconstructible from the Holded API. Dropping and
   resyncing is always safe; no data migrations ever.
 - **Replace semantics**: a sweep is the truth for its window — cached lines the sweep no longer
-  returns are deleted (an empty fetch still deletes). Append-only caching was the phantom-row
-  bug (deleted/reclassified lines lingering forever).
-- **Account identities are required**: expense-account numbers must be present so provisioning can avoid remote collisions; chart account IDs must be nonblank so invoicing never sends an empty account reference. Incomplete pages fail at the connector.
-- **Integer identities stay exact**: fractional chart/account numbers and ledger entry/line numbers fail the connector read rather than being truncated onto a different cached identity.
-- **Rate-limit retries are read-only**: the connector retries a content-free GET once after 429; writes, including bodyless sales-approval POSTs, surface the transient failure without an automatic retry.
-- **Page rows are required**: null items fail the complete connector read as a permanent error; silently dropping malformed rows must never turn a page into an incomplete or empty reconciliation input.
-- **Cursor walks must progress**: a repeated cursor fails the complete read immediately, before refetching that page. Distinct cursors retain each endpoint's page cap; incomplete lists never reach replace-semantics reconciliation.
-- **Creation identities are required**: accepted purchase/contact/sales/expense-account creates must return a nonblank ID. Null bodies or missing/blank IDs fail permanently, so callers cannot automatically repeat an already accepted create or persist an unusable account reference. There is no contact update: `UpsertContactAsync` only POSTs, because v2's contact PUT is a full replacement that resets every omitted field, `supplier_record` included, and so mints the contact a second creditor account ([`holded-contact-put-is-full-replacement`](../../../../memory/code/holded-contact-put-is-full-replacement.md)).
-- **Write responses stay typed**: unreadable purchase-create, contact-create, sales-create and expense-account-create success bodies fail as permanent connector errors, including text-decoding failures, so callers can record failure rather than losing queue bookkeeping to a raw parsing exception. Accepted payments and ledger postings retain their operation-specific `unconfirmed:` reference when their id cannot be read — a payment's id comes from the document's `payments_detail` re-read after the POST (the POST body is `{"status":"paid"}` alone), an entry's from its own response body; callers must not repeat a posting because its reference is unconfirmed.
-- **Purchase document identity is required**: purchase documents need a nonblank ID; a missing or blank ID rejects the page. An absent `payments_pending` reads as 0 (nothing owed), which refuses a booking rather than over-paying.
-- Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
-- **Chart totals are required**: missing or null debit, credit or balance fails the account page as a permanent connector error before replacing cached totals. Explicit zero totals remain valid.
+  returns are deleted (an empty fetch still deletes). Never append-only: a line Holded deleted
+  or reclassified would linger forever.
+- **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
+  identities and amounts, complete pagination, typed write responses, the `unconfirmed:`
+  references, the 429 policy) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
+  depends on one consequence: no short or fabricated page ever reaches replace semantics.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
@@ -57,7 +51,8 @@ mirror tables runs before this baseline recreates them.
   `Holded:MonthlyCallBudget`, default 2000), calls-by-month, per-kind sync states plus
   Finance's doc-sync row (read-only; its trigger is Finance's), Sync now / Full sync buttons, and the chart of accounts with
   reconciliation flags — split by PGC group (named in English from the account number's leading
-  digit, not Holded's Spanish `group` string), accounts with no cached lines hidden by default.
+  digit, not Holded's Spanish `group` string). Archived accounts are left out; an unused
+  account (no cached line, no Holded totals and no disagreement) is hidden by default.
   Account balances read in the association's POV (below).
 - `/Holded/Accounts/{number}` — the general-ledger page for ANY account (departments, banks,
   creditors): header balances, and every cached line with its counterparty and signed Amount,
@@ -116,23 +111,15 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 - Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
 - API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
 - The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
-  `ReconcileBankMovementAsync`, `GET`/`POST /treasury/accounts/{id}/bank-movements[/…/reconcile]`)
-  is **not** mirrored here — Finance's SEPA booking flow (nobodies-collective/Humans#1185) reads
-  it live over a bounded window. A follow-up reconciliation panel is where a
-  `holded_bank_movements` mirror table would land; see
-  `2026-08-10-holded-v2-migration-design.md`.
-  A line's date is `booking_date` (what Holded stamps on the payment leg and ledger entry at
-  reconciliation), falling back to `value_date`; both are ISO 8601 with an offset and the date part
-  is taken as given, never shifted to Europe/Madrid. The feed has no `date` key — reading one is why
-  every Sabadell line failed until 2026-10-17 (peterdrier/Humans#1861, #1946).
-  A line with neither date is skipped and logged, except a **pending outgoing** one — it could
-  be a SEPA rival, so it fails the read closed with a `HoldedPermanentException` whose
-  `BankMovementId` names it, unless the caller passes that id in `skipUnreadableDateIds`
-  (peterdrier/Humans#1946: Finance does so after three stuck sweep runs).
+  `ReconcileBankMovementAsync`) is **not** mirrored here — Finance's SEPA booking flow
+  (nobodies-collective/Humans#1185) reads it live over a bounded window; its rules are in
+  [`Holded-connector.md`](Holded-connector.md). A follow-up reconciliation panel is where a
+  bank-movements mirror table would land; see `2026-08-10-holded-v2-migration-design.md`.
 - Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
   It is not free of personal data: a creditor account's name is the member's and the lines on it
   are their reimbursement history, identifiable through Finance's member→creditor binding.
-  Whether that owes an Article 15 slice is open — debt ledger, 2026-09-03.
+  Finance's GDPR contributor exports those lines (its `CreditorLedger` slice, read through
+  `IHoldedService.GetLedgerLinesAsync`) and declares their fiscal-retention basis.
 
 ## Negative Access Rules
 
@@ -147,7 +134,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row on `/Holded`).
+- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row and the creditor-binding count on `/Holded`).
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture
