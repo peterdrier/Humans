@@ -41,106 +41,118 @@ who the money moved to or from.
 | 5 | *Book a cost we owe.* | `IHoldedClient` | `CreatePurchaseDocumentAsync`, `ApprovePurchaseDocumentAsync`, `DeletePurchaseDocumentAsync`, `UploadAttachmentAsync` |
 | 6 | *Book money we are owed.* | `IHoldedClient` | `CreateSalesDocumentAsync`, `ApproveSalesDocumentAsync` |
 | 7 | *Read a document back.* | `IHoldedClient` | `GetPurchaseDocumentAsync`, `GetSalesDocumentAsync`, `ListPurchaseDocumentsAsync`, `FindSalesDocumentIdsByTagAsync` |
-| 8 | *Record that we paid.* | `IHoldedClient` | `PayPurchaseDocumentAsync` |
-| 9 | *Who is the counterparty?* | `IHoldedClient` | `UpsertContactAsync`, `GetContactAsync`, `ListContactsAsync`, `DeleteContactAsync` |
-| 10 | *What accounts exist to book to?* | `IHoldedClient` | `ListAccountingAccountsAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync` |
-| 11 | *What raw journal lines are in this window?* | `IHoldedClient` | `ListLedgerEntriesAsync` |
-| 12 | *Can we call Holded, and how much have we spent?* | `IHoldedClient` | `IsConfigured`, `GetUsageAsync` |
+| 8 | *Record that money moved.* | `IHoldedClient` | `PayPurchaseDocumentAsync`, `PostLedgerEntryAsync` |
+| 9 | *What did the bank see, and which documents does a line settle?* | `IHoldedClient` | `ListBankMovementsAsync`, `ReconcileBankMovementAsync` |
+| 10 | *Who is the counterparty?* | `IHoldedClient` | `UpsertContactAsync`, `GetContactAsync`, `ListContactsAsync`, `DeleteContactAsync` |
+| 11 | *What accounts exist to book to?* | `IHoldedClient` | `ListAccountingAccountsAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync` |
+| 12 | *What raw journal lines are in this window?* | `IHoldedClient` | `ListLedgerEntriesAsync` |
+| 13 | *Can we call Holded, and how much have we spent?* | `IHoldedClient` | `IsConfigured`, `GetUsageAsync` |
 
-Shapes 1–4 are the mirror; 5–12 are the connector. They share a project and nothing else: the
-mirror is the connector's only in-section caller (shape 11 and part of 10 and 12), and shapes 5–9
-exist solely for Finance, Expenses and Store. That is the section's one real seam.
+Shapes 1–4 are the mirror; 5–13 are the connector. They share a project and nothing else: the
+mirror is the connector's only in-section caller (shape 12 and part of 11 and 13), and shapes 5–10
+exist for Finance, Expenses and Store. Shape 9 is the one connector read that is deliberately not
+mirrored: Finance's SEPA booking reads the bank feed live over a bounded window. That is the
+section's one real seam.
 
 ## 3. Structure
 
 Written fresh from the shapes, not from today's folders.
 
 ```
-Humans.Holded.Contracts/      what other sections may hold
-  IHoldedClient + its DTOs      shapes 5–12 — the telephone
+Contracts/                    what other sections may hold
+  IHoldedClient + its DTOs      shapes 5–13 — the telephone
   IHoldedService                shapes 1–2 — the mirror's cross-section read
   IHoldedNightlySync            shape 2 — the nightly body
   HoldedApiException            the connector's transient-vs-permanent failure classification
-Humans.Holded/
-  Services/HoldedClient         one class per shape group would be smaller, but the retry,
-                                auth, metering and paging machinery is shared by all of them —
-                                so: one class, its private helpers, and nothing else
-  Services/Service              shapes 1–4: sweep, reconcile, and the read models
-  Services/HoldedCallLog        the in-process meter the client fills and Service drains
-  Services/HoldedNightlySync    shape 2's body: this section's sweep (Finance runs its own doc sync)
-  Jobs/HoldedSyncJob            the Hangfire shim over it — public only because Hangfire needs
-                                the concrete type; SectionJobs names it and the cron
-  Data/Repository               the only code that touches HoldedDbContext
-  Data/Domain/                  the mirrored tables; internal, and they stay internal
-  Controllers/HoldedController  translation only, no arithmetic
-  Views/Holded/                 all read-only, all admin
+Services/HoldedClient           one class: the retry, auth, metering and paging machinery is shared
+                                by every shape group, so splitting it buys nothing
+Services/Service                shapes 1–4: sweep, reconcile, and the read models
+Services/HoldedCallLog          the in-process meter the client fills and Service drains
+Services/HoldedNightlySync      shape 2's body: this section's sweep (Finance runs its own doc sync)
+Jobs/HoldedSyncJob              the Hangfire shim over it — public only because Hangfire needs the
+                                concrete type; SectionJobs names it and the cron
+Data/Repository                 the only code that touches HoldedDbContext
+Domain/                         the mirrored tables; internal, and they stay internal
+Controllers/HoldedController    translation only, no arithmetic
+Models/HoldedAdminModels        the admin screen's vocabulary, every type internal
+Views/Holded/                   all read-only, all admin
 ```
 
 Structural facts the layout should make obvious and currently does not:
 
-- **`IHoldedClient` is a leaf, not a section service.** It has no repository, no invariant, and
-  never touches `HoldedDbContext`. It lives in `Contracts` because Expenses, Finance and Store
-  call it directly. Nothing about the mirror is required to understand it.
-- **`Models/HoldedAdminModels.cs` is the view layer's vocabulary**, one file for shapes 3–4, and
-  every type in it is `internal`. It must stay that way: the moment one escapes, the admin screen
-  becomes a cross-section contract.
+- **`IHoldedClient` is a leaf, not a section service.** It has no repository, no invariant of the
+  mirror's, and never touches `HoldedDbContext`. It lives in `Contracts` because Expenses, Finance
+  and Store call it directly.
+- **`Models/HoldedAdminModels.cs` must stay internal.** The moment one type escapes, the admin
+  screen becomes a cross-section contract.
 
 ## 4. Invariants
 
-Stated so a violation is recognisable.
+Stated so a violation is recognisable; each names the line that enforces it.
 
 1. **A sweep is the truth for its window.** After `ReplaceLedgerWindowAsync(from, to, account,
    rows)` the mirror holds exactly `rows` inside `[from, to]` for that account — an empty `rows`
-   deletes, it does not no-op.
+   deletes, it does not no-op. `src/Sections/Humans.Holded/Data/Repository.cs:51`
 2. **The sweep window is anchored on now**, never on the newest cached line: the API filters on
    accounting date, so a late-posted entry dated into a closed month must still be reachable.
+   `src/Sections/Humans.Holded/Services/Service.cs:76`
 3. **Reads never call Holded.** `GetLedgerLinesAsync`, `GetAccountBalancesAsync`,
    `GetAccountStatementAsync` and `GetEntryAsync` touch the repository only.
+   `src/Sections/Humans.Holded/Services/Service.cs:41`
 4. **Reconciliation compares the raw `Debit − Credit` convention**, before any display flip.
    A page shows the association's POV; the ✓/✗ never does.
+   `src/Sections/Humans.Holded/Services/Service.cs:380`
 5. **One sweep at a time, and the loser is told.** The gate is non-blocking; `SyncLedgerAsync`
    returns `false` rather than queueing, and every caller reports that distinctly from success.
+   `src/Sections/Humans.Holded/Services/Service.cs:56`
 6. **A short read is never allowed to become a delete.** Pagination that cannot be completed —
    a missing `items` array, `has_more` with no cursor, the page cap — throws; it never returns
-   the prefix it has.
+   the prefix it has. `src/Sections/Humans.Holded/Services/HoldedClient.cs:907`
 7. **An identity or amount field Holded did not send fails the page.** No manufactured `0`
-   reaches the mirror. The harm differs by list, and only the first is about replace semantics:
-   on a ledger window a fabricated line overwrites a real cached one; on the chart, whose upsert
-   is additive, it *creates* a phantom account instead. The chart fails the page too rather than
-   skipping the row — settled, see Load-bearing weirdness.
+   reaches the mirror: on a ledger window a fabricated line overwrites a real cached one; on the
+   chart, whose upsert is additive, it creates a phantom account instead.
+   `src/Sections/Humans.Holded/Services/HoldedClient.cs:1109`
 8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
-   its nulls.
-9. **Nothing here is keyed by member** — no consent gate, no erasure path of this section's own.
-   That is not "no personal data": a creditor account's `Name` is the member's, and the lines on
-   it are their reimbursement history, identifiable by joining Finance's member→creditor binding.
-   Whether the mirror owes an Article 15 slice is open (debt ledger, 2026-09-03). Not a licence
-   to add member-linked columns here.
-10. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
-    tables — Finance's doc-sync row arrives through `IHoldedFinanceService`, in the controller.
+   its nulls. `src/Sections/Humans.Holded/Services/HoldedClient.cs:28`
+9. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
+   tables — Finance's doc-sync row arrives through `IHoldedFinanceService`, in the controller.
+   `src/Humans.Analyzers/Internal/Rules/DbContextOwnershipRule.cs:8`
 
 ### Negative access
 
 - `/Holded/*` is `FinanceAdmin` or `Admin` only — every route, the POSTs included, and those
   additionally require the antiforgery token.
-- Nothing outside this section may hold `IHoldedAdminService`, `HoldedAdminOverview`,
-  `HoldedAccountStatement`, `HoldedEntry` or any `Models/` type.
+  `src/Sections/Humans.Holded/Controllers/HoldedController.cs:13`
 - Nothing outside this section may hold a `HoldedDbContext`, a `HoldedLedgerLine` or any other
   `Domain/` entity; `HoldedLedgerLineInfo` is the only ledger shape that crosses the boundary.
+  `src/Sections/Humans.Holded/Domain/HoldedLedgerLine.cs:9`
+
+### Personal data
+
+Nothing here is keyed by member, so the section holds no consent gate and no erasure path of its
+own. It is not free of personal data: a creditor account's name is the member's and the lines on
+it are their reimbursement history. Finance's GDPR contributor exports those lines as its
+`CreditorLedger` slice, read through `IHoldedService.GetLedgerLinesAsync`
+(`src/Sections/Humans.Finance/Services/Service.cs:783`). Not a licence to add member-linked
+columns here.
 
 ## 5. Seams
 
 Specified-but-unbuilt. Not to be built by a doctor run; recorded because items touching these
 callers are shaped by them.
 
-- **The connector wants to be its own section.** It is the whole of shapes 5–12, has no table,
+- **The connector wants to be its own section.** It is the whole of shapes 5–13, has no table,
   no invariant of the mirror's, and its cross-section callers (Finance, Expenses, Store) do not
   care about the ledger at all. Splitting it would leave `Humans.Holded` a genuinely small
   mirror. Nothing has decided this; the cost is a project split plus a rename across every
   calling section.
 - **The `/Holded` and `/Finance/Holded` pair.** Both screens cover one integration, split by table
   ownership rather than by what an admin is trying to find out
-  (nobodies-collective/Humans#1000). They link to each other today. Whether one page with two
-  sections is the honest shape is undecided.
+  (nobodies-collective/Humans#1000). `/Finance/Holded` links to `/Holded`; `/Holded` links to
+  Finance's creditor pages but not back to `/Finance/Holded`. Whether one page with two sections
+  is the honest shape is undecided.
+- **A bank-movement mirror.** If a reconciliation panel ever needs the bank feed without a live
+  call, a bank-movements mirror table would land here (design record).
 
 ## 6. Deliberately not done
 
@@ -152,6 +164,8 @@ callers are shaped by them.
 - **No per-endpoint client interfaces.** `IHoldedClient` is wide because the Holded API is wide.
   Splitting it by shape group would multiply DI registrations and test doubles to hide a length
   no reader is confused by.
+- **No contact update.** v2's contact PUT is a full replacement that resets `supplier_record`
+  and mints a second creditor account, so the connector only creates contacts.
 - **No `Debit`/`Credit` columns on any `/Holded` page.** Peter's call: a single signed amount in
   the association's POV is the thing a reader can act on. Bookkeeping sign lives in the data and
   in reconciliation, never on screen.
