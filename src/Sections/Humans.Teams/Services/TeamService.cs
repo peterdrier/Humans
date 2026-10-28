@@ -108,14 +108,8 @@ internal sealed class TeamService(
 
         if (parentTeamId.HasValue)
         {
-            var parent = await repo.GetByIdAsync(parentTeamId.Value, cancellationToken);
-            if (parent is null) return new(ErrorMessage: $"Parent team {parentTeamId.Value} not found");
-
-            if (parent.IsSystemTeam)
-                return new(ErrorMessage: "System teams cannot be parents");
-
-            if (parent.ParentTeamId.HasValue)
-                return new(ErrorMessage: "Cannot nest more than one level — the parent team already has a parent");
+            if (await ValidateParentAsync(parentTeamId.Value, cancellationToken) is { } parentError)
+                return new(ErrorMessage: parentError);
         }
 
         for (var attempt = 0; attempt < 10; attempt++)
@@ -227,6 +221,16 @@ internal sealed class TeamService(
             .ToList();
     }
 
+    private async Task<string?> ValidateParentAsync(Guid parentTeamId, CancellationToken ct)
+    {
+        var parent = await repo.GetByIdAsync(parentTeamId, ct);
+        if (parent is null) return $"Parent team {parentTeamId} not found";
+        if (parent.IsSystemTeam) return "System teams cannot be parents";
+        return parent.ParentTeamId.HasValue
+            ? "Cannot nest more than one level — the parent team already has a parent"
+            : null;
+    }
+
     public async Task<TeamUpdateResult> UpdateTeamAsync(
         Guid teamId,
         string name,
@@ -264,14 +268,8 @@ internal sealed class TeamService(
             if (hasChildren)
                 return new(ErrorMessage: "This team has sub-teams and cannot become a child of another team");
 
-            var parent = await repo.GetByIdAsync(parentTeamId.Value, cancellationToken);
-            if (parent is null) return new(ErrorMessage: $"Parent team {parentTeamId.Value} not found");
-
-            if (parent.IsSystemTeam)
-                return new(ErrorMessage: "System teams cannot be parents");
-
-            if (parent.ParentTeamId.HasValue)
-                return new(ErrorMessage: "Cannot nest more than one level — the parent team already has a parent");
+            if (await ValidateParentAsync(parentTeamId.Value, cancellationToken) is { } parentError)
+                return new(ErrorMessage: parentError);
         }
 
         if (!string.IsNullOrWhiteSpace(customSlug))
