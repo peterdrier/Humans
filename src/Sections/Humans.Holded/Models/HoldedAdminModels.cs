@@ -8,8 +8,8 @@ namespace Humans.Holded.Models;
 internal sealed record HoldedOverviewVm(
     HoldedAdminOverview Overview, HoldedDocSyncInfo DocSync, int? CreditorBindings);
 
-/// <summary>The cache plus one live call (GET /usage). The controller joins Finance's parts on, since this section
-/// never references Finance.</summary>
+/// <summary>The cache plus one live call (GET /usage). The controller joins Finance's parts on: this service reads
+/// nothing of Finance's.</summary>
 internal sealed record HoldedAdminOverview(
     bool ApiReachable,
     HoldedUsageDto? Usage,

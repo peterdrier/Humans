@@ -66,7 +66,6 @@ public interface IHoldedClient
     Task<string> CreateSalesDocumentAsync(
         HoldedSalesDocumentKind kind, HoldedSalesDocumentInput input, CancellationToken ct = default);
 
-    /// <summary>Only an approved doc books revenue and gets a number.</summary>
     Task ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
