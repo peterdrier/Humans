@@ -85,7 +85,7 @@ internal sealed partial class PreapprovalService
         Change(changes, "accepts applications", program.AcceptsApplications, save.AcceptsApplications, v => program.AcceptsApplications = v);
         Change(changes, "claim by", program.ClaimBy, save.ClaimBy, v => program.ClaimBy = v, d => d.ToInvariantDate());
         Change(changes, "status", program.Status, save.Status, v => program.Status = v);
-        program.Kind = save.Kind;
+        Change(changes, "kind", program.Kind, save.Kind, v => program.Kind = v);
         program.UpdatedAt = now;
         await repository.UpdateProgramAsync(program, ct);
         // The program committed; finish manager changes, audit and deadline notices independently of the browser.
