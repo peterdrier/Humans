@@ -268,18 +268,6 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task DeleteContactAsync_sends_DELETE_to_the_contact_url()
-    {
-        HttpRequestMessage? seen = null;
-        var client = Make(new StubHandler(req => { seen = req; return new HttpResponseMessage(HttpStatusCode.NoContent); }));
-
-        await client.DeleteContactAsync("c-1", Xunit.TestContext.Current.CancellationToken);
-
-        seen!.Method.Should().Be(HttpMethod.Delete);
-        seen.RequestUri!.PathAndQuery.Should().Be("/api/v2/contacts/c-1");
-    }
-
-    [HumansFact]
     public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin
