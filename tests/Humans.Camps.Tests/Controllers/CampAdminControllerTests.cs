@@ -402,9 +402,9 @@ public class CampAdminControllerTests
         var actorId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
-        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+        roles.CreateDefinitionAsync(Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
             .Returns(new CampAdminMutationResult(true));
-        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
             .Returns(new UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStatus.Updated, "Updated"));
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId);
         var registrations = new ServiceCollection().AddLogging();
@@ -449,10 +449,10 @@ public class CampAdminControllerTests
         {
             result.Should().BeOfType<RedirectToActionResult>();
             if (edit)
-                await roles.Received(1).UpdateDefinitionAsync(roleId, Arg.Is<UpdateCampRoleDefinitionInput>(
+                await roles.Received(1).UpdateDefinitionAsync(roleId, Arg.Is<CampRoleDefinitionInput>(
                     input => input.SlotCount == 3 && input.MinimumRequired == 0 && input.SortOrder == 0), actorId, ct);
             else
-                await roles.Received(1).CreateDefinitionAsync(Arg.Is<CreateCampRoleDefinitionInput>(
+                await roles.Received(1).CreateDefinitionAsync(Arg.Is<CampRoleDefinitionInput>(
                     input => input.SlotCount == 3 && input.MinimumRequired == 0 && input.SortOrder == 0), actorId, ct);
         }
     }
@@ -469,9 +469,9 @@ public class CampAdminControllerTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
         var reason = edit ? "Camp role 'Worker' is a system role; only SlotCount and Description can be changed."
             : "A camp role definition with slug 'worker' already exists.";
-        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+        roles.CreateDefinitionAsync(Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
             .Returns(new CampAdminMutationResult(false, reason));
-        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
             .Returns(UpdateCampRoleDefinitionResult.Rejected(reason));
         var logger = Substitute.For<ILogger<CampAdminController>>();
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
@@ -500,8 +500,8 @@ public class CampAdminControllerTests
         var roleId = Guid.NewGuid();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
         var failure = new InvalidOperationException("Database connection is unavailable.");
-        roles.CreateDefinitionAsync(Arg.Any<CreateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
-        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        roles.CreateDefinitionAsync(Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
         var logger = Substitute.For<ILogger<CampAdminController>>();
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);
         var form = new CampRoleDefinitionFormViewModel { Name = "Worker", Slug = "worker" };
@@ -525,7 +525,7 @@ public class CampAdminControllerTests
         var actorId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(MakeUser(actorId)));
-        roles.UpdateDefinitionAsync(roleId, Arg.Any<UpdateCampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+        roles.UpdateDefinitionAsync(roleId, Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
             .Returns(new UpdateCampRoleDefinitionResult((UpdateCampRoleDefinitionStatus)99, string.Empty));
         var logger = Substitute.For<ILogger<CampAdminController>>();
         var controller = CreateController(Substitute.For<ICampManagement>(), roles, users, actorId, logger);

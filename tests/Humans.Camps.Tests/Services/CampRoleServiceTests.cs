@@ -84,7 +84,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     [HumansFact]
     public async Task CreateDefinition_persists_and_audits()
     {
-        var input = new CreateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "Sound Lead", Slug: "sound-lead", Description: "Manages sound system",
             SlotCount: 1, MinimumRequired: 0, SortOrder: 60);
 
@@ -111,7 +111,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     {
         await SeedDefinitionAsync();
 
-        var input = new CreateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "Consent Lead", Slug: "consent-lead-2", Description: null,
             SlotCount: 1, MinimumRequired: 1, SortOrder: 99);
 
@@ -126,7 +126,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     [HumansFact]
     public async Task CreateDefinition_rejects_minimumRequired_above_slotCount()
     {
-        var input = new CreateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "Bad Role", Slug: "bad-role", Description: null,
             SlotCount: 1, MinimumRequired: 2, SortOrder: 99);
 
@@ -146,9 +146,9 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var ct = Xunit.TestContext.Current.CancellationToken;
         var definition = await SeedDefinitionAsync();
         var create = await _service.CreateDefinitionAsync(
-            new CreateCampRoleDefinitionInput("Worker", slug, null, 1, 0, 0), _actorUserId, ct);
+            new CampRoleDefinitionInput("Worker", slug, null, 1, 0, 0), _actorUserId, ct);
         var update = await _service.UpdateDefinitionAsync(definition.Id,
-            new UpdateCampRoleDefinitionInput("Worker", slug, null, 1, 0, 0), _actorUserId, ct);
+            new CampRoleDefinitionInput("Worker", slug, null, 1, 0, 0), _actorUserId, ct);
 
         create.Succeeded.Should().BeFalse();
         create.ErrorMessage.Should().NotBeNullOrEmpty();
@@ -175,7 +175,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     {
         var def = await SeedDefinitionAsync("Old Name", slotCount: 1);
 
-        var input = new UpdateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "New Name", Slug: "new-name", Description: "Updated description",
             SlotCount: 2, MinimumRequired: 0, SortOrder: 99);
 
@@ -202,7 +202,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         await SeedDefinitionAsync();
         var def2 = await SeedDefinitionAsync("LNT");
 
-        var input = new UpdateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "Consent Lead", Slug: "consent-lead", Description: null,
             SlotCount: def2.SlotCount, MinimumRequired: def2.MinimumRequired,
             SortOrder: def2.SortOrder);
@@ -217,7 +217,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     [HumansFact]
     public async Task UpdateDefinition_returns_false_when_not_found()
     {
-        var input = new UpdateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "Anything", Slug: "anything", Description: null,
             SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
@@ -906,7 +906,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         CampsDb.CampRoleDefinitions.Add(def);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var input = new UpdateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: "Renamed", Slug: CampSystemRoles.CampLeadSlug, Description: null,
             SlotCount: def.SlotCount, MinimumRequired: def.MinimumRequired,
             SortOrder: def.SortOrder);
@@ -936,7 +936,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         CampsDb.CampRoleDefinitions.Add(def);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var input = new UpdateCampRoleDefinitionInput(
+        var input = new CampRoleDefinitionInput(
             Name: def.Name, Slug: def.Slug, Description: "new description",
             SlotCount: 5, MinimumRequired: def.MinimumRequired,
             SortOrder: def.SortOrder);

@@ -42,7 +42,7 @@ internal sealed class CampRoleService(
         return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
     }
 
-    public async Task<CampAdminMutationResult> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
+    public async Task<CampAdminMutationResult> CreateDefinitionAsync(CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         if (ValidateDefinitionInput(input.SlotCount, input.MinimumRequired, input.Slug) is { } error)
             return new(false, error);
@@ -58,15 +58,11 @@ internal sealed class CampRoleService(
         var def = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
-            Name = input.Name,
-            Slug = slug,
-            Description = input.Description,
-            SlotCount = input.SlotCount,
-            MinimumRequired = input.MinimumRequired,
-            SortOrder = input.SortOrder,
             CreatedAt = now,
             UpdatedAt = now,
         };
+
+        ApplyDefinitionFields(def, input, slug);
 
         await repo.AddDefinitionAsync(def, ct); // SaveChangesAsync first
         await auditLog.LogAsync(
@@ -77,6 +73,16 @@ internal sealed class CampRoleService(
             actorUserId);
 
         return new(true);
+    }
+
+    private static void ApplyDefinitionFields(CampRoleDefinition definition, CampRoleDefinitionInput input, string slug)
+    {
+        definition.Name = input.Name;
+        definition.Slug = slug;
+        definition.Description = input.Description;
+        definition.SlotCount = input.SlotCount;
+        definition.MinimumRequired = input.MinimumRequired;
+        definition.SortOrder = input.SortOrder;
     }
 
     private static string? ValidateDefinitionInput(int slotCount, int minimumRequired, string slug)
@@ -107,7 +113,7 @@ internal sealed class CampRoleService(
             definition.DeactivatedAt,
             definition.SpecialRole);
 
-    public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
+    public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         if (ValidateDefinitionInput(input.SlotCount, input.MinimumRequired, input.Slug) is { } error)
             return UpdateCampRoleDefinitionResult.Rejected(error);
@@ -139,12 +145,7 @@ internal sealed class CampRoleService(
         var now = clock.GetCurrentInstant();
         var updated = await repo.UpdateDefinitionAsync(id, def =>
         {
-            def.Name = input.Name;
-            def.Slug = slug;
-            def.Description = input.Description;
-            def.SlotCount = input.SlotCount;
-            def.MinimumRequired = input.MinimumRequired;
-            def.SortOrder = input.SortOrder;
+            ApplyDefinitionFields(def, input, slug);
             def.UpdatedAt = now;
         }, ct);
 
@@ -616,7 +617,7 @@ internal sealed class CampRoleService(
         int sortOrder, Guid actorUserId, CancellationToken cancellationToken)
     {
         var result = await CreateDefinitionAsync(
-            new CreateCampRoleDefinitionInput(name, slug, description, slotCount, minimumRequired, sortOrder),
+            new CampRoleDefinitionInput(name, slug, description, slotCount, minimumRequired, sortOrder),
             actorUserId, cancellationToken);
         if (!result.Succeeded) throw new InvalidOperationException(result.ErrorMessage);
     }

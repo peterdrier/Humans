@@ -4,7 +4,7 @@ namespace Humans.Development.Services;
 
 internal sealed class DevelopmentCampRoleSeeder(ICampRoleSeeding campRoleSeeding)
 {
-    // A local shape because Camps' CreateCampRoleDefinitionInput is internal; the leaf takes
+    // A local shape because Camps' CampRoleDefinitionInput is internal; the leaf takes
     // the fields.
     private sealed record Seed(string Name, string Slug, int SlotCount, int MinimumRequired, int SortOrder);
 
