@@ -4,7 +4,7 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -19,6 +19,7 @@ public class CampContactServiceTests : IDisposable
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IMemoryCache _cache;
     private readonly CampContactService _service;
+    private readonly ILogger<CampContactService> _logger = Substitute.For<ILogger<CampContactService>>();
 
     private readonly Guid _campId = Guid.NewGuid();
     private readonly Guid _senderId = Guid.NewGuid();
@@ -38,7 +39,7 @@ public class CampContactServiceTests : IDisposable
             _notificationEmitter,
             _users,
             _cache,
-            NullLogger<CampContactService>.Instance);
+            _logger);
     }
 
     public void Dispose()
@@ -211,6 +212,32 @@ public class CampContactServiceTests : IDisposable
 
         result1.Success.Should().BeTrue();
         result2.Success.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Contact_audit_failure_after_queueing_keeps_success_and_rate_limit()
+    {
+        var failure = new InvalidOperationException("Audit unavailable");
+        _auditLogService.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(failure);
+        var leadId = Guid.NewGuid();
+        var send = () => _service.SendFacilitatedMessageAsync(
+            _campId, "camp@example.com", "Camp", _senderId,
+            "Alice", "alice@example.com", "Hello", false, [leadId], "/Barrios/camp");
+
+        var result = await send();
+        var retry = await send();
+
+        result.Success.Should().BeTrue();
+        retry.RateLimited.Should().BeTrue();
+        await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        _notificationEmitter.ReceivedCalls().Should().ContainSingle();
+        var log = _logger.ReceivedCalls()
+            .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .GetArguments();
+        log[0].Should().Be(LogLevel.Critical);
+        log[3].Should().BeSameAs(failure);
+        log[2]!.ToString().Should().Contain(_campId.ToString()).And.Contain(_senderId.ToString());
     }
 
     [HumansFact]
