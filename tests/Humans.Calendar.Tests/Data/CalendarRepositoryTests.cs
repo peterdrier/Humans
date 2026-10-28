@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -311,7 +312,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     private CalendarService CreateService() => new(_repo, Humans.Calendar.Tests.Services.CalendarServiceValidationTests.ActiveTeams(),
         new FakeClock(Instant.FromUtc(2026, 3, 1, 0, 0)),
         Substitute.For<IAuditLogService>(),
-        NullLogger<CalendarService>.Instance);
+        NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());
 
     public void Dispose()
     {

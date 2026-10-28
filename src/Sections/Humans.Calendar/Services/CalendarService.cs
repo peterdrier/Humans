@@ -1,3 +1,5 @@
+using Humans.Calendar.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Calendar.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -12,21 +14,104 @@ using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 namespace Humans.Calendar.Services;
 
 /// <summary>
-/// The keyed inner behind <see cref="CachingCalendarService"/>. Window and detail reads are the decorator's alone,
-/// answered from its snapshot.
+/// The keyed inner behind <see cref="CachingCalendarService"/>. Owns persistence and occurrence composition;
+/// the decorator supplies cached event snapshots for window reads.
 /// </summary>
 internal sealed class CalendarService(
     ICalendarRepository repo,
     ITeamService teams,
     IClock clock,
     IAuditLogService audit,
-    ILogger<CalendarService> logger) : ICalendarService
+    ILogger<CalendarService> logger,
+    IServiceScopeFactory scopeFactory) : ICalendarService
 {
     /// <summary>Forms use an inclusive last day; storage uses an exclusive date.</summary>
     public static (LocalDate Start, LocalDate End) AllDayWindow(LocalDate startDate, LocalDate inclusiveEndDate) =>
         (startDate, inclusiveEndDate.PlusDays(1));
 
     public static LocalDate AllDayInclusiveEndDate(LocalDate exclusiveEndDate) => exclusiveEndDate.PlusDays(-1);
+
+    public async Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
+        IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
+        Guid? teamId = null, CancellationToken ct = default)
+    {
+        var matched = CalendarOccurrenceExpander.FilterForWindow(
+            events,
+            from, to, teamId, viewerZone);
+
+        var teamNames = await ResolveTeamNamesAsync(matched, ct);
+        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger, viewerZone).ToList();
+
+        // Community items carry no team, so a ?teamId filter has nothing of theirs to show.
+        if (teamId is null)
+            occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
+
+        return CalendarOccurrenceExpander.OrderForDisplay(occurrences, viewerZone);
+    }
+
+    /// <summary>
+    /// Never cached. A throwing contributor is logged and skipped so it can't take down the community calendar.
+    /// </summary>
+    private async Task<IReadOnlyList<CalendarOccurrence>> FanOutContributorItemsAsync(
+        Instant from, Instant to, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var contributors = scope.ServiceProvider.GetServices<ICalendarFeedContributor>();
+
+        var items = new List<CalendarOccurrence>();
+        foreach (var contributor in contributors)
+        {
+            IReadOnlyList<CalendarFeedItem> contributed;
+            try
+            {
+                contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
+                    contributor.GetType().Name, from, to);
+                continue;
+            }
+
+            items.AddRange(contributed.Select(ToOccurrence));
+        }
+
+        return items;
+    }
+
+    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item) => new(
+        EventId: Guid.Empty,
+        OccurrenceStartUtc: item.Start,
+        OccurrenceEndUtc: item.End,
+        IsAllDay: false,
+        Title: item.Summary,
+        Description: item.Description,
+        Location: item.Location,
+        LocationUrl: null,
+        OwningTeamId: Guid.Empty,
+        OwningTeamName: string.Empty,
+        IsRecurring: false,
+        OriginalOccurrenceStartUtc: null,
+        Source: item.Source,
+        Url: item.Url);
+
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
+        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
+    {
+        if (events.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
+        var teamsById = await teams.GetTeamsAsync(ct);
+        return teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
+    }
 
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
     {

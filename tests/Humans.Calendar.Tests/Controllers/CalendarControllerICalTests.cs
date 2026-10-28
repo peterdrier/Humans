@@ -301,7 +301,7 @@ public class CalendarControllerICalTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
         var repository = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
         var audit = Substitute.For<IAuditLogService>();
-        var calendar = new CalendarService(repository, _teams, new FakeClock(_now), audit, NullLogger<CalendarService>.Instance);
+        var calendar = new CalendarService(repository, _teams, new FakeClock(_now), audit, NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         await repository.AddAsync(new CalendarEvent

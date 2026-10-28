@@ -52,7 +52,7 @@ public sealed class CachingCalendarServiceTests
         var ct = TestContext.Current.CancellationToken;
         await repo.AddAsync(ev, ct);
         var inner = new CalendarService(repo, CalendarServiceValidationTests.ActiveTeams(), new FakeClock(before.UpdatedAt),
-            Substitute.For<IAuditLogService>(), NullLogger<CalendarService>.Instance);
+            Substitute.For<IAuditLogService>(), NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICalendarService>(CachingCalendarService.InnerServiceKey, (_, _) => inner);
         await using var provider = services.BuildServiceProvider();
@@ -105,6 +105,7 @@ public sealed class CachingCalendarServiceTests
     private readonly ICalendarService _inner = Substitute.For<ICalendarService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ILogger<CachingCalendarService> _logger = Substitute.For<ILogger<CachingCalendarService>>();
+    private readonly ILogger<CalendarService> _compositionLogger = Substitute.For<ILogger<CalendarService>>();
 
     private CachingCalendarService CreateSut(params ICalendarFeedContributor[] contributors)
     {
@@ -115,9 +116,15 @@ public sealed class CachingCalendarServiceTests
         foreach (var contributor in contributors)
             services.AddScoped(_ => contributor);
 
-        return new CachingCalendarService(
-            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            _logger);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        var composer = new CalendarService(Substitute.For<ICalendarRepository>(), _teamService, SystemClock.Instance,
+            Substitute.For<IAuditLogService>(), _compositionLogger, scopeFactory);
+        _inner.ComposeOccurrencesAsync(Arg.Any<IReadOnlyList<CalendarEventInfo>>(), Arg.Any<Instant>(), Arg.Any<Instant>(),
+                Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(call => composer.ComposeOccurrencesAsync(call.ArgAt<IReadOnlyList<CalendarEventInfo>>(0),
+                call.ArgAt<Instant>(1), call.ArgAt<Instant>(2), call.ArgAt<DateTimeZone>(3),
+                call.ArgAt<Guid?>(4), call.ArgAt<CancellationToken>(5)));
+        return new CachingCalendarService(scopeFactory, _logger);
     }
 
     private static Task WarmAsync(CachingCalendarService sut) =>
@@ -371,7 +378,7 @@ public sealed class CachingCalendarServiceTests
 
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(ownEvent.Id);
-        _logger.Received(1).Log(
+        _compositionLogger.Received(1).Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("FakeContributor")),

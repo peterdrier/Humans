@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;
 using Humans.AuditLog.Contracts;
@@ -303,7 +304,7 @@ public class CalendarServiceValidationTests
         var logger = Substitute.For<ILogger<CalendarService>>();
         var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
-            Substitute.For<IAuditLogService>(), logger);
+            Substitute.For<IAuditLogService>(), logger, Substitute.For<IServiceScopeFactory>());
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -334,7 +335,7 @@ public class CalendarServiceValidationTests
         var logger = Substitute.For<ILogger<CalendarService>>();
         var service = new CalendarService(repo, ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
-            Substitute.For<IAuditLogService>(), logger);
+            Substitute.For<IAuditLogService>(), logger, Substitute.For<IServiceScopeFactory>());
         var dto = new CreateCalendarEventDto(
             "Planning",
             Description: null,
@@ -755,7 +756,8 @@ public class CalendarServiceValidationTests
             teams ?? ActiveTeams(),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             audit,
-            logger ?? NullLogger<CalendarService>.Instance);
+            logger ?? NullLogger<CalendarService>.Instance,
+            Substitute.For<IServiceScopeFactory>());
     }
 
     // The failure is swallowed, so the Critical log carrying the audit exception is the only
