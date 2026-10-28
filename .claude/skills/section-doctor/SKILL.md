@@ -449,10 +449,14 @@ test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
 Every run, once the PR is up, writes `$RUNDIR/section-review.md` and posts it as one PR comment,
 right after the cost comment: first line `<!-- section-review -->`, then `## Section review`,
 then the file. Over 60,000 characters, it splits into consecutive comments at a heading. An
-interactive run also shows the file in the session. It is never committed and never linked from
+interactive run also shows the file in the session. A run inside a Claude project thread (the
+`mcp__hearthbot__post_message` tool exists) also copies it to
+`/mnt/project-files/section-doctor/<date>-<Section>-section-review.md`, titled
+`# <Section> section review, <date>` with the PR reference under it, and attaches that copy to a
+thread message, so Peter reads and answers it in the app. It is never committed and never linked from
 the run file: the PR is where Peter already looks, it survives the session, and it stays out of
-`main`, where a purpose draft not yet ruled on would read as settled. Peter answers on the PR or
-in a later session. The run acts on none of it: no strike, no ledger row, no Needs-Peter item.
+`main`, where a purpose draft not yet ruled on would read as settled. Peter answers on the PR, in
+the thread or in a later session. The run acts on none of it: no strike, no ledger row, no Needs-Peter item.
 Contents, in order:
 
 1. **Purpose, vision, intention.** Read them from the section's main doc (`Docs/<Section>.md`).
