@@ -226,6 +226,7 @@ Stored as string via `HasConversion<string>()`.
   editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
+- Regular and buffered budget summaries share the chart-slice projection: each slice keeps its input order and amount, and its percentage uses that side’s total (zero when the total is not positive).
 - Budget summary chart/table labels for VAT credits and liabilities, cash reserves, Spanish taxes and group buffers use the current UI culture in all six supported languages. Authored group/category names and calculated amounts are unchanged.
 - Cash flow (`/Finance/CashFlow`) is Finance's page, computed by Finance from `IBudgetService.GetActiveYearAsync` — see [`Finance.md`](../../Humans.Finance/Docs/Finance.md). Budget's summary and category VAT projections use Finance's shared `VatCalculation` through the existing contracts-leaf reference, as does Finance cash flow.
 - Resource-based authorization per design-rules §11: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource, denying restricted groups, ticketing groups, and archived years for non-finance users.
