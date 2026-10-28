@@ -561,21 +561,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 return;
             }
 
-            season.BlurbLong = data.BlurbLong;
-            season.BlurbShort = data.BlurbShort;
-            season.Languages = data.Languages;
-            season.AcceptingMembers = data.AcceptingMembers;
-            season.KidsWelcome = data.KidsWelcome;
-            season.KidsVisiting = data.KidsVisiting;
-            season.KidsAreaDescription = data.KidsAreaDescription;
-            season.HasPerformanceSpace = data.HasPerformanceSpace;
-            season.PerformanceTypes = data.PerformanceTypes;
-            season.Vibes = new List<CampVibe>(data.Vibes);
-            season.AdultPlayspace = data.AdultPlayspace;
-            season.MemberCount = data.MemberCount;
-            season.SpaceRequirement = data.SpaceRequirement;
-            season.SoundZone = data.SoundZone;
-            season.ElectricalGrid = data.ElectricalGrid;
+            ApplySeasonDetails(season, data);
             season.UpdatedAt = now;
 
             year = season.Year;
@@ -1248,31 +1234,37 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private static CampSeason CreateSeasonFromData(
         Guid campId, int year, string name, CampSeasonData data, Instant now)
     {
-        return new CampSeason
+        var season = new CampSeason
         {
             Id = Guid.NewGuid(),
             CampId = campId,
             Year = year,
             Name = name,
             Status = CampSeasonStatus.Pending,
-            BlurbLong = data.BlurbLong,
-            BlurbShort = data.BlurbShort,
-            Languages = data.Languages,
-            AcceptingMembers = data.AcceptingMembers,
-            KidsWelcome = data.KidsWelcome,
-            KidsVisiting = data.KidsVisiting,
-            KidsAreaDescription = data.KidsAreaDescription,
-            HasPerformanceSpace = data.HasPerformanceSpace,
-            PerformanceTypes = data.PerformanceTypes,
-            Vibes = [.. data.Vibes],
-            AdultPlayspace = data.AdultPlayspace,
-            MemberCount = data.MemberCount,
-            SpaceRequirement = data.SpaceRequirement,
-            SoundZone = data.SoundZone,
-            ElectricalGrid = data.ElectricalGrid,
             CreatedAt = now,
             UpdatedAt = now
         };
+        ApplySeasonDetails(season, data);
+        return season;
+    }
+
+    private static void ApplySeasonDetails(CampSeason season, CampSeasonData data)
+    {
+        season.BlurbLong = data.BlurbLong;
+        season.BlurbShort = data.BlurbShort;
+        season.Languages = data.Languages;
+        season.AcceptingMembers = data.AcceptingMembers;
+        season.KidsWelcome = data.KidsWelcome;
+        season.KidsVisiting = data.KidsVisiting;
+        season.KidsAreaDescription = data.KidsAreaDescription;
+        season.HasPerformanceSpace = data.HasPerformanceSpace;
+        season.PerformanceTypes = data.PerformanceTypes;
+        season.Vibes = [.. data.Vibes];
+        season.AdultPlayspace = data.AdultPlayspace;
+        season.MemberCount = data.MemberCount;
+        season.SpaceRequirement = data.SpaceRequirement;
+        season.SoundZone = data.SoundZone;
+        season.ElectricalGrid = data.ElectricalGrid;
     }
 
     /// <summary>Sole CampMember→Removed transition: role-cascade, state flip, audit. Callers own preconditions and post-effects.</summary>
