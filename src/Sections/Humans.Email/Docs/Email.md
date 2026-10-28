@@ -46,7 +46,7 @@
 | RecipientName | string? | Display name, max 256 characters to preserve accepted member names |
 | Subject | string | Email subject line |
 | HtmlBody | string | Rendered HTML body |
-| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, and table captions with tab-separated cells and one line per row; when an unsubscribe URL is supplied, both HTML and plain text include the same localized label and URL, using the message culture rather than the ambient processing culture |
+| PlainTextBody | string? | Optional plain-text alternative; composed bodies retain action URLs, paragraph/heading/list/line-break separation, block-container and quote boundaries without duplicating paragraph spacing, preformatted line breaks and indentation, and table captions with tab-separated cells and one line per row; when an unsubscribe URL is supplied, both HTML and plain text include the same localized label and URL, using the message culture rather than the ambient processing culture |
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | Bare cross-section id — no FK constraint, no nav. The recipient the sender named on `EmailMessage.UserId`, never resolved from the address; null only for the three addresses no human owns (signup magic link, the ticket team's mailbox, a camp's contact address) |
 | CampaignGrantId | Guid? | Retained, unwritten since nobodies-collective/Humans#1243: set only on rows queued before; nothing reads it. Kept until a drop is approved |

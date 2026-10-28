@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 
 namespace Humans.Base.Helpers;
@@ -20,8 +21,22 @@ public static class HtmlPlainTextConverter
         foreach (var lineBreak in document.QuerySelectorAll("br"))
             lineBreak.Parent?.InsertBefore(document.CreateTextNode("\n"), lineBreak);
 
-        foreach (var block in document.QuerySelectorAll("p,h1,h2,h3,h4,h5,h6,li"))
-            block.AppendChild(document.CreateTextNode(block.LocalName is "li" ? "\n" : "\n\n"));
+        // Inner blocks establish their own boundaries before their containers, so a
+        // wrapper around paragraphs does not add another trailing blank line.
+        const string blockSelector =
+            "p,h1,h2,h3,h4,h5,h6,li,div,section,article,header,footer,main,aside,blockquote,pre," +
+            "dl,dt,dd,ul,ol,figure,figcaption,address,nav,fieldset,form,details,summary,menu,hgroup,center";
+        foreach (var block in document.QuerySelectorAll(blockSelector).Reverse())
+        {
+            var separator = block.LocalName is "li" or "dt" or "dd" ? "\n" : "\n\n";
+            var previous = block.PreviousSibling;
+            var previousHasBoundary = previous is IElement element
+                && (element.Matches(blockSelector) || element.LocalName is "table");
+            if (previous is not null && !previousHasBoundary && !previous.TextContent.EndsWith('\n'))
+                block.InsertBefore(document.CreateTextNode(separator), block.FirstChild);
+            if (!block.TextContent.EndsWith('\n'))
+                block.AppendChild(document.CreateTextNode(separator));
+        }
 
         // HTML source whitespace does not express table structure. Keep each row
         // on its own line and separate cells, including in minified HTML. Convert
