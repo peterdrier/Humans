@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
+using Humans.Settings.Services;
 using Humans.Settings.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -17,7 +18,7 @@ namespace Humans.Settings.Tests;
 /// </summary>
 public sealed class EventSettingsTabViewComponentTests
 {
-    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
+    private readonly ISettingsWriteService _settings = Substitute.For<ISettingsWriteService>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
 
     private static EventSettingsInfo MakeInfo() => new(
@@ -154,5 +155,32 @@ public sealed class EventSettingsTabViewComponentTests
 
         model.Settings.Should().NotBeNull();
         model.Settings!.Id.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task InvokeAsync_Admin_AskingForANewEvent_GetsTheLatestEventOneYearOn()
+    {
+        var latest = MakeInfo() with { Status = EventSettingsStatus.Inactive, EarlyEntryClose = Instant.FromUtc(2026, 7, 4, 12, 0) };
+        _settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([latest]);
+
+        var model = await InvokeAsAsync(authorized: true, eventQuery: "new");
+
+        model.Settings!.Id.Should().BeNull();
+        model.Settings.EventName.Should().Be("Nowhere 2027");
+        model.Settings.GateOpeningDate.Should().Be("2027-07-09");
+        model.Settings.StrikeEndOffset.Should().Be(9);
+        model.Settings.EarlyEntryClose.Should().BeNull();
+        model.Settings.IsActive.Should().BeFalse();
+        model.Events.Should().ContainSingle();
+        await _settings.DidNotReceive().GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task InvokeAsync_NonAdmin_GetsNoEventList()
+    {
+        var model = await InvokeAsAsync(authorized: false);
+
+        model.Events.Should().BeEmpty();
+        await _settings.DidNotReceive().GetAllEventSettingsAsync(Arg.Any<CancellationToken>());
     }
 }

@@ -1529,7 +1529,7 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
-    <value>Evento</value>
+    <value>Eventos</value>
   </data>
 
   <data name="Settings_TabAgent" xml:space="preserve">

@@ -44,6 +44,20 @@ internal sealed class SettingsAdminController(
         return Redirect($"/Settings?event={parsed.Settings!.Id}#event");
     }
 
+    [HttpPost("Activate/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Activate(Guid id, CancellationToken ct = default)
+    {
+        if (GetCurrentUserId() is not { } actorId) return Challenge();
+
+        var result = await settingsService.ActivateEventSettingsAsync(id, actorId, ct);
+        if (!result.Succeeded)
+            return BackToTab(null, result.ErrorMessage!);
+
+        SetSuccess("Event made active.");
+        return Redirect($"/Settings?event={id}#event");
+    }
+
     /// <summary>There is no GET here to re-render, so the failing rule travels as a flash.</summary>
     private IActionResult BackToTab(Guid? id, string message)
     {

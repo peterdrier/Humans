@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Text.Json;
 using Humans.Settings.Contracts;
 using NodaTime;
@@ -146,6 +147,29 @@ internal static class EventSettingsFormMapper
         EarlyEntryStartOffset = src.EarlyEntryStartOffset,
         IsOffSeason = src.IsOffSeason,
     };
+
+    /// <summary>
+    /// A blank form for a new event, shaped like <paramref name="previous"/> one year on: offsets and early-entry
+    /// capacity carry over, the gate date and the name's year move forward, and the instant-valued close is cleared.
+    /// </summary>
+    internal static EventSettingsViewModel NextEvent(EventSettingsInfo? previous)
+    {
+        if (previous is null)
+            return new EventSettingsViewModel();
+
+        var next = ToViewModel(previous);
+        var nextYear = previous.GateOpeningDate.PlusYears(1);
+        next.Id = null;
+        next.EventName = previous.EventName.Replace(
+            previous.Year.ToString(CultureInfo.InvariantCulture),
+            nextYear.Year.ToString(CultureInfo.InvariantCulture),
+            StringComparison.Ordinal);
+        next.GateOpeningDate = LocalDatePattern.Iso.Format(nextYear);
+        next.EarlyEntryClose = null;
+        next.IsActive = false;
+        next.IsOffSeason = false;
+        return next;
+    }
 
     internal static EventSettingsParseResult Parse(EventSettingsViewModel model)
     {

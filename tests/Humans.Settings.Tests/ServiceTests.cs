@@ -481,6 +481,87 @@ public sealed class ServiceTests
             Arg.Any<EventSettings>(), Now, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_RefusesAWindowOverlappingAnotherEvent()
+    {
+        // Other event: build 2026-06-14 to strike 2026-07-18. The new one starts building on its last day.
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns([MakeEntity(Guid.NewGuid(), isActive: false)]);
+        var settings = MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with
+        {
+            GateOpeningDate = new LocalDate(2026, 8, 12),
+        };
+
+        var result = await BuildSut().SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Nowhere 2026").And.Contain("2026-06-14 to 2026-07-18");
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_AllowsTheNextYearsEventAndIgnoresItsOwnAndDeletedRows()
+    {
+        var id = Guid.NewGuid();
+        var deleted = MakeEntity(Guid.NewGuid(), isActive: false);
+        deleted.Status = EventSettingsStatus.Deleted;
+        deleted.GateOpeningDate = new LocalDate(2027, 7, 8);
+        var own = MakeEntity(id);
+        own.GateOpeningDate = new LocalDate(2027, 7, 8);
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns([MakeEntity(Guid.NewGuid()), deleted, own]);
+        var settings = MakeDto(id, EventSettingsStatus.Inactive) with { GateOpeningDate = new LocalDate(2027, 7, 8) };
+
+        var result = await BuildSut().SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ActivateEventSettingsAsync_SwitchesTheActiveEventInOneAuditedStep()
+    {
+        var previous = MakeEntity(Guid.NewGuid());
+        var next = MakeEntity(Guid.NewGuid(), isActive: false);
+        next.EventName = "Nowhere 2027";
+        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(previous);
+        _repository.GetEventSettingsByIdAsync(next.Id, Arg.Any<CancellationToken>()).Returns(next);
+
+        var result = await BuildSut().ActivateEventSettingsAsync(next.Id, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.Id == previous.Id && e.Status == EventSettingsStatus.Inactive),
+            Now, Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.Id == next.Id && e.Status == EventSettingsStatus.Active),
+            Now, Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.EventSettingsUpdated, Arg.Any<string>(), next.Id,
+            "Event 'Nowhere 2027' made active; 'Nowhere 2026' set inactive.", Actor);
+        _listenerOne.Received(1).EventSettingsChanged(previous.Id);
+        _listenerOne.Received(1).EventSettingsChanged(next.Id);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ActivateEventSettingsAsync_RefusesAMissingOrDeletedEvent(bool exists)
+    {
+        var id = Guid.NewGuid();
+        if (exists)
+        {
+            var deleted = MakeEntity(id, isActive: false);
+            deleted.Status = EventSettingsStatus.Deleted;
+            _repository.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(deleted);
+        }
+
+        var result = await BuildSut().ActivateEventSettingsAsync(id, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+    }
+
     // Settings mints ids for new cycles with no existence check against Shifts: a Shifts knobs
     // row is created on demand, the first time a rota or knob edit needs one.
 

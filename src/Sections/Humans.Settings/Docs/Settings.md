@@ -34,9 +34,12 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
   whatever tabs sections contribute through `ISectionSettings` (`Humans.Settings.Contracts`
   — not every section has settings, so the seam lives in the `Contracts/` folder a
   contributor already references to opt in, not on Base). This section contributes
-  the **Event** tab (`/Settings#event`), which wraps the `/Settings/Admin` form: editable
-  for `PolicyNames.AdminOnly`, read-only (event name, gate date, build/event/strike
-  windows as text) for every other authenticated member. `/Settings/Admin` has no GET —
+  the **Events** tab (`/Settings#event`), pinned first (`Weight = int.MinValue`) because every
+  other tab's settings hang off the event. For `PolicyNames.AdminOnly` it lists every event
+  (dates, status, Edit, Make active), links "Create next event" (`?event=new`: the latest
+  event's shape one year on, unsaved, inactive) and wraps the `/Settings/Admin` form;
+  every other authenticated member gets the active event read-only (event name, gate date,
+  build/event/strike windows as text) and no list. `/Settings/Admin` has no GET —
   it removed the redirect-only page (`memory/product/no-url-aliases.md`); only the POST
   remains, saving back to `/Settings#event`. With no GET to re-render, the POST is
   post-redirect-get on both outcomes: validation, parse and activation-conflict failures
@@ -126,6 +129,13 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 - **Every section reads the calendar from `settings_event`.** Repointed off the
   Shifts-owned row in nobodies-collective/Humans#1629/#1630; `/Settings#event` is the
   only editor, `/Shifts/Settings` is knobs-only.
+- **Events never overlap.** An admin save is refused when its build-start to strike-end
+  window (inclusive days) overlaps any other non-Deleted event's, naming that event.
+  Several events in one year are allowed. Seeded activation skips the check.
+- **Switching the active event is one step.** `ActivateEventSettingsAsync` sets the target
+  Active and the previous active row Inactive, audits once (`EventSettingsUpdated`), and
+  notifies listeners for both ids. The form's own Active box still refuses a second
+  active row.
 - **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. The admin form, saves, and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).
 - **Calendar dates must be representable.** Admin saves and seeded activation reject gate/offset combinations whose dates or following day fall outside BCL date support, before writing or deactivating another cycle. Rejections log Warning without an exception stack and return the existing admin failure flash.
 - **Admin save refusals are results.** Invalid calendar dates, early-entry offsets and competing active cycles return internal refusal results before writes, audit or listener notifications. Unexpected dependency failures propagate instead of becoming operator conflict messages. Seed activation retains its throwing validation contract.

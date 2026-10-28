@@ -36,7 +36,7 @@ table, not a new table this section owns.
 | Table | R/W |
 |-------|-----|
 | `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key) |
-| `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` on the cross-section interface; `SaveEventSettingsAsync` on `ISettingsWriteService`) |
+| `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` on the cross-section interface; `SaveEventSettingsAsync`, `GetAllEventSettingsAsync`, `ActivateEventSettingsAsync` on `ISettingsWriteService`) |
 
 `SaveEventSettingsAsync` holds the table's two service-enforced invariants —
 neither can be a DB constraint (`memory/architecture/no-db-check-constraints.md`):

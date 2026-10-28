@@ -253,4 +253,30 @@ public sealed class SettingsAdminControllerTests
         await _settings.Received(1).SaveEventSettingsAsync(
             Arg.Any<EventSettingsInfo>(), actorId, Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task Activate_Post_RedirectsToTheEventItMadeActive()
+    {
+        var id = Guid.NewGuid();
+        _settings.ActivateEventSettingsAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+
+        var result = await BuildSut().Activate(id, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
+    }
+
+    [HumansFact]
+    public async Task Activate_Post_Refusal_FlashesTheReasonAndRedirectsToTheTab()
+    {
+        var id = Guid.NewGuid();
+        _settings.ActivateEventSettingsAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(false, "That event no longer exists."));
+        var sut = BuildSut();
+
+        var result = await sut.Activate(id, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be("That event no longer exists.");
+    }
 }

@@ -56,6 +56,14 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
+    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid excludingId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

@@ -14,6 +14,8 @@ internal interface ISettingsRepository : IRepository
 
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default);
+
     /// <summary>Guards the at-most-one-active invariant on write; no DB constraint backs it.</summary>
     Task<bool> AnyOtherActiveEventSettingsAsync(Guid excludingId, CancellationToken ct = default);
 
