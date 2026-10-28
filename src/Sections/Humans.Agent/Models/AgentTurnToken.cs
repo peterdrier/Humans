@@ -12,4 +12,6 @@ internal sealed record AgentTurnToken(
     AnthropicToolCall? ToolCall,
     AgentTurnFinalizer? Finalizer,
     AgentIssueProposal? IssueProposal = null,
-    [property: JsonIgnore] AgentTurnFinalizer? Usage = null);
+    [property: JsonIgnore] AgentTurnFinalizer? Usage = null,
+    // Rides on the finalizer of a completed provider stream: the response's blocks in order, for replay.
+    [property: JsonIgnore] IReadOnlyList<AnthropicContentBlock>? AssistantContent = null);
