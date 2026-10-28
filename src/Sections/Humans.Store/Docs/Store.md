@@ -219,6 +219,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
 - Order projections use the current UI culture for missing-product and missing-counterparty labels in all six supported cultures; stored names remain unchanged.
+- Stripe checkout localizes its camp-order fallback label in the current UI culture when no billing name is supplied; supplied names and the merchant prefix remain unchanged.
 
 - The Store index loads selected camp and department orders in batches through existing repository reads, then shares one product-name and live-price snapshot across the cards. Camp cards retain the highest-balance legacy order, and team cards retain the first matching order; viewer scoping is unchanged.
 - Store index and editable-order catalogs sort alphabetically by product name with ordinal comparison in the controller. Catalog service reads retain the source order.

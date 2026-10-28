@@ -124,4 +124,5 @@
   <data name="Store_UnknownTeam" xml:space="preserve"><value>(equip desconegut)</value></data>
   <data name="Store_UnknownCamp" xml:space="preserve"><value>(campament desconegut)</value></data>
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(desconegut)</value></data>
+  <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Comanda del campament</value></data>
 </root>

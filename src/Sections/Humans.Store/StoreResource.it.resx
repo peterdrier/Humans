@@ -124,4 +124,5 @@
   <data name="Store_UnknownTeam" xml:space="preserve"><value>(team sconosciuto)</value></data>
   <data name="Store_UnknownCamp" xml:space="preserve"><value>(campo sconosciuto)</value></data>
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(sconosciuto)</value></data>
+  <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Ordine del campo</value></data>
 </root>
