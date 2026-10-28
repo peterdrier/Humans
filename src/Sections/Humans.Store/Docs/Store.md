@@ -204,6 +204,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Product creation and updates share one editable-field mapping, including trimmed names, year, pricing, VAT, deposits, revenue account, ordering cutoff and active state. Identity, creation/update timestamps and price-change audit handling remain owned by their respective write paths.
 
+- Add/remove line operations forward caller cancellation to the read-only event-timezone lookup before changing line rows or writing their audit entries.
 - Catalog and order-line/counterparty result wrappers surface only known Store validation/rule feedback. Unexpected dependency failures log Error with the exception and return no diagnostic text, selecting the controller's existing localized fallback (operator-only catalog uses its existing generic error). Cancellation still propagates.
 
 - Admin summary camp totals use the selected UI culture, matching the table’s row amounts. Camp-only totals, payment calculations and invariant sort keys remain unchanged.
