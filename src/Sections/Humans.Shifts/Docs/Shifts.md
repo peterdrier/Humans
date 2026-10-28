@@ -346,7 +346,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 Invalid rota and shift edits redisplay the team shift page without saving. Only the submitted editor opens with its attempted values and validation errors; other editors retain their persisted values.
 
 - **Member dashboard off season:** when the active event settings carry `IsOffSeason`, `DashboardShiftsViewComponent` treats shift browsing as closed and replaces the "Get involved" callout and the Shifts/Teams/Camps tri-card row with a one-line "season wrapped" note for Volunteers.
-- **Member dashboard shift card:** while shift browsing is open, a pending signup or a confirmed signup ending after now in the active event selects the signup card. The host computes only that presence flag from `IShiftView`; `ShiftSignupsViewComponent` renders signup details. Past-signup status badges on My Shifts and the signup card use the site UI language in all six cultures. The volunteer signup card also localizes its title, bucket headings, counts, all-day labels and remaining-history count.
+- **Member dashboard shift card:** while shift browsing is open, a pending signup or a confirmed signup ending after now in the active event selects the signup card. The host computes only that presence flag from `IShiftView`; `ShiftSignupsViewComponent` renders signup details. Past-signup status badges on My Shifts and the signup card use the site UI language in all six cultures. The volunteer signup card also localizes its title, bucket headings, counts, all-day labels and remaining-history count. My Shifts and the signup card reuse the six-culture unknown-team label when a team lookup has no result.
 
 ## Negative Access Rules
 
