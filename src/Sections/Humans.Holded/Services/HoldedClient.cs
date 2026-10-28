@@ -380,7 +380,7 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    public async Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default)
+    public async Task<string> CreateContactAsync(HoldedContactInput input, CancellationToken ct = default)
     {
         // Create only: v2's contact PUT is a full replacement that resets supplier_record, so a partial PUT mints a
         // second creditor account. custom_id isn't sent (v2 has none). With no address parts bill_address stays
@@ -408,16 +408,16 @@ internal sealed class HoldedClient : IHoldedClient
         try
         {
             var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
-                ?? throw new HoldedPermanentException("Holded returned no contact identity after accepting the upsert.");
+                ?? throw new HoldedPermanentException("Holded returned no contact identity after accepting creation.");
             var id = node["id"]?.GetValue<string>();
             if (!string.IsNullOrWhiteSpace(id)) return id;
-            throw new HoldedPermanentException("Holded returned no contact identity after accepting the upsert.");
+            throw new HoldedPermanentException("Holded returned no contact identity after accepting creation.");
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
             throw new HoldedPermanentException(
-                "Holded contact-upsert response could not be read.", ex);
+                "Holded create-contact response could not be read.", ex);
         }
     }
 
@@ -1029,7 +1029,7 @@ internal sealed class HoldedClient : IHoldedClient
                 throw new HoldedTransientException(
                     $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
             // This message reaches logs, LastError, the audit trail and the finance UI, and a 4xx on a contact
-            // upsert can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
+            // create can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
             throw new HoldedPermanentException((int)resp.StatusCode, body,
                 $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {IbanFormatter.MaskAllIn(body)}");
         }

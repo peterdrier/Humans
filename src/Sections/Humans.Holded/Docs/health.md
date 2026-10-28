@@ -43,7 +43,7 @@ who the money moved to or from.
 | 7 | *Read a document back.* | `IHoldedClient` | `GetPurchaseDocumentAsync`, `GetSalesDocumentAsync`, `ListPurchaseDocumentsAsync`, `FindSalesDocumentIdsByTagAsync` |
 | 8 | *Record that money moved.* | `IHoldedClient` | `PayPurchaseDocumentAsync`, `PostLedgerEntryAsync` |
 | 9 | *What did the bank see, and which documents does a line settle?* | `IHoldedClient` | `ListBankMovementsAsync`, `ReconcileBankMovementAsync` |
-| 10 | *Who is the counterparty?* | `IHoldedClient` | `UpsertContactAsync`, `GetContactAsync`, `ListContactsAsync`, `DeleteContactAsync` |
+| 10 | *Who is the counterparty?* | `IHoldedClient` | `CreateContactAsync`, `GetContactAsync`, `ListContactsAsync`, `DeleteContactAsync` |
 | 11 | *What accounts exist to book to?* | `IHoldedClient` | `ListAccountingAccountsAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync` |
 | 12 | *What raw journal lines are in this window?* | `IHoldedClient` | `ListLedgerEntriesAsync` |
 | 13 | *Can we call Holded, and how much have we spent?* | `IHoldedClient` | `IsConfigured`, `GetUsageAsync` |

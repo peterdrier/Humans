@@ -85,7 +85,7 @@ public class ServiceIssueInvoiceTests
                 Status = "pending",
                 RawJson = """{"id":"doc-1"}""",
             });
-        _holded.UpsertContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+        _holded.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
         _holded.FindSalesDocumentIdsByTagAsync(
                 Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -353,7 +353,7 @@ public class ServiceIssueInvoiceTests
         await _holded.Received(1).ApproveSalesDocumentAsync(
             HoldedSalesDocumentKind.SalesReceipt, "doc-1", Arg.Any<CancellationToken>());
         // A receipt has no counterparty, so no contact is created for it.
-        await _holded.DidNotReceive().UpsertContactAsync(
+        await _holded.DidNotReceive().CreateContactAsync(
             Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
     }
 
@@ -618,8 +618,8 @@ public class ServiceIssueInvoiceTests
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _holded.DidNotReceive().ApproveSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        // Nor is a contact upserted — nothing at all is written to Holded on this path.
-        await _holded.DidNotReceive().UpsertContactAsync(
+        // Nor is a contact created — nothing at all is written to Holded on this path.
+        await _holded.DidNotReceive().CreateContactAsync(
             Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
 
         // The local record is reconciled from the document that exists, which is the whole point.

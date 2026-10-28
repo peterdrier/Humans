@@ -60,7 +60,7 @@ public interface IHoldedClient
 
     /// <summary>Creates only, never updates: v2's contact PUT is a full replacement that would reset the
     /// contact's creditor account.</summary>
-    Task<string> UpsertContactAsync(HoldedContactInput input, CancellationToken ct = default);
+    Task<string> CreateContactAsync(HoldedContactInput input, CancellationToken ct = default);
 
     /// <summary>A draft books nothing: follow with <see cref="ApproveSalesDocumentAsync"/>.</summary>
     Task<string> CreateSalesDocumentAsync(

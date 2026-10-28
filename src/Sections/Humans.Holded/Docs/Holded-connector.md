@@ -32,7 +32,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   never logged. Jobs and pages no-op cleanly when it is unset (PR-preview / local dev).
 - Errors are classified at the client boundary: `HoldedTransientException` (5xx, network,
   timeout, persistent 429) is retry-eligible; `HoldedPermanentException` (other 4xx, unreadable
-  page bodies and malformed creation/upsert responses) is not. One carve-out: `ApprovePurchaseDocumentAsync` treats Holded's 400 "Document
+  page bodies and malformed creation responses) is not. One carve-out: `ApprovePurchaseDocumentAsync` treats Holded's 400 "Document
   already approved" as success (logged at Warning), so a retried push does not write itself off.
 - Every call is metered into the singleton `IHoldedCallLog` (in-memory queue) with its
   `X-RateLimit-*` headers; the Holded section drains it to `holded_api_calls`. The plan-tier
@@ -84,7 +84,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   7.5% is `s_iva_75`.
 - Post-issuance corrections are a *factura rectificativa* in Holded, never a mutation of the
   issued document — the same reason there is no doc-update endpoint below.
-- Contacts are **create-only**: `UpsertContactAsync` POSTs and never PUTs. v2's contact PUT is a
+- Contacts are **create-only**: `CreateContactAsync` POSTs and never PUTs. v2's contact PUT is a
   full replacement (every omitted field, `supplier_record` included, resets), so a partial update
   mints the contact a second creditor account ([`holded-contact-put-is-full-replacement`](../../../../memory/code/holded-contact-put-is-full-replacement.md)).
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside

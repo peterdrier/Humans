@@ -1,7 +1,7 @@
 namespace Humans.Holded.Contracts;
 
 /// <summary>Create payload for a Holded contact (creditor/supplier/client). There is no update payload; see
-/// <see cref="IHoldedClient.UpsertContactAsync"/>.</summary>
+/// <see cref="IHoldedClient.CreateContactAsync"/>.</summary>
 public sealed record HoldedContactInput
 {
     /// <summary>Legal name — the official identity (accountant / SEPA / tax). Never the burner.</summary>

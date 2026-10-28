@@ -125,7 +125,7 @@ internal sealed class StoreInvoiceIssuer(
         {
             // Not the request token: everything from here writes to Holded, and a half-created contact or document has
             // no local compensation.
-            contactId = await holdedClient.UpsertContactAsync(
+            contactId = await holdedClient.CreateContactAsync(
                 new HoldedContactInput
                 {
                     Name = counterparty.Name,

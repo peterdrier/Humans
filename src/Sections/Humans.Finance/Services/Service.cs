@@ -871,7 +871,7 @@ internal sealed class Service(
                 ? burnerName
                 : null;
 
-            contactId = await client.UpsertContactAsync(new HoldedContactInput
+            contactId = await client.CreateContactAsync(new HoldedContactInput
             {
                 Name = legalName,
                 TradeName = tradeName,
