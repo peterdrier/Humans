@@ -133,7 +133,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   window (inclusive days) overlaps any other non-Deleted event's, naming that event.
   Several events in one year are allowed. Seeded activation skips the check.
 - **Switching the active event is one step.** `ActivateEventSettingsAsync` sets the target
-  Active and the previous active row Inactive, audits once (`EventSettingsUpdated`), and
+  Active and the previous active row Inactive in one database save, audits once (`EventSettingsUpdated`), and
   notifies listeners for both ids. The form's own Active box still refuses a second
   active row.
 - **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. The admin form, saves, and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).

@@ -23,6 +23,12 @@ internal interface ISettingsRepository : IRepository
     /// <c>CreatedAt</c> on insert.</summary>
     Task UpsertEventSettingsAsync(EventSettings settings, Instant now, CancellationToken ct = default);
 
+    /// <summary>
+    /// Sets <paramref name="id"/> Active and every other Active row Inactive in one save, so a failure leaves the
+    /// previous active row in place. Returns the rows it changed, the target last; empty when the id is unknown.
+    /// </summary>
+    Task<IReadOnlyList<EventSettings>> SetActiveEventSettingsAsync(Guid id, Instant now, CancellationToken ct = default);
+
     /// <summary>Returns 0 or 1.</summary>
     Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default);
 }

@@ -101,25 +101,18 @@ internal sealed class Service(
         if (target.Status == EventSettingsStatus.Active)
             return new(true);
 
-        var now = clock.GetCurrentInstant();
-        var previous = await repository.GetActiveEventSettingsAsync(cancellationToken);
-        if (previous is not null)
-        {
-            previous.Status = EventSettingsStatus.Inactive;
-            await repository.UpsertEventSettingsAsync(previous, now, cancellationToken);
-        }
+        var changed = await repository.SetActiveEventSettingsAsync(
+            eventSettingsId, clock.GetCurrentInstant(), cancellationToken);
+        var previous = changed.Where(e => e.Id != eventSettingsId).Select(e => $"'{e.EventName}'").ToList();
 
-        target.Status = EventSettingsStatus.Active;
-        await repository.UpsertEventSettingsAsync(target, now, cancellationToken);
-
-        var description = previous is null
+        var description = previous.Count == 0
             ? $"Event '{target.EventName}' made active; no event was active before."
-            : $"Event '{target.EventName}' made active; '{previous.EventName}' set inactive.";
+            : $"Event '{target.EventName}' made active; {string.Join(", ", previous)} set inactive.";
         await auditLog.LogAsync(
             AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, target.Id, description, actorUserId);
 
-        if (previous is not null) NotifyChangeListeners(previous.Id);
-        NotifyChangeListeners(target.Id);
+        foreach (var row in changed)
+            NotifyChangeListeners(row.Id);
         return new(true);
     }
 

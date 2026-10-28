@@ -520,21 +520,16 @@ public sealed class ServiceTests
     [HumansFact]
     public async Task ActivateEventSettingsAsync_SwitchesTheActiveEventInOneAuditedStep()
     {
-        var previous = MakeEntity(Guid.NewGuid());
+        var previous = MakeEntity(Guid.NewGuid(), isActive: false);
         var next = MakeEntity(Guid.NewGuid(), isActive: false);
         next.EventName = "Nowhere 2027";
-        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(previous);
         _repository.GetEventSettingsByIdAsync(next.Id, Arg.Any<CancellationToken>()).Returns(next);
+        _repository.SetActiveEventSettingsAsync(next.Id, Now, Arg.Any<CancellationToken>()).Returns([previous, next]);
 
         var result = await BuildSut().ActivateEventSettingsAsync(next.Id, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        await _repository.Received(1).UpsertEventSettingsAsync(
-            Arg.Is<EventSettings>(e => e.Id == previous.Id && e.Status == EventSettingsStatus.Inactive),
-            Now, Arg.Any<CancellationToken>());
-        await _repository.Received(1).UpsertEventSettingsAsync(
-            Arg.Is<EventSettings>(e => e.Id == next.Id && e.Status == EventSettingsStatus.Active),
-            Now, Arg.Any<CancellationToken>());
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
         await _auditLog.Received(1).LogAsync(
             AuditAction.EventSettingsUpdated, Arg.Any<string>(), next.Id,
             "Event 'Nowhere 2027' made active; 'Nowhere 2026' set inactive.", Actor);
@@ -558,7 +553,7 @@ public sealed class ServiceTests
         var result = await BuildSut().ActivateEventSettingsAsync(id, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default, default);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
     }
 

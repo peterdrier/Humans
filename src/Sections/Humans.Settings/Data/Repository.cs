@@ -109,6 +109,31 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<EventSettings>> SetActiveEventSettingsAsync(
+        Guid id, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var target = await ctx.EventSettings.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (target is null)
+            return [];
+
+        var changed = await ctx.EventSettings
+            .Where(e => e.Status == EventSettingsStatus.Active && e.Id != id)
+            .ToListAsync(ct);
+        foreach (var previous in changed)
+        {
+            previous.Status = EventSettingsStatus.Inactive;
+            previous.UpdatedAt = now;
+        }
+
+        target.Status = EventSettingsStatus.Active;
+        target.UpdatedAt = now;
+        changed.Add(target);
+
+        await ctx.SaveChangesAsync(ct);
+        return changed;
+    }
+
     public async Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
