@@ -120,4 +120,8 @@
   <data name="Store_DepartmentOnly" xml:space="preserve"><value>Nur Abteilungen können Teambestellungen haben.</value></data>
   <data name="Store_TeamOrderExists" xml:space="preserve"><value>Diese Abteilung hat bereits eine Shop-Bestellung für das aktive Veranstaltungsjahr.</value></data>
   <data name="Store_CreateOrderFailed" xml:space="preserve"><value>Die Bestellung konnte nicht erstellt werden.</value></data>
+  <data name="Store_UnknownProduct" xml:space="preserve"><value>(unbekanntes Produkt)</value></data>
+  <data name="Store_UnknownTeam" xml:space="preserve"><value>(unbekanntes Team)</value></data>
+  <data name="Store_UnknownCamp" xml:space="preserve"><value>(unbekanntes Camp)</value></data>
+  <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(unbekannt)</value></data>
 </root>
