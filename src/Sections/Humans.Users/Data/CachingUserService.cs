@@ -179,26 +179,11 @@ internal sealed class CachingUserService(
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
         var result = new Dictionary<Guid, UserInfo>(userIds.Count);
-        List<Guid>? misses = null;
-        foreach (var id in userIds)
+        foreach (var id in userIds.Distinct())
         {
-            if (TryGet(id, out var hit))
-                result[id] = Stamp(Resolve(hit));
-            else
-                (misses ??= []).Add(id);
-        }
-
-        if (misses is not null)
-        {
-            foreach (var id in misses)
-            {
-                var info = await LoadRowAsync(id, ct).ConfigureAwait(false);
-                if (info is not null)
-                {
-                    Set(id, info);
-                    result[id] = Stamp(Resolve(info));
-                }
-            }
+            var info = await GetAsync(id, ct).ConfigureAwait(false);
+            if (info is not null)
+                result[id] = Stamp(Resolve(info));
         }
 
         return result;

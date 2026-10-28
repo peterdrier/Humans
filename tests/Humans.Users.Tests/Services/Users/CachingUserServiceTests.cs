@@ -666,6 +666,27 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserInfosAsync_DelayedMiss_DoesNotReplaceARefreshedUser()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var pending = new TaskCompletionSource<UserInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetAllUserInfosAsync(ct).Returns([]);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(pending.Task),
+                new ValueTask<UserInfo?>(SampleUserInfo(userId, "Fresh")));
+        var sut = CreateSut();
+        await ((IHostedService)sut).StartAsync(ct);
+
+        var read = sut.GetUserInfosAsync([userId], ct).AsTask();
+        await sut.RefreshAsync(userId, ct);
+        pending.SetResult(SampleUserInfo(userId, "Old"));
+        await read;
+
+        (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Fresh");
+    }
+
+    [HumansFact]
     public async Task GetUserInfosAsync_PartialHit_OnlyMissesDelegated()
     {
         // Warm hits served from the dict, misses loaded per-id from the inner service.
