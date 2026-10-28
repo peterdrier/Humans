@@ -134,6 +134,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Fixed kind: every grant is `PerPersonAmount`; an explicit amount is refused on issue and
   ignored on approve and apply. Per-grant kind: an amount is required on issue; an
   application carries `RequestedAmount` and the manager may approve less.
+- Single and batch issuance share persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point.
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that
   arrives anyway is 400.
