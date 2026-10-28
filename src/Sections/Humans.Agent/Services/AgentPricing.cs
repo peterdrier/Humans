@@ -13,9 +13,12 @@ internal static class AgentPricing
     {
         ["claude-fable-5"] = new PriceRow(10.00m, 50.00m, 1.00m),
         ["claude-fable-5-1"] = new PriceRow(10.00m, 50.00m, 0.25m),
+        ["claude-mythos-5"] = new PriceRow(10.00m, 50.00m, 1.00m),
+        ["claude-mythos-5-1"] = new PriceRow(10.00m, 50.00m, 0.25m),
         ["claude-opus-5"] = new PriceRow(5.00m, 25.00m, 0.50m),
         ["claude-opus-5-5"] = new PriceRow(4.00m, 20.00m, 0.20m),
         ["claude-sonnet-5"] = new PriceRow(2.00m, 10.00m, 0.20m),
+        ["claude-sonnet-5-5"] = new PriceRow(2.00m, 10.00m, 0.10m),
         // Up to 100K prompt tokens; longer prompts bill at $0.50 / $2.50.
         ["claude-haiku-5-5"] = new PriceRow(0.10m, 0.50m, 0.01m),
         ["claude-sonnet-4"] = new PriceRow(3.00m, 15.00m, 0.30m),
