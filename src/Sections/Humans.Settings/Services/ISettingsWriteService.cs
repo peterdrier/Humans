@@ -15,7 +15,7 @@ internal interface ISettingsWriteService : ISettingsService
     Task<EventSettingsSaveResult> SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>Every row, Deleted included, ordered by gate opening date.</summary>
+    /// <summary>Every row, Deleted included, unordered.</summary>
     Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

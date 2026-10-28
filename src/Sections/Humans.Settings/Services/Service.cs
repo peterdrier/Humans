@@ -84,7 +84,6 @@ internal sealed class Service(
     public async Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(
         CancellationToken cancellationToken = default) =>
         (await repository.GetAllEventSettingsAsync(cancellationToken))
-            .OrderBy(e => e.GateOpeningDate)
             .Select(e => ToDto(e)!)
             .ToList();
 

@@ -29,7 +29,7 @@ internal sealed class EventSettingsTabViewComponent(
                 active is null ? null : EventSettingsFormMapper.ToViewModel(active), CanEdit: false, Events: []));
         }
 
-        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        var events = (await settingsService.GetAllEventSettingsAsync(ct)).OrderBy(e => e.GateOpeningDate).ToList();
         var query = HttpContext.Request.Query["event"].ToString();
 
         EventSettingsInfo? settings = null;
