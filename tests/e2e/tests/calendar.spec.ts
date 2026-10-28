@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsVolunteer, loginAsEventsAdmin } from '../helpers/auth';
+import { loginAs } from '../helpers/auth';
 
 test.describe('Community calendar', () => {
   test('logged-in volunteer can view the month view', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Calendar');
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -13,7 +13,7 @@ test.describe('Community calendar', () => {
   test('events admin can open the create-event form', async ({ page }) => {
     // CalendarController is [Authorize] only — any member reaches this form. The
     // events-admin persona keeps the test's intent now that there is no admin one.
-    await loginAsEventsAdmin(page);
+    await loginAs(page, 'events-admin');
     await page.goto('/Calendar/Event/Create');
 
     await expect(page.getByRole('heading', { name: 'New event' })).toBeVisible();
@@ -26,7 +26,7 @@ test.describe('Community calendar', () => {
   });
 
   test('agenda view renders', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await page.goto('/Calendar/Agenda');
 
     await expect(page.getByRole('heading', { name: 'Agenda' })).toBeVisible();

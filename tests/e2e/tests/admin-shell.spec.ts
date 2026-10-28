@@ -1,12 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-import {
-  loginAsBoard,
-  loginAsConsentCoordinator,
-  loginAsFinanceAdmin,
-  loginAsHumanAdmin,
-  loginAsTicketAdmin,
-  loginAsVolunteerCoordinator,
-} from '../helpers/auth';
+import { test, expect } from '@playwright/test';
+import { loginAs, type Persona } from '../helpers/auth';
 
 /**
  * Admin shell coverage (#604) — verifies the sidebar-driven /Admin surface.
@@ -28,14 +21,14 @@ import {
  */
 interface SidebarExpectation {
   name: string;
-  login: (page: Page) => Promise<void>;
+  persona: Persona;
   groups: { label: string; items: string[] }[];
 }
 
 const sidebarMatrix: SidebarExpectation[] = [
   {
     name: 'board',
-    login: loginAsBoard,
+    persona: 'board',
     groups: [
       { label: 'Audit', items: ['Audit log'] },
       { label: 'Consent', items: ['Legal documents'] },
@@ -52,7 +45,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'humanAdmin',
-    login: loginAsHumanAdmin,
+    persona: 'human-admin',
     groups: [
       { label: 'Issues', items: ['Issues'] },
       { label: 'Surveys', items: ['Surveys'] },
@@ -61,7 +54,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'ticketAdmin',
-    login: loginAsTicketAdmin,
+    persona: 'ticket-admin',
     groups: [
       { label: 'Gate', items: ['Terminal'] },
       { label: 'Issues', items: ['Issues'] },
@@ -72,7 +65,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'consentCoordinator',
-    login: loginAsConsentCoordinator,
+    persona: 'consent-coordinator',
     groups: [
       { label: 'Issues', items: ['Issues'] },
       { label: 'Onboarding', items: ['Review'] },
@@ -81,7 +74,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'volunteerCoordinator',
-    login: loginAsVolunteerCoordinator,
+    persona: 'volunteer-coordinator',
     groups: [
       { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Issues', items: ['Issues'] },
@@ -92,7 +85,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'financeAdmin',
-    login: loginAsFinanceAdmin,
+    persona: 'finance-admin',
     groups: [
       { label: 'Budget', items: ['Overview'] },
       { label: 'Expenses', items: ['Review'] },
@@ -113,7 +106,7 @@ const DATA_DEPENDENT_GROUPS = ['Barrios', 'Grants', 'Pre-approvals', 'Shifts'];
 test.describe('Admin shell — sidebar visibility matrix', () => {
   for (const role of sidebarMatrix) {
     test(`${role.name}: sees expected sidebar rows + tabs`, async ({ page }) => {
-      await role.login(page);
+      await loginAs(page, role.persona);
       await page.goto('/Admin');
 
       const sidebar = page.locator('aside.sidebar');
@@ -151,7 +144,7 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
 
 test.describe('Admin shell — rows and tabs', () => {
   test('a group row lands on its first page, marks itself active and shows the tabs', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     const sidebar = page.locator('aside.sidebar');
@@ -170,7 +163,7 @@ test.describe('Admin shell — chrome', () => {
     // horizontally scrolling row strip beneath the topbar (NOT a Bootstrap offcanvas).
     // Log in at desktop width first — the nav dropdown the auth helper waits
     // for is collapsed behind the mobile hamburger at <768px.
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.setViewportSize({ width: 480, height: 800 });
     await page.goto('/Admin');
 
@@ -190,7 +183,7 @@ test.describe('Admin shell — chrome', () => {
   });
 
   test('exit-admin link navigates to member home', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     const exit = page.locator('a.exit-admin').first();
@@ -204,7 +197,7 @@ test.describe('Admin shell — chrome', () => {
   });
 
   test('dashboard tiles render: active profiles, shift coverage', async ({ page }) => {
-    await loginAsBoard(page);
+    await loginAs(page, 'board');
     await page.goto('/Admin');
 
     // Tiles from _DashboardStats. The "Active humans" tile was renamed to

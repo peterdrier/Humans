@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsTicketAdmin, loginAsVolunteer, expectBlocked } from '../helpers/auth';
+import { loginAs, expectBlocked } from '../helpers/auth';
 
 test.describe('Scanner', () => {
   test('ticket admin can decode locally and stop the camera stream', async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('Scanner', () => {
       };
     });
 
-    await loginAsTicketAdmin(page);
+    await loginAs(page, 'ticket-admin');
     await page.goto('/Scanner/Barcode');
 
     await page.getByRole('button', { name: /scan|escanear|scannen|scanner|scansiona/i }).click();
@@ -74,7 +74,7 @@ test.describe('Scanner', () => {
   });
 
   test('volunteer cannot access scanner routes', async ({ page }) => {
-    await loginAsVolunteer(page);
+    await loginAs(page, 'volunteer');
     await expectBlocked(page, '/Scanner');
     await expectBlocked(page, '/Scanner/Barcode');
   });
