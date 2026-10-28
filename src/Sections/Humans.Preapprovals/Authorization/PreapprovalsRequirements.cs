@@ -1,3 +1,4 @@
+using Humans.Base.Authorization;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using Humans.Base.Constants;
@@ -7,7 +8,10 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Preapprovals.Authorization;
 
 /// <summary>Admin, Board, FinanceAdmin, or a manager of any program.</summary>
-internal sealed class ManagesPreapprovalsRequirement : IAuthorizationRequirement;
+internal sealed class ManagesPreapprovalsRequirement : IAuthorizationRequirement, IDescribedRequirement
+{
+    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, FinanceRoles.FinanceAdmin, "Program managers"];
+}
 
 /// <summary><see cref="ManagesPreapprovalsRequirement"/>, or a person with a grant or an open program to apply to.</summary>
 internal sealed class PreapprovalsAccessRequirement : IAuthorizationRequirement;
