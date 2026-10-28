@@ -110,25 +110,6 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         // drill-down.
         var days = BuildDaySummaries(daysOnSiteByUserId, weekStartOffset, weekStartDate, dietById);
 
-        if (uniqueUserIds.Count == 0)
-        {
-            return new WeeklyRosterDto(
-                WeekStartOffset: weekStartOffset,
-                WeekStartDate: weekStartDate,
-                WeekEndDate: weekEndDate,
-                EventName: eventName,
-                TotalUniqueOnSite: 0,
-                UnansweredCount: 0,
-                DietaryBreakdown: EmptyDietaryBreakdown(),
-                AllergyRollup: EmptyRollup(DietaryOptions.AllergyOptions),
-                AllergyOtherEntries: Array.Empty<string>(),
-                IntoleranceRollup: EmptyRollup(DietaryOptions.IntoleranceOptions),
-                IntoleranceOtherEntries: Array.Empty<string>(),
-                Days: days,
-                People: Array.Empty<RosterPersonDto>(),
-                EventTodayDate: eventTodayDate);
-        }
-
         // Every aggregate below is over unique humans: a person on site several days counts once.
         var uniqueProfiles = BuildUniqueProfiles(uniqueUserIds, dietById);
 
@@ -505,23 +486,6 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         info is not null && !string.IsNullOrWhiteSpace(info.BurnerName)
             ? info.BurnerName
             : "(unknown)";
-
-    private static IReadOnlyDictionary<string, int> EmptyDietaryBreakdown()
-    {
-        var dict = new Dictionary<string, int>(DietaryOptions.DietaryPreferences.Count + 1, StringComparer.Ordinal);
-        foreach (var pref in DietaryOptions.DietaryPreferences)
-            dict[pref] = 0;
-        dict[UnansweredKey] = 0;
-        return dict;
-    }
-
-    private static IReadOnlyList<RollupItemDto> EmptyRollup(IReadOnlyList<string> labels)
-    {
-        var rows = new List<RollupItemDto>(labels.Count);
-        foreach (var label in labels)
-            rows.Add(new RollupItemDto(label, 0));
-        return rows;
-    }
 
     private static IReadOnlyDictionary<string, int> BuildDietaryBreakdown(
         IReadOnlyList<DietaryProfileInfo> uniqueProfiles, int totalUniqueOnSite)
