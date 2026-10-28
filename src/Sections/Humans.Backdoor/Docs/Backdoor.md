@@ -82,6 +82,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 ## Invariants
 
+- Finance response text redaction recognizes valid human-formatted IBANs even when whitespace or hyphens split the country code and check digits.
+
 - API-key timestamps on the operator key page use the shared display formatter in Europe/Madrid time, with date ordering and month names following the UI culture; unused or unbounded timestamps still read "never".
 
 - Surveys response exports pass the authenticated API key owner to the Surveys service for its disclosure audit (survey id and row count); requests without an actor cannot export.

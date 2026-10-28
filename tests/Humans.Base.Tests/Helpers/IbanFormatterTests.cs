@@ -74,6 +74,11 @@ public class IbanFormatterTests
     [InlineData("iban ES91 2100 0418\n4502 0005 1332\nthanks", "iban ES91****332\nthanks")]
     [InlineData("iban ES91 2100 0418\r\n4502 0005 1332", "iban ES91****332")]
     [InlineData("ES9121000418450200051332 ES91 2100 0418 4502 0005 1332", "ES91****332 ES91****332")]
+    [InlineData("iban ES 91 2100 0418 4502 0005 1332", "iban ES91****332")]
+    [InlineData("iban E S 9 1 2100 0418 4502 0005 1332 please", "iban ES91****332 please")]
+    [InlineData("iban e-s-9-1-2100-0418-4502-0005-1332", "iban es91****332")]
+    [InlineData("iban E\tS\n9\r\n1 2100 0418 4502 0005 1332", "iban ES91****332")]
+    [InlineData("E S 9 1 2 1 0 0 0 4 1 8 4 5 0 2 0 0 0 5 1 3 3 2", "ES91****332")]
     public void MaskAllIn_MasksHumanFormattedIbans(string text, string expected)
     {
         IbanFormatter.MaskAllIn(text).Should().Be(expected);
@@ -81,6 +86,7 @@ public class IbanFormatterTests
 
     [HumansTheory]
     [InlineData("EU27 MEMBER STATES AGREED")]
+    [InlineData("EU 27 MEMBER STATES AGREED")]
     [InlineData("document ab12cdef0123456789abcdef rejected")]
     public void MaskAllIn_LeavesSpacedNonIbanTextAlone(string text)
     {
