@@ -10,7 +10,7 @@ Folder: `src/Sections/Humans.Consent/Services/` — Legal and
 `DocumentVersions` (`ConsentRecords`, the third table on this context, is
 owned by the same section's [Consent](#consent) repository below). The inner `ILegalDocumentSyncManagement` is wrapped by
 `Humans.Consent.Services.CachingLegalDocumentSyncService`
-(Singleton decorator inheriting `TrackedCache<Guid, LegalDocumentInfo>`,
+(Singleton decorator inheriting `TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>`,
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
 the per-version lookup, invalidated wholesale after any persisted
@@ -83,11 +83,11 @@ builder (`ReConsentsRequired`), `ITeamService` (team membership) and
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, LegalDocumentInfo>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via its own `InvalidateAll`, called directly by `LegalDocumentSyncService` after each successful write) |
+| `TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>` (`Legal.LegalDocumentInfo`, warmed on startup, + version-id index) | Per-Entity | yes | yes (warm/load) | yes (wholesale via its own `InvalidateAll`, called directly by `LegalDocumentSyncService` after each successful write) |
 
 Implements `ILegalDocumentSyncManagement`.
-Warm resolves team display names via `ITeamService` through a fresh DI
-scope per warm. Surfaced on `/Debug/CacheStats`.
+Warm reads the inner service’s enriched all-team snapshot through a fresh DI
+scope; the inner service alone resolves team display names. Surfaced on `/Debug/CacheStats`.
 
 ---
 

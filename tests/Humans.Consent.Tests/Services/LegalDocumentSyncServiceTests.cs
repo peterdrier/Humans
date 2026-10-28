@@ -130,6 +130,49 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
+    public async Task RequiredDocumentCache_WarmsFromEnrichedInnerSnapshot_AndFiltersTeams()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var document = await SeedDocumentAsync("Privacy");
+        var other = await SeedDocumentAsync("Other team");
+        other.TeamId = Guid.NewGuid();
+        var optional = await SeedDocumentAsync("Optional");
+        optional.IsRequired = false;
+        var inactive = await SeedDocumentAsync("Inactive");
+        inactive.IsActive = false;
+        var now = Clock.GetCurrentInstant();
+        var version = new DocumentVersion
+        {
+            Id = Guid.NewGuid(),
+            LegalDocumentId = document.Id,
+            VersionNumber = "v1",
+            CommitSha = "commit",
+            EffectiveFrom = now,
+            CreatedAt = now
+        };
+        LegalDb.DocumentVersions.Add(version);
+        await SaveAllAsync(ct);
+
+        using var provider = new ServiceCollection()
+            .AddKeyedScoped<ILegalDocumentSyncManagement>(
+                CachingLegalDocumentSyncService.InnerServiceKey, (_, _) => _service)
+            .BuildServiceProvider();
+        var cache = new CachingLegalDocumentSyncService(
+            provider.GetRequiredService<IServiceScopeFactory>(), Clock,
+            NullLogger<CachingLegalDocumentSyncService>.Instance);
+
+        var all = await cache.GetActiveRequiredDocumentsForTeamsAsync(null, ct);
+        all.Select(d => d.Id).Should().BeEquivalentTo([document.Id, other.Id]);
+        var required = (await cache.GetActiveRequiredDocumentsForTeamsAsync([_team.Id], ct))
+            .Should().ContainSingle().Subject;
+        required.TeamName.Should().Be(_team.Name);
+        required.Versions.Should().ContainSingle().Which.Id.Should().Be(version.Id);
+        (await cache.GetActiveRequiredDocumentsForTeamsAsync([], ct)).Should().BeEmpty();
+        (await cache.GetVersionByIdAsync(version.Id, ct))!.Id.Should().Be(version.Id);
+        (await cache.GetRequiredVersionsAsync(ct)).Should().ContainSingle().Which.Id.Should().Be(version.Id);
+    }
+
+    [HumansFact]
     public async Task GetLegalDocumentWithVersionsAsync_CurrentVersionIsLatestAlreadyEffective()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
