@@ -27,6 +27,9 @@ internal sealed class AnthropicClientFake : IAnthropicClient
             : Task.FromResult(CountTokensResult);
     }
 
+    public Task<IReadOnlyList<AnthropicModelInfo>> ListModelsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AnthropicModelInfo>>([]);
+
     public async IAsyncEnumerable<AgentTurnToken> StreamAsync(
         AnthropicRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

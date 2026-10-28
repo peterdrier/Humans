@@ -11,12 +11,35 @@
     </div>
     <div class="mb-3">
         <label asp-for="Model" class="form-label"></label>
-        <input asp-for="Model" class="form-control" />
+        <select asp-for="Model" class="form-select">
+            @foreach (var option in Model.ModelOptions.Models)
+            {
+                var price = option.Price is { } p
+                    ? $"${p.Input:0.00##} in / ${p.Output:0.00##} out per 1M tokens"
+                    : "price not in our table yet";
+                var name = option.DisplayName == option.Id ? option.Id : $"{option.DisplayName} ({option.Id})";
+                <option value="@option.Id">@name: @price</option>
+            }
+        </select>
+        <div class="form-text">
+            @if (!Model.ModelOptions.LiveListAvailable)
+            {
+                <span class="text-warning">Couldn't load the model list from Anthropic, so only the saved model is shown.</span>
+            }
+            Prices come from Anthropic's published list, kept in code.
+            <a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Current pricing</a>
+            &middot;
+            <a href="https://platform.claude.com/" target="_blank" rel="noopener">Open the Claude Console</a>
+        </div>
     </div>
     <div class="mb-3">
-        <label asp-for="PreloadConfig" class="form-label">Preload Config</label>
+        <label asp-for="PreloadConfig" class="form-label">Preloaded knowledge</label>
         <select asp-for="PreloadConfig" asp-items="Html.GetEnumSelectList<AgentPreloadConfig>()" class="form-select"></select>
-        <div class="form-text">Tier1 for a fresh Anthropic org; Tier2 after promotion ($40 + 7 days).</div>
+        <div class="form-text">
+            Which sections the agent is told about up front, one line each; it fetches a section's full docs only when a
+            question needs them. Tier1: the 8 core sections. Tier2: all 23, for a small amount of extra input per message.
+            Tier1 only matters on Anthropic's lowest rate-limit tier.
+        </div>
     </div>
     <div class="row g-3 mb-3">
         <div class="col-md-3"><label asp-for="DailyMessageCap" class="form-label"></label><input asp-for="DailyMessageCap" class="form-control" /></div>

@@ -15,6 +15,12 @@ public class AgentPricingTests
     [InlineData("claude-opus-4-8", 5, 25, 0.50)]
     [InlineData("claude-opus-4-1-20250805", 15, 75, 1.50)]
     [InlineData("claude-opus-4-20250514", 15, 75, 1.50)]
+    [InlineData("claude-opus-5", 5, 25, 0.50)]
+    [InlineData("claude-opus-5-5", 4, 20, 0.20)]
+    [InlineData("claude-sonnet-5-5", 2, 10, 0.20)]
+    [InlineData("claude-haiku-5-5", 0.10, 0.50, 0.01)]
+    [InlineData("claude-fable-5", 10, 50, 1.00)]
+    [InlineData("claude-fable-5-1", 10, 50, 0.25)]
     public void Model_prefix_resolves_to_published_rates(
         string model, decimal input, decimal output, decimal cacheRead)
     {
@@ -29,6 +35,12 @@ public class AgentPricingTests
     {
         var row = AgentPricing.GetPriceRow("some-future-model");
         row.Input.Should().Be(3.00m);
+    }
+
+    [HumansFact]
+    public void Unknown_model_has_no_listed_price()
+    {
+        AgentPricing.FindPriceRow("some-future-model").Should().BeNull();
     }
 
     [HumansFact]

@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Anthropic.Core;
 using Anthropic.Models.Messages;
+using Anthropic.Models.Models;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
 using SdkAnthropicClient = Anthropic.AnthropicClient;
@@ -213,6 +214,12 @@ internal sealed class AnthropicClient : IAnthropicClient
         var result = await _sdk.Messages.CountTokens(request, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         return ClampToInt(result.InputTokens);
+    }
+
+    public async Task<IReadOnlyList<AnthropicModelInfo>> ListModelsAsync(CancellationToken cancellationToken = default)
+    {
+        var page = await _sdk.Models.List(new ModelListParams { Limit = 100 }, cancellationToken).ConfigureAwait(false);
+        return page.Items.Select(m => new AnthropicModelInfo(m.ID, m.DisplayName)).ToList();
     }
 
     private static int ClampToInt(long value) => value > int.MaxValue ? int.MaxValue : (int)value;
