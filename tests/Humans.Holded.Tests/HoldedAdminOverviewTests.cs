@@ -476,4 +476,19 @@ public sealed class HoldedAdminOverviewTests
 
         (await service.GetOverviewAsync(ct)).MonthlyCallBudget.Should().Be(5000);
     }
+
+    [HumansFact]
+    public async Task Mirror_reads_never_call_holded()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync([Account(40000004, -10m), Account(62900000, 10m)], FixedNow, ct);
+        await SeedLinesAsync(ct, Line(1, 62900000, debit: 10m), Line(1, 40000004, credit: 10m, line: 2));
+
+        await _service.GetLedgerLinesAsync(40000004, ct);
+        await _service.GetAccountBalancesAsync(ct);
+        await _service.GetAccountStatementAsync(40000004, ct);
+        await _service.GetEntryAsync(1, ct);
+
+        _client.ReceivedCalls().Should().BeEmpty();
+    }
 }
