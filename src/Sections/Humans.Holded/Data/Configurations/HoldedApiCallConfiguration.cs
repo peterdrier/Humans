@@ -13,7 +13,7 @@ internal sealed class HoldedApiCallConfiguration : IEntityTypeConfiguration<Hold
         b.Property(x => x.Endpoint).HasMaxLength(64);
         b.Property(x => x.Method).HasMaxLength(8);
         b.Property(x => x.RateLimitWindow).HasMaxLength(16);
-        // The admin screen groups by month, so the read is always date-ranged.
+        // For date-ranged reads. Today the admin screen loads every call and groups by month in memory.
         b.HasIndex(x => x.CalledAt);
     }
 }
