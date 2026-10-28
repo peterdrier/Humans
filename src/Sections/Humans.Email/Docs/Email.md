@@ -174,6 +174,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 ## Invariants
 
+- A queued personal facilitated message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient and contact-sharing details for reconciliation; queueing failures still propagate.
+
 - Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator and legacy fallback. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
 
 - An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production always selects SMTP and still boots: a missing host fails at send time with an `Email:SmtpHost` diagnostic, so persisted messages follow normal outbox failure/retry handling rather than being marked sent by the stub. The health check reports SMTP as unconfigured. A nonblank host selects SMTP in every environment.

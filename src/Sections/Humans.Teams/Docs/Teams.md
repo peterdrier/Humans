@@ -273,6 +273,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Send as team
 
+A queued team message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient, team and contact-sharing details for reconciliation; queueing failures still propagate.
+
 A coordinator can relay a one-off message to another member on behalf of a team, with replies going to the team's Google Group. The rule is Teams' own (`TeamMessageOptionsProvider`, internal): an **active** team the viewer **coordinates** (`TeamMemberRole.Coordinator`), with a Google Group prefix whose group is linked (`ITeamResourceService`, GoogleIntegration), active, synced at least once and error-free, matched on the group's URL. `TeamMessageButtonsViewComponent` (a `Profile` user part, weight 200, registered by `SectionUserParts`) offers one button per such team on another member's profile; `TeamMessageController` re-checks the same list on GET and POST. Both refuse an opted-out recipient (`ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync`) and self-send. The message goes through Email's `IEmailMessageFactory.FacilitatedMessage` with the group as `replyTo`, then `IEmailService.SendAsync`, and is audited `FacilitatedMessageSent` against the recipient, with the team as the related entity; the audit text names the team and never copies its address. Nothing else is stored. Personal facilitated messages stay with Email (`/Email/SendMessage/{id}`).
 
 ## Negative Access Rules
