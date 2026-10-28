@@ -13,11 +13,9 @@ using Humans.Users.Contracts;
 namespace Humans.Cantina.Tests.Services;
 
 /// <summary>
-/// Unit tests for <see cref="CantinaRosterService.GetDailyRosterAsync"/> —
-/// the per-day matrix payload that powers the drill-down view linked from
-/// each row of the Cantina Weekly Roster's per-day mini-table.
-/// Companion to <see cref="CantinaRosterServiceTests"/>. On-site cohort comes
-/// from the shift service; dietary from the cached UserInfo (Profile).
+/// <see cref="CantinaRosterService.GetDailyRosterAsync"/>: the per-day matrix payload behind
+/// the drill-down linked from the weekly roster. On-site cohort comes from the shift
+/// service, names from the cached UserInfo, dietary from <c>ICantinaService</c>.
 /// </summary>
 public class CantinaDailyRosterServiceTests
 {
@@ -53,7 +51,7 @@ public class CantinaDailyRosterServiceTests
         _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, _clock, _audit);
     }
 
-    /// <summary>Builds a profile carrying burner name + dietary (dietary lives on the profile).</summary>
+    /// <summary>Builds a human: burner name on the profile, dietary as Cantina's own record.</summary>
     private static (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet) Human(
         Guid userId,
         string burner,
@@ -105,7 +103,7 @@ public class CantinaDailyRosterServiceTests
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
 
         var id = Guid.NewGuid();
-        SetupDay(2, id); // first (and only) confirmed shift is on day 2
+        SetupDay(2, id);
         SetupHumans(Human(id, "Arriver", "Vegan"));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 1, ct: Xunit.TestContext.Current.CancellationToken);
@@ -264,7 +262,7 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_MedicalConditionsNeverInDto()
     {
         // The cantina output DTO must not expose MedicalConditions, even though
-        // medical lives on the cached UserInfo/ProfileInfo. GDPR Art.9 boundary.
+        // medical rides on the cached UserInfo (its Profile). GDPR Art.9 boundary.
         typeof(Humans.Cantina.Services.Dtos.DailyPersonRowDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
@@ -326,7 +324,7 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_PeopleNotSorted_ReturnsInRepoOrder()
     {
-        // Service must NOT sort People — that's the Web-layer assembler's job
+        // Service must NOT sort People — that's the controller's assembler's job
         // (memory/architecture/display-sort-in-controllers.md). Hand the service a
         // reverse-alphabetical order; the result must preserve it.
         var es = ActiveEvent();
@@ -336,7 +334,6 @@ public class CantinaDailyRosterServiceTests
         var b = Guid.NewGuid();
         var a = Guid.NewGuid();
 
-        // Order on the wire: C, B, A. Service must not re-sort.
         SetupDay(0, c, b, a);
         SetupHumans(Human(c, "Charlie"), Human(b, "Bob"), Human(a, "Alice"));
 

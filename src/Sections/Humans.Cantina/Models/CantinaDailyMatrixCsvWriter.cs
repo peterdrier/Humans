@@ -23,8 +23,8 @@ internal static class CantinaDailyMatrixCsvWriter
 
             var diet = DietaryOptions.DietaryPreferences;
             // "Other" gets its own flag and free-text columns instead.
-            var allergyChips = WithoutOther(DietaryOptions.AllergyOptions);
-            var intoleranceChips = WithoutOther(DietaryOptions.IntoleranceOptions);
+            var allergyChips = DietaryOptions.AllergyOptions.Where(a => !string.Equals(a, DietaryOptions.OtherOption, StringComparison.Ordinal)).ToList();
+            var intoleranceChips = DietaryOptions.IntoleranceOptions.Where(i => !string.Equals(i, DietaryOptions.OtherOption, StringComparison.Ordinal)).ToList();
 
             var cols = new List<string>(capacity: 1 + diet.Count + allergyChips.Count + 2 + intoleranceChips.Count + 2)
             {
@@ -71,17 +71,6 @@ internal static class CantinaDailyMatrixCsvWriter
                 csv.WriteRow([.. totals]);
             }
         });
-    }
-
-    private static List<string> WithoutOther(IReadOnlyList<string> options)
-    {
-        var result = new List<string>(options.Count);
-        foreach (var o in options)
-        {
-            if (!string.Equals(o, DietaryOptions.OtherOption, StringComparison.Ordinal))
-                result.Add(o);
-        }
-        return result;
     }
 
     private static string CountAsString(int n) => n.ToString(CultureInfo.InvariantCulture);

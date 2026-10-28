@@ -1,9 +1,7 @@
 using AwesomeAssertions;
 using Hangfire;
-using Humans.Expenses.Contracts;
-using Humans.Finance.Contracts;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,50 +13,66 @@ using Xunit;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// ValidateOnBuild can't see through <c>sp =&gt; sp.GetRequiredService&lt;T&gt;()</c> forwarding factories, so a
-/// constructor cycle across two sections would recurse forever at the first request instead of failing at startup.
+/// Resolves every Humans service the real <c>Program.cs</c> host registers, in a scope. Building the host runs
+/// ValidateOnBuild and ValidateScopes (captive dependencies); resolving runs the
+/// <c>sp =&gt; sp.GetRequiredService&lt;T&gt;()</c> forwarding factories those can't see into, so a constructor
+/// cycle fails here instead of hanging at the first request. Nothing opens the database.
 /// </summary>
 public sealed class SectionServiceResolutionTests
 {
-    public static TheoryData<Type> CrossSectionServices => new()
-    {
-        typeof(IExpenseReportService),
-        typeof(IHoldedFinanceService),
-    };
-
-    [HumansTheory]
-    [MemberData(nameof(CrossSectionServices))]
-    public async Task Service_resolves_in_a_scope(Type serviceType)
+    [HumansFact]
+    public async Task Every_registered_service_resolves()
     {
         await using var factory = new NoDatabaseFactory();
         var provider = factory.Services;
-        object? resolved = null;
-        Exception? failure = null;
+        var current = "(none)";
+        var failures = new List<string>();
         var worker = new Thread(() =>
         {
-            try
+            using var scope = provider.CreateScope();
+            foreach (var d in factory.Registrations.Where(IsHumansService))
             {
-                using var scope = provider.CreateScope();
-                resolved = scope.ServiceProvider.GetRequiredService(serviceType);
+                current = Describe(d);
+                try
+                {
+                    _ = d.IsKeyedService
+                        ? scope.ServiceProvider.GetRequiredKeyedService(d.ServiceType, d.ServiceKey)
+                        : scope.ServiceProvider.GetRequiredService(d.ServiceType);
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{current}: {ex.GetBaseException().Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
+            current = null!;
         })
         { IsBackground = true };
         worker.Start();
 
-        worker.Join(TimeSpan.FromSeconds(30)).Should().BeTrue(
-            because: $"{serviceType.Name} must resolve; a hang means a constructor cycle");
-        failure.Should().BeNull();
-        resolved.Should().NotBeNull();
+        // Under HumansFact's 30s timeout, which would otherwise fail first without naming the service.
+        worker.Join(TimeSpan.FromSeconds(25)).Should().BeTrue(
+            because: $"resolution hung on {current}, which means a constructor cycle");
+        failures.Should().BeEmpty();
     }
+
+    private static bool IsHumansService(ServiceDescriptor d) =>
+        !d.ServiceType.IsGenericTypeDefinition
+        && (IsHumans(d.ServiceType)
+            || IsHumans(d.IsKeyedService ? d.KeyedImplementationType : d.ImplementationType));
+
+    private static bool IsHumans(Type? t) =>
+        t?.Assembly.GetName().Name?.StartsWith("Humans.", StringComparison.Ordinal) == true;
+
+    private static string Describe(ServiceDescriptor d) =>
+        d.IsKeyedService ? $"{d.ServiceType.FullName} [{d.ServiceKey}]" : d.ServiceType.FullName!;
 }
 
 /// <summary>Boots the real app without a database or background jobs; HTTP smoke tests and service-resolution checks share it.</summary>
 public sealed class NoDatabaseFactory : WebApplicationFactory<Program>
 {
+    /// <summary>Every registration the host was built from, captured after the test overrides.</summary>
+    public IReadOnlyList<ServiceDescriptor> Registrations { get; private set; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Testing skips Hangfire; the connection string is never opened.
@@ -78,6 +92,7 @@ public sealed class NoDatabaseFactory : WebApplicationFactory<Program>
             services.AddSingleton(Substitute.For<IBackgroundJobClient>());
             // Key storage is the system DbContext; antiforgery and auth cookies need a provider that works without it.
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
+            Registrations = services.ToList();
         });
     }
 }

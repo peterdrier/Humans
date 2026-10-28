@@ -27,7 +27,7 @@ Repository: `IGateRepository`.
 | Table | R/W |
 |-------|-----|
 | gate_scan_events | R/W (append-only verdict log; admit dedupe via unique index on `AdmitDedupeKey`; retention purge; merge reassignment) |
-| gate_settings | R/W (singleton row — general-entry cutoff, minor-age threshold) |
+| gate_settings | R/W (singleton row — general-entry cutoff, minor-age threshold (stored and edited; nothing reads it yet)) |
 | gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag gates override authority) |
 | tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
 
@@ -73,11 +73,11 @@ kiosk account.
 ### Background jobs (`Humans.Gate/Jobs/`)
 
 `GateRetentionJob` (daily purge of scan rows past retention, via
-`IGateScanRetention.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
+`IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365)
 and `GateVendorCheckInJob` (best-effort mirror of an admit to TicketTailor
 via `ITicketVendorMirror` — the Tickets Contracts leaf's narrow mirror
 surface, not the full `ITicketVendorService` port; off by default behind
-`Gate:VendorMirrorEnabled`, enqueued by `GateController` on admit; a
+`Gate:VendorMirrorEnabled`, enqueued by `GateService` on admit and by the vendor check-in backfill page; a
 one-off backfill page covers a 30-day window).
 
 ---

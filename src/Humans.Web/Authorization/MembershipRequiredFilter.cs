@@ -124,9 +124,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         context.Result = state switch
         {
             UserState.DeletePending => new RedirectToActionResult("Deletion", "User", null),
-            UserState.Suspended or UserState.AdminSuspended
-                or UserState.Rejected
-                => new RedirectToActionResult("Status", "User", null),
+            UserState walled when walled.IsWalled() => new RedirectToActionResult("Status", "User", null),
             // Bare or null (not yet named / unseeded) → name entry.
             _ => new RedirectToActionResult("Index", "OnboardingWidget", null),
         };

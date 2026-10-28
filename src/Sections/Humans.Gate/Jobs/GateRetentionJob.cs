@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Gate.Contracts;
+using Humans.Gate.Services;
 using Microsoft.Extensions.Configuration;
 using NodaTime;
 
@@ -8,8 +8,8 @@ namespace Humans.Gate.Jobs;
 
 /// <summary>Gate scans are attendance data, so they aren't kept indefinitely. <c>Gate:RetentionDays</c> of 0 or less disables the purge.</summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public sealed class GateRetentionJob(
-    IGateScanRetention gateScans,
+internal sealed class GateRetentionJob(
+    IGateService gate,
     IConfiguration configuration,
     IClock clock,
     ILogger<GateRetentionJob> logger) : IRecurringJob
@@ -24,7 +24,7 @@ public sealed class GateRetentionJob(
         }
 
         var cutoff = clock.GetCurrentInstant().Minus(Duration.FromDays(days));
-        var removed = await gateScans.PurgeScansBeforeAsync(cutoff, cancellationToken);
+        var removed = await gate.PurgeScansBeforeAsync(cutoff, cancellationToken);
         logger.LogInformation(
             "Gate retention purge removed {Count} gate_scan_events older than {Days} days", removed, days);
     }

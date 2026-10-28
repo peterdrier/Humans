@@ -9,7 +9,6 @@ internal sealed class SectionAdminNav : ISectionAdminNav
     [
         new("Gate", [
             new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     PolicyNames.TicketAdminOrAdmin),
-            new("Staff PINs", "Gate",             "Admin", null, null, "fa-solid fa-sliders", PolicyNames.TicketAdminOrAdmin),
             new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
         ])
     ];

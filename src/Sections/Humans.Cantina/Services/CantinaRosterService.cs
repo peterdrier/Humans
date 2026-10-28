@@ -74,21 +74,24 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var daysOnSiteByUserId = BuildDaysOnSiteByUserId(perDay, weekStartOffset, weekStartDate);
 
-        // Arrival-day feeding: the day before a human's FIRST confirmed shift of the whole event, not just this week,
-        // so scan from build start and inject arrivals that land in the visible week.
+        // Arrival day: the day before a human's FIRST confirmed shift of the whole event, not just this week, so scan
+        // from build start. It is every cohort member's ArrivesOn, and is fed as an on-site day when it lands in the week.
+        var arrivesOnByUser = new Dictionary<Guid, LocalDate>();
         if (burn is not null && weekStartDate is { } anchor)
         {
-            // Only in-week arrivals are injected, so a first shift past weekStartOffset+7 can't matter.
+            // Every cohort member has a confirmed shift by weekStartOffset+7 (an arrival-only human's first shift is
+            // that day), so a later first shift belongs to nobody on this roster.
             var firstConfirmedOffsetByUser =
                 await BuildFirstConfirmedOffsetByUserAsync(
                     burn, weekStartOffset + DaysPerWeek, onSiteByOffset, ct).ConfigureAwait(false);
             foreach (var (userId, minOffset) in firstConfirmedOffsetByUser)
             {
                 var arrivalOffset = minOffset - 1;
+                var arrivalDate = anchor.PlusDays(arrivalOffset - weekStartOffset);
+                arrivesOnByUser[userId] = arrivalDate;
                 if (arrivalOffset < weekStartOffset || arrivalOffset > weekStartOffset + DaysPerWeek - 1)
                     continue;
 
-                var arrivalDate = anchor.PlusDays(arrivalOffset - weekStartOffset);
                 if (!daysOnSiteByUserId.TryGetValue(userId, out var list))
                 {
                     list = new List<LocalDate>(capacity: DaysPerWeek);
@@ -115,7 +118,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var weekDays = BuildWeekDays(weekStartDate);
 
-        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, dietById, daysOnSiteByUserId, weekDays);
+        var people = BuildWeeklyPeople(uniqueUserIds, userInfoById, dietById, daysOnSiteByUserId, arrivesOnByUser, weekDays);
 
         var dietaryBreakdown = BuildDietaryBreakdown(uniqueProfiles, uniqueUserIds.Count);
         var (allergyRollup, allergyOther) = BuildRollup(
@@ -129,7 +132,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             p => p.IntoleranceOtherText,
             DietaryOptions.IntoleranceOptions);
 
-        var answeredCount = uniqueProfiles.Count(p => !string.IsNullOrEmpty(p.DietaryPreference));
+        var answeredCount = uniqueProfiles.Count(p => p.HasPreference);
         var unansweredTotal = uniqueUserIds.Count - answeredCount;
 
         return new WeeklyRosterDto(
@@ -155,9 +158,10 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         if (burn is null || GetEventTodayDate(burn) is not { } today)
             return 0;
 
-        var daysSinceMonday = ((int)today.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
-        return Period.Between(burn.GateOpeningDate, today.PlusDays(-daysSinceMonday), PeriodUnits.Days).Days;
+        return Period.Between(burn.GateOpeningDate, today.PlusDays(-DaysSinceMonday(today)), PeriodUnits.Days).Days;
     }
+
+    private static int DaysSinceMonday(LocalDate date) => (int)date.DayOfWeek - (int)IsoDayOfWeek.Monday;
 
     /// <summary>Zero without an active event.</summary>
     private int CurrentDayOffset(EventSettingsInfo? burn)
@@ -191,8 +195,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         int weekStartOffset;
         if (calendarDate is { } cd)
         {
-            var daysSinceMonday = ((int)cd.DayOfWeek - 1 + DaysPerWeek) % DaysPerWeek;
-            weekStartOffset = dayOffset - daysSinceMonday;
+            weekStartOffset = dayOffset - DaysSinceMonday(cd);
         }
         else
         {
@@ -207,8 +210,8 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             ? Array.Empty<Guid>()
             : await GetOnSiteUserIdsAsync(burn.Id, dayOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
-        // Arrival-day feeding: anyone whose first confirmed shift is day N+1 arrives today. Union BEFORE the empty
-        // check: a day with zero shifts can still have arrivals.
+        // Arrival-day feeding: anyone whose first confirmed shift is day N+1 arrives today. A day with zero shifts can
+        // still have arrivals.
         var unionedUserIds = new HashSet<Guid>(shiftUserIds);
         if (burn is not null)
         {
@@ -224,20 +227,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var userIds = unionedUserIds.ToList();
 
-        if (userIds.Count == 0)
-        {
-            return new DailyMatrixDto(
-                DayOffset: dayOffset,
-                CalendarDate: calendarDate,
-                EventTodayDate: eventTodayDate,
-                EventName: eventName,
-                WeekStartOffset: weekStartOffset,
-                TotalOnSite: 0,
-                UnansweredCount: 0,
-                People: Array.Empty<DailyPersonRowDto>());
-        }
-
-        var userInfoById = await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
+        var userInfoById = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userRead.GetUserInfosAsync(userIds, ct).ConfigureAwait(false);
         var dietById = await _dietary.GetDietaryProfilesAsync(userIds, ct).ConfigureAwait(false);
 
         var people = new List<DailyPersonRowDto>(userIds.Count);
@@ -246,20 +238,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             userInfoById.TryGetValue(id, out var info);
             dietById.TryGetValue(id, out var profile);
 
-            IReadOnlySet<string> allergies = profile?.Allergies is { Count: > 0 } a
-                ? new HashSet<string>(a, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-            IReadOnlySet<string> intolerances = profile?.Intolerances is { Count: > 0 } i
-                ? new HashSet<string>(i, StringComparer.Ordinal)
-                : new HashSet<string>(StringComparer.Ordinal);
-
             people.Add(new DailyPersonRowDto(
                 UserId: id,
                 BurnerName: ResolveBurnerName(info),
                 DietaryPreference: profile?.DietaryPreference,
-                Allergies: allergies,
+                Allergies: new HashSet<string>(profile?.Allergies ?? [], StringComparer.Ordinal),
                 AllergyOtherText: profile?.AllergyOtherText,
-                Intolerances: intolerances,
+                Intolerances: new HashSet<string>(profile?.Intolerances ?? [], StringComparer.Ordinal),
                 IntoleranceOtherText: profile?.IntoleranceOtherText));
         }
 
@@ -425,6 +410,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         IReadOnlyDictionary<Guid, UserInfo> userInfoById,
         IReadOnlyDictionary<Guid, DietaryProfileInfo> dietById,
         IReadOnlyDictionary<Guid, List<LocalDate>> daysOnSiteByUserId,
+        IReadOnlyDictionary<Guid, LocalDate> arrivesOnByUser,
         IReadOnlyList<LocalDate> weekDays)
     {
         var people = new List<RosterPersonDto>(uniqueUserIds.Count);
@@ -438,12 +424,12 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             people.Add(new RosterPersonDto(
                 UserId: id,
                 BurnerName: ResolveBurnerName(info),
-                ArrivesOn: daysList[0],
+                ArrivesOn: arrivesOnByUser.GetValueOrDefault(id, daysList[0]),
                 NoShift: BuildNoShiftDays(daysList, weekDays),
                 DietaryPreference: profile?.DietaryPreference,
-                Allergies: profile?.Allergies is { Count: > 0 } a ? a.ToArray() : Array.Empty<string>(),
+                Allergies: profile?.Allergies ?? [],
                 AllergyOtherText: profile?.AllergyOtherText,
-                Intolerances: profile?.Intolerances is { Count: > 0 } i ? i.ToArray() : Array.Empty<string>(),
+                Intolerances: profile?.Intolerances ?? [],
                 IntoleranceOtherText: profile?.IntoleranceOtherText));
         }
 

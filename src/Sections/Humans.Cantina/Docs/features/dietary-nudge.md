@@ -65,7 +65,7 @@ Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member
 
 ### US-35.5: Gentle banner on /Shifts, never a gate
 **Acceptance Criteria:**
-- No signup path checks dietary info: every Sign-Up button stays enabled and `ToggleDay` signs up regardless (nobodies-collective/Humans#2104 retired the former hard gate, its disabled buttons and the post-save signup replay).
+- No signup path checks dietary info: every Sign-Up button stays enabled and `ToggleDay` signs up regardless (nobodies-collective/Humans#2104).
 - `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` shows an info banner while the member holds a qualifying signup **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Shifts composes this itself).
 - The banner offers **Tell us now** (`/Cantina/Dietary?returnAction=shifts`) and **I don't want to answer** (a POST to `/Cantina/Dietary` with `DeclineToAnswer=true`, back to `/Shifts`), after which it no longer renders.
 

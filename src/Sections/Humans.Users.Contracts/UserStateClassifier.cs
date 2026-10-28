@@ -28,4 +28,12 @@ public static class UserStateClassifier
         if (!hasRequiredNameFields) return UserState.Bare;
         return UserState.Active;
     }
+
+    /// <summary>
+    /// The states shown the account-status wall: <c>MembershipRequiredFilter</c> routes exactly these to
+    /// <c>/Gdpr/Status</c>, and that page sends anyone else home.
+    /// </summary>
+    public static bool IsWalled(this UserState state) =>
+        state is UserState.Suspended or UserState.AdminSuspended or UserState.Rejected
+            or UserState.Deleted or UserState.Merged;
 }

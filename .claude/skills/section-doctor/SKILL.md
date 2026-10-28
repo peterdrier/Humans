@@ -474,11 +474,13 @@ Contents, in order:
 
    For each: who uses it, why it exists, and a verdict of keep, shrink or question, with enough
    context to judge it cold.
-3. **Section debt.** `Docs/debt.yml` rows, the section's open issues with today's state, and
+3. **Jobs,** when the section has any: each recurring and fire-and-forget job, its schedule or
+   trigger, what it does, and its gating config. Omit the heading when there are none.
+4. **Section debt.** `Docs/debt.yml` rows, the section's open issues with today's state, and
    debt that lives only in the code (`[Obsolete]`, `Grandfathered`, baselines naming the
    section, transitional duplicates, reforge hot spots). For each: what it is, why it is still
    there, and what fixing it takes.
-4. **Questions,** numbered and answerable in a word.
+5. **Questions,** numbered and answerable in a word.
 
 Write in plain language with no run-internal numbering. Ids (`S1`, `D1`, …) are stable within
 the file.

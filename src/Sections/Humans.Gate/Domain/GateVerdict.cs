@@ -8,7 +8,7 @@ internal enum GateVerdict
     /// <summary>Under an Early Entry grant, before the general-entry cutoff.</summary>
     AdmittedEarly,
 
-    /// <summary>The photo-ID step is waived below the configured age threshold.</summary>
+    /// <summary>Photo ID waived for a child with an accompanying adult, authorized by the supervisor override PIN.</summary>
     AdmittedChildWithAdult,
 
     /// <summary>Supervisor override despite a too-early pre-check; recorded on <see cref="GateScanEvent.OverrideByUserId"/>.</summary>
@@ -25,6 +25,6 @@ internal enum GateVerdict
     /// <summary>The agent tapped No: the photo ID doesn't match the ticket name.</summary>
     RejectedNameMismatch,
 
-    /// <summary>Escalated to a supervisor with no recorded resolution.</summary>
+    /// <summary>No admit or reject recorded: escalated to a supervisor, or the cutoff is unset.</summary>
     Unresolved,
 }

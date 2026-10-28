@@ -277,7 +277,7 @@ public class GateServiceTests
         StubTicket();
 
         // The child-without-ID waiver is a supervisor override — it admits only when an
-        // authorizing supervisor was recorded (the controller sets this after AuthorizeOverrideAsync).
+        // authorizing supervisor was recorded (the controller sets this after verifying the shared Gate:SupervisorPin).
         (await RecordAsync(idConfirmed: false, child: true, overrideBy: Guid.NewGuid()))
             .Verdict.Should().Be(GateVerdict.AdmittedChildWithAdult);
     }
@@ -513,6 +513,38 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task Gdpr_ExportOmitsBarcodeAndOtherPeoplesIds()
+    {
+        var supervisor = Guid.NewGuid();
+        StubTicket(matchedUserId: GuestId);
+        await RecordAsync(idConfirmed: true, overrideBy: supervisor);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            (await _svc.ContributeForUserAsync(GuestId, default)).Single().Data);
+
+        json.Should().NotContain(Barcode)
+            .And.NotContain(AgentId.ToString())
+            .And.NotContain(supervisor.ToString());
+    }
+
+    [HumansFact]
+    public async Task RecordDecision_ClientScanAtNeverDecidesTheVerdict()
+    {
+        StubTicket(matchedUserId: GuestId);
+        await _svc.SaveSettingsAsync(new GateSettingsDto(
+            Clock.GetCurrentInstant().Plus(Duration.FromHours(6)), 16));
+
+        // A device clock claiming a post-cutoff scan cannot admit early: server time decides.
+        var r = await _svc.RecordDecisionAsync(
+            new GateDecisionInput(Barcode, IdConfirmed: true, ChildWithAdult: false, LaneId: "L1",
+                ClientScanAt: Clock.GetCurrentInstant().Plus(Duration.FromHours(12)), Note: null,
+                OverrideByUserId: null),
+            AgentId);
+
+        r.Verdict.Should().Be(GateVerdict.RejectedTooEarly);
+    }
+
+    [HumansFact]
     public async Task Merge_ReassignsScansToSurvivor()
     {
         StubTicket(matchedUserId: GuestId);
@@ -684,7 +716,7 @@ public class GateServiceTests
         var sup = Guid.NewGuid();
         _roles.HasActiveRoleAsync(sup, TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>()).Returns(true);
 
-        // A supervisor may now self-enrol a CLAIM PIN (attribution — everyone can)...
+        // A supervisor may self-enrol a CLAIM PIN (attribution — everyone can)...
         (await _svc.SetOwnPinAsync(sup, "2580")).Should().Be(GatePinSetResult.Ok);
         (await _svc.VerifyPinAsync(sup, "2580")).Should().BeTrue();          // can claim the scanner
         // ...but a self-set PIN never carries override authority (AdminEnrolled = false).

@@ -69,8 +69,7 @@
   <data name="Gdpr_Deletion_Cancelled" xml:space="preserve">
     <value>La suppression du compte a été annulée.</value>
   </data>
-  <data name="Gdpr_Guest_DeletionRequestFailed" xml:space="preserve"><value>Impossible de traiter la demande de suppression. Veuillez réessayer.</value></data>
-  <data name="Gdpr_Guest_DeletionRequested" xml:space="preserve"><value>Demande de suppression enregistrée. Votre compte sera définitivement supprimé le {0}.</value><comment>{0} = deletion date</comment></data>
-  <data name="Gdpr_Guest_DeletionHeldForTicket" xml:space="preserve"><value>Demande de suppression enregistrée. Comme vous avez des billets pour un prochain événement, votre compte sera supprimé après le {0}.</value><comment>{0} = deletion date</comment></data>
+  <data name="Gdpr_Deletion_RequestFailed" xml:space="preserve"><value>Impossible de traiter la demande de suppression. Veuillez réessayer.</value></data>
+  <data name="Gdpr_Deletion_HeldForTicket" xml:space="preserve"><value>Demande de suppression enregistrée. Comme vous avez des billets pour un prochain événement, votre compte sera supprimé après le {0}.</value><comment>{0} = deletion date</comment></data>
   <data name="Gdpr_Guest_CancelDeletionFailed" xml:space="preserve"><value>Impossible d'annuler la demande de suppression. Veuillez réessayer.</value></data>
 </root>

@@ -65,7 +65,7 @@ public sealed class CantinaCsvWritersTests
         lines[0].Should().Be("Week of 2026-07-07 – 2026-07-13");
         lines[1].Should().Be("Date,On site,Unanswered");
         lines[2].Should().Be("2026-07-07,1,0");
-        lines[3].Should().BeEmpty(); // blank separator between sections
+        lines[3].Should().BeEmpty();
         lines[4].Should().Be("Name,ArrivesOn,NoShift,Dietary,Allergies,AllergyOther,Intolerances,IntoleranceOther");
         lines[5].Should().StartWith("Ana,2026-07-07");
     }
@@ -77,25 +77,23 @@ public sealed class CantinaCsvWritersTests
             Person("=SUM(A1)", allergies: ["Peanut", "Soy"], allergyOther: "@lookup")));
 
         var personRow = lines[5];
-        personRow.Should().NotStartWith("="); // OWASP escape on user-controlled BurnerName
+        personRow.Should().NotStartWith("=");
         personRow.Should().Contain("'=SUM(A1)");
-        personRow.Should().Contain("\"Peanut, Soy\""); // joined multi-select stays one quoted cell
+        personRow.Should().Contain("\"Peanut, Soy\"");
         personRow.Should().Contain("'@lookup");
     }
 
     /// <summary>
-    /// Regression guard: a human whose arrival day is the day before their first
-    /// confirmed shift (arrivalDay = firstConfirmedShiftDay − 1) must still appear
-    /// in the CSV with the correct ArrivesOn date. ArrivesOn is a non-nullable
-    /// column; this test pins that it is emitted correctly for arrival-day humans.
+    /// A human whose arrival day is the day before their first confirmed shift
+    /// must still appear in the CSV, with ArrivesOn set to the arrival date.
     /// </summary>
     [HumansFact]
     public void WeeklyRoster_ArrivalDayHuman_AppearsInCsvWithArrivalDate()
     {
         // Human arrives on 2026-07-12 (day 5 of week), shifts only on 2026-07-13 (day 6).
         // NoShift covers the first 5 days of the week (Mon–Sat with no signup).
-        var arrivalDay = WeekStart.PlusDays(5); // 2026-07-12
-        var shiftDay = WeekStart.PlusDays(6); // 2026-07-13
+        var arrivalDay = WeekStart.PlusDays(5);
+        var shiftDay = WeekStart.PlusDays(6);
 
         var noShiftDays = Enumerable.Range(0, 5)
             .Select(i => WeekStart.PlusDays(i))
@@ -130,7 +128,6 @@ public sealed class CantinaCsvWritersTests
 
         var lines = RosterLines(roster);
 
-        // The person row exists and its ArrivesOn column is the arrival date.
         var personRow = lines[5];
         personRow.Should().StartWith("Arrival,2026-07-12");
     }
@@ -162,7 +159,7 @@ public sealed class CantinaCsvWritersTests
         lines[2].Should().Be("Unanswered: 0");
         lines[3].Should().BeEmpty();
         lines[4].Should().StartWith("Burner,");
-        lines[5].Should().StartWith("\"'+Ana\""); // injection escape on user-controlled name (escaped fields are also quoted)
+        lines[5].Should().StartWith("\"'+Ana\""); // escaped fields are also quoted
         lines[^1].Should().StartWith("TOTALS,");
     }
 
