@@ -173,7 +173,8 @@ Rename the session `section-doctor: <Section> — <yyyy-mm-dd>` via `set_session
 tool exists (load it with ToolSearch if deferred); skip silently otherwise. It requires
 `session_id`: take `ccr.id` from `get_session` called with no arguments. Confirm the returned
 title changed; on an error retry once, and if that fails too, note it in the run file's Retro
-and carry on.
+and carry on. Inside a Claude project thread (the `mcp__hearthbot__rename_thread` tool exists),
+also rename the thread `Section-doctor: <Section>`.
 
 ### Phase 3: Assess
 
