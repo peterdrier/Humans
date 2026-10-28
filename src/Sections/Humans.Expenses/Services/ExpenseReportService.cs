@@ -1172,6 +1172,21 @@ internal sealed class ExpenseReportService(
             ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
             : "";
 
+    private async Task<(decimal? Amount, ExpenseMutationResult? Refusal)> ResolveReviewCapAsync(
+        Guid? grantId, decimal? requestedAmount, CancellationToken ct)
+    {
+        if (grantId is not { } id) return (requestedAmount, null);
+
+        var grant = await preapprovals.GetGrantAsync(id, ct);
+        if (grant is null)
+            return (null, ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report."));
+        if (requestedAmount > grant.MaxAmount)
+            return (null, ExpenseMutationResult.OperatorFailure(
+                $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR."));
+
+        return (requestedAmount ?? grant.MaxAmount, null);
+    }
+
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default) =>
@@ -1183,18 +1198,9 @@ internal sealed class ExpenseReportService(
             if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
                 return refusal;
 
-            if (report.PreapprovalGrantId is { } grantId)
-            {
-                // The same ceiling approval enforces, so an endorsement never promises more than Finance may pay.
-                var grant = await preapprovals.GetGrantAsync(grantId, ct);
-                if (grant is null)
-                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report.");
-                if (maxAmount is null)
-                    maxAmount = grant.MaxAmount;
-                else if (maxAmount > grant.MaxAmount)
-                    return ExpenseMutationResult.OperatorFailure(
-                        $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR.");
-            }
+            var cap = await ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
+            if (cap.Refusal is { } capRefusal) return capRefusal;
+            maxAmount = cap.Amount;
 
             var now = clock.GetCurrentInstant();
             var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
@@ -1373,19 +1379,9 @@ internal sealed class ExpenseReportService(
                 overrideBooking = resolved;
             }
 
-            if (report.PreapprovalGrantId is { } grantId)
-            {
-                // The grant's current amount is the ceiling: a blank cap keeps it, a lower one is
-                // Finance's call, a higher one is a new pre-approval, not an approval.
-                var grant = await preapprovals.GetGrantAsync(grantId, ct);
-                if (grant is null)
-                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report.");
-                if (maxAmount is null)
-                    maxAmount = grant.MaxAmount;
-                else if (maxAmount > grant.MaxAmount)
-                    return ExpenseMutationResult.OperatorFailure(
-                        $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR.");
-            }
+            var cap = await ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
+            if (cap.Refusal is { } capRefusal) return capRefusal;
+            maxAmount = cap.Amount;
 
             var outboxEventId = Guid.NewGuid();
             var now = clock.GetCurrentInstant();
