@@ -154,6 +154,11 @@ internal sealed class CalendarService(
         try
         {
             var pattern = new RecurrencePattern(rrule);
+            // The library accepts numeric enum values, which also bypass the all-day frequency guard.
+            if (rrule.Split(';').Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
+                    part[5..].ToUpperInvariant() is not ("SECONDLY" or "MINUTELY" or "HOURLY" or
+                        "DAILY" or "WEEKLY" or "MONTHLY" or "YEARLY")))
+                return "Recurrence rule is malformed: FREQ must name an RFC 5545 frequency.";
             if (pattern.ByDay.Any(day => day.Offset is < -53 or 0 or > 53))
                 return "Recurrence rule is malformed: BYDAY ordinal offsets must be between -53 and 53, excluding zero.";
         }

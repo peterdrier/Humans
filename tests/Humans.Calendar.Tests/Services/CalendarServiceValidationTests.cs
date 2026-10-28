@@ -84,7 +84,11 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=YEARLY;BYDAY=54MO", true, true)]
     [InlineData("FREQ=YEARLY;BYDAY=-54TU", false, false)]
     [InlineData("FREQ=MONTHLY;BYDAY=MO,0SA", true, true)]
-    public async Task EventWithResultAsync_InvalidWeekdayOrdinal_is_rejected_before_persistence(
+    [InlineData("FREQ=3;COUNT=1", true, false)]
+    [InlineData("FREQ=3;COUNT=1", true, true)]
+    [InlineData("FREQ=3;COUNT=1", false, false)]
+    [InlineData("FREQ=3;COUNT=1", false, true)]
+    public async Task EventWithResultAsync_InvalidRecurrence_is_rejected_before_persistence(
         string rule, bool allDay, bool update)
     {
         var repo = Substitute.For<ICalendarRepository>();
@@ -174,7 +178,10 @@ public class CalendarServiceValidationTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    [InlineData("FREQ=DAILY")]
+    [InlineData("FREQ=SECONDLY")]
+    [InlineData("FREQ=MINUTELY")]
+    [InlineData("FREQ=HOURLY")]
+    [InlineData("freq=daily")]
     [InlineData("FREQ=MONTHLY;BYDAY=1MO")]
     [InlineData("FREQ=MONTHLY;BYDAY=-1FR")]
     [InlineData("FREQ=YEARLY;BYDAY=53WE")]

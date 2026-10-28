@@ -168,6 +168,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Recurrence rules are limited to the storage column's 500 characters. The form and service reject longer rules before persistence; custom rules within that bound remain unchanged.
 - Create/edit forms require the recurrence choice to be posted explicitly. Omitting it cannot clear an existing series; an explicit false still selects a one-off event.
 - Recurrence controls only participate in browser validation while active: interval is disabled for None/Custom, and end date/count are disabled unless their end condition is selected. Switching modes retains entered values for later use.
+- Recurrence writes accept only named RFC 5545 frequencies (case-insensitive), rejecting numeric enum values before persistence or audit so all-day rules cannot bypass the time-frequency restriction.
 - Recurrence writes validate BYDAY ordinal weekdays as ±1–53; zero (including signed zero) and out-of-range ordinals return the existing localized recurrence error before persistence or audit. Plain weekdays and valid positive/negative ordinals remain accepted.
 - Recurrence expands in-memory through Ical.Net: local times for timed events, floating dates for all-day events.
 - Timed recurrence expansion uses a conservative local upper bound, then checks instant overlap. The earlier occurrence in a repeated clock hour remains visible when the window ends during its later repetition.
