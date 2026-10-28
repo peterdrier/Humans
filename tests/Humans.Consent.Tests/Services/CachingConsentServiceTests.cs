@@ -282,6 +282,37 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
+    public async Task BulkRead_StartedBeforeSubmit_CannotReplaceTheCommittedConsentSet()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var oldRead = new TaskCompletionSource<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                started.SetResult();
+                return oldRead.Task.WaitAsync(ct);
+            });
+        _inner.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", ct)
+            .Returns(new ConsentSubmitResult(true, "Privacy"));
+        _inner.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { versionId });
+        var sut = CreateSut();
+
+        var read = sut.GetConsentMapForUsersAsync([userId], ct);
+        await started.Task.WaitAsync(ct);
+        (await sut.SubmitConsentAsync(userId, versionId, true, "1.2.3.4", "agent", ct))
+            .Success.Should().BeTrue();
+        oldRead.SetResult(new Dictionary<Guid, IReadOnlySet<Guid>> { [userId] = new HashSet<Guid>() });
+        await read;
+
+        (await sut.GetConsentedVersionIdsAsync(userId, ct)).Should().Contain(versionId);
+    }
+
+    [HumansFact]
     public async Task SubmitConsentAsync_RefreshFailure_EvictsEveryMergeChainKey()
     {
         var userId = Guid.NewGuid();

@@ -63,6 +63,7 @@ internal sealed class CachingConsentService(
             await using var scope = scopeFactory.CreateAsyncScope();
             var inner = scope.ServiceProvider.GetRequiredKeyedService<IConsentManagement>(InnerServiceKey);
             var missList = misses.ToList();
+            var publish = CreateLoadPublisher();
             var bulk = await inner.GetConsentMapForUsersAsync(missList, ct).ConfigureAwait(false);
 
             foreach (var userId in missList)
@@ -71,7 +72,7 @@ internal sealed class CachingConsentService(
                     ? v
                     : new HashSet<Guid>();
                 var frozen = new HashSet<Guid>(versions);
-                Set(userId, new UserConsentInfo(userId, frozen, UserIdsOf(userId)));
+                publish(userId, new UserConsentInfo(userId, frozen, UserIdsOf(userId)));
                 result[userId] = frozen;
             }
         }

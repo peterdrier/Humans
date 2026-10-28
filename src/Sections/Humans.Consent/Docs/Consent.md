@@ -245,7 +245,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 
 ## Architecture
 
-A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
+A delayed per-key or bulk consent load cannot republish its old result after an intervening cache eviction or refresh.
 
 **Owning services:** `LegalDocumentService` (Statutes page), `LegalDocumentSyncService` (document-side — sole writer for `legal_documents`/`document_versions`, owning both the admin write surface `IAdminLegalDocumentService` and the GitHub-sync write surface `ILegalDocumentSyncManagement`; nobodies-collective/Humans#751), `ConsentService` (consent-side), `LegalDocumentSyncRunner` (the GitHub sync + re-consent fan-out body) — all in `Humans.Consent.Services`, `internal sealed`. `SyncLegalDocumentsJob` itself is `Humans.Consent/Jobs/SyncLegalDocumentsJob.cs` — `public` because Shell names the concrete type when it registers and schedules it.
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`, `consent_reviews`, `consent_reminders`

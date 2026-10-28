@@ -288,6 +288,26 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>
+    /// Capture before fetching rows. Publications share one load: their own inserts remain valid,
+    /// but an intervening eviction, refresh or publication from another load stops further publication.
+    /// </summary>
+    protected Action<TKey, TValue> CreateLoadPublisher()
+    {
+        long generation;
+        lock (_mutationGate) generation = _mutationGeneration;
+
+        return (key, value) =>
+        {
+            lock (_mutationGate)
+            {
+                if (generation != _mutationGeneration) return;
+                Set(key, value);
+                generation = _mutationGeneration;
+            }
+        };
+    }
+
+    /// <summary>
     /// Standard "miss → load → set" cached read. Increments hit/miss via
     /// <see cref="TryGet"/>. Subclasses override <see cref="LoadRowAsync"/> to
     /// plug in their per-key loader; the default returns null (load-all-only
@@ -295,19 +315,14 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// </summary>
     public async ValueTask<TValue?> GetAsync(TKey key, CancellationToken ct = default)
     {
-        long generation;
+        Action<TKey, TValue> publish;
         lock (_mutationGate)
         {
             if (TryGet(key, out var hit)) return hit;
-            generation = _mutationGeneration;
+            publish = CreateLoadPublisher();
         }
         var loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
-        lock (_mutationGate)
-        {
-            // Eviction or refresh may have completed while this miss was loading.
-            if (loaded is not null && generation == _mutationGeneration)
-                Set(key, loaded);
-        }
+        if (loaded is not null) publish(key, loaded);
         return loaded;
     }
 
