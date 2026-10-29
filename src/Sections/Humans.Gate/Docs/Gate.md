@@ -55,8 +55,9 @@ after the retention window.
 - **Server-authoritative decision** — `RecordDecisionAsync` re-evaluates server-side, so a client
   "ID confirmed" can never turn a STOP into an admit. `scannedByUserId` is the authenticated gate
   account, taken from the principal, never the request body. The child/ID-waiver and the early
-  overrides admit only when `OverrideByUserId` was recorded, which the controller sets **only**
-  after verifying the shared supervisor override PIN (`Gate:SupervisorPin`) server-side — a forged
+  overrides admit only after `GateService.RecordDecisionAsync` verifies the shared supervisor
+  override PIN (`Gate:SupervisorPin`) and its terminal-wide throttle. The service derives
+  `OverrideByUserId` from the authenticated scanner — a forged
   `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
   (overrides refused, never a free pass).
 - **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier/Humans#1075_: the claim step is
@@ -162,7 +163,7 @@ nobodies-collective/Humans#933.)
 - `scannedByUserId` is server-derived from the authenticated principal (the gate account); an
   override (child/ID-waiver, too-early, or unconfirmed-EE) needs the server-verified shared
   supervisor PIN (`Gate:SupervisorPin`), recorded as `OverrideByUserId`.
-- **Override authorization fails closed.** The PIN comparison is timing-safe (fixed-width hashes),
+- **Override authorization fails closed inside `GateService.RecordDecisionAsync`.** The input carries override intent and the PIN, never a trusted override identity. An invalid, unconfigured or locked-out PIN returns a structured refusal before any scan, attendance write or vendor job. The PIN comparison is timing-safe (fixed-width hashes),
   and an unset `Gate:SupervisorPin` refuses every override with an explicit "not configured" card —
   a missing key is never a free pass. The shared PIN authorizes but cannot attribute:
   `OverrideByUserId` is the gate account, not the individual supervisor.

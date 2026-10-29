@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -31,11 +33,15 @@ internal sealed class GateService(
     IAuditLogService auditLog,
     IBackgroundJobClient backgroundJobs,
     GateVendorMirrorLedger mirrorLedger,
+    GatePinThrottle pinThrottle,
     IConfiguration configuration,
     ILogger<GateService> logger,
     IClock clock) : IGateService, IUserMerge, IUserDataContributor
 {
     internal const string GateScans = "GateScans";
+
+    private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
+    private const string SharedOverridePinKey = "override:shared";
 
     private const string VendorMirrorEnabledKey = "Gate:VendorMirrorEnabled";
 
@@ -105,18 +111,22 @@ internal sealed class GateService(
     public async Task<GateDecisionResult> RecordDecisionAsync(
         GateDecisionInput input, Guid scannedByUserId, CancellationToken ct = default)
     {
+        var overrideAuthorized = input.ChildWithAdult || input.OverrideEarly;
+        if (overrideAuthorized && VerifySharedOverridePin(input.SupervisorPin) is { } failure)
+            return failure;
+
         // Re-evaluate server-side: a client-supplied "ID confirmed" can never turn a STOP into an admit.
         var eval = await EvaluateAsync(input.Barcode, ct);
-        var verdict = ResolveVerdict(eval.Outcome, input);
+        var verdict = ResolveVerdict(eval.Outcome, input, overrideAuthorized);
         var admit = IsAdmit(verdict);
 
-        var recorded = await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit), ct);
+        var recorded = await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized), ct);
 
         if (recorded == GateRecordOutcome.DuplicateAdmitRejected)
         {
             // Lost the concurrent race for this barcode's single admit slot.
             verdict = GateVerdict.RejectedDuplicate;
-            await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit: false), ct);
+            await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit: false, overrideAuthorized), ct);
             var prior = await repository.GetAdmitForBarcodeAsync(eval.Barcode, ct);
             return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
                 IsEarly: false, prior?.OccurredAt, prior?.ScannedByUserId);
@@ -134,6 +144,30 @@ internal sealed class GateService(
             eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
             VendorTicketId: admit ? eval.VendorTicketId : null);
     }
+
+    private GateDecisionResult? VerifySharedOverridePin(string? pin)
+    {
+        var configured = configuration[SupervisorPinConfigKey];
+        if (string.IsNullOrEmpty(configured))
+            return Refused(GateOverrideFailure.NotConfigured);
+        if (pinThrottle.SecondsUntilRetry(SharedOverridePinKey) is { } wait)
+            return Refused(GateOverrideFailure.LockedOut, wait);
+
+        // Fixed-width hashes keep both equality and PIN length out of the timing signal.
+        if (string.IsNullOrEmpty(pin) || !CryptographicOperations.FixedTimeEquals(
+                SHA256.HashData(Encoding.UTF8.GetBytes(pin)), SHA256.HashData(Encoding.UTF8.GetBytes(configured))))
+        {
+            pinThrottle.RecordFailure(SharedOverridePinKey);
+            return Refused(GateOverrideFailure.InvalidPin);
+        }
+
+        pinThrottle.Reset(SharedOverridePinKey);
+        return null;
+    }
+
+    private static GateDecisionResult Refused(GateOverrideFailure failure, int? retryAfterSeconds = null) =>
+        new(GateVerdict.Unresolved, null, null, false, null, null,
+            OverrideFailure: failure, RetryAfterSeconds: retryAfterSeconds);
 
     /// <summary>
     /// Fire-and-forget. Marked in the ledger so the backfill page never re-sends a live admit, but only while the
@@ -400,20 +434,19 @@ internal sealed class GateService(
     private static GateScanResult NotFound(string code) =>
         new(GatePreCheckOutcome.Invalid, code, null, null, false, null, null, null, null, null);
 
-    private static GateVerdict ResolveVerdict(GatePreCheckOutcome outcome, GateDecisionInput input) => outcome switch
+    private static GateVerdict ResolveVerdict(GatePreCheckOutcome outcome, GateDecisionInput input, bool overrideAuthorized) => outcome switch
     {
         GatePreCheckOutcome.Invalid => GateVerdict.RejectedInvalid,
         GatePreCheckOutcome.Duplicate => GateVerdict.RejectedDuplicate,
         GatePreCheckOutcome.CutoffNotConfigured => GateVerdict.Unresolved,
-        // The controller sets OverrideByUserId only after verifying the supervisor PIN, so non-null is proof.
         GatePreCheckOutcome.EarlyEntryUnknown =>
-            input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.Unresolved,
+            overrideAuthorized ? GateVerdict.AdmittedEarlyOverride : GateVerdict.Unresolved,
         GatePreCheckOutcome.TooEarly =>
-            input.OverrideByUserId is not null ? GateVerdict.AdmittedEarlyOverride : GateVerdict.RejectedTooEarly,
+            overrideAuthorized ? GateVerdict.AdmittedEarlyOverride : GateVerdict.RejectedTooEarly,
         GatePreCheckOutcome.NeedsIdCheck or GatePreCheckOutcome.NeedsIdCheckEarly =>
             // The child-without-ID waiver is itself an override.
             input.ChildWithAdult
-                ? (input.OverrideByUserId is not null ? GateVerdict.AdmittedChildWithAdult : GateVerdict.RejectedNameMismatch)
+                ? (overrideAuthorized ? GateVerdict.AdmittedChildWithAdult : GateVerdict.RejectedNameMismatch)
             : input.IdConfirmed
                 ? (outcome == GatePreCheckOutcome.NeedsIdCheckEarly ? GateVerdict.AdmittedEarly : GateVerdict.Admitted)
                 : GateVerdict.RejectedNameMismatch,
@@ -421,7 +454,7 @@ internal sealed class GateService(
     };
 
     private GateScanEvent BuildEvent(
-        GateScanResult eval, GateDecisionInput input, Guid scannedByUserId, GateVerdict verdict, bool admit) =>
+        GateScanResult eval, GateDecisionInput input, Guid scannedByUserId, GateVerdict verdict, bool admit, bool overrideAuthorized) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -434,7 +467,7 @@ internal sealed class GateService(
             LaneId = input.LaneId,
             ClientScanAt = input.ClientScanAt,
             Note = input.Note,
-            OverrideByUserId = admit ? input.OverrideByUserId : null,
+            OverrideByUserId = admit && overrideAuthorized ? scannedByUserId : null,
             AdmitDedupeKey = admit ? eval.Barcode : null,
         };
 

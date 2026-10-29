@@ -54,14 +54,12 @@ recorded, not a structural need.
   (`Data/Configurations/GateScanEventConfiguration.cs:32`), pre-check for the common case
   (`Data/GateRepository.cs:24`); the losing racer records `RejectedDuplicate`
   (`Services/GateService.cs:118`).
-- A client flag can never turn a STOP into an admit: `RecordDecisionAsync` re-evaluates
-  server-side (`Services/GateService.cs:109`); overrides admit only with `OverrideByUserId` set
-  (`Services/GateService.cs:410`), which the controller sets only after server-verifying the
-  shared supervisor PIN (`Controllers/GateController.cs:75`), timing-safe compare
-  (`Controllers/GateController.cs:327`).
+- A client flag can never turn a STOP into an admit: `GateService.RecordDecisionAsync` verifies
+  the shared supervisor PIN and throttle before re-evaluating the ticket server-side. The input
+  carries no override identity; the service derives `OverrideByUserId` from the authenticated scanner.
 - Unset override PIN fails closed with an explicit "not configured" card
-  (`Controllers/GateController.cs:300`).
-- Override PIN entry throttles terminal-wide on `override:shared` (`Controllers/GateController.cs:305`):
+  (`GateService.VerifySharedOverridePin`, mapped by `GateScanCardViewModel.FromDecision`).
+- Override PIN entry throttles terminal-wide on `override:shared` (`GateService.VerifySharedOverridePin`):
   `GatePinThrottle.MaxFailures` tries, then a `GatePinThrottle.Lockout` lockout that only a
   correct PIN clears (`Services/Stores/GatePinThrottle.cs:47`); a lockout never blocks scanning.
 - Scan attribution is the authenticated principal, never the request body
