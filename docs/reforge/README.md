@@ -12,15 +12,15 @@ Related upstream discussion: <https://github.com/peterdrier/reforge/issues/19>
 | Path | What it is |
 |------|-----------|
 | `measurements.md` | **The file to read.** Append-only log, one dated section per run, newest last. |
-| `runs/<YYYY-MM-DD>-<humans-sha>-reforge<version>.md` | `--format markdown` report, one per run. |
 
-The raw JSON (`--format json --all`, 2 to 3 MB and ~80k lines per run) is **not committed**:
+The raw JSON (`--format json --all`, 2 to 3 MB and ~80k lines per run) and the markdown
+report (`--format markdown --top 25`, ~190 KB) are **not committed**:
 keep it in a local archive outside the repo, with `latest.json` as a copy of the newest run
 for `--baseline`. The measurements entry preserves the `jq` output the charts and comparisons
 need, so the repo carries the numbers without the payload. Entries before 2026-10-29 link
-to JSON files that now exist only in git history (removed in peterdrier/Humans#2195).
+to JSON and markdown files that now exist only in git history (removed in peterdrier/Humans#2195).
 
-Naming: date of the run, the short Humans SHA that was measured, and the reforge
+Archive naming: date of the run, the short Humans SHA that was measured, and the reforge
 version that measured it — all three matter, because a score change can come from any
 of them.
 
@@ -44,7 +44,7 @@ ARCHIVE=<local archive dir outside the repo>
 reforge surface-score --solution Humans.slnx --format json --all --top-symbols 0 \
   > $ARCHIVE/$STAMP.json
 reforge surface-score --solution Humans.slnx --format markdown --top 25 \
-  > docs/reforge/runs/$STAMP.md
+  > $ARCHIVE/$STAMP.md
 cp $ARCHIVE/$STAMP.json $ARCHIVE/latest.json
 ```
 

@@ -451,7 +451,7 @@ repository, an `I<Section>Write`, a user-merge fold and an export contributor pe
 
 Taken on `origin/main` `b35ab2e39` (no code changes on top; a docs-only stats commit landed on the branch mid-run). Full archive (`--all --top-symbols 0`), no truncation — JSON is 2.4 MB. Build clean (0 errors, 3 `HUM_USER_DISPLAYNAME` warnings), `build.degraded: false`; `--allow-degraded` was not used.
 
-Raw JSON: `2026-10-29-b35ab2e39-reforge0.29.0.json` in the local archive (not committed; see README).
+Raw JSON and markdown report: `2026-10-29-b35ab2e39-reforge0.29.0.{json,md}` in the local archive (not committed; see README).
 · [`runs/2026-10-29-b35ab2e39-reforge0.29.0.md`](runs/2026-10-29-b35ab2e39-reforge0.29.0.md)
 
 reforge version string: `0.29.0+7bc639e8b15a66c3bcf253e06819ee857f38cb02` (same as the 2026-10-21 entry, so the comparison is like-for-like on tool version).
