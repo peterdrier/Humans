@@ -286,6 +286,33 @@ public class EventsControllerTests
     [Xunit.InlineData("AdminIndividual", "validDateTime")]
     [Xunit.InlineData("AdminCamp", "StartDate")]
     [Xunit.InlineData("AdminCamp", "validDateTime")]
+    [Xunit.InlineData("Create", "invalidScheduleEarly")]
+    [Xunit.InlineData("Create", "invalidScheduleLate")]
+    [Xunit.InlineData("Create", "validDateEarly")]
+    [Xunit.InlineData("Create", "validDateLate")]
+    [Xunit.InlineData("Update", "invalidScheduleEarly")]
+    [Xunit.InlineData("Update", "invalidScheduleLate")]
+    [Xunit.InlineData("Update", "validDateEarly")]
+    [Xunit.InlineData("Update", "validDateLate")]
+    [Xunit.InlineData("BarrioCreate", "invalidScheduleEarly")]
+    [Xunit.InlineData("BarrioCreate", "invalidScheduleLate")]
+    [Xunit.InlineData("BarrioCreate", "validDateEarly")]
+    [Xunit.InlineData("BarrioCreate", "validDateLate")]
+    [Xunit.InlineData("BarrioUpdate", "invalidScheduleEarly")]
+    [Xunit.InlineData("BarrioUpdate", "invalidScheduleLate")]
+    [Xunit.InlineData("BarrioUpdate", "validDateEarly")]
+    [Xunit.InlineData("BarrioUpdate", "validDateLate")]
+    [Xunit.InlineData("AdminIndividual", "invalidScheduleEarly")]
+    [Xunit.InlineData("AdminIndividual", "invalidScheduleLate")]
+    [Xunit.InlineData("AdminIndividual", "validDateEarly")]
+    [Xunit.InlineData("AdminIndividual", "validDateLate")]
+    [Xunit.InlineData("AdminCamp", "invalidScheduleEarly")]
+    [Xunit.InlineData("AdminCamp", "invalidScheduleLate")]
+    [Xunit.InlineData("AdminCamp", "validDateEarly")]
+    [Xunit.InlineData("AdminCamp", "validDateLate")]
+    [Xunit.InlineData("Create", "invalidScheduleAllDay")]
+    [Xunit.InlineData("Update", "invalidScheduleAllDay")]
+    [Xunit.InlineData("AdminIndividual", "invalidScheduleAllDay")]
     public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
     {
         var userId = Guid.NewGuid();
@@ -293,7 +320,8 @@ public class EventsControllerTests
         var isModerator = route.StartsWith("Admin", StringComparison.Ordinal);
         var isCamp = route.StartsWith("Barrio", StringComparison.Ordinal) || string.Equals(route, "AdminCamp", StringComparison.Ordinal);
         var valid = scenario.StartsWith("valid", StringComparison.Ordinal);
-        var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal);
+        var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal)
+            || string.Equals(scenario, "invalidScheduleAllDay", StringComparison.Ordinal);
         var season = new CampSeasonInfo(
             Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
@@ -303,6 +331,9 @@ public class EventsControllerTests
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         StubEditableGuideSettings();
+        var timeZoneId = scenario.EndsWith("Early", StringComparison.Ordinal) ? "Europe/Paris" : "Europe/Madrid";
+        _guide.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(MakeBurnSettings() with { TimeZoneId = timeZoneId });
         var existing = MakeEvent(isCamp ? campId : null, userId,
             isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested) with
         {
@@ -356,6 +387,17 @@ public class EventsControllerTests
             };
         }
         if (string.Equals(scenario, "validDateTime", StringComparison.Ordinal)) fields["StartDate"] = "2026-08-01T12:00:00";
+        if (scenario.Contains("Schedule", StringComparison.Ordinal) || scenario.StartsWith("validDateE", StringComparison.Ordinal)
+            || string.Equals(scenario, "validDateLate", StringComparison.Ordinal))
+        {
+            fields["StartDate"] = scenario.EndsWith("Early", StringComparison.Ordinal) ? "0001-01-01" : "9999-12-31";
+            fields["StartTime"] = scenario switch
+            {
+                "invalidScheduleEarly" => "00:00",
+                "invalidScheduleLate" => "23:30",
+                _ => "09:30"
+            };
+        }
         var type = isModerator ? typeof(AdminEventFormViewModel)
             : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -393,7 +435,7 @@ public class EventsControllerTests
             }
             else
             {
-                controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+                controller.ModelState[scenario.StartsWith("invalidSchedule", StringComparison.Ordinal) ? "StartDate" : scenario]!.Errors.Should().ContainSingle();
             }
             writes.Should().BeEmpty();
         }
@@ -419,8 +461,15 @@ public class EventsControllerTests
             saved.DurationMinutes.Should().Be(checkedChoices && !isCamp ? 1440 : 60);
             var expectedTime = string.Equals(scenario, "validLastMinute", StringComparison.Ordinal)
                 ? new LocalTime(23, 59) : LocalTime.Midnight;
-            saved.StartAt.Should().Be(new LocalDate(2026, 8, 1).At(expectedTime)
-                .InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+            var expectedDate = new LocalDate(2026, 8, 1);
+            if (string.Equals(scenario, "validDateEarly", StringComparison.Ordinal) || string.Equals(scenario, "validDateLate", StringComparison.Ordinal))
+            {
+                expectedDate = string.Equals(scenario, "validDateEarly", StringComparison.Ordinal)
+                    ? new LocalDate(1, 1, 1) : new LocalDate(9999, 12, 31);
+                expectedTime = new LocalTime(9, 30);
+            }
+            saved.StartAt.Should().Be(expectedDate.At(expectedTime)
+                .InZoneLeniently(DateTimeZoneProviders.Tzdb[timeZoneId]).ToInstant());
         }
     }
 

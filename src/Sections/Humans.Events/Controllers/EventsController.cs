@@ -151,6 +151,9 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate,
+            model.IsAllDay ? TimeOnly.MinValue : model.StartTime,
+            model.IsAllDay ? Event.AllDayDurationMinutes : model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -264,6 +267,9 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate,
+            model.IsAllDay ? TimeOnly.MinValue : model.StartTime,
+            model.IsAllDay ? Event.AllDayDurationMinutes : model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -507,6 +513,15 @@ internal sealed class EventsController(
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
+    private void ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes, EventSettingsInfo settings)
+    {
+        if (!ModelState.IsValid || CanDisplaySchedule(
+            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, GetTimeZone(settings))) return;
+        logger.LogWarning("Event form rejected: schedule is outside the supported calendar range");
+        ModelState.AddModelError(nameof(IndividualEventFormViewModel.StartDate),
+            localizer["Events_Upload_DateRange"].Value);
+    }
+
     private void ValidateRecurrenceDays(bool isRecurring, string? days, EventSettingsInfo settings)
     {
         if (!isRecurring || EventRecurrenceDays.HasOnlyEventOffsets(days, settings.EventEndOffset)) return;
@@ -575,6 +590,7 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate, model.StartTime, model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -690,6 +706,7 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate, model.StartTime, model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {

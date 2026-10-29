@@ -21,6 +21,22 @@ internal static class EventsTimeHelpers
         return Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
     }
 
+    public static bool CanDisplaySchedule(LocalDateTime localStart, int durationMinutes, DateTimeZone? timeZone)
+    {
+        timeZone ??= DateTimeZone.Utc;
+        try
+        {
+            var start = localStart.InZoneLeniently(timeZone).ToInstant();
+            var end = start + Duration.FromMinutes(durationMinutes);
+            return start.InUtc().Year >= 1 && start.InZone(timeZone).Year >= 1
+                && end.InUtc().Year >= 1 && end.InZone(timeZone).Year >= 1;
+        }
+        catch (Exception ex) when (ex is OverflowException or ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+
     public static Instant ToInstant(DateTime dateTime, DateTimeZone? tz)
         => ToInstant(LocalDateTime.FromDateTime(dateTime), tz);
 
