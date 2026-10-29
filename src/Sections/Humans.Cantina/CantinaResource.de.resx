@@ -97,4 +97,7 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Allergien und Unverträglichkeiten anzeigen</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Die Angaben zu Allergien und Unverträglichkeiten sind ausgeblendet. Das Anzeigen wird im Audit-Log festgehalten.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Das Anzeigen wird im Audit-Log festgehalten.</value></data>
+  <data name="Cantina_Dietary_RevealsTitle" xml:space="preserve"><value>Wer das angesehen hat</value></data>
+  <data name="Cantina_Dietary_RevealsEmpty" xml:space="preserve"><value>Niemand hat deine Angaben zu Allergien und Unverträglichkeiten angesehen.</value></data>
+  <data name="Cantina_Dietary_RevealedBy" xml:space="preserve"><value>Angesehen von</value></data>
 </root>

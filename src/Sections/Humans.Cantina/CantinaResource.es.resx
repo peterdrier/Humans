@@ -97,4 +97,7 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Mostrar alergias e intolerancias</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Los detalles de alergias e intolerancias están ocultos. Mostrarlos queda registrado en el registro de auditoría.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Mostrarlos queda registrado en el registro de auditoría.</value></data>
+  <data name="Cantina_Dietary_RevealsTitle" xml:space="preserve"><value>Quién ha consultado esto</value></data>
+  <data name="Cantina_Dietary_RevealsEmpty" xml:space="preserve"><value>Nadie ha consultado tus respuestas sobre alergias e intolerancias.</value></data>
+  <data name="Cantina_Dietary_RevealedBy" xml:space="preserve"><value>Consultado por</value></data>
 </root>
