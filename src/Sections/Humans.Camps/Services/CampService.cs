@@ -1166,30 +1166,33 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
     }
 
-    public async Task<IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)>> GetUnassignedSeasonsAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default)
     {
+        var legacyOpenYears = (await _repo.GetSettingsReadOnlyAsync(cancellationToken))?.OpenSeasons ?? [];
         var registration = await GetRegistrationByEventAsync(cancellationToken);
-        var pending = new List<(Guid, string, int, Guid, string)>();
+        var seasons = new List<(Guid, string, int, Guid, string)>();
         foreach (var season in await _repo.GetSeasonsWithoutEventIdAsync(cancellationToken))
         {
             if (PickSeasonEvent(registration, season.Year) is { } owner)
-                pending.Add((season.Id, season.Name, season.Year, owner.EventSettingsId, owner.EventName));
+                seasons.Add((season.Id, season.Name, season.Year, owner.EventSettingsId, owner.EventName));
         }
 
-        return pending;
+        return new CampEventIdPlan(legacyOpenYears, seasons);
     }
 
     public async Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default)
     {
-        // Pin today's effective registration state first, so the legacy year list stops deciding it.
+        // Pin today's effective registration state first, then retire the legacy list: an event created later
+        // starts closed instead of inheriting its year's legacy flag.
         var registration = await GetRegistrationByEventAsync(cancellationToken);
-        var rowsAdded = await _repo.AddMissingEventSettingsAsync(
+        var rowsWritten = await _repo.AddMissingEventSettingsAsync(
             registration.Where(r => r.RegistrationOpen).ToDictionary(r => r.EventSettingsId, r => r.RegistrationOpen),
             cancellationToken);
-        var pending = await GetUnassignedSeasonsAsync(cancellationToken);
-        return rowsAdded + await _repo.AssignSeasonEventIdsAsync(
-            pending.ToDictionary(p => p.SeasonId, p => p.EventSettingsId), cancellationToken);
+        if (await _repo.ClearLegacyOpenSeasonsAsync(cancellationToken))
+            rowsWritten++;
+        var plan = await GetEventIdPlanAsync(cancellationToken);
+        return rowsWritten + await _repo.AssignSeasonEventIdsAsync(
+            plan.Seasons.ToDictionary(p => p.SeasonId, p => p.EventSettingsId), cancellationToken);
     }
 
     private async Task<Guid?> ResolveSeasonEventIdAsync(int year, CancellationToken cancellationToken) =>

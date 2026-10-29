@@ -70,12 +70,12 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <inheritdoc cref="OpenSeasonAsync"/>
     Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>Seasons without an event id, each with the event <see cref="AssignSeasonEventIdsAsync"/> will give it.</summary>
-    Task<IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)>> GetUnassignedSeasonsAsync(
-        CancellationToken cancellationToken = default);
+    /// <summary>What <see cref="AssignSeasonEventIdsAsync"/> still has to do.</summary>
+    Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default);
     /// <summary>
-    /// Writes an event id onto every season <see cref="GetUnassignedSeasonsAsync"/> lists and gives every event in a
-    /// legacy open-season year its own registration row. Returns the rows written.
+    /// Gives every event open today its own registration row, empties the legacy open-season year list (so later
+    /// events start closed and every opening is an audited admin action), and writes an event id onto every season
+    /// the plan lists. Returns the rows written.
     /// </summary>
     Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
@@ -184,6 +184,10 @@ internal sealed record CampUpdateResult(bool Succeeded, string? ErrorKey)
 
     public static CampUpdateResult Failure(string errorMessage) => new(false, errorMessage);
 }
+
+internal sealed record CampEventIdPlan(
+    IReadOnlyList<int> LegacyOpenYears,
+    IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)> Seasons);
 
 internal sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen);
 

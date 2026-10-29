@@ -343,9 +343,8 @@ internal sealed class CachingCampService(
             await InvalidateSettingsAsync(cancellationToken);
         });
 
-    public Task<IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)>> GetUnassignedSeasonsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetUnassignedSeasonsAsync(cancellationToken));
+    public Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetEventIdPlanAsync(cancellationToken));
 
     public Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>

@@ -1064,15 +1064,34 @@ public sealed class CampServiceTests : CampsTestHarness
         await SaveAllAsync(ct);
         var (e2026, _) = StubTwoEvents();
 
-        var pending = await _service.GetUnassignedSeasonsAsync(ct);
+        var plan = await _service.GetEventIdPlanAsync(ct);
         var written = await _service.AssignSeasonEventIdsAsync(ct);
 
-        pending.Should().ContainSingle().Which.EventSettingsId.Should().Be(e2026.Id);
-        written.Should().Be(2, "one registration row for the open 2026 event, one season");
+        plan.LegacyOpenYears.Should().Equal(2026);
+        plan.Seasons.Should().ContainSingle().Which.EventSettingsId.Should().Be(e2026.Id);
+        written.Should().Be(3, "one registration row for the open 2026 event, the emptied year list, one season");
         (await CampsDb.CampSeasons.AsNoTracking().SingleAsync(ct)).EventSettingsId.Should().Be(e2026.Id);
         (await CampsDb.CampEventSettings.AsNoTracking().SingleAsync(ct)).Should().BeEquivalentTo(
             new CampEventSettings { EventSettingsId = e2026.Id, RegistrationOpen = true });
-        (await _service.GetUnassignedSeasonsAsync(ct)).Should().BeEmpty();
+        (await _service.GetEventIdPlanAsync(ct)).Should().BeEquivalentTo(new CampEventIdPlan([], []));
+        (await CampsDb.CampSettings.AsNoTracking().SingleAsync(ct)).OpenSeasons.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AssignSeasonEventIdsAsync_AnEventCreatedLaterInALegacyOpenYear_StartsClosed()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var (e2026, e2027) = StubTwoEvents();
+        await _service.AssignSeasonEventIdsAsync(ct);
+        var second2026 = BurnFixtures.Burn(id: Guid.NewGuid(), eventName: "Autumn 2026", year: 2026,
+            gateOpeningDate: new LocalDate(2026, 10, 1));
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([e2026, e2027, second2026]);
+
+        var registration = await _service.GetRegistrationByEventAsync(ct);
+
+        registration.Single(r => r.EventSettingsId == e2026.Id).RegistrationOpen.Should().BeTrue();
+        registration.Single(r => r.EventSettingsId == second2026.Id).RegistrationOpen.Should().BeFalse();
     }
 
     [HumansFact]

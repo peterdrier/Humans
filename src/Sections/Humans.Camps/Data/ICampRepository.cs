@@ -166,6 +166,9 @@ internal partial interface ICampRepository : IRepository
     /// <summary>Inserts only the events that have no row yet. Returns the rows inserted.</summary>
     Task<int> AddMissingEventSettingsAsync(IReadOnlyDictionary<Guid, bool> registrationOpenByEventId, CancellationToken ct = default);
 
+    /// <summary>Empties the legacy <c>OpenSeasons</c> year list. Returns true if it held any year.</summary>
+    Task<bool> ClearLegacyOpenSeasonsAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<CampSeason>> GetSeasonsWithoutEventIdAsync(CancellationToken ct = default);
 
     /// <summary>Only seasons still without an event id are written. Returns the rows written.</summary>

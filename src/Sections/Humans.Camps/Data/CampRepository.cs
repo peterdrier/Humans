@@ -446,6 +446,18 @@ internal sealed partial class CampRepository : ICampRepository
         return added.Count;
     }
 
+    public async Task<bool> ClearLegacyOpenSeasonsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
+        if (settings.OpenSeasons.Count == 0)
+            return false;
+
+        settings.OpenSeasons = [];
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<IReadOnlyList<CampSeason>> GetSeasonsWithoutEventIdAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
