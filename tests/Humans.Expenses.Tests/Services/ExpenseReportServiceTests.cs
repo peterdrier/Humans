@@ -4203,4 +4203,67 @@ public sealed partial class ExpenseReportServiceTests
             return result;
         }
     }
+    [HumansTheory]
+    [InlineData(false, ExpenseLineType.Receipt, "1.005")]
+    [InlineData(false, ExpenseLineType.Invoice, "9.999")]
+    [InlineData(true, ExpenseLineType.Receipt, "1.005")]
+    [InlineData(true, ExpenseLineType.Invoice, "9.999")]
+    public async Task LineAmounts_RefuseFractionalCents_WithoutChangingTheReport(
+        bool edit, ExpenseLineType type, string rawAmount)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var owner = Guid.NewGuid();
+        var id = (await _sut.CreateDraftAsync(owner, owner, CategoryAccountNumber, "Claim", ct: ct)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(id, owner, false, "Original", 10m, type, ct: ct)).LineId!.Value;
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        AuditLog.ClearReceivedCalls();
+
+        var error = edit
+            ? (await _sut.UpdateLineWithResultAsync(id, owner, false, lineId, "Changed", amount, ct)).Error
+            : (await _sut.AddLineWithResultAsync(id, owner, false, "Extra", amount, type, ct: ct)).Error;
+
+        error.Should().NotBeNull();
+        error!.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
+        var loaded = (await _sut.GetAsync(id, ct))!;
+        loaded.Total.Should().Be(10m);
+        loaded.Lines.Should().ContainSingle().Which.Description.Should().Be("Original");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _fileStorage.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, "1.005", false)]
+    [InlineData(true, "9.999", false)]
+    [InlineData(false, "1.2300", true)]
+    [InlineData(true, "1.2300", true)]
+    public async Task ReviewCaps_RequireWholeCents_BeforeDecidingTheReport(
+        bool approve, string rawAmount, bool expectedSuccess)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var id = Guid.NewGuid();
+        await SeedReportWithStatusAsync(id, Guid.NewGuid(), category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        AuditLog.ClearReceivedCalls();
+
+        var result = approve
+            ? await _sut.ApproveWithResultAsync(id, Guid.NewGuid(), null, amount, ct)
+            : await _sut.CoordinatorEndorseWithResultAsync(id, Guid.NewGuid(), true, amount, ct);
+
+        result.Succeeded.Should().Be(expectedSuccess);
+        var loaded = (await _sut.GetAsync(id, ct))!;
+        if (expectedSuccess)
+            loaded.MaxAmount.Should().Be(amount);
+        else
+        {
+            result.Error!.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
+            loaded.Status.Should().Be(ExpenseReportStatus.Submitted);
+            loaded.MaxAmount.Should().BeNull();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            _emailService.ReceivedCalls().Should().BeEmpty();
+            (await _expenseRepo.GetLatestOutboxForReportAsync(id, ct)).Should().BeNull();
+        }
+    }
+
 }

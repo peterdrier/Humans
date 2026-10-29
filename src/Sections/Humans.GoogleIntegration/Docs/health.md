@@ -83,8 +83,8 @@ The shapes imply:
 - **One controller** for every admin screen, authorized per action, plus the view
   components the rest of the app embeds, the Hangfire jobs, health check, metrics and nav
   contributions.
-- **`Section.cs` + `SectionAdminNav.cs` + `SectionConfiguration.cs` + `SectionHealthChecks.cs`
-  + `SectionJobs.cs` + `SectionSettings.cs`** and the resource class at the root, nothing
+- **`Section.cs` + `Section.cs` + `Section.cs` + `Section.cs`
+  + `Section.cs` + `Section.cs`** and the resource class at the root, nothing
   else.
 
 ## 4. Invariants

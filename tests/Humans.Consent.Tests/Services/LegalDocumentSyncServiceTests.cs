@@ -92,9 +92,12 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task RequiredVersionReads_SelectLatestEffectiveVersion_AndOmitFutureOnlyDocuments(bool forTeam)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task RequiredVersionReads_SelectLatestEffectiveVersion_AndOmitFutureOnlyDocuments(
+        bool forTeam, bool cached)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var document = await SeedDocumentAsync("Privacy");
@@ -122,9 +125,18 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         }
         await SaveAllAsync(ct);
 
+        using var provider = new ServiceCollection()
+            .AddKeyedScoped<ILegalDocumentSyncManagement>(
+                CachingLegalDocumentSyncService.InnerServiceKey, (_, _) => _service)
+            .BuildServiceProvider();
+        ILegalDocumentSyncManagement reader = cached
+            ? new CachingLegalDocumentSyncService(
+                provider.GetRequiredService<IServiceScopeFactory>(), Clock,
+                NullLogger<CachingLegalDocumentSyncService>.Instance)
+            : _service;
         var versions = forTeam
-            ? await _service.GetRequiredDocumentVersionsForTeamAsync(_team.Id, ct)
-            : await _service.GetRequiredVersionsAsync(ct);
+            ? await reader.GetRequiredDocumentVersionsForTeamAsync(_team.Id, ct)
+            : await reader.GetRequiredVersionsAsync(ct);
 
         versions.Should().ContainSingle().Which.Id.Should().Be(currentId);
     }

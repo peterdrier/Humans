@@ -202,7 +202,7 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
   redesign.
 - **The temporary term-expiry repair page.** `GET /Governance/Applications/Admin/TermExpiry`
   and its POST exist to rewrite rows approved under the pre-September-2026 rule, and are marked
-  for deletion once QA and production are clean (`SectionAdminNav.cs:22`).
+  for deletion once QA and production are clean (`Section.cs:22`).
 
 ## 6. Deliberately not done
 

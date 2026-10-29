@@ -49,6 +49,7 @@ internal sealed partial class PreapprovalService
         if (ids.Count == 0) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.NoBeneficiaries));
 
         var each = program.PerPersonAmount!.Value;
+        if (MoneyRefusal(each) is { } amountRefusal) return new(Refusal: amountRefusal);
         if (CeilingCheck(program, each * ids.Count) is { } over) return new(Refusal: over);
 
         var now = clock.GetCurrentInstant();
@@ -100,9 +101,9 @@ internal sealed partial class PreapprovalService
         else
         {
             if (requestedAmount is not { } requested) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.AmountRequired));
-            if (requested <= 0) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.AmountPositive));
             amount = requested;
         }
+        if (MoneyRefusal(amount) is { } amountRefusal) return new(Refusal: amountRefusal);
 
         var ids = await AllIdsAsync(applicantUserId, ct);
         var now = clock.GetCurrentInstant();
@@ -232,7 +233,7 @@ internal sealed partial class PreapprovalService
         if (grant is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if (grant.Status is not (GrantStatus.Open or GrantStatus.Claimed))
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
-        if (amount <= 0) return new(new PreapprovalRefusal(PreapprovalErrorKeys.AmountPositive));
+        if (MoneyRefusal(amount) is { } amountRefusal) return new(amountRefusal);
         if (amount == grant.MaxAmount) return PreapprovalMutationResult.Ok;
 
         var program = await repository.GetProgramAsync(grant.ProgramId, ct)
@@ -264,10 +265,15 @@ internal sealed partial class PreapprovalService
 
     private static (decimal Value, PreapprovalRefusal? Refusal) SizeGrant(PreapprovalProgram program, decimal? amount)
     {
+        decimal value;
         if (program.Kind == ProgramKind.FixedPerPerson)
-            return amount is null ? (program.PerPersonAmount!.Value, null) : (0, new(PreapprovalErrorKeys.AmountNotAllowed));
-        if (amount is not { } a) return (0, new(PreapprovalErrorKeys.AmountRequired));
-        return a <= 0 ? (0, new(PreapprovalErrorKeys.AmountPositive)) : (a, null);
+        {
+            if (amount is not null) return (0, new(PreapprovalErrorKeys.AmountNotAllowed));
+            value = program.PerPersonAmount!.Value;
+        }
+        else if (amount is { } supplied) value = supplied;
+        else return (0, new(PreapprovalErrorKeys.AmountRequired));
+        return MoneyRefusal(value) is { } refusal ? (0, refusal) : (value, null);
     }
 
     /// <summary>Granted + delta ≤ ceiling, else a refusal naming the headroom.</summary>

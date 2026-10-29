@@ -1,5 +1,5 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error. No localizer: Guide has no resource set. *@
+   here ships broken markup with a green build and no runtime error. *@
 @using Humans.Guide
 @using Humans.Guide.Controllers
 @using Humans.Guide.Models
@@ -8,3 +8,6 @@
 @* authorize-policy on the refresh form is Humans.Base's AuthorizeViewTagHelper: a section can
    only addTagHelper against Humans.Base, and a Shell-resident helper would render inert. *@
 @addTagHelper *, Humans.Base
+
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<GuideResource> Localizer

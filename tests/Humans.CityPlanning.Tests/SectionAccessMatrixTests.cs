@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Models;
 
@@ -11,12 +12,12 @@ namespace Humans.CityPlanning.Tests;
 public class SectionAccessMatrixTests
 {
     private static AccessMatrixData Matrix(string key) =>
-        new SectionAccessMatrix().AccessMatrices.Single(m => string.Equals(m.Key, key, StringComparison.Ordinal));
+        ((ISectionAccessMatrix)new Section()).AccessMatrices.Single(m => string.Equals(m.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
     public void Contributes_the_three_map_matrices_in_that_order()
     {
-        new SectionAccessMatrix().AccessMatrices
+        ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Select(m => (m.Key, m.SectionName, m.Order))
             .Should().Equal(
                 ("CityPlanningOverview", "City Planning Overview", 100),

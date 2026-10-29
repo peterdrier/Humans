@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 using Humans.Store.Contracts;
 using AwesomeAssertions;
@@ -24,7 +25,7 @@ public sealed class StoreAdminControllerTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAuthorizationCore(options => new SectionPolicies().AddPolicies(options));
+        services.AddAuthorizationCore(options => ((ISectionPolicies)new Section()).AddPolicies(options));
         using var provider = services.BuildServiceProvider();
         var identity = role is null ? new ClaimsIdentity() : new ClaimsIdentity("test");
         if (!string.IsNullOrEmpty(role))

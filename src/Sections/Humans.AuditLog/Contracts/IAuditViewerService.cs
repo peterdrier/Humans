@@ -14,9 +14,6 @@ public interface IAuditViewerService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
 
-    /// <summary><paramref name="actionFilter"/> is a case-insensitive match on a declared action name.</summary>
-    Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);
-
     /// <summary><paramref name="actions"/> are stored names, matched exactly; null or empty means every action.</summary>
     Task<IReadOnlyList<AuditEvent>> GetFilteredAsync(
         string? entityType,
@@ -26,9 +23,3 @@ public interface IAuditViewerService : IApplicationService
         int limit,
         CancellationToken ct = default);
 }
-
-/// <summary><c>AlertCounts</c> is rows per <see cref="AuditActionDefinition.Alert"/> action over the whole log, keyed by name.</summary>
-public sealed record AuditEventPage(
-    IReadOnlyList<AuditEvent> Items,
-    int TotalCount,
-    IReadOnlyDictionary<string, int> AlertCounts);

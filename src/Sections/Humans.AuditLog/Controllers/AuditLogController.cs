@@ -1,9 +1,8 @@
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.AuditLog.Contracts;
-using Humans.AuditLog.Models;
 using Humans.AuditLog.Services;
+using Humans.AuditLog.Models;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
@@ -12,7 +11,7 @@ namespace Humans.AuditLog.Controllers;
 [Route("AuditLog")]
 internal sealed class AuditLogController(
     IUserService userService,
-    IAuditViewerService auditViewer,
+    AuditViewerService auditViewer,
     AuditActionRegistry actions) : HumansControllerBase(userService)
 {
     [HttpGet("")]

@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 10
-inbox:
-  - added: 2026-10-24
-    id: SHIFTS-9
-    what: "ShiftManagementService.GetOnSiteUserIdsForDayAsync returns confirmed signups only, and the Cantina roster depends on that, but no Shifts test pins it: a change back to Pending-or-Confirmed would pass the Shifts suite and silently inflate the cantina's mouths-to-feed. Add a Shifts test asserting Pending, Refused, Bailed, NoShow and Cancelled signups are excluded."
-    review: light
+inbox: []

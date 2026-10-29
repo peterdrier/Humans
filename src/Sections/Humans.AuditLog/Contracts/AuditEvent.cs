@@ -46,7 +46,6 @@ public sealed record AuditEvent(
                 : (ActorDisplayName ?? "Someone")
             : "System";
 
-        // Suppress subject when actor == subject ("You signed up", not "You created signup for You").
         string? subject = null;
         if (SubjectUserId.HasValue && !actorIsSubject)
         {
@@ -87,7 +86,7 @@ public sealed record AuditEvent(
         return sb.ToString();
     }
 
-    public AuditEventRender RenderStructured() =>
+    internal AuditEventRender RenderStructured() =>
         new(
             Verb: Action.Verb,
             ShouldRenderDescriptionTail: !string.IsNullOrWhiteSpace(Description) && Action.DescriptionIsTail);
@@ -106,6 +105,6 @@ public sealed record AuditEvent(
         occurredAt.InUtc().Date.ToInvariantDate();
 }
 
-public sealed record AuditEventRender(
+internal sealed record AuditEventRender(
     string? Verb,
     bool ShouldRenderDescriptionTail);

@@ -15,7 +15,7 @@ public class ShiftViewServiceTests
     private readonly EventCalendarResolver _calendarResolver;
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
 
-    public ShiftViewServiceTests() => _calendarResolver = new(_settingsService);
+    public ShiftViewServiceTests() => _calendarResolver = new(_settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());
 
     private ShiftViewService CreateSut() =>
         new(_management, _tracking, _calendarResolver, _shiftManagement);

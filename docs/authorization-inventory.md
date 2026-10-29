@@ -170,7 +170,6 @@ Every other top-nav link is contributed by its section through `ISectionNav` and
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Shared/Components/AdminActivityCard/Default.cshtml` (`src/Sections/Humans.AuditLog`) | 1 | `authorize-policy="AdminOnly"` | Recent-activity split-panels on the admin landing page |
 | `Store/Index.cshtml` (`src/Sections/Humans.Store`) | 10 | `authorize-policy="StoreCatalogAdmin"` | Catalog / Summary / Payments admin button group on the Store landing page |
 | `Expenses/New.cshtml` (`src/Sections/Humans.Expenses`) | 27 | `authorize-policy="FinanceAdminOrAdmin"` | "For member" submitter picker |
 | `Rideshare/Mine.cshtml` (`src/Sections/Humans.Rideshare`) | 7 | `(await AuthService.AuthorizeAsync(User, PolicyNames.RideshareAdminOrAdmin)).Succeeded` | Drives `canAdminister` flag |
@@ -294,7 +293,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 
 Policy *names* are shared vocabulary in `PolicyNames` — nav items and cross-section checks cite other sections' policies by name. Registration is split ([`section-contribution-seams`](../memory/architecture/section-contribution-seams.md)): the cross-section policies `AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `AppAccess` and `RoleAssignmentManage` are registered in Shell's `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`; every other policy is registered by its owning section's `SectionPolicies : ISectionPolicies`, discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied additively through `services.Configure<AuthorizationOptions>` in the same method.
 
-| Owning section | Policies registered in its `SectionPolicies.cs` |
+| Owning section | Policies registered in its `Section.cs` |
 |---|---|
 | Camps | `CampAdminOrAdmin`, `CampComplianceAccess` |
 | Cantina | `CantinaAdminOrAdmin` |

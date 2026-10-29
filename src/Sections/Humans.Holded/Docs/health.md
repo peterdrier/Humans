@@ -63,14 +63,15 @@ Contracts/                    what other sections may hold
   IHoldedClient + its DTOs      shapes 5–13 — the telephone
   IHoldedService                shapes 1–2 — the mirror's cross-section read
   HoldedApiException            the connector's transient-vs-permanent failure classification
-Services/HoldedClient           one class today: the retry, auth, metering and paging machinery is
-                                shared by every shape group. A split by caller world is an open
-                                option (debt HOLDED-1), not a priority
+Services/HoldedClient           the existing typed-client contract facade; composes the operation clients
+Services/Holded*Client          purchases, sales, contacts, accounting and treasury: payloads and parsing
+Services/HoldedTransport        one shared retry, auth, timing, metering and cursor-pagination pipeline
+Services/HoldedJson             shared wire-value readers and null-omitting serialization options
 Services/Service                shapes 1–4: sweep, reconcile, and the read models
 Services/HoldedCallLog          the in-process meter the client fills and Service drains
 Services/HoldedNightlySync      shape 2's body: this section's sweep (Finance runs its own doc sync)
 Services/IHoldedNightlySync     shape 2 — the nightly body, internal: only the job calls it
-Jobs/HoldedSyncJob              the Hangfire shim over it; SectionJobs names it and the cron
+Jobs/HoldedSyncJob              the Hangfire shim over it; Section (ISectionJobs) names it and the cron
 Data/Repository                 the only code that touches HoldedDbContext
 Domain/                         the mirrored tables; internal, and they stay internal
 Controllers/HoldedController    translation only, no arithmetic
@@ -107,13 +108,13 @@ Stated so a violation is recognisable; each names the line that enforces it.
    `src/Sections/Humans.Holded/Services/Service.cs:56`
 6. **A short read is never allowed to become a delete.** Pagination that cannot be completed —
    a missing `items` array, `has_more` with no cursor, the page cap — throws; it never returns
-   the prefix it has. `src/Sections/Humans.Holded/Services/HoldedClient.cs:907`
+   the prefix it has. `HoldedTransport.GetPagedAsync`
 7. **An identity or amount field Holded did not send fails the page.** No manufactured `0`
    reaches the mirror: on a ledger window a fabricated line overwrites a real cached one; on the
    chart, whose upsert is additive, it creates a phantom account instead.
-   `src/Sections/Humans.Holded/Services/HoldedClient.cs:1109`
+   `HoldedJson.ReadRequiredInt` / `ReadRequiredString` / `ReadRequiredDecimalV2`
 8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
-   its nulls. `src/Sections/Humans.Holded/Services/HoldedClient.cs:28`
+   its nulls. `HoldedJson.OmitNulls`
 9. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
    tables — Finance's doc-sync row arrives through `IHoldedFinanceService`, in the controller.
    `src/Humans.Analyzers/Internal/Rules/DbContextOwnershipRule.cs:8`

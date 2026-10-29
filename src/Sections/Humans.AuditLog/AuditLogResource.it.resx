@@ -382,4 +382,40 @@
   <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Camp esportati</value></data>
   <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Elenco della mensa esportato</value></data>
   <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Monitoraggio dei volontari esportato</value></data>
+  <data name="Enum_AuditAction_EmailOutboxDiscarded" xml:space="preserve"><value>Messaggio della posta in uscita scartato</value></data>
+  <data name="Enum_AuditAction_EmailOutboxRetried" xml:space="preserve"><value>Messaggio della posta in uscita ritentato</value></data>
+  <data name="Enum_AuditAction_EmailSendingPaused" xml:space="preserve"><value>Invio delle e-mail sospeso</value></data>
+  <data name="Enum_AuditAction_EmailSendingResumed" xml:space="preserve"><value>Invio delle e-mail ripreso</value></data>
+  <data name="Enum_AuditAction_GrantIssued" xml:space="preserve"><value>Concessione accordata</value></data>
+  <data name="Enum_AuditAction_GrantNoticeResent" xml:space="preserve"><value>Avviso di concessione reinviato</value></data>
+  <data name="Enum_AuditAction_GrantProgramCreated" xml:space="preserve"><value>Programma di concessioni creato</value></data>
+  <data name="Enum_AuditAction_GrantProgramEdited" xml:space="preserve"><value>Programma di concessioni modificato</value></data>
+  <data name="Enum_AuditAction_GrantProgramManagerAdded" xml:space="preserve"><value>Responsabile del programma di concessioni aggiunto</value></data>
+  <data name="Enum_AuditAction_GrantProgramManagerRemoved" xml:space="preserve"><value>Responsabile del programma di concessioni rimosso</value></data>
+  <data name="Enum_AuditAction_GrantRevoked" xml:space="preserve"><value>Concessione revocata</value></data>
+  <data name="Enum_AuditAction_HoldedDuplicateRemoved" xml:space="preserve"><value>Documento Holded duplicato rimosso</value></data>
+  <data name="Enum_AuditAction_ParticipationBackfilled" xml:space="preserve"><value>Partecipazione completata</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantAmountChanged" xml:space="preserve"><value>Importo della preapprovazione modificato</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantApplied" xml:space="preserve"><value>Preapprovazione richiesta</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantApproved" xml:space="preserve"><value>Preapprovazione approvata</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantClaimed" xml:space="preserve"><value>Preapprovazione rivendicata</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantConsumed" xml:space="preserve"><value>Preapprovazione utilizzata</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantDeclined" xml:space="preserve"><value>Preapprovazione respinta</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantIssued" xml:space="preserve"><value>Preapprovazione emessa</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantReleased" xml:space="preserve"><value>Preapprovazione rilasciata</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantRevoked" xml:space="preserve"><value>Preapprovazione revocata</value></data>
+  <data name="Enum_AuditAction_PreapprovalMergeDroppedApplication" xml:space="preserve"><value>Richiesta scartata nell’unione di preapprovazioni</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramClosed" xml:space="preserve"><value>Programma di preapprovazione chiuso</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramCreated" xml:space="preserve"><value>Programma di preapprovazione creato</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramEdited" xml:space="preserve"><value>Programma di preapprovazione modificato</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramManagerAdded" xml:space="preserve"><value>Responsabile del programma di preapprovazione aggiunto</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramManagerRemoved" xml:space="preserve"><value>Responsabile del programma di preapprovazione rimosso</value></data>
+  <data name="Enum_AuditAction_PreapprovalReminderSent" xml:space="preserve"><value>Promemoria di preapprovazione inviato</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransferWithdrawn" xml:space="preserve"><value>Bonifico di pagamento SEPA ritirato</value></data>
+  <data name="Enum_AuditAction_StubProfileBackfilled" xml:space="preserve"><value>Profilo provvisorio completato</value></data>
+  <data name="Enum_AuditAction_SurveyResponsesExported" xml:space="preserve"><value>Risposte al sondaggio esportate</value></data>
+  <data name="Enum_AuditAction_UserNamesBackfilled" xml:space="preserve"><value>Nomi utente completati</value></data>
+  <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Membro del gruppo di lavoro aggiunto</value></data>
+  <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Adesione al gruppo di lavoro approvata</value></data>
+  <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Adesione al gruppo di lavoro rifiutata</value></data>
 </root>

@@ -9,7 +9,7 @@ public sealed class SectionOnboardingTests
     [HumansFact]
     public void ShiftsList_ResolvesToOnboardingShiftsListViewComponent()
     {
-        IOnboardingShiftsStep contribution = new SectionOnboarding();
+        IOnboardingShiftsStep contribution = new Section();
 
         contribution.ShiftsList.Should().Be(typeof(OnboardingShiftsListViewComponent));
     }

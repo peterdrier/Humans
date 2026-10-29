@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Models;
 
@@ -6,7 +7,7 @@ namespace Humans.Camps.Tests;
 public class SectionAccessMatrixTests
 {
     private static AccessMatrixData Matrix() =>
-        new SectionAccessMatrix().AccessMatrices.Should().ContainSingle().Subject;
+        ((ISectionAccessMatrix)new Section()).AccessMatrices.Should().ContainSingle().Subject;
 
     /// <summary>The key is "Camps" but the heading is "Barrios" — the user-facing word.</summary>
     [HumansFact]

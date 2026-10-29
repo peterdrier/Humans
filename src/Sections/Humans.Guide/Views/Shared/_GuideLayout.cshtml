@@ -1,8 +1,9 @@
 @model GuideViewModel
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 
 <div class="row">
     <aside class="col-md-3 mb-4">
-        <nav class="nav flex-column" aria-label="Guide navigation">
+        <nav class="nav flex-column" aria-label="@Localizer["Guide_Navigation"]">
             @foreach (var group in Model.Sidebar.Entries.GroupBy(e => e.Group))
             {
                 <div class="text-uppercase text-muted small mt-3 mb-1">@group.Key</div>
@@ -20,9 +21,9 @@
     <section class="col-md-9">
         @if (!string.IsNullOrEmpty(Model.FileStem) && !string.Equals(Model.FileStem, "README", StringComparison.OrdinalIgnoreCase))
         {
-            <nav aria-label="breadcrumb">
+            <nav aria-label="@Localizer["Guide_Breadcrumbs"]">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-controller="Guide" asp-action="Index">Guide</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Guide" asp-action="Index">@SharedLocalizer["SectionHelp_Guide"]</a></li>
                     <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
                 </ol>
             </nav>

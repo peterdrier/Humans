@@ -105,7 +105,7 @@ No repository, no DB access. `AgentDocsHealthCheck` probes GitHub doc
 canaries directly through `IGuideContentSource` (deliberately bypassing the
 readers' caches); `AnthropicHealthCheck` is a DNS-reachability probe for
 `api.anthropic.com`. Both skip (Healthy) when the agent is disabled;
-registered by `SectionHealthChecks`.
+registered by `ISectionHealthChecks`.
 
 ---
 

@@ -77,7 +77,7 @@ public sealed class EventsModerationControllerTests
         {
             Title = "Changed",
             VenueId = Guid.NewGuid(),
-            StartDate = new DateTime(2026, 8, 1),
+            StartDate = new DateOnly(2026, 8, 1),
             IsRecurring = true,
             RecurrenceDays = "0,3"
         };

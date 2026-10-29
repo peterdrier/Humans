@@ -26,7 +26,7 @@ out of it:
 
 | Direction | Where | Owner |
 |---|---|---|
-| in — signed-out top nav | `SectionNav`, visible only while anonymous | Tour |
+| in — signed-out top nav | `ISectionNav`, visible only while anonymous | Tour |
 | in — Welcome landing page | `/Welcome` body link, by URL | Onboarding |
 | in — member dashboard | `/` action card, contributed via `ISectionMemberDashboard` | Tour |
 | out — back into Humans | fixed header bar, brand and "Open Humans" both `/` | Tour |
