@@ -12,10 +12,10 @@ internal interface IAuditLogRepository : IRepository
     Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         AuditAction? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
-    /// <summary>Where the user is the subject (a User entity) or the related entity.</summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
-
-    /// <summary>For merge chain-follow: pass the target plus its merged-away ids.</summary>
+    /// <summary>
+    /// Where a user is the subject (a User entity) or the related entity. For merge chain-follow, pass the target
+    /// plus its merged-away ids.
+    /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, int count, CancellationToken ct = default);
 
@@ -31,8 +31,6 @@ internal interface IAuditLogRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>Actor, entity or related entity; newest first. For the GDPR export.</summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetAllForUserContributorAsync(Guid userId, CancellationToken ct = default);
-
     Task<IReadOnlyList<AuditLogEntry>> GetAllForUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
