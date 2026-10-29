@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
@@ -22,6 +23,7 @@ internal sealed class CantinaProfileController(
     ILogger<CantinaProfileController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Dietary")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Dietary(string? returnAction = null)
     {
         var ct = HttpContext.RequestAborted;
@@ -45,6 +47,7 @@ internal sealed class CantinaProfileController(
 
     [HttpPost("Dietary")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Dietary(DietaryViewModel model)
     {
         if (model.DeclineToAnswer)

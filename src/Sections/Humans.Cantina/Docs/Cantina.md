@@ -58,7 +58,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 | Actor | Capabilities |
 |-------|--------------|
 | Admin, CantinaAdmin | View weekly/daily roster and download CSV |
-| Any authenticated member (incl. not-yet-Active; `MembershipRequiredFilter` exempts the form) | Read and save **their own** dietary answers, or decline to answer |
+| Any authenticated member (incl. not-yet-Active; the form carries `[AllowBeforeActiveMembership]`) | Read and save **their own** dietary answers, or decline to answer |
 | All other authenticated humans | Redirected to `/Account/AccessDenied`; Cantina admin sidebar entry is hidden |
 | Anonymous | Standard `[Authorize]` challenge — redirected to sign-in |
 

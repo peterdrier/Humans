@@ -126,7 +126,7 @@ Three controllers serve this section.
 | `/Consent` | GET | Dashboard (team-grouped document status) |
 | `/Consent/Review?id={versionId}` | GET | Document review before consent |
 | `/Consent/Submit` | POST | Record consent |
-| `/Consent/MyData` | GET | My Data page shell: Gdpr's export/deletion actions, the pending-deletion status (read from `UserInfo`) and the member's signed documents (consent history). Exempt from `MembershipRequiredFilter` so non-Active members reach it |
+| `/Consent/MyData` | GET | My Data page shell: Gdpr's export/deletion actions, the pending-deletion status (read from `UserInfo`) and the member's signed documents (consent history). Carries `[AllowBeforeActiveMembership]` so non-Active members reach it |
 
 **Admin routes:**
 

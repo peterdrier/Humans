@@ -1,9 +1,11 @@
+using System.Reflection;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Humans.Backdoor.Contracts;
+using Humans.Base.Attributes;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Authorization;
@@ -12,59 +14,12 @@ namespace Humans.Web.Authorization;
 /// Global filter routing authenticated users by their stored <see cref="UserState"/>:
 /// only <see cref="UserState.Active"/> reaches the app. <see cref="UserState.Bare"/> → name entry;
 /// <see cref="UserState.DeletePending"/> → the cancel-deletion screen; Suspended/AdminSuspended/
-/// Rejected/Deleted/Merged → the account-status wall. Exempt controllers/actions are public/self-gated
-/// pages, the onboarding surface, and the redirect targets themselves (so non-Active users can reach their landing).
+/// Rejected/Deleted/Merged → the account-status wall. A controller or action a non-Active account must still
+/// reach (the onboarding surface, the redirect targets themselves, own-profile maintenance) carries
+/// <see cref="AllowBeforeActiveMembershipAttribute"/> in its own section; public pages use <c>[AllowAnonymous]</c>.
 /// </summary>
 public class MembershipRequiredFilter : IAsyncActionFilter
 {
-    // Only controllers a non-Active user must still reach. Public controllers use
-    // [AllowAnonymous]/API keys; role-gated app controllers are still blocked until Active.
-    private static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Account",          // Login/logout/OAuth
-        "OnboardingWidget", // Guided onboarding (name entry) — the Bare landing target
-        "Consent",          // Sign required legal documents (onboarding surface)
-        "User",             // Account-status wall + cancel-deletion landing (redirect targets)
-        "Language",         // Language switching
-        "Guest",            // Profileless account dashboard
-        "GovernanceApplications", // Tier application submission — any logged-in user
-        "Issues",           // In-app issue reporting — any logged-in user: someone stuck mid-onboarding or on
-                            // the status wall still sees the Help widget, and that report must reach the queue.
-        "Notifications",    // Notification inbox — any logged-in user
-        "Survey",           // Tokenised survey answering — invited non-Active users must still reach it ([AllowAnonymous])
-    };
-
-    // Live accounts retain own-profile maintenance outside Active membership. Other humans'
-    // profiles, messaging, search and admin email actions still require Active membership.
-    // Deleted/Merged accounts are handled before these recovery exemptions.
-    // Public picture/popover and email-verification actions use [AllowAnonymous].
-    private static readonly HashSet<(string Controller, string Action)> ExemptActions =
-    [
-        ("Profile", "Index"),
-        ("Profile", "Me"),
-        ("Profile", "Edit"),
-        ("TicketParticipation", "DeclareNotAttending"),
-        ("TicketParticipation", "UndoNotAttending"),
-        ("MemberOutbox", "MyOutbox"),
-        ("MyData", "Index"),
-        ("MemberData", "RequestDeletion"),
-        ("CantinaProfile", "Dietary"),
-        ("Profile", "Medical"),
-        ("CommunicationPreferences", "Index"),
-        ("CommunicationPreferences", "UpdatePreference"),
-        ("MemberData", "DownloadData"),
-        ("ProfileEmails", "Emails"),
-        ("ProfileEmails", "AddEmail"),
-        ("ProfileEmails", "SetPrimary"),
-        ("ProfileEmails", "SetEmailVisibility"),
-        ("ProfileEmails", "DeleteEmail"),
-        ("WorkspaceIdentity", "Set"),
-        ("ProfileEmails", "ClearPrimary"),
-        ("ProfileEmails", "Link"),
-        ("ProfileEmails", "Unlink"),
-        ("ProfileEmails", "UnlinkLinkedAccount"),
-    ];
-
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var user = context.HttpContext.User;
@@ -82,20 +37,21 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        if (context.ActionDescriptor is ControllerActionDescriptor cad && IsPublicEndpoint(cad))
+        var action = context.ActionDescriptor as ControllerActionDescriptor;
+        if (action is not null && IsPublicEndpoint(action))
         {
             return next();
         }
 
+        var allowance = action is null ? null : Allowance(action);
+
         // A lingering cookie must not turn an anonymized account into an editable profile.
         // Terminal accounts retain the status wall and session/language routes, but none
-        // of the onboarding or self-service exemptions for recoverable accounts below.
+        // of the onboarding or self-service allowances for recoverable accounts.
         var state = RoleAssignmentClaimsTransformation.GetUserState(user);
         if (state is UserState.Deleted or UserState.Merged)
         {
-            if (context.ActionDescriptor is ControllerActionDescriptor terminalAction
-                && (terminalAction.ControllerName is "Account" or "Language"
-                    || terminalAction is { ControllerName: "User", ActionName: "Status" }))
+            if (allowance is { Terminal: true })
             {
                 return next();
             }
@@ -104,14 +60,9 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return Task.CompletedTask;
         }
 
-        if (context.Controller is Controller controller)
+        if (allowance is not null)
         {
-            var descriptor = controller.ControllerContext.ActionDescriptor;
-            if (ExemptControllers.Contains(descriptor.ControllerName) ||
-                ExemptActions.Contains((descriptor.ControllerName, descriptor.ActionName)))
-            {
-                return next();
-            }
+            return next();
         }
 
         // Access is the stored UserState (stamped on the principal by
@@ -130,6 +81,11 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         };
         return Task.CompletedTask;
     }
+
+    /// <summary>The action's own allowance first, then its controller's.</summary>
+    internal static AllowBeforeActiveMembershipAttribute? Allowance(ControllerActionDescriptor cad) =>
+        cad.MethodInfo.GetCustomAttribute<AllowBeforeActiveMembershipAttribute>(inherit: true)
+        ?? cad.ControllerTypeInfo.GetCustomAttribute<AllowBeforeActiveMembershipAttribute>(inherit: true);
 
     /// <summary>
     /// An <c>[AllowAnonymous]</c> endpoint is reachable in any account state, with one exception: <c>Home/Index</c>

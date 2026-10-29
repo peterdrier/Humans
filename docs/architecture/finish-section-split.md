@@ -79,7 +79,7 @@ Done when a new optional section can declare its roles, policies, access matrix,
 - [ ] Replace fixed profile cards, user-admin detail panels, and Home feature cards with section contributions, using the package-1 seam (nobodies-collective/Humans#1112, #1044). Move domain-specific actions to their owning section, retaining stable routes where needed.
 - [ ] Make Search aggregate contributed categories/results instead of injecting its fixed set of domain services. Keep authorization and result presentation section-owned; concurrency is not required for independence.
 - [ ] Let section navigation resolve labels from its own resources rather than requiring additions to a central shared resource set. Settle nobodies-collective/Humans#1090 (Search and Tour as chrome or as sections) the same way.
-- [ ] `MembershipRequiredFilter.ExemptControllers` in Shell is a by-name list of section controllers reachable before a member is Active; make it a seam property.
+- [x] `MembershipRequiredFilter.ExemptControllers` in Shell was a by-name list of section controllers reachable before a member is Active; each now carries `[AllowBeforeActiveMembership]` in its own section.
 
 Done when profile, admin, Home, navigation, and search work with a participating section absent, and a new participant edits only itself. Profile/admin composition must carry the target member and authorization context, not assume the current user. Preserve all supported cultures and existing access restrictions.
 
