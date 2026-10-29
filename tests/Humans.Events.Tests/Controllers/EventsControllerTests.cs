@@ -46,6 +46,12 @@ public class EventsControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
+    public EventsControllerTests()
+    {
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
+        _guide.UpdateAndResubmitAsync(Arg.Any<Guid>(), Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
+    }
+
     [HumansTheory]
     [Xunit.InlineData("SubmissionOpenAt", "0")]
     [Xunit.InlineData("SubmissionCloseAt", "0")]
@@ -802,7 +808,7 @@ public class EventsControllerTests
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         StubEditableGuideSettings();
-        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(false);
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult("Events_SubmissionWindowClosed"));
         _guide.BulkImportAsync(camp.Id, userId, Arg.Any<IReadOnlyList<BulkCsvRow>>(),
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<DateTimeZone>(), Arg.Any<CancellationToken>())
             .Returns(new BulkImportResult([], 0, 0, RefusalKey: "Events_SubmissionWindowClosed"));
@@ -842,9 +848,65 @@ public class EventsControllerTests
         controller.TempData.Should().NotContainKey("BulkErrors_camp");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task CategoryRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(bool edit, bool barrio)
+    {
+        var userId = Guid.NewGuid();
+        var camp = new CampInfo(Guid.NewGuid(), "camp", "camp@example.org", "", false, 0, []);
+        var existing = MakeEvent(barrio ? camp.Id : null, userId, EventStatus.ResubmitRequested);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _guide.GetEventForModerationAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _guide.GetCampEventAsync(existing.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        StubEditableGuideSettings();
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult("Events_CategoryUnavailable"));
+        _guide.UpdateAndResubmitAsync(existing.Id, Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult("Events_CategoryUnavailable"));
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        object model;
+        IActionResult result;
+        if (barrio)
+        {
+            var input = new CampEventFormViewModel
+            {
+                Title = "Entered title", Description = "Entered description", CategoryId = Guid.NewGuid(),
+                StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+            };
+            model = input;
+            result = edit ? await controller.BarrioUpdate(camp.Slug, existing.Id, input) : await controller.BarrioCreate(camp.Slug, input);
+            input.Title.Should().Be("Entered title");
+            input.Description.Should().Be("Entered description");
+            input.CampId.Should().Be(camp.Id);
+        }
+        else
+        {
+            var input = new IndividualEventFormViewModel
+            {
+                Title = "Entered title", Description = "Entered description", CategoryId = Guid.NewGuid(), VenueId = Guid.NewGuid(),
+                StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+            };
+            model = input;
+            result = edit ? await controller.Update(existing.Id, input) : await controller.Create(input);
+            input.Title.Should().Be("Entered title");
+            input.Description.Should().Be("Entered description");
+        }
+        var view = result.Should().BeOfType<ViewResult>().Which;
+        view.Model.Should().BeSameAs(model);
+        view.ViewName.Should().Be(barrio ? "BarrioEventForm" : "IndividualEventForm");
+        controller.ModelState["CategoryId"]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Events_CategoryUnavailable");
+        controller.TempData.Should().NotContainKey("SuccessMessage");
+    }
+
     private void StubEditableGuideSettings()
     {
-        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(true);
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
         var settingsId = Guid.NewGuid();
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new EventGuideSettingsView(
