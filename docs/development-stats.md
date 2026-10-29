@@ -14,50 +14,50 @@ To rebuild every row from scratch (e.g. after a schema change):
 
 | Metric | Value |
 |--------|------:|
-| Latest snapshot | 2026-06-12 |
-| App + Test lines | 365,737 |
-| App / Test lines | 252,324 / 113,413 |
-| C# code (no blanks/comments) | 119,880 |
-| C# comments | 24,409 |
-| Markdown lines | 92,264 |
-| Migration lines | 486,609 |
-| Files (app + test) | 2,353 |
-| Commits | 1,806 |
-| Test ratio | 31.0% |
-| 7-day delta | +24,491 app+test lines from 2026-06-05 to 2026-06-12 |
-| 7-day average | +3,499 lines/day over the same span |
+| Latest snapshot | 2026-10-29 |
+| App + Test lines | 577,694 |
+| App / Test lines | 332,438 / 245,256 |
+| C# code (no blanks/comments) | 161,037 |
+| C# comments | 17,193 |
+| Markdown lines | 106,890 |
+| Migration lines | 54,819 |
+| Files (app + test) | 4,267 |
+| Commits | 2,901 |
+| Test ratio | 42.5% |
+| 7-day delta | +5,837 app+test lines from 2026-10-22 to 2026-10-29 |
+| 7-day average | +834 lines/day over the same span |
 
 ## Language Breakdown
 
-Latest app-code mix at the 2026-06-12 snapshot:
+Latest app-code mix at the 2026-10-29 snapshot:
 
 | Language | Lines | Share of App Lines | Files |
 |----------|------:|-------------------:|------:|
-| C# | 166,096 | 65.8% | 1,448 |
-| Razor (`.cshtml`) | 46,213 | 18.3% | 386 |
-| RESX | 36,279 | 14.4% | 6 |
-| JavaScript | 3,736 | 1.5% | 30 |
+| C# | 207,049 | 62.3% | 2,461 |
+| Razor (`.cshtml`) | 59,467 | 17.9% | 562 |
+| RESX | 61,059 | 18.4% | 36 |
+| JavaScript | 4,863 | 1.5% | 35 |
 
 Tracked separately (not part of `App Lines`):
 
 | Category | Lines | Files | Notes |
 |----------|------:|------:|-------|
-| Markdown | 92,264 | 483 | Whole repo (docs, skills, root). Back below raw C# after the May–June docs prune. |
-| EF Migrations | 486,609 | 227 | Auto-generated. ~1.9× the entire app source — overdue for consolidation. |
-| C# comments | 24,409 | — | Subset of `CS Lines`. ~14.7% of C# is comments. |
+| Markdown | 106,890 | 852 | Whole repo (docs, skills, root). About half the raw C#. |
+| EF Migrations | 54,819 | 252 | Auto-generated. ~16% of app source after the August consolidation. |
+| C# comments | 17,193 | — | Subset of `CS Lines`. ~8.3% of C# is comments. |
 
 ## Highlights
 
 - **First commit:** 2026-02-04 (7.1k lines)
-- **Current:** 366k app+test lines across 2,353 files in 116 days with commits
-- **Growth rate:** ~3,153 lines/day average
-- **Biggest day:** 2026-05-16 (+40,694 lines) — new all-time high
-- **Busiest churn day:** 2026-05-16 (+40,694 / -13,529) — same day tops both lists
-- **Test ratio:** 31.0% of codebase (113k test lines / 366k total) — still climbing (was 28.9% on 05-15)
-- **Localization:** 2,619 resx keys (5 languages = ~13,095 translated strings)
-- **Architecture:** 2,153 classes, 233 interfaces, 87 controllers, 386 views, 104 entities
-- **Documentation weight:** 92k markdown lines — back below the 166k of raw C# after the May–June docs prune (peaked at 154k on 05-15)
-- **Migration debt:** 487k lines across 227 migration files — ~1.9× the entire app source, overdue for consolidation
+- **Current:** 578k app+test lines across 4,267 files in 206 days with commits
+- **Growth rate:** ~2,804 lines/day average
+- **Biggest day:** 2026-10-21 (+188,872 lines) — new all-time high
+- **Busiest churn day:** 2026-10-21 (+188,872 / -67,743) — same day tops both lists
+- **Test ratio:** 42.5% of codebase (245k test lines / 578k total) — still climbing (was 31.0% on 06-12, 42.0% on 10-22)
+- **Localization:** 4,997 resx keys across all neutral resx files (6 cultures = ~29,982 translated strings)
+- **Architecture:** 3,337 classes, 349 interfaces, 128 controllers, 562 views, 0 entities (table column; entities no longer live under `*/Entities/`)
+- **Documentation weight:** 107k markdown lines — about half the 207k of raw C# (peaked at 155k on 05-24)
+- **Migration debt:** 55k lines across 252 migration files — ~16% of app source after the August consolidation
 
 ## Column Key
 
