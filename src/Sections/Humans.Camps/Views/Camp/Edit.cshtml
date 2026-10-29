@@ -153,6 +153,7 @@
                         <div class="col-md-4">
                             <label asp-for="MemberCount" class="form-label">@Localizer["Camps_MemberCountLabel"]</label>
                             <input asp-for="MemberCount" class="form-control" type="number" min="1" />
+                            <span asp-validation-for="MemberCount" class="text-danger"></span>
                         </div>
                     </div>
                 </div>

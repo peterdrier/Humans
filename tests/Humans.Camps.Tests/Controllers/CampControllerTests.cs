@@ -60,7 +60,14 @@ public class CampControllerTests
     [InlineData(true, "SoundZone")]
     [InlineData(true, "ElectricalGrid")]
     [InlineData(true, "")]
-    public async Task Camp_forms_require_posted_choices_and_preserve_explicit_zero_or_blank(bool edit, string omitted)
+    [InlineData(false, "MemberCount")]
+    [InlineData(true, "MemberCount")]
+    [InlineData(false, "", "0")]
+    [InlineData(true, "", "0")]
+    [InlineData(false, "", "-1")]
+    [InlineData(true, "", "-1")]
+    public async Task Camp_forms_require_posted_choices_and_a_positive_expected_count(
+        bool edit, string omitted, string memberCount = "1")
     {
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -87,7 +94,7 @@ public class CampControllerTests
             ["BlurbShort"] = "Short description",
             ["Languages"] = "en",
             ["SeasonId"] = camp.Seasons[0].Id.ToString(),
-            ["MemberCount"] = "1",
+            ["MemberCount"] = memberCount,
             ["AcceptingMembers"] = "0",
             ["KidsWelcome"] = "0",
             ["KidsVisiting"] = "0",
@@ -114,10 +121,11 @@ public class CampControllerTests
 
         var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
         var writes = _camps.ReceivedCalls().Where(call => call.GetMethodInfo().Name is "CreateCampAsync" or "UpdateCampAsync").ToList();
-        if (omitted.Length > 0)
+        if (omitted.Length > 0 || !string.Equals(memberCount, "1", StringComparison.Ordinal))
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-            controller.ModelState[omitted]!.Errors.Should().ContainSingle();
+            var field = omitted.Length > 0 ? omitted : "MemberCount";
+            controller.ModelState[field]!.Errors.Should().ContainSingle();
             writes.Should().BeEmpty();
         }
         else
@@ -356,7 +364,11 @@ public class CampControllerTests
             var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
 
+            controller.ModelState["MemberCount"]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                .Should().Be(shared["Validation_Range", "MemberCount", 1, int.MaxValue].Value);
+
             controller.ModelState.Clear();
+            model.MemberCount = 1;
             model.Name = new string('n', 256);
             model.ContactEmail = new string('a', 244) + "@example.com";
             model.ContactPhone = "+" + new string('1', 63);

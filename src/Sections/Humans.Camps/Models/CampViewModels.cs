@@ -172,6 +172,7 @@ internal class CampRegisterViewModel
     public List<CampVibe> Vibes { get; set; } = [];
     [BindRequired]
     public AdultPlayspacePolicy AdultPlayspace { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "Validation_Range")]
     public int MemberCount { get; set; }
     [BindRequired]
     public SpaceSize? SpaceRequirement { get; set; }
