@@ -363,10 +363,13 @@ internal sealed class BudgetService(
                     item.SortOrder))
                 .ToList());
 
-    public async Task<BudgetCategoryDetail> CreateCategoryAsync(
+    public async Task<BudgetSaveResult<BudgetCategoryDetail>> CreateCategoryAsync(
         Guid budgetGroupId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid actorUserId)
     {
+        if (ValidateMoneyAmount(allocatedAmount) is { } refusal)
+            return new(Refusal: refusal);
+
         var now = clock.GetCurrentInstant();
 
         var category = await repository.CreateCategoryAsync(
@@ -375,19 +378,23 @@ internal sealed class BudgetService(
         logger.LogInformation(
             "Created budget category '{Name}' in group {GroupId}", name, budgetGroupId);
 
-        return ToCategoryDetail(category);
+        return new(ToCategoryDetail(category));
     }
 
-    public async Task UpdateCategoryAsync(
+    public async Task<BudgetSaveResult<BudgetCategoryDetail>> UpdateCategoryAsync(
         Guid categoryId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid actorUserId)
     {
+        if (ValidateMoneyAmount(allocatedAmount) is { } refusal)
+            return new(Refusal: refusal);
+
         var now = clock.GetCurrentInstant();
 
         var ok = await repository.UpdateCategoryAsync(
             categoryId, name, allocatedAmount, expenditureType, actorUserId, now);
         if (!ok)
             throw new InvalidOperationException($"Budget category {categoryId} not found");
+        return new();
     }
 
     public async Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId)
@@ -421,12 +428,12 @@ internal sealed class BudgetService(
             lineItem.IsCashflowOnly,
             lineItem.SortOrder);
 
-    public async Task<BudgetLineItemSaveResult> CreateLineItemAsync(
+    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
     {
-        if (ValidateLineAmount(amount) is { } refusal)
+        if (ValidateMoneyAmount(amount) is { } refusal)
             return new(Refusal: refusal);
 
         ValidateVatRate(vatRate);
@@ -451,12 +458,12 @@ internal sealed class BudgetService(
         return new(ToLineItemSnapshot(lineItem));
     }
 
-    public async Task<BudgetLineItemSaveResult> UpdateLineItemAsync(
+    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
     {
-        if (ValidateLineAmount(amount) is { } refusal)
+        if (ValidateMoneyAmount(amount) is { } refusal)
             return new(Refusal: refusal);
 
         ValidateVatRate(vatRate);
@@ -478,11 +485,11 @@ internal sealed class BudgetService(
         return new();
     }
 
-    private static string? ValidateLineAmount(decimal amount)
+    private static string? ValidateMoneyAmount(decimal amount)
     {
         const decimal maxAmount = 9_999_999_999_999_999.99m;
         return amount < -maxAmount || amount > maxAmount || decimal.Round(amount, 2) != amount
-            ? "Line item amounts must fit within 16 whole digits and two decimal places."
+            ? "Amounts must fit within 16 whole digits and two decimal places."
             : null;
     }
 

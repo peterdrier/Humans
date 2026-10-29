@@ -224,8 +224,9 @@ internal sealed class DevelopmentBudgetSeeder(
             var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
+                category = created.Value ?? throw new InvalidOperationException(created.Refusal ?? "Category creation returned no value.");
                 categoriesCreated++;
             }
 
@@ -239,8 +240,9 @@ internal sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
+                category = created.Value ?? throw new InvalidOperationException(created.Refusal ?? "Category creation returned no value.");
                 categoriesCreated++;
             }
 
@@ -254,8 +256,9 @@ internal sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
+                category = created.Value ?? throw new InvalidOperationException(created.Refusal ?? "Category creation returned no value.");
                 categoriesCreated++;
             }
 
@@ -318,8 +321,10 @@ internal sealed class DevelopmentBudgetSeeder(
         Guid actorUserId,
         Action onLineItemCreated)
     {
-        await budgetService.UpdateCategoryAsync(category.Id, category.Name,
+        var allocation = await budgetService.UpdateCategoryAsync(category.Id, category.Name,
             lineItems.Sum(li => li.Amount), category.ExpenditureType, actorUserId);
+        if (allocation.Refusal is not null)
+            throw new InvalidOperationException(allocation.Refusal);
 
         foreach (var lineItem in lineItems)
         {

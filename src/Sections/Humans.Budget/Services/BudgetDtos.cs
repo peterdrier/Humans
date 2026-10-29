@@ -96,5 +96,5 @@ internal sealed record TicketingProjectionUpdateCommand(
     decimal StripeFeeFixed,
     decimal TicketTailorFeePercent);
 
-internal readonly record struct BudgetLineItemSaveResult(
-    BudgetLineItemSnapshot? LineItem = null, string? Refusal = null);
+internal readonly record struct BudgetSaveResult<T>(
+    T? Value = null, string? Refusal = null) where T : class;
