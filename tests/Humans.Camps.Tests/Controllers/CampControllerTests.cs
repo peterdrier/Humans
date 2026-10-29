@@ -910,7 +910,10 @@ public class CampControllerTests
         var first = camp.Seasons.Single();
         var target = first with
         {
-            Id = Guid.NewGuid(), Year = 2027, EventSettingsId = Event2027.EventSettingsId, Members = foreignMember ? [] : [member]
+            Id = Guid.NewGuid(),
+            Year = 2027,
+            EventSettingsId = Event2027.EventSettingsId,
+            Members = foreignMember ? [] : [member]
         };
         camp = camp with { Seasons = [first, target] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
