@@ -114,7 +114,7 @@ Done when a section's public surface is its `Contracts/` folder or leaf plus the
 ### 10. Remove remaining assembly and tooling roll calls
 
 - [ ] Replace the explicit section project list in `Humans.Web.csproj` with a repository-appropriate inclusion convention. Move the `Extensions/Infrastructure/*` settings bindings (Email, Google, ticket-vendor port) and `MembershipRequiredFilter`'s Backdoor-scheme check behind seams, so Shell's compiled references shrink to the declared identity core (Users, Auth) and the guard stops pinning Backdoor, Email, GoogleIntegration and Tickets.
-- [ ] Remove hand-maintained section inventories from migration tooling and contributor expectations where discovery can supply them. Audit `SECTION_DB_CONTEXTS` in `build.yml`, GDPR contributor expectations, and tests reaching into another section's context.
+- [ ] Remove hand-maintained section inventories from migration tooling and contributor expectations where discovery can supply them. `SECTION_DB_CONTEXTS` in `build.yml` is gone (derived from the `Data/*DbContextFactory.cs` files); GDPR contributor expectations and tests reaching into another section's context remain to audit.
 - [x] Consolidate existing contribution declarations on `Section` (nobodies-collective/Humans#1088): every section's sibling `Section<Seam>.cs` classes folded into `Section.cs`.
 
 Done when adding a conventional section does not require a Shell project-list or migration-tooling edit, and section tests use the relevant public boundaries. Startup discovery and build-time project inclusion are separate concerns and both must work.

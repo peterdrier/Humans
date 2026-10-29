@@ -155,6 +155,8 @@ public enum AuditAction
     IbanSet,
     IbanRemove,
     IbanReveal,
+    // A MedicalDataViewer opened one member's medical conditions (Shifts' audited reveal).
+    MedicalConditionsRevealed,
     ExpenseAttachmentUploaded,
     ExpenseAttachmentRemoved,
     VolunteerCampSetupSet,
@@ -379,6 +381,8 @@ public enum AuditAction
     EventGuideExported,
     CampsExported,
     CantinaRosterExported,
+    // A Cantina admin showed the allergy and intolerance details on a roster page.
+    CantinaHealthDetailsRevealed,
     VolunteerTrackingExported,
     ExpenseLineDeclined,
     ExpenseLineDeclineUndone,

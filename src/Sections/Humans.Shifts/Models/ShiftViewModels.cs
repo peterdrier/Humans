@@ -507,7 +507,6 @@ internal sealed class VolunteerSearchResult
     public int BookedShiftCount { get; set; }
     public bool HasOverlap { get; set; }
     public bool IsInPool { get; set; }
-    public string? MedicalConditions { get; set; }
 }
 
 /// <summary>

@@ -11,14 +11,14 @@ using Humans.Users.Contracts;
 namespace Humans.Debug.Controllers;
 
 /// <summary>
-/// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
+/// Board/Admin catalog of every reusable UI widget — TagHelpers, ViewComponents, and
 /// shared partials — rendered against hard-coded sample data so designers and developers
 /// can see what exists, what it's called, and how it looks filled in. Companion to
 /// <c>/ColorPalette</c>. Admin dev tool — linked from the admin sidebar "Design" group.
 /// This controller resolves sample data for Base and Shell widgets only; each section's
 /// own widgets arrive through the <c>ChromeSlots.WidgetGallery</c> chrome slot.
 /// </summary>
-[Authorize(Policy = PolicyNames.AdminOnly)]
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Debug/WidgetGallery")]
 internal sealed class WidgetGalleryController(IUserService userService) : HumansControllerBase(userService)
 {

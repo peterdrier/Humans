@@ -61,7 +61,7 @@ Each section owns far more than `Services/` and `Data/`: `Humans.Events` also ca
 
 Two things the section project does **not** absorb — resolve them separately:
 
-- **The DbContext.** There is no shared `HumansDbContext`. `dotnet ef` commands need `--context <Context> --project $SEC --output-dir Data/Migrations`, with `<Context>` looked up rather than synthesized: `<Section>DbContext` is wrong for `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`). The `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml` is authoritative — see `memory/process/ef-multi-context-commands.md`.
+- **The DbContext.** There is no shared `HumansDbContext`. `dotnet ef` commands need `--context <Context> --project $SEC --output-dir Data/Migrations`, with `<Context>` looked up rather than synthesized: `<Section>DbContext` is wrong for `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`). The design-time factory beside the context, `Data/<Context>Factory.cs`, is authoritative (CI derives its context list from those files) — see `memory/process/ef-multi-context-commands.md`.
 - **The invariant doc.** Every section carries it in-project at `$SEC/Docs/<Section>.md`, resolved once as `$DOC` — every later phase that reads or edits the invariant doc must use `$DOC`, never a literal `docs/sections/` path.
 
 ## Boundary-fix protocol
@@ -228,7 +228,7 @@ Caching belongs in the service layer **only** per §15 — either via a `Caching
 
 **A2.4 Repository pattern.** The section's repository:
 - `internal sealed`
-- uses `IDbContextFactory<TContext>` for the section's own context — resolve `TContext` from the section's `Data/` folder or the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`; **do not assume `<Section>DbContext`**, since e.g. `Humans.Consent` is `LegalDbContext` and `Humans.Events` is `EventGuideDbContext`. A repository taking its own section context is correct and must not be flagged.
+- uses `IDbContextFactory<TContext>` for the section's own context — resolve `TContext` from the section's `Data/` folder (`<Context>Factory.cs` names it); **do not assume `<Section>DbContext`**, since e.g. `Humans.Consent` is `LegalDbContext` and `Humans.Events` is `EventGuideDbContext`. A repository taking its own section context is correct and must not be flagged.
 - has no Update/Delete if entity is append-only (§12)
 - lives at `src/Sections/Humans.<Section>/Data/`
 

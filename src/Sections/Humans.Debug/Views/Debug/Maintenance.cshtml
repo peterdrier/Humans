@@ -17,7 +17,7 @@
             mid-execution and its lock is preventing later runs. You may need to restart the app
             after running.
         </p>
-        <form asp-action="ClearHangfireLocks" method="post">
+        <form asp-action="ClearHangfireLocks" method="post" authorize-policy="AdminOnly">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-warning"
                     data-confirm="Clear all Hangfire locks? You may need to restart the app afterwards.">

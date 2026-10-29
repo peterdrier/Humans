@@ -189,9 +189,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Nur für dich und die No-Info Admins sichtbar. Alles, was die Koordination wissen sollte — Diabetes, Epilepsie, schwere Verletzungen usw.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf durch sie wird festgehalten und unten aufgeführt. Alles, was Koordinator:innen wissen sollten — Diabetes, Epilepsie, schwere Verletzungen usw.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Erkrankungen</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Freiwillig. Nur für dich und die No-Info Admins sichtbar.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf wird festgehalten.</value></data>
   <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
   <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
@@ -772,4 +772,7 @@
   <data name="Users_Search_ExactName" xml:space="preserve"><value>Exakter Name</value></data>
   <data name="Users_Search_Interests" xml:space="preserve"><value>Interessen</value></data>
   <data name="Users_Search_Pronouns" xml:space="preserve"><value>Pronomen</value></data>
+  <data name="Users_Medical_RevealsTitle" xml:space="preserve"><value>Wer das angesehen hat</value></data>
+  <data name="Users_Medical_RevealsEmpty" xml:space="preserve"><value>Niemand hat deine medizinischen Angaben angesehen.</value></data>
+  <data name="Users_Medical_RevealedBy" xml:space="preserve"><value>Angesehen von</value></data>
 </root>
