@@ -24,13 +24,13 @@ internal sealed class AuditActionRegistry : IHostedService
                 $"Audit action names must be 1 to {AuditActionDefinition.NameMaxLength} characters: {string.Join(", ", invalid)}.");
 
         var duplicates = actions
-            .GroupBy(a => a.Name, StringComparer.Ordinal)
+            .GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
         if (duplicates.Count > 0)
             throw new InvalidOperationException(
-                $"Audit action names are declared more than once: {string.Join(", ", duplicates)}.");
+                $"Audit action names are declared more than once (ignoring case, as filters match): {string.Join(", ", duplicates)}.");
 
         _byName = actions.ToDictionary(a => a.Name, StringComparer.Ordinal);
         Alerts = actions.Where(a => a.Alert).ToList();
