@@ -18,6 +18,13 @@ internal interface IEventManagement : IApplicationService, IEventService
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
         int maxPrintSlots, CancellationToken ct = default);
 
+    /// <summary>Guide entries without an event id, each with the Settings event the assignment will give it.</summary>
+    Task<IReadOnlyList<(Guid EntryId, string Title, Instant StartAt, Guid EventSettingsId, string EventName)>> GetUnassignedGuideEntriesAsync(
+        CancellationToken ct = default);
+
+    /// <summary>Writes the event ids <see cref="GetUnassignedGuideEntriesAsync"/> lists. Returns the rows written.</summary>
+    Task<int> AssignGuideEntryEventIdsAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default);
     Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default);

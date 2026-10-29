@@ -168,8 +168,9 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
     {
+        var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetUserSubmissionsAsync(userId, ct);
-        return events.Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
     }
 
     public async Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
@@ -180,8 +181,9 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
     {
+        var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetCampSubmissionsAsync(campId, ct);
-        return events.Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
     }
 
     public async Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
@@ -202,8 +204,9 @@ internal sealed class EventService(
 
     public async Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
-        if (!await IsSubmissionWindowOpenAsync(ct)) return false;
+        if (await GetOpenSubmissionSettingsAsync(ct) is not { } settings) return false;
         await EnsureValidRecurrenceDaysAsync(guideEvent.IsRecurring, guideEvent.RecurrenceDays, ct);
+        guideEvent.EventSettingsId = settings.EventSettingsId;
         guideEvent.Submit(clock);
         await repo.AddEventAsync(guideEvent, ct);
 
@@ -309,13 +312,66 @@ internal sealed class EventService(
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    private async Task<bool> IsSubmissionWindowOpenAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<(Guid EntryId, string Title, Instant StartAt, Guid EventSettingsId, string EventName)>> GetUnassignedGuideEntriesAsync(
+        CancellationToken ct = default)
+    {
+        var events = (await settingsService.GetAllEventSettingsAsync(ct))
+            .Where(e => e.Status != EventSettingsStatus.Deleted)
+            .OrderBy(e => e.GateOpeningDate)
+            .ToList();
+        if (events.Count == 0) return [];
+
+        // The GDPR read: every entry regardless of status or event.
+        return [.. (await repo.GetAllEventsForDashboardAsync(ct))
+            .Where(e => e.EventSettingsId is null)
+            .Select(e =>
+            {
+                var owner = PickEventFor(e.StartAt, events);
+                return (e.Id, e.Title, e.StartAt, owner.Id, owner.EventName);
+            })];
+    }
+
+    public async Task<int> AssignGuideEntryEventIdsAsync(CancellationToken ct = default)
+    {
+        var pending = await GetUnassignedGuideEntriesAsync(ct);
+        return await repo.AssignEventSettingsIdsAsync(pending.ToDictionary(p => p.EntryId, p => p.EventSettingsId), ct);
+    }
+
+    /// <summary>
+    /// The event whose build-to-strike window holds the start's local date; otherwise the one whose gate opening is
+    /// nearest (earliest on a tie). <paramref name="events"/> is non-empty and ordered by gate opening.
+    /// </summary>
+    internal static EventSettingsInfo PickEventFor(Instant startAt, IReadOnlyList<EventSettingsInfo> events)
+    {
+        var nearest = events[0];
+        var nearestDistance = int.MaxValue;
+        foreach (var candidate in events)
+        {
+            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(candidate.TimeZoneId) ?? DateTimeZone.Utc;
+            var offset = Period.Between(candidate.GateOpeningDate, startAt.InZone(zone).Date, PeriodUnits.Days).Days;
+            if (offset >= candidate.BuildStartOffset && offset <= candidate.StrikeEndOffset)
+                return candidate;
+            if (Math.Abs(offset) < nearestDistance)
+            {
+                nearest = candidate;
+                nearestDistance = Math.Abs(offset);
+            }
+        }
+        return nearest;
+    }
+
+    /// <summary>Null when the submission window is closed or not configured.</summary>
+    private async Task<EventGuideSettings?> GetOpenSubmissionSettingsAsync(CancellationToken ct)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        if (settings is not null && settings.IsSubmissionOpenAt(clock.GetCurrentInstant())) return true;
+        if (settings is not null && settings.IsSubmissionOpenAt(clock.GetCurrentInstant())) return settings;
         logger.LogWarning("Event submission refused: the submission window is closed or not configured");
-        return false;
+        return null;
     }
+
+    /// <summary>The event the guide is configured for; null when the guide has no settings yet.</summary>
+    private async Task<Guid?> GetGuideEventIdAsync(CancellationToken ct) =>
+        (await repo.GetGuideSettingsAsync(ct))?.EventSettingsId;
 
     private async Task EnsureValidRecurrenceDaysAsync(bool isRecurring, string? recurrenceDays, CancellationToken ct)
     {
@@ -356,10 +412,10 @@ internal sealed class EventService(
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
         CancellationToken ct = default)
     {
-        if (!await IsSubmissionWindowOpenAsync(ct))
+        if (await GetOpenSubmissionSettingsAsync(ct) is not { } settings)
             return new BulkImportResult([], 0, 0, RefusalKey: "Events_SubmissionWindowClosed");
         return await new EventBulkImporter(repo, clock, localizer).ImportAsync(
-            campId, submitterUserId, rows, gateOpeningDate, eventEndOffset, timeZone, ct);
+            campId, submitterUserId, settings.EventSettingsId, rows, gateOpeningDate, eventEndOffset, timeZone, ct);
     }
 
     public async Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default)
@@ -383,14 +439,15 @@ internal sealed class EventService(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
     {
+        var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetApprovedEventsAsync(campId, venueId, categoryId, q, excludedSlugs, ct);
-        return events.Select(ToApprovedEventView).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToApprovedEventView).ToList();
     }
 
     public async Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
     {
         var ev = await repo.GetApprovedEventByIdAsync(id, ct);
-        return ev is null ? null : ToApprovedEventView(ev);
+        return ev is not null && ev.IsInEvent(await GetGuideEventIdAsync(ct)) ? ToApprovedEventView(ev) : null;
     }
 
     // Search is served from the cache in CachingEventService and must never hit the database; reaching this means a
@@ -408,8 +465,9 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
     {
+        var guideEventId = await GetGuideEventIdAsync(ct);
         var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
-        return favourites.Select(f => new EventFavouriteInfo(
+        return favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
                 f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event)))
             .GroupBy(f => f.GuideEventId)
             .SelectMany(group =>
@@ -423,8 +481,10 @@ internal sealed class EventService(
 
     public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
     {
-        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct)
-            ?? throw new KeyNotFoundException();
+        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct) is { } found
+            && found.IsInEvent(await GetGuideEventIdAsync(ct))
+            ? found
+            : throw new KeyNotFoundException();
         if (dayOffset is { } day && ev.IsRecurring && !string.IsNullOrWhiteSpace(ev.RecurrenceDays)
             && !ev.RecurrenceDays
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -452,13 +512,14 @@ internal sealed class EventService(
         => repo.UpsertPreferenceAsync(userId,
             JsonSerializer.Serialize(slugs.Select(slug => slug.ToLowerInvariant())), clock.GetCurrentInstant(), ct);
 
-    public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
-        => repo.GetModerationStatusCountsAsync(ct);
+    public async Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
+        => await repo.GetModerationStatusCountsAsync(await GetGuideEventIdAsync(ct), ct);
 
     public async Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
     {
+        var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetEventsByStatusAsync(status, ct);
-        return events.Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
     }
 
     public async Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
@@ -467,8 +528,8 @@ internal sealed class EventService(
         return guideEvent is null ? null : ToEventInfo(guideEvent);
     }
 
-    public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
-        => repo.GetActiveCampEventsAsync(ct);
+    public async Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
+        => await repo.GetActiveCampEventsAsync(await GetGuideEventIdAsync(ct), ct);
 
     public async Task<ModerationOutcome> ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
@@ -516,14 +577,16 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
     {
+        var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetAllEventsForDashboardAsync(ct);
-        return events.Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
     }
 
     public async Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        var events = (await repo.GetApprovedEventsAsync(null, null, null, null, [], ct)).Select(ToEventInfo).ToList();
+        var events = (await repo.GetApprovedEventsAsync(null, null, null, null, [], ct))
+            .Where(e => e.IsInEvent(settings?.EventSettingsId)).Select(ToEventInfo).ToList();
         var eventSettings = settings is null ? null : await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
         var tz = GetTimeZone(eventSettings);
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
