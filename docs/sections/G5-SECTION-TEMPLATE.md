@@ -1556,7 +1556,7 @@ Git Bash.)
      `MSBuildProjectName` clauses now and the comment beside it states the real criterion.
 9. [ ] `dotnet ef` for this section: `--project src/Sections/Humans.<Section>
    --startup-project src/Humans.Web --context <Section>DbContext --output-dir Data/Migrations`.
-   Update the `context:project` pair in `.github/workflows/build.yml`.
+   CI needs no edit: it derives the `context:project` pair from the moved `Data/<Context>Factory.cs`.
    - **Change `MigrationsAssembly` in the moved `<Section>DbContextFactory` to
      `"Humans.<Section>"`.** Every design-time factory hardcodes the string, so a factory that
      moves with the section keeps pointing at `Humans.Infrastructure`, EF looks for the section's

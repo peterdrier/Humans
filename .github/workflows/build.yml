@@ -23,53 +23,12 @@ concurrency:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  # The per-section DbContexts (nobodies-collective/Humans#858) in one
-  # place, as `context:project` pairs — a section that moves into its own
-  # project (nobodies-collective/Humans#866, G5) owns its migrations, so
-  # `--project` is no longer the same for every context. There is no main
-  # pile since peel 15 deleted HumansDbContext and its historical chain;
-  # every context is a section context. detect-migration-changes maps the
-  # run's changed files against this list; the `has-pending-model-changes`
-  # loops and the from-scratch baseline apply iterate only the affected
-  # pairs. A new section adds its pair here and nowhere else in this file;
-  # a G5 move edits its pair's project here.
-  SECTION_DB_CONTEXTS: >-
-    UsersDbContext:src/Sections/Humans.Users
-    SettingsDbContext:src/Sections/Humans.Settings
-    ContainersDbContext:src/Sections/Humans.Containers
-    AgentDbContext:src/Sections/Humans.Agent
-    ExpensesDbContext:src/Sections/Humans.Expenses
-    FinanceDbContext:src/Sections/Humans.Finance
-    HoldedDbContext:src/Sections/Humans.Holded
-    SurveysDbContext:src/Sections/Humans.Surveys
-    EventGuideDbContext:src/Sections/Humans.Events
-    AuthDbContext:src/Sections/Humans.Auth
-    EmailDbContext:src/Sections/Humans.Email
-    CalendarDbContext:src/Sections/Humans.Calendar
-    NotificationsDbContext:src/Sections/Humans.Notifications
-    IssuesDbContext:src/Sections/Humans.Issues
-    GovernanceDbContext:src/Sections/Humans.Governance
-    CampaignsDbContext:src/Sections/Humans.Campaigns
-    GoogleIntegrationDbContext:src/Sections/Humans.GoogleIntegration
-    TicketsDbContext:src/Sections/Humans.Tickets
-    FeedbackDbContext:src/Sections/Humans.Feedback
-    CityPlanningDbContext:src/Sections/Humans.CityPlanning
-    BudgetDbContext:src/Sections/Humans.Budget
-    CampsDbContext:src/Sections/Humans.Camps
-    GateDbContext:src/Sections/Humans.Gate
-    SystemDbContext:src/Humans.Web
-    LegalDbContext:src/Sections/Humans.Consent
-    AuditLogDbContext:src/Sections/Humans.AuditLog
-    ShiftsDbContext:src/Sections/Humans.Shifts
-    TeamsDbContext:src/Sections/Humans.Teams
-    StoreDbContext:src/Sections/Humans.Store
-    MailerLiteDbContext:src/Sections/Humans.MailerLite
-    BackdoorDbContext:src/Sections/Humans.Backdoor
-    RideshareDbContext:src/Sections/Humans.Rideshare
-    PreapprovalsDbContext:src/Sections/Humans.Preapprovals
-    WorkgroupsDbContext:src/Sections/Humans.Workgroups
-    CantinaDbContext:src/Sections/Humans.Cantina
-    GrantsDbContext:src/Sections/Humans.Grants
+  # The per-section DbContexts (nobodies-collective/Humans#858) are not listed
+  # here: detect-migration-changes derives every `context:project` pair from
+  # the design-time factory beside each context (Data/<Context>Factory.cs in
+  # the owning project, design-rules §4), so a new section or a G5 move needs
+  # no edit in this file. The `has-pending-model-changes` loops and the
+  # from-scratch baseline apply iterate only the affected pairs.
 
 jobs:
   build:
@@ -204,10 +163,18 @@ jobs:
         id: affected
         if: steps.filter.outputs.migrations == 'true'
         run: |
-          # Changed file -> owning project dir -> pair from SECTION_DB_CONTEXTS.
-          # A .Contracts leaf maps to its owning section; the shared leaves
-          # (Humans.Domain, Humans.Base) and this workflow can affect
-          # any context -> all pairs.
+          # Every context has a design-time factory beside it, Data/<Context>Factory.cs,
+          # in its own project; the pair list is derived from those files so no
+          # hand-kept inventory can drift (Consent's LegalDbContext and Events'
+          # EventGuideDbContext fall out of this too).
+          pairs=""
+          for factory in src/Sections/*/Data/*DbContextFactory.cs src/Humans.Web/Data/*DbContextFactory.cs; do
+            pairs="$pairs $(basename "$factory" Factory.cs):${factory%/Data/*}"
+          done
+          echo "Known contexts:$pairs"
+          # Changed file -> owning project dir -> pair. A .Contracts leaf maps to
+          # its owning section; the shared leaves (Humans.Domain, Humans.Base)
+          # and this workflow can affect any context -> all pairs.
           all=false
           declare -A hit
           for f in ${{ steps.filter.outputs.migrations_files }}; do
@@ -218,7 +185,7 @@ jobs:
             esac
           done
           contexts=""
-          for pair in $SECTION_DB_CONTEXTS; do
+          for pair in $pairs; do
             if [ "$all" = true ] || [ -n "${hit[${pair#*:}]:-}" ]; then
               contexts="$contexts $pair"
             fi
