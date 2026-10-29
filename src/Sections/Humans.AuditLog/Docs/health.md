@@ -8,7 +8,7 @@ violation recognisable. Not a changelog — the run files under `docs/health/run
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-27 | Delete dead `GetRecentAsync` read chain; true up section doc | [#1545](https://github.com/peterdrier/Humans/pull/1545) |
-| 2 | 2026-10-29 | Label every audit action in all six languages; one read per per-person question; true up the docs | pending |
+| 2 | 2026-10-29 | Label every audit action in all six languages; one read per per-person question; true up the docs | [#2194](https://github.com/peterdrier/Humans/pull/2194) |
 
 ## 1. What the section does
 
