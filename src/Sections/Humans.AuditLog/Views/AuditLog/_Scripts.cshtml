@@ -1,5 +1,5 @@
 <script>
-    document.getElementById('checkForm').addEventListener('submit', function (e) {
+    document.getElementById('checkForm')?.addEventListener('submit', function (e) {
         if (!confirm('This will check Drive Activity API for anomalous permission changes. Continue?')) {
             e.preventDefault();
             return;

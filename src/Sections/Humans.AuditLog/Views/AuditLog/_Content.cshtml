@@ -3,7 +3,8 @@
 @model Humans.AuditLog.Models.AuditLogListViewModel
 
 <page-header title="Audit Log">
-    <form asp-controller="Monitor" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm">
+    <form asp-controller="Monitor" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm"
+          authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-outline-warning" id="checkBtn">
             Check Drive Activity Now

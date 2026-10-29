@@ -24,7 +24,7 @@ internal sealed class MonitorController(
         try
         {
             var count = await monitorService.CheckForAnomalousActivityAsync();
-            logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
+            logger.LogInformation("Admin {UserId} triggered manual Drive activity check: {Count} anomalies",
                 currentUser?.Id, count);
 
             SetSuccess(count > 0
