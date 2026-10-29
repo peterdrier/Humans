@@ -8,7 +8,7 @@ violation recognisable. Not a changelog — the run files under `docs/health/run
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-27 | Delete dead `GetRecentAsync` read chain; true up section doc | [#1545](https://github.com/peterdrier/Humans/pull/1545) |
-| 2 | 2026-10-29 | pending | pending |
+| 2 | 2026-10-29 | Label every audit action in all six languages; one read per per-person question; true up the docs | pending |
 
 ## 1. What the section does
 
@@ -70,10 +70,10 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 - A job append records no actor and prefixes the job name to the description
   (`Services/AuditLogService.cs:35`).
 - Per-person reads follow merges: they key on the resolved record's `AllUserIds`, never the id
-  asked with (`Services/AuditLogService.cs:120`, `:145`, `:156`), and no path rewrites the stored
+  asked with (`Services/AuditLogService.cs:119`, `:136`, `:145`), and no path rewrites the stored
   id columns.
 - Plain-text output names people, never ids, and says "You" for the viewer
-  (`Contracts/AuditEvent.cs:42`).
+  (`Contracts/AuditEvent.cs:41`).
 - An empty `entity-ids` list on the component means no matches, never "drop the id filter"
   (`ViewComponents/AuditLogViewComponent.cs:87`).
 - Paging past the end clamps instead of overflowing (`Data/AuditLogRepository.cs:34`).
