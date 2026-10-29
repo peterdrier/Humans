@@ -634,8 +634,6 @@ public class AgentToolDispatcherTests
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<Humans.AuditLog.Contracts.AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-            Task.FromResult(new Humans.AuditLog.Contracts.AuditEventPage(Events, Events.Count, new Dictionary<string, int>(StringComparer.Ordinal)));
         public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
     }
 

@@ -4,7 +4,7 @@
   src/Sections/Humans.Monitor/Section.cs
   src/Sections/Humans.Monitor/Controllers/MonitorController.cs
   src/Sections/Humans.GoogleIntegration/Services/Workspace/GoogleDriveActivityClient.cs
-  src/Sections/Humans.AuditLog/SectionAdminNav.cs
+  src/Sections/Humans.AuditLog/Section.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
   src/Sections/Humans.AuditLog/Views/AuditLog/_Content.cshtml
@@ -56,7 +56,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - Anomalous entries highlighted with warning styling
 - Alert banner showing total anomaly count
 - Paginated (50 per page)
-- Reached from the admin sidebar (`src/Sections/Humans.AuditLog/SectionAdminNav.cs`)
+- Reached from the admin sidebar (`src/Sections/Humans.AuditLog/Section.cs`)
 
 ## Architecture
 

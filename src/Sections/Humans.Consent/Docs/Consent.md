@@ -155,6 +155,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
+
 - Legal-document forms require explicit required/active flags and grace-period days; omission redisplays field errors before any write and cannot reactivate a document, change its consent requirement or reset its grace period. Explicit false flags remain valid.
 
 - Legal-document creation and edits refuse empty or nonexistent owning teams with 404 before persistence, initial sync, cache invalidation or success audit. The service checks the team through `ITeamService`; existing inactive teams remain valid owners.
@@ -179,7 +181,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Legal-document admin list, create and edit GETs retain request cancellation through document reads and the active-team picker. POST redisplay reads keep their mutation boundary.
 
 - Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
-- Required-version snapshots for all documents and for a single team share the same latest-effective-version selection; documents without an effective version are omitted.
+- Required-version snapshots for all documents and for a single team share the same latest-effective-version selection in both the inner service and its cache decorator; documents without an effective version are omitted. The cache evaluates effective dates at read time, so a future version becomes current without a cache reload.
 - Legal documents can be global (required of all humans) or team-scoped (required when joining a specific team).
 - Sync emails consolidate only outstanding required documents belonging to each recipient’s teams. Optional updates and required updates already signed by that recipient do not trigger a consent email. Emails use the recipient’s supported saved language, with English fallback for missing or unsupported preferences.
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.

@@ -5,22 +5,6 @@ using NodaTime;
 
 namespace Humans.Budget.Services;
 
-internal sealed record DevelopmentBudgetSeedResult(
-    Guid BudgetYearId,
-    string BudgetYearCode,
-    string BudgetYearName,
-    bool ActivatedBudgetYear,
-    int TeamsCreated,
-    int TeamsUpdated,
-    int DepartmentCategoriesSynced,
-    int GroupsCreated,
-    int CategoriesCreated,
-    int LineItemsCreated)
-{
-    public string SuccessMessage =>
-        $"Budget demo data seeded: {TeamsCreated} teams created, {TeamsUpdated} updated, {CategoriesCreated} categories, {LineItemsCreated} line items.";
-}
-
 internal sealed class DevelopmentBudgetSeeder(
     IBudgetManagement budgetService,
     ITeamService teamService,
@@ -183,21 +167,14 @@ internal sealed class DevelopmentBudgetSeeder(
             }
         }
 
-        var departmentCategoriesSynced = await budgetService.SyncDepartmentsAsync(budgetYearId, actorUserId);
-
-        var groupsCreated = 0;
-        if ((await budgetService.EnsureTicketingGroupAsync(budgetYearId, actorUserId)).Created)
-        {
-            groupsCreated++;
-        }
+        await budgetService.SyncDepartmentsAsync(budgetYearId, actorUserId);
+        await budgetService.EnsureTicketingGroupAsync(budgetYearId, actorUserId);
 
         var activeYear = await budgetService.GetActiveYearAsync();
-        var activatedBudgetYear = false;
         if (activeYear is null)
         {
             var activation = await budgetService.UpdateYearStatusAsync(budgetYearId, BudgetYearStatus.Active, actorUserId);
             if (!activation.Succeeded) throw new InvalidOperationException(activation.Refusal);
-            activatedBudgetYear = true;
         }
 
         var currentYear = await budgetService.GetYearByIdAsync(budgetYearId)
@@ -216,7 +193,6 @@ internal sealed class DevelopmentBudgetSeeder(
             var createdGroup = await budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
             sharedServicesGroupId = createdGroup.Id;
             sharedServicesGroupRestricted = createdGroup.IsRestricted;
-            groupsCreated++;
         }
         else
         {
@@ -248,8 +224,9 @@ internal sealed class DevelopmentBudgetSeeder(
             var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
+                category = created.Value ?? throw new InvalidOperationException(created.Refusal ?? "Category creation returned no value.");
                 categoriesCreated++;
             }
 
@@ -263,8 +240,9 @@ internal sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
+                category = created.Value ?? throw new InvalidOperationException(created.Refusal ?? "Category creation returned no value.");
                 categoriesCreated++;
             }
 
@@ -278,8 +256,9 @@ internal sealed class DevelopmentBudgetSeeder(
 
             if (category is null)
             {
-                category = await budgetService.CreateCategoryAsync(
+                var created = await budgetService.CreateCategoryAsync(
                     ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
+                category = created.Value ?? throw new InvalidOperationException(created.Refusal ?? "Category creation returned no value.");
                 categoriesCreated++;
             }
 
@@ -303,17 +282,7 @@ internal sealed class DevelopmentBudgetSeeder(
             "Development budget seed completed for {BudgetYearCode}: teamsCreated={TeamsCreated}, teamsUpdated={TeamsUpdated}, categoriesCreated={CategoriesCreated}, lineItemsCreated={LineItemsCreated}",
             budgetYearCode, teamsCreated, teamsUpdated, categoriesCreated, lineItemsCreated);
 
-        return new DevelopmentBudgetSeedResult(
-            BudgetYearId: budgetYearId,
-            BudgetYearCode: budgetYearCode,
-            BudgetYearName: budgetYearName,
-            ActivatedBudgetYear: activatedBudgetYear,
-            TeamsCreated: teamsCreated,
-            TeamsUpdated: teamsUpdated,
-            DepartmentCategoriesSynced: departmentCategoriesSynced,
-            GroupsCreated: groupsCreated,
-            CategoriesCreated: categoriesCreated,
-            LineItemsCreated: lineItemsCreated).SuccessMessage;
+        return $"Budget demo data seeded: {teamsCreated} teams created, {teamsUpdated} updated, {categoriesCreated} categories, {lineItemsCreated} line items.";
     }
 
     private async Task EnsureBudgetTeamAsync(
@@ -352,8 +321,10 @@ internal sealed class DevelopmentBudgetSeeder(
         Guid actorUserId,
         Action onLineItemCreated)
     {
-        await budgetService.UpdateCategoryAsync(category.Id, category.Name,
+        var allocation = await budgetService.UpdateCategoryAsync(category.Id, category.Name,
             lineItems.Sum(li => li.Amount), category.ExpenditureType, actorUserId);
+        if (allocation.Refusal is not null)
+            throw new InvalidOperationException(allocation.Refusal);
 
         foreach (var lineItem in lineItems)
         {
@@ -362,7 +333,7 @@ internal sealed class DevelopmentBudgetSeeder(
 
             if (existing is null)
             {
-                await budgetService.CreateLineItemAsync(
+                var result = await budgetService.CreateLineItemAsync(
                     category.Id,
                     lineItem.Description,
                     lineItem.Amount,
@@ -372,11 +343,14 @@ internal sealed class DevelopmentBudgetSeeder(
                     vatRate: lineItem.VatRate,
                     actorUserId);
 
+                if (result.Refusal is not null)
+                    throw new InvalidOperationException(result.Refusal);
+
                 onLineItemCreated();
                 continue;
             }
 
-            await budgetService.UpdateLineItemAsync(
+            var update = await budgetService.UpdateLineItemAsync(
                 existing.Id,
                 lineItem.Description,
                 lineItem.Amount,
@@ -385,6 +359,8 @@ internal sealed class DevelopmentBudgetSeeder(
                 expectedDate: lineItem.ExpectedDate,
                 vatRate: lineItem.VatRate,
                 actorUserId);
+            if (update.Refusal is not null)
+                throw new InvalidOperationException(update.Refusal);
         }
     }
 

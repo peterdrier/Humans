@@ -382,4 +382,40 @@
   <data name="Enum_AuditAction_CampsExported" xml:space="preserve"><value>Campaments exportats</value></data>
   <data name="Enum_AuditAction_CantinaRosterExported" xml:space="preserve"><value>Llista de cantina exportada</value></data>
   <data name="Enum_AuditAction_VolunteerTrackingExported" xml:space="preserve"><value>Seguiment del voluntariat exportat</value></data>
+  <data name="Enum_AuditAction_EmailOutboxDiscarded" xml:space="preserve"><value>Missatge de la bústia de sortida de correu descartat</value></data>
+  <data name="Enum_AuditAction_EmailOutboxRetried" xml:space="preserve"><value>Missatge de la bústia de sortida de correu reintentat</value></data>
+  <data name="Enum_AuditAction_EmailSendingPaused" xml:space="preserve"><value>Enviament de correus aturat</value></data>
+  <data name="Enum_AuditAction_EmailSendingResumed" xml:space="preserve"><value>Enviament de correus represos</value></data>
+  <data name="Enum_AuditAction_GrantIssued" xml:space="preserve"><value>Concessió atorgada</value></data>
+  <data name="Enum_AuditAction_GrantNoticeResent" xml:space="preserve"><value>Avís de concessió reenviat</value></data>
+  <data name="Enum_AuditAction_GrantProgramCreated" xml:space="preserve"><value>Programa de concessions creat</value></data>
+  <data name="Enum_AuditAction_GrantProgramEdited" xml:space="preserve"><value>Programa de concessions editat</value></data>
+  <data name="Enum_AuditAction_GrantProgramManagerAdded" xml:space="preserve"><value>Gestor del programa de concessions afegit</value></data>
+  <data name="Enum_AuditAction_GrantProgramManagerRemoved" xml:space="preserve"><value>Gestor del programa de concessions eliminat</value></data>
+  <data name="Enum_AuditAction_GrantRevoked" xml:space="preserve"><value>Concessió revocada</value></data>
+  <data name="Enum_AuditAction_HoldedDuplicateRemoved" xml:space="preserve"><value>Document duplicat de Holded eliminat</value></data>
+  <data name="Enum_AuditAction_ParticipationBackfilled" xml:space="preserve"><value>Participació completada retroactivament</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantAmountChanged" xml:space="preserve"><value>Import de la preaprovació canviat</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantApplied" xml:space="preserve"><value>Preaprovació sol·licitada</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantApproved" xml:space="preserve"><value>Preaprovació aprovada</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantClaimed" xml:space="preserve"><value>Preaprovació reclamada</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantConsumed" xml:space="preserve"><value>Preaprovació consumida</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantDeclined" xml:space="preserve"><value>Preaprovació rebutjada</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantIssued" xml:space="preserve"><value>Preaprovació emesa</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantReleased" xml:space="preserve"><value>Preaprovació alliberada</value></data>
+  <data name="Enum_AuditAction_PreapprovalGrantRevoked" xml:space="preserve"><value>Preaprovació revocada</value></data>
+  <data name="Enum_AuditAction_PreapprovalMergeDroppedApplication" xml:space="preserve"><value>Sol·licitud descartada en la fusió de preaprovacions</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramClosed" xml:space="preserve"><value>Programa de preaprovació tancat</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramCreated" xml:space="preserve"><value>Programa de preaprovació creat</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramEdited" xml:space="preserve"><value>Programa de preaprovació editat</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramManagerAdded" xml:space="preserve"><value>Gestor del programa de preaprovació afegit</value></data>
+  <data name="Enum_AuditAction_PreapprovalProgramManagerRemoved" xml:space="preserve"><value>Gestor del programa de preaprovació eliminat</value></data>
+  <data name="Enum_AuditAction_PreapprovalReminderSent" xml:space="preserve"><value>Recordatori de preaprovació enviat</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransferWithdrawn" xml:space="preserve"><value>Transferència de pagament SEPA retirada</value></data>
+  <data name="Enum_AuditAction_StubProfileBackfilled" xml:space="preserve"><value>Perfil provisional completat retroactivament</value></data>
+  <data name="Enum_AuditAction_SurveyResponsesExported" xml:space="preserve"><value>Respostes de l’enquesta exportades</value></data>
+  <data name="Enum_AuditAction_UserNamesBackfilled" xml:space="preserve"><value>Noms d’usuari completats retroactivament</value></data>
+  <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Membre del grup de treball afegit</value></data>
+  <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Pertinença al grup de treball aprovada</value></data>
+  <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Pertinença al grup de treball rebutjada</value></data>
 </root>

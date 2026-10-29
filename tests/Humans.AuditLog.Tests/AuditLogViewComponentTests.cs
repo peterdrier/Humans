@@ -15,10 +15,6 @@ using Xunit;
 
 namespace Humans.AuditLog.Tests;
 
-/// <summary>
-/// Covers <see cref="AuditLogViewComponent"/>'s predicate routing, the <c>since</c> filter and
-/// the layout/column selection that every <c>&lt;vc:audit-log&gt;</c> consumer relies on.
-/// </summary>
 public class AuditLogViewComponentTests
 {
     private static readonly Instant Noon = Instant.FromUtc(2026, 3, 1, 12, 0);

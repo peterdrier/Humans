@@ -197,5 +197,8 @@ internal record WorkgroupMutationResult(WorkgroupRefusal? Refusal = null);
 internal sealed record WorkgroupMutationResult<T>(T? Value = default, WorkgroupRefusal? Refusal = null)
     : WorkgroupMutationResult(Refusal);
 
-/// <summary>Resource key and formatting arguments for an expected refusal.</summary>
-internal sealed record WorkgroupRefusal(string Key, params object[] Args);
+/// <summary>Resource key/arguments, or literal operator-only text when IsOperatorMessage is set.</summary>
+internal sealed record WorkgroupRefusal(string Key, params object[] Args)
+{
+    public bool IsOperatorMessage { get; init; }
+}

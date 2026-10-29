@@ -222,7 +222,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     {
         SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
         var services = new ServiceCollection().AddSingleton<IEventParticipationManagement>(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
+        var migration = ((ISectionDataMigrations)new Section()).Migrations().Should().ContainSingle().Subject;
 
         migration.Key.Should().Be("tickets.event-participations");
         (await migration.Status(services, Ct)).Pending.Should().Be(1);
@@ -282,7 +282,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     [HumansFact]
     public void UserParts_IncludeTheOnsiteChipOnTheProfile()
     {
-        new SectionUserParts().Parts().Should().Contain(
+        ((IUserPart)new Section()).Parts().Should().Contain(
             new UserPart(UserPartSlots.Profile, typeof(OnsiteChipViewComponent), Weight: 10));
     }
 

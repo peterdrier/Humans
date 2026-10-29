@@ -39,7 +39,7 @@ The columns `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `U
 
 ### Immutability
 
-Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. `ActorUserId` is a bare cross-section Guid column with no DB-level FK constraint (nobodies-collective/Humans#992) — a deleted/anonymized actor is handled at the application layer: `AuditViewerService` looks up the actor by id and falls back to displaying "Someone" when no match is found.
+Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. `ActorUserId` is a bare cross-section Guid column with no DB-level FK constraint — a deleted/anonymized actor is handled at the application layer: `AuditEvent` (`Contracts/AuditEvent.cs`) displays "Someone" when the actor name does not resolve.
 
 ### Audit action definitions
 
@@ -69,18 +69,19 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 | Job | Actions Logged |
 |-----|---------------|
 | SystemTeamSyncJob | TeamMemberAdded, TeamMemberRemoved |
-| SuspendNonCompliantMembersJob | MemberSuspended |
+| SuspendNonCompliantMembersJob (via `NonCompliantMemberSuspension`) | MemberSuspended |
 | ProcessAccountDeletionsJob | AccountAnonymized |
 
-### Admin Actions (AdminController)
+### Admin Actions
 
-| Action | Audit action |
-|--------|-------------|
-| Suspend member | MemberSuspended |
-| Unsuspend member | MemberUnsuspended |
-| Approve volunteer | VolunteerApproved |
-| Add role | RoleAssigned |
-| End role | RoleEnded |
+| Action | Audit action | Writer |
+|--------|--------------|--------|
+| Suspend member | MemberSuspended | `HumanLifecycleService`, `NonCompliantMemberSuspension` |
+| Unsuspend member | MemberUnsuspended | `HumanLifecycleService` |
+| Add role | RoleAssigned | `RoleAssignmentService` |
+| End role | RoleEnded | `RoleAssignmentService` |
+
+`VolunteerApproved` has no writer (reserved).
 
 ## Phase 2 Coverage (Current)
 
@@ -101,10 +102,8 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 |--------|-------------|-------|
 | Google Group linked or reactivated for a team | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
 | Google Group provisioned | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
-| User added to Group | GoogleResourceAccessGranted | GoogleWorkspaceSyncService |
-| User removed from Group | GoogleResourceAccessRevoked | GoogleWorkspaceSyncService |
-| Drive permission added (direct or sync) | GoogleResourceAccessGranted | GoogleWorkspaceSyncService |
-| Drive permission removed (direct or sync) | GoogleResourceAccessRevoked | GoogleWorkspaceSyncService |
+
+`GoogleResourceAccessGranted` / `GoogleResourceAccessRevoked` have no live writer: access changes live in `google_sync_log`.
 
 ### DriveActivityMonitorJob
 
@@ -128,7 +127,7 @@ Accessible to Board and Admin. Displays all audit log entries with filtering by 
 
 ### Drive Activity Check (`/Monitor/CheckDriveActivity`)
 
-POST action on `MonitorController` (moved from `AuditLogController` at nobodies-collective/Humans#866 — see [`AuditLog.md`](../AuditLog.md#routing)). Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
+POST action on `MonitorController` (see [`AuditLog.md`](../AuditLog.md#routing)). Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
 ### Google sync pages (`/Google/Resource/{id}`, `/Google/Human/{id}`)
 
@@ -148,7 +147,7 @@ Agent dispatcher tool that returns the calling user's audit history as plain tex
 
 ## Authorization
 
-The global audit log (`/AuditLog`) and per-resource/per-user views are visible only to Board and Admin (or UsersAdmin for the per-user view) — they live on `AuditLogController` with the appropriate policies. The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin.
+The global audit log (`/AuditLog`, `AuditLogController.Index`) is visible only to Board and Admin. Per-resource and per-human sync views are `GoogleController`'s; per-user history is `<vc:audit-log>` on host pages and inherits the host page's policy. The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin.
 
 ## Related Features
 

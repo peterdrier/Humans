@@ -151,8 +151,8 @@ internal sealed class EventsModerationController(
             Description = guideEvent.Description,
             CategoryId = guideEvent.CategoryId,
             VenueId = guideEvent.GuideSharedVenueId,
-            StartDate = localStart.Date,
-            StartTime = localStart.TimeOfDay,
+            StartDate = DateOnly.FromDateTime(localStart),
+            StartTime = TimeOnly.FromDateTime(localStart),
             IsAllDay = guideEvent.IsAllDay,
             DurationMinutes = guideEvent.DurationMinutes,
             LocationNote = guideEvent.LocationNote,
@@ -211,6 +211,16 @@ internal sealed class EventsModerationController(
         {
             logger.LogWarning("Moderator event edit rejected: invalid recurrence days for event {EventId}", eventId);
             ModelState.AddModelError(nameof(model.RecurrenceDays), "Choose each recurrence day once from this event's calendar.");
+        }
+
+        var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
+            !isCampEvent && model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
+        if (ModelState.IsValid && !CanDisplaySchedule(
+            LocalDateTime.FromDateTime(model.StartDate.ToDateTime(TimeOnly.FromTimeSpan(startTime))), durationMinutes, tz))
+        {
+            logger.LogWarning("Moderator event edit rejected: unsupported calendar range for event {EventId}", eventId);
+            ModelState.AddModelError(nameof(model.StartDate),
+                "The event start and end must be within years 0001–9999 in both UTC and the event timezone.");
         }
 
         if (!ModelState.IsValid)
@@ -277,12 +287,12 @@ internal sealed class EventsModerationController(
     private static EventEdit BuildEdit(AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
     {
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
-            !isCampEvent && model.IsAllDay, model.StartTime, model.DurationMinutes);
+            !isCampEvent && model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
         return new EventEdit(
             model.CategoryId,
             isCampEvent ? null : model.VenueId,
             model.Title, model.Description,
-            ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
+            ToInstant(model.StartDate.ToDateTime(TimeOnly.FromTimeSpan(startTime)), tz), durationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays,
             isCampEvent ? model.PriorityRank : null);
     }

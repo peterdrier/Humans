@@ -1,7 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
-  src/Sections/Humans.Holded/Services/HoldedClient.cs
+  src/Sections/Humans.Holded/Services/Holded*Client.cs
+  src/Sections/Humans.Holded/Services/HoldedTransport.cs
+  src/Sections/Humans.Holded/Services/HoldedJson.cs
   src/Sections/Humans.Holded/Services/HoldedCallLog.cs
 -->
 
@@ -41,8 +43,9 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 ## Invariants
 
-- All HTTP calls go through one typed `HttpClient` (`HoldedClient`); Bearer auth via
-  `Authorization` header.
+- `HoldedClient` remains the typed-client entry point. Its internal operation clients share one
+  `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
+  call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
   GETs. Every write, including a bodyless sales-approval POST, surfaces it as transient immediately.
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
@@ -106,6 +109,11 @@ are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); 
 singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
 section's `Section.cs`.
 
+`HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
+one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
+failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
+options. They add no interfaces or DI registrations, and the public contract stays unchanged.
+
 **Consumers outside the section:** Expenses (`ExpenseHoldedPublisher` and
 `ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
 `IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
@@ -116,7 +124,7 @@ this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.
 a shim over `IExpenseReportBackgroundProcessor`. A job is free to sit in its own section because
 `AddOrUpdate<T>(id, …)` is keyed on the job id, not on the declaring type. Neither job references
 this section's connector types directly — each section names its own concrete job class in its
-`SectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
+`ISectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IHoldedFinanceService` / `IHoldedFinanceWrite`) is the `IUserDataContributor` that exports the member's

@@ -28,13 +28,17 @@ internal interface IGateService : IApplicationService
     /// <summary>Local admits against the vendor's check-in status as of the last ticket sync.</summary>
     Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default);
 
+    /// <summary>Rechecks pending admits and claims each ticket before enqueueing. Null selects all pending tickets;
+    /// an empty or unknown id selects none. Disabled mirroring enqueues nothing.</summary>
+    Task<GateVendorBackfillResult> EnqueueVendorCheckInBackfillAsync(string? vendorTicketId, CancellationToken ct = default);
+
     /// <summary>
     /// De-duplicated signups whose gate shift starts within ±2 hours of now, event-local. Empty with no active event.
     /// </summary>
     Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(Guid rosterTeamId, CancellationToken ct = default);
 
     // Personal device PINs: the claim flow has no reachable page since peterdrier/Humans#1075; deletion is tracked in
-    // nobodies-collective/Humans#933. Kiosk overrides use the shared Gate:SupervisorPin at the controller.
+    // nobodies-collective/Humans#933. Kiosk overrides verify the shared Gate:SupervisorPin inside RecordDecisionAsync.
 
     Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default);
 
@@ -94,9 +98,8 @@ internal sealed record GateScanResult(
     LocalDate? GeneralEntryDate = null);
 
 /// <summary>
-/// Carries no scanner identity: the controller supplies it from the session, so it can't be forged on the wire. The
-/// controller sets <paramref name="OverrideByUserId"/> only after verifying the supervisor PIN, so the service treats
-/// non-null as proof.
+/// Carries no scanner identity: the controller supplies it from the authenticated principal, so it can't be forged on the wire. The
+/// service verifies <paramref name="SupervisorPin"/> for child waivers and early overrides before recording anything.
 /// </summary>
 internal sealed record GateDecisionInput(
     string Barcode,
@@ -105,7 +108,8 @@ internal sealed record GateDecisionInput(
     string? LaneId,
     Instant? ClientScanAt,
     string? Note,
-    Guid? OverrideByUserId = null);
+    bool OverrideEarly = false,
+    string? SupervisorPin = null);
 
 internal sealed record GateDecisionResult(
     GateVerdict Verdict,
@@ -114,7 +118,16 @@ internal sealed record GateDecisionResult(
     bool IsEarly,
     Instant? PreviousAdmitAt,
     Guid? PreviousAdmitByUserId,
-    string? VendorTicketId = null);
+    string? VendorTicketId = null,
+    GateOverrideFailure? OverrideFailure = null,
+    int? RetryAfterSeconds = null);
+
+internal enum GateOverrideFailure
+{
+    NotConfigured,
+    InvalidPin,
+    LockedOut,
+}
 
 internal sealed record GateLeaderboardRow(Guid ScannedByUserId, int Admitted, int Rejected, int Total);
 
@@ -139,4 +152,8 @@ internal sealed record GateVendorBackfillSnapshot(
     int AdmitCount,
     int AlreadyCheckedInCount,
     IReadOnlyList<GateVendorBackfillRow> Pending,
-    IReadOnlyList<GateVendorBackfillRow> Unmirrorable);
+    IReadOnlyList<GateVendorBackfillRow> Unmirrorable,
+    IReadOnlyList<GateVendorBackfillRow> SentAwaitingSync,
+    bool MirrorEnabled);
+
+internal sealed record GateVendorBackfillResult(bool MirrorEnabled, IReadOnlyList<GateVendorBackfillRow> Enqueued);

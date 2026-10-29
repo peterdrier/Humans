@@ -45,7 +45,7 @@ Services/StripeService.cs     the seam's only implementation + StripeSettings
 Services/StripeStartupSmokeService.cs    boot job: probe each key through one probe pipeline
 Services/StoreWebhookRegistrationService.cs  boot job: ephemeral-env webhook lifecycle
 Section.cs                    env-var binding + the section's DI registrations
-SectionConfiguration.cs       declares the same STRIPE_* and Stripe:* keys to the settings inventory
+Section.cs       declares the same STRIPE_* and Stripe:* keys to the settings inventory
 Docs/                         Stripe.md (invariants), data-access.md, health.md (this)
 ```
 

@@ -491,6 +491,8 @@ internal sealed class ExpenseReportService(
             // This path takes free-text amounts; travel lines are computed.
             if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
                 return Reject(new("Expenses_Validation_OnlyReceiptAndInvoiceLines", []));
+            if (decimal.Round(amount, 2) != amount)
+                return Reject(new("Expenses_Validation_AmountPrecision", []));
             // Validate the file before creating anything, so a bad upload leaves no half-made line.
             if (file is not null && ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content).Refusal is { } uploadRefusal)
                 return Reject(uploadRefusal);
@@ -597,6 +599,9 @@ internal sealed class ExpenseReportService(
             // arbitrary unreceipted claim. Remove and re-add to recompute.
             if (existing.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
                 return ExpenseMutationResult.Failure("Expenses_Validation_TravelLinesComputedCannotEdit");
+
+            if (decimal.Round(amount, 2) != amount)
+                return ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision");
 
             var line = new ExpenseLine
             {
@@ -1175,6 +1180,9 @@ internal sealed class ExpenseReportService(
     private async Task<(decimal? Amount, ExpenseMutationResult? Refusal)> ResolveReviewCapAsync(
         Guid? grantId, decimal? requestedAmount, CancellationToken ct)
     {
+        if (requestedAmount is { } amount && decimal.Round(amount, 2) != amount)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision"));
+
         if (grantId is not { } id) return (requestedAmount, null);
 
         var grant = await preapprovals.GetGrantAsync(id, ct);

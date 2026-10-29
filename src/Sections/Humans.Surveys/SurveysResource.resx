@@ -398,4 +398,5 @@
   <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Each choice question must have at least one option.</value></data>
   <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Option values in a choice question must not be blank.</value></data>
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Option values within a choice question must be unique.</value></data>
+  <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>The rating minimum cannot exceed its maximum.</value></data>
 </root>

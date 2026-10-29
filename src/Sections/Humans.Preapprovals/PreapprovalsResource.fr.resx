@@ -110,4 +110,6 @@
   <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Délai de pré-approbation modifié : à déposer avant le {1} pour {0}</value></data>
   <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Le délai de réclamation de ta pré-approbation dans le programme &lt;strong&gt;{1}&lt;/strong&gt; a été déplacé.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Jusqu'à :&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nouveau délai :&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Voir tes pré-approbations&lt;/a&gt;.&lt;/p&gt;</value></data>
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
+  <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Les montants doivent avoir au maximum deux décimales.</value></data>
+  <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>Le montant est trop élevé.</value></data>
 </root>

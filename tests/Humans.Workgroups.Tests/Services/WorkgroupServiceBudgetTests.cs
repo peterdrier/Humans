@@ -16,6 +16,55 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
 {
     [HumansTheory]
+    [InlineData(false, "0.001")]
+    [InlineData(true, "0.001")]
+    [InlineData(false, "1.005")]
+    [InlineData(true, "1.005")]
+    [InlineData(false, "0")]
+    [InlineData(true, "0")]
+    [InlineData(false, "1.2300")]
+    [InlineData(true, "1.2300")]
+    public async Task BudgetAmounts_RequireWholeCents_BeforeCreatingAccountsOrWriting(bool bootstrap, string rawAmount)
+    {
+        var amount = decimal.Parse(rawAmount, System.Globalization.CultureInfo.InvariantCulture);
+        var invalid = decimal.Round(amount, 2) != amount;
+        var actor = SeedUser("Secretary");
+        var coordinator = SeedUser("Coordinator");
+        var group = bootstrap ? null : await SeedWorkgroupAsync();
+        var service = NewService();
+        WorkgroupRefusal? refusal;
+        if (bootstrap)
+            refusal = (await service.RegisterExistingAsync(actor, new WorkgroupBootstrap(
+                new WorkgroupApplication("Budget group", "Purpose", "A report", WorkgroupDeliverableKind.Report,
+                    WorkgroupAudience.Board, null, null, null), coordinator, Clock.GetCurrentInstant(),
+                new WorkgroupBudgetSave(amount, null)), Ct)).Refusal;
+        else
+            refusal = (await service.SetBudgetAsync(group!.Id, actor, new WorkgroupBudgetSave(amount, null), Ct)).Refusal;
+
+        await using var db = OpenContext();
+        if (invalid)
+        {
+            refusal.Should().NotBeNull();
+            refusal!.IsOperatorMessage.Should().BeTrue();
+            refusal.Key.Should().Contain("two decimal places");
+            Finance.ReceivedCalls().Should().BeEmpty();
+            GoogleSync.ReceivedCalls().Should().BeEmpty();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            Notifications.ReceivedCalls().Should().BeEmpty();
+            Email.ReceivedCalls().Should().BeEmpty();
+            (await db.Workgroups.CountAsync(Ct)).Should().Be(bootstrap ? 0 : 1);
+            if (!bootstrap) (await db.Workgroups.SingleAsync(Ct)).BudgetAmount.Should().BeNull();
+            (await db.LogEntries.CountAsync(Ct)).Should().Be(0);
+        }
+        else
+        {
+            refusal.Should().BeNull();
+            (await db.Workgroups.SingleAsync(Ct)).BudgetAmount.Should().Be(amount);
+            await Finance.Received(1).CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), null, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task SetBudget_AccountResolutionSurvivesRequestCancellation(bool linkExisting)

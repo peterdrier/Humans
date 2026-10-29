@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
@@ -195,7 +196,7 @@ public sealed class MembershipTierServiceTests : IDisposable
     {
         SeedUser(LegacyMembershipTier.Colaborador);
         var services = new ServiceCollection().AddSingleton(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
+        var migration = ((ISectionDataMigrations)new Section()).Migrations().Should().ContainSingle().Subject;
 
         migration.Key.Should().Be("governance.profile-tier");
         (await migration.Status(services, Ct)).Pending.Should().Be(1);

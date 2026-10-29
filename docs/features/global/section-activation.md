@@ -55,9 +55,9 @@ now fails the build on it, so view components are always a compiled `Type` refer
 nobodies-collective/Humans#1090 found two shapes of this and closed them:
 
 - **Shell to section.** `_Layout.cshtml` used to link `Search` and `Tour` that way. Both
-  are now `ISectionNav` contributions (`Humans.Search/SectionNav.cs`,
-  `Humans.Tour/SectionNav.cs`), so the top nav no longer names either, and Tour's dashboard
-  card is its own contribution (`TourCardViewComponent`, via `SectionMemberDashboard`), so
+  are now `ISectionNav` contributions (`Humans.Search/Section.cs`,
+  `Humans.Tour/Section.cs`), so the top nav no longer names either, and Tour's dashboard
+  card is its own contribution (`TourCardViewComponent`, via `ISectionMemberDashboard`), so
   deactivating Tour simply drops the card.
 - **Section to section.** `Humans.Users` renders `<vc:user-parts>` and `Humans.Camps` renders
   `<vc:camp-parts>`; each invokes whatever the active sections contribute through `IUserPart`

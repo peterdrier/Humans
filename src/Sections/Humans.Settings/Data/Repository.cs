@@ -93,10 +93,6 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             existing.BuildStartOffset = settings.BuildStartOffset;
             existing.EventEndOffset = settings.EventEndOffset;
             existing.StrikeEndOffset = settings.StrikeEndOffset;
-            existing.FirstCrewStartOffset = settings.FirstCrewStartOffset;
-            existing.SetupWeekStartOffset = settings.SetupWeekStartOffset;
-            existing.PreEventWeekStartOffset = settings.PreEventWeekStartOffset;
-            existing.FinishingWeekendStartOffset = settings.FinishingWeekendStartOffset;
             existing.EarlyEntryCapacity = settings.EarlyEntryCapacity;
             existing.BarriosEarlyEntryAllocation = settings.BarriosEarlyEntryAllocation;
             existing.EarlyEntryClose = settings.EarlyEntryClose;

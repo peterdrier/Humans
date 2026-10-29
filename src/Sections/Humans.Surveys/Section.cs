@@ -1,13 +1,14 @@
-using Humans.Users.Contracts;
+using Humans.Base.Authorization;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Base.Hosting;
 using Humans.Surveys.Authorization;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Jobs;
 using Humans.Surveys.Services;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,7 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Surveys;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -39,5 +40,32 @@ public sealed class Section : ISection
         services.AddScoped<IEmailPreviewContributor, SurveysEmailPreviews>();
 
         services.AddSingleton<IAuthorizationHandler, SurveyAuthorizationHandler>();
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Surveys", [
+            // App access, not Board: authoring is self-service and the index is scoped to what the viewer authored,
+            // so a Board gate would leave authors with a page they may use and no way to reach it.
+            new("Surveys", "SurveyAdmin", "Index", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.AppAccess),
+            new("Approvals", "SurveyAdmin", "Queue", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin,
+                PillCount: PillCounts.PendingApprovalQueueAsync)
+        ])
+    ];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "surveys-reminder", typeof(SendSurveyReminderJob), "0 9 * * *");
+    }
+}
+
+internal static class PillCounts
+{
+    public static async ValueTask<int?> PendingApprovalQueueAsync(IServiceProvider sp)
+    {
+        var surveys = sp.GetRequiredService<ISurveyService>();
+        var count = (await surveys.GetPendingApprovalQueueAsync(CancellationToken.None)).Count;
+        return count > 0 ? count : null;
     }
 }

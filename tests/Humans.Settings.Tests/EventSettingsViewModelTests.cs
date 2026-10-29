@@ -56,61 +56,9 @@ public sealed class EventSettingsViewModelTests
     }
 
     [HumansFact]
-    public void TheShippedDefaults_PutBuildStartOnTheFirstCrewDay()
-    {
-        var model = new EventSettingsViewModel();
-
-        model.BuildStartOffset.Should().Be(model.FirstCrewStartOffset);
-        model.FirstCrewStartOffset.Should().BeLessThan(model.SetupWeekStartOffset);
-    }
-
-    [HumansFact]
-    public void ABuildStartAfterTheFirstCrewDay_IsRejectedOnBothFields()
-    {
-        var model = new EventSettingsViewModel { BuildStartOffset = -14 };
-
-        var results = Validate(model);
-
-        results.Should().ContainSingle()
-            .Which.MemberNames.Should().BeEquivalentTo(
-                nameof(EventSettingsViewModel.BuildStartOffset),
-                nameof(EventSettingsViewModel.FirstCrewStartOffset));
-    }
-
-    [HumansFact]
-    public void ABuildStartEarlierThanTheFirstCrewDay_IsAccepted()
-    {
-        // A gap below the first sub-period is legal — those days classify as
-        // "pre-build"; only a first-crew boundary the build window has not
-        // reached yet is broken.
-        Validate(new EventSettingsViewModel { BuildStartOffset = -30 }).Should().BeEmpty();
-    }
-
-    [HumansFact]
     public void TheShippedDefaults_PassFullModelValidation()
     {
         ValidateFully(FilledForm()).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public void ASubPeriodOnOrAfterGateDay_IsRejectedByTheFieldRange()
-    {
-        // Ordering still holds (-9 < 1), so only the [Range] can catch this — and only
-        // under full model validation.
-        var model = FilledForm();
-        model.FinishingWeekendStartOffset = 1;
-
-        ValidateFully(model).Should().ContainSingle()
-            .Which.MemberNames.Should().ContainSingle(
-                nameof(EventSettingsViewModel.FinishingWeekendStartOffset));
-    }
-
-    [HumansFact]
-    public void SubPeriodsOutOfOrder_AreRejected()
-    {
-        var model = new EventSettingsViewModel { SetupWeekStartOffset = -26 };
-
-        Validate(model).Should().Contain(r => r.ErrorMessage!.Contains("strictly ascending"));
     }
 
     private static EventSettingsInfo SavedRow() => new(
