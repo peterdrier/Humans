@@ -320,8 +320,10 @@ internal sealed class DebugController(
     public IActionResult FormatGallery() => View(FormatGalleryModelBuilder.Build());
 
     [HttpGet("Translations")]
-    public IActionResult Translations([FromServices] IStringLocalizer<SharedResource> localizer) =>
-        View(TranslationsGalleryModelBuilder.Build(localizer));
+    public IActionResult Translations(
+        [FromServices] IStringLocalizer<SharedResource> shared,
+        [FromServices] IStringLocalizerFactory localizerFactory) =>
+        View(TranslationsPageModelBuilder.Build(shared, localizerFactory, sectionCatalog));
 
     private static string StatusCategory(int statusCode) => statusCode switch
     {

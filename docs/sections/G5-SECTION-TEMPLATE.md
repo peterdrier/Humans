@@ -278,11 +278,9 @@ Git Bash.)
 2. [ ] Move the vertical, folders as layers: `Contracts/ Interfaces/ Domain/ Data/ Services/
    Controllers/ Models/ Views/ Authorization/ Filters/ Docs/ Properties/ wwwroot/`
    + `Section.cs` (and, per step 3b, `<Section>Resource.cs` + its `.resx` at the project root).
-   Sibling `Section*.cs` registration files — `SectionAdminNav.cs`, `SectionChrome.cs`,
-   `SectionJobs.cs`, `SectionPolicies.cs` — are accepted at the root today (29 sections carry
-   at least one), **but they are not the target shape**: the intent is to fold them back into
-   a single `Section.cs` implementing the several interfaces. Prefer that in new work; do not
-   add a new sibling kind. **`Contracts/` is the public folder and `Interfaces/` is the internal one** —
+   Every Shell seam the section implements (`ISectionAdminNav`, `ISectionJobs`, `ISectionPolicies`, …)
+   lives on that one `Section` class as an explicit interface implementation; there are no sibling
+   `Section<Seam>.cs` files. **`Contracts/` is the public folder and `Interfaces/` is the internal one** —
    that pair is the whole accessibility convention, and HUM0034 enforces it. Ship only the
    folders the section has.
    **A controller that names its views by absolute path pins the folder layout** — an RCL's
@@ -1173,7 +1171,7 @@ Git Bash.)
      view component inherits it. Second, **no `<vc:…>` can reach it from outside** — the tag
      helper is generated at compile time from *public* types in referenced assemblies. The
      section contributes it by `Type` to the host's slot instead
-     (`SectionChrome`: `typeof(NotificationBellViewComponent)` into `ChromeSlots.HeaderRight`),
+     (`ISectionChrome`: `typeof(NotificationBellViewComponent)` into `ChromeSlots.HeaderRight`),
      and the layout renders whatever the slot holds. Failure mode is loud in one direction and
      silent in the other: an unresolvable `Component.InvokeAsync` **throws**, so one render test
      on any authenticated page catches the provider being missing, while a stray `<vc:>` renders

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!-- MVC views/controllers, not Blazor components. -->
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
@@ -14,7 +13,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -25,12 +23,7 @@
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!--
       Gdpr: AuditLogService is an Article 15 contributor because audit rows carry an actor id.
-
-      Users contracts leaf: AuditLogService resolves merged-account source ids through
-      IUserService so queries follow merged identities — the [DontFix] on that class.
-      Display-name resolution no longer needs a section leaf: it goes through the
-      IEntityNameContributor fan-out in Base (nobodies-collective/Humans#1059), and the
-      Google-sync wing that pulled in Teams and GoogleIntegration left with #1083.
+      Users contracts: per-person reads follow merged identities through IUserService ([DontFix] on AuditLogService).
     -->
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
@@ -44,7 +37,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

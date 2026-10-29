@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
@@ -420,7 +421,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
     [HumansFact]
     public void DataMigration_IsRegisteredUnderItsKey() =>
-        new SectionDataMigrations().Migrations().Select(m => m.Key)
+        ((ISectionDataMigrations)new Section()).Migrations().Select(m => m.Key)
             .Should().ContainSingle().Which.Should().Be("email.communication-preferences");
 
     [HumansFact]

@@ -239,8 +239,8 @@ internal sealed class StripeService(
         Event stripeEvent;
         try
         {
-            // throwOnApiVersionMismatch=false: webhook handlers parse only the fields they care about,
-            // and Stripe maintains backwards compatibility on the relevant event payload shapes.
+            // Webhook handlers parse only the fields they care about, and Stripe maintains
+            // backwards compatibility on the relevant event payload shapes.
             stripeEvent = EventUtility.ConstructEvent(
                 body, signature, _settings.StoreWebhookSecret,
                 throwOnApiVersionMismatch: false);

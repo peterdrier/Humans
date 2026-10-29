@@ -23,13 +23,37 @@ internal sealed class Service(
         CancellationToken cancellationToken = default) =>
         repository.SetValueAsync(key, value, cancellationToken);
 
+    /// <summary>Every row was entered as Europe/Madrid before the timezone became global.</summary>
+    private const string DefaultTimeZoneId = "Europe/Madrid";
+
     public async Task<EventSettingsInfo?> GetActiveEventSettingsAsync(
         CancellationToken cancellationToken = default) =>
-        ToDto(await repository.GetActiveEventSettingsAsync(cancellationToken));
+        ToDto(await repository.GetActiveEventSettingsAsync(cancellationToken), await GetTimeZoneIdAsync(cancellationToken));
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
         Guid id, CancellationToken cancellationToken = default) =>
-        ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken));
+        ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken), await GetTimeZoneIdAsync(cancellationToken));
+
+    public async Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
+        await repository.GetValueAsync(SettingKeys.EventTimeZoneId, cancellationToken) ?? DefaultTimeZoneId;
+
+    public async Task<EventSettingsSaveResult> SaveTimeZoneAsync(
+        string timeZoneId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZoneId) is null)
+            return new(false, "Invalid IANA timezone ID.");
+
+        var previous = await GetTimeZoneIdAsync(cancellationToken);
+        await repository.SetValueAsync(SettingKeys.EventTimeZoneId, timeZoneId, cancellationToken);
+        await auditLog.LogAsync(
+            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
+
+        // Every event's derived dates move with the timezone.
+        foreach (var row in await repository.GetAllEventSettingsAsync(cancellationToken))
+            NotifyChangeListeners(row.Id);
+        return new(true);
+    }
 
     public async Task<EventSettingsSaveResult> SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -66,7 +90,8 @@ internal sealed class Service(
         }
 
         await repository.UpsertEventSettingsAsync(
-            ToEntity(settings), clock.GetCurrentInstant(), cancellationToken);
+            ToEntity(settings with { TimeZoneId = await GetTimeZoneIdAsync(cancellationToken) }),
+            clock.GetCurrentInstant(), cancellationToken);
 
         var description =
             $"Event settings saved for '{settings.EventName}' ({settings.Year}): "
@@ -82,10 +107,13 @@ internal sealed class Service(
     }
 
     public async Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(
-        CancellationToken cancellationToken = default) =>
-        (await repository.GetAllEventSettingsAsync(cancellationToken))
-            .Select(e => ToDto(e)!)
+        CancellationToken cancellationToken = default)
+    {
+        var timeZoneId = await GetTimeZoneIdAsync(cancellationToken);
+        return (await repository.GetAllEventSettingsAsync(cancellationToken))
+            .Select(e => ToDto(e, timeZoneId)!)
             .ToList();
+    }
 
     public async Task<EventSettingsSaveResult> ActivateEventSettingsAsync(
         Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -197,11 +225,11 @@ internal sealed class Service(
             listener.EventSettingsChanged(eventSettingsId);
     }
 
-    private static EventSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new EventSettingsInfo(
+    private static EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(
         Id: src.Id,
         EventName: src.EventName,
         Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
+        TimeZoneId: timeZoneId,
         GateOpeningDate: src.GateOpeningDate,
         BuildStartOffset: src.BuildStartOffset,
         EventEndOffset: src.EventEndOffset,

@@ -214,12 +214,19 @@ public sealed record UserInfo(
     /// <summary>
     /// A merge source, a GDPR-erased row, or a legacy tombstone whose address still ends in <c>.local</c> (older
     /// merges and purges). Callers that create per-user rows (Stub Profile and the like) must short-circuit on it so
-    /// they don't resurrect the tombstone.
+    /// they don't resurrect the tombstone. Must cover every row <c>UserStateEvaluator.IsTombstone</c> does, or a
+    /// caller passes this check and the write is refused as an unavailable account.
     /// </summary>
     public bool IsTombstone =>
         MergedAt is not null
+        || MergedToUserId is not null
+        || State is UserState.Deleted or UserState.Merged
         || IsGdprAnonymized
-        || (Email is { } email && email.EndsWith(".local", StringComparison.OrdinalIgnoreCase));
+        || IsLocalSentinel(IdentityEmailColumn)
+        || IsLocalSentinel(Email);
+
+    private static bool IsLocalSentinel(string? email) =>
+        email is not null && email.EndsWith(".local", StringComparison.OrdinalIgnoreCase);
 
     public string? PrimaryEmail => UserEmails
         .Where(e => e.IsPrimary && e.IsVerified)

@@ -41,6 +41,26 @@ public sealed class CachingEventServiceTests
             NullLogger<CachingEventService>.Instance);
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Resubmission_OnlyEvictsApprovedEvent_WhenSaved(bool refused)
+    {
+        var approved = Approved("Existing event");
+        SeedApproved(approved);
+        var ct = TestContext.Current.CancellationToken;
+        await _service.GetApprovedEventsAsync(null, null, null, null, [], ct);
+        var expected = new EventSaveResult(refused ? "Events_CategoryUnavailable" : null);
+        _inner.UpdateAndResubmitAsync(approved.Id, Arg.Any<EventEdit>(), ct).Returns(expected);
+
+        var result = await _service.UpdateAndResubmitAsync(approved.Id,
+            new EventEdit(Guid.NewGuid(), null, "Edited", "Description", default, 60, null, null, false, null, null), ct);
+
+        result.Should().BeSameAs(expected);
+        var remaining = await _service.GetApprovedEventsAsync(null, null, null, null, [], ct);
+        remaining.Count.Should().Be(refused ? 1 : 0);
+    }
+
     private void SeedApproved(params ApprovedEventView[] events) =>
         _inner.GetApprovedEventsAsync(
                 null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())

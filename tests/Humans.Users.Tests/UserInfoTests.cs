@@ -251,6 +251,31 @@ public class UserInfoTests
     }
 
     [HumansFact]
+    public void IsTombstone_true_for_merged_state_without_merged_at()
+    {
+        var user = MinimalUser();
+        user.State = UserState.Merged;
+
+        var info = UserInfoFactory.Create(user, [], [], [], profile: null, [], [], [], []);
+
+        info.IsTombstone.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void IsTombstone_true_for_sentinel_column_behind_a_verified_row()
+    {
+        // Email resolves to the verified row, so only the raw column shows the merge sentinel.
+        var userId = Guid.NewGuid();
+        var user = MinimalUser(userId);
+        user.Email = $"{userId:N}@merged.local";
+        var row = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "real@x.com", IsVerified = true, IsPrimary = true };
+
+        var info = UserInfoFactory.Create(user, [row], [], [], profile: null, [], [], [], []);
+
+        info.IsTombstone.Should().BeTrue();
+    }
+
+    [HumansFact]
     public void IsActive_true_for_ordinary_profiled_non_rejected_row()
     {
         var userId = Guid.NewGuid();

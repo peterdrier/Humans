@@ -1,3 +1,4 @@
+@model Humans.Web.Models.ErrorViewModel
 @{
     ViewData["Title"] = Localizer["Error_Title"].Value;
 }
@@ -6,6 +7,7 @@
     <h1 class="display-1 text-danger">@Localizer["Error_Oops"]</h1>
     <h2>@Localizer["Error_SomethingWentWrong"]</h2>
     <p class="lead text-muted">@Localizer["Error_TryAgainLater"]</p>
+    <p class="text-muted">@Localizer["Error_CodeAndReference", Model.StatusCode, Model.RequestId]</p>
     <div class="mt-4">
         <a asp-controller="Home" asp-action="Index" class="btn btn-primary">
             <i class="fa-solid fa-home me-1"></i>
@@ -13,3 +15,8 @@
         </a>
     </div>
 </div>
+
+@if (Model.ExceptionDetail is not null)
+{
+    <pre class="mt-4 p-3 bg-light border small text-start" style="white-space: pre-wrap;">@Model.ExceptionDetail</pre>
+}

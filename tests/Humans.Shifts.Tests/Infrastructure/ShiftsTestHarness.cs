@@ -141,7 +141,8 @@ public abstract class ShiftsTestHarness : IDisposable
 
     /// <summary>
     /// A resolver whose fake <see cref="ISettingsService"/> serves the <see cref="EventSettings"/>
-    /// rows seeded in <see cref="ShiftsDb"/> at call time.
+    /// rows seeded in <see cref="ShiftsDb"/> at call time (their legacy offset columns play Settings' values), and
+    /// whose Shifts overlay reads the same database.
     /// </summary>
     private protected EventCalendarResolver NewCalendarResolver()
     {
@@ -164,7 +165,7 @@ public abstract class ShiftsTestHarness : IDisposable
                 return local is null ? null : ToEventSettingsInfo(local);
             });
 
-        return new EventCalendarResolver(settingsService);
+        return new EventCalendarResolver(settingsService, new Humans.Shifts.Data.ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(

@@ -140,7 +140,7 @@ public enum AuditAction
     CampEarlyEntryGranted,
     CampEarlyEntryRevoked,
     CampSeasonEeSlotCountChanged,
-    // No writer since the EE start date moved to Settings.
+    // No writer; stored rows may hold it.
     CampSettingsEeStartDateChanged,
     ExpenseSubmit,
     ExpenseEndorse,
@@ -159,7 +159,7 @@ public enum AuditAction
     ExpenseAttachmentRemoved,
     VolunteerCampSetupSet,
     VolunteerCampSetupCleared,
-    // No writer since the day-off redesign; stored rows may hold it.
+    // No writer; stored rows may hold it.
     VolunteerDayBlocked,
     VolunteerDayUnblocked,
     VolunteerOwnBlockedDaysSaved,

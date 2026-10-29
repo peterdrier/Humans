@@ -1,7 +1,7 @@
-@model GateVendorBackfillViewModel
+@model GateVendorBackfillSnapshot
 @{
     ViewData["Title"] = "Vendor check-in backfill";
-    var snapshot = Model.Snapshot;
+    var snapshot = Model;
     var pending = Model.Pending.OrderBy(r => r.AdmittedAt).ToList();
     var sent = Model.SentAwaitingSync.OrderBy(r => r.AdmittedAt).ToList();
     var unmirrorable = snapshot.Unmirrorable.OrderBy(r => r.AdmittedAt).ToList();

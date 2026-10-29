@@ -4,6 +4,16 @@
 @model EventSettingsTabViewModel
 
 @* Admin-only, so not localized. Posts name the SettingsAdminController route explicitly, as the form does. *@
+<form method="post" asp-controller="SettingsAdmin" asp-action="TimeZone" class="row g-2 align-items-end mb-4">
+    @Html.AntiForgeryToken()
+    <div class="col-auto">
+        <label for="timeZoneId" class="form-label">Timezone (IANA), for every event</label>
+        <input id="timeZoneId" name="timeZoneId" value="@Model.TimeZoneId" class="form-control" placeholder="e.g., Europe/Madrid" required />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Save timezone</button>
+    </div>
+</form>
 <div class="d-flex align-items-center justify-content-between mb-2">
     <h5 class="mb-0">Events</h5>
     <a class="btn btn-sm btn-outline-primary" href="/Settings?event=new#event">

@@ -52,8 +52,8 @@ Every externally reachable thing, grouped by the question it answers.
 | *What does Calendar hold about this person, erase it, fold it into another account* | `CalendarFeedTokenService` as `IUserDataContributor` and `IUserMerge` | Inbound fan-outs owned by Gdpr and Users; Calendar answers for the token row only. |
 | *Contribute items to a person's feed, or to the community window* | `ICalendarFeedContributor` + `CalendarFeedItem` | Inbound-only: implementers reference Calendar, never the reverse. Two independent calls on one interface — a section may answer either, both, or neither with an empty list. |
 
-Everything else the section exposes — `Section`, `CalendarResource`, `SectionNav`,
-`SectionUserParts` — is framework discovery, not a question.
+Everything else the section exposes — `Section`, `CalendarResource`, `ISectionNav`,
+`IUserPart` — is framework discovery, not a question.
 
 ## 3. Structure
 

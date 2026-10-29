@@ -3,7 +3,7 @@
 @using Humans.Base.Enums
 @* This page catalogs Base and Shell widgets only. Every section-owned widget renders through the
    ChromeSlots.WidgetGallery chrome slot: the section contributes its own gallery view component
-   from its SectionChrome (ISectionChrome), so Debug references no section for this page. *@
+   from its Section (ISectionChrome), so Debug references no section for this page. *@
 @{
     ViewData["Title"] = "Widget Gallery";
 }
@@ -293,7 +293,7 @@
                 <div class="wg-card-note" style="margin-bottom: 1.5rem;">
                     Every card below arrives through one chrome slot, <code>ChromeSlots.WidgetGallery</code>
                     (see <code>&lt;vc:chrome-slot&gt;</code> under <a href="#layout">Layout Bits</a>). Each section
-                    owns its own gallery view component and contributes it from its <code>SectionChrome</code>
+                    owns its own gallery view component and contributes it from its <code>Section</code>
                     (<code>ISectionChrome</code>), so this page names no section and a section that is switched off
                     takes its cards with it. Cards are grouped by contributing section, in contribution order.
                 </div>

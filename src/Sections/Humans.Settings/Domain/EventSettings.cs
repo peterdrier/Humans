@@ -13,6 +13,7 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// <summary>Always <see cref="GateOpeningDate"/>'s year, derived on save; the form has no Year field.</summary>
     public int Year { get; set; }
 
+    /// <summary>A copy of the global <c>Event:TimeZoneId</c> setting, written on save and never read.</summary>
     public string TimeZoneId { get; set; } = string.Empty;
 
     public LocalDate GateOpeningDate { get; set; }
@@ -36,8 +37,8 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public bool? IsOffSeason { get; set; }
 
-    // Build sub-periods: each offset is the inclusive start of its sub-period, ending at the next one's start.
-    // BuildStartOffset ≤ FirstCrew < SetupWeek < PreEventWeek < FinishingWeekend < 0, enforced by EventSettingsViewModel.
+    // Build sub-periods: Shifts owns them now (its own event_settings columns). These are only Shifts' fallback
+    // until the shifts.build-sub-periods data migration has copied them; nothing edits them any more.
 
     public int FirstCrewStartOffset { get; set; } = -25;
 

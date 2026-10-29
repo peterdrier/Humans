@@ -1,21 +1,27 @@
-using Humans.Finance.Contracts;
+using Humans.Base.Authorization;
 using Humans.Base.Constants;
-using Humans.Issues.Contracts;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
-using Humans.Gdpr.Contracts;
 using Humans.Budget.Authorization;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;
 using Humans.Budget.Jobs;
 using Humans.Budget.Services;
-using Humans.Base.Hosting;
+using Humans.Finance.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Issues.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Budget;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section :
+    ISection,
+    IIssueQueueOwner,
+    ISectionAdminNav,
+    ISectionJobs,
+    ISectionNav
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -49,4 +55,22 @@ public sealed class Section : ISection, IIssueQueueOwner
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["finance", "budget"];
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [FinanceRoles.FinanceAdmin];
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Budget", [
+            // "BudgetAdmin", not "Finance": the tag helper resolves controller names, not routes, and a name that
+            // resolves to no action renders the anchor with no href.
+            new("Overview", "BudgetAdmin", "Index", null, null, "fa-solid fa-coins", PolicyNames.FinanceAdminOrAdmin)
+        ])
+    ];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "budget-ticketing-sync", typeof(TicketingBudgetSyncJob), "30 4 * * *");
+    }
+
+    IEnumerable<MemberNavItem> ISectionNav.Items() =>
+        [new("Nav_Budget", Controller: "Budget", Action: "Summary", Policy: PolicyNames.AppAccess, Weight: 70)];
 }

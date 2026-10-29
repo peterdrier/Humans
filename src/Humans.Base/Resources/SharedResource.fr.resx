@@ -461,6 +461,9 @@
   <data name="Error_SomethingWentWrong" xml:space="preserve">
     <value>Une erreur s'est produite</value>
   </data>
+  <data name="Error_CodeAndReference" xml:space="preserve">
+    <value>Erreur {0} · Référence {1}</value>
+  </data>
   <data name="Error_TryAgainLater" xml:space="preserve">
     <value>Une erreur s'est produite lors du traitement de votre demande. Veuillez réessayer ultérieurement.</value>
   </data>
@@ -1355,11 +1358,11 @@
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilité et suivi du montage</value>
   </data>
-  <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Tell us about your food needs</value></data>
-  <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We need this to plan cantina meals</value></data>
-  <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Thanks — we've got it</value></data>
-  <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Fill out</value></data>
-  <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Tell us about your food needs so we're ready when you sign up.</value></data>
+  <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Parle-nous de tes besoins alimentaires</value></data>
+  <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>Ces informations nous aident à planifier les repas de la cantina</value></data>
+  <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Merci — nous avons tes informations</value></data>
+  <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Remplir</value></data>
+  <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Parle-nous de tes besoins alimentaires pour que nous soyons prêts quand tu t’inscriras.</value></data>
   <data name="Common_Optional" xml:space="preserve"><value>Optional</value></data>
 
   <!-- ======================== -->

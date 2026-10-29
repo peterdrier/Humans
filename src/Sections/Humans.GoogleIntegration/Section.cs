@@ -1,23 +1,36 @@
+using Humans.Base.Authorization;
+using Humans.Base.Configuration;
+using Humans.Base.Constants;
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Authorization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Data;
+using Humans.GoogleIntegration.Health;
 using Humans.GoogleIntegration.Jobs;
 using Humans.GoogleIntegration.Services;
 using Humans.GoogleIntegration.Services.Workspace;
-using Humans.Base.Configuration;
-using Humans.Base.Hosting;
+using Humans.GoogleIntegration.ViewComponents;
+using Humans.Settings.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
 
 namespace Humans.GoogleIntegration;
 
 /// <summary><c>GoogleWorkspaceOptions</c> is bound in Shell, not here: Camps and Users read it too.</summary>
-public sealed class Section : ISection
+public sealed class Section :
+    ISection,
+    ISectionAdminNav,
+    ISectionConfiguration,
+    ISectionDataMigrations,
+    ISectionHealthChecks,
+    ISectionJobs,
+    ISectionSettings,
+    IUserPart
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -120,4 +133,79 @@ public sealed class Section : ISection
         services.AddSingleton<GoogleIntegrationMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<GoogleIntegrationMetricsService>());
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Google", [
+            new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),
+            new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     PolicyNames.TeamsAdminBoardOrAdmin),
+            new("All domain groups",     "Google", "AllGroups",    null, null, "fa-solid fa-globe",             PolicyNames.AdminOnly),
+            new("Workspace accounts",    "Google", "Accounts",     null, null, "fa-solid fa-at",                PolicyNames.AdminOnly),
+            new("Sync outbox",           "Google", "SyncOutbox",   null, null, "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
+            new("Sync results",          "Google", "SyncResults",  null, null, "fa-solid fa-list-check",        PolicyNames.AdminOnly),
+            new("Activity Log",          "Google", "ActivityLog",  null, null, "fa-solid fa-scroll", PolicyNames.AdminOnly),
+            new("Group settings",        "Google", "GroupSettingsResults", null, null, "fa-solid fa-gears",     PolicyNames.AdminOnly),
+            new("Email renames",         "Google", "EmailRenames", null, null, "fa-solid fa-right-left",        PolicyNames.AdminOnly),
+            new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
+            new("Sync history migration", "GoogleSyncHistoryMigrationAdmin", "Index", null, null,
+                "fa-solid fa-arrow-right-arrow-left", PolicyNames.AdminOnly)
+        ])
+    ];
+
+    void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
+    {
+        configuration.GetOptionalSetting(registry, "GoogleWorkspace:ServiceAccountKeyPath", "Google Workspace",
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "GoogleWorkspace:ServiceAccountKeyJson", "Google Workspace",
+            isSensitive: true, importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "GoogleWorkspace:Domain", "Google Workspace",
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "GoogleWorkspace:CustomerId", "Google Workspace",
+            importance: ConfigurationImportance.Recommended);
+
+        // Team Resource Management toggle. Grouped under Teams on the admin page because that
+        // is the feature it gates, though this section is what reads it.
+        configuration.GetOptionalSetting(registry, "TeamResourceManagement:AllowCoordinatorsToManageResources",
+            "Teams");
+    }
+
+    internal const string WorkspaceIdentitiesKey = "google.workspace-identities";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(WorkspaceIdentitiesKey, "GoogleIntegration",
+            "Copy each member's Google identity (user_emails.IsGoogle and GoogleEmailStatus) into google_workspace_identities",
+            "WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus and LegacyGoogleEmailStatus; then a drop PR for user_emails.IsGoogle and user_emails.GoogleEmailStatus",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Burner name", "Google identity", "Status"],
+            [.. (await sp.GetRequiredService<IWorkspaceIdentityManagement>().GetUncopiedLegacyIdentitiesAsync(ct))
+                .Select(r => (IReadOnlyList<string>)[r.UserId.ToString(), r.BurnerName, r.Email, r.Status.ToString()])]);
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<IWorkspaceIdentityManagement>().CopyLegacyIdentitiesAsync(ct);
+
+    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
+    {
+        builder.AddCheck<GoogleWorkspaceHealthCheck>("google-workspace", tags: [HealthCheckTags.External]);
+    }
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "google-resource-reconciliation", typeof(GoogleResourceReconciliationJob), "0 3 * * *");
+
+        yield return new RecurringJobDescriptor(
+            "google-sync-outbox-process", typeof(ProcessGoogleSyncOutboxJob), "*/10 * * * *");
+    }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("google-sync", "Settings_TabGoogleSync", typeof(GoogleSyncSettingsTabViewComponent), PolicyNames.AdminOnly)
+    ];
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+        [new(UserPartSlots.AdminDetailSidebar, typeof(WorkspaceIdentityCardViewComponent), Weight: 110)];
 }

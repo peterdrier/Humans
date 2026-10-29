@@ -103,7 +103,7 @@ raw diagnostics over the database (migration-history status across every section
 application tables. No cross-section service calls, no `IMemoryCache`.
 
 The member and admin dashboards have no orchestrator service: `/` and `/Admin` are
-Shell frames whose cards are section-contributed (`SectionChrome` slots), each card
+Shell frames whose cards are section-contributed (`ISectionChrome` slots), each card
 reading through its own section's services.
 
 ---

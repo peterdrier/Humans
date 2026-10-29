@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Security.Claims;
 using AwesomeAssertions;
 using NSubstitute;
@@ -14,7 +15,7 @@ public sealed class SectionNavTests
     [HumansFact]
     public void TheSearchItem_ShowsToAnAuthenticatedUser_WithNoProfile()
     {
-        var item = new SectionNav().Items().Should().ContainSingle().Subject;
+        var item = ((ISectionNav)new Section()).Items().Should().ContainSingle().Subject;
         var signedIn = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
 
         item.Visible!(Substitute.For<IServiceProvider>(), signedIn).Should().BeTrue();
@@ -23,7 +24,7 @@ public sealed class SectionNavTests
     [HumansFact]
     public void TheSearchItem_IsHiddenFromAnAnonymousVisitor()
     {
-        var item = new SectionNav().Items().Single();
+        var item = ((ISectionNav)new Section()).Items().Single();
         var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
 
         item.Visible!(Substitute.For<IServiceProvider>(), anonymous).Should().BeFalse();

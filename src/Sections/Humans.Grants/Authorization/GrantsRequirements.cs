@@ -1,3 +1,4 @@
+using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Grants.Services;
@@ -6,7 +7,10 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Grants.Authorization;
 
-internal sealed class ManagesGrantsRequirement : IAuthorizationRequirement;
+internal sealed class ManagesGrantsRequirement : IAuthorizationRequirement, IDescribedRequirement
+{
+    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, "Grant program managers"];
+}
 
 /// <summary>
 /// The role short-circuit avoids a query on the common admin path. A merged-away id sees what the surviving account

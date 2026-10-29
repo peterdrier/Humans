@@ -142,7 +142,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PlacementNotes_FormatsOnlyOwnerRefusals(bool dependencyFailure)
+    [InlineData(false, true)]
+    public async Task PlacementNotes_FormatsOnlyOwnerRefusals(bool dependencyFailure, bool overlongNotes = false)
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         _containersLocalizer = services.GetRequiredService<IStringLocalizer<ContainersResource>>();
@@ -152,20 +153,23 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var id = Guid.NewGuid();
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
             new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
-        var operation = _containers.UpdatePlacementNotesAsync(id, 2026, null, null, false, _userId, Arg.Any<CancellationToken>());
+        var notes = overlongNotes ? new string('x', 5001) : null;
+        var key = overlongNotes ? "Containers_Error_PlacementNotesLength" : "Containers_Error_PlacementNotFound";
+        object[] args = overlongNotes ? [5000] : [];
+        var operation = _containers.UpdatePlacementNotesAsync(id, 2026, notes, null, false, _userId, Arg.Any<CancellationToken>());
         if (dependencyFailure)
             operation.ThrowsAsync(new InvalidOperationException("Private database diagnostic"));
         else
-            operation.Returns(new ContainerMutationResult<ContainerPlacementDto>(null, "Containers_Error_PlacementNotFound"));
+            operation.Returns(new ContainerMutationResult<ContainerPlacementDto>(null, key, args));
 
         var act = () => CreateController().UpdateContainerPlacementNotes(
-            id, 2026, new UpdateContainerPlacementNotesRequest(), TestContext.Current.CancellationToken);
+            id, 2026, new UpdateContainerPlacementNotesRequest { PlacementNotes = notes }, TestContext.Current.CancellationToken);
 
         if (dependencyFailure)
             await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private database diagnostic");
         else
             (await act()).Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should()
-                .Be(_containersLocalizer["Containers_Error_PlacementNotFound"].Value);
+                .Be(_containersLocalizer[key, args].Value);
     }
 
     [HumansTheory]
