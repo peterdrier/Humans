@@ -5,7 +5,6 @@ namespace Humans.Workgroups;
 /// <summary>The audit actions Workgroups writes. Names are stored on audit rows: never rename one.</summary>
 internal sealed class WorkgroupsAuditActions : AuditActionContributor
 {
-    // Workgroups: the daily job's flags and notices are audited too.
     public static readonly AuditActionDefinition WorkgroupRegistered = new("WorkgroupRegistered");
 
     public static readonly AuditActionDefinition WorkgroupReferred = new("WorkgroupReferred");
