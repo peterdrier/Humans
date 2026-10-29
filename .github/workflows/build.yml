@@ -25,8 +25,8 @@ env:
   DOTNET_VERSION: '10.0.x'
   # The per-section DbContexts (nobodies-collective/Humans#858) are not listed
   # here: detect-migration-changes derives every `context:project` pair from
-  # the design-time factory beside each context (Data/<Context>Factory.cs in
-  # the owning project, design-rules §4), so a new section or a G5 move needs
+  # each Data/<Context>.cs and requires its design-time factory beside it
+  # (design-rules §4), so a new section or a G5 move needs
   # no edit in this file. The `has-pending-model-changes` loops and the
   # from-scratch baseline apply iterate only the affected pairs.
 
@@ -164,12 +164,16 @@ jobs:
         if: steps.filter.outputs.migrations == 'true'
         run: |
           # Every context has a design-time factory beside it, Data/<Context>Factory.cs,
-          # in its own project; the pair list is derived from those files so no
-          # hand-kept inventory can drift (Consent's LegalDbContext and Events'
-          # EventGuideDbContext fall out of this too).
+          # in its own project; the pair list is derived from the Data/*DbContext.cs
+          # files so no hand-kept inventory can drift, and a context missing its
+          # factory fails here instead of silently dropping out of the EF checks.
           pairs=""
-          for factory in src/Sections/*/Data/*DbContextFactory.cs src/Humans.Web/Data/*DbContextFactory.cs; do
-            pairs="$pairs $(basename "$factory" Factory.cs):${factory%/Data/*}"
+          for ctx in src/Sections/*/Data/*DbContext.cs src/Humans.Web/Data/*DbContext.cs; do
+            if [ ! -f "${ctx%.cs}Factory.cs" ]; then
+              echo "::error file=$ctx::$(basename "$ctx" .cs) has no design-time factory beside it (${ctx%.cs}Factory.cs)"
+              exit 1
+            fi
+            pairs="$pairs $(basename "$ctx" .cs):${ctx%/Data/*}"
           done
           echo "Known contexts:$pairs"
           # Changed file -> owning project dir -> pair. A .Contracts leaf maps to
