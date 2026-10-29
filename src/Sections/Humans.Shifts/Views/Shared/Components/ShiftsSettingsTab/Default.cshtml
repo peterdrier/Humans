@@ -16,5 +16,26 @@
         <input asp-for="ReminderLeadTimeHours" type="number" class="form-control" />
     </div>
 
+    <hr />
+    <p class="small text-muted mb-2">Build sub-periods: the dashboard and shift browser split the build window into four named phases. Each is the start day relative to gate opening; the next one's start ends it. First crew &lt; Set-up week &lt; Pre-event week &lt; Finishing weekend &lt; 0.</p>
+    <div class="row">
+        <div class="col-6 mb-3">
+            <label asp-for="FirstCrewStartOffset" class="form-label">First Crew Start</label>
+            <input asp-for="FirstCrewStartOffset" type="number" max="-1" class="form-control" />
+        </div>
+        <div class="col-6 mb-3">
+            <label asp-for="SetupWeekStartOffset" class="form-label">Set-up Week Start</label>
+            <input asp-for="SetupWeekStartOffset" type="number" max="-1" class="form-control" />
+        </div>
+        <div class="col-6 mb-3">
+            <label asp-for="PreEventWeekStartOffset" class="form-label">Pre-event Week Start</label>
+            <input asp-for="PreEventWeekStartOffset" type="number" max="-1" class="form-control" />
+        </div>
+        <div class="col-6 mb-3">
+            <label asp-for="FinishingWeekendStartOffset" class="form-label">Finishing Weekend Start</label>
+            <input asp-for="FinishingWeekendStartOffset" type="number" max="-1" class="form-control" />
+        </div>
+    </div>
+
     <button type="submit" class="btn btn-primary">Save</button>
 </form>

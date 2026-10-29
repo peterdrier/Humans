@@ -3,6 +3,7 @@ using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -389,7 +390,10 @@ internal sealed class ShiftsController(
     {
         if (!ModelState.IsValid)
         {
-            SetError("Invalid event settings.");
+            // Name the broken rule: a bare "invalid" leaves the operator guessing which field to fix.
+            var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+                .Where(m => !string.IsNullOrWhiteSpace(m)).Distinct(StringComparer.Ordinal).ToList();
+            SetError(errors.Count > 0 ? string.Join(" ", errors) : "Invalid event settings.");
             return Redirect("/Settings#shifts");
         }
 
@@ -402,7 +406,9 @@ internal sealed class ShiftsController(
         }
 
         await shiftMgmt.SaveKnobsAsync(
-            active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours);
+            active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours,
+            new BuildSubPeriodStarts(model.FirstCrewStartOffset, model.SetupWeekStartOffset,
+                model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset));
 
         SetSuccess("Event settings saved.");
         return Redirect("/Settings#shifts");

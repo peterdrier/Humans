@@ -119,17 +119,66 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours)
+        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
+        BuildSubPeriodStarts subPeriods)
     {
         var entity = await EnsureKnobsRowAsync(eventSettingsId);
         entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
         entity.GlobalVolunteerCap = globalVolunteerCap;
         entity.ReminderLeadTimeHours = reminderLeadTimeHours;
+        SetSubPeriods(entity, subPeriods);
         entity.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
 
         EvictDashboardCaches(eventSettingsId);
         viewInvalidator.InvalidateAll();
+    }
+
+    public async Task<IReadOnlyList<(Guid EventSettingsId, string EventName, BuildSubPeriodStarts Starts)>> GetUncopiedBuildSubPeriodsAsync(
+        CancellationToken ct = default)
+    {
+        var rows = await repo.GetAllEventSettingsAsync(ct);
+        var pendingIds = rows
+            .Where(r => r.SubPeriodFirstCrewStart is null || r.SubPeriodSetupWeekStart is null
+                || r.SubPeriodPreEventWeekStart is null || r.SubPeriodFinishingWeekendStart is null)
+            .Select(r => r.Id)
+            .ToList();
+        if (await calendarResolver.GetActiveAsync(ct) is { } active && rows.All(r => r.Id != active.Id))
+            pendingIds.Add(active.Id);
+
+        // The resolver already fills each unset start from Settings, so its calendar holds the values to write.
+        var pending = new List<(Guid, string, BuildSubPeriodStarts)>();
+        foreach (var id in pendingIds)
+        {
+            if (await calendarResolver.GetAsync(id, ct) is not { } calendar) continue;
+            pending.Add((id, calendar.EventName, new BuildSubPeriodStarts(
+                calendar.FirstCrewStartOffset, calendar.SetupWeekStartOffset,
+                calendar.PreEventWeekStartOffset, calendar.FinishingWeekendStartOffset)));
+        }
+        return pending;
+    }
+
+    public async Task<int> CopyBuildSubPeriodsAsync(CancellationToken ct = default)
+    {
+        var pending = await GetUncopiedBuildSubPeriodsAsync(ct);
+        foreach (var (eventSettingsId, _, starts) in pending)
+        {
+            var entity = await EnsureKnobsRowAsync(eventSettingsId);
+            SetSubPeriods(entity, starts);
+            entity.UpdatedAt = clock.GetCurrentInstant();
+            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update, ct);
+            EvictDashboardCaches(eventSettingsId);
+        }
+        if (pending.Count > 0) viewInvalidator.InvalidateAll();
+        return pending.Count;
+    }
+
+    private static void SetSubPeriods(EventSettings entity, BuildSubPeriodStarts starts)
+    {
+        entity.SubPeriodFirstCrewStart = starts.FirstCrew;
+        entity.SubPeriodSetupWeekStart = starts.SetupWeek;
+        entity.SubPeriodPreEventWeekStart = starts.PreEventWeek;
+        entity.SubPeriodFinishingWeekendStart = starts.FinishingWeekend;
     }
 
     /// <summary>

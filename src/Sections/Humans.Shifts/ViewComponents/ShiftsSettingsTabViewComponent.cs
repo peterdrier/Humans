@@ -17,6 +17,6 @@ internal sealed class ShiftsSettingsTabViewComponent(
         if (active is null) return View(new EventSettingsViewModel());
 
         var knobs = await shiftMgmt.GetKnobsAsync(active.Id, HttpContext.RequestAborted);
-        return View(EventSettingsFormMapper.ToViewModel(knobs));
+        return View(EventSettingsFormMapper.ToViewModel(knobs, active));
     }
 }

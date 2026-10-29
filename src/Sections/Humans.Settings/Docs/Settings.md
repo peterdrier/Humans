@@ -81,9 +81,9 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | Year | int | Always `GateOpeningDate.Year`; never edited on its own |
 | TimeZoneId | string | IANA; a copy of the global `Event:TimeZoneId`, written on save and never read |
 | GateOpeningDate | LocalDate | Day 0 of every offset |
-| BuildStartOffset | int | Negative; `≤ FirstCrewStartOffset` |
+| BuildStartOffset | int | Negative |
 | EventEndOffset / StrikeEndOffset | int | |
-| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Strictly ascending, all negative |
+| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Shifts owns the build sub-periods now: no form edits these, an update never overwrites them, a new row gets the defaults (-25/-16/-9/-4). Kept only as Shifts' fallback until its `shifts.build-sub-periods` data migration is done |
 | EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
@@ -148,9 +148,6 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 - **Writes to `settings_event` stay inside the section.**
   `SaveEventSettingsAsync` lives on the internal `ISettingsWriteService`, not on
   the `ISettingsService` contract.
-- **The build window partitions.**
-  `BuildStartOffset ≤ FirstCrew < SetupWeek < PreEvent < FinishingWeekend < 0`,
-  validated by `EventSettingsViewModel` (`EventSettingsViewModelTests`).
 - **`EarlyEntryStartOffset`, when set, stays inside the build window.**
   `BuildStartOffset ≤ EarlyEntryStartOffset < 0`, enforced in both
   `Service.SaveEventSettingsAsync` and `EventSettingsViewModel` (`ServiceTests`,
