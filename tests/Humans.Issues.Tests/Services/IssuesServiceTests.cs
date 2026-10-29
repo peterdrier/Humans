@@ -2511,8 +2511,11 @@ public sealed class IssuesServiceTests
         var other = await SeedIssueWithScreenshotAsync(stranger.Id, "Tickets", "image/png", [3]);
         _issuesDb.IssueComments.Add(new IssueComment
         {
-            Id = Guid.NewGuid(), IssueId = own, SenderUserId = survivor.Id,
-            Content = "My follow-up", CreatedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            IssueId = own,
+            SenderUserId = survivor.Id,
+            Content = "My follow-up",
+            CreatedAt = Clock.GetCurrentInstant()
         });
         await _issuesDb.SaveChangesAsync(Ct);
         var viewer = new IssueViewer(survivor.Id, []);

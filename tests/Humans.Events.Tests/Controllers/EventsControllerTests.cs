@@ -989,8 +989,11 @@ public class EventsControllerTests
         {
             var input = new CampEventFormViewModel
             {
-                Title = "Entered title", Description = "Entered description", CategoryId = Guid.NewGuid(),
-                StartDate = new DateOnly(2026, 8, 1), DurationMinutes = 60
+                Title = "Entered title",
+                Description = "Entered description",
+                CategoryId = Guid.NewGuid(),
+                StartDate = new DateOnly(2026, 8, 1),
+                DurationMinutes = 60
             };
             model = input;
             result = edit ? await controller.BarrioUpdate(camp.Slug, existing.Id, input) : await controller.BarrioCreate(camp.Slug, input);
@@ -1002,8 +1005,12 @@ public class EventsControllerTests
         {
             var input = new IndividualEventFormViewModel
             {
-                Title = "Entered title", Description = "Entered description", CategoryId = Guid.NewGuid(), VenueId = Guid.NewGuid(),
-                StartDate = new DateOnly(2026, 8, 1), DurationMinutes = 60
+                Title = "Entered title",
+                Description = "Entered description",
+                CategoryId = Guid.NewGuid(),
+                VenueId = Guid.NewGuid(),
+                StartDate = new DateOnly(2026, 8, 1),
+                DurationMinutes = 60
             };
             model = input;
             result = edit ? await controller.Update(existing.Id, input) : await controller.Create(input);

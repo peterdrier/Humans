@@ -327,6 +327,4 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         return _clock.GetCurrentInstant().InZone(zone).Date;
     }
-
-
 }

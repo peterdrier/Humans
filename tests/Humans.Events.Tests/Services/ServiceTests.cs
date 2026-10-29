@@ -72,9 +72,11 @@ public sealed class EventServiceTests
             _repo.Venues.Add(new EventVenue { Id = id, IsActive = active });
         var guideEvent = new Event
         {
-            Id = Guid.NewGuid(), CategoryId = category.Id,
+            Id = Guid.NewGuid(),
+            CategoryId = category.Id,
             GuideSharedVenueId = edit ? originalVenue.Id : selectedId,
-            Title = "Original", Status = edit ? EventStatus.Approved : EventStatus.Draft,
+            Title = "Original",
+            Status = edit ? EventStatus.Approved : EventStatus.Draft,
         };
         if (edit) _repo.Events.Add(guideEvent);
         var ct = TestContext.Current.CancellationToken;
