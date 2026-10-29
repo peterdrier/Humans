@@ -85,7 +85,7 @@ public sealed record AuditEvent(
         return sb.ToString();
     }
 
-    public AuditEventRender RenderStructured()
+    internal AuditEventRender RenderStructured()
     {
         var verb = AuditEventTextualizer.GetActionVerb(Action);
         var renderTail = !string.IsNullOrWhiteSpace(Description)
@@ -99,6 +99,6 @@ public sealed record AuditEvent(
         occurredAt.InUtc().Date.ToInvariantDate();
 }
 
-public sealed record AuditEventRender(
+internal sealed record AuditEventRender(
     string? Verb,
     bool ShouldRenderDescriptionTail);
