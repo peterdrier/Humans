@@ -44,10 +44,10 @@ file sealed class StubAuditLog : IAuditLogService
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        string? entityType,
-        Guid? entityId,
-        Guid? userId,
         IReadOnlyList<AuditActionDefinition> actions,
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
         int limit = 20,
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);

@@ -31,12 +31,15 @@ public interface IAuditLogService : IApplicationService
         string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null);
 
-    /// <summary>For a caller that needs rows as data (the issue thread). Pages use <c>&lt;vc:audit-log&gt;</c>.</summary>
+    /// <summary>
+    /// For a caller that needs rows as data (the issue thread). Pages use <c>&lt;vc:audit-log&gt;</c>. The actions come
+    /// first so the enum overload below, whose every parameter is optional, never competes for the same call.
+    /// </summary>
     Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        string? entityType,
-        Guid? entityId,
-        Guid? userId,
         IReadOnlyList<AuditActionDefinition> actions,
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
         int limit = 20,
         CancellationToken ct = default);
 
