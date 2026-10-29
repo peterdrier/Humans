@@ -66,8 +66,12 @@ public class CampControllerTests
     [InlineData(true, "", "0")]
     [InlineData(false, "", "-1")]
     [InlineData(true, "", "-1")]
-    public async Task Camp_forms_require_posted_choices_and_a_positive_expected_count(
-        bool edit, string omitted, string memberCount = "1")
+    [InlineData(false, "", "1", -1)]
+    [InlineData(true, "", "1", -1)]
+    [InlineData(false, "", "1", 1)]
+    [InlineData(true, "", "1", 1)]
+    public async Task Camp_forms_require_posted_choices_and_valid_counts(
+        bool edit, string omitted, string memberCount = "1", int timesAtNowhere = 0)
     {
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -95,6 +99,7 @@ public class CampControllerTests
             ["Languages"] = "en",
             ["SeasonId"] = camp.Seasons[0].Id.ToString(),
             ["MemberCount"] = memberCount,
+            ["TimesAtNowhere"] = timesAtNowhere.ToString(CultureInfo.InvariantCulture),
             ["AcceptingMembers"] = "0",
             ["KidsWelcome"] = "0",
             ["KidsVisiting"] = "0",
@@ -121,10 +126,10 @@ public class CampControllerTests
 
         var result = edit ? await controller.Edit(camp.Slug, (CampEditViewModel)model) : await controller.Register(model);
         var writes = _camps.ReceivedCalls().Where(call => call.GetMethodInfo().Name is "CreateCampAsync" or "UpdateCampAsync").ToList();
-        if (omitted.Length > 0 || !string.Equals(memberCount, "1", StringComparison.Ordinal))
+        if (omitted.Length > 0 || !string.Equals(memberCount, "1", StringComparison.Ordinal) || timesAtNowhere < 0)
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-            var field = omitted.Length > 0 ? omitted : "MemberCount";
+            var field = omitted.Length > 0 ? omitted : timesAtNowhere < 0 ? "TimesAtNowhere" : "MemberCount";
             controller.ModelState[field]!.Errors.Should().ContainSingle();
             writes.Should().BeEmpty();
         }
@@ -133,6 +138,7 @@ public class CampControllerTests
             result.Should().BeOfType<RedirectToActionResult>();
             controller.ModelState.IsValid.Should().BeTrue();
             var arguments = writes.Should().ContainSingle().Which.GetArguments();
+            (edit ? ((CampUpdateInput)arguments[0]!).TimesAtNowhere : (int)arguments[7]!).Should().Be(timesAtNowhere);
             var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
             data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
             data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
@@ -328,6 +334,7 @@ public class CampControllerTests
         foreach (var edit in new[] { false, true })
         {
             var model = edit ? new CampEditViewModel() : new CampRegisterViewModel();
+            model.TimesAtNowhere = -1;
             // MVC converts an empty posted email field to null before validation.
             model.ContactEmail = null!;
             var controller = BuildController(userId);
@@ -367,7 +374,11 @@ public class CampControllerTests
             controller.ModelState["MemberCount"]!.Errors.Should().ContainSingle().Which.ErrorMessage
                 .Should().Be(shared["Validation_Range", "MemberCount", 1, int.MaxValue].Value);
 
+            controller.ModelState["TimesAtNowhere"]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                .Should().Be(shared["Validation_Range", "TimesAtNowhere", 0, int.MaxValue].Value);
+
             controller.ModelState.Clear();
+            model.TimesAtNowhere = 0;
             model.MemberCount = 1;
             model.Name = new string('n', 256);
             model.ContactEmail = new string('a', 244) + "@example.com";

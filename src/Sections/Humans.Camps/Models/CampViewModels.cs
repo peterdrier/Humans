@@ -146,6 +146,7 @@ internal class CampRegisterViewModel
     public List<string> Links { get; set; } = [];
     public bool IsSwissCamp { get; set; }
     public bool HideHistoricalNames { get; set; }
+    [Range(0, int.MaxValue, ErrorMessage = "Validation_Range")]
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
     [Required(ErrorMessage = "Validation_Required")]

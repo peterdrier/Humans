@@ -80,6 +80,7 @@
                         <div class="col-md-3">
                             <label asp-for="TimesAtNowhere" class="form-label">@Localizer["Camps_TimesParticipatingLabel"]</label>
                             <input asp-for="TimesAtNowhere" class="form-control" type="number" min="0" />
+                            <span asp-validation-for="TimesAtNowhere" class="text-danger"></span>
                         </div>
                         <div class="col-md-3">
                             <div class="form-check mt-4">
