@@ -7,7 +7,7 @@ description: Adding/removing a public TagHelper, ViewComponent, or shared partia
 
 When you **add** a new TagHelper, ViewComponent, or user-facing shared partial, register it in the same PR:
 
-- **A section widget** → a card in the section's gallery view component. Create the component and the `ISectionChrome` contribution in `Section.cs` if the section has none yet (Users, Shifts, Teams, Tickets, Camps, Calendar, Events, AuditLog, Governance, Email and Agent already have one). The component resolves its own sample data from the section's own services; a chrome-slot contribution takes no arguments, so read the signed-in user from claims.
+- **A section widget** → a card in the section's gallery view component. Create the component and the `ISectionChrome` contribution in `Section.cs` if the section has none yet. The component resolves its own sample data from the section's own services; a chrome-slot contribution takes no arguments, so read the signed-in user from claims.
 - **A Base or Shell widget** → a card in Debug's `Index.cshtml` (extend `WidgetGalleryController` when it needs a sample record).
 - **A widget that cannot render in isolation** (needs a live record, a flag, a parent form) → a text-only card in the same place, saying why and where to see it. Debug's "Skipped (with reason)" list is for Base and Shell items only.
 - **A component contributed through a slot** (`IUserPart`, `ISectionChrome`, `ISectionMemberDashboard`, `ISectionSettings`) is already shown by the gallery's slot renders and needs no card.
