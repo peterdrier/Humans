@@ -162,10 +162,6 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-29
-    id: CENTRAL-102
-    what: "The access pill (src/Humans.Web/Filters/AuthorizationPillFilter.cs, _AuthorizationPill.cshtml) is English-only on member-reachable pages: role titles from RoleCatalog, \"Admin only\", and the IDescribedRequirement labels (\"Team Coordinator\" in Camps and Shifts, \"Grant program managers\", \"Program managers\", \"City Planning team\"). Every-supported-culture rule (AGENTS.md). Fix: localize role titles and have Admits return resource keys resolved through each section's resx. Found by review on peterdrier/Humans#2187."
-    review: panel
   - added: 2026-10-24
     id: CENTRAL-101
     what: "The dietary things-to-do nudge keys (Todo_DietaryMedical_*) in src/Humans.Base/Resources/SharedResource are still the English text in the ca, de, fr and it files, so members in those cultures see the cantina nudge in English. The parity tests pass because the keys exist. Translate them; Cantina and Users both render them."

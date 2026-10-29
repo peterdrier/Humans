@@ -12,6 +12,8 @@ description: Admin/operator-only pages (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Das
 - `/Monitor/*` — `BoardOrAdmin` and `HumanAdminBoardOrAdmin` operator pages
 - City Planning's map-admin surfaces (`CityPlanningMapAdmin`: Admin, CampsAdmin, or the city-planning team) — a section's managing team are that section's admins (Peter, 2026-09-25)
 
+The access pill (`_AuthorizationPill`, its role titles and `IDescribedRequirement.Admits` labels) is admin content and stays English on every page it appears on (Peter, 2026-10-29, peterdrier/Humans#2187).
+
 That list is illustrative, not the gate: a new operator-only page is exempt without being added to it, and one of these moving to another route stays exempt.
 
 **A view without that gate is never exempt**, wherever it is routed — including a partial or modal opened from an admin page. The gate on the rendered markup decides, not the page that opened it ([`img-alt-is-a-user-facing-string`](img-alt-is-a-user-facing-string.md)).
