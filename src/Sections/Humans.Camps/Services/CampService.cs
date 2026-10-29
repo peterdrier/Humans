@@ -170,7 +170,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _repo.CreateCampAsync(camp, season, member, leadAssignment, historicalNameEntities, cancellationToken);
 
         await _auditLog.LogAsync(
-            AuditAction.CampCreated, nameof(Camp), camp.Id,
+            CampsAuditActions.CampCreated, nameof(Camp), camp.Id,
             $"Registered camp '{name}' for {year}",
             createdByUserId);
 
@@ -529,7 +529,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (actorUserId is { } actorId)
         {
             await _auditLog.LogAsync(
-                AuditAction.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
+                CampsAuditActions.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
                 description, actorId,
                 relatedEntityId: campId, relatedEntityType: nameof(Camp));
         }
@@ -537,7 +537,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         {
             // Dev-persona provisioning runs before sign-in and has no human actor.
             await _auditLog.LogAsync(
-                AuditAction.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
+                CampsAuditActions.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
                 description, nameof(CampService),
                 relatedEntityId: campId, relatedEntityType: nameof(Camp));
         }
@@ -575,7 +575,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampUpdated, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampUpdated, nameof(CampSeason), seasonId,
             $"Updated season {year} details",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -613,7 +613,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
-            AuditAction.CampSeasonApproved, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampSeasonApproved, nameof(CampSeason), seasonId,
             $"Approved season {year}",
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -650,7 +650,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
-            AuditAction.CampSeasonRejected, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampSeasonRejected, nameof(CampSeason), seasonId,
             $"Rejected season {year}: {notes}",
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -693,7 +693,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampSeasonWithdrawn, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampSeasonWithdrawn, nameof(CampSeason), seasonId,
             $"Withdrew from season {year}",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -788,7 +788,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status set to Full",
             actorUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
@@ -823,7 +823,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (!found) return new(false, "Season not found.");
 
         await _auditLog.LogAsync(
-            AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status changed from {previousStatus} to {newStatus}",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -867,7 +867,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampUpdated, nameof(Camp), input.CampId,
+            CampsAuditActions.CampUpdated, nameof(Camp), input.CampId,
             $"Updated camp {input.CampId}",
             actorUserId);
 
@@ -929,7 +929,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampDeleted, nameof(Camp), campId,
+            CampsAuditActions.CampDeleted, nameof(Camp), campId,
             $"Camp {campId} permanently deleted",
             actorUserId);
 
@@ -1073,7 +1073,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampImageUploaded, nameof(CampImage), image.Id,
+            CampsAuditActions.CampImageUploaded, nameof(CampImage), image.Id,
             $"Uploaded image '{fileName}'",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -1097,7 +1097,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
 
         await _auditLog.LogAsync(
-            AuditAction.CampImageDeleted, nameof(CampImage), imageId,
+            CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
             $"Deleted image {imageId}",
             actorUserId,
             relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
@@ -1131,7 +1131,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // Complete the save and audit together even if the caller stops waiting.
         if (await _repo.OpenSeasonAsync(year, CancellationToken.None))
         {
-            await _auditLog.LogAsync(AuditAction.CampRegistrationOpened, nameof(CampSettings), settings.Id,
+            await _auditLog.LogAsync(CampsAuditActions.CampRegistrationOpened, nameof(CampSettings), settings.Id,
                 $"Opened camp registration for {year}", actorUserId);
         }
     }
@@ -1143,7 +1143,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // Complete the save and audit together even if the caller stops waiting.
         if (await _repo.CloseSeasonAsync(year, CancellationToken.None))
         {
-            await _auditLog.LogAsync(AuditAction.CampRegistrationClosed, nameof(CampSettings), settings.Id,
+            await _auditLog.LogAsync(CampsAuditActions.CampRegistrationClosed, nameof(CampSettings), settings.Id,
                 $"Closed camp registration for {year}", actorUserId);
         }
     }
@@ -1157,7 +1157,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var changed = await _repo.SetNameLockDateForYearAsync(year, lockDate, CancellationToken.None);
         if (changed > 0)
         {
-            await _auditLog.LogAsync(AuditAction.CampNameLockDateChanged, nameof(CampSettings), settings.Id,
+            await _auditLog.LogAsync(CampsAuditActions.CampNameLockDateChanged, nameof(CampSettings), settings.Id,
                 $"Set name lock date for {year} to {lockDate.ToInvariantDate()} on {changed} camp seasons", actorUserId);
         }
     }
@@ -1222,7 +1222,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         await _auditLog.LogAsync(
-            AuditAction.CampNameChanged, nameof(CampSeason), seasonId,
+            CampsAuditActions.CampNameChanged, nameof(CampSeason), seasonId,
             $"Name changed from '{oldName}' to '{newName}'",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -1271,7 +1271,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private async Task TransitionMemberToRemovedAsync(
         CampMember member,
         Guid actorUserId,
-        AuditAction auditAction,
+        AuditActionDefinition auditAction,
         string auditMessage,
         bool cascadeRoleAssignments,
         CancellationToken cancellationToken)
@@ -1327,7 +1327,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (insert.Outcome == CampMemberInsertOutcome.Created)
         {
             await _auditLog.LogAsync(
-                AuditAction.CampMemberRequested, nameof(CampMember), insert.MemberId,
+                CampsAuditActions.CampMemberRequested, nameof(CampMember), insert.MemberId,
                 $"Requested membership in camp season {season.Year}",
                 userId,
                 relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -1389,7 +1389,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _repo.SaveMemberAsync(member, cancellationToken);
 
         await _auditLog.LogAsync(
-            AuditAction.CampMemberApproved, nameof(CampMember), member.Id,
+            CampsAuditActions.CampMemberApproved, nameof(CampMember), member.Id,
             $"Approved camp membership for season {member.CampSeason.Year}",
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
@@ -1437,7 +1437,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         await TransitionMemberToRemovedAsync(
             member, rejectedByUserId,
-            AuditAction.CampMemberRejected,
+            CampsAuditActions.CampMemberRejected,
             $"Rejected camp membership request for season {member.CampSeason.Year}",
             cascadeRoleAssignments: false,
             cancellationToken);
@@ -1479,7 +1479,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         await TransitionMemberToRemovedAsync(
             member, removedByUserId,
-            AuditAction.CampMemberRemoved,
+            CampsAuditActions.CampMemberRemoved,
             $"Removed camp member from season {member.CampSeason.Year}",
             cascadeRoleAssignments: true,
             cancellationToken);
@@ -1500,7 +1500,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (result.Outcome != CampMemberInsertOutcome.AlreadyActive)
         {
             await _auditLog.LogAsync(
-                AuditAction.CampMemberAddedByLead,
+                CampsAuditActions.CampMemberAddedByLead,
                 nameof(CampMember), result.MemberId,
                 "Lead added human as active camp member.",
                 actorUserId,
@@ -1559,7 +1559,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         await TransitionMemberToRemovedAsync(
             member, userId,
-            AuditAction.CampMemberWithdrawn,
+            CampsAuditActions.CampMemberWithdrawn,
             $"Withdrew camp membership request for season {member.CampSeason.Year}",
             cascadeRoleAssignments: true,
             cancellationToken);
@@ -1584,7 +1584,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         await TransitionMemberToRemovedAsync(
             member, userId,
-            AuditAction.CampMemberLeft,
+            CampsAuditActions.CampMemberLeft,
             $"Left camp season {member.CampSeason.Year}",
             cascadeRoleAssignments: true,
             cancellationToken);
@@ -1669,7 +1669,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (oldValue == newValue) return new(true);
 
         await _auditLog.LogAsync(
-            AuditAction.CampSeasonEeSlotCountChanged,
+            CampsAuditActions.CampSeasonEeSlotCountChanged,
             nameof(CampSeason), campSeasonId,
             $"EE slot count changed from {oldValue} to {newValue}.",
             actorUserId,
@@ -1708,7 +1708,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _repo.SaveMemberAsync(member, cancellationToken);
 
         await _auditLog.LogAsync(
-            granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,
+            granted ? CampsAuditActions.CampEarlyEntryGranted : CampsAuditActions.CampEarlyEntryRevoked,
             nameof(CampMember), member.Id,
             granted
                 ? $"Granted Early Entry to member in season {member.CampSeason.Year}."

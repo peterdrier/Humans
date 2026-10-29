@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Camps;
 
@@ -32,6 +33,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CampsAuditActions>();
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
 
         services.AddSingleton<ICampRepository, CampRepository>();

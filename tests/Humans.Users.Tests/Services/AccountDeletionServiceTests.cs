@@ -120,7 +120,7 @@ public class AccountDeletionServiceTests
         await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
             Arg.Is<string>(s => s.Contains("3") && s.Contains("1")),
             userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -371,7 +371,7 @@ public class AccountDeletionServiceTests
         // exactly why it must not quote the identity the purge just collapsed. The user
         // id is the subject; the name would outlive the erasure in a retained table.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.AccountPurged, nameof(User), userId,
+            UsersAuditActions.AccountPurged, nameof(User), userId,
             Arg.Is<string>(s => !s.Contains("Test Human")),
             actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());

@@ -589,7 +589,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var actorId = Guid.NewGuid();
-        AuditLog.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+        AuditLog.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
             Arg.Any<string>(), actorId).Returns(async _ =>
             {
                 (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId,
@@ -601,7 +601,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         profile.BurnerName.Should().BeEmpty();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
-        await AuditLog.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+        await AuditLog.Received(1).LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
             Arg.Any<string>(), actorId);
         (await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId))
             .Should().BeFalse();

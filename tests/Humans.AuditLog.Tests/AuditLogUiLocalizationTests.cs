@@ -24,13 +24,13 @@ public class AuditLogUiLocalizationTests
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<AuditLogResource>>();
 
-        LegacyAuditActions.RoleAssigned.ToLocalizedAuditVerb(false, localizer).Should().Be("assigned role to");
-        LegacyAuditActions.RoleAssigned.ToLocalizedAuditVerb(true, localizer).Should().Be("assigned role");
-        LegacyAuditActions.ShiftSignupCreated.ToLocalizedAuditVerb(false, localizer).Should().Be("created signup for");
-        LegacyAuditActions.ShiftSignupCreated.ToLocalizedAuditVerb(true, localizer).Should().Be("signed up for");
-        LegacyAuditActions.CampaignCreated.ToLocalizedAuditVerb(false, localizer).Should().BeNull();
-        LegacyAuditActions.CampaignCreated.ToAuditBadgeLabel(localizer).Should().Be("Campaign created");
-        LegacyAuditActions.AnomalousPermissionDetected.ToAuditBadgeLabel(localizer).Should().Be("Anomalous permission detected");
+        TestActions.RoleAssigned.ToLocalizedAuditVerb(false, localizer).Should().Be("assigned role to");
+        TestActions.RoleAssigned.ToLocalizedAuditVerb(true, localizer).Should().Be("assigned role");
+        TestActions.ShiftSignupCreated.ToLocalizedAuditVerb(false, localizer).Should().Be("created signup for");
+        TestActions.ShiftSignupCreated.ToLocalizedAuditVerb(true, localizer).Should().Be("signed up for");
+        TestActions.CampaignCreated.ToLocalizedAuditVerb(false, localizer).Should().BeNull();
+        TestActions.CampaignCreated.ToAuditBadgeLabel(localizer).Should().Be("Campaign created");
+        TestActions.AnomalousPermissionDetected.ToAuditBadgeLabel(localizer).Should().Be("Anomalous permission detected");
     }
 
     [HumansFact]
@@ -61,7 +61,7 @@ public class AuditLogUiLocalizationTests
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<AuditLogResource>>();
         var entry = new AuditEvent(Guid.NewGuid(), Instant.FromUtc(2026, 10, 7, 3, 0),
-            LegacyAuditActions.RoleAssigned, null, null, "User", Guid.NewGuid(), null, null,
+            TestActions.RoleAssigned, null, null, "User", Guid.NewGuid(), null, null,
             null, null, null, null, null, "role '<Board>'");
         var item = new RazorCompiledItemLoader().LoadItems(typeof(AuditLogResource).Assembly)
             .Single(i => string.Equals(i.Identifier,
@@ -90,9 +90,9 @@ public class AuditLogUiLocalizationTests
     [HumansFact]
     public void OperatorBadge_WithoutLocalizer_ShowsTheStoredName()
     {
-        LegacyAuditActions.TeamMemberAdded.ToAuditBadgeLabel().Should().Be("TeamMemberAdded");
-        LegacyAuditActions.AnomalousPermissionDetected.ToAuditBadgeLabel().Should().Be("AnomalousPermissionDetected");
-        LegacyAuditActions.AnomalousPermissionDetected.ToAuditBadgeClass().Should().Be("bg-warning text-dark");
-        LegacyAuditActions.TeamMemberAdded.ToAuditEntryRowClass().Should().BeEmpty();
+        TestActions.TeamMemberAdded.ToAuditBadgeLabel().Should().Be("TeamMemberAdded");
+        TestActions.AnomalousPermissionDetected.ToAuditBadgeLabel().Should().Be("AnomalousPermissionDetected");
+        TestActions.AnomalousPermissionDetected.ToAuditBadgeClass().Should().Be("bg-warning text-dark");
+        TestActions.TeamMemberAdded.ToAuditEntryRowClass().Should().BeEmpty();
     }
 }

@@ -46,7 +46,7 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 
 ### AuditAction (transitional enum)
 
-`AuditAction` (`Humans.AuditLog.Contracts.AuditAction`) is the enum the sections still pass today; `LegacyAuditActions` declares the same names as definitions. The catalog below goes when the last section declares its own actions. Full surface as of this sweep:
+`AuditAction` (`Humans.AuditLog.Contracts.AuditAction`) is the enum the sections not yet moved still pass; `LegacyAuditActions` declares those names as definitions, and a moved section's names live on its own `<Section>AuditActions` (listed in its `Docs/<Section>.md`). The catalog below goes when the last section declares its own actions. Full surface as of this sweep:
 
 <!-- freshness:auto id="auditaction-catalog" prompt="Regenerate this catalog from src/Sections/Humans.AuditLog/Contracts/AuditAction.cs: every enum value must appear exactly once, grouped by section, one line each; preserve prose outside this block." -->
 - **Email:** `EmailOutboxRetried`, `EmailOutboxDiscarded`, `EmailSendingPaused`, `EmailSendingResumed` — persisted admin outbox controls, written by `EmailOutboxService` after the save. `EmailDailySendCountsBackfilled` — the admin-triggered daily send-count backfill, written by `EmailOutboxService`. `EmailComposerSelfTestSent` — a human queued the shared composer's "Send to me" test to their own address, written by `ComposerSelfSendService`.

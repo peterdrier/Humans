@@ -257,6 +257,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `ExpensesAuditActions` (`src/Sections/Humans.Expenses/ExpensesAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `ExpenseSubmit`, `ExpenseEndorse`, `ExpenseCoordinatorReject`, `ExpenseApprove`, `ExpenseReject`, `ExpenseWithdraw`, `ExpenseCategoryOverride`, `ExpenseSepaSent`, `ExpenseSepaReopened`, `ExpensePaid`, `IbanSet`, `IbanRemove`, `ExpenseAttachmentUploaded`, `ExpenseAttachmentRemoved`, `ExpenseHoldedPushed`, `ExpenseHoldedFailed`, `ExpenseHoldedRequeued`, `ExpenseCreatedOnBehalf`, `ExpenseEditedOnBehalf`, `ExpensePayeeIbanUpdated`, `ExpenseLineDeclined`, `ExpenseLineDeclineUndone`.
 - **Budget**: `IBudgetService` — `GetCategoryByIdAsync` (category metadata and coordinator team resolution), `GetActiveYearAsync` (budget-year binding), `GetEffectiveCoordinatorTeamIdsAsync` (coordinator-scope check).
 - **Teams**: `ITeamService` — `IsUserCoordinatorOfTeamAsync` (coordinator endorsement gate and review-queue scope), `GetTeamAsync`.
 - **Users/Identity**: `IUserService` (read by the controller, the report service and the Holded publisher/processor) — `GetUserInfoAsync` / `GetUserInfosAsync`, display names for the Holded contact, and the submitter's profile, which is where the legal name is read from at submit time. There is no `IUserWrite` dependency.

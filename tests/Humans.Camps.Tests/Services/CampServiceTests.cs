@@ -70,17 +70,17 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("OptIn", AuditAction.CampSeasonCreated)]
-    [InlineData("UpdateSeason", AuditAction.CampUpdated)]
-    [InlineData("Withdraw", AuditAction.CampSeasonWithdrawn)]
-    [InlineData("SetStatus", AuditAction.CampSeasonStatusChanged)]
-    [InlineData("Reactivate", AuditAction.CampSeasonStatusChanged)]
-    [InlineData("UpdateCamp", AuditAction.CampUpdated)]
-    [InlineData("DeleteCamp", AuditAction.CampDeleted)]
-    [InlineData("UploadImage", AuditAction.CampImageUploaded)]
-    [InlineData("DeleteImage", AuditAction.CampImageDeleted)]
-    [InlineData("ChangeName", AuditAction.CampNameChanged)]
-    public async Task HumanMutation_AuditsTheActorInsteadOfAJob(string action, AuditAction expectedAction)
+    [InlineData("OptIn", nameof(CampsAuditActions.CampSeasonCreated))]
+    [InlineData("UpdateSeason", nameof(CampsAuditActions.CampUpdated))]
+    [InlineData("Withdraw", nameof(CampsAuditActions.CampSeasonWithdrawn))]
+    [InlineData("SetStatus", nameof(CampsAuditActions.CampSeasonStatusChanged))]
+    [InlineData("Reactivate", nameof(CampsAuditActions.CampSeasonStatusChanged))]
+    [InlineData("UpdateCamp", nameof(CampsAuditActions.CampUpdated))]
+    [InlineData("DeleteCamp", nameof(CampsAuditActions.CampDeleted))]
+    [InlineData("UploadImage", nameof(CampsAuditActions.CampImageUploaded))]
+    [InlineData("DeleteImage", nameof(CampsAuditActions.CampImageDeleted))]
+    [InlineData("ChangeName", nameof(CampsAuditActions.CampNameChanged))]
+    public async Task HumanMutation_AuditsTheActorInsteadOfAJob(string action, string expectedAction)
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -128,7 +128,7 @@ public sealed class CampServiceTests : CampsTestHarness
         }
 
         var entries = AuditLog.ReceivedCalls().Select(c => c.GetArguments()).ToList();
-        entries.Should().Contain(e => Equals(e[0], expectedAction));
+        entries.Should().Contain(e => Equals(((AuditActionDefinition)e[0]!).Name, expectedAction));
         entries.Should().OnlyContain(e => e[4] is Guid && Equals(e[4], TestActorId));
     }
 
@@ -147,7 +147,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         result.ErrorKey.Should().BeNull();
         var entry = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        entry[0].Should().Be(AuditAction.CampSeasonCreated);
+        entry[0].Should().Be(CampsAuditActions.CampSeasonCreated);
         entry[4].Should().Be(nameof(CampService));
     }
 
@@ -956,7 +956,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var lockDate = new LocalDate(2026, 3, 1);
         AuditLog.ClearReceivedCalls();
         var observedSave = false;
-        AuditLog.When(a => a.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        AuditLog.When(a => a.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()))
             .Do(_ => observedSave = action switch
             {
@@ -976,9 +976,9 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var expectedAction = action switch
         {
-            "Open" => AuditAction.CampRegistrationOpened,
-            "Close" => AuditAction.CampRegistrationClosed,
-            "LockDate" => AuditAction.CampNameLockDateChanged,
+            "Open" => CampsAuditActions.CampRegistrationOpened,
+            "Close" => CampsAuditActions.CampRegistrationClosed,
+            "LockDate" => CampsAuditActions.CampNameLockDateChanged,
             _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
         var arguments = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
@@ -1212,7 +1212,7 @@ public sealed class CampServiceTests : CampsTestHarness
             await SaveAllAsync(ct);
         }
         var actorId = Guid.NewGuid();
-        AuditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+        AuditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             actorId, Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(async _ => await requestCancellation.CancelAsync());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -1666,7 +1666,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var member = await CampsDb.CampMembers.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         member.UserId.Should().Be(survivorId);
         member.ConfirmedByUserId.Should().Be(TestActorId);
-        await AuditLog.Received(1).LogAsync(AuditAction.CampMemberAddedByLead, nameof(CampMember), member.Id,
+        await AuditLog.Received(1).LogAsync(CampsAuditActions.CampMemberAddedByLead, nameof(CampMember), member.Id,
             Arg.Any<string>(), TestActorId, survivorId, nameof(User));
     }
 
@@ -1756,7 +1756,7 @@ public sealed class CampServiceTests : CampsTestHarness
             season.Id, roleDefinitionId, memberId, actorUserId, Arg.Any<CancellationToken>());
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampMemberAddedByLead,
+            CampsAuditActions.CampMemberAddedByLead,
             nameof(CampMember), memberId,
             Arg.Any<string>(), actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1784,7 +1784,7 @@ public sealed class CampServiceTests : CampsTestHarness
         member.ConfirmedByUserId.Should().Be(actorUserId);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampMemberAddedByLead,
+            CampsAuditActions.CampMemberAddedByLead,
             nameof(CampMember), member.Id,
             Arg.Any<string>(), actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1871,7 +1871,7 @@ public sealed class CampServiceTests : CampsTestHarness
             season.Id, roleDefinitionId, existing.Id, actorUserId, Arg.Any<CancellationToken>());
         // No new audit log for an already-active member.
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
+            CampsAuditActions.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -2098,7 +2098,7 @@ public sealed class CampServiceTests : CampsTestHarness
         updated.Status.Should().Be(CampSeasonStatus.Full);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampSeasonStatusChanged,
+            CampsAuditActions.CampSeasonStatusChanged,
             nameof(CampSeason), season.Id,
             Arg.Any<string>(), TestActorId, camp.Id, nameof(Camp));
     }
@@ -2226,7 +2226,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = await CreateTestCampAsync();
         var season = await CampsDb.CampSeasons.AsNoTracking().SingleAsync(s => s.CampId == camp.Id, ct);
         var failure = new InvalidOperationException("Private audit-store diagnostic");
-        AuditLog.When(a => a.LogAsync(AuditAction.CampUpdated, Arg.Any<string>(), camp.Id,
+        AuditLog.When(a => a.LogAsync(CampsAuditActions.CampUpdated, Arg.Any<string>(), camp.Id,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()))
             .Do(_ => throw failure);
         var input = new CampUpdateInput(camp.Id, camp.ContactEmail, camp.ContactPhone, null, null,
@@ -2282,7 +2282,7 @@ public sealed class CampServiceTests : CampsTestHarness
         };
         CampsDb.CampImages.Add(image);
         await SaveAllAsync(ct);
-        var action = deleteCamp ? AuditAction.CampDeleted : AuditAction.CampImageDeleted;
+        var action = deleteCamp ? CampsAuditActions.CampDeleted : CampsAuditActions.CampImageDeleted;
         var entityId = deleteCamp ? camp.Id : image.Id;
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var storage = Substitute.For<IFileStorage>();

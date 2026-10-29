@@ -852,7 +852,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<CancellationToken>());
         // The trim is named in the audit entry alongside the doc ids.
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
+            ExpensesAuditActions.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
             Arg.Is<string>(s =>
                 s.Contains("doc-a, doc-b, doc-c") &&
                 s.Contains("'C' booked €50.00 of €100.00")),
@@ -898,7 +898,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _repo.Received(1).MarkOutboxProcessedAsync(
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
+            ExpensesAuditActions.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
             Arg.Is<string>(s =>
                 s.Contains("doc-first") &&
                 s.Contains("'second.pdf' (€100.00) not booked — authorized maximum reached.")),
@@ -932,7 +932,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         var audit = _auditLog.ReceivedCalls().Single(c =>
             string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)
-            && Equals(c.GetArguments()[0], AuditAction.ExpenseHoldedPushed));
+            && Equals(c.GetArguments()[0], ExpensesAuditActions.ExpenseHoldedPushed));
         var summary = (string)audit.GetArguments()[3]!;
         summary.Length.Should().BeLessThanOrEqualTo(3500);
         summary.Should().EndWith("…");
@@ -994,7 +994,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         if (writeoff)
         {
             await _auditLog.Received(1).LogAsync(
-                AuditAction.ExpenseHoldedFailed, Arg.Any<string>(), report.Id,
+                ExpensesAuditActions.ExpenseHoldedFailed, Arg.Any<string>(), report.Id,
                 Arg.Is<string>(s => s.Length <= 4000 && s.Contains(savedError, StringComparison.Ordinal)),
                 Arg.Any<string>());
         }
@@ -1072,7 +1072,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _repo.DidNotReceiveWithAnyArgs()
             .IncrementOutboxRetryAsync(Guid.Empty, null!, default, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedFailed, Arg.Any<string>(), report.Id,
+            ExpensesAuditActions.ExpenseHoldedFailed, Arg.Any<string>(), report.Id,
             Arg.Any<string>(), Arg.Any<string>());
     }
 
@@ -1153,7 +1153,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
+            ExpensesAuditActions.ExpenseHoldedPushed, Arg.Any<string>(), report.Id,
             Arg.Is<string>(s => s.Contains("holded-doc-42")), Arg.Any<string>());
     }
 
@@ -1303,7 +1303,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         result.Succeeded.Should().BeTrue();
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedRequeued, Arg.Any<string>(), reportId,
+            ExpensesAuditActions.ExpenseHoldedRequeued, Arg.Any<string>(), reportId,
             Arg.Any<string>(), actorId);
     }
 
@@ -1318,7 +1318,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         result.Succeeded.Should().BeFalse();
         await _auditLog.DidNotReceiveWithAnyArgs()
-            .LogAsync(default(AuditAction), null!, default, null!, Guid.Empty);
+            .LogAsync(null!, null!, default, null!, Guid.Empty);
     }
 
     [HumansFact]

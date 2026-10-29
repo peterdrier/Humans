@@ -222,7 +222,7 @@ internal sealed partial class TeamResourceService(
 
         if (result.Success && result.Resource is not null)
         {
-            await AuditResourceChangeAsync(AuditAction.GoogleResourceLinked, result.Resource,
+            await AuditResourceChangeAsync(GoogleIntegrationAuditActions.GoogleResourceLinked, result.Resource,
                 $"Linked {result.Resource.ResourceType} resource to team.", actorUserId);
         }
         return result;
@@ -288,7 +288,7 @@ internal sealed partial class TeamResourceService(
         logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
             lookup.Group.NormalizedEmail, lookup.Group.DisplayName, teamId);
 
-        await AuditResourceChangeAsync(AuditAction.GoogleResourceLinked, resource,
+        await AuditResourceChangeAsync(GoogleIntegrationAuditActions.GoogleResourceLinked, resource,
             "Linked Google Group resource to team.", actorUserId);
         return new LinkResourceResult(true, Resource: resource);
     }
@@ -358,7 +358,7 @@ internal sealed partial class TeamResourceService(
         await repository.UnlinkAsync(resourceId, ct);
         if (existing.IsActive)
         {
-            await AuditResourceChangeAsync(AuditAction.GoogleResourceUnlinked, existing,
+            await AuditResourceChangeAsync(GoogleIntegrationAuditActions.GoogleResourceUnlinked, existing,
                 "Unlinked resource from team.", actorUserId);
         }
         logger.LogInformation("Unlinked resource {ResourceId} ({ResourceName})", resourceId, existing.Name);
@@ -378,7 +378,7 @@ internal sealed partial class TeamResourceService(
         foreach (var resource in deactivated)
         {
             await auditLogService.LogAsync(
-                AuditAction.GoogleResourceDeactivated,
+                GoogleIntegrationAuditActions.GoogleResourceDeactivated,
                 nameof(GoogleResource),
                 resource.Id,
                 $"Resource '{resource.Name}' deactivated because owning team was soft-deleted.",
@@ -402,7 +402,7 @@ internal sealed partial class TeamResourceService(
         var updated = await repository.UpdatePermissionLevelAsync(resourceId, level, ct);
         if (updated)
         {
-            await AuditResourceChangeAsync(AuditAction.GoogleResourceUpdated, existing,
+            await AuditResourceChangeAsync(GoogleIntegrationAuditActions.GoogleResourceUpdated, existing,
                 $"Set Drive permission level from {existing.DrivePermissionLevel} to {level}.", actorUserId);
             logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
         }
@@ -442,7 +442,7 @@ internal sealed partial class TeamResourceService(
             }
 
             // Audit the committed preference, even if the subsequent Drive enforcement fails.
-            await AuditResourceChangeAsync(AuditAction.GoogleResourceUpdated, mutated,
+            await AuditResourceChangeAsync(GoogleIntegrationAuditActions.GoogleResourceUpdated, mutated,
                 $"Set desired inherited-access restriction from {existing.RestrictInheritedAccess} to {restrict}; Drive enforcement requested.", actorUserId);
             var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
             if (error is not null)
@@ -463,7 +463,7 @@ internal sealed partial class TeamResourceService(
     }
 
     private Task AuditResourceChangeAsync(
-        AuditAction action, GoogleResource resource, string description, Guid? actorUserId) =>
+        AuditActionDefinition action, GoogleResource resource, string description, Guid? actorUserId) =>
         actorUserId is { } actor
             ? auditLogService.LogAsync(action, nameof(GoogleResource), resource.Id, description,
                 actor, resource.TeamId, TeamAuditEntityType)

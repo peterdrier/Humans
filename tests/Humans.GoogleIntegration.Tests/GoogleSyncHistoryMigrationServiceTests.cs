@@ -83,7 +83,7 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
     {
         var audit = Granted(Guid.NewGuid()) with
         {
-            Action = nameof(AuditAction.GoogleResourceAccessRevoked),
+            Action = GoogleIntegrationAuditActions.GoogleResourceAccessRevoked.Name,
             Success = false,
             ErrorMessage = "Google group remove failed for a@b.org"
         };
@@ -136,7 +136,7 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
     [HumansFact]
     public async Task MigrateAsync_SkipsRowsWithNoSyncLogEquivalent()
     {
-        var otherAction = Granted(Guid.NewGuid()) with { Action = nameof(AuditAction.GoogleResourceProvisioned) };
+        var otherAction = Granted(Guid.NewGuid()) with { Action = GoogleIntegrationAuditActions.GoogleResourceProvisioned.Name };
         var noPayload = Granted(Guid.NewGuid()) with { SyncSource = null, Success = null };
         Legacy(otherAction, noPayload, Granted(Guid.NewGuid()));
 
@@ -186,7 +186,7 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
 
     private static LegacyGoogleSyncAuditRow Granted(Guid resourceId) => new(
         Id: Guid.NewGuid(),
-        Action: nameof(AuditAction.GoogleResourceAccessGranted),
+        Action: GoogleIntegrationAuditActions.GoogleResourceAccessGranted.Name,
         OccurredAt: Noon,
         Description: "GoogleWorkspaceSyncService: Granted Drive access",
         ResourceId: resourceId,

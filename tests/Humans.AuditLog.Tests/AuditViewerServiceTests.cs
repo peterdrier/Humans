@@ -10,7 +10,7 @@ namespace Humans.AuditLog.Tests;
 public class AuditViewerServiceTests
 {
     private static readonly Instant FixedAt = Instant.FromUtc(2026, 4, 30, 17, 0);
-    private static readonly AuditActionRegistry Registry = new([new LegacyAuditActions()]);
+    private static readonly AuditActionRegistry Registry = new([new TestActions()]);
 
     [HumansFact]
     public async Task GetForUserAsync_ResolvesActorAndSubjectDisplayNames()
@@ -18,7 +18,7 @@ public class AuditViewerServiceTests
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
-            action: LegacyAuditActions.ShiftSignupVoluntold,
+            action: TestActions.ShiftSignupVoluntold,
             actorId: actor,
             entityType: "ShiftSignup",
             entityId: Guid.NewGuid(),
@@ -37,7 +37,7 @@ public class AuditViewerServiceTests
 
         events.Should().HaveCount(1);
         var ev = events[0];
-        ev.Action.Should().BeSameAs(LegacyAuditActions.ShiftSignupVoluntold);
+        ev.Action.Should().BeSameAs(TestActions.ShiftSignupVoluntold);
         ev.ActorDisplayName.Should().Be("Frank");
         ev.SubjectUserId.Should().Be(viewer);
         ev.SubjectDisplayName.Should().Be("Peter");
@@ -67,7 +67,7 @@ public class AuditViewerServiceTests
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
-            action: LegacyAuditActions.ShiftSignupVoluntold,
+            action: TestActions.ShiftSignupVoluntold,
             actorId: actor,
             entityType: "ShiftSignup",
             entityId: Guid.NewGuid(),
@@ -96,7 +96,7 @@ public class AuditViewerServiceTests
         var viewer = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var entry = MakeEntry(
-            action: LegacyAuditActions.RoleAssigned,
+            action: TestActions.RoleAssigned,
             actorId: viewer,
             entityType: "Team",
             entityId: teamId,
@@ -128,7 +128,7 @@ public class AuditViewerServiceTests
     {
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
-            action: LegacyAuditActions.MemberSuspended,
+            action: TestActions.MemberSuspended,
             actorId: actor,
             entityType: "User",
             entityId: Guid.NewGuid(),

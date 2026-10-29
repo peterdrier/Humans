@@ -11,6 +11,7 @@ using Humans.Consent.Services;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Consent;
 
@@ -25,6 +26,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, ConsentAuditActions>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();

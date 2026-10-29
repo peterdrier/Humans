@@ -120,7 +120,7 @@ public class HoldedOutboxDuplicateGuardTests
         (await _repo.GetByIdAsync(_reportId, ct))!.Lines.Single().HoldedDocId.Should().Be("doc-A");
         (await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, ct)).Should().BeEmpty();
         await _audit.Received(1).LogAsync(
-            AuditAction.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
+            ExpensesAuditActions.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
             Arg.Is<string>(d => d.Contains("doc-A", StringComparison.Ordinal)
                 && d.Contains("orphan purchase document doc-B", StringComparison.Ordinal)
                 && d.Contains("manual removal in Holded", StringComparison.Ordinal)),

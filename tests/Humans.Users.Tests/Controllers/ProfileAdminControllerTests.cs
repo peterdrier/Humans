@@ -104,7 +104,7 @@ public class ProfileAdminControllerTests
         var result = await BuildController().DeleteOrphanEmail(emailId, Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.OrphanUserEmailDeleted,
+            UsersAuditActions.OrphanUserEmailDeleted,
             nameof(UserEmail), emailId,
             Arg.Any<string>(),
             _adminUserId);
@@ -120,7 +120,7 @@ public class ProfileAdminControllerTests
         var result = await BuildController().DeleteOrphanEmail(emailId, Xunit.TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>());
         result.Should().BeOfType<RedirectToActionResult>();
     }

@@ -39,7 +39,7 @@ public class AuditLogViewComponentTests
     }
 
     private static AuditEvent Event(Instant occurredAt, string description = "entry") => new(
-        Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: LegacyAuditActions.StoreProductPriceChanged,
+        Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: TestActions.StoreProductPriceChanged,
         ActorUserId: null, ActorDisplayName: null, EntityType: "StoreProduct", EntityId: Guid.NewGuid(),
         SubjectUserId: null, SubjectDisplayName: null, TargetTeamId: null, TargetTeamName: null,
         TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description);

@@ -12,6 +12,7 @@ using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
+using Humans.Users;
 
 namespace Humans.Application.Services.Users.AccountLifecycle;
 
@@ -68,7 +69,7 @@ internal sealed class AccountDeletionService(
         var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
         await auditLogService.LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
             userId);
 
@@ -143,12 +144,12 @@ internal sealed class AccountDeletionService(
         if (actorId is Guid actor)
         {
             await auditLogService.LogAsync(
-                AuditAction.AccountPurged, nameof(User), userId, description, actor);
+                UsersAuditActions.AccountPurged, nameof(User), userId, description, actor);
         }
         else
         {
             await auditLogService.LogAsync(
-                AuditAction.AccountPurged, nameof(User), userId, description,
+                UsersAuditActions.AccountPurged, nameof(User), userId, description,
                 jobName: nameof(AccountDeletionService));
         }
 

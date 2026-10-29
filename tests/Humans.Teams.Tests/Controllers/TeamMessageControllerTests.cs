@@ -138,7 +138,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<ForbidResult>();
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -151,7 +151,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -201,7 +201,7 @@ public sealed class TeamMessageControllerTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team" && m.UserId == _targetId), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.FacilitatedMessageSent, "User", _targetId,
+            EmailAuditActions.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("from team Infrastructure", StringComparison.Ordinal)
                 && !d.Contains("infra@nobodies.team", StringComparison.Ordinal)),
             _viewerId, _teamId, "Team");
@@ -211,7 +211,7 @@ public sealed class TeamMessageControllerTests
     public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
     {
         var failure = new InvalidOperationException("Audit unavailable");
-        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        _audit.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(failure);
 
         var result = await _controller.SendMessage(

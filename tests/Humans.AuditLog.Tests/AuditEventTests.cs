@@ -14,7 +14,7 @@ public class AuditEventTests
     {
         var viewer = Guid.NewGuid();
         var ev = MakeEvent(
-            action: LegacyAuditActions.ShiftSignupCreated,
+            action: TestActions.ShiftSignupCreated,
             actorId: viewer,
             actorName: "Frank",
             entityType: "ShiftSignup",
@@ -32,7 +32,7 @@ public class AuditEventTests
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var ev = MakeEvent(
-            action: LegacyAuditActions.ShiftSignupVoluntold,
+            action: TestActions.ShiftSignupVoluntold,
             actorId: actor,
             actorName: "Frank",
             entityType: "ShiftSignup",
@@ -52,7 +52,7 @@ public class AuditEventTests
     public void TailStyleAction_AppendsDescriptionTail()
     {
         var ev = MakeEvent(
-            action: LegacyAuditActions.ShiftSignupBailed,
+            action: TestActions.ShiftSignupBailed,
             actorId: Guid.NewGuid(),
             actorName: "Peter",
             entityType: "ShiftSignup",
@@ -69,7 +69,7 @@ public class AuditEventTests
     public void SentenceStyleAction_DoesNotAppendDescriptionTail()
     {
         var ev = MakeEvent(
-            action: LegacyAuditActions.TeamJoinedDirectly,
+            action: TestActions.TeamJoinedDirectly,
             actorId: Guid.NewGuid(),
             actorName: "Peter",
             entityType: "Team",
@@ -88,7 +88,7 @@ public class AuditEventTests
     public void MissingActor_RendersSystem()
     {
         var ev = MakeEvent(
-            action: LegacyAuditActions.VolunteerApproved,
+            action: TestActions.VolunteerApproved,
             actorId: null,
             actorName: null,
             entityType: "User",
@@ -105,7 +105,7 @@ public class AuditEventTests
     public void UnmappedAction_ReturnsNull()
     {
         var ev = MakeEvent(
-            action: LegacyAuditActions.AnomalousPermissionDetected,
+            action: TestActions.AnomalousPermissionDetected,
             actorId: null,
             actorName: null,
             entityType: "GoogleResource",
@@ -118,7 +118,7 @@ public class AuditEventTests
     public void RenderStructured_ReturnsVerb()
     {
         var ev = MakeEvent(
-            action: LegacyAuditActions.ShiftSignupCreated,
+            action: TestActions.ShiftSignupCreated,
             actorId: Guid.NewGuid(),
             actorName: "Peter",
             entityType: "ShiftSignup",
@@ -140,7 +140,7 @@ public class AuditEventTests
         var teamId = Guid.NewGuid();
 
         var ev = MakeEvent(
-            action: LegacyAuditActions.TeamMemberAdded,
+            action: TestActions.TeamMemberAdded,
             actorId: actor,
             actorName: "Frank",
             entityType: "Team",

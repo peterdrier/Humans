@@ -486,10 +486,10 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         await Sut.BackfillLegacyIdentityEmailsAsync(actorId, Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u1,
+            UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), u1,
             Arg.Is<string>(s => s.Contains("a@x.com")), actorId);
         await _audit.Received(1).LogAsync(
-            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u2,
+            UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), u2,
             Arg.Is<string>(s => s.Contains("b@x.com")), actorId);
     }
 
@@ -502,7 +502,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>());
     }
     [HumansFact]
@@ -519,7 +519,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
 
         result.Should().ContainSingle().Which.Should().Be((ok, "ok@x.com"));
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), refused,
+            UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), refused,
             Arg.Any<string>(), Arg.Any<Guid>());
     }
 

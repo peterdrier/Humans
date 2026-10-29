@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Users;
 
@@ -36,6 +37,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
         // On every section's context pipeline: catches User/UserEmail/CommunicationPreference

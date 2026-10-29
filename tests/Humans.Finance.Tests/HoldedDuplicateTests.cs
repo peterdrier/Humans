@@ -376,12 +376,12 @@ public class HoldedDuplicateTests
         await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-a", Arg.Any<CancellationToken>());
         await _client.DidNotReceive().DeleteContactAsync("c1", Arg.Any<CancellationToken>());
 
-        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("doc-b") && d.Contains("kept doc-a") && d.Contains("41000067")),
             Actor, UserId, nameof(User));
-        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("doc-c")), Actor, UserId, nameof(User));
-        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), UserId,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, nameof(User), UserId,
             Arg.Is<string>(d => d.Contains("contact c2") && d.Contains("kept c1")), Actor);
     }
 
@@ -401,7 +401,7 @@ public class HoldedDuplicateTests
         member.Failures.Should().ContainSingle().Which.Should().Contain("doc-b");
         await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-paid", Arg.Any<CancellationToken>());
         await _client.DidNotReceive().DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -442,7 +442,7 @@ public class HoldedDuplicateTests
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
         result.Members.Single().DeletedDocIds.Should().Equal("doc-b2");
-        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, "ExpenseLine", line2.LineId,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, "ExpenseLine", line2.LineId,
             Arg.Is<string>(d => d.Contains("doc-b2") && d.Contains("kept doc-b")), Actor, UserId, nameof(User));
     }
 

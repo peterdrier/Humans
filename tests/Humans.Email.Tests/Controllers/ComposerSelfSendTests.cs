@@ -75,7 +75,7 @@ public sealed class ComposerSelfSendTests
                 && m.Category == MessageCategory.System),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.EmailComposerSelfTestSent, Arg.Any<string>(), UserId, Arg.Any<string>(), UserId,
+            EmailAuditActions.EmailComposerSelfTestSent, Arg.Any<string>(), UserId, Arg.Any<string>(), UserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -84,7 +84,7 @@ public sealed class ComposerSelfSendTests
     {
         GivenAddress("me@example.com");
         var failure = new InvalidOperationException("Audit unavailable");
-        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        _audit.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(failure));
 
@@ -114,7 +114,7 @@ public sealed class ComposerSelfSendTests
             .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
 
         (await send.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -136,7 +136,7 @@ public sealed class ComposerSelfSendTests
 
         result.Should().BeOfType<UnauthorizedResult>();
         await _email.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

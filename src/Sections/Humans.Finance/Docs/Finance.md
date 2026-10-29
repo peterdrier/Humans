@@ -360,6 +360,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 Derived from `Humans.Finance.csproj`'s project references and the contracts namespaces the service uses (Budget, Holded, GDPR and AuditLog are referenced as section projects, whose public face is their `Contracts/` folder; Users and Email through their `.Contracts` leaves):
 
+- **Audit actions:** declared on `FinanceAuditActions` (`src/Sections/Humans.Finance.Contracts/FinanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `IbanReveal`, `HoldedExpenseAccountCreated`, `HoldedExpenseAccountLinked`, `HoldedExpenseAccountActiveChanged`, `SepaPayoutTransfer`, `SepaPayoutTransferBooked`, `SepaBankLineSkipped`, `SepaPayoutTransferWithdrawn`, `HoldedDuplicateRemoved`, `HoldedCreditorBound`, `HoldedCreditorUnbound`, `HoldedCreditorAccountNumChanged`, `HoldedCategoryAccountProvisioned`. The class is public in `Humans.Finance.Contracts` because Expenses includes `IbanReveal` rows in the member's GDPR export.
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from and the plan cash flow projects. Read-only.
 - **Tickets** (`Humans.Tickets.Contracts`): `ITicketService.GetTicketOrdersAsync`, the paid orders whose gross revenue seeds the cash-flow runway. Read-only.
 - **Holded** (`Humans.Holded.Contracts`): `IHoldedService` for cached ledger lines and account balances, and `IHoldedClient` for the live contact/account calls the provisioning and bind paths make.

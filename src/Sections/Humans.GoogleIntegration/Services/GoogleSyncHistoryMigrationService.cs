@@ -68,12 +68,12 @@ internal sealed class GoogleSyncHistoryMigrationService(
     /// </summary>
     private static GoogleSyncLogEntry? Map(LegacyGoogleSyncAuditRow row)
     {
-        var action = row.Action switch
-        {
-            nameof(AuditAction.GoogleResourceAccessGranted) => GoogleSyncLogAction.AccessGranted,
-            nameof(AuditAction.GoogleResourceAccessRevoked) => GoogleSyncLogAction.AccessRevoked,
-            _ => (GoogleSyncLogAction?)null
-        };
+        GoogleSyncLogAction? action =
+            string.Equals(row.Action, GoogleIntegrationAuditActions.GoogleResourceAccessGranted.Name, StringComparison.Ordinal)
+                ? GoogleSyncLogAction.AccessGranted
+                : string.Equals(row.Action, GoogleIntegrationAuditActions.GoogleResourceAccessRevoked.Name, StringComparison.Ordinal)
+                    ? GoogleSyncLogAction.AccessRevoked
+                    : null;
 
         if (action is null || row.SyncSource is null || row.Success is null)
             return null;
@@ -106,7 +106,8 @@ internal sealed class GoogleSyncHistoryMigrationService(
     }
 
     private static string SkipReason(LegacyGoogleSyncAuditRow row) =>
-        row.Action is not (nameof(AuditAction.GoogleResourceAccessGranted) or nameof(AuditAction.GoogleResourceAccessRevoked))
+        !string.Equals(row.Action, GoogleIntegrationAuditActions.GoogleResourceAccessGranted.Name, StringComparison.Ordinal)
+        && !string.Equals(row.Action, GoogleIntegrationAuditActions.GoogleResourceAccessRevoked.Name, StringComparison.Ordinal)
             ? $"{row.Action} has no google_sync_log action"
             : "no sync payload — SyncSource or Success is null";
 

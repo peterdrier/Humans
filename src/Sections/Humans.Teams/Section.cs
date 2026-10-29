@@ -15,6 +15,7 @@ using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Teams;
 
@@ -29,6 +30,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, TeamsAuditActions>();
         services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
 
         services.AddSingleton<ITeamRepository, TeamRepository>();

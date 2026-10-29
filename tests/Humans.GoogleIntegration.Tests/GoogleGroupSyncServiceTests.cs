@@ -229,7 +229,7 @@ public sealed class GoogleGroupSyncServiceTests
         scheduled.GroupKey.Should().Be("team@nobodies.team");
         scheduled.RetryAttempt.Should().Be(1);
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.GoogleSyncRetryScheduled,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
             nameof(GoogleResource),
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("Scheduled retry")),
@@ -256,7 +256,7 @@ public sealed class GoogleGroupSyncServiceTests
         diff.ErrorMessage.Should().Contain("backend error");
         _syncScheduler.Scheduled.Should().BeEmpty();
         await _auditLogService.DidNotReceive().LogAsync(
-            AuditAction.GoogleSyncRetryScheduled,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
             Arg.Any<string>(),
             Arg.Any<Guid>(),
             Arg.Any<string>(),
@@ -445,7 +445,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _provisioningClient.DidNotReceiveWithAnyArgs()
             .LookupGroupIdAsync(null!, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("collision")),
@@ -681,7 +681,7 @@ public sealed class GoogleGroupSyncServiceTests
             "new-group@nobodies.team", Arg.Any<CancellationToken>());
         await _membershipClient.Received(1).CreateMembershipAsync(
             "group-new", "alice@nobodies.team", Arg.Any<CancellationToken>());
-        await _auditLogService.Received(1).LogAsync(AuditAction.GoogleResourceProvisioned,
+        await _auditLogService.Received(1).LogAsync(GoogleIntegrationAuditActions.GoogleResourceProvisioned,
             nameof(GoogleResource), Guid.Empty, Arg.Is<string>(text => text.Contains("new-group@nobodies.team")),
             nameof(GoogleGroupSyncService));
     }

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
@@ -31,6 +32,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     private readonly FakeClock _clock = new(Now);
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IUserWrite _userWrite = Substitute.For<IUserWrite>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly List<UserInfo> _all = [];
     private readonly LegalDbContext _db;
     private readonly ConsentReviewService _sut;
@@ -40,7 +42,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var factory = new TestDbContextFactory<LegalDbContext>(
             new DbContextOptionsBuilder<LegalDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         _db = factory.CreateDbContext();
-        _sut = new ConsentReviewService(new ConsentReviewRepository(factory), _users, _userWrite, _clock);
+        _sut = new ConsentReviewService(new ConsentReviewRepository(factory), _users, _userWrite, _audit, _clock);
         _users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_ => _all.ToList());
         _userWrite.SetRejectedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
     }
@@ -168,6 +170,8 @@ public sealed class ConsentReviewServiceTests : IDisposable
             CheckedByUserId = reviewer,
             Notes = "Looks good",
         }, o => o.ExcludingMissingMembers());
+        await _audit.Received(1).LogAsync(
+            ConsentAuditActions.ConsentCheckCleared, "Profile", user.Id, "Consent check cleared", reviewer);
     }
 
     [HumansFact]
@@ -175,12 +179,31 @@ public sealed class ConsentReviewServiceTests : IDisposable
     {
         var user = SeedUser(LegacyProfile(LegacyConsentCheckStatus.Cleared, isApproved: true));
 
-        (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Flagged, Guid.NewGuid(), "Concern", Ct))
+        var reviewer = Guid.NewGuid();
+        (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Flagged, reviewer, "Concern", Ct))
             .Success.Should().BeTrue();
 
         var row = await RowAsync(user.Id);
         row!.Status.Should().Be(ConsentCheckStatus.Flagged);
         row.IsApproved.Should().BeFalse();
+        await _audit.Received(1).LogAsync(
+            ConsentAuditActions.ConsentCheckFlagged, "Profile", user.Id, "Consent check flagged: Concern", reviewer);
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheck_RefusedWrite_AuditsNothing()
+    {
+        var user = SeedUser();
+        (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Flagged, Guid.NewGuid(), null, Ct)).Success.Should().BeTrue();
+        _audit.ClearReceivedCalls();
+
+        // A flagged-then-rejected member cannot be cleared; the refusal leaves no audit row.
+        (await _sut.RecordRejectionAsync(user.Id, Guid.NewGuid(), "dup", Ct)).Success.Should().BeTrue();
+        _audit.ClearReceivedCalls();
+        (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, Guid.NewGuid(), null, Ct))
+            .Success.Should().BeFalse();
+
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

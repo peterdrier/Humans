@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.GoogleIntegration;
 
@@ -21,6 +22,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, GoogleIntegrationAuditActions>();
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
 
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);

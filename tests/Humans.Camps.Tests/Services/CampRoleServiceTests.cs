@@ -99,7 +99,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
 
         // Audit happens AFTER save.
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampRoleDefinitionCreated,
+            CampsAuditActions.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
             created.Id,
             Arg.Any<string>(),
@@ -120,7 +120,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already exists");
         (await _service.ListDefinitionsAsync(true, Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -157,7 +157,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var stored = (await _service.ListDefinitionsAsync(true, ct)).Should().ContainSingle().Subject;
         stored.Name.Should().Be(definition.Name);
         stored.Slug.Should().Be(definition.Slug);
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -189,7 +189,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         updated.MinimumRequired.Should().Be(0);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampRoleDefinitionUpdated,
+            CampsAuditActions.CampRoleDefinitionUpdated,
             nameof(CampRoleDefinition),
             def.Id,
             Arg.Any<string>(),
@@ -238,7 +238,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         reloaded!.DeactivatedAt.Should().NotBeNull();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampRoleDefinitionDeactivated,
+            CampsAuditActions.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId);
     }
 
@@ -261,7 +261,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         reloaded!.DeactivatedAt.Should().BeNull();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampRoleDefinitionReactivated,
+            CampsAuditActions.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId);
     }
 
@@ -284,7 +284,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         assignments[0].CampMemberId.Should().Be(member.Id);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampRoleAssigned, nameof(CampRoleAssignment),
+            CampsAuditActions.CampRoleAssigned, nameof(CampRoleAssignment),
             Arg.Any<Guid>(), Arg.Any<string>(), _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
@@ -308,7 +308,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var def = await SeedDefinitionAsync();
         _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
             .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
-        AuditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+        AuditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(async _ => await request.CancelAsync());
         _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -461,7 +461,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         (await CampsDb.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampRoleUnassigned, nameof(CampRoleAssignment),
+            CampsAuditActions.CampRoleUnassigned, nameof(CampRoleAssignment),
             assignment.Id, Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

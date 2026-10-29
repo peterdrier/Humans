@@ -461,11 +461,11 @@ public class AccountProvisioningServiceTests
                     .ThrowsAsync(new InvalidOperationException("Profile creation failed"));
                 break;
             case "Audit":
-                _audit.LogAsync(AuditAction.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(), nameof(AccountProvisioningService),
+                _audit.LogAsync(UsersAuditActions.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(), nameof(AccountProvisioningService),
                     Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(new InvalidOperationException("Audit failed"));
                 break;
             case "DeletionAudit":
-                _audit.LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), row.Id, Arg.Any<string>(), nameof(AccountProvisioningService),
+                _audit.LogAsync(UsersAuditActions.UserEmailDeleted, nameof(UserEmail), row.Id, Arg.Any<string>(), nameof(AccountProvisioningService),
                     row.UserId, nameof(User)).ThrowsAsync(new InvalidOperationException("Deletion audit failed"));
                 break;
         }
@@ -490,7 +490,7 @@ public class AccountProvisioningServiceTests
 
         result.Created.Should().BeTrue();
         result.UserId.Should().NotBe(row.UserId);
-        await _audit.Received(1).LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), row.Id,
+        await _audit.Received(1).LogAsync(UsersAuditActions.UserEmailDeleted, nameof(UserEmail), row.Id,
             Arg.Is<string>(description => description.Contains(result.UserId.ToString(), StringComparison.Ordinal)),
             nameof(AccountProvisioningService), row.UserId, nameof(User));
         _userEmailFake.All.Should().ContainSingle().Which.UserId.Should().Be(result.UserId);
@@ -797,7 +797,7 @@ public class AccountProvisioningServiceTests
                 : Task.FromResult(true));
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
-        _audit.LogAsync(AuditAction.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
+        _audit.LogAsync(UsersAuditActions.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
             nameof(AccountProvisioningService)).Returns(_ =>
             {
                 Transaction.Current.Should().BeNull();
@@ -876,10 +876,10 @@ public class AccountProvisioningServiceTests
         _userRepo.All.Should().ContainSingle();
         await _userManager.Received(imported ? 0 : 1).CreateAsync(Arg.Any<User>());
         if (imported)
-            await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
+            await _audit.Received(1).LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), persistedUser.Id,
                 Arg.Any<string>(), nameof(AccountProvisioningService));
         else
-            await _audit.Received(1).LogAsync(AuditAction.StubProfileBackfilled, nameof(User), persistedUser.Id,
+            await _audit.Received(1).LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), persistedUser.Id,
                 Arg.Any<string>(), persistedUser.Id);
         await ProvisionAsync();
         profiles.Should().ContainSingle();

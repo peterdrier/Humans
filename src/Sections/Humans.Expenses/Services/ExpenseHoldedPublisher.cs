@@ -113,7 +113,7 @@ internal sealed class ExpenseHoldedPublisher(
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 
         await auditLogService.LogAsync(
-            AuditAction.ExpenseHoldedPushed,
+            ExpensesAuditActions.ExpenseHoldedPushed,
             AuditEntityTypes.Report, report.Id,
             pushedSummary,
             ExpenseReportBackgroundProcessor.OutboxJobName);

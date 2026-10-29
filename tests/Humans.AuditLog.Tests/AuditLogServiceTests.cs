@@ -24,7 +24,7 @@ public class AuditLogServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IUserService _userService;
     private readonly AuditLogService _service;
-    private static readonly AuditActionRegistry Registry = new([new LegacyAuditActions()]);
+    private static readonly AuditActionRegistry Registry = new([new TestActions()]);
 
     public AuditLogServiceTests()
     {
@@ -201,7 +201,7 @@ public class AuditLogServiceTests : IDisposable
     {
         var entityId = Guid.NewGuid();
 
-        await _service.LogAsync(LegacyAuditActions.RoleAssigned, nameof(User), entityId, "by definition", "TestJob");
+        await _service.LogAsync(TestActions.RoleAssigned, nameof(User), entityId, "by definition", "TestJob");
         await _service.LogAsync(AuditAction.RoleAssigned, nameof(User), entityId, "by enum", "TestJob");
 
         var stored = await _dbContext.AuditLogEntries.AsNoTracking()

@@ -3,7 +3,6 @@ using Humans.Base.Interfaces;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
-using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
@@ -41,7 +40,6 @@ public class DevPersonaSeederTests
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
-    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
     private readonly ICampRoleSeeding _campRoles = Substitute.For<ICampRoleSeeding>();
@@ -70,7 +68,6 @@ public class DevPersonaSeederTests
         _systemTeamSync,
         _users,
         _consentWrite,
-        _audit,
         _camps,
         _campSeeding,
         _campRoles,

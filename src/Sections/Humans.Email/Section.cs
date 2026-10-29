@@ -13,6 +13,7 @@ using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Email;
 
@@ -21,6 +22,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, EmailAuditActions>();
         services.AddSectionDbContext<EmailDbContext>(sentinelTable: "email_outbox_messages");
 
         services.AddSingleton<IEmailOutboxRepository, EmailOutboxRepository>();

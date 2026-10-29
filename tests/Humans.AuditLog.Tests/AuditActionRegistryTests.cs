@@ -76,11 +76,11 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void TheLegacyCatalogDeclaresEveryEnumValueOnce()
+    public void TheLegacyCatalogDeclaresOnlyEnumValues_EachOnce()
     {
         var names = new LegacyAuditActions().Actions.Select(a => a.Name).ToList();
 
-        names.Should().BeEquivalentTo(Enum.GetNames<AuditAction>());
+        names.Should().BeSubsetOf(Enum.GetNames<AuditAction>());
         names.Should().OnlyHaveUniqueItems();
     }
 }

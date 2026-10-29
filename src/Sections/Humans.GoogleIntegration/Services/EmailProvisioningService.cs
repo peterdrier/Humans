@@ -120,7 +120,7 @@ internal sealed class EmailProvisioningService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountProvisioned,
+                GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
                 provisionedByUserId);

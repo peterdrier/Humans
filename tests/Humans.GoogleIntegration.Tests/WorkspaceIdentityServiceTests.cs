@@ -204,7 +204,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
             .Be(new WorkspaceIdentity(info.Id, "alice@gmail.com", GoogleEmailStatus.Unknown));
         await _audit.Received(1).LogAsync(
-            AuditAction.UserEmailGoogleSet, nameof(User), info.Id,
+            GoogleIntegrationAuditActions.UserEmailGoogleSet, nameof(User), info.Id,
             "Set Google identity to alice@gmail.com (was alice@example.org)", actor,
             relatedEntityId: targetRowId, relatedEntityType: nameof(UserEmail));
     }
@@ -223,7 +223,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetAsync(info.Id, "alice@example.org", info.Id, Ct)).Should().BeFalse();
 
         _repo.Rows.Should().BeEmpty();
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

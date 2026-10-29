@@ -76,7 +76,7 @@ public class CampContactServiceTests : IDisposable
             "alice@example.com");
 
         await _auditLogService.Received(1).LogAsync(
-            Arg.Any<AuditAction>(),
+            Arg.Any<AuditActionDefinition>(),
             Arg.Any<string>(),
             _campId,
             Arg.Any<string>(),
@@ -218,7 +218,7 @@ public class CampContactServiceTests : IDisposable
     public async Task Contact_audit_failure_after_queueing_keeps_success_and_rate_limit()
     {
         var failure = new InvalidOperationException("Audit unavailable");
-        _auditLogService.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        _auditLogService.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(failure);
         var leadId = Guid.NewGuid();
         var send = () => _service.SendFacilitatedMessageAsync(

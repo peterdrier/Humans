@@ -936,7 +936,7 @@ public class HoldedFinanceServiceTests
         await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default);
         // An automated delete in Holded is the Board's to see, under the job that made it.
-        await _audit.Received(1).LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), userId,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, nameof(User), userId,
             Arg.Is<string>(d => d.Contains("contact-A") && d.Contains("contact-B")), "TestJob",
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -972,7 +972,7 @@ public class HoldedFinanceServiceTests
 
         id.Should().Be("contact-A");
         await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!);
-        await _audit.DidNotReceive().LogAsync(AuditAction.HoldedDuplicateRemoved, Arg.Any<string>(),
+        await _audit.DidNotReceive().LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1306,7 +1306,7 @@ public class HoldedFinanceServiceTests
         await MakeService().SetCreditorAccountNumAsync(
             userId, 40000060, "HoldedExpenseOutboxJob", TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.HoldedCreditorAccountNumChanged, "HoldedCreditorAccount", userId,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCreditorAccountNumChanged, "HoldedCreditorAccount", userId,
             Arg.Is<string>(d => d.Contains(beforeText) && d.Contains("40000060") && d.Contains("c-member")),
             "HoldedExpenseOutboxJob", userId, nameof(User));
     }
@@ -1331,7 +1331,7 @@ public class HoldedFinanceServiceTests
             userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), default!, default, default!, default(string)!, default, default);
+            null!, default!, default, default!, default(string)!, default, default);
     }
 
     [HumansFact]
@@ -1358,7 +1358,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), default!, default, default!, default(string)!, default, default);
+            null!, default!, default, default!, default(string)!, default, default);
     }
 
     [HumansFact]
@@ -1629,7 +1629,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), default!, default, default!, Guid.Empty);
+            null!, default!, default, default!, Guid.Empty);
     }
 
     [HumansFact]
@@ -1655,7 +1655,7 @@ public class HoldedFinanceServiceTests
                 c.UserId == userId && c.HoldedContactId == "c1" &&
                 c.SupplierAccountNum == 40000004 && c.Source == CreditorContactSource.Manual),
             FixedNow, Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.HoldedCreditorBound, Arg.Any<string>(), userId,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCreditorBound, Arg.Any<string>(), userId,
             Arg.Is<string>(d => d.Contains("40000004")), Admin, userId, Arg.Any<string?>());
     }
 
@@ -1842,7 +1842,7 @@ public class HoldedFinanceServiceTests
 
         removed.Should().BeTrue();
         await _repo.Received(1).DeleteCreditorContactAsync(userId, Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.HoldedCreditorUnbound, Arg.Any<string>(), userId,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCreditorUnbound, Arg.Any<string>(), userId,
             Arg.Is<string>(d => d.Contains("40000004") && d.Contains("c1")), Admin, userId, Arg.Any<string?>());
     }
 
@@ -1857,7 +1857,7 @@ public class HoldedFinanceServiceTests
 
         removed.Should().BeFalse();
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), default!, default, default!, Guid.Empty);
+            null!, default!, default, default!, Guid.Empty);
     }
 
     [HumansFact]
@@ -1966,7 +1966,7 @@ public class HoldedFinanceServiceTests
         row.IsActive.Should().BeTrue();
         row.Tag.Should().NotBeNullOrEmpty();
         catB.Should().NotBe(catA);
-        await _audit.Received(1).LogAsync(AuditAction.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
             Arg.Is<string>(d => d.Contains("6290010")), Admin, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -2022,7 +2022,7 @@ public class HoldedFinanceServiceTests
             blockStart: 6290010, addAll: false, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await _audit.Received(1).LogAsync(AuditAction.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
             Arg.Is<string>(d => d.Contains("6290010")), Admin, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -2746,7 +2746,7 @@ public class HoldedFinanceServiceTests
 
         // The audit trail is where an IBAN would leak if anything but the file carried it raw.
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransfer, Arg.Any<string>(), Arg.Any<Guid>(),
+            FinanceAuditActions.SepaPayoutTransfer, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
                                 && !d.Contains(AnaIban, StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
@@ -2828,7 +2828,7 @@ public class HoldedFinanceServiceTests
         saved.Should().NotBeNull();
         result.Xml.Should().Be(saved!.Xml);
         result.FileName.Should().Be(saved.FileName);
-        await _audit.Received(1).LogAsync(AuditAction.SepaPayoutTransfer,
+        await _audit.Received(1).LogAsync(FinanceAuditActions.SepaPayoutTransfer,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Admin, userId, Arg.Any<string>());
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), CancellationToken.None);
@@ -2865,7 +2865,7 @@ public class HoldedFinanceServiceTests
             Arg.Is<SepaPayoutFile>(f => f.Xml == result.Xml && f.FileName == result.FileName),
             Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransfer, Arg.Any<string>(), Arg.Any<Guid>(),
+            FinanceAuditActions.SepaPayoutTransfer, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), userId, Arg.Any<string>());
     }
 
@@ -3491,7 +3491,7 @@ public class HoldedFinanceServiceTests
             BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR", StringComparison.Ordinal)
                                 && d.Contains("e-1", StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
@@ -3540,7 +3540,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
             default, default, default, default!, default, default);
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
                                 && d.Contains("refused the journal entry", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
@@ -3592,7 +3592,7 @@ public class HoldedFinanceServiceTests
             BookableTransferId, FixedNow, actor, Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("ES79****789", StringComparison.Ordinal)
                                 && d.Contains("pay-a", StringComparison.Ordinal)
                                 && !d.Contains(AnaIban, StringComparison.Ordinal)),
@@ -3639,7 +3639,7 @@ public class HoldedFinanceServiceTests
 
         // Payments an admin caused are never invisible to the Board, even when the booking failed.
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
                                 && d.Contains("pay-a", StringComparison.Ordinal)
                                 && d.Contains("ES79****789", StringComparison.Ordinal)
@@ -3829,7 +3829,7 @@ public class HoldedFinanceServiceTests
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900102 && a.HoldedAccountId == "new-1"
                 && a.Label == "Workgroups / ALM 2027" && a.IsActive && a.CreatedAt == FixedNow),
             Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.HoldedExpenseAccountCreated, Arg.Any<string>(), Arg.Any<Guid>(),
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("62900102")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -3847,7 +3847,7 @@ public class HoldedFinanceServiceTests
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && a.Label == "workgroups /  alm 2027"),
             Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.HoldedExpenseAccountLinked, Arg.Any<string>(), Arg.Any<Guid>(),
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedExpenseAccountLinked, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -3929,7 +3929,7 @@ public class HoldedFinanceServiceTests
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && !a.IsActive && a.UpdatedAt == FixedNow),
             Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
+        await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(s => s.Contains("Retired") && s.Contains("62900150")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -3941,7 +3941,7 @@ public class HoldedFinanceServiceTests
         await MakeService().SetExpenseAccountActiveAsync(1, false, TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceive().LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
+        await _audit.DidNotReceive().LogAsync(FinanceAuditActions.HoldedExpenseAccountActiveChanged, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

@@ -190,7 +190,7 @@ internal sealed class ProfileEmailsController(
         }
         // SetPrimaryAsync takes no actor, so the controller audits.
         await auditLogService.LogAsync(
-            AuditAction.UserEmailPrimarySet,
+            UsersAuditActions.UserEmailPrimarySet,
             nameof(User), user.Id,
             $"Set primary email row {emailId}",
             user.Id,
@@ -239,7 +239,7 @@ internal sealed class ProfileEmailsController(
         Guid emailId,
         ContactFieldVisibility? visibility) =>
         auditLogService.LogAsync(
-            AuditAction.UserEmailVisibilityChanged,
+            UsersAuditActions.UserEmailVisibilityChanged,
             nameof(User), userId,
             $"Changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
             userId,
@@ -274,7 +274,7 @@ internal sealed class ProfileEmailsController(
 
     private Task LogSelfEmailDeletedAsync(Guid userId, Guid emailId) =>
         auditLogService.LogAsync(
-            AuditAction.UserEmailDeleted,
+            UsersAuditActions.UserEmailDeleted,
             nameof(User), userId,
             $"Deleted email row {emailId}",
             userId,
@@ -432,7 +432,7 @@ internal sealed class ProfileEmailsController(
             if (removeLogin.Succeeded)
             {
                 await auditLogService.LogAsync(
-                    AuditAction.UserEmailUnlinked,
+                    UsersAuditActions.UserEmailUnlinked,
                     nameof(User), user.Id,
                     $"Unlinked orphan {provider} login (no matching UserEmail row)",
                     user.Id);
@@ -495,7 +495,7 @@ internal sealed class ProfileEmailsController(
         }
         // SetPrimaryAsync takes no actor, so the controller audits.
         await auditLogService.LogAsync(
-            AuditAction.UserEmailPrimarySet,
+            UsersAuditActions.UserEmailPrimarySet,
             nameof(User), id,
             $"Admin set primary email row {emailId}",
             actor.Id,
@@ -569,7 +569,7 @@ internal sealed class ProfileEmailsController(
     {
         var trimmedEmail = email.Trim();
         await auditLogService.LogAsync(
-            AuditAction.UserEmailAdded,
+            UsersAuditActions.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pending email {trimmedEmail} for user {userId} (conflict: {result.IsConflict})",
             actorId);
@@ -640,7 +640,7 @@ internal sealed class ProfileEmailsController(
         }
 
         await auditLogService.LogAsync(
-            AuditAction.UserEmailAdded,
+            UsersAuditActions.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
             actorUserId);
@@ -731,7 +731,7 @@ internal sealed class ProfileEmailsController(
         }
 
         await auditLogService.LogAsync(
-            AuditAction.UserEmailDeleted,
+            UsersAuditActions.UserEmailDeleted,
             nameof(User), userId,
             $"Admin deleted email row {emailId}",
             actorId,
@@ -772,7 +772,7 @@ internal sealed class ProfileEmailsController(
         ContactFieldVisibility? visibility)
     {
         await auditLogService.LogAsync(
-            AuditAction.UserEmailVisibilityChanged,
+            UsersAuditActions.UserEmailVisibilityChanged,
             nameof(User), userId,
             $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
             actorId,

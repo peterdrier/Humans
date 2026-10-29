@@ -116,7 +116,7 @@ public sealed class DuplicateAccountServiceTests
         await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.DuplicateAccountFlagged, nameof(User), low, Arg.Any<string>(),
+            UsersAuditActions.DuplicateAccountFlagged, nameof(User), low, Arg.Any<string>(),
             DuplicateAccountService.ScanJobName, high, nameof(User));
     }
 
@@ -129,10 +129,10 @@ public sealed class DuplicateAccountServiceTests
         SetUsers(
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
             MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
-        _audit.GetFilteredEntriesAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _audit.GetFilteredEntriesAsync(Arg.Any<IReadOnlyList<AuditActionDefinition>>(), nameof(User), low, null, Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
             [
-                new(Guid.NewGuid(), nameof(AuditAction.DuplicateAccountFlagged), nameof(User), low, "already flagged",
+                new(Guid.NewGuid(), UsersAuditActions.DuplicateAccountFlagged.Name, nameof(User), low, "already flagged",
                     Now, null, high, nameof(User))
             ]));
 
@@ -140,7 +140,7 @@ public sealed class DuplicateAccountServiceTests
 
         groups.Should().ContainSingle("the pair is still surfaced to the queue");
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 }

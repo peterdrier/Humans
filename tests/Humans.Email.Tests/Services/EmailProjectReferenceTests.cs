@@ -11,10 +11,10 @@ public sealed class EmailProjectReferenceTests
     /// emits no metadata reference and would pass that check silently.
     /// </summary>
     [HumansFact]
-    public void EmailContracts_ReferencesOnlyBaseAndUsersContracts() =>
+    public void EmailContracts_ReferencesOnlyBaseAuditLogAndUsersContracts() =>
         ProjectReferencesOf("Humans.Email.Contracts").Should().BeSubsetOf(
-            ["Humans.Base", "Humans.Users.Contracts"],
-            because: "Email is a crosscut: its contracts leaf may lose section references, never gain one");
+            ["Humans.AuditLog", "Humans.Base", "Humans.Users.Contracts"],
+            because: "Email is a crosscut: its contracts leaf may lose section references, never gain one (AuditLog is there for the audit action definitions it publishes)");
 
     [HumansFact]
     public void Email_ReferencesOnlyItsCurrentSectionContracts() =>

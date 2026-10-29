@@ -729,7 +729,7 @@ public class UserEmailServiceTests
         row.IsPrimary.Should().BeFalse();
         await _repository.Received(1).UpdateUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailPrimaryCleared,
+            UsersAuditActions.UserEmailPrimaryCleared,
             nameof(User), userId,
             Arg.Any<string>(),
             actorId,
@@ -953,7 +953,7 @@ public class UserEmailServiceTests
         await _userInfoRefresher.Received(1).RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "linked@example.com", CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailUnlinked,
+            UsersAuditActions.UserEmailUnlinked,
             Arg.Any<string>(), userId,
             Arg.Any<string>(), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -1086,7 +1086,7 @@ public class UserEmailServiceTests
         await _userInfoRefresher.DidNotReceive().RefreshAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1355,7 +1355,7 @@ public class UserEmailServiceTests
         await _userInfoRefresher.DidNotReceive().RefreshAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1596,7 +1596,7 @@ public class UserEmailServiceTests
         await _userInfoRefresher.Received(1).RefreshAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailManuallyVerified,
+            UsersAuditActions.UserEmailManuallyVerified,
             nameof(User), userId,
             Arg.Any<string>(),
             actorId,
