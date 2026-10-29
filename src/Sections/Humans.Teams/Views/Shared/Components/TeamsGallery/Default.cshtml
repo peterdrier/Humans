@@ -1,0 +1,94 @@
+@model Humans.Teams.ViewComponents.TeamsGalleryViewModel
+
+@* The wg-* classes are the gallery page's (Debug's /Debug/WidgetGallery); this renders inside its
+   ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here. *@
+
+@functions {
+    private static Microsoft.AspNetCore.Html.IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        if (entries.Length == 0)
+        {
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
+        }
+        html.Append("</dl>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent AuthLine(string text)
+    {
+        return new Microsoft.AspNetCore.Html.HtmlString($"<div class=\"wg-auth-line\">{text}</div>");
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_ShiftsSummaryCard.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</span>
+    </div>
+    <div class="wg-card-note">Compact shift-staffing card — progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
+    @ParamsBlock(
+        ("@@model", "<code>ShiftsSummaryCardViewModel</code> — TotalSlots, ConfirmedCount, PendingCount, UniqueVolunteerCount, ShiftsUrl, CanManageShifts, IncludesSubTeamCount")
+    )
+    <div class="wg-card-example" style="max-width: 360px;">
+        @await Html.PartialAsync("_ShiftsSummaryCard", Model.ShiftsSummary)
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_RoleBadge.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_RoleBadge.cshtml</span>
+    </div>
+    <div class="wg-card-note">Badge for a TeamMemberRole. Coordinator = warning gold; Member = secondary.</div>
+    @ParamsBlock(
+        ("@@model", "<code>TeamMemberRole</code> — Coordinator · Member")
+    )
+    <div class="wg-variants">
+        <div class="wg-variant-label">Coordinator<span class="wg-variant-sub">warning gold</span></div>
+        <div class="wg-variant-render">@await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)</div>
+
+        <div class="wg-variant-label">Member<span class="wg-variant-sub">secondary grey</span></div>
+        <div class="wg-variant-render">@await Html.PartialAsync("_RoleBadge", TeamMemberRole.Member)</div>
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">TeamsSearchResultViewComponent.cs</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Teams/ViewComponents/TeamsSearchResultViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">One team-search result row (<code>&lt;vc:teams-search-result&gt;</code>), keyed by team id. Rendered by <code>/Search</code>; the caller wraps the rows in a <code>.list-group</code> and owns its own empty state. Teams owns how a team renders — including the slug the row links to — so no caller builds a display model. Renders nothing when the id does not resolve.</div>
+    @ParamsBlock(
+        ("team-id", "<code>Guid</code> — the matched team")
+    )
+    <div class="wg-card-example">
+        @if (Model.TeamId is { } teamId)
+        {
+            <div class="list-group">
+                <vc:teams-search-result team-id="@teamId" />
+            </div>
+        }
+        else
+        {
+            <div class="text-muted small">No team in this environment to key the row from.</div>
+        }
+    </div>
+</div>

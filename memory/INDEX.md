@@ -245,7 +245,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 - [`triage-protocol`](process/triage-protocol.md) — When running `/triage`, fetch full message history, show the reporter's verbatim Description, and stop the pipeline on any feedback proposing a spec/behavior change.
 - [`verify-culture-via-setlanguage`](process/verify-culture-via-setlanguage.md) — To check a non-English culture on a preview deploy while signed in, drive `POST /Language/SetLanguage` — `Accept-Language`/cookie hacks don't work signed in.
 - [`verify-pr-base-before-merge`](process/verify-pr-base-before-merge.md) — `gh pr merge` reports success even squashing onto a stale `baseRefName` (e.g. a dead lane branch) — read base, mergeable, and check rollup in one call before merging.
-- [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — Adding/removing a public TagHelper, ViewComponent, or shared partial → also update `Views/WidgetGallery/Index.cshtml` (and controller if sample data needed).
+- [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — Adding/removing a public TagHelper, ViewComponent, or shared partial → add or update its card in the owning section's gallery view component (`ChromeSlots.WidgetGallery`); Debug's own gallery view catalogs Base and Shell widgets only.
 - [`wip-prs-as-draft`](process/wip-prs-as-draft.md) — Open multi-phase / mid-implementation PRs with `gh pr create --draft`; intermediate pushes burn CI + review-bot compute on a non-draft PR. Flip to ready only at end of run.
 - [`worktrees-off-origin-main`](process/worktrees-off-origin-main.md) — Feature work branches off `origin/main`, not `upstream/main` — only a cherry-pick fix branch destined directly for upstream uses `upstream/main`.
 
