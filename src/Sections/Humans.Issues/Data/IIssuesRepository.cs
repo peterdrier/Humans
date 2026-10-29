@@ -18,7 +18,8 @@ internal interface IIssuesRepository : IRepository
     Task<IReadOnlyList<Issue>> GetListAsync(
         IssueListFilter filter,
         IReadOnlySet<string>? sectionFilter,
-        Guid? reporterFallback,
+        IReadOnlyCollection<Guid>? reporterFallback,
+        IReadOnlyCollection<Guid>? reporterFilter,
         CancellationToken ct = default);
 
     Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default);
@@ -26,7 +27,7 @@ internal interface IIssuesRepository : IRepository
     Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default);
 
     Task<int> CountActionableAsync(
-        IReadOnlySet<string>? sectionFilter, Guid? viewerFallback,
+        IReadOnlySet<string>? sectionFilter, IReadOnlyCollection<Guid>? viewerFallback,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<DistinctReporterRow>> GetReporterCountsAsync(CancellationToken ct = default);
