@@ -108,9 +108,9 @@ Specified or known, not built; reserved, not ranked:
 - **No FK and no navigation on `ResolvedByUserId` or `NotificationRecipient.UserId`**
   (nobodies-collective/Humans#992, nobodies-collective/Humans#996); names are stitched from
   `IUserService`.
-- **`ApplicationSubmitted` and `ConsentReviewNeeded` are retired sources**: nothing emits them,
-  the purge deletes their unresolved rows, and the inbox's approvals filter still names them
-  while any remain.
+- **Retired sources stay declared** (`Retired: true` on the owning section's definition): nothing
+  emits them, the purge deletes their unresolved rows, and the inbox's approvals filter still
+  names them while any remain.
 - **The repository is a Singleton over `IDbContextFactory`** so Singleton-lifetime callers can
   inject it.
 

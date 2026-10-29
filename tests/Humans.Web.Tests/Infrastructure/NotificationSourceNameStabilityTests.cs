@@ -14,7 +14,7 @@ public sealed class NotificationSourceNameStabilityTests
     private static readonly string[] StoredNames =
     [
         "TeamMemberAdded", "ShiftCoverageGap", "ShiftSignupChange", "ConsentReviewNeeded", "ApplicationSubmitted",
-        "SyncError", "TermRenewalReminder", "ApplicationApproved", "ApplicationRejected", "ProfileRejected",
+        "SyncError", "TermRenewalReminder", "ApplicationApproved", "ApplicationRejected", "VolunteerApproved", "ProfileRejected",
         "AccessSuspended", "ReConsentRequired", "TeamJoinRequestSubmitted", "TeamJoinRequestDecided",
         "FeedbackResponse", "WorkspaceCredentialsReady", "RoleAssignmentChanged", "CampaignReceived",
         "TeamMemberRemoved", "ShiftAssigned", "GoogleDriftDetected", "FacilitatedMessageReceived",

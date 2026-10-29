@@ -7,4 +7,7 @@ namespace Humans.Onboarding;
 internal sealed class OnboardingNotificationSources : NotificationSourceContributor
 {
     public static readonly NotificationSourceDefinition ProfileRejected = new("ProfileRejected", MessageCategory.System);
+
+    /// <summary>Nothing emits it since admission became automatic; declared so stored rows still filter and purge.</summary>
+    public static readonly NotificationSourceDefinition VolunteerApproved = new("VolunteerApproved", MessageCategory.Governance, NotificationInboxGroup.Approvals, Retired: true);
 }
