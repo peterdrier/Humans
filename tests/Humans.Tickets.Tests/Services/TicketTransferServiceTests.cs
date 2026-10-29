@@ -181,7 +181,7 @@ public sealed class TicketTransferServiceTests
                 && r.ReceiverEmail == "alice@example.com"),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.TicketTransferRequested, Arg.Any<string>(), Arg.Any<Guid>(),
+            TicketsAuditActions.TicketTransferRequested, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), _senderId, _receiverId, Arg.Any<string>());
         // The builder is sealed with no interface, so the sent message is the assertion surface.
         await _emailService.Received(1).SendAsync(
@@ -215,7 +215,7 @@ public sealed class TicketTransferServiceTests
                 Arg.Is<TicketTransferRequest>(r => r.Id == row.Id && r.Status == TicketTransferStatus.Pending),
                 Arg.Any<CancellationToken>());
             await _auditLog.Received(1).LogAsync(
-                AuditAction.TicketTransferRequested, Arg.Any<string>(), row.Id,
+                TicketsAuditActions.TicketTransferRequested, Arg.Any<string>(), row.Id,
                 Arg.Any<string>(), _senderId, _receiverId, Arg.Any<string>());
         }
         else
@@ -408,7 +408,7 @@ public sealed class TicketTransferServiceTests
         results.Should().ContainSingle(result => string.Equals(
             result.RefusalKey, "Tickets_TicketTransfer_AlreadyPending", StringComparison.Ordinal));
         _auditLog.ReceivedCalls().Should().ContainSingle(call =>
-            call.GetArguments().OfType<AuditAction>().Contains(AuditAction.TicketTransferRequested));
+            call.GetArguments().OfType<AuditActionDefinition>().Contains(TicketsAuditActions.TicketTransferRequested));
     }
 
     private sealed class PauseFirstTransferSave : SaveChangesInterceptor
@@ -442,7 +442,7 @@ public sealed class TicketTransferServiceTests
 
         req.Status.Should().Be(TicketTransferStatus.Cancelled);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.TicketTransferCancelled, Arg.Any<string>(), req.Id, Arg.Any<string>(), _senderId);
+            TicketsAuditActions.TicketTransferCancelled, Arg.Any<string>(), req.Id, Arg.Any<string>(), _senderId);
     }
 
     [HumansFact]
@@ -484,7 +484,7 @@ public sealed class TicketTransferServiceTests
         req.Status.Should().Be(TicketTransferStatus.Approved);
         req.DecidedByUserId.Should().Be(_adminId);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.TicketTransferApproved, Arg.Any<string>(), req.Id, Arg.Any<string>(),
+            TicketsAuditActions.TicketTransferApproved, Arg.Any<string>(), req.Id, Arg.Any<string>(),
             _adminId, _senderId, Arg.Any<string>());
         // Sender + Receiver each get a "successful" decision email.
         await _emailService.Received(2).SendAsync(
@@ -643,7 +643,7 @@ public sealed class TicketTransferServiceTests
         req.VendorResult.Should().Be(TicketTransferVendorResult.Failed);
         // Audited under the dedicated auto-failed action, NOT TicketTransferApproved.
         await _auditLog.Received(1).LogAsync(
-            AuditAction.TicketTransferAutoFailed, Arg.Any<string>(), req.Id, Arg.Any<string>(),
+            TicketsAuditActions.TicketTransferAutoFailed, Arg.Any<string>(), req.Id, Arg.Any<string>(),
             _adminId, _senderId, Arg.Any<string>());
         await _ticketRepo.DidNotReceive().UpsertAttendeesAsync(
             Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>());
@@ -910,7 +910,7 @@ public sealed class TicketTransferServiceTests
         req.Status.Should().Be(TicketTransferStatus.Rejected);
         req.AdminNotes.Should().Be("duplicate request");
         await _auditLog.Received(1).LogAsync(
-            AuditAction.TicketTransferRejected, Arg.Any<string>(), req.Id, Arg.Any<string>(),
+            TicketsAuditActions.TicketTransferRejected, Arg.Any<string>(), req.Id, Arg.Any<string>(),
             _adminId, _senderId, Arg.Any<string>());
         await _emailService.Received(2).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_cancelled"

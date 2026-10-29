@@ -93,7 +93,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         peeks.Should().ContainSingle(p => p.AdminUserId == adminId);
 
         await _fx.Audit.Received(1).LogAsync(
-            AuditAction.AssemblyVotePeeked, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
+            GovernanceAuditActions.AssemblyVotePeeked, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -186,7 +186,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         rows.Should().ContainSingle();
         rows[0].Choice.Should().Be(AssemblyBallotChoice.Yes);
         await _fx.Audit.Received(1).LogAsync(
-            AuditAction.AssemblyBallotsViewed, Arg.Any<string>(), vote.Id, Arg.Any<string>(), actorId,
+            GovernanceAuditActions.AssemblyBallotsViewed, Arg.Any<string>(), vote.Id, Arg.Any<string>(), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -275,7 +275,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.Service.StopAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
-            AuditAction.AssemblyVoteStopped, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
+            GovernanceAuditActions.AssemblyVoteStopped, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -295,7 +295,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
 
         result.Should().Be(AssemblyVoteActionResult.Ok);
         await _fx.Audit.Received(1).LogAsync(
-            AuditAction.AssemblyVoteCancelled, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
+            GovernanceAuditActions.AssemblyVoteCancelled, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

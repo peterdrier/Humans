@@ -19,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Shifts;
 
@@ -38,6 +39,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, ShiftsAuditActions>();
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 
         services.AddScoped<ShiftRepository>();

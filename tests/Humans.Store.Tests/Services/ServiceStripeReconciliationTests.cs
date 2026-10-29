@@ -238,7 +238,7 @@ public class ServiceStripeReconciliationTests
             Arg.Is<Payment>(p => p.StripePaymentIntentId == "pi_team" || p.StripePaymentIntentId == "pi_unpaid" || p.StripePaymentIntentId == "pi_recorded"),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.StorePaymentsReconciled, "Store", Guid.Empty,
+            StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -258,7 +258,7 @@ public class ServiceStripeReconciliationTests
         result.RecordedCount.Should().Be(0);
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.StorePaymentsReconciled, Arg.Any<string>(), Arg.Any<Guid>(),
+            StoreAuditActions.StorePaymentsReconciled, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 }

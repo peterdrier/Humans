@@ -1292,7 +1292,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .Should().BeEmpty();
         foreach (var removed in new[] { pending1, pending2 })
         {
-            await AuditLog.Received(1).LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), removed.Id,
+            await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), removed.Id,
                 Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
                     && text.Contains("deleted", StringComparison.Ordinal)),
                 actorUserId, removed.UserId, "User");
@@ -1330,7 +1330,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         result.RedirectSlug.Should().Be("target-dept");
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.RotaMovedToTeam,
+            ShiftsAuditActions.RotaMovedToTeam,
             nameof(Rota),
             rota.Id,
             Arg.Any<string>(),

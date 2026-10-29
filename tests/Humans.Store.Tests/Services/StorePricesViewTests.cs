@@ -97,7 +97,7 @@ public class StorePricesViewTests
             100, 0, null, now, 100, 0, 0, 100);
         var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [line], [], 100, 0, 0, 0, 100, now);
-        var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(nameof(AuditAction.StoreProductPriceChanged)),
+        var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name),
             null, null, "Product", productId, null, null, null, null, null, null, null, "Price history fixture");
 
         var html = await RenderAsync("Order", new OrderViewModel { Order = order, CounterpartyDisplayName = "Camp" }, [history]);

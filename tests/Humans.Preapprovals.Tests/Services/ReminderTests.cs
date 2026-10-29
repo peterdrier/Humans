@@ -38,7 +38,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_deadline_reminder" && m.Culture == "fr"), Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
             Arg.Is<string>(d => d.StartsWith("14-day", StringComparison.Ordinal)), PreapprovalService.ReminderJobName, program.Id, AuditEntityTypes.Program);
 
         await using var db = OpenContext();

@@ -137,7 +137,7 @@ internal sealed partial class WorkgroupService(
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
 
-        return await AdmitAsync(workgroup, pending, actorUserId, AuditAction.WorkgroupMembershipApproved,
+        return await AdmitAsync(workgroup, pending, actorUserId, WorkgroupsAuditActions.WorkgroupMembershipApproved,
             "Workgroups_Notice_MembershipApproved", ct);
     }
 
@@ -156,7 +156,7 @@ internal sealed partial class WorkgroupService(
         pending.LeftAt = clock.GetCurrentInstant();
         await repository.UpdateMembersAsync([pending], ct);
         ct = CancellationToken.None;
-        await auditLog.LogAsync(AuditAction.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
+        await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
             relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
         await NotifyAsync([userId], NotificationSource.WorkgroupMembershipDecided,
@@ -182,13 +182,13 @@ internal sealed partial class WorkgroupService(
 
         // A pending request from the same person is approved by the add.
         var member = existing ?? NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, clock.GetCurrentInstant(), isPending: true);
-        return await AdmitAsync(workgroup, member, actorUserId, AuditAction.WorkgroupMemberAdded,
+        return await AdmitAsync(workgroup, member, actorUserId, WorkgroupsAuditActions.WorkgroupMemberAdded,
             "Workgroups_Notice_MemberAdded", ct, isNew: existing is null);
     }
 
     /// <summary>The one place a person becomes a member.</summary>
     private async Task<WorkgroupMutationResult> AdmitAsync(
-        Workgroup workgroup, WorkgroupMember member, Guid actorUserId, AuditAction auditAction,
+        Workgroup workgroup, WorkgroupMember member, Guid actorUserId, AuditActionDefinition auditAction,
         string noticeKey, CancellationToken ct, bool isNew = false)
     {
         var name = await NameOfAsync(member.UserId, ct);
@@ -267,7 +267,7 @@ internal sealed partial class WorkgroupService(
         {
             await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
                 promotedName, ct);
-            await AuditAsync(AuditAction.WorkgroupCoordinatorsChanged, workgroup,
+            await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
                 $"Coordination handed to {promotedName} when the last coordinator left",
                 userId);
         }
@@ -387,7 +387,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
             string.Join(", ", names), ct, authorUserId: asAdmin ? null : actorUserId);
-        await AuditAsync(AuditAction.WorkgroupCoordinatorsChanged, workgroup,
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
             $"Coordinators set to {string.Join(", ", names)}", actorUserId);
 
         var info = ToInfo(workgroup);
@@ -440,7 +440,7 @@ internal sealed partial class WorkgroupService(
         await repository.UpdateMeetingAsync(meeting, ct);
 
         // The row is overwritten, so the audit entry is the only record of the meeting the members were told about.
-        await AuditAsync(AuditAction.WorkgroupMeetingUpdated, workgroup,
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingUpdated, workgroup,
             $"Edited the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupMeeting, meeting.Id);
         return new();
@@ -460,7 +460,7 @@ internal sealed partial class WorkgroupService(
         meeting.UpdatedAt = now;
         await repository.UpdateMeetingAsync(meeting, ct);
 
-        await AuditAsync(AuditAction.WorkgroupMeetingDeleted, workgroup,
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingDeleted, workgroup,
             $"Deleted the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupMeeting, meeting.Id);
         return new();
@@ -521,7 +521,7 @@ internal sealed partial class WorkgroupService(
         await repository.UpdateLogEntryAsync(entry, ct);
 
         // The log keeps no history of its own, so without this an edit is as invisible as a deletion.
-        await AuditAsync(AuditAction.WorkgroupLogEntryUpdated, workgroup,
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryUpdated, workgroup,
             $"Edited the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupLogEntry, entryId);
         return new();
@@ -538,7 +538,7 @@ internal sealed partial class WorkgroupService(
 
         await repository.DeleteLogEntryAsync(entryId, ct);
         // The log keeps no tombstone, so the audit trail is where the deletion stays visible.
-        await AuditAsync(AuditAction.WorkgroupLogEntryDeleted, workgroup,
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryDeleted, workgroup,
             $"Deleted the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupLogEntry, entryId);
         return new();
@@ -632,7 +632,7 @@ internal sealed partial class WorkgroupService(
 
         await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup), ct,
             authorUserId: actorUserId);
-        await AuditAsync(AuditAction.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
         return new(account);
     }
 
@@ -691,7 +691,7 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.RootFolderUnreachable));
 
         await repository.SetRootDriveFolderIdAsync(id, ct);
-        await auditLog.LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
+        await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
             $"Root Drive folder set to {id}", actorUserId);
         return new();

@@ -15,6 +15,7 @@ using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Tickets;
 
@@ -30,6 +31,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, TicketsAuditActions>();
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();

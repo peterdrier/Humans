@@ -456,7 +456,7 @@ internal sealed class ShiftsController(
         var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await auditLogService.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
-            [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold, AuditAction.ShiftSignupConfirmed],
+            [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
             ct);
 
         var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();

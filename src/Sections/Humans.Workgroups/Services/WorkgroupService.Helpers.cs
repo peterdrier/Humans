@@ -486,7 +486,7 @@ internal sealed partial class WorkgroupService
     }
 
     private async Task AuditAsync(
-        AuditAction action,
+        AuditActionDefinition action,
         Workgroup w,
         string description,
         Guid actorUserId,
@@ -499,7 +499,7 @@ internal sealed partial class WorkgroupService
             relatedEntityType: id == w.Id ? null : AuditEntityTypes.Workgroup);
     }
 
-    private async Task AuditJobAsync(AuditAction action, Workgroup w, string description)
+    private async Task AuditJobAsync(AuditActionDefinition action, Workgroup w, string description)
     {
         await auditLog.LogAsync(action, AuditEntityTypes.Workgroup, w.Id, description,
             WorkgroupRhythmJobName);
@@ -571,7 +571,7 @@ internal sealed partial class WorkgroupService
             Trimmed(reasons) ?? reason.ToString(), ct,
             authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId);
 
-        await AuditAsync(AuditAction.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
 
         var info = ToInfo(w);
         var coordinators = info.CoordinatorUserIds();

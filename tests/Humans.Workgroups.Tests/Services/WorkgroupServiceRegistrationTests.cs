@@ -194,7 +194,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         (await NewService().GetRootDriveFolderIdAsync(Ct)).Should().Be("another-root");
         (await Db.Settings.AsNoTracking().SingleAsync(Ct)).RootDriveFolderId.Should().Be("another-root");
         Settings.ReceivedCalls().Should().BeEmpty("saved section state must not read or write the legacy key");
-        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupsRootFolderUpdated,
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupsRootFolderUpdated,
             AuditEntityTypes.WorkgroupsSettings, Guid.Empty, "Root Drive folder set to new-root", actor);
     }
 

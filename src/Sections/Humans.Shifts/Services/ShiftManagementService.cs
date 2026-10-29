@@ -269,7 +269,7 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateRota(rota.Id);
 
         await auditLogService.LogAsync(
-            AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
+            ShiftsAuditActions.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             input.ActorUserId,
             // A persisted audit discriminator matched by exact equality, so a literal: Base cannot name the entity.
@@ -756,7 +756,7 @@ internal sealed class ShiftManagementService(
     {
         foreach (var signup in signups.Where(s => s.Status == SignupStatus.Pending))
         {
-            await auditLogService.LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
+            await auditLogService.LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
                 $"shift {signup.ShiftId}: {reason}", actorUserId,
                 relatedEntityId: signup.UserId, relatedEntityType: "User");
         }

@@ -137,7 +137,7 @@ internal sealed class TicketTransferService(
         ct = CancellationToken.None;
 
         await auditLog.LogAsync(
-            AuditAction.TicketTransferRequested,
+            TicketsAuditActions.TicketTransferRequested,
             nameof(TicketTransferRequest),
             request.Id,
             $"Transfer requested: ticket {attendee.VendorTicketId} → {receiverLegalName}",
@@ -169,7 +169,7 @@ internal sealed class TicketTransferService(
         await transferRepo.UpdateAsync(request, ct);
 
         await auditLog.LogAsync(
-            AuditAction.TicketTransferCancelled,
+            TicketsAuditActions.TicketTransferCancelled,
             nameof(TicketTransferRequest),
             request.Id,
             "Transfer cancelled by Sender",
@@ -223,7 +223,7 @@ internal sealed class TicketTransferService(
             // Not transferred: persist and audit the diagnostic, leave the request Pending. No success emails.
             await transferRepo.UpdateAsync(request, persistCt);
             await auditLog.LogAsync(
-                AuditAction.TicketTransferAutoFailed,
+                TicketsAuditActions.TicketTransferAutoFailed,
                 nameof(TicketTransferRequest),
                 request.Id,
                 request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
@@ -291,7 +291,7 @@ internal sealed class TicketTransferService(
                 $"Reissue retry failed ({VendorFailureDetail(ex)}) — retry again or finish in TicketTailor against hold {request.VendorHoldId}";
             await transferRepo.UpdateAsync(request, CancellationToken.None);
             await auditLog.LogAsync(
-                AuditAction.TicketTransferAutoFailed,
+                TicketsAuditActions.TicketTransferAutoFailed,
                 nameof(TicketTransferRequest),
                 request.Id,
                 $"Reissue retry failed — {VendorFailureDetail(ex)}",
@@ -357,7 +357,7 @@ internal sealed class TicketTransferService(
         ct = CancellationToken.None;
 
         await auditLog.LogAsync(
-            AuditAction.TicketTransferApproved,
+            TicketsAuditActions.TicketTransferApproved,
             nameof(TicketTransferRequest),
             request.Id,
             auditDescription,
@@ -465,7 +465,7 @@ internal sealed class TicketTransferService(
         ct = CancellationToken.None;
 
         await auditLog.LogAsync(
-            AuditAction.TicketTransferRejected,
+            TicketsAuditActions.TicketTransferRejected,
             nameof(TicketTransferRequest),
             request.Id,
             $"Transfer cancelled: {reason}",

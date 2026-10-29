@@ -11,6 +11,7 @@ using Humans.Issues.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Issues;
 
@@ -21,6 +22,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, IssuesAuditActions>();
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");
 
         services.AddSingleton<IIssuesRepository, IssuesRepository>();

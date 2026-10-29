@@ -482,7 +482,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.TierApplicationApproved,
+            GovernanceAuditActions.TierApplicationApproved,
             AuditEntityTypes.Application,
             application.Id,
             "Asociado application approved",
@@ -725,7 +725,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var persisted = await GovernanceDb.Applications.FindAsync(app.Id, TestContext.Current.CancellationToken);
         persisted!.Status.Should().Be(approve ? ApplicationStatus.Approved : ApplicationStatus.Rejected);
         await AuditLog.Received(1).LogAsync(
-            approve ? AuditAction.TierApplicationApproved : AuditAction.TierApplicationRejected,
+            approve ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
             AuditEntityTypes.Application, app.Id, Arg.Any<string>(), reviewerId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _notificationService.Received(1).SendAsync(
@@ -902,7 +902,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.TierApplicationRejected,
+            GovernanceAuditActions.TierApplicationRejected,
             AuditEntityTypes.Application,
             application.Id,
             "Colaborador application rejected",
@@ -1654,7 +1654,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == drifted.Id, TestContext.Current.CancellationToken);
         updated.TermExpiresAt.Should().Be(new LocalDate(2027, 12, 31));
         await AuditLog.Received(1).LogAsync(
-            AuditAction.TierTermExpiryCorrected, AuditEntityTypes.Application, drifted.Id,
+            GovernanceAuditActions.TierTermExpiryCorrected, AuditEntityTypes.Application, drifted.Id,
             Arg.Any<string>(), adminId);
         (await _service.GetTermExpiryDriftAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
     }

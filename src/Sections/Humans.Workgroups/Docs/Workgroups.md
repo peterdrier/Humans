@@ -440,6 +440,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `WorkgroupsAuditActions` (`src/Sections/Humans.Workgroups/WorkgroupsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `WorkgroupRegistered`, `WorkgroupReferred`, `WorkgroupRefused`, `WorkgroupWithdrawn`, `WorkgroupClosed`, `WorkgroupReactivated`, `WorkgroupCoordinatorsChanged`, `WorkgroupDispositionRecorded`, `WorkgroupRegisteredExisting`, `WorkgroupBudgetSet`, `WorkgroupApplicationOverdue`, `WorkgroupUpdateDueNotified`, `WorkgroupLogEntryDeleted`, `WorkgroupLogEntryUpdated`, `WorkgroupMeetingUpdated`, `WorkgroupMeetingDeleted`, `WorkgroupCommentHidden`, `WorkgroupsRootFolderUpdated`, `WorkgroupMembershipApproved`, `WorkgroupMembershipDeclined`, `WorkgroupMemberAdded`.
 - **Users**: `IUserService` — names, approved-profile check;
   `IUserEmailService` — notification target addresses for lifecycle emails.
 - **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.

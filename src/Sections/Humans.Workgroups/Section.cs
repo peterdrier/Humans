@@ -17,6 +17,7 @@ using Humans.Workgroups.Services.Contributors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Workgroups;
 
@@ -32,6 +33,7 @@ public sealed class Section : ISection, ISectionAdminNav
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, WorkgroupsAuditActions>();
         services.AddSectionDbContext<WorkgroupsDbContext>(sentinelTable: "workgroups");
 
         services.AddSingleton<IWorkgroupRepository, WorkgroupRepository>();

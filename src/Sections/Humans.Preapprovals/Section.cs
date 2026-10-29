@@ -13,6 +13,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Preapprovals;
 
@@ -28,6 +29,7 @@ public sealed class Section : ISection, ISectionAdminNav
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, PreapprovalsAuditActions>();
         services.AddSectionDbContext<PreapprovalsDbContext>(sentinelTable: "pre_programs");
 
         services.AddSingleton<IPreapprovalRepository, PreapprovalRepository>();

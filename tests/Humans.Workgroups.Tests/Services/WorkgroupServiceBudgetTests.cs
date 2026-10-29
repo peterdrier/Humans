@@ -89,7 +89,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         reloaded.HoldedAccountNumber.Should().Be(62900150);
         reloaded.HoldedAccountId.Should().Be("acc-62900150");
         reloaded.LogEntries.Should().ContainSingle(e => e.Kind == WorkgroupLogKind.BudgetSet);
-        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupBudgetSet, Arg.Any<string>(), workgroup.Id,
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, Arg.Any<string>(), workgroup.Id,
             Arg.Is<string>(d => d.Contains("1500") && d.Contains("62900150")), secretary,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

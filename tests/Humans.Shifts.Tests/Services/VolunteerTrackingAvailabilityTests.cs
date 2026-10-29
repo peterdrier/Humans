@@ -49,7 +49,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         record.Should().NotBeNull();
         record.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
-        await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilitySet,
+        await AuditLog.Received(1).LogAsync(ShiftsAuditActions.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={esId}; AvailableDays=3; self-service update", userId,
             relatedEntityId: esId, relatedEntityType: "EventSettings");
@@ -88,7 +88,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         var record = await ShiftsDb.GeneralAvailability.AsNoTracking().SingleAsync(
             g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         record.AvailableDayOffsets.Should().BeEmpty();
-        await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilityCleared,
+        await AuditLog.Received(1).LogAsync(ShiftsAuditActions.VolunteerAvailabilityCleared,
             "GeneralAvailability", userId,
             $"EventSettingsId={esId}; AvailableDays=0; self-service update", userId,
             relatedEntityId: esId, relatedEntityType: "EventSettings");
@@ -172,7 +172,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2]);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
+            ShiftsAuditActions.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
             "DayOffset=-2; marked available by coordinator", Coordinator);
     }
 
@@ -196,7 +196,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             .FirstAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         rec.AvailableDayOffsets.Should().BeEquivalentTo([-3]);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
+            ShiftsAuditActions.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
             $"DayOffset={dayOffset}; availability cleared by coordinator", Coordinator);
     }
 
@@ -252,7 +252,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
 
         changed.Should().BeFalse();
         await AuditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Coordinator,
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Coordinator,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -269,7 +269,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
 
         changed.Should().BeFalse();
         await AuditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Coordinator,
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Coordinator,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

@@ -20,14 +20,14 @@ internal sealed partial class PreapprovalService
     private static string ManageUrl(Guid programId) => $"/Preapprovals/Admin/{programId}";
 
     private Task AuditGrantAsync(
-        AuditAction action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
+        AuditActionDefinition action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
         Guid? expenseReportId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
             relatedEntityId: expenseReportId ?? grant.ProgramId,
             relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
 
     private Task AuditProgramAsync(
-        AuditAction action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
+        AuditActionDefinition action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
         Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,

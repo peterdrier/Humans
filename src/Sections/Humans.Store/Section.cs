@@ -7,6 +7,7 @@ using Humans.Store.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Store;
 
@@ -21,6 +22,7 @@ public sealed class Section : ISection, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, StoreAuditActions>();
         services.Configure<StoreSectionOptions>(configuration.GetSection(StoreSectionOptions.Section));
 
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");

@@ -255,7 +255,7 @@ public class ServiceIssueInvoiceTests
 
         savedInvoice.Should().NotBeNull();
         await _audit.Received(1).LogAsync(
-            AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, savedInvoice!.Id,
+            StoreAuditActions.StoreInvoiceIssued, AuditEntityTypes.Invoice, savedInvoice!.Id,
             Arg.Any<string>(), _actor,
             order.Id, AuditEntityTypes.Order);
     }

@@ -200,6 +200,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `PreapprovalsAuditActions` (`src/Sections/Humans.Preapprovals/PreapprovalsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `PreapprovalProgramCreated`, `PreapprovalProgramEdited`, `PreapprovalProgramClosed`, `PreapprovalProgramManagerAdded`, `PreapprovalProgramManagerRemoved`, `PreapprovalGrantIssued`, `PreapprovalGrantApplied`, `PreapprovalGrantApproved`, `PreapprovalGrantDeclined`, `PreapprovalGrantRevoked`, `PreapprovalGrantClaimed`, `PreapprovalGrantReleased`, `PreapprovalGrantConsumed`, `PreapprovalGrantAmountChanged`, `PreapprovalReminderSent`, `PreapprovalMergeDroppedApplication`.
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
   display); `IUserEmailService.GetNotificationTargetEmailsAsync`; implements `IUserMerge`.
 - **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's

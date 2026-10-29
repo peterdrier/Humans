@@ -723,13 +723,13 @@ public class VolunteerTrackingServiceTests
         await sut.SetCampSetupAsync(userId, setupDate, notes: null, coordId, Xunit.TestContext.Current.CancellationToken);
 
         await audit.Received(1).LogAsync(
-            AuditAction.VolunteerCampSetupSet, nameof(VolunteerBuildStatus), userId,
+            ShiftsAuditActions.VolunteerCampSetupSet, nameof(VolunteerBuildStatus), userId,
             $"BarrioSetupStartDate set to {NodaTime.Text.LocalDatePattern.Iso.Format(setupDate)}; notes=—", coordId);
         await audit.Received(1).LogAsync(
-            AuditAction.VolunteerDayOffCleared, nameof(VolunteerBuildStatus), userId,
+            ShiftsAuditActions.VolunteerDayOffCleared, nameof(VolunteerBuildStatus), userId,
             "DayOffset=-6; auto-cleared by camp-setup change", coordId);
         await audit.Received(1).LogAsync(
-            AuditAction.VolunteerDayOffCleared, nameof(VolunteerBuildStatus), userId,
+            ShiftsAuditActions.VolunteerDayOffCleared, nameof(VolunteerBuildStatus), userId,
             "DayOffset=-4; auto-cleared by camp-setup change", coordId);
     }
 
@@ -759,7 +759,7 @@ public class VolunteerTrackingServiceTests
         await sut.ClearCampSetupAsync(userId, coordId, Xunit.TestContext.Current.CancellationToken);
 
         await audit.Received(1).LogAsync(
-            AuditAction.VolunteerCampSetupCleared, nameof(VolunteerBuildStatus), userId,
+            ShiftsAuditActions.VolunteerCampSetupCleared, nameof(VolunteerBuildStatus), userId,
             "BarrioSetupStartDate cleared", coordId);
     }
 
@@ -777,7 +777,7 @@ public class VolunteerTrackingServiceTests
         await sut.SetDayOffAsync(userId, -3, reason, coordId, Xunit.TestContext.Current.CancellationToken);
 
         await audit.Received(1).LogAsync(
-            AuditAction.VolunteerDayOffMarked, nameof(VolunteerBuildStatus), userId,
+            ShiftsAuditActions.VolunteerDayOffMarked, nameof(VolunteerBuildStatus), userId,
             $"DayOffset=-3; reason={auditedReason}", coordId);
     }
 
@@ -816,7 +816,7 @@ public class VolunteerTrackingServiceTests
         await sut.ClearDayOffAsync(userId, -3, coordId, Xunit.TestContext.Current.CancellationToken);
 
         await audit.Received(present ? 1 : 0).LogAsync(
-            AuditAction.VolunteerDayOffCleared, nameof(VolunteerBuildStatus), userId,
+            ShiftsAuditActions.VolunteerDayOffCleared, nameof(VolunteerBuildStatus), userId,
             "DayOffset=-3; cleared by coordinator", coordId);
     }
 

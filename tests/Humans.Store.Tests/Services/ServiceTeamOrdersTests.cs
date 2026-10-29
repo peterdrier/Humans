@@ -202,7 +202,7 @@ public class ServiceTeamOrdersTests
             Arg.Is<Order>(o => o.Year == 2025),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.StoreOrderYearBackfilled,
+            StoreAuditActions.StoreOrderYearBackfilled,
             AuditEntityTypes.Order,
             orderId,
             Arg.Any<string>(),
@@ -366,7 +366,7 @@ public class ServiceTeamOrdersTests
 
         await _repo.Received(1).DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
+            StoreAuditActions.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
