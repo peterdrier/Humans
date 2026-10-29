@@ -157,6 +157,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`) for the mirror, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+**Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
