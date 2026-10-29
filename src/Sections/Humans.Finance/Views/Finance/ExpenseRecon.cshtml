@@ -1,0 +1,171 @@
+@model Humans.Finance.Contracts.ExpenseReconReport
+@{
+    ViewData["Title"] = "Expense Reconciliation";
+    var totals = Model.Totals;
+    var problemLines = Model.Lines.Where(l => l.IsProblem).ToList();
+    var okLines = Model.Lines.Where(l => !l.IsProblem).ToList();
+    var problemMembers = Model.Members.Where(m => m.IsProblem).ToList();
+}
+
+@functions {
+    private static (string Css, string Label) MemberBadge(ExpenseReconMember member) => member.Status switch
+    {
+        ExpenseReconMemberStatus.Balanced => ("bg-success", "Balanced"),
+        ExpenseReconMemberStatus.Off => ("bg-danger", "Off by " + Math.Abs(member.Difference).ToEuro()),
+        _ => member.IsProblem ? ("bg-danger", "No creditor account") : ("bg-secondary", "No creditor account"),
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0">Expense Reconciliation</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
+        </a>
+        <a asp-action="Sepa" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
+        </a>
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+        </a>
+    </div>
+</div>
+
+<p class="text-muted">
+    Read only, from local data: each approved expense line (after the authorised-maximum allocation) against the
+    Holded document mirror, and each member's creditor balance in the ledger mirror against what their lines and
+    booked SEPA transfers say it should be. A line expects one purchase document described <code>ER: …</code>, with
+    notes <code>Expense report …</code> and the booked amount, on the member's bound contact. The year filters lines
+    and stray documents by document date; member balances are always all-time, as the ledger's are. Fixes live on the
+    pages linked above.
+</p>
+
+@if (!Model.IsAvailable)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.UnavailableReason
+        Run the document sync from the <a asp-action="Holded" class="alert-link">Holded connector</a>.
+    </div>
+    return;
+}
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <span class="text-muted">Year:</span>
+    <a asp-action="ExpenseRecon" class="btn btn-sm @(Model.Year is null ? "btn-secondary" : "btn-outline-secondary")">All</a>
+    @foreach (var y in Model.Years)
+    {
+        <a asp-action="ExpenseRecon" asp-route-year="@y"
+           class="btn btn-sm @(Model.Year == y ? "btn-secondary" : "btn-outline-secondary")">@y</a>
+    }
+    <span class="ms-auto text-muted small">Document mirror synced @Model.MirrorSyncedAt?.ToInvariantTimestamp()</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <span class="badge bg-light text-dark">@totals.Reports reports</span>
+            <span class="badge bg-light text-dark">@totals.Lines lines</span>
+            <span class="badge bg-light text-dark">@totals.HoldedDocs Holded docs</span>
+            <span class="badge @(totals.DuplicateDocs > 0 ? "bg-danger" : "bg-light text-dark")">@totals.DuplicateDocs duplicates · @totals.ExcessAmount.ToEuro() excess</span>
+            <span class="badge @(totals.Orphans > 0 ? "bg-danger" : "bg-light text-dark")">@totals.Orphans orphans</span>
+            <span class="badge @(totals.MembersOff > 0 ? "bg-danger" : "bg-light text-dark")">@totals.MembersOff members off</span>
+        </div>
+        <div class="ms-auto">
+            @if (totals.Problems == 0)
+            {
+                <span class="text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>0 problems</span>
+            }
+            else
+            {
+                <span class="text-danger fw-semibold">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@totals.Problems problem@(totals.Problems == 1 ? "" : "s")
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
+@if (problemLines.Count > 0)
+{
+    <h2 class="h4">Lines with problems</h2>
+    @await Html.PartialAsync("_ExpenseReconLines", problemLines)
+}
+
+@if (Model.Orphans.Count > 0)
+{
+    <h2 class="h4">Orphan documents</h2>
+    <p class="text-muted">Holded documents carrying the expense push's marker that no line keeps or counts as its duplicate.</p>
+    <div class="table-responsive mb-4">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr><th>Date</th><th>Doc</th><th>Contact</th><th>Description</th><th>Notes</th><th class="text-end">Total</th><th>Kind</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var o in Model.Orphans)
+                {
+                    <tr>
+                        <td class="text-nowrap">@o.Date.ToString("yyyy-MM-dd", null)</td>
+                        <td><span title="@o.HoldedDocId">@o.DocNumber</span></td>
+                        <td>@o.ContactName</td>
+                        <td>@o.Description</td>
+                        <td>@o.Notes</td>
+                        <td class="text-end text-nowrap">@o.Total.ToEuro()</td>
+                        <td>
+                            <span class="badge bg-danger">@(o.Kind == ExpenseReconOrphanKind.UnboundContact ? "Unbound contact" : "No matching line")</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="h4">Members</h2>
+<p class="text-muted">
+    Shown from the member's side: positive is owed to them. <strong>Expected</strong> is the booked amount of every
+    line whose document is in Holded, less every booked SEPA transfer. An open transfer is generated but not booked:
+    if the bank has paid it and Holded already shows the payment, it is the difference.
+</p>
+<div class="table-responsive mb-4">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr><th>Member</th><th>Account</th><th class="text-end">Ledger</th><th class="text-end">Expected</th><th>Status</th><th>Open SEPA transfers</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var m in problemMembers.Concat(Model.Members.Where(x => !x.IsProblem)))
+            {
+                var (css, label) = MemberBadge(m);
+                <tr>
+                    <td>@m.MemberName</td>
+                    <td>
+                        @if (m.SupplierAccountNum is { } account)
+                        {
+                            <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-end text-nowrap">@((-m.LedgerBalance).ToEuro())</td>
+                    <td class="text-end text-nowrap">@((-m.ExpectedBalance).ToEuro())</td>
+                    <td><span class="badge @css">@label</span></td>
+                    <td>
+                        @foreach (var t in m.OpenTransfers)
+                        {
+                            <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro()</div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (okLines.Count > 0)
+{
+    <details class="mb-4">
+        <summary class="h5">@okLines.Count booked or pending line@(okLines.Count == 1 ? "" : "s")</summary>
+        @await Html.PartialAsync("_ExpenseReconLines", okLines)
+    </details>
+}

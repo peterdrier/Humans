@@ -38,9 +38,13 @@ public class FinanceControllerTests
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
 
-    public FinanceControllerTests() =>
+    public FinanceControllerTests()
+    {
         _expenses.GetReviewQueueAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<ExpenseReportDto>());
+        _finance.GetExpenseReconAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(ExpenseRecon.Unavailable(null, "never synced"));
+    }
 
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, _expenses, new CashFlowService(_budget, Substitute.For<ITicketService>()),
@@ -319,6 +323,34 @@ public class FinanceControllerTests
         page.Accounts[0].Balance.Should().Be(120m);   // org owes Ada
         page.Accounts[1].Balance.Should().Be(-40m);   // Bo owes the org
         page.Accounts[2].Balance.Should().BeNull();   // no cached lines — not zero
+    }
+
+    [HumansTheory]
+    [InlineData(3, 3)]
+    [InlineData(null, null)]
+    public async Task Creditors_CarriesTheReconciliationProblems_NullWhenItCannotBeComputed(int? problems, int? expected)
+    {
+        Accounts([]);
+        _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(problems is { } n
+            ? new ExpenseReconReport(null, Instant.FromUtc(2026, 10, 29, 3, 0), null, [], [], [], [],
+                new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, n, 0))
+            : ExpenseRecon.Unavailable(null, "never synced"));
+
+        var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
+
+        page.ReconProblems.Should().Be(expected);
+        page.ReconUnavailable.Should().Be(expected is null);
+    }
+
+    [HumansFact]
+    public async Task ExpenseRecon_PassesTheYearThrough()
+    {
+        var report = ExpenseRecon.Unavailable(2025, "never synced");
+        _finance.GetExpenseReconAsync(2025, Arg.Any<CancellationToken>()).Returns(report);
+
+        var result = await MakeController().ExpenseRecon(2025, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(report);
     }
 
     [HumansFact]

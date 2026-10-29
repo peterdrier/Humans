@@ -67,6 +67,15 @@ public class HoldedFinanceServiceTests
             .Returns(true);
         _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        // The sync's per-document notes read; an unstubbed record is null.
+        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new HoldedPurchaseDocumentDto
+            {
+                Id = ci.Arg<string>(), DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m,
+                PaymentsPending = 0m,
+            });
+        // The mirror never synced, so /Finance/Creditors' reconciliation banner reads unavailable.
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
     }
 
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>

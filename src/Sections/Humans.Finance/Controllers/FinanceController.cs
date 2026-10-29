@@ -120,9 +120,16 @@ internal sealed class FinanceController(
                 b.Source.ToString()))
             .ToList();
 
+        var recon = await holdedFinance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         return View(new CreditorsPageVm(
-            accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings()));
+            accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings(),
+            recon.IsAvailable ? recon.Totals.Problems : null));
     }
+
+    /// <summary>Local mirrors only; fixes stay on the pages it links to.</summary>
+    [HttpGet("ExpenseRecon")]
+    public async Task<IActionResult> ExpenseRecon(int? year, CancellationToken ct)
+        => View(await holdedFinance.GetExpenseReconAsync(year, ct));
 
     /// <summary>Streams a pain.001.001.09 file. All-or-nothing: one bad amount refuses the batch, so the treasurer
     /// never uploads half of one.</summary>

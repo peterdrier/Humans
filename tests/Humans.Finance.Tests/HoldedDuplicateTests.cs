@@ -483,6 +483,12 @@ public class HoldedDuplicateTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns(duplicates ? [Doc("doc-a"), Doc("doc-b")] : [Doc("doc-a")]);
+        // Notes already mirrored, so the sync's own notes fetch has nothing to read.
+        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new HoldedExpenseDoc { HoldedDocId = "doc-a", Notes = "" },
+            new HoldedExpenseDoc { HoldedDocId = "doc-b", Notes = "" },
+        ]);
         var logger = new CapturingLogger<Service>();
 
         await MakeService(logger).SyncAsync(TestContext.Current.CancellationToken);
