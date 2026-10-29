@@ -59,7 +59,10 @@ public class ExpenseReconTests
 
     private static HoldedCreditorContact Binding(Guid user, string contact, int? account) => new()
     {
-        UserId = user, HoldedContactId = contact, SupplierAccountNum = account, Source = CreditorContactSource.Auto,
+        UserId = user,
+        HoldedContactId = contact,
+        SupplierAccountNum = account,
+        Source = CreditorContactSource.Auto,
     };
 
     private static readonly HoldedCreditorContact[] Bindings =
@@ -340,13 +343,26 @@ public class ExpenseReconTests
 
     private static HoldedPurchaseDocListItemDto ListDoc(string id) => new()
     {
-        Id = id, DocNumber = id, ContactId = "c-alice", ContactName = "Alice Example", Description = "ER: Train",
-        Date = Submitted, Subtotal = 100m, Tax = 0m, Total = 100m,
+        Id = id,
+        DocNumber = id,
+        ContactId = "c-alice",
+        ContactName = "Alice Example",
+        Description = "ER: Train",
+        Date = Submitted,
+        Subtotal = 100m,
+        Tax = 0m,
+        Total = 100m,
     };
 
     private static HoldedPurchaseDocumentDto FullDoc(string id, string? notes) => new()
     {
-        Id = id, DocNumber = id, Subtotal = 100m, Tax = 0m, Total = 100m, PaymentsTotal = 0m, PaymentsPending = 0m,
+        Id = id,
+        DocNumber = id,
+        Subtotal = 100m,
+        Tax = 0m,
+        Total = 100m,
+        PaymentsTotal = 0m,
+        PaymentsPending = 0m,
         Notes = notes,
     };
 

@@ -71,7 +71,12 @@ public class HoldedFinanceServiceTests
         _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci => new HoldedPurchaseDocumentDto
             {
-                Id = ci.Arg<string>(), DocNumber = "", Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m,
+                Id = ci.Arg<string>(),
+                DocNumber = "",
+                Subtotal = 0m,
+                Tax = 0m,
+                Total = 0m,
+                PaymentsTotal = 0m,
                 PaymentsPending = 0m,
             });
         // The mirror never synced, so /Finance/Creditors' reconciliation banner reads unavailable.

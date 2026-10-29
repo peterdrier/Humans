@@ -626,6 +626,48 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""docNumber"":""F260001""");
     }
 
+    [HumansFact]
+    public async Task ExpenseRecon_NonFinanceAdmin_IsForbidden()
+    {
+        SetPrincipal(Guid.NewGuid());
+        SetFinanceAdmin(false);
+
+        var result = await _sut.ExpenseRecon(null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        await _finance.DidNotReceive().GetExpenseReconAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExpenseRecon_FinanceAdmin_ProjectsTheReport_WithNoIbanField()
+    {
+        SetPrincipal(Guid.NewGuid());
+        SetFinanceAdmin(true);
+        var member = Guid.NewGuid();
+        _finance.GetExpenseReconAsync(2026, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
+            2026, Instant.FromUtc(2026, 10, 29, 2, 45), null, [2026],
+            [
+                new ExpenseReconLine(Guid.NewGuid(), Guid.NewGuid(), member, "Ana", "ER: Train", 100m,
+                    new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Duplicated, "d1", "F1", 100m, "Ana T",
+                    ["d2"], 100m),
+            ],
+            [new ExpenseReconOrphan("d9", "F9", new LocalDate(2026, 10, 11), "Nobody", "ER: X", null, 5m,
+                ExpenseReconOrphanKind.UnboundContact)],
+            [new ExpenseReconMember(member, "Ana", 41000001, -200m, -100m, ExpenseReconMemberStatus.Off,
+                [new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)])],
+            new ExpenseReconTotals(1, 1, 3, 1, 1, 100m, 1, 1)));
+
+        var result = await _sut.ExpenseRecon(2026, Xunit.TestContext.Current.CancellationToken);
+
+        var json = Emitted(result);
+        json.Should().Contain(@"""status"":""Duplicated""");
+        json.Should().Contain(@"""documentDate"":""2026-10-10""");
+        json.Should().Contain(@"""kind"":""UnboundContact""");
+        json.Should().Contain(@"""difference"":-100");
+        json.Should().Contain(@"""problems"":3");
+        json.Should().NotContainEquivalentOf("iban");
+    }
+
     private const string SpacedIban = "es79 2100 0813 6101 2345 6789";
     private const string CompactIban = "ES7921000813610123456789";
     private const string Tainted = "see " + SpacedIban + " or " + CompactIban;
@@ -719,6 +761,17 @@ public class BackdoorFinanceControllerTests
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
             new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
         ]);
+        _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
+            null, null, null, [],
+            [
+                new ExpenseReconLine(Guid.NewGuid(), null, userId, Tainted, Tainted, 1m, new LocalDate(2026, 1, 1),
+                    Tainted, ExpenseReconLineStatus.Missing, Tainted, Tainted, null, Tainted, [Tainted], 0m),
+            ],
+            [new ExpenseReconOrphan(Tainted, Tainted, new LocalDate(2026, 1, 1), Tainted, Tainted, Tainted, 1m,
+                ExpenseReconOrphanKind.NoMatchingLine)],
+            [new ExpenseReconMember(userId, Tainted, null, 0m, 0m, ExpenseReconMemberStatus.NoAccount,
+                [new ExpenseReconOpenTransfer(Guid.NewGuid(), Tainted, Instant.FromUtc(2026, 1, 1, 0, 0), 1m)])],
+            new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0)));
 
         IActionResult[] results =
         [
@@ -729,6 +782,7 @@ public class BackdoorFinanceControllerTests
             await _sut.CategoryMap(ct),
             await _sut.SepaTransfers(ct),
             await _sut.HoldedSync(ct),
+            await _sut.ExpenseRecon(null, ct),
         ];
         foreach (var result in results)
         {

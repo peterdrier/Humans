@@ -219,6 +219,83 @@ internal sealed class BackdoorFinanceController(
         });
     }
 
+    /// <summary><c>/Finance/ExpenseRecon</c> as JSON: Finance's report, projected only to give dates and enums a wire
+    /// form. The report carries no IBAN.</summary>
+    [HttpGet("expense-recon")]
+    public async Task<IActionResult> ExpenseRecon([FromQuery] int? year, CancellationToken ct)
+    {
+        if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
+
+        var r = await finance.GetExpenseReconAsync(year, ct);
+        return Ok(new
+        {
+            year = r.Year,
+            mirrorSyncedAt = r.MirrorSyncedAt?.ToIso8601(),
+            unavailableReason = r.UnavailableReason,
+            years = r.Years,
+            totals = new
+            {
+                reports = r.Totals.Reports,
+                lines = r.Totals.Lines,
+                holdedDocs = r.Totals.HoldedDocs,
+                problemLines = r.Totals.ProblemLines,
+                duplicateDocs = r.Totals.DuplicateDocs,
+                excessAmount = r.Totals.ExcessAmount,
+                orphans = r.Totals.Orphans,
+                membersOff = r.Totals.MembersOff,
+                problems = r.Totals.Problems,
+            },
+            lines = r.Lines.Select(l => new
+            {
+                expenseReportId = l.ExpenseReportId,
+                lineId = l.LineId,
+                creditorUserId = l.CreditorUserId,
+                memberName = l.MemberName,
+                description = l.Description,
+                expectedAmount = l.ExpectedAmount,
+                documentDate = l.DocumentDate.ToInvariantDate(),
+                pushState = l.PushState,
+                status = l.Status.ToString(),
+                isProblem = l.IsProblem,
+                holdedDocId = l.HoldedDocId,
+                holdedDocNumber = l.HoldedDocNumber,
+                holdedTotal = l.HoldedTotal,
+                holdedContactName = l.HoldedContactName,
+                duplicateDocIds = l.DuplicateDocIds,
+                excessAmount = l.ExcessAmount,
+            }),
+            orphans = r.Orphans.Select(o => new
+            {
+                holdedDocId = o.HoldedDocId,
+                docNumber = o.DocNumber,
+                date = o.Date.ToInvariantDate(),
+                contactName = o.ContactName,
+                description = o.Description,
+                notes = o.Notes,
+                total = o.Total,
+                kind = o.Kind.ToString(),
+            }),
+            members = r.Members.Select(m => new
+            {
+                userId = m.UserId,
+                memberName = m.MemberName,
+                supplierAccountNum = m.SupplierAccountNum,
+                ledgerBalance = m.LedgerBalance,
+                expectedBalance = m.ExpectedBalance,
+                difference = m.Difference,
+                status = m.Status.ToString(),
+                isProblem = m.IsProblem,
+                openTransfers = m.OpenTransfers.Select(t => new
+                {
+                    transferId = t.TransferId,
+                    fileName = t.FileName,
+                    generatedAt = t.GeneratedAt.ToIso8601(),
+                    amount = t.Amount,
+                }),
+            }),
+        });
+    }
+
     /// <summary>The one place free text is scrubbed: every string in every JSON body, and the attachment's download
     /// filename, so a field added later cannot forget to. File bytes are left alone.</summary>
     public void OnResultExecuting(ResultExecutingContext context)

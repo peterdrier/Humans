@@ -42,7 +42,8 @@ points. No provisioning, Budget or email dependency.
 Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`
 and the facade's logger. Owns purchase-document fetching and matching,
 `HoldedExpenseDocs` snapshot replacement and `HoldedDocSyncStates` writes. Reads the
-category map and managed-account registry; no Budget, user or email dependency.
+category map and managed-account registry, and the mirror itself to find documents whose
+notes it lacks (one `GetPurchaseDocumentAsync` each); no Budget, user or email dependency.
 The internal `IHoldedFinanceManagement.SyncAsync` entry point delegates here; its callers are Finance's own `HoldedDocSyncJob` (nightly) and `FinanceController.RunHoldedSync` (manual), never another section. The facade passes its duplicate-document check in, run over the fetched documents before the snapshot is written (it reads `IExpenseHoldedBookingService`, which the sync itself never does).
 
 ### CashFlowService (Scoped, section-internal)
@@ -110,6 +111,11 @@ existing `PayPurchaseDocumentAsync` / `PostLedgerEntryAsync` / `ListPurchaseDocu
 `/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines
 through `IExpenseHoldedBookingService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
 deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsync`.
+`GetExpenseReconAsync` (public, `IHoldedFinanceService`; `/Finance/ExpenseRecon`, the
+`/Finance/Creditors` banner, `ExpenseReconJob` and Backdoor) reads `HoldedDocSyncStates`,
+`HoldedExpenseDocs`, `HoldedCreditorContacts` and `SepaPayoutTransfers`, plus
+`IExpenseHoldedBookingService.GetHoldedReconLinesAsync`, `IHoldedService.GetAccountBalancesAsync`
+and `IUserService.GetUserInfosAsync`. **No `IHoldedClient` call, no write.**
 
 `ISepaBankBooking.RunAsync` (`Humans.Finance.Contracts`, public — the Hangfire
 job needs a public concrete type but must not take the internal
