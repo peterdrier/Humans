@@ -351,16 +351,17 @@ internal sealed class CampRoleService(
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
-        GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default)
+        GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
         var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
-        if (!definitions.Any())
+        var targetEvent = await FindEventAsync(eventSettingsId, ct);
+        if (!definitions.Any() || targetEvent is null)
             return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
 
         // Same shape as BuildComplianceMatrixAsync but over all active definitions,
-        // with SlotCount as the denominator.
-        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
-        var counts = await repo.GetAssignmentCountsForYearAsync(year, ct);
+        // with SlotCount as the denominator. Counts cover the event's year; only its seasons are read.
+        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(eventSettingsId, ct);
+        var counts = await repo.GetAssignmentCountsForYearAsync(targetEvent.Year, ct);
         var countLookup = counts.ToLookup(c => c.CampSeasonId);
 
         return seasons.ToDictionary(
@@ -373,16 +374,19 @@ internal sealed class CampRoleService(
                 .ToList());
     }
 
-    public async Task<CampComplianceMatrixData> BuildComplianceMatrixAsync(int year, CancellationToken ct = default)
+    public async Task<CampComplianceMatrixData?> BuildComplianceMatrixAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
+        var targetEvent = await FindEventAsync(eventSettingsId, ct);
+        if (targetEvent is null) return null;
+
         var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
             .Select(CreateCampRoleDefinitionInfo)
             .ToList();
 
-        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
+        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(eventSettingsId, ct);
         // Already filtered to active definitions and Active camp members; joins by
         // CampRoleDefinitionId so definition renames cannot empty the matrix.
-        var assignments = await repo.GetActiveAssignmentsForYearsAsync([year], ct);
+        var assignments = await repo.GetActiveAssignmentsForYearsAsync([targetEvent.Year], ct);
         var assigneesBySeasonAndDefinition = assignments
             .GroupBy(a => (a.CampSeasonId, a.CampRoleDefinitionId))
             .ToDictionary(
@@ -402,8 +406,11 @@ internal sealed class CampRoleService(
                     .ToList()))
             .ToList();
 
-        return new CampComplianceMatrixData(year, definitions, rows);
+        return new CampComplianceMatrixData(targetEvent, definitions, rows);
     }
+
+    private async Task<CampEventRegistration?> FindEventAsync(Guid eventSettingsId, CancellationToken ct) =>
+        (await campAccess.GetSettingsAsync(ct)).Events.FirstOrDefault(e => e.EventSettingsId == eventSettingsId);
 
     public async Task<IReadOnlyList<CampSpecialRole>> GetMissingSpecialRolesAsync(CancellationToken ct = default)
     {
@@ -474,13 +481,17 @@ internal sealed class CampRoleService(
         return definitionsCreated;
     }
 
-    public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default)
+    public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, Guid eventSettingsId, CancellationToken ct = default)
     {
         var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
-        if (def is null) return null;
+        var targetEvent = await FindEventAsync(eventSettingsId, ct);
+        if (def is null || targetEvent is null) return null;
 
-        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(year, ct);
-        var assignments = await repo.GetAssignmentsForDefinitionInYearAsync(def.Id, year, ct);
+        var seasons = await campAccess.GetCampSeasonsForComplianceAsync(eventSettingsId, ct);
+        var seasonIds = seasons.Select(s => s.CampSeasonId).ToHashSet();
+        var assignments = (await repo.GetAssignmentsForDefinitionInYearAsync(def.Id, targetEvent.Year, ct))
+            .Where(a => seasonIds.Contains(a.CampSeasonId))
+            .ToList();
 
         var assignmentsBySeason = assignments
             .GroupBy(a => a.CampSeasonId)
@@ -512,8 +523,8 @@ internal sealed class CampRoleService(
         // Empty Slug => no Google Group (admin hasn't assigned a slug yet).
         var groupEmail = string.IsNullOrWhiteSpace(info.Slug)
             ? null
-            : BuildGroupKey(year, info.Slug);
-        return new CampRoleDrillDownData(info, year, groupEmail, rows);
+            : BuildGroupKey(targetEvent.Year, info.Slug);
+        return new CampRoleDrillDownData(info, targetEvent, groupEmail, rows);
     }
 
     /// <inheritdoc />

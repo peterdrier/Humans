@@ -11,14 +11,14 @@ namespace Humans.Camps.Tests.ViewComponents;
 /// <summary>
 /// Covers <see cref="CampsSearchResultViewComponent"/>: the global-search row for a camp.
 /// Callers pass a camp id and nothing else, so resolving the
-/// public-year season name is the behaviour.
+/// active event's season name is the behaviour.
 /// </summary>
 public class CampsSearchResultViewComponentTests
 {
     private readonly ICampService _camps = Substitute.For<ICampService>();
 
     [HumansFact]
-    public async Task Renders_the_public_year_season_name()
+    public async Task Renders_the_active_event_season_name()
     {
         StubSettings(publicYear: 2026);
         var id = StubCamp("garden", (2025, "Old Name"), (2026, "Garden of Joy"));
@@ -32,7 +32,7 @@ public class CampsSearchResultViewComponentTests
     }
 
     [HumansFact]
-    public async Task Falls_back_to_the_slug_when_the_camp_has_no_season_that_year()
+    public async Task Falls_back_to_the_slug_when_the_camp_has_no_season_for_that_event()
     {
         StubSettings(publicYear: 2026);
         var id = StubCamp("garden", (2024, "Long Ago"));
@@ -57,7 +57,7 @@ public class CampsSearchResultViewComponentTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task AbandonedRequest_CancelsCampAndPublicYearReads(bool settings)
+    public async Task AbandonedRequest_CancelsCampAndActiveEventReads(bool settings)
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
@@ -82,7 +82,10 @@ public class CampsSearchResultViewComponentTests
 
     private void StubSettings(int publicYear) =>
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(publicYear, [publicYear]));
+            .Returns(new CampSettingsInfo(publicYear, [publicYear]) { ActiveEventSettingsId = EventIdFor(publicYear) });
+
+    /// <summary>One stand-in Settings event per year.</summary>
+    private static Guid EventIdFor(int year) => new(year, 0, 0, new byte[8]);
 
     private Guid StubCamp(string slug, params (int Year, string Name)[] seasons)
     {
@@ -104,6 +107,9 @@ public class CampsSearchResultViewComponentTests
                 AcceptingMembers: YesNoMaybe.Yes, KidsWelcome: YesNoMaybe.Yes,
                 AdultPlayspace: AdultPlayspacePolicy.No, MemberCount: 0,
                 SoundZone: null, SpaceRequirement: null, ElectricalGrid: null,
-                EeSlotCount: 0, EeGrantedCount: null, JoinedMemberCount: null)).ToList());
+                EeSlotCount: 0, EeGrantedCount: null, JoinedMemberCount: null)
+            {
+                EventSettingsId = EventIdFor(s.Year),
+            }).ToList());
     }
 }

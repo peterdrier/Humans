@@ -30,6 +30,10 @@ namespace Humans.Camps.Tests.Controllers;
 
 public class CampControllerTests
 {
+    private static readonly CampEventRegistration Event2026 = new(Guid.NewGuid(), "Nowhere 2026", 2026, true);
+    private static readonly CampEventRegistration Event2027 = new(Guid.NewGuid(), "Nowhere 2027", 2027, false);
+    private static readonly CampEventRegistration Event2029 = new(Guid.NewGuid(), "Nowhere 2029", 2029, false);
+
     private readonly ICampManagement _camps = Substitute.For<ICampManagement>();
     private readonly ICampContactService _contacts = Substitute.For<ICampContactService>();
     private readonly ICampRoleService _roles = Substitute.For<ICampRoleService>();
@@ -67,13 +71,13 @@ public class CampControllerTests
         using var services = registrations.BuildServiceProvider();
         var userId = Guid.NewGuid();
         var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userId));
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), userId).Returns(CampUpdateResult.Success());
-        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, 0)
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
             .ReturnsForAnyArgs(new CampWriteResult<Camp>(new Camp { Id = camp.Id, Slug = camp.Slug }));
         _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = BuildController(userId);
@@ -159,7 +163,8 @@ public class CampControllerTests
         _campsLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(c => new LocalizedString(c.ArgAt<string>(0), c.ArgAt<string>(0)));
         _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId).Returns(CampUpdateResult.Failure(key));
-        _camps.OptInToSeasonAsync(camp.Id, 2027, actorId).Returns(new CampWriteResult<CampSeason>(null, key));
+        _camps.OptInToSeasonAsync(camp.Id, Event2027.EventSettingsId, actorId).Returns(new CampWriteResult<CampSeason>(null, key));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
         _camps.WithdrawSeasonAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.MarkSeasonFullAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId)
@@ -177,8 +182,8 @@ public class CampControllerTests
                 { CampId = camp.Id, SeasonId = season.Id, Name = "Alpha", ContactPhone = "+34600000000" });
                 await _camps.Received(1).UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId); break;
             case "OptIn":
-                await controller.OptIn(camp.Slug, 2027);
-                await _camps.Received(1).OptInToSeasonAsync(camp.Id, 2027, actorId); break;
+                await controller.OptIn(camp.Slug, Event2027.EventSettingsId);
+                await _camps.Received(1).OptInToSeasonAsync(camp.Id, Event2027.EventSettingsId, actorId); break;
             case "Withdraw":
                 await controller.Withdraw(camp.Slug, season.Id);
                 await _camps.Received(1).WithdrawSeasonAsync(camp.Id, season.Id, actorId); break;
@@ -206,7 +211,7 @@ public class CampControllerTests
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandon && cancelAfterSettings) await request.CancelAsync();
-            return new CampSettingsInfo(2026, [2026]);
+            return Settings2026();
         });
         _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -310,7 +315,7 @@ public class CampControllerTests
         var shared = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var userId = Guid.NewGuid();
         var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, leadUserId: userId);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
@@ -394,10 +399,10 @@ public class CampControllerTests
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(userId)));
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
         var reservedKey = "Camps_Flash_ReservedName";
         _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0,
-                default!, null, 0)
+                default!, null, Guid.Empty)
             .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, reservedKey));
         var controller = BuildController(userId, localizer);
         var model = new CampRegisterViewModel { Name = "Register" };
@@ -416,10 +421,10 @@ public class CampControllerTests
             "Camps_Flash_SeasonNotOpen", "Camps_Flash_SeasonAlreadyExists", "Camps_Flash_NoPreviousSeason"
         })
         {
-            _camps.OptInToSeasonAsync(camp.Id, 2027, actorUserId: Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            _camps.OptInToSeasonAsync(camp.Id, Event2027.EventSettingsId, actorUserId: Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
                 .Returns(new CampWriteResult<CampSeason>(null, key));
-            (await controller.OptIn(camp.Slug, 2027)).Should().BeOfType<RedirectToActionResult>();
-            expected = localizer[key, 2027];
+            (await controller.OptIn(camp.Slug, Event2027.EventSettingsId)).Should().BeOfType<RedirectToActionResult>();
+            expected = localizer[key, Event2027.EventName];
             expected.ResourceNotFound.Should().BeFalse();
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
         }
@@ -439,7 +444,7 @@ public class CampControllerTests
         var campsLocalizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
         var sharedLocalizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2026]));
+            .Returns(Settings2026());
         var controller = BuildController(Guid.NewGuid(), campsLocalizer, sharedLocalizer);
         var model = new CampRegisterViewModel { ContactPhone = "612 345 678" };
 
@@ -710,7 +715,7 @@ public class CampControllerTests
         vm.MyCamps.Should().BeEmpty();
         ((int)controller.ViewBag.PendingCount).Should().Be(1);
         await _camps.Received(1).GetSettingsAsync(Arg.Any<CancellationToken>());
-        await _camps.Received(1).GetCampsForYearAsync(2026, Arg.Any<CancellationToken>());
+        await _camps.Received(1).GetCampsForEventAsync(EventIdFor(2026), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -836,7 +841,7 @@ public class CampControllerTests
     [InlineData(true, true)]
     [InlineData(false, false)]
     [InlineData(true, false)]
-    public async Task MemberShortcuts_MalformedYear_DoesNotWrite(bool assignRole, bool canManage)
+    public async Task MemberShortcuts_MalformedEvent_DoesNotWrite(bool assignRole, bool canManage)
     {
         var ct = TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -847,12 +852,12 @@ public class CampControllerTests
             .Returns(canManage ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = BuildController(actorId);
-        controller.ModelState.AddModelError("year", "Not a year");
+        controller.ModelState.AddModelError("eventSettingsId", "Not an event id");
         var userId = Guid.NewGuid();
 
         var result = assignRole
-            ? await controller.AssignRoleByUser(camp.Slug, Guid.NewGuid(), userId, ct, year: null)
-            : await controller.AddMember(camp.Slug, userId, ct, year: null);
+            ? await controller.AssignRoleByUser(camp.Slug, Guid.NewGuid(), userId, ct, eventSettingsId: null)
+            : await controller.AddMember(camp.Slug, userId, ct, eventSettingsId: null);
 
         if (canManage)
             result.Should().BeOfType<BadRequestObjectResult>();
@@ -863,13 +868,14 @@ public class CampControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false, 2029)]
-    [InlineData(true, 2029)]
-    [InlineData(false, null)]
-    [InlineData(true, null)]
-    public async Task MemberShortcuts_PreserveTheDisplayedYear(bool assignRole, int? year)
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task MemberShortcuts_PreserveTheDisplayedEvent(bool assignRole, bool eventShown)
     {
         var ct = TestContext.Current.CancellationToken;
+        Guid? eventSettingsId = eventShown ? Event2029.EventSettingsId : null;
         var actorId = Guid.NewGuid();
         var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Full, year: 2029);
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
@@ -882,14 +888,14 @@ public class CampControllerTests
         var controller = BuildController(actorId);
 
         var result = assignRole
-            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, year)
-            : await controller.AddMember(camp.Slug, userId, ct, year);
+            ? await controller.AssignRoleByUser(camp.Slug, roleId, userId, ct, eventSettingsId)
+            : await controller.AddMember(camp.Slug, userId, ct, eventSettingsId);
 
-        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(year);
+        result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["eventSettingsId"].Should().Be(eventSettingsId);
         if (assignRole)
-            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, year);
+            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
         else
-            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, year);
+            await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, eventSettingsId);
     }
 
     [HumansTheory]
@@ -902,7 +908,10 @@ public class CampControllerTests
         var member = MakeSeasonMember(Guid.NewGuid());
         var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active);
         var first = camp.Seasons.Single();
-        var target = first with { Id = Guid.NewGuid(), Year = 2027, Members = foreignMember ? [] : [member] };
+        var target = first with
+        {
+            Id = Guid.NewGuid(), Year = 2027, EventSettingsId = Event2027.EventSettingsId, Members = foreignMember ? [] : [member]
+        };
         camp = camp with { Seasons = [first, target] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
@@ -918,7 +927,7 @@ public class CampControllerTests
         else
         {
             await _roles.Received(1).AssignAsync(target.Id, roleId, member.Id, actorId, ct);
-            result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["year"].Should().Be(2027);
+            result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["eventSettingsId"].Should().Be(Event2027.EventSettingsId);
         }
     }
 
@@ -1055,7 +1064,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
 
-        var result = await BuildController().SeasonDetails(withdrawn.Slug, 2026, TestContext.Current.CancellationToken);
+        var result = await BuildController().SeasonDetails(withdrawn.Slug, EventIdFor(2026), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
     }
@@ -1147,7 +1156,7 @@ public class CampControllerTests
         };
         var fullCamp = renewal with { Seasons = [priorSeason, renewal.Seasons.Single()] };
         StubCampReadModel([]);
-        _camps.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
+        _camps.GetCampsForEventAsync(EventIdFor(2027), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<CampInfo>>([renewal]));
         _camps.GetCampBySlugAsync(renewal.Slug, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CampInfo?>(fullCamp));
@@ -1174,7 +1183,7 @@ public class CampControllerTests
             .Returns(AuthorizationResult.Success());
 
         var result = await BuildController(leadUserId)
-            .SeasonDetails(renewal.Slug, 2027, TestContext.Current.CancellationToken);
+            .SeasonDetails(renewal.Slug, EventIdFor(2027), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>(
             because: "a lead must reach their camp's not-yet-approved renewal season");
@@ -1256,8 +1265,8 @@ public class CampControllerTests
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)
     {
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CampSettingsInfo(2026, [2026])));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Settings2026()));
+        _camps.GetCampsForEventAsync(EventIdFor(2026), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(camps));
     }
 
@@ -1297,6 +1306,16 @@ public class CampControllerTests
         return controller;
     }
 
+    /// <summary>2026 is the active event and the only one open for registration.</summary>
+    private static CampSettingsInfo Settings2026() => new(2026, [2026])
+    {
+        ActiveEventSettingsId = Event2026.EventSettingsId,
+        Events = [Event2029, Event2027, Event2026],
+    };
+
+    private static Guid EventIdFor(int year) =>
+        new[] { Event2026, Event2027, Event2029 }.Single(e => e.Year == year).EventSettingsId;
+
     private static CampInfo MakeCamp(
         string slug,
         string name,
@@ -1329,6 +1348,7 @@ public class CampControllerTests
             EeGrantedCount: 0,
             JoinedMemberCount: 0)
         {
+            EventSettingsId = EventIdFor(year),
             LeadUserIds = leadUserId.HasValue ? [leadUserId.Value] : [],
             Members = members ?? []
         };
@@ -1358,6 +1378,7 @@ public class CampControllerTests
             camp.Slug,
             season.Id,
             season.Year,
+            season.EventSettingsId,
             IsNameLocked: false,
             season.Name,
             camp.ContactEmail,

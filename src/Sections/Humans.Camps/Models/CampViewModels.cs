@@ -75,9 +75,12 @@ internal sealed class CampDetailViewModel
     /// <summary>True when the viewer may see all roles + the roster: CampAdmin (any camp) or an Active member of this camp.</summary>
     public bool CanSeeFullCamp { get; set; }
     public CampSeasonDetailViewModel? CurrentSeason { get; set; }
-    /// <summary>The year membership requests are accepted for (CampSettingsInfo.PublicYear). Compare against
-    /// CurrentSeason.Year to tell whether the displayed season is the one that can still be joined.</summary>
-    public int PublicYear { get; set; }
+    /// <summary>The event membership requests are accepted for (Settings' active event).</summary>
+    public Guid? ActiveEventSettingsId { get; set; }
+
+    /// <summary>Whether the displayed season is the one that can still be joined.</summary>
+    public bool IsActiveEventSeason =>
+        CurrentSeason?.EventSettingsId is { } eventSettingsId && eventSettingsId == ActiveEventSettingsId;
     public bool IsCurrentUserLead { get; set; }
     public bool IsCurrentUserCampAdmin { get; set; }
     public CampMembershipStateViewModel Membership { get; set; } = new();
@@ -106,6 +109,7 @@ internal sealed class CampSeasonDetailViewModel
 {
     public Guid Id { get; set; }
     public int Year { get; set; }
+    public Guid? EventSettingsId { get; set; }
     public string Name { get; set; } = string.Empty;
     public CampSeasonStatus Status { get; set; }
     public string BlurbLong { get; set; } = string.Empty;
@@ -187,6 +191,7 @@ internal sealed class CampEditViewModel : CampRegisterViewModel
     public string Slug { get; set; } = string.Empty;
     public Guid SeasonId { get; set; }
     public int Year { get; set; }
+    public Guid? EventSettingsId { get; set; }
     public bool IsNameLocked { get; set; }
     public List<CampImageViewModel> Images { get; set; } = [];
     public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = [];
@@ -257,11 +262,13 @@ internal sealed class CampAdminViewModel
 {
     public List<CampCardViewModel> PendingCamps { get; set; } = [];
     public List<CampCardViewModel> WithdrawnCamps { get; set; } = [];
-    public int PublicYear { get; set; }
-    public List<int> OpenSeasons { get; set; } = [];
+    public string ActiveEventName { get; set; } = string.Empty;
+    public List<string> OpenEventNames { get; set; } = [];
     public int TotalCamps { get; set; }
     public int ActiveCamps { get; set; }
-    public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
+    /// <summary>Every non-deleted Settings event, latest gate opening first: the name lock date picker.</summary>
+    public IReadOnlyList<CampEventRegistration> Events { get; set; } = [];
+    public IReadOnlyDictionary<Guid, NodaTime.LocalDate?> NameLockDates { get; set; } = new Dictionary<Guid, NodaTime.LocalDate?>();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = [];
     /// <summary>The "Seed system roles" admin card renders only when this is true.</summary>
     public bool HasMissingSpecialRoles { get; set; }

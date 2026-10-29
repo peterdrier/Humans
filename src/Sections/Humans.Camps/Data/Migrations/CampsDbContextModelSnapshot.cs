@@ -415,8 +415,10 @@ namespace Humans.Camps.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("CampId", "Year")
+                    b.HasIndex("CampId", "EventSettingsId")
                         .IsUnique();
+
+                    b.HasIndex("CampId", "Year");
 
                     b.ToTable("camp_seasons", (string)null);
                 });

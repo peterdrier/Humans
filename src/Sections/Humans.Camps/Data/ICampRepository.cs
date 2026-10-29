@@ -86,7 +86,11 @@ internal partial interface ICampRepository : IRepository
         Func<CampSeason, CampHistoricalName?> mutate,
         CancellationToken ct = default);
 
-    Task<bool> SeasonExistsAsync(Guid campId, int year, CancellationToken ct = default);
+    /// <summary>
+    /// Whether the camp has a season for the event. <paramref name="unassignedYear"/> also counts seasons of that
+    /// year with no event id yet (the ones <c>camps.event-ids</c> would give this event); null counts only stamped ones.
+    /// </summary>
+    Task<bool> SeasonExistsAsync(Guid campId, Guid eventSettingsId, int? unassignedYear, CancellationToken ct = default);
 
     Task<CampSeason?> GetLatestSeasonAsync(Guid campId, CancellationToken ct = default);
 
@@ -102,13 +106,11 @@ internal partial interface ICampRepository : IRepository
     /// </summary>
     Task AddSeasonAsync(CampSeason season, CancellationToken ct = default);
 
-    Task<int> SetNameLockDateForYearAsync(int year, LocalDate lockDate, CancellationToken ct = default);
+    /// <summary>Sets the lock date on the event's seasons; <paramref name="unassignedYear"/> as in <see cref="SeasonExistsAsync"/>.</summary>
+    Task<int> SetNameLockDateForEventAsync(Guid eventSettingsId, int? unassignedYear, LocalDate lockDate, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the maximum <c>NameLockDate</c> per year, for the given years.
-    /// Missing years are absent from the dictionary.
-    /// </summary>
-    Task<IReadOnlyDictionary<int, LocalDate?>> GetNameLockDatesAsync(
+    /// <summary>The maximum <c>NameLockDate</c> per year and event id, for the given years.</summary>
+    Task<IReadOnlyList<(int Year, Guid? EventSettingsId, LocalDate? LockDate)>> GetNameLockDatesAsync(
         IReadOnlyCollection<int> years,
         CancellationToken ct = default);
 

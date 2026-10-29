@@ -20,7 +20,7 @@
         <div class="card text-center h-100">
             <div class="card-body">
                 <h5 class="card-title">@Model.TotalCamps</h5>
-                <p class="card-text text-muted">Total @SharedLocalizer["Camp_Plural"] (@Model.PublicYear)</p>
+                <p class="card-text text-muted">Total @SharedLocalizer["Camp_Plural"] (@Model.ActiveEventName)</p>
             </div>
         </div>
     </div>
@@ -51,7 +51,7 @@
     <div class="col">
         <div class="card text-center h-100">
             <div class="card-body">
-                <h5 class="card-title">@(Model.OpenSeasons.Count > 0 ? string.Join(", ", Model.OpenSeasons) : "None")</h5>
+                <h5 class="card-title">@(Model.OpenEventNames.Count > 0 ? string.Join(", ", Model.OpenEventNames) : "None")</h5>
                 <p class="card-text text-muted">Open Seasons</p>
             </div>
         </div>
@@ -72,7 +72,7 @@
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-clipboard-check me-2"></i>Compliance report</h5>
-                <p class="card-text">See which barrios are missing required roles for the current public year.</p>
+                <p class="card-text">See which barrios are missing required roles for the active event.</p>
                 <a asp-controller="CampCompliance" asp-action="Compliance" class="btn btn-outline-primary">Open report</a>
             </div>
         </div>
@@ -216,10 +216,11 @@
                 @if (Model.NameLockDates.Count > 0)
                 {
                     <div class="mb-3">
-                        @foreach (var (year, lockDate) in Model.NameLockDates.OrderBy(x => x.Key))
+                        @foreach (var lockEvent in Model.Events.Where(e => Model.NameLockDates.ContainsKey(e.EventSettingsId)))
                         {
+                            var lockDate = Model.NameLockDates[lockEvent.EventSettingsId];
                             <p class="mb-1">
-                                <strong>@year:</strong>
+                                <strong>@lockEvent.EventName:</strong>
                                 @if (lockDate.HasValue)
                                 {
                                     @lockDate.Value.ToDate()
@@ -235,7 +236,12 @@
                 <p class="text-muted">After this date, camps can no longer change their name for a season.</p>
                 <form asp-controller="CampAdmin" asp-action="SetNameLockDate" method="post" class="d-flex gap-2">
                     @Html.AntiForgeryToken()
-                    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" placeholder="Year" min="2024" max="2099" required />
+                    <select name="eventSettingsId" class="form-select form-select-sm" style="max-width: 220px;" required>
+                        @foreach (var lockEvent in Model.Events)
+                        {
+                            <option value="@lockEvent.EventSettingsId">@lockEvent.EventName</option>
+                        }
+                    </select>
                     <input type="date" name="lockDate" class="form-control form-control-sm" style="max-width: 180px;" required />
                     <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
                         <i class="fa-solid fa-lock me-1"></i>Set
@@ -248,7 +254,7 @@
 
 <div class="card mb-4">
     <div class="card-header">
-        <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.PublicYear)
+        <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.ActiveEventName)
     </div>
     <div class="card-body">
         @{
@@ -270,7 +276,7 @@
 {
     <div class="card mb-4">
         <div class="card-header">
-            <i class="fa-solid fa-table me-2"></i>Camp Summary (@Model.PublicYear)
+            <i class="fa-solid fa-table me-2"></i>Camp Summary (@Model.ActiveEventName)
         </div>
         <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
@@ -361,7 +367,7 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-campground me-2"></i>All @SharedLocalizer["Camp_Plural"] (@Model.PublicYear)</span>
+        <span><i class="fa-solid fa-campground me-2"></i>All @SharedLocalizer["Camp_Plural"] (@Model.ActiveEventName)</span>
         <div class="d-flex gap-2">
             <a asp-action="ExportCamps" class="btn btn-outline-secondary btn-sm">
                 <i class="fa-solid fa-download me-1"></i>Export CSV

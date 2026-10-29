@@ -15,48 +15,35 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
                 return Content(string.Empty);
 
             var settings = await campService.GetSettingsAsync(ct);
-            var years = settings.OpenSeasons
-                .Append(settings.PublicYear)
-                .Distinct()
-                .OrderByDescending(year => year)
+            // Open events plus the active one, latest gate opening first.
+            var events = settings.Events
+                .Where(e => e.RegistrationOpen || e.EventSettingsId == settings.ActiveEventSettingsId)
                 .ToList();
 
-            var memberships = new List<(int Year, string CampSlug, string CampName, CampMemberStatus Status)>();
-            foreach (var year in years)
+            var groups = new List<MyCampsEventGroup>();
+            foreach (var campEvent in events)
             {
-                var camps = await campService.GetCampsForYearAsync(year, ct);
-                memberships.AddRange(camps
-                    .SelectMany(camp => camp.Seasons.Where(season => season.Year == year)
+                var camps = await campService.GetCampsForEventAsync(campEvent.EventSettingsId, ct);
+                var memberships = camps
+                    .SelectMany(camp => camp.Seasons
                         .SelectMany(season => season.Members
                             .Where(member => member.UserId == userId)
-                            .Select(member => (
-                                year,
-                                camp.Slug,
-                                season.Name,
-                                member.Status)))));
+                            .Select(member => new MyCampsMembership
+                            {
+                                CampSlug = camp.Slug,
+                                CampName = season.Name,
+                                Status = member.Status
+                            })))
+                    .OrderBy(m => m.CampName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (memberships.Count > 0)
+                    groups.Add(new MyCampsEventGroup { EventName = campEvent.EventName, Memberships = memberships });
             }
 
-            if (memberships.Count == 0)
+            if (groups.Count == 0)
                 return Content(string.Empty);
 
-            var byYear = memberships
-                .GroupBy(m => m.Year)
-                .OrderByDescending(g => g.Key)
-                .Select(g => new MyCampsYearGroup
-                {
-                    Year = g.Key,
-                    Memberships = g
-                        .OrderBy(m => m.CampName, StringComparer.OrdinalIgnoreCase)
-                        .Select(m => new MyCampsMembership
-                        {
-                            CampSlug = m.CampSlug,
-                            CampName = m.CampName,
-                            Status = m.Status
-                        }).ToList()
-                })
-                .ToList();
-
-            return View(new MyCampsViewModel { Years = byYear });
+            return View(new MyCampsViewModel { Events = groups });
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -72,12 +59,12 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
 
 public class MyCampsViewModel
 {
-    public List<MyCampsYearGroup> Years { get; set; } = [];
+    public List<MyCampsEventGroup> Events { get; set; } = [];
 }
 
-public class MyCampsYearGroup
+public class MyCampsEventGroup
 {
-    public int Year { get; set; }
+    public string EventName { get; set; } = string.Empty;
     public List<MyCampsMembership> Memberships { get; set; } = [];
 }
 

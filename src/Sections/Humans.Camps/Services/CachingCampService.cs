@@ -8,7 +8,7 @@ using Humans.Users.Contracts;
 namespace Humans.Camps.Services;
 
 /// <summary>
-/// Year-keyed reads are filtered snapshots, not separate cache entries. Also carries <see cref="ICampRoleService"/>
+/// Year- and event-keyed reads are filtered snapshots, not separate cache entries. Also carries <see cref="ICampRoleService"/>
 /// and <see cref="IUserDataContributor"/>: role writes and GDPR erasure change rows the projection serves.
 /// </summary>
 internal sealed class CachingCampService(
@@ -68,6 +68,16 @@ internal sealed class CachingCampService(
         return result;
     }
 
+    public async Task<IReadOnlyList<CampInfo>> GetCampsForEventAsync(
+        Guid eventSettingsId, CancellationToken cancellationToken = default)
+    {
+        var targetEvent = (await GetSettingsAsync(cancellationToken)).Events
+            .FirstOrDefault(e => e.EventSettingsId == eventSettingsId);
+        return targetEvent is null
+            ? []
+            : CampService.FilterToEvent(await GetCampsForYearAsync(targetEvent.Year, cancellationToken), eventSettingsId);
+    }
+
     private bool IsWarmYear(int year)
     {
         var snapshot = _warmYears;
@@ -77,45 +87,49 @@ internal sealed class CachingCampService(
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var snapshot = _settings ?? await LoadSettingsAsync(cancellationToken);
-        // PublicYear is Settings-owned: activating a new event changes it, and nothing in
-        // Settings signals this section's invalidator. Only the camps-owned parts of the
-        // snapshot are cached; the year is resolved live on every read.
-        return snapshot with { PublicYear = await GetActiveYearAsync(cancellationToken) };
+        // The active event is Settings-owned and making another event active is not a change this section hears
+        // about, so it is resolved live on every read; only the rest of the snapshot is cached.
+        var (activeYear, activeEventId) = await GetActiveEventAsync(cancellationToken);
+        return snapshot with { PublicYear = activeYear, ActiveEventSettingsId = activeEventId };
     }
 
     public Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct) =>
         WithInnerAsync(inner => inner.GetEarlyEntriesAsync(ct));
 
-    public Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetActiveYearAsync(cancellationToken));
+    public Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetActiveEventAsync(cancellationToken));
 
     public async Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        // PublicYear is always a warm year (warmup seeds it), so both calls below
+        // The active event's year is always warm (warmup seeds it), so both calls below
         // are served from the dict — no DB round-trip for the human card / Shifts view.
         var settings = await GetSettingsAsync(cancellationToken);
-        var camps = await GetCampsForYearAsync(settings.PublicYear, cancellationToken);
-        return CampUserInfo.Resolve(camps, settings.PublicYear, userId);
+        if (settings.ActiveEvent is not { } activeEvent)
+        {
+            return CampUserInfo.None;
+        }
+
+        var camps = await GetCampsForYearAsync(activeEvent.Year, cancellationToken);
+        return CampUserInfo.Resolve(camps, activeEvent.EventSettingsId, userId);
     }
 
     public Task<CampEditData?> GetCampEditDataAsync(
-        Guid campId, int? preferredYear = null, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetCampEditDataAsync(campId, preferredYear, cancellationToken));
+        Guid campId, Guid? eventSettingsId = null, CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetCampEditDataAsync(campId, eventSettingsId, cancellationToken));
 
-    // A camp surfaces in global search only when its public-year season is publicly visible.
+    // A camp surfaces in global search only when its active-event season is publicly visible.
     private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
         [CampSeasonStatus.Active, CampSeasonStatus.Full];
 
     public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default)
     {
-        // Served from the cached CampInfo snapshot — search must never hit the DB. PublicYear is
-        // always a warm year, so both the settings read and GetCampsForYearAsync stay in-cache.
+        // Served from the cached CampInfo snapshot — search must never hit the DB. The active event's
+        // year is always warm, so both the settings read and GetCampsForEventAsync stay in-cache.
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
             return [];
 
-        var settings = await GetSettingsAsync(cancellationToken);
-        var year = settings.PublicYear;
+        var activeEventId = (await GetSettingsAsync(cancellationToken)).ActiveEventSettingsId;
 
         // A pasted GUID jumps straight to that camp (any status).
         if (Guid.TryParse(query, out var id))
@@ -124,7 +138,7 @@ internal sealed class CachingCampService(
             var camp = Values.FirstOrDefault(c => c.Id == id);
             if (camp is null)
                 return [];
-            var byIdSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
+            var byIdSeason = activeEventId is { } eventId ? camp.GetSeasonForEvent(eventId) : null;
             return
             [
                 new CampSearchHit(
@@ -132,15 +146,16 @@ internal sealed class CachingCampService(
             ];
         }
 
-        // Case-insensitive name match against the public-year season name, public statuses only.
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
+        // Case-insensitive name match against the active-event season name, public statuses only.
+        if (activeEventId is null)
+            return [];
+        var camps = await GetCampsForEventAsync(activeEventId.Value, cancellationToken);
         var trimmed = query.Trim();
         var hits = new List<CampSearchHit>();
         foreach (var camp in camps)
         {
             var season = camp.Seasons.FirstOrDefault(s =>
-                s.Year == year
-                && PublicCampSeasonStatuses.Contains(s.Status)
+                PublicCampSeasonStatuses.Contains(s.Status)
                 && s.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
             if (season is not null)
                 hits.Add(new CampSearchHit(camp.Id, season.Name, season.Name.NameMatchScore(trimmed)));
@@ -167,12 +182,11 @@ internal sealed class CachingCampService(
 
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
             CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default)
+        GetCampSeasonsForComplianceAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
-        var camps = await GetCampsForYearAsync(year, ct);
+        var camps = await GetCampsForEventAsync(eventSettingsId, ct);
         return camps
             .SelectMany(camp => camp.Seasons
-                .Where(season => season.Year == year)
                 .Select(season => (
                     CampId: camp.Id,
                     CampName: season.Name,
@@ -187,23 +201,23 @@ internal sealed class CachingCampService(
     public Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
-        CampSeasonData seasonData, List<string>? historicalNames, int year,
+        CampSeasonData seasonData, List<string>? historicalNames, Guid eventSettingsId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
             var camp = await WithInnerAsync(inner => inner.CreateCampAsync(
                 createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl,
-                links, isSwissCamp, timesAtNowhere, seasonData, historicalNames, year,
+                links, isSwissCamp, timesAtNowhere, seasonData, historicalNames, eventSettingsId,
                 cancellationToken));
             if (camp.Value is { } created) await InvalidateCampAsync(created.Id, cancellationToken);
             return camp;
         });
 
     public Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(
-        Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default) =>
+        Guid campId, Guid eventSettingsId, Guid? actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInnerAsync(inner => inner.OptInToSeasonAsync(campId, year, actorUserId: actorUserId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.OptInToSeasonAsync(campId, eventSettingsId, actorUserId: actorUserId, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
@@ -368,11 +382,11 @@ internal sealed class CachingCampService(
     }
 
     public Task SetNameLockDateAsync(
-        int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.SetNameLockDateAsync(year, lockDate, actorUserId, cancellationToken));
-            // Touches every season in the year — RefreshAll.
+            await WithInnerAsync(inner => inner.SetNameLockDateAsync(eventSettingsId, lockDate, actorUserId, cancellationToken));
+            // Touches every season of the event — RefreshAll.
             RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);
         });
@@ -429,22 +443,22 @@ internal sealed class CachingCampService(
 
     public Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default, int? year = null) =>
+        CancellationToken cancellationToken = default, Guid? eventSettingsId = null) =>
         MutateAsync(async () =>
         {
             var result = await WithInnerAsync(inner => inner.AddCampMemberToActiveSeasonAsync(
-                campId, userId, actorUserId, cancellationToken, year));
+                campId, userId, actorUserId, cancellationToken, eventSettingsId));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
 
     public Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default, int? year = null) =>
+        CancellationToken cancellationToken = default, Guid? eventSettingsId = null) =>
         MutateAsync(async () =>
         {
             var result = await WithInnerAsync(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
-                campId, roleDefinitionId, userId, actorUserId, cancellationToken, year));
+                campId, roleDefinitionId, userId, actorUserId, cancellationToken, eventSettingsId));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
@@ -523,8 +537,8 @@ internal sealed class CachingCampService(
     }
 
     Task<CampRoleDrillDownData?> ICampRoleService.BuildDrillDownAsync(
-        Guid roleDefinitionId, int year, CancellationToken ct) =>
-        WithInnerRolesAsync(inner => inner.BuildDrillDownAsync(roleDefinitionId, year, ct));
+        Guid roleDefinitionId, Guid eventSettingsId, CancellationToken ct) =>
+        WithInnerRolesAsync(inner => inner.BuildDrillDownAsync(roleDefinitionId, eventSettingsId, ct));
 
     // A new definition has no assignments yet, so nothing cached changes.
     Task<CampAdminMutationResult> ICampRoleService.CreateDefinitionAsync(
@@ -565,11 +579,11 @@ internal sealed class CachingCampService(
         MutateRolesAsync(inner => inner.RemoveAllForMemberAsync(campMemberId, actorUserId, ct), deleted => deleted > 0);
 
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
-        ICampRoleService.GetDirectoryRoleSummariesAsync(int year, CancellationToken ct) =>
-        WithInnerRolesAsync(inner => inner.GetDirectoryRoleSummariesAsync(year, ct));
+        ICampRoleService.GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct) =>
+        WithInnerRolesAsync(inner => inner.GetDirectoryRoleSummariesAsync(eventSettingsId, ct));
 
-    Task<CampComplianceMatrixData> ICampRoleService.BuildComplianceMatrixAsync(int year, CancellationToken ct) =>
-        WithInnerRolesAsync(inner => inner.BuildComplianceMatrixAsync(year, ct));
+    Task<CampComplianceMatrixData?> ICampRoleService.BuildComplianceMatrixAsync(Guid eventSettingsId, CancellationToken ct) =>
+        WithInnerRolesAsync(inner => inner.BuildComplianceMatrixAsync(eventSettingsId, ct));
 
     // Seeding creates definitions only; no assignment, so nothing cached changes.
     Task<int> ICampRoleService.SeedSystemRolesAsync(Guid actorUserId, CancellationToken ct) =>
@@ -776,20 +790,20 @@ internal sealed class CachingCampService(
     /// </remarks>
     async Task<Guid> ICampSeeding.CreateCampForSeedAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
-        bool isSwissCamp, int timesAtNowhere, CampSeasonData seasonData, int year,
+        bool isSwissCamp, int timesAtNowhere, CampSeasonData seasonData, Guid eventSettingsId,
         CancellationToken cancellationToken)
     {
         var camp = await CreateCampAsync(
             createdByUserId, name, contactEmail, contactPhone,
             webOrSocialUrl: null, links: [], isSwissCamp, timesAtNowhere,
-            seasonData, historicalNames: [], year, cancellationToken);
+            seasonData, historicalNames: [], eventSettingsId, cancellationToken);
         return camp.Value?.Id ?? throw new InvalidOperationException("Camp seed registration was refused.");
     }
 
     /// <inheritdoc />
-    async Task ICampSeeding.OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken)
+    async Task ICampSeeding.OptInToSeasonAsync(Guid campId, Guid eventSettingsId, CancellationToken cancellationToken)
     {
-        var result = await OptInToSeasonAsync(campId, year, actorUserId: null, cancellationToken);
+        var result = await OptInToSeasonAsync(campId, eventSettingsId, actorUserId: null, cancellationToken);
         if (result.ErrorKey is not null) throw new InvalidOperationException("Camp seed season opt-in was refused.");
     }
 

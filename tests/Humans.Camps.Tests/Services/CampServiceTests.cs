@@ -27,6 +27,9 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CampServiceTests : CampsTestHarness
 {
     private static readonly Guid TestActorId = Guid.NewGuid();
+    private static readonly EventSettingsInfo Event2025 = BurnFixtures.Burn(eventName: "Nowhere 2025", year: 2025);
+    private static readonly EventSettingsInfo Event2026 = BurnFixtures.Burn(eventName: "Nowhere 2026", year: 2026);
+    private static readonly EventSettingsInfo Event2027 = BurnFixtures.Burn(eventName: "Nowhere 2027", year: 2027);
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
@@ -52,7 +55,9 @@ public sealed class CampServiceTests : CampsTestHarness
 
         _settingsService = Substitute.For<ISettingsService>();
         _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(BurnFixtures.Burn(year: 2026));
+            .Returns(Event2026);
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns([Event2025, Event2026, Event2027]);
 
         _service = new CampService(
             repo,
@@ -111,7 +116,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         switch (action)
         {
-            case "OptIn": await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, ct); break;
+            case "OptIn": await _service.OptInToSeasonAsync(camp.Id, Event2027.Id, actorUserId: TestActorId, ct); break;
             case "UpdateSeason": await _service.UpdateSeasonAsync(camp.Id, season.Id, MakeSeasonData(), actorUserId: TestActorId, ct); break;
             case "Withdraw": await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct); break;
             case "SetStatus": await _service.MarkSeasonFullAsync(camp.Id, season.Id, actorUserId: TestActorId, ct); break;
@@ -143,7 +148,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await SaveAllAsync(ct);
         AuditLog.ClearReceivedCalls();
 
-        var result = await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: null, ct);
+        var result = await _service.OptInToSeasonAsync(camp.Id, Event2027.Id, actorUserId: null, ct);
 
         result.ErrorKey.Should().BeNull();
         var entry = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
@@ -159,8 +164,8 @@ public sealed class CampServiceTests : CampsTestHarness
         await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
         var leadId = Guid.NewGuid();
         var created = (await _service.CreateCampAsync(leadId, "Returning Camp", "camp@example.com",
-            "+34600000000", null, null, false, 1, MakeSeasonData(), null, 2025, ct)).Value!;
-        await _service.OptInToSeasonAsync(created.Id, 2026, actorUserId: TestActorId, ct);
+            "+34600000000", null, null, false, 1, MakeSeasonData(), null, Event2025.Id, ct)).Value!;
+        await _service.OptInToSeasonAsync(created.Id, Event2026.Id, actorUserId: TestActorId, ct);
 
         var services = new ServiceCollection();
         services.AddKeyedScoped<ICampManagement>(CachingCampService.InnerServiceKey, (_, _) => _service);
@@ -224,7 +229,7 @@ public sealed class CampServiceTests : CampsTestHarness
             userId, "Camp Funhouse", "camp@fun.com", "+34612345678",
             "https://instagram.com/funhouse", null,
             isSwissCamp: false, timesAtNowhere: 0,
-            MakeSeasonData(), historicalNames: null, year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            MakeSeasonData(), historicalNames: null, eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         camp.Slug.Should().Be("camp-funhouse");
         camp.CreatedByUserId.Should().Be(userId);
@@ -255,7 +260,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var camp = (await _service.CreateCampAsync(
             userId, "Camp Seedless", "c@s.com", "+34600000001", null, null,
-            false, 0, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            false, 0, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
 
         var season = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         (await CampsDb.CampMembers.AsNoTracking().AnyAsync(m => m.CampSeasonId == season.Id && m.UserId == userId, TestContext.Current.CancellationToken))
@@ -272,9 +277,9 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var first = (await _service.CreateCampAsync(Guid.NewGuid(), name, "camp@test.com", "+34600000000",
-            null, null, false, 0, MakeSeasonData(), null, 2026, ct)).Value!;
+            null, null, false, 0, MakeSeasonData(), null, Event2026.Id, ct)).Value!;
         var second = (await _service.CreateCampAsync(Guid.NewGuid(), name, "camp@test.com", "+34600000000",
-            null, null, false, 0, MakeSeasonData(), null, 2026, ct)).Value!;
+            null, null, false, 0, MakeSeasonData(), null, Event2026.Id, ct)).Value!;
 
         foreach (var camp in new[] { first, second })
         {
@@ -297,7 +302,7 @@ public sealed class CampServiceTests : CampsTestHarness
         for (var i = 0; i < 3; i++)
         {
             var camp = (await _service.CreateCampAsync(Guid.NewGuid(), name, "camp@test.com", "+34600000000",
-                null, null, false, 0, MakeSeasonData(), null, 2026, ct)).Value!;
+                null, null, false, 0, MakeSeasonData(), null, Event2026.Id, ct)).Value!;
 
             SlugHelper.IsValidKebabSlug(camp.Slug, maxLength).Should().BeTrue();
             slugs.Add(camp.Slug).Should().BeTrue();
@@ -313,7 +318,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var act = () => _service.CreateCampAsync(
             userId, "Register", "camp@test.com", "+34600000000",
-            null, null, false, 0, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken);
+            null, null, false, 0, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken);
 
         (await act()).ErrorKey.Should().Be("Camps_Flash_ReservedName");
     }
@@ -494,7 +499,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var seasonsBefore = await CampsDb.CampSeasons.CountAsync(ct);
         var auditCallsBefore = AuditLog.ReceivedCalls().Count();
 
-        var act = () => _service.OptInToSeasonAsync(missingCamp ? Guid.NewGuid() : camp.Id, year, actorUserId: TestActorId, ct);
+        var act = () => _service.OptInToSeasonAsync(missingCamp ? Guid.NewGuid() : camp.Id, EventId(year), actorUserId: TestActorId, ct);
 
         (await act()).ErrorKey.Should().Be(key);
         (await CampsDb.CampSeasons.CountAsync(ct)).Should().Be(seasonsBefore);
@@ -514,7 +519,7 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, TestContext.Current.CancellationToken)).Value!;
+        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, Event2027.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken)).Value!;
 
         newSeason.Status.Should().Be(CampSeasonStatus.Active);
         newSeason.Year.Should().Be(2027);
@@ -533,7 +538,7 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, TestContext.Current.CancellationToken)).Value!;
+        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, Event2027.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken)).Value!;
 
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
@@ -549,7 +554,7 @@ public sealed class CampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, 2027, actorUserId: TestActorId, TestContext.Current.CancellationToken)).Value!;
+        var newSeason = (await _service.OptInToSeasonAsync(camp.Id, Event2027.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken)).Value!;
 
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
@@ -700,7 +705,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 Vibes = [CampVibe.LiveMusic]
             },
             historicalNames: null,
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         var alphaCamp = (await _service.CreateCampAsync(
             Guid.NewGuid(),
@@ -721,7 +726,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 Vibes = [CampVibe.ChillOut]
             },
             historicalNames: null,
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         await ApproveLatestSeasonAsync(zebraCamp.Id);
         await ApproveLatestSeasonAsync(alphaCamp.Id);
@@ -781,7 +786,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 ElectricalGrid = ElectricalGrid.Red
             },
             historicalNames: null,
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         var alphaCamp = (await _service.CreateCampAsync(
             Guid.NewGuid(),
@@ -800,7 +805,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 ElectricalGrid = ElectricalGrid.Yellow
             },
             historicalNames: null,
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         await ApproveLatestSeasonAsync(bravoCamp.Id);
         await ApproveLatestSeasonAsync(alphaCamp.Id);
@@ -840,7 +845,7 @@ public sealed class CampServiceTests : CampsTestHarness
             timesAtNowhere: 4,
             MakeSeasonData(),
             historicalNames: ["Old Fallback"],
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         await ApproveLatestSeasonAsync(camp.Id);
 
@@ -909,7 +914,7 @@ public sealed class CampServiceTests : CampsTestHarness
             timesAtNowhere: 0,
             MakeSeasonData(),
             historicalNames: null,
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         await ApproveLatestSeasonAsync(camp.Id);
 
@@ -971,7 +976,7 @@ public sealed class CampServiceTests : CampsTestHarness
         {
             case "Open": await _service.OpenSeasonAsync(e2027.Id, actorId, ct); break;
             case "Close": await _service.CloseSeasonAsync(e2026.Id, actorId, ct); break;
-            case "LockDate": await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct); break;
+            case "LockDate": await _service.SetNameLockDateAsync(Event2026.Id, lockDate, actorId, ct); break;
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
 
@@ -1005,15 +1010,15 @@ public sealed class CampServiceTests : CampsTestHarness
         await CreateTestCampAsync();
         var actorId = Guid.NewGuid();
         var lockDate = new LocalDate(2026, 3, 1);
-        await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
+        await _service.SetNameLockDateAsync(Event2026.Id, lockDate, actorId, ct);
         var (e2026, e2027) = StubTwoEvents();
         AuditLog.ClearReceivedCalls();
 
         // 2026 is open and 2027 closed through the legacy year list: pinning that state is not a change.
         await _service.OpenSeasonAsync(e2026.Id, actorId, ct);
         await _service.CloseSeasonAsync(e2027.Id, actorId, ct);
-        await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
-        await _service.SetNameLockDateAsync(2027, lockDate, actorId, ct);
+        await _service.SetNameLockDateAsync(Event2026.Id, lockDate, actorId, ct);
+        await _service.SetNameLockDateAsync(Event2027.Id, lockDate, actorId, ct);
 
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
@@ -1095,15 +1100,84 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateCampAsync_StampsTheSeasonWithTheEventOfItsYear()
+    public async Task CreateCampAsync_StampsTheSeasonWithTheChosenEvent()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
-        var (e2026, _) = StubTwoEvents();
 
         await CreateTestCampAsync();
 
-        (await CampsDb.CampSeasons.AsNoTracking().SingleAsync(ct)).EventSettingsId.Should().Be(e2026.Id);
+        (await CampsDb.CampSeasons.AsNoTracking().SingleAsync(ct)).EventSettingsId.Should().Be(Event2026.Id);
+    }
+
+    [HumansFact]
+    public async Task OptInToSeasonAsync_ASecondEventInTheSameYear_GetsItsOwnSeason()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var autumn = await StubAutumn2026Async();
+        var camp = await CreateTestCampAsync();
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var result = await _service.OptInToSeasonAsync(camp.Id, autumn.Id, actorUserId: TestActorId, ct);
+
+        result.ErrorKey.Should().BeNull();
+        result.Value!.Year.Should().Be(2026);
+        result.Value.EventSettingsId.Should().Be(autumn.Id);
+        (await _service.GetCampsForEventAsync(autumn.Id, ct)).Single().Seasons.Should()
+            .ContainSingle().Which.Id.Should().Be(result.Value.Id);
+        (await _service.GetCampsForEventAsync(Event2026.Id, ct)).Single().Seasons.Should()
+            .ContainSingle().Which.Id.Should().NotBe(result.Value.Id);
+        (await _service.OptInToSeasonAsync(camp.Id, autumn.Id, actorUserId: TestActorId, ct)).ErrorKey
+            .Should().Be("Camps_Flash_SeasonAlreadyExists");
+    }
+
+    [HumansFact]
+    public async Task GetCampsForEventAsync_AnUnassignedSeasonBelongsToTheEventTheDataMigrationWouldGiveIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var autumn = await StubAutumn2026Async();
+        var camp = await CreateTestCampAsync();
+        var season = await CampsDb.CampSeasons.SingleAsync(ct);
+        season.EventSettingsId = null;
+        await SaveAllAsync(ct);
+
+        (await _service.GetCampsForEventAsync(Event2026.Id, ct)).Single().Seasons.Single().EventSettingsId
+            .Should().Be(Event2026.Id);
+        (await _service.GetCampsForEventAsync(autumn.Id, ct)).Should().BeEmpty();
+        (await _service.OptInToSeasonAsync(camp.Id, Event2026.Id, actorUserId: TestActorId, ct)).ErrorKey
+            .Should().Be("Camps_Flash_SeasonAlreadyExists");
+    }
+
+    [HumansFact]
+    public async Task RequestCampMembershipAsync_JoinsTheActiveEventsSeason_NotAnotherOfTheSameYear()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var autumn = await StubAutumn2026Async();
+        var camp = await CreateTestCampAsync();
+        await ApproveLatestSeasonAsync(camp.Id);
+        await _service.OptInToSeasonAsync(camp.Id, autumn.Id, actorUserId: TestActorId, ct);
+        var summerSeasonId = (await CampsDb.CampSeasons.SingleAsync(s => s.EventSettingsId == Event2026.Id, ct)).Id;
+        var userId = Guid.NewGuid();
+
+        var result = await _service.RequestCampMembershipAsync(camp.Id, userId, ct);
+
+        result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        (await CampsDb.CampMembers.AsNoTracking().SingleAsync(m => m.UserId == userId, ct)).CampSeasonId
+            .Should().Be(summerSeasonId);
+    }
+
+    /// <summary>A second 2026 event, later than <see cref="Event2026"/> and open for camp registration.</summary>
+    private async Task<EventSettingsInfo> StubAutumn2026Async()
+    {
+        var autumn = BurnFixtures.Burn(eventName: "Autumn 2026", year: 2026, gateOpeningDate: new LocalDate(2026, 10, 1));
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns([Event2025, Event2026, autumn, Event2027]);
+        CampsDb.CampEventSettings.Add(new CampEventSettings { EventSettingsId = autumn.Id, RegistrationOpen = true });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        return autumn;
     }
 
     [HumansFact]
@@ -1118,14 +1192,12 @@ public sealed class CampServiceTests : CampsTestHarness
         CampService.PickSeasonEvent([late, early], 2028).Should().BeNull();
     }
 
+    private static Guid EventId(int year) => new[] { Event2025, Event2026, Event2027 }.Single(e => e.Year == year).Id;
+
     private (EventSettingsInfo E2026, EventSettingsInfo E2027) StubTwoEvents()
     {
-        var e2026 = BurnFixtures.Burn(id: Guid.NewGuid(), eventName: "Nowhere 2026", year: 2026,
-            gateOpeningDate: new LocalDate(2026, 7, 7));
-        var e2027 = BurnFixtures.Burn(id: Guid.NewGuid(), eventName: "Nowhere 2027", year: 2027,
-            gateOpeningDate: new LocalDate(2027, 7, 6));
-        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([e2026, e2027]);
-        return (e2026, e2027);
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([Event2026, Event2027]);
+        return (Event2026, Event2027);
     }
 
     [HumansFact]
@@ -1135,12 +1207,12 @@ public sealed class CampServiceTests : CampsTestHarness
         await CreateTestCampAsync();
         var lockDate = new LocalDate(2026, 3, 1);
 
-        await _service.SetNameLockDateAsync(2026, lockDate, Guid.NewGuid(), TestContext.Current.CancellationToken);
+        await _service.SetNameLockDateAsync(Event2026.Id, lockDate, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var settings = await _service.GetSettingsAsync(TestContext.Current.CancellationToken);
 
-        settings.NameLockDates.Should().ContainKey(2026);
-        settings.NameLockDates[2026].Should().Be(lockDate);
+        settings.NameLockDates.Should().ContainKey(Event2026.Id);
+        settings.NameLockDates[Event2026.Id].Should().Be(lockDate);
     }
 
     [HumansFact]
@@ -1159,7 +1231,7 @@ public sealed class CampServiceTests : CampsTestHarness
             timesAtNowhere: 0,
             MakeSeasonData(),
             historicalNames: null,
-            year: 2026, cancellationToken: TestContext.Current.CancellationToken)).Value!;
+            eventSettingsId: Event2026.Id, cancellationToken: TestContext.Current.CancellationToken)).Value!;
 
         await ApproveLatestSeasonAsync(camp.Id);
 
@@ -1501,7 +1573,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         await ApproveLatestSeasonAsync(campB.Id);
 
         var userId = Guid.NewGuid();
@@ -1525,7 +1597,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         await ApproveLatestSeasonAsync(campB.Id);
 
         var userId = Guid.NewGuid();
@@ -1548,7 +1620,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         await ApproveLatestSeasonAsync(campB.Id);
 
         var userId = Guid.NewGuid();
@@ -1774,27 +1846,42 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansTheory]
-    [InlineData(false, false, null)]
-    [InlineData(false, true, null)]
-    [InlineData(true, false, null)]
-    [InlineData(true, true, null)]
-    [InlineData(false, true, 2029)]
-    [InlineData(true, true, 2029)]
-    public async Task LeadMemberShortcuts_UseOnlyTheSelectedOrPublicYearsOpenSeason(
-        bool assignRole, bool hasPublicSeason, int? year)
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public async Task LeadMemberShortcuts_UseOnlyTheSelectedOrActiveEventsOpenSeason(
+        bool assignRole, bool hasActiveEventSeason, bool selectFutureEvent)
     {
         var ct = TestContext.Current.CancellationToken;
-        const int publicYear = 2028;
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(BurnFixtures.Burn(year: publicYear));
+        Guid? eventSettingsId = selectFutureEvent ? Event2027.Id : null;
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "continuing-camp" };
-        var current = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear, Status = CampSeasonStatus.Full };
-        var future = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear + 1, Status = CampSeasonStatus.Full };
+        var current = new CampSeason
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            Year = 2026,
+            EventSettingsId = Event2026.Id,
+            Status = CampSeasonStatus.Full
+        };
+        var future = new CampSeason
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            Year = 2027,
+            EventSettingsId = Event2027.Id,
+            Status = CampSeasonStatus.Full
+        };
         CampsDb.Camps.Add(camp);
         await CampsDb.CampSeasons.AddRangeAsync([
-            new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = publicYear - 1, Status = CampSeasonStatus.Active },
+            new CampSeason
+            {
+                Id = Guid.NewGuid(), CampId = camp.Id, Year = 2025, EventSettingsId = Event2025.Id, Status = CampSeasonStatus.Active
+            },
             future], ct);
-        if (hasPublicSeason) CampsDb.CampSeasons.Add(current);
+        if (hasActiveEventSeason) CampsDb.CampSeasons.Add(current);
         await SaveAllAsync(ct);
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -1804,16 +1891,16 @@ public sealed class CampServiceTests : CampsTestHarness
         var roleId = Guid.NewGuid();
 
         if (assignRole)
-            (await _service.AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, TestActorId, ct, year))
-                .Should().Be(hasPublicSeason ? AssignCampRoleOutcome.Assigned : AssignCampRoleOutcome.SeasonNotFound);
+            (await _service.AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, TestActorId, ct, eventSettingsId))
+                .Should().Be(hasActiveEventSeason ? AssignCampRoleOutcome.Assigned : AssignCampRoleOutcome.SeasonNotFound);
         else
-            (await _service.AddCampMemberToActiveSeasonAsync(camp.Id, userId, TestActorId, ct, year))
-                .Should().Be(hasPublicSeason ? AddCampMemberOutcome.Added : AddCampMemberOutcome.NoActiveSeason);
+            (await _service.AddCampMemberToActiveSeasonAsync(camp.Id, userId, TestActorId, ct, eventSettingsId))
+                .Should().Be(hasActiveEventSeason ? AddCampMemberOutcome.Added : AddCampMemberOutcome.NoActiveSeason);
 
         var members = await CampsDb.CampMembers.AsNoTracking().ToListAsync(ct);
-        if (hasPublicSeason)
+        if (hasActiveEventSeason)
         {
-            var expectedSeason = year.HasValue ? future : current;
+            var expectedSeason = selectFutureEvent ? future : current;
             members.Should().ContainSingle().Which.CampSeasonId.Should().Be(expectedSeason.Id);
             await _campRoleService.Received(assignRole ? 1 : 0).AssignAsync(
                 expectedSeason.Id, roleId, Arg.Any<Guid>(), TestActorId, Arg.Any<CancellationToken>());
@@ -2350,7 +2437,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var campA = await CreateTestCampAsync();
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         var seasonB = await CampsDb.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == campB.Id, TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateCampAsync(
@@ -2610,7 +2697,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var result = await _service.CreateCampAsync(
             Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
-            null, null, false, 1, MakeSeasonData(), [$"  {new string('a', length)}  "], 2026, ct);
+            null, null, false, 1, MakeSeasonData(), [$"  {new string('a', length)}  "], Event2026.Id, ct);
 
         result.ErrorKey.Should().Be(errorKey);
         (await CampsDb.Camps.CountAsync(ct)).Should().Be(0);
@@ -2627,7 +2714,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await ApproveLatestSeasonAsync(campA.Id);
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         await _service.AddHistoricalNameAsync(campA.Id, "Old Name", TestContext.Current.CancellationToken);
         var name = await CampsDb.CampHistoricalNames.AsNoTracking().FirstAsync(n => n.CampId == campA.Id, TestContext.Current.CancellationToken);
 
@@ -2649,7 +2736,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await SeedUserAsync(leadUserId, "Lead Larry");
         var camp = (await _service.CreateCampAsync(
             leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         await ApproveLatestSeasonAsync(camp.Id);
 
         var memberUserId = Guid.NewGuid();
@@ -2662,7 +2749,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         pendingSeason.PendingMembers.Should()
             .ContainSingle(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
-        pendingCamp.GetMembershipState(memberUserId).Status.Should().Be(CampMemberStatusSummary.Pending);
+        pendingCamp.GetMembershipState(memberUserId, Event2026.Id).Status.Should().Be(CampMemberStatusSummary.Pending);
 
         await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -2672,8 +2759,8 @@ public sealed class CampServiceTests : CampsTestHarness
 
         activeSeason.ActiveMembers.Should().Contain(m => m.UserId == memberUserId && m.Id == request.CampMemberId);
         activeSeason.ActiveMembers.Should().ContainSingle(m => m.UserId == leadUserId);
-        activeCamp.GetMembershipState(memberUserId).Status.Should().Be(CampMemberStatusSummary.Active);
-        activeCamp.GetMembershipState(memberUserId).OpenSeasonYear.Should().Be(2026);
+        activeCamp.GetMembershipState(memberUserId, Event2026.Id).Status.Should().Be(CampMemberStatusSummary.Active);
+        activeCamp.GetMembershipState(memberUserId, Event2026.Id).OpenSeasonYear.Should().Be(2026);
     }
 
     [HumansFact]
@@ -2684,11 +2771,11 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var campInfo = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken)).Single(c => c.Id == camp.Id);
 
-        campInfo.GetMembershipState(Guid.NewGuid()).Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
+        campInfo.GetMembershipState(Guid.NewGuid(), Event2026.Id).Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
     }
 
     [HumansFact]
-    public void CampInfo_GetMembershipState_UsesLatestOpenSeason_WhenFuturePendingSeasonExists()
+    public void CampInfo_GetMembershipState_UsesTheActiveEventsSeason_WhenFuturePendingSeasonExists()
     {
         var campId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
@@ -2717,7 +2804,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TimesAtNowhere: 1,
             [activeSeason, pendingFutureSeason]);
 
-        var state = campInfo.GetMembershipState(memberUserId);
+        var state = campInfo.GetMembershipState(memberUserId, Event2026.Id);
 
         state.Status.Should().Be(CampMemberStatusSummary.Active);
         state.OpenSeasonYear.Should().Be(2026);
@@ -2736,7 +2823,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await SeedUserAsync(leadUserId, "Lead Larry");
         var camp = (await _service.CreateCampAsync(
             leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
         await ApproveLatestSeasonAsync(camp.Id);
 
         var memberUserId = Guid.NewGuid();
@@ -2791,7 +2878,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var userId = Guid.NewGuid();
         var camps = new[] { MakeCampWithMember(2026, userId, CampMemberStatus.Active, ["Camp Lead", "Greeter"]) };
 
-        var info = CampUserInfo.Resolve(camps, activeYear: 2026, userId);
+        var info = CampUserInfo.Resolve(camps, Event2026.Id, userId);
 
         info.Season.Should().NotBeNull();
         info.Season!.Year.Should().Be(2026);
@@ -2806,7 +2893,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var userId = Guid.NewGuid();
         var camps = new[] { MakeCampWithMember(2025, userId, CampMemberStatus.Active, ["Camp Lead"]) };
 
-        CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
+        CampUserInfo.Resolve(camps, Event2026.Id, userId).Should().BeSameAs(CampUserInfo.None);
     }
 
     [HumansFact]
@@ -2815,7 +2902,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var userId = Guid.NewGuid();
         var camps = new[] { MakeCampWithMember(2026, userId, CampMemberStatus.Pending, []) };
 
-        CampUserInfo.Resolve(camps, activeYear: 2026, userId).Should().BeSameAs(CampUserInfo.None);
+        CampUserInfo.Resolve(camps, Event2026.Id, userId).Should().BeSameAs(CampUserInfo.None);
     }
 
     [HumansTheory]
@@ -2942,7 +3029,10 @@ public sealed class CampServiceTests : CampsTestHarness
             ElectricalGrid.Yellow,
             EeSlotCount: 0,
             EeGrantedCount: 0,
-            JoinedMemberCount: 0);
+            JoinedMemberCount: 0)
+        {
+            EventSettingsId = EventId(year),
+        };
 
     private static CampInfo MakeCampWithMember(
         int year, Guid userId, CampMemberStatus status, IReadOnlyList<string> roles)
@@ -2993,7 +3083,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         return (await _service.CreateCampAsync(
             Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
-            null, null, false, 1, MakeSeasonData(), null, 2026, TestContext.Current.CancellationToken)).Value!;
+            null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
     }
 
     private async Task ApproveLatestSeasonAsync(Guid campId)

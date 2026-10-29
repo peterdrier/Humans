@@ -352,9 +352,12 @@ internal sealed class DevPersonaSeeder(
         var campName = campSlug.Replace("-", " ", StringComparison.Ordinal);
         campName = string.Concat(campName[..1].ToUpperInvariant(), campName.AsSpan(1));
 
-        var year = (await campService.GetSettingsAsync()).PublicYear;
-        if (year <= 0)
-            year = clock.GetCurrentInstant().InUtc().Date.Year;
+        // A season belongs to an event: without an active one there is nothing to seed into.
+        if ((await campService.GetSettingsAsync()).ActiveEventSettingsId is not { } eventSettingsId)
+        {
+            logger.LogWarning("DEV: no active event, skipping barrio camp {Slug}", campSlug);
+            return;
+        }
 
         var camp = await campService.GetCampBySlugAsync(campSlug);
         var created = false;
@@ -386,7 +389,7 @@ internal sealed class DevPersonaSeeder(
                 isSwissCamp: false,
                 timesAtNowhere: 0,
                 seasonData,
-                year);
+                eventSettingsId);
 
             logger.LogInformation("DEV: seeded camp {Slug}", campSlug);
             created = true;
@@ -399,18 +402,18 @@ internal sealed class DevPersonaSeeder(
             return;
         }
 
-        var currentYearSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (currentYearSeason is null)
+        var eventSeason = camp.GetSeasonForEvent(eventSettingsId);
+        if (eventSeason is null)
         {
             try
             {
-                await campSeeding.OptInToSeasonAsync(camp.Id, year);
+                await campSeeding.OptInToSeasonAsync(camp.Id, eventSettingsId);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("has a season", StringComparison.Ordinal))
             {
                 logger.LogInformation(
-                    "DEV: barrio camp {Slug} already has a season for {Year}: {Message}",
-                    campSlug, year, ex.Message);
+                    "DEV: barrio camp {Slug} already has a season for event {EventSettingsId}: {Message}",
+                    campSlug, eventSettingsId, ex.Message);
             }
 
             camp = await campService.GetCampBySlugAsync(campSlug);
@@ -420,21 +423,21 @@ internal sealed class DevPersonaSeeder(
                 return;
             }
 
-            currentYearSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
+            eventSeason = camp.GetSeasonForEvent(eventSettingsId);
         }
 
-        if (currentYearSeason is not null && currentYearSeason.Status == CampSeasonStatus.Pending)
+        if (eventSeason is not null && eventSeason.Status == CampSeasonStatus.Pending)
         {
             try
             {
-                await campSeeding.ApproveSeasonAsync(currentYearSeason.Id, leadUserId, "Dev persona seed");
+                await campSeeding.ApproveSeasonAsync(eventSeason.Id, leadUserId, "Dev persona seed");
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("Cannot approve a season", StringComparison.Ordinal))
             {
                 // Idempotent: another seed/admin path likely moved it first.
                 logger.LogInformation(
                     "DEV: barrio camp season {SeasonId} approve skipped — already moved past Pending",
-                    currentYearSeason.Id);
+                    eventSeason.Id);
             }
         }
 

@@ -145,21 +145,30 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SeasonExistsAsync_ReturnsTrue_WhenPresent()
+    public async Task SeasonExistsAsync_MatchesTheSeasonsEvent()
     {
+        var ct = Xunit.TestContext.Current.CancellationToken;
         var camp = await SeedCampAsync("season-camp");
-        await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Pending);
+        var eventId = Guid.NewGuid();
+        var season = BuildSeason(camp.Id, CampSeasonStatus.Pending, 2026);
+        season.EventSettingsId = eventId;
+        _dbContext.CampSeasons.Add(season);
+        await _dbContext.SaveChangesAsync(ct);
 
-        (await _repo.SeasonExistsAsync(camp.Id, 2026, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _repo.SeasonExistsAsync(camp.Id, eventId, unassignedYear: null, ct)).Should().BeTrue();
+        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: 2026, ct)).Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task SeasonExistsAsync_ReturnsFalse_WhenDifferentYear()
+    public async Task SeasonExistsAsync_CountsAnUnassignedSeasonOnlyForItsYear()
     {
+        var ct = Xunit.TestContext.Current.CancellationToken;
         var camp = await SeedCampAsync("other-year");
         await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Active);
 
-        (await _repo.SeasonExistsAsync(camp.Id, 2027, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: 2026, ct)).Should().BeTrue();
+        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: 2027, ct)).Should().BeFalse();
+        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: null, ct)).Should().BeFalse();
     }
 
     [HumansFact]

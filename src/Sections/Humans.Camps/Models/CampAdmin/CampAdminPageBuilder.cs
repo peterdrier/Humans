@@ -7,14 +7,16 @@ internal sealed class CampAdminPageBuilder(
     public async Task<CampAdminViewModel> BuildAsync(CancellationToken ct = default)
     {
         var settings = await campService.GetSettingsAsync(ct);
-        var allCamps = await campService.GetCampsForYearAsync(settings.PublicYear, ct);
-        var openSeasons = settings.OpenSeasons.ToList();
+        // One season per camp: the active event's.
+        var allCamps = settings.ActiveEventSettingsId is { } activeEventId
+            ? await campService.GetCampsForEventAsync(activeEventId, ct)
+            : [];
 
-        var withdrawnSeasons = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Withdrawn);
+        var withdrawnSeasons = BuildCampCards(allCamps, CampSeasonStatus.Withdrawn);
 
         var activeStatuses = new HashSet<CampSeasonStatus> { CampSeasonStatus.Active, CampSeasonStatus.Full };
         var campsWithLeads = allCamps
-            .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear && activeStatuses.Contains(s.Status)))
+            .Where(c => c.Seasons.Any(s => activeStatuses.Contains(s.Status)))
             .ToList();
         var summaries = BuildSummaries(campsWithLeads);
 
@@ -22,26 +24,25 @@ internal sealed class CampAdminPageBuilder(
 
         return new CampAdminViewModel
         {
-            PublicYear = settings.PublicYear,
+            ActiveEventName = settings.ActiveEvent?.EventName ?? "No active event",
             HasMissingSpecialRoles = missingSpecialRoles.Count > 0,
-            OpenSeasons = openSeasons,
+            OpenEventNames = [.. settings.OpenEvents.Select(e => e.EventName)],
             TotalCamps = allCamps.Count,
-            ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
-                s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
+            ActiveCamps = campsWithLeads.Count,
             WithdrawnCamps = withdrawnSeasons,
-            NameLockDates = settings.NameLockDates.ToDictionary(kv => kv.Key, kv => kv.Value),
+            Events = settings.Events,
+            NameLockDates = settings.NameLockDates,
             AllCampSummaries = summaries,
-            PendingCamps = BuildCampCards(allCamps, settings.PublicYear, CampSeasonStatus.Pending)
+            PendingCamps = BuildCampCards(allCamps, CampSeasonStatus.Pending)
         };
     }
 
     private static List<CampCardViewModel> BuildCampCards(
         IReadOnlyList<CampInfo> camps,
-        int year,
         CampSeasonStatus status) =>
         camps
             .SelectMany(camp => camp.Seasons
-                .Where(season => season.Year == year && season.Status == status)
+                .Where(season => season.Status == status)
                 .Select(season => new CampCardViewModel
                 {
                     Id = camp.Id,

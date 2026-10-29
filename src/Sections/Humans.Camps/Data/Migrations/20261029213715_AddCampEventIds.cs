@@ -11,6 +11,10 @@ namespace Humans.Camps.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_camp_seasons_CampId_Year",
+                table: "camp_seasons");
+
             migrationBuilder.AddColumn<Guid>(
                 name: "EventSettingsId",
                 table: "camp_seasons",
@@ -28,6 +32,17 @@ namespace Humans.Camps.Data.Migrations
                 {
                     table.PrimaryKey("PK_camp_event_settings", x => x.EventSettingsId);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_camp_seasons_CampId_EventSettingsId",
+                table: "camp_seasons",
+                columns: new[] { "CampId", "EventSettingsId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_camp_seasons_CampId_Year",
+                table: "camp_seasons",
+                columns: new[] { "CampId", "Year" });
         }
 
         /// <inheritdoc />
@@ -36,9 +51,23 @@ namespace Humans.Camps.Data.Migrations
             migrationBuilder.DropTable(
                 name: "camp_event_settings");
 
+            migrationBuilder.DropIndex(
+                name: "IX_camp_seasons_CampId_EventSettingsId",
+                table: "camp_seasons");
+
+            migrationBuilder.DropIndex(
+                name: "IX_camp_seasons_CampId_Year",
+                table: "camp_seasons");
+
             migrationBuilder.DropColumn(
                 name: "EventSettingsId",
                 table: "camp_seasons");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_camp_seasons_CampId_Year",
+                table: "camp_seasons",
+                columns: new[] { "CampId", "Year" },
+                unique: true);
         }
     }
 }

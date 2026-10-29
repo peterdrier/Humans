@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Camps.Data.Migrations
 {
     [DbContext(typeof(CampsDbContext))]
-    [Migration("20261029022252_AddCampEventIds")]
+    [Migration("20261029213715_AddCampEventIds")]
     partial class AddCampEventIds
     {
         /// <inheritdoc />
@@ -418,8 +418,10 @@ namespace Humans.Camps.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("CampId", "Year")
+                    b.HasIndex("CampId", "EventSettingsId")
                         .IsUnique();
+
+                    b.HasIndex("CampId", "Year");
 
                     b.ToTable("camp_seasons", (string)null);
                 });
