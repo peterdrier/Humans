@@ -341,13 +341,13 @@ public class ExpenseReconTests
 
     // --- notes captured at sync ---
 
-    private static HoldedPurchaseDocListItemDto ListDoc(string id) => new()
+    private static HoldedPurchaseDocListItemDto ListDoc(string id, string description = "ER: Train") => new()
     {
         Id = id,
         DocNumber = id,
         ContactId = "c-alice",
         ContactName = "Alice Example",
-        Description = "ER: Train",
+        Description = description,
         Date = Submitted,
         Subtotal = 100m,
         Tax = 0m,
@@ -394,12 +394,11 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public async Task Sync_FailedNotesRead_LeavesNotesUnknown_AndTheSyncSucceeds()
+    public async Task Sync_TransientNotesFailure_StopsFetching_AndTheSyncSucceeds()
     {
         StubSync([ListDoc("a"), ListDoc("b")], []);
         _client.GetPurchaseDocumentAsync("a", Arg.Any<CancellationToken>())
             .ThrowsAsync(new HoldedTransientException("timeout"));
-        _client.GetPurchaseDocumentAsync("b", Arg.Any<CancellationToken>()).Returns(FullDoc("b", null));
         IReadOnlyList<HoldedExpenseDoc>? written = null;
         await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => written = d),
             Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -408,7 +407,59 @@ public class ExpenseReconTests
 
         result.DocCount.Should().Be(2);
         Written(written, "a").Notes.Should().BeNull();
-        Written(written, "b").Notes.Should().Be("", "fetched and empty is not refetched");
+        Written(written, "b").Notes.Should().BeNull("the run stopped at the transient failure");
+        await _client.Received(1).GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Sync_FetchesNotesOnlyForPushWrittenDocuments()
+    {
+        StubSync([ListDoc("er"), ListDoc("vendor", "Office chairs")], []);
+        _client.GetPurchaseDocumentAsync("er", Arg.Any<CancellationToken>()).Returns(FullDoc("er", "Expense report e"));
+        IReadOnlyList<HoldedExpenseDoc>? written = null;
+        await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => written = d),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
+
+        await _client.Received(1).GetPurchaseDocumentAsync("er", Arg.Any<CancellationToken>());
+        await _client.DidNotReceive().GetPurchaseDocumentAsync("vendor", Arg.Any<CancellationToken>());
+        Written(written, "vendor").Notes.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Sync_CapsNotesFetchesPerRun()
+    {
+        StubSync(Enumerable.Range(0, 80).Select(i => ListDoc($"d{i}")).ToList(), []);
+        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => FullDoc(ci.Arg<string>(), "Expense report x"));
+
+        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
+
+        await _client.Received(50).GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetExpenseRecon_LedgerMirrorEmpty_IsUnavailable()
+    {
+        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedDocSyncState { LastSyncAt = SyncedAt });
+        _expenses.GetHoldedReconLinesAsync(Arg.Any<CancellationToken>()).Returns([Line("d1")]);
+        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>()).Returns([Doc("d1")]);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(Bindings);
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<int, decimal>());
+
+        var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
+
+        report.IsAvailable.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Build_LinkedDocWithoutContact_IsWrongContact()
+    {
+        var report = Build([Line("d1")], [Doc("d1", contactId: null)]);
+
+        report.Lines.Single().Status.Should().Be(ExpenseReconLineStatus.WrongContact);
     }
 
     private static HoldedExpenseDoc Written(IReadOnlyList<HoldedExpenseDoc>? written, string id) =>

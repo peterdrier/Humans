@@ -14,7 +14,7 @@ internal static class ExpenseRecon
 {
     // The push's markers (Expenses' ExpenseHoldedPublisher.DocNotes/DocDescription, internal to that section).
     private const string NotesMarker = "Expense report ";
-    private const string DescriptionMarker = "ER: ";
+    internal const string DescriptionMarker = "ER: ";
 
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -51,8 +51,9 @@ internal static class ExpenseRecon
                 ? IsPending(l, mirrorSyncedAt) ? ExpenseReconLineStatus.Pending : ExpenseReconLineStatus.Missing
                 : duplicates.Count > 0 ? ExpenseReconLineStatus.Duplicated
                 : doc.Total != l.BookedAmount ? ExpenseReconLineStatus.AmountMismatch
-                : doc.ContactId is { } contact
-                  && !string.Equals(
+                // After a sync ContactId comes from the list response, so null is a genuinely contactless document.
+                : doc.ContactId is not { } contact
+                  || !string.Equals(
                       bindingByUser.GetValueOrDefault(l.CreditorUserId)?.HoldedContactId, contact,
                       StringComparison.Ordinal)
                     ? ExpenseReconLineStatus.WrongContact

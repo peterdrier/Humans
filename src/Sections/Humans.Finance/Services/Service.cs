@@ -338,6 +338,10 @@ internal sealed class Service(
         var docs = await repo.GetAllDocsAsync(ct);
         var bindings = await repo.GetCreditorContactsAsync(ct);
         var balances = await holded.GetAccountBalancesAsync(ct);
+        // IHoldedService exposes no sync state; an empty ledger mirror beside synced documents is the never-synced case,
+        // and would show every member Off.
+        if (balances.Count == 0)
+            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
         var transfers = await repo.GetSepaPayoutTransferRowsAsync(ct);
         var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
         return ExpenseRecon.Build(
