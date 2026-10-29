@@ -10,6 +10,7 @@ using Humans.Consent.Jobs;
 using Humans.Consent.Services;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Consent;
@@ -25,6 +26,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, ConsentNotificationSources>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();

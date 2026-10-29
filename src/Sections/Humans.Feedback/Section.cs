@@ -6,6 +6,7 @@ using Humans.Feedback.Data;
 using Humans.Feedback.Services;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
@@ -23,6 +24,7 @@ public sealed class Section : ISection, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, FeedbackNotificationSources>();
         services.AddSectionDbContext<FeedbackDbContext>(sentinelTable: "feedback_reports");
 
         services.AddSingleton<IFeedbackRepository, FeedbackRepository>();

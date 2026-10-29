@@ -49,7 +49,7 @@ internal sealed partial class WorkgroupService
             return;
 
         var coordinators = info.CoordinatorUserIds();
-        var dispatched = await NotifyAsync(coordinators, NotificationSource.WorkgroupReportingDue,
+        var dispatched = await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupReportingDue,
             "Workgroups_Todo_UpdateDue_Title", info, body: null, ct);
         if (dispatched > 0)
             await AuditJobAsync(AuditAction.WorkgroupUpdateDueNotified,
@@ -68,7 +68,7 @@ internal sealed partial class WorkgroupService
 
         await AuditJobAsync(AuditAction.WorkgroupApplicationOverdue,
             workgroup, "Application still undecided fourteen days after it was made");
-        await NotifyBoardAsync(NotificationSource.WorkgroupRegistrationPending,
+        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
             $"Application overdue: {workgroup.Name}", info,
             "Clause 1 gives the Secretary fourteen days. This application is past that.", ct);
     }

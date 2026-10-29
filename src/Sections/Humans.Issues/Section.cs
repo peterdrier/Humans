@@ -10,6 +10,7 @@ using Humans.Issues.Jobs;
 using Humans.Issues.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Issues;
@@ -21,6 +22,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, IssuesNotificationSources>();
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");
 
         services.AddSingleton<IIssuesRepository, IssuesRepository>();

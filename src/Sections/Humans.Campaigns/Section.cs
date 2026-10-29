@@ -8,6 +8,7 @@ using Humans.Campaigns.Services;
 using Humans.Base.Hosting;
 using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
@@ -18,6 +19,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, CampaignsNotificationSources>();
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
         services.AddSingleton<ICampaignRepository, CampaignRepository>();

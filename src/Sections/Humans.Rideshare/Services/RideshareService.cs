@@ -277,7 +277,7 @@ internal sealed class RideshareService(
             ? ("Rideshare_NoticeInterestRide", trip.MemberPlaceLabel, trip.DepartureDate)
             : ("Rideshare_NoticeCanTakeYou", request.PickupPlaceLabel, request.DesiredDate);
 
-        await NotifyAsync(NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, recipient, fromUserId, (culture, name) =>
+        await NotifyAsync(RideshareNotificationSources.RideshareInterestReceived, NotificationClass.Actionable, recipient, fromUserId, (culture, name) =>
         {
             var body = Notice(culture, "Rideshare_NoticeTripDetails", place, date.ToWeekdayDayMonth(), SeatsText(seats, culture));
             if (interest.Message is not null)
@@ -306,7 +306,7 @@ internal sealed class RideshareService(
         mutation.Dispose();
 
         await NotifyAsync(
-            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
+            RideshareNotificationSources.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
             // The rider accepting a driver's answer to their pin tells the driver, not a rider.
             (culture, name) => (Notice(culture, interest.RequestId is null ? "Rideshare_NoticeAccepted" : "Rideshare_NoticeOfferAccepted", name),
                 Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
@@ -329,7 +329,7 @@ internal sealed class RideshareService(
         // Declines are private: neutral wording, no reason captured or shown.
         // A rider declining a driver's answer to their pin reads differently from a driver declining a rider.
         await NotifyAsync(
-            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId, actorUserId,
+            RideshareNotificationSources.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId, actorUserId,
             (culture, name) => (Notice(culture, "Rideshare_NoticeUpdate"),
                 Notice(culture, interest.RequestId is null
                     ? "Rideshare_NoticeDeclinedOffer"
@@ -666,7 +666,7 @@ internal sealed class RideshareService(
 
     // The interest write is committed: browser cancellation must not interrupt its notification.
     private async Task NotifyAsync(
-        NotificationSource source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
+        NotificationSourceDefinition source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
         Func<CultureInfo, string, (string Title, string Body)> content)
     {
         try

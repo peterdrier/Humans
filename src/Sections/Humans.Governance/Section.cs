@@ -12,6 +12,7 @@ using Humans.Governance.Services.Dtos;
 using Humans.Base.Hosting;
 using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
@@ -26,6 +27,7 @@ public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, GovernanceNotificationSources>();
         services.AddSectionDbContext<GovernanceDbContext>(sentinelTable: "applications");
 
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();

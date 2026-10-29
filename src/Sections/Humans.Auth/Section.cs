@@ -9,6 +9,7 @@ using Humans.Base.Hosting;
 using Humans.Email.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
@@ -18,6 +19,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, AuthNotificationSources>();
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
 
         // Composed from every section's ISectionRoles (registered by discovery); throws on a duplicate name.

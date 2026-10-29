@@ -1479,7 +1479,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         else
             (await TeamsDb.TeamMembers.AnyAsync(m => m.TeamId == team.Id && m.UserId == user.Id && m.LeftAt == null,
                 TestContext.Current.CancellationToken)).Should().BeTrue();
-        var notices = Notifier.ReceivedCalls().Where(c => c.GetArguments()[0] is NotificationSource).ToList();
+        var notices = Notifier.ReceivedCalls().Where(c => c.GetArguments()[0] is NotificationSourceDefinition).ToList();
         notices.Should().HaveCount(expectedNotices);
         notices.Should().OnlyContain(c => (CancellationToken)c.GetArguments()[c.GetArguments().Length - 1]! == CancellationToken.None);
         var emails = _emailService.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal)).ToList();
@@ -1697,8 +1697,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
 
-        var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource source
-                && source == NotificationSource.TeamMemberAdded
+        var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSourceDefinition source
+                && source == TeamsNotificationSources.TeamMemberAdded
                 && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id))
             .Single().GetArguments();
         if (string.Equals(expectedCulture, "en", StringComparison.Ordinal))
@@ -1742,7 +1742,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             case "remove": await _service.RemoveMemberAsync(team.Id, requester.Id, coordinator.Id, TestContext.Current.CancellationToken); break;
             default: await _service.JoinTeamAsync(team.Id, requester.Id, null, TestContext.Current.CancellationToken); break;
         }
-        var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource)
+        var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSourceDefinition)
             .Select(call => call.GetArguments()).ToList();
         (string Title, string? Body)[] expected = action switch
         {
@@ -1790,9 +1790,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
 
         var expectedSource = string.Equals(action, "remove", StringComparison.Ordinal)
-            ? NotificationSource.TeamMemberRemoved : NotificationSource.TeamJoinRequestDecided;
+            ? TeamsNotificationSources.TeamMemberRemoved : TeamsNotificationSources.TeamJoinRequestDecided;
         var args = Notifier.ReceivedCalls()
-            .Where(call => call.GetArguments()[0] is NotificationSource source && source == expectedSource)
+            .Where(call => call.GetArguments()[0] is NotificationSourceDefinition source && source == expectedSource)
             .Single().GetArguments();
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(requester.Id);
         switch (action)

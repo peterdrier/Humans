@@ -13,6 +13,7 @@ using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
@@ -29,6 +30,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, TeamsNotificationSources>();
         services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
 
         services.AddSingleton<ITeamRepository, TeamRepository>();

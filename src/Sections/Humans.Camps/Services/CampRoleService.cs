@@ -289,7 +289,7 @@ internal sealed class CampRoleService(
             }
 
             await notificationEmitter.SendAsync(
-                source: NotificationSource.CampRoleAssigned,
+                source: CampsNotificationSources.CampRoleAssigned,
                 notificationClass: NotificationClass.Informational,
                 priority: NotificationPriority.Normal,
                 title: string.Format(culture, NoticeResources.GetString("Camps_Notification_RoleAssigned", culture)!, def.Name),

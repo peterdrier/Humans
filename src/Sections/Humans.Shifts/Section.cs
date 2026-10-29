@@ -16,6 +16,7 @@ using Humans.Shifts.Services;
 using Humans.Base.Models.Tables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
@@ -38,6 +39,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, ShiftsNotificationSources>();
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 
         services.AddScoped<ShiftRepository>();

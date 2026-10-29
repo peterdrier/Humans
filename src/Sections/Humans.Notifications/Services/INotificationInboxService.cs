@@ -55,7 +55,7 @@ internal sealed record NotificationRowDto
     public string Title { get; init; } = string.Empty;
     public string? ActionUrl { get; init; }
     public NotificationPriority Priority { get; init; }
-    public NotificationSource Source { get; init; }
+    public string Source { get; init; } = string.Empty;
     public NotificationClass Class { get; init; }
     public DateTime CreatedAt { get; init; }
     public bool IsRead { get; init; }

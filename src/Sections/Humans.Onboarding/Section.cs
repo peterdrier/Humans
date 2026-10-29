@@ -8,6 +8,7 @@ using Humans.Email.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Onboarding;
@@ -16,6 +17,7 @@ public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, OnboardingNotificationSources>();
         services.AddScoped<OnboardingService>();
         services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingService>());
         services.AddScoped<IOnboardingIntake>(sp => sp.GetRequiredService<OnboardingService>());

@@ -11,6 +11,7 @@ using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Grants;
@@ -27,6 +28,7 @@ public sealed class Section : ISection, ISectionAdminNav
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, GrantsNotificationSources>();
         services.AddSectionDbContext<GrantsDbContext>(sentinelTable: "grant_programs");
 
         services.AddSingleton<IGrantRepository, GrantRepository>();

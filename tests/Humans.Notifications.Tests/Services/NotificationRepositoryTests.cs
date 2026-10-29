@@ -226,7 +226,7 @@ public class NotificationRepositoryTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Shared",
-            Source = NotificationSource.TeamMemberAdded,
+            Source = TestSources.TeamUpdate.Name,
             Class = NotificationClass.Informational,
             Priority = NotificationPriority.Normal,
             CreatedAt = _now,
@@ -289,14 +289,14 @@ public class NotificationRepositoryTests : IDisposable
     {
         var voter = Guid.NewGuid();
         var otherVoter = Guid.NewGuid();
-        var first = CreateNotification(voter, NotificationClass.Actionable, NotificationSource.AssemblyVoteOpened, "vote-1");
-        var second = CreateNotification(voter, NotificationClass.Actionable, NotificationSource.AssemblyVoteOpened, "vote-2");
-        var otherRecipient = CreateNotification(otherVoter, NotificationClass.Actionable, NotificationSource.AssemblyVoteOpened, "vote-1");
-        var otherSource = CreateNotification(voter, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "vote-1");
+        var first = CreateNotification(voter, NotificationClass.Actionable, TestSources.Approval, "vote-1");
+        var second = CreateNotification(voter, NotificationClass.Actionable, TestSources.Approval, "vote-2");
+        var otherRecipient = CreateNotification(otherVoter, NotificationClass.Actionable, TestSources.Approval, "vote-1");
+        var otherSource = CreateNotification(voter, NotificationClass.Actionable, TestSources.Plain, "vote-1");
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.AddRangeAsync([first, second, otherRecipient, otherSource], ct);
 
-        await _repo.ResolveBySourceAsync(voter, NotificationSource.AssemblyVoteOpened, _now, ct, key);
+        await _repo.ResolveBySourceAsync(voter, TestSources.Approval.Name, _now, ct, key);
 
         var stored = await _dbContext.Notifications.AsNoTracking().ToListAsync(ct);
         stored.Count(n => n.ResolvedAt == _now).Should().Be(expectedResolved);
@@ -313,17 +313,17 @@ public class NotificationRepositoryTests : IDisposable
         var actor = Guid.NewGuid();
 
         // Two per-recipient rows for the same issue (issue-1).
-        var a = CreateNotification(u1, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
-        var b = CreateNotification(u2, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
+        var a = CreateNotification(u1, NotificationClass.Actionable, TestSources.Plain, "issue-1");
+        var b = CreateNotification(u2, NotificationClass.Actionable, TestSources.Plain, "issue-1");
         // Same source, different issue — must NOT resolve.
-        var other = CreateNotification(u1, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-2");
+        var other = CreateNotification(u1, NotificationClass.Actionable, TestSources.Plain, "issue-2");
         // Same key, different source — must NOT resolve.
-        var diff = CreateNotification(u1, NotificationClass.Informational, NotificationSource.IssueStatusChanged, "issue-1");
+        var diff = CreateNotification(u1, NotificationClass.Informational, TestSources.Approval, "issue-1");
 
         await _repo.AddRangeAsync([a, b, other, diff], Xunit.TestContext.Current.CancellationToken);
 
         await _repo.ResolveBySourceKeyAsync(
-            NotificationSource.IssueSubmitted, "issue-1", _now, actor, Xunit.TestContext.Current.CancellationToken);
+            TestSources.Plain.Name, "issue-1", _now, actor, Xunit.TestContext.Current.CancellationToken);
 
         var byId = await _dbContext.Notifications.AsNoTracking()
             .ToDictionaryAsync(n => n.Id, Xunit.TestContext.Current.CancellationToken);
@@ -338,10 +338,10 @@ public class NotificationRepositoryTests : IDisposable
     public async Task ResolveBySourceKeyAsync_LeavesNotificationUnresolved_WhenNothingMatches()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var notification = CreateNotification(Guid.NewGuid(), NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
+        var notification = CreateNotification(Guid.NewGuid(), NotificationClass.Actionable, TestSources.Plain, "issue-1");
         await _repo.AddAsync(notification, ct);
 
-        await _repo.ResolveBySourceKeyAsync(NotificationSource.IssueSubmitted, "nope", _now, null, ct);
+        await _repo.ResolveBySourceKeyAsync(TestSources.Plain.Name, "nope", _now, null, ct);
 
         var stored = await _dbContext.Notifications.AsNoTracking().SingleAsync(ct);
         stored.ResolvedAt.Should().BeNull();
@@ -353,16 +353,16 @@ public class NotificationRepositoryTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        var retiredApp = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.ApplicationSubmitted, null);
-        var retiredConsent = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.ConsentReviewNeeded, null);
-        var liveIssue = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.IssueSubmitted, "issue-1");
-        var resolvedApp = CreateNotification(userId, NotificationClass.Actionable, NotificationSource.ApplicationSubmitted, null);
+        var retiredApp = CreateNotification(userId, NotificationClass.Actionable, TestSources.Retired, null);
+        var retiredConsent = CreateNotification(userId, NotificationClass.Actionable, TestSources.RetiredToo, null);
+        var liveIssue = CreateNotification(userId, NotificationClass.Actionable, TestSources.Plain, "issue-1");
+        var resolvedApp = CreateNotification(userId, NotificationClass.Actionable, TestSources.Retired, null);
         resolvedApp.ResolvedAt = _now;
 
         await _repo.AddRangeAsync([retiredApp, retiredConsent, liveIssue, resolvedApp], Xunit.TestContext.Current.CancellationToken);
 
         var deleted = await _repo.DeleteUnresolvedBySourcesAsync(
-            [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded],
+            [TestSources.Retired.Name, TestSources.RetiredToo.Name],
             Xunit.TestContext.Current.CancellationToken);
 
         deleted.Should().Be(2);
@@ -374,14 +374,14 @@ public class NotificationRepositoryTests : IDisposable
     private Notification CreateNotification(
         Guid userId,
         NotificationClass cls,
-        NotificationSource source,
+        NotificationSourceDefinition source,
         string? sourceKey)
     {
         var n = new Notification
         {
             Id = Guid.NewGuid(),
             Title = "Test",
-            Source = source,
+            Source = source.Name,
             SourceKey = sourceKey,
             Class = cls,
             Priority = NotificationPriority.Normal,
@@ -400,7 +400,7 @@ public class NotificationRepositoryTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Test",
-            Source = NotificationSource.TeamMemberAdded,
+            Source = TestSources.TeamUpdate.Name,
             Class = cls,
             Priority = NotificationPriority.Normal,
             CreatedAt = createdAt ?? _now,

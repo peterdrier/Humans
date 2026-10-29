@@ -11,6 +11,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 
@@ -32,6 +33,7 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, CampsNotificationSources>();
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
 
         services.AddSingleton<ICampRepository, CampRepository>();

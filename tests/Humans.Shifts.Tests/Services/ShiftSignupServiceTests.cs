@@ -974,12 +974,12 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             : await _service.VoluntellAsync(volunteerId, shift.Id, Guid.NewGuid());
 
         result.Success.Should().BeTrue();
-        var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource)
+        var notices = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSourceDefinition)
             .Select(call => call.GetArguments()).ToList();
         notices.Should().NotBeEmpty();
         foreach (var args in notices)
         {
-            if ((NotificationSource)args[0]! == NotificationSource.ShiftAssigned)
+            if ((NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftAssigned)
             {
                 args[3].Should().Be(rangeCount switch
                 {
@@ -1028,7 +1028,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         var args = Notifier.ReceivedCalls()
-            .Where(call => call.GetArguments()[0] is NotificationSource source && source == NotificationSource.ShiftAssigned)
+            .Where(call => call.GetArguments()[0] is NotificationSourceDefinition source && source == ShiftsNotificationSources.ShiftAssigned)
             .Single().GetArguments();
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(volunteerId);
         var culture = CultureInfo.GetCultureInfo(lookupFailure ? "en" : "es");
@@ -2083,7 +2083,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
     private async Task AssertShiftSignupChangeSentAsync(Guid coordinatorId) =>
         await Notifier.Received(1).SendAsync(
-            NotificationSource.ShiftSignupChange,
+            ShiftsNotificationSources.ShiftSignupChange,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(c => c.Contains(coordinatorId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -2447,7 +2447,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
     private static async Task AssertShiftAssignedSentAsync(INotificationEmitter n, int times) =>
         await n.Received(times).SendAsync(
-            NotificationSource.ShiftAssigned,
+            ShiftsNotificationSources.ShiftAssigned,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -2455,7 +2455,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
     private static async Task AssertShiftAssignedNotSentAsync(INotificationEmitter n) =>
         await n.DidNotReceive().SendAsync(
-            NotificationSource.ShiftAssigned,
+            ShiftsNotificationSources.ShiftAssigned,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),

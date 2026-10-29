@@ -11,6 +11,7 @@ namespace Humans.Notifications.Services;
 internal sealed class NotificationInboxService(
     INotificationRepository repo,
     IUserService userService,
+    NotificationSourceRegistry sources,
     IClock clock) : INotificationInboxService, IUserDataContributor
 {
     internal const string Notifications = "Notifications";
@@ -23,8 +24,14 @@ internal sealed class NotificationInboxService(
         var now = clock.GetCurrentInstant();
         var cutoff = now - Duration.FromDays(7);
 
+        var groupSources = parsedFilter switch
+        {
+            NotificationInboxFilter.Shifts => sources.NamesIn(NotificationInboxGroup.Shifts),
+            NotificationInboxFilter.Approvals => sources.NamesIn(NotificationInboxGroup.Approvals),
+            _ => [],
+        };
         var recipients = await repo.GetInboxAsync(
-            userId, search, parsedFilter, effectiveTab, cutoff, ct);
+            userId, search, parsedFilter, groupSources, effectiveTab, cutoff, ct);
 
         var displayNames = await LoadResolverNamesAsync(recipients, ct);
 
@@ -140,27 +147,23 @@ internal sealed class NotificationInboxService(
     }
 
     public async Task ResolveBySourceAsync(
-        Guid userId, NotificationSource source,
+        Guid userId, NotificationSourceDefinition source,
         CancellationToken ct = default, string? sourceKey = null)
     {
-        await repo.ResolveBySourceAsync(userId, source, clock.GetCurrentInstant(), ct, sourceKey);
+        await repo.ResolveBySourceAsync(userId, source.Name, clock.GetCurrentInstant(), ct, sourceKey);
     }
 
     public async Task ResolveBySourceKeyAsync(
-        NotificationSource source, string sourceKey, Guid? resolvedByUserId,
+        NotificationSourceDefinition source, string sourceKey, Guid? resolvedByUserId,
         CancellationToken ct = default)
     {
         await repo.ResolveBySourceKeyAsync(
-            source, sourceKey, clock.GetCurrentInstant(), resolvedByUserId, ct);
+            source.Name, sourceKey, clock.GetCurrentInstant(), resolvedByUserId, ct);
     }
 
     public Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default) =>
         repo.GetUnreadBadgeCountsAsync(userId, ct);
-
-    /// <summary>Replaced by meters. Their old actionable rows have no resolution path, so they are purged outright.</summary>
-    private static readonly NotificationSource[] RetiredSources =
-        [NotificationSource.ApplicationSubmitted, NotificationSource.ConsentReviewNeeded];
 
     private static readonly Duration ResolvedRetentionPeriod = Duration.FromDays(7);
     private static readonly Duration InformationalRetentionPeriod = Duration.FromDays(30);
@@ -173,7 +176,8 @@ internal sealed class NotificationInboxService(
         var resolved = await repo.DeleteResolvedOlderThanAsync(now - ResolvedRetentionPeriod, ct);
         var stale = await repo.DeleteUnresolvedInformationalOlderThanAsync(
             now - InformationalRetentionPeriod, ct);
-        var retired = await repo.DeleteUnresolvedBySourcesAsync(RetiredSources, ct);
+        // Retired sources have no resolution path left, so their unresolved rows are purged outright.
+        var retired = await repo.DeleteUnresolvedBySourcesAsync(sources.RetiredNames, ct);
 
         return (resolved, stale, retired);
     }

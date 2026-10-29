@@ -140,7 +140,7 @@ internal sealed class GoogleResourceReconciliationJob(
             try
             {
                 await notificationService.SendToRoleAsync(
-                    NotificationSource.GoogleDriftDetected,
+                    GoogleIntegrationNotificationSources.GoogleDriftDetected,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
                     $"Google reconciliation fixed {totalDrift} drift issue(s)",
@@ -166,7 +166,7 @@ internal sealed class GoogleResourceReconciliationJob(
             try
             {
                 await notificationService.SendToRoleAsync(
-                    NotificationSource.SyncError,
+                    GoogleIntegrationNotificationSources.SyncError,
                     NotificationClass.Actionable,
                     NotificationPriority.High,
                     $"Google reconciliation: {phaseFailures.Count} phase(s) failed",

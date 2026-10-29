@@ -16,6 +16,7 @@ using Humans.Workgroups.Services;
 using Humans.Workgroups.Services.Contributors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Workgroups;
@@ -32,6 +33,7 @@ public sealed class Section : ISection, ISectionAdminNav
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, WorkgroupsNotificationSources>();
         services.AddSectionDbContext<WorkgroupsDbContext>(sentinelTable: "workgroups");
 
         services.AddSingleton<IWorkgroupRepository, WorkgroupRepository>();

@@ -132,7 +132,7 @@ internal sealed partial class WorkgroupService
 
         foreach (var info in orphaned)
         {
-            await NotifyBoardAsync(NotificationSource.WorkgroupRegistrationPending,
+            await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
                 $"No coordinator: {info.Name}", info,
                 "The group's only coordinator was erased under GDPR. Name a coordinator from its members.", ct);
         }

@@ -7,6 +7,7 @@ using Humans.Notifications.Jobs;
 using Humans.Notifications.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Humans.Users.Contracts;
 
 namespace Humans.Notifications;
@@ -18,6 +19,9 @@ public sealed class Section : ISection
         services.AddSectionDbContext<NotificationsDbContext>(sentinelTable: "notifications");
 
         services.AddSingleton<INotificationRepository, NotificationRepository>();
+
+        services.AddSingleton<NotificationSourceRegistry>();
+        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<NotificationSourceRegistry>());
 
         // A separate type from NotificationService so TeamService and RoleAssignmentService can take
         // INotificationEmitter without a DI cycle. Only ValidateOnBuild at startup catches a regression.

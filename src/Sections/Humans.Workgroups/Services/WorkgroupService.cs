@@ -96,7 +96,7 @@ internal sealed partial class WorkgroupService(
         await repository.AddWorkgroupAsync(workgroup, ct);
 
         var info = ToInfo(workgroup);
-        await NotifyBoardAsync(NotificationSource.WorkgroupRegistrationPending,
+        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
             $"Working group applied: {workgroup.Name}", info,
             "A new working group is waiting on the Secretary.", ct);
         await EmailBoardAsync(WorkgroupNoticeKind.Applied, info, detail: null, ct);
@@ -121,7 +121,7 @@ internal sealed partial class WorkgroupService(
         // pending row, which erasure deletes, never in an inbox it can't reach.
         ct = CancellationToken.None;
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupMembershipRequested,
+        await NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupMembershipRequested,
             "Workgroups_Notice_MembershipRequested", info, body: null, ct);
         return new();
     }
@@ -159,7 +159,7 @@ internal sealed partial class WorkgroupService(
         await auditLog.LogAsync(AuditAction.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
             relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
-        await NotifyAsync([userId], NotificationSource.WorkgroupMembershipDecided,
+        await NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
     }
@@ -203,7 +203,7 @@ internal sealed partial class WorkgroupService(
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
             relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
-        await NotifyAsync([member.UserId], NotificationSource.WorkgroupMembershipDecided,
+        await NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
         return new();
@@ -299,7 +299,7 @@ internal sealed partial class WorkgroupService(
         }, ct);
         ct = CancellationToken.None;
 
-        await NotifyAsync(info.CoordinatorUserIds(), NotificationSource.WorkgroupReportingDue,
+        await NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupReportingDue,
             "Workgroups_Todo_StatusRequested_Title", info, Trimmed(question), ct);
         return new();
     }
@@ -392,7 +392,7 @@ internal sealed partial class WorkgroupService(
 
         var info = ToInfo(workgroup);
         var affected = changed.Select(m => m.UserId).Distinct().ToList();
-        await NotifyAsync(affected, NotificationSource.WorkgroupRegistrationDecided,
+        await NotifyAsync(affected, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
             "Enum_WorkgroupLogKind_CoordinatorChanged", info, string.Join(", ", names), ct);
         await EmailAsync(affected, WorkgroupNoticeKind.CoordinatorsChanged, info,
             string.Join(", ", names), ct);
