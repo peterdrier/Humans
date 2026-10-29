@@ -10,7 +10,7 @@ namespace Humans.GoogleIntegration.Jobs;
 
 /// <summary>
 /// Each phase runs in isolation, so one failing does not abort the others; any failure raises one summary alert.
-/// Public because Section.cs and SectionJobs.cs name it (HUM0034 allows public job types).
+/// Public because Section.cs names it (HUM0034 allows public job types).
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class GoogleResourceReconciliationJob(

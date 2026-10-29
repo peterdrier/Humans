@@ -47,7 +47,19 @@ internal sealed record GateScanCardViewModel(
             r.IsEarly ? "Early entry OK" : null, r.IsEarly, r.Barcode, AllowChildWithAdult: true),
     };
 
-    public static GateScanCardViewModel FromDecision(GateDecisionResult d, string barcode) => d.Verdict switch
+    public static GateScanCardViewModel FromDecision(GateDecisionResult d, string barcode, bool childWithAdult = false) => d switch
+    {
+        { OverrideFailure: { } failure } =>
+            new(GateCardKind.Amber, "Supervisor", null, failure switch
+            {
+                GateOverrideFailure.NotConfigured => "Override PIN not configured — an admin must set it before overrides work",
+                GateOverrideFailure.LockedOut => $"Too many PIN attempts — wait {d.RetryAfterSeconds}s",
+                _ => "PIN not accepted — try again",
+            }, false, barcode, AllowChildWithAdult: false, AllowSupervisorOverride: !childWithAdult),
+        _ => FromVerdict(d, barcode),
+    };
+
+    private static GateScanCardViewModel FromVerdict(GateDecisionResult d, string barcode) => d.Verdict switch
     {
         GateVerdict.AdmittedEarlyOverride =>
             new(GateCardKind.Admit, "Admit", d.GuestName,

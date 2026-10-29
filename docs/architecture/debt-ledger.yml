@@ -162,10 +162,6 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-24
-    id: CENTRAL-101
-    what: "The dietary things-to-do nudge keys (Todo_DietaryMedical_*) in src/Humans.Base/Resources/SharedResource are still the English text in the ca, de, fr and it files, so members in those cultures see the cantina nudge in English. The parity tests pass because the keys exist. Translate them; Cantina and Users both render them."
-    review: light
   - added: 2026-10-21
     id: CENTRAL-89
     what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
@@ -194,7 +190,3 @@ inbox:
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
-  - added: 2026-10-26
-    id: CENTRAL-102
-    what: "tests/Humans.Testing/CapturingLogger.cs appends to an unsynchronized List from Log, so a service that logs from concurrent tasks (StripeStartupSmokeService runs its probes under Task.WhenAll) can race the list in a test. Found by section-doctor on Stripe."
-    review: light

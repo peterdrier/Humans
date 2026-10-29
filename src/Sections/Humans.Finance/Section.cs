@@ -1,20 +1,35 @@
+using Humans.Base.Authorization;
 using Humans.Base.Caching;
-using Humans.Base.Interfaces.Caching;
+using Humans.Base.Configuration;
+using Humans.Base.Constants;
+using Humans.Base.Helpers;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
-using Humans.Gdpr.Contracts;
+using Humans.Base.Interfaces.Caching;
+using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
+using Humans.Finance.Jobs;
 using Humans.Finance.Services;
-using Humans.Base.Hosting;
-using Humans.Email.Contracts;
+using Humans.Finance.ViewComponents;
+using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.Finance;
 
-public sealed class Section : ISection, ISectionRoles
+public sealed class Section :
+    ISection,
+    ISectionRoles,
+    ISectionAdminNav,
+    ISectionConfiguration,
+    ISectionDataMigrations,
+    ISectionJobs,
+    ISectionPolicies,
+    IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -70,4 +85,75 @@ public sealed class Section : ISection, ISectionRoles
 
         services.AddScoped<CashFlowService>();
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Finance", [
+            new("Holded connector", "Finance", "Holded", null, null, "fa-solid fa-plug", PolicyNames.FinanceAdminOrAdmin)
+        ])
+    ];
+
+    void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
+    {
+        configuration.GetOptionalSetting(registry, "Sepa:CreditorName", "SEPA",
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "Sepa:CreditorIban", "SEPA", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "Sepa:CreditorBic", "SEPA",
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "Sepa:CreditorIdentifier", "SEPA",
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "Sepa:ChargeBearer", "SEPA");
+        // Defaults to €50 when unset.
+        configuration.GetOptionalSetting(registry, "Sepa:MaxPayoutPerTransfer", "SEPA");
+        // Either unset, /Finance/Sepa offers no Book buttons.
+        configuration.GetOptionalSetting(registry, "Sepa:TreasuryAccountId", "SEPA",
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "Sepa:TreasuryLedgerAccount", "SEPA",
+            importance: ConfigurationImportance.Recommended);
+
+        // Wins over the Sepa:CreditorIban appsetting.
+        registry.RegisterEnvironmentVariable("SEPA_CREDITOR_IBAN", "SEPA", isSensitive: true);
+    }
+
+    internal const string IbanToPaymentDetailsKey = "finance.iban-to-payment-details";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(IbanToPaymentDetailsKey, "Finance",
+            "Copy each member's IBAN from profiles.Iban into finance_payment_details",
+            "PaymentDetailsService's legacy fallback and ProfileInfo.Iban; then a drop PR for profiles.Iban",
+            IbanStatusAsync, ApplyIbanAsync),
+    ];
+
+    // Masked: this screen lists every member at once; an unmasked IBAN is shown one member at a time, behind the
+    // audited reveal.
+    private static async Task<DataMigrationStatus> IbanStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Burner name", "IBAN"],
+            [.. (await sp.GetRequiredService<IPaymentDetailsManagement>().GetUncopiedLegacyIbansAsync(ct))
+                .Select(r => (IReadOnlyList<string>)[r.UserId.ToString(), r.BurnerName, IbanFormatter.Mask(r.Iban)])]);
+
+    private static Task<int> ApplyIbanAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<IPaymentDetailsManagement>().CopyLegacyIbansAsync(ct);
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        // The Sabadell line lands 6-50 h after a file is generated, so hourly buys nothing; :17 avoids the on-the-hour
+        // stampede.
+        yield return new RecurringJobDescriptor(
+            "sepa-bank-booking", typeof(SepaBankBookingJob), "17 */2 * * *");
+
+        // Ahead of Holded's 03:00 ledger sweep; the shared "holded-api" lock keeps them apart if this runs long.
+        yield return new RecurringJobDescriptor(
+            "holded-doc-sync", typeof(HoldedDocSyncJob), "45 2 * * *");
+    }
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
+            policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
+    }
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+        [new(UserPartSlots.AdminDetailSidebar, typeof(PaymentDetailsViewComponent), Weight: 100)];
 }

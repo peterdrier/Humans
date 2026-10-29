@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Models;
 
@@ -9,12 +10,12 @@ namespace Humans.Onboarding.Tests;
 public class SectionHelpTests
 {
     private static SectionHelpEntry Entry(string key) =>
-        new SectionHelp().HelpEntries.Single(e => string.Equals(e.Key, key, StringComparison.Ordinal));
+        ((ISectionHelp)new Section()).HelpEntries.Single(e => string.Equals(e.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
     public void Contributes_its_help_entries_in_corpus_order()
     {
-        new SectionHelp().HelpEntries
+        ((ISectionHelp)new Section()).HelpEntries
             .Select(e => (e.Key, e.Order))
             .Should().Equal(("OnboardingReview", 70));
     }

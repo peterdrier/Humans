@@ -30,7 +30,7 @@ public sealed class RoleAssignmentsCardViewComponentTests
     [HumansFact]
     public void Parts_ContributeTheCardToTheAdminDetailSlot()
     {
-        IUserPart contribution = new SectionUserParts();
+        IUserPart contribution = ((IUserPart)new Section());
 
         contribution.Parts().Should().BeEquivalentTo(
             [new UserPart(UserPartSlots.AdminDetail, typeof(RoleAssignmentsCardViewComponent), 50)]);

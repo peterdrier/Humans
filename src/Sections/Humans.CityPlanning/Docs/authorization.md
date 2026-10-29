@@ -12,4 +12,4 @@
 
 | Handler | Requirement | Policy | Path |
 |---|---|---|---|
-| `CityPlanningMapAdminHandler` | `CityPlanningMapAdminRequirement` | `PolicyNames.CityPlanningMapAdmin` — succeeds for `Admin` or `CampsAdmin`, otherwise for city-planning team members (`ICityPlanningService.IsCityPlanningTeamMemberAsync`). Gates the `/Settings#city-planning` tab and is the map-admin gate both controllers ask in-method. | `Authorization/CityPlanningMapAdminHandler.cs` (policy registered in `SectionPolicies.cs`, handler in `Section.cs`) |
+| `CityPlanningMapAdminHandler` | `CityPlanningMapAdminRequirement` | `PolicyNames.CityPlanningMapAdmin` — succeeds for `Admin` or `CampsAdmin`, otherwise for city-planning team members (`ICityPlanningService.IsCityPlanningTeamMemberAsync`). Gates the `/Settings#city-planning` tab and is the map-admin gate both controllers ask in-method. | `Authorization/CityPlanningMapAdminHandler.cs` (policy registered in `Section.cs`, handler in `Section.cs`) |

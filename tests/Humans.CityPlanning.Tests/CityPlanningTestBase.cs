@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.CityPlanning.Authorization;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Data;
@@ -57,7 +58,7 @@ public abstract class CityPlanningTestBase : IDisposable
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAuthorizationCore(new SectionPolicies().AddPolicies);
+        services.AddAuthorizationCore(((ISectionPolicies)new Section()).AddPolicies);
         services.AddSingleton<IAuthorizationHandler>(new CityPlanningMapAdminHandler(cityPlanning));
         return services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
     }

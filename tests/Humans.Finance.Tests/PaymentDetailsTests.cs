@@ -194,7 +194,7 @@ public class PaymentDetailsTests
         var services = new ServiceCollection()
             .AddSingleton<IPaymentDetailsManagement>(_sut)
             .BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations()
+        var migration = ((ISectionDataMigrations)new Section()).Migrations()
             .Single(m => string.Equals(m.Key, "finance.iban-to-payment-details", StringComparison.Ordinal));
 
         var status = await migration.Status(services, Ct);
@@ -350,7 +350,7 @@ public class PaymentDetailsTests
     [HumansFact]
     public void Parts_ContributeTheCardToTheAdminDetailSidebarOnly()
     {
-        IUserPart contribution = new SectionUserParts();
+        IUserPart contribution = ((IUserPart)new Section());
 
         contribution.Parts().Should().ContainSingle()
             .Which.Should().Be(new UserPart(UserPartSlots.AdminDetailSidebar, typeof(PaymentDetailsViewComponent), 100));

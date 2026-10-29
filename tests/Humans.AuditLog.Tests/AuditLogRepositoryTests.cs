@@ -61,7 +61,6 @@ public class AuditLogRepositoryTests
 
         await _sut.AddAsync(entry, Xunit.TestContext.Current.CancellationToken);
 
-        // Round-trip via a fresh context confirms the row was saved by AddAsync.
         await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
         var stored = await ctx.AuditLogEntries.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == entry.Id, Xunit.TestContext.Current.CancellationToken);

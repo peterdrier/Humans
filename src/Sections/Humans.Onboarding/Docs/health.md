@@ -99,7 +99,7 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 - **Nothing in the funnel notifies a coordinator.** The threshold check writes the status and
   logs; the only notification the section raises is `ProfileRejected`, to the rejected person.
   `ConsentReviewNeeded` is a retired source — the coordinator finds the queue through the
-  `Review` pill in the admin sidebar (`SectionAdminNav.cs:15`), not through an inbox row.
+  `Review` pill in the admin sidebar (`Section.cs:15`), not through an inbox row.
   (`Services/OnboardingService.cs` `SetConsentCheckPendingIfEligibleAsync`;
   `Humans.Notifications/Services/NotificationInboxService.cs:202`.)
 - **A flagged, unresolved person stays in the queue** even if an override set `IsApproved`.

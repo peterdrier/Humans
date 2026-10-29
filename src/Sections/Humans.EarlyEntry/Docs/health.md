@@ -5,7 +5,7 @@
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Camps/Services/CampService.cs
   src/Sections/Humans.Shifts/Section.cs
-  src/Sections/Humans.Shifts/SectionPolicies.cs
+  src/Sections/Humans.Shifts/Section.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Teams/Section.cs

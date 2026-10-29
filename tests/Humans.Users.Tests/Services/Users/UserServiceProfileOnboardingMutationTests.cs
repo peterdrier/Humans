@@ -41,6 +41,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
     [HumansTheory]
     [InlineData("invalid", "Validation_EmailAddress")]
+    [InlineData("overlong", "Validation_EmailAddress")]
     [InlineData("duplicate", "Users_Profile_EmailAlreadyAdded")]
     [InlineData("missing", "Users_EmailUpdate_AccountUnavailable")]
     public async Task AddUserEmailAsync_ExpectedRefusal_DoesNotAddRow(string kind, string errorKey)
@@ -56,8 +57,14 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var service = new UserService(repository, _communicationPreferenceRepository,
             AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
+        var email = kind switch
+        {
+            "invalid" => "invalid",
+            "overlong" => new string('a', 245) + "@example.com",
+            _ => "held@example.com"
+        };
         var result = await service.AddUserEmailAsync(userId,
-            new UserEmailAddCommand(string.Equals(kind, "invalid", StringComparison.Ordinal) ? "invalid" : "held@example.com", IsVerified: true),
+            new UserEmailAddCommand(email, IsVerified: true),
             TestContext.Current.CancellationToken);
 
         result.ErrorKey.Should().Be(errorKey);
@@ -65,6 +72,27 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         result.EmailId.Should().Be(Guid.Empty);
         await repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddUserEmailAsync_StoredLengthLimit_AcceptsTrimmedBoundary(bool padded)
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var email = new string('a', 244) + "@example.com";
+
+        var result = await _service.AddUserEmailAsync(userId,
+            new UserEmailAddCommand(padded ? $"  {email}  " : email, IsVerified: true),
+            TestContext.Current.CancellationToken);
+
+        result.Added.Should().BeTrue();
+        result.ErrorKey.Should().BeNull();
+        var row = await Db.UserEmails.AsNoTracking().SingleAsync(e => e.Id == result.EmailId,
+            TestContext.Current.CancellationToken);
+        row.Email.Should().Be(email).And.HaveLength(256);
     }
 
     [HumansTheory]

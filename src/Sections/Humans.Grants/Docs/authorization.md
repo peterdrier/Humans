@@ -9,7 +9,7 @@
 | `GrantsAdminController.Edit` (GET/POST) | Action + in-method | Admin, Board; then `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` | `PolicyNames.BoardOrAdmin` + resource-based |
 | `GrantsAdminController.Issue` / `Revoke` / `Resend` | Action + in-method | Admin, Board, or a program manager; then `ProgramOperationRequirement.Manage` via `ManageAsync`; a grant route whose grant is not in that program returns 404 | `GrantsPolicies.Manage` + resource-based |
 
-Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests` pins them. The section policy name lives in this section (`Authorization/GrantsPolicies.cs`), registered in `SectionPolicies.cs`.
+Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests` pins them. The section policy name lives in this section (`Authorization/GrantsPolicies.cs`), registered in `Section.cs`.
 
 ## View components
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -55,6 +56,7 @@ internal sealed class ShiftManagementService(
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
     private ICampService CampService => serviceProvider.GetRequiredService<ICampService>();
     private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
+    private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
         IEnumerable<Guid> teamIds,
@@ -119,17 +121,70 @@ internal sealed class ShiftManagementService(
     }
 
     public async Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours)
+        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
+        BuildSubPeriodStarts subPeriods, Guid actorUserId)
     {
         var entity = await EnsureKnobsRowAsync(eventSettingsId);
         entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
         entity.GlobalVolunteerCap = globalVolunteerCap;
         entity.ReminderLeadTimeHours = reminderLeadTimeHours;
+        SetSubPeriods(entity, subPeriods);
         entity.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
+        await auditLogService.LogAsync(
+            AuditAction.EventSettingsUpdated, nameof(EventSettings), eventSettingsId,
+            $"Shift settings saved: browsing {(isShiftBrowsingOpen ? "open" : "closed")}, "
+            + $"volunteer cap {globalVolunteerCap?.ToString(CultureInfo.InvariantCulture) ?? "none"}, reminder {reminderLeadTimeHours}h, "
+            + $"build sub-periods start first crew {subPeriods.FirstCrew}, set-up week {subPeriods.SetupWeek}, "
+            + $"pre-event week {subPeriods.PreEventWeek}, finishing weekend {subPeriods.FinishingWeekend}.",
+            actorUserId);
 
         EvictDashboardCaches(eventSettingsId);
         viewInvalidator.InvalidateAll();
+    }
+
+    public async Task<IReadOnlyList<(Guid EventSettingsId, string EventName, BuildSubPeriodStarts Starts)>> GetUncopiedBuildSubPeriodsAsync(
+        CancellationToken ct = default)
+    {
+        var rowsById = (await repo.GetAllEventSettingsAsync(ct)).ToDictionary(r => r.Id);
+        var pending = new List<(Guid, string, BuildSubPeriodStarts)>();
+        // Every Settings cycle, inactive ones included: a cycle without a Shifts row still leans on Settings' values.
+        foreach (var calendar in await SettingsService.GetAllEventSettingsAsync(ct))
+        {
+            if (rowsById.TryGetValue(calendar.Id, out var row)
+                && row.SubPeriodFirstCrewStart is not null && row.SubPeriodSetupWeekStart is not null
+                && row.SubPeriodPreEventWeekStart is not null && row.SubPeriodFinishingWeekendStart is not null)
+                continue;
+
+            var resolved = EventCalendarResolver.WithSubPeriods(calendar, rowsById.GetValueOrDefault(calendar.Id));
+            pending.Add((calendar.Id, calendar.EventName, new BuildSubPeriodStarts(
+                resolved.FirstCrewStartOffset, resolved.SetupWeekStartOffset,
+                resolved.PreEventWeekStartOffset, resolved.FinishingWeekendStartOffset)));
+        }
+        return pending;
+    }
+
+    public async Task<int> CopyBuildSubPeriodsAsync(CancellationToken ct = default)
+    {
+        var pending = await GetUncopiedBuildSubPeriodsAsync(ct);
+        foreach (var (eventSettingsId, _, starts) in pending)
+        {
+            var entity = await EnsureKnobsRowAsync(eventSettingsId);
+            SetSubPeriods(entity, starts);
+            entity.UpdatedAt = clock.GetCurrentInstant();
+            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update, ct);
+            EvictDashboardCaches(eventSettingsId);
+        }
+        if (pending.Count > 0) viewInvalidator.InvalidateAll();
+        return pending.Count;
+    }
+
+    private static void SetSubPeriods(EventSettings entity, BuildSubPeriodStarts starts)
+    {
+        entity.SubPeriodFirstCrewStart = starts.FirstCrew;
+        entity.SubPeriodSetupWeekStart = starts.SetupWeek;
+        entity.SubPeriodPreEventWeekStart = starts.PreEventWeek;
+        entity.SubPeriodFinishingWeekendStart = starts.FinishingWeekend;
     }
 
     /// <summary>
@@ -1354,26 +1409,9 @@ internal sealed class ShiftManagementService(
         var confirmedCountsRo = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
         var confirmedCounts = confirmedCountsRo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        int ConfirmedOn(Guid shiftId) => confirmedCounts.TryGetValue(shiftId, out var c) ? c : 0;
-        bool IsFilled(Shift s) => ConfirmedOn(s.Id) >= s.MinVolunteers;
-
-        var totalShifts = shifts.Count;
-        var filledShifts = shifts.Count(IsFilled);
-
-        int FilledSlotsOn(Shift s) => Math.Min(ConfirmedOn(s.Id), s.MaxVolunteers);
-        var totalSlots = shifts.Sum(s => s.MaxVolunteers);
-        var filledSlots = shifts.Sum(FilledSlotsOn);
-
-        PeriodBreakdown periodFillRates;
-        {
-            var perPeriod = shifts
-                .GroupBy(s => s.GetShiftPeriod(es))
-                .ToDictionary(g => g.Key, g => (TotalSlots: g.Sum(x => x.MaxVolunteers), FilledSlots: g.Sum(FilledSlotsOn)));
-            periodFillRates = new PeriodBreakdown(
-                Pct(perPeriod, ShiftPeriod.Build),
-                Pct(perPeriod, ShiftPeriod.Event),
-                Pct(perPeriod, ShiftPeriod.Strike));
-        }
+        var aggregate = AggregateShifts(shifts, confirmedCounts, es);
+        var periodFillRates = new PeriodBreakdown(
+            Pct(aggregate.Build), Pct(aggregate.Event), Pct(aggregate.Strike));
 
         var ticketOrders = await TicketQueryService.GetTicketOrdersAsync(ct);
         var ticketHolders = ticketOrders
@@ -1399,14 +1437,12 @@ internal sealed class ShiftManagementService(
         var departments = BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
 
         return new DashboardOverview(
-            totalShifts, filledShifts, totalSlots, filledSlots, periodFillRates,
+            aggregate.Total, aggregate.Filled, aggregate.TotalSlots, aggregate.FilledSlots, periodFillRates,
             ticketHolders.Count, ticketHoldersEngaged, nonTicketSignups, stalePendingCount,
             departments);
 
-        static double Pct(Dictionary<ShiftPeriod, (int TotalSlots, int FilledSlots)> perPeriod, ShiftPeriod p) =>
-            perPeriod.TryGetValue(p, out var v) && v.TotalSlots > 0
-                ? 100.0 * v.FilledSlots / v.TotalSlots
-                : 0d;
+        static double Pct(PeriodStaffing staffing) =>
+            staffing.TotalSlots > 0 ? 100.0 * staffing.FilledSlots / staffing.TotalSlots : 0d;
     }
 
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
@@ -1489,7 +1525,7 @@ internal sealed class ShiftManagementService(
     }
 
     private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
-        AggregateShifts(List<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettingsInfo es)
+        AggregateShifts(IReadOnlyList<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettingsInfo es)
     {
         int total = shifts.Count;
         int filled = 0;
@@ -1511,8 +1547,8 @@ internal sealed class ShiftManagementService(
             var slotsLeft = Math.Max(0, s.MaxVolunteers - confirmed);
 
             if (isFilled) filled++;
-            totalSlots += s.MaxVolunteers;
-            filledSlots += filledSlotsHere;
+            totalSlots = checked(totalSlots + s.MaxVolunteers);
+            filledSlots = checked(filledSlots + filledSlotsHere);
             remaining += slotsLeft;
 
             var p = s.GetShiftPeriod(es);

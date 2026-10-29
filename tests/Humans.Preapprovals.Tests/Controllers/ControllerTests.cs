@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using System.Globalization;
@@ -317,7 +318,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAuthorization(new SectionPolicies().AddPolicies);
+        services.AddAuthorization(((ISectionPolicies)new Section()).AddPolicies);
         services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService()));
         var provider = services.BuildServiceProvider();

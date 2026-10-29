@@ -62,10 +62,6 @@ public sealed class SettingsAdminControllerTests
     [Xunit.InlineData("BuildStartOffset", false)]
     [Xunit.InlineData("EventEndOffset", false)]
     [Xunit.InlineData("StrikeEndOffset", false)]
-    [Xunit.InlineData("FirstCrewStartOffset", false)]
-    [Xunit.InlineData("SetupWeekStartOffset", false)]
-    [Xunit.InlineData("PreEventWeekStartOffset", false)]
-    [Xunit.InlineData("FinishingWeekendStartOffset", false)]
     [Xunit.InlineData("EarlyEntryCapacityJson", false)]
     [Xunit.InlineData("BarriosEarlyEntryAllocationJson", false)]
     [Xunit.InlineData("EarlyEntryClose", false)]
@@ -88,10 +84,6 @@ public sealed class SettingsAdminControllerTests
             ["EventName"] = "Nowhere 2026",
             ["GateOpeningDate"] = "2026-07-09",
             ["BuildStartOffset"] = "-30",
-            ["FirstCrewStartOffset"] = "-24",
-            ["SetupWeekStartOffset"] = "-15",
-            ["PreEventWeekStartOffset"] = "-8",
-            ["FinishingWeekendStartOffset"] = "-3",
             ["EventEndOffset"] = blankOptional ? "0" : "7",
             ["StrikeEndOffset"] = blankOptional ? "0" : "10",
             ["EarlyEntryCapacityJson"] = blankOptional ? "{}" : "{\"-7\":50}",
@@ -130,10 +122,6 @@ public sealed class SettingsAdminControllerTests
             saved.Id.Should().NotBe(Guid.Empty);
             if (!blankOptional) saved.Id.Should().Be(id);
             saved.BuildStartOffset.Should().Be(-30);
-            saved.FirstCrewStartOffset.Should().Be(-24);
-            saved.SetupWeekStartOffset.Should().Be(-15);
-            saved.PreEventWeekStartOffset.Should().Be(-8);
-            saved.FinishingWeekendStartOffset.Should().Be(-3);
             saved.EventEndOffset.Should().Be(blankOptional ? 0 : 7);
             saved.StrikeEndOffset.Should().Be(blankOptional ? 0 : 10);
             saved.EarlyEntryCapacity.Should().BeEquivalentTo(blankOptional ? new Dictionary<int, int>() : new() { [-7] = 50 });

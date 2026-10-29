@@ -24,7 +24,7 @@ Nothing is reachable in Production; nothing is owned.
 | Dev-seed request (default) | `SeedBudget`, `SeedCampRoles` | `[Authorize(policy)]` + dev-auth on, host non-Production | Seeder call, redirect to `/Admin` |
 | Dev-seed strict | `SeedDashboard`, `ResetDashboard` | `[Authorize(policy)]` + dev-auth on, host `IsDevelopment()` only | Seeder call, redirect to `/Shifts/Dashboard` |
 | Section boot | `Section.Register` | Non-Production env name only | Registers the three seeders (fail-closed on unknown env) |
-| Nav contribution | `SectionAdminNav.Groups` | Environment gate: `env.IsDevelopment()` | Renders the "Development" admin group (one item, `/dev/seed`) |
+| Nav contribution | `ISectionAdminNav.Groups` | Environment gate: `env.IsDevelopment()` | Renders the "Development" admin group (one item, `/dev/seed`) |
 
 Everything else in the section is a helper reachable from one of these shapes.
 
@@ -33,7 +33,7 @@ Everything else in the section is a helper reachable from one of these shapes.
 ```
 Humans.Development/
 ├── Section.cs                 # DI entry point (fail-closed env check)
-├── SectionAdminNav.cs         # Admin sidebar contribution ("Development" group)
+├── Section.cs         # Admin sidebar contribution ("Development" group)
 ├── Controllers/
 │   ├── DevLoginController.cs  # Dev sign-in surface
 │   └── DevSeedController.cs   # Fixture seeding surface + seed page

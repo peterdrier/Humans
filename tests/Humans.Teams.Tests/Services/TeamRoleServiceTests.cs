@@ -79,7 +79,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             serviceProvider,
             Cache,
             new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
-            new EventCalendarResolver(Substitute.For<ISettingsService>()),
+            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(

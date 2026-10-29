@@ -523,7 +523,7 @@ internal sealed class UserService(
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
-        if (!new EmailAddressAttribute().IsValid(email))
+        if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email))
             return Refuse("Validation_EmailAddress");
 
         using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);

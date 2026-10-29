@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// <see cref="SectionSettings"/> gates it on AdminOnly, so every viewer may edit. No active event gets a blank form.
+/// <see cref="Section"/> gates it on AdminOnly, so every viewer may edit. No active event gets a blank form.
 /// </summary>
 internal sealed class ShiftsSettingsTabViewComponent(
     IBurnSettingsService burnSettings, IShiftManagement shiftMgmt) : ViewComponent
@@ -17,6 +17,6 @@ internal sealed class ShiftsSettingsTabViewComponent(
         if (active is null) return View(new EventSettingsViewModel());
 
         var knobs = await shiftMgmt.GetKnobsAsync(active.Id, HttpContext.RequestAborted);
-        return View(EventSettingsFormMapper.ToViewModel(knobs));
+        return View(EventSettingsFormMapper.ToViewModel(knobs, active));
     }
 }

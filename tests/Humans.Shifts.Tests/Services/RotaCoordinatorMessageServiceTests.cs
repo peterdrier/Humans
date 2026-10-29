@@ -43,7 +43,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 return Task.FromResult(found ? ToEventSettingsInfo(es!) : null);
             });
         return new(_repo, _teamService, _userService, _emailService, _emailMessages, _auditLog,
-            new EventCalendarResolver(_settingsService), _clock,
+            new EventCalendarResolver(_settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), _clock,
             logger ?? NullLogger<RotaCoordinatorMessageService>.Instance);
     }
 

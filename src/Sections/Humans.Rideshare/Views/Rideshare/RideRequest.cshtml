@@ -76,6 +76,7 @@
             <div class="form-check mb-3">
                 <input asp-for="CanContributeToFuel" class="form-check-input" />
                 <label asp-for="CanContributeToFuel" class="form-check-label">@Localizer["Rideshare_Field_CanContributeToFuel"]</label>
+                <span asp-validation-for="CanContributeToFuel" class="text-danger"></span>
             </div>
 
             <div class="mb-3">

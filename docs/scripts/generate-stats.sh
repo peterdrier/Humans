@@ -337,16 +337,12 @@ while IFS=' ' read -r day commit; do
   controllers=$(snapshot_file_count src -name '*Controller.cs' ! -path '*/Migrations/*')
   views=$(snapshot_file_count src -name '*.cshtml')
   entities=$(snapshot_file_count src -path '*/Entities/*.cs')
-  # Shared resources moved from the Shell to Base; historical snapshots can
-  # still carry the old path or predate the resource file entirely.
-  shared_resource="$SNAPSHOT_WORKTREE/src/Humans.Base/Resources/SharedResource.resx"
-  if [ ! -f "$shared_resource" ]; then
-    shared_resource="$SNAPSHOT_WORKTREE/src/Humans.Web/Resources/SharedResource.resx"
-  fi
-  resx_keys=0
-  if [ -f "$shared_resource" ]; then
-    resx_keys=$(awk '/<data / { n++ } END { print n+0 }' "$shared_resource")
-  fi
+  # Neutral-culture resx files only (primary language; translations like
+  # *.es.resx are not multiplied in). Same exclusions as resx_data above.
+  resx_keys=$(cd "$SNAPSHOT_WORKTREE" && find src -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null |
+    { grep -zvE '\.[a-z]{2}(-[A-Za-z]{2,4})?\.resx$' || true; } |
+    xargs -0 -r awk '/<data / { n++ } END { print n+0 }' 2>/dev/null)
+  resx_keys=${resx_keys:-0}
 
   # Semantic C# code/comment split via cloc. Same scope as cs_lines above
   # (src/ minus Migrations; tests live in tests/ at the root, not in src/).
