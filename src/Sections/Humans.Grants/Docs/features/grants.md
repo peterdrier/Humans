@@ -14,7 +14,7 @@ The association hands individual people entitlements: a cheaper ticket, early en
 
 ## User Stories
 
-**As Board or Admin, I create a program** (name, what it entitles, year, optional default expiry, issuer) and name its managers.
+**As Board or Admin, I create a program** (name, what it entitles, event, optional default expiry, issuer) and name its managers.
 - The issuer is either its managers by hand, or a source section by source key.
 - At most one open program per source key; a second is refused.
 - A closed program takes no new grants; its existing grants stay.

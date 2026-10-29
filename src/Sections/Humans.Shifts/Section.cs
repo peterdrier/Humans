@@ -25,6 +25,7 @@ using Humans.Shifts.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -64,6 +65,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, ShiftsNotificationSources>();
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 
         services.AddScoped<ShiftRepository>();
@@ -250,8 +252,9 @@ public sealed class Section :
         options.AddPolicy(PolicyNames.VolunteerManager, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
 
+        // Every reveal is audited (ShiftsController.RevealMedical), which is what lets Board in.
         options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>

@@ -68,7 +68,7 @@ else
                     }
                     else
                     {
-                        <form method="post" asp-action="Apply" class="d-inline">
+                        <form method="post" asp-action="Apply" class="d-inline" authorize-policy="AdminOnly">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="key" value="@migration.Key" />
                             <button type="submit" class="btn btn-warning btn-sm"

@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Hangfire;
+using Hangfire.Dashboard;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -794,14 +795,17 @@ app.MapGet("/api/version", () =>
     return Results.Ok(new { version, commit, informationalVersion });
 }).AllowAnonymous();
 
-// Admin-only in prod. Skipped in Testing — JobStorage.Current isn't set until after migrations.
+// Admin and Board in prod, read-only for Board. Skipped in Testing — JobStorage.Current isn't set until after migrations.
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.MapHangfireDashboard("/hangfire", new DashboardOptions
     {
         Authorization = app.Environment.IsDevelopment()
             ? []
-            : [new Humans.Web.HangfireAuthorizationFilter()]
+            : [new Humans.Web.HangfireAuthorizationFilter()],
+        IsReadOnlyFunc = app.Environment.IsDevelopment()
+            ? _ => false
+            : context => !Humans.Base.Authorization.RoleChecks.IsAdmin(context.GetHttpContext().User)
     });
 }
 

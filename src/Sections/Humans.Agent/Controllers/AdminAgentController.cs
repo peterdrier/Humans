@@ -8,7 +8,8 @@ using Humans.Users.Contracts;
 
 namespace Humans.Agent.Controllers;
 
-[Authorize(Policy = PolicyNames.AdminOnly)]
+/// <summary>Board reads status and transcripts; only Admin changes settings or reloads the knowledge base.</summary>
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Agent/Admin")]
 internal sealed class AdminAgentController(
     IAgentSettingsService settings,
@@ -29,6 +30,7 @@ internal sealed class AdminAgentController(
     }
 
     [HttpPost("Settings")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Settings(AdminAgentSettingsViewModel vm, CancellationToken ct)
     {
@@ -56,6 +58,7 @@ internal sealed class AdminAgentController(
     }
 
     [HttpPost("ReloadKnowledgeBase")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReloadKnowledgeBase(CancellationToken ct)
     {

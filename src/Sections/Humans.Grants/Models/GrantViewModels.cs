@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Grants.Domain;
 using Humans.Grants.Services;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
@@ -43,8 +44,8 @@ internal sealed class ProgramFormViewModel
     [StringLength(2000)]
     public string? Description { get; set; }
 
-    [Required, Range(2000, 2100)]
-    public int? Year { get; set; }
+    [Required(ErrorMessage = "Pick an event.")]
+    public Guid? EventSettingsId { get; set; }
 
     [BindRequired]
     public GrantIssuer IssuedBy { get; set; } = GrantIssuer.Managers;
@@ -62,8 +63,11 @@ internal sealed class ProgramFormViewModel
     /// <summary>For rendering only; never posted.</summary>
     public IReadOnlyDictionary<Guid, UserInfo> People { get; set; } = new Dictionary<Guid, UserInfo>();
 
+    /// <summary>For rendering only: the events a program can be for, newest first.</summary>
+    public IReadOnlyList<EventSettingsInfo> Events { get; set; } = [];
+
     public ProgramSave ToSave() => new(
-        Name, Entitles, Description, Year!.Value, IssuedBy, SourceKey, GrantsExpireOn, Status,
+        Name, Entitles, Description, EventSettingsId, IssuedBy, SourceKey, GrantsExpireOn, Status,
         ManagerUserIds.Distinct().ToList());
 
     public static ProgramFormViewModel From(ProgramInfo p) => new()
@@ -72,7 +76,7 @@ internal sealed class ProgramFormViewModel
         Name = p.Name,
         Entitles = p.Entitles,
         Description = p.Description,
-        Year = p.Year,
+        EventSettingsId = p.EventSettingsId,
         IssuedBy = p.IssuedBy,
         SourceKey = p.SourceKey,
         GrantsExpireOn = p.GrantsExpireOn,

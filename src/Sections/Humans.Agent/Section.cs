@@ -89,8 +89,8 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Agent", [
-            new("Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.AdminOnly),
-            new("History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.AdminOnly)
+            new("Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.BoardOrAdmin),
+            new("History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.BoardOrAdmin)
         ])
     ];
 
@@ -101,7 +101,10 @@ public sealed class Section :
             $"{AgentSectionDocReader.SectionProjectFolder(key)}/{key}.md"));
 
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
-        [new(ChromeSlots.BodyEnd, typeof(HelpWidgetViewComponent))];
+        [
+            new(ChromeSlots.BodyEnd, typeof(HelpWidgetViewComponent)),
+            new(ChromeSlots.WidgetGallery, typeof(AgentGalleryViewComponent)),
+        ];
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {

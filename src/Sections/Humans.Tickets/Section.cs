@@ -34,6 +34,7 @@ public sealed class Section :
     ISectionRoles,
     ISectionAccessMatrix,
     ISectionAdminNav,
+    ISectionChrome,
     ISectionConfiguration,
     ISectionDataMigrations,
     ISectionHealthChecks,
@@ -43,6 +44,9 @@ public sealed class Section :
     ISectionPolicies,
     IUserPart
 {
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(TicketsGalleryViewComponent))];
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(TicketsRoles.TicketsAdmin, "Tickets Admin",

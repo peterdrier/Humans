@@ -5,7 +5,7 @@ using Xunit;
 namespace Humans.Notifications.Tests.Enums;
 
 /// <summary>
-/// All three are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the OLD
+/// Both are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves the OLD
 /// string in the column, so a rename needs a migration that UPDATEs the stored values.
 /// </summary>
 public class EnumStringStabilityTests
@@ -27,19 +27,6 @@ public class EnumStringStabilityTests
 
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {
-        {
-            typeof(NotificationSource), [
-                "TeamMemberAdded", "ShiftCoverageGap", "ShiftSignupChange", "ConsentReviewNeeded",
-                "ApplicationSubmitted", "SyncError", "TermRenewalReminder", "ApplicationApproved",
-                "ApplicationRejected", "VolunteerApproved", "ProfileRejected", "AccessSuspended",
-                "ReConsentRequired", "TeamJoinRequestSubmitted", "TeamJoinRequestDecided",
-                "FeedbackResponse", "WorkspaceCredentialsReady", "RoleAssignmentChanged",
-                "CampaignReceived", "TeamMemberRemoved", "ShiftAssigned", "GoogleDriftDetected",
-                "FacilitatedMessageReceived", "LegalDocumentPublished", "CampMembershipApproved",
-                "CampMembershipRejected", "CampMembershipSeasonClosed", "CampRoleAssigned",
-                "IssueComment", "IssueStatusChanged", "IssueAssigned", "IssueSubmitted"
-            ]
-        },
         {
             typeof(NotificationClass), ["Informational", "Actionable"]
         },

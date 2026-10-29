@@ -1189,12 +1189,17 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.CampMembers.AsNoTracking().CountAsync(m => m.UserId == userId, TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
+    public static TheoryData<string, NotificationSourceDefinition> MembershipChangeNotices => new()
+    {
+        { "ApproveMember", CampsNotificationSources.CampMembershipApproved },
+        { "RejectMember", CampsNotificationSources.CampMembershipRejected },
+        { "RejectSeason", CampsNotificationSources.CampMembershipSeasonClosed },
+        { "WithdrawSeason", CampsNotificationSources.CampMembershipSeasonClosed },
+    };
+
     [HumansTheory]
-    [InlineData("ApproveMember", NotificationSource.CampMembershipApproved)]
-    [InlineData("RejectMember", NotificationSource.CampMembershipRejected)]
-    [InlineData("RejectSeason", NotificationSource.CampMembershipSeasonClosed)]
-    [InlineData("WithdrawSeason", NotificationSource.CampMembershipSeasonClosed)]
-    public async Task CommittedMembershipChange_FinishesNoticeAfterRequestCancellation(string action, NotificationSource source)
+    [MemberData(nameof(MembershipChangeNotices))]
+    public async Task CommittedMembershipChange_FinishesNoticeAfterRequestCancellation(string action, NotificationSourceDefinition source)
     {
         var ct = TestContext.Current.CancellationToken;
         using var requestCancellation = new CancellationTokenSource();
@@ -1312,8 +1317,8 @@ public sealed class CampServiceTests : CampsTestHarness
         else
             await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid(), ct);
 
-        var source = rejected ? NotificationSource.CampMembershipRejected : NotificationSource.CampMembershipApproved;
-        var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSource value && value == source)
+        var source = rejected ? CampsNotificationSources.CampMembershipRejected : CampsNotificationSources.CampMembershipApproved;
+        var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSourceDefinition value && value == source)
             .Single().GetArguments();
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
         var name = camp.Seasons.Single().Name;
@@ -1376,7 +1381,7 @@ public sealed class CampServiceTests : CampsTestHarness
         member.ConfirmedAt.Should().NotBeNull();
 
         await Notifier.Received(1).SendAsync(
-            NotificationSource.CampMembershipApproved,
+            CampsNotificationSources.CampMembershipApproved,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -1478,7 +1483,7 @@ public sealed class CampServiceTests : CampsTestHarness
         member.RemovedAt.Should().NotBeNull();
 
         await Notifier.Received(1).SendAsync(
-            NotificationSource.CampMembershipRejected,
+            CampsNotificationSources.CampMembershipRejected,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -2026,7 +2031,7 @@ public sealed class CampServiceTests : CampsTestHarness
         Notifier.ClearReceivedCalls();
 
         if (deliveryFailure)
-            Notifier.SendAsync(NotificationSource.CampMembershipSeasonClosed,
+            Notifier.SendAsync(CampsNotificationSources.CampMembershipSeasonClosed,
                 Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(), Arg.Any<string>(),
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -2035,7 +2040,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.WithdrawSeasonAsync(camp.Id, season.Id, actorUserId: TestActorId, ct);
 
         var notices = Notifier.ReceivedCalls()
-            .Where(call => call.GetArguments()[0] is NotificationSource source && source == NotificationSource.CampMembershipSeasonClosed)
+            .Where(call => call.GetArguments()[0] is NotificationSourceDefinition source && source == CampsNotificationSources.CampMembershipSeasonClosed)
             .Select(call => call.GetArguments()).ToList();
         notices.Should().HaveCount(2);
         var spanish = notices.Single(args => ((IReadOnlyList<Guid>)args[4]!).Contains(spanishIds[0]));
@@ -2071,7 +2076,7 @@ public sealed class CampServiceTests : CampsTestHarness
         member.Status.Should().Be(CampMemberStatus.Pending);
 
         await Notifier.Received(1).SendAsync(
-            NotificationSource.CampMembershipSeasonClosed,
+            CampsNotificationSources.CampMembershipSeasonClosed,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),

@@ -99,7 +99,7 @@ public class HumanLifecycleServiceTests
             Arg.Is<string>(message => message.Contains(notes)),
             adminId);
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.AccessSuspended,
+            UsersNotificationSources.AccessSuspended,
             NotificationClass.Actionable,
             NotificationPriority.Critical,
             "Your account has been suspended",
@@ -127,7 +127,7 @@ public class HumanLifecycleServiceTests
         await sut.SuspendAsync(userId, adminId, notes: null, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.AccessSuspended,
+            UsersNotificationSources.AccessSuspended,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -156,7 +156,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
-            default, default, default, null!, null!, cancellationToken: Arg.Any<CancellationToken>());
+            default!, default, default, null!, null!, cancellationToken: Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
             default(AuditAction), null!, default, null!, Guid.Empty);
         _metrics.DidNotReceive().RecordMemberSuspended(Arg.Any<string>());
@@ -184,7 +184,7 @@ public class HumanLifecycleServiceTests
             "Unsuspended",
             adminId);
         await _notificationInboxService.Received(1)
-            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, Arg.Any<CancellationToken>());
+            .ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -203,7 +203,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         await _notificationInboxService.DidNotReceiveWithAnyArgs()
-            .ResolveBySourceAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
+            .ResolveBySourceAsync(Guid.Empty, null!, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -217,7 +217,7 @@ public class HumanLifecycleServiceTests
         _userService.SetSuspensionAsync(userId, Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _notificationService.SendAsync(
-                Arg.Any<NotificationSource>(),
+                Arg.Any<NotificationSourceDefinition>(),
                 Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(),
@@ -249,7 +249,7 @@ public class HumanLifecycleServiceTests
         _userService.SetSuspensionAsync(userId, Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _notificationInboxService
-            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, Arg.Any<CancellationToken>())
+            .ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("inbox down"));
 
         var sut = BuildSut();
@@ -278,6 +278,8 @@ public class HumanLifecycleServiceTests
             userId,
             "Unsuspended after completing required consents",
             nameof(HumanLifecycleService.RestoreConsentSuspensionAsync));
+        await _notificationInboxService.Received(1)
+            .ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -293,6 +295,8 @@ public class HumanLifecycleServiceTests
         await _userService.DidNotReceiveWithAnyArgs().SetSuspensionAsync(default, default, default, Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
             default(AuditAction), null!, default, null!, null!);
+        await _notificationInboxService.DidNotReceiveWithAnyArgs()
+            .ResolveBySourceAsync(Guid.Empty, null!, Arg.Any<CancellationToken>());
     }
 
     private static UserInfo MakeUserInfo(Guid id, UserState state) =>

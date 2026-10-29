@@ -20,7 +20,7 @@ One partial class (`GrantService.*.cs`) registered once and resolved as `IGrantM
 | grants | R/W (deleted on erasure; re-keyed on merge, duplicate live grant revoked) |
 
 Cross-section calls via `IUserService` (merged ids, language, names), `IUserEmailService`
-(notification targets), `INotificationEmitter`, `IEmailService`, `IAuditLogService`, plus the
+(notification targets), `INotificationEmitter`, `IEmailService`, `IAuditLogService`, `ISettingsService` (events), plus the
 section's own `GrantsEmails` builder and `IClock`. No `IMemoryCache`.
 
 ### GrantsEmails / GrantsEmailPreviews (Scoped)

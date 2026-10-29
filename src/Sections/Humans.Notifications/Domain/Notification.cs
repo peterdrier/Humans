@@ -22,7 +22,8 @@ internal sealed class Notification
 
     public NotificationPriority Priority { get; set; }
 
-    public NotificationSource Source { get; set; }
+    /// <summary>A <c>NotificationSourceDefinition.Name</c>; the emitting section owns the definition.</summary>
+    public string Source { get; set; } = string.Empty;
 
     /// <summary>The source entity (e.g. an issue id), so its section can auto-resolve via <c>ResolveBySourceKeyAsync</c>.</summary>
     public string? SourceKey { get; set; }

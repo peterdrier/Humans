@@ -3,6 +3,7 @@ using Humans.Base.Controllers;
 using Humans.Grants.Authorization;
 using Humans.Grants.Models;
 using Humans.Grants.Services;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ internal sealed class GrantsAdminController(
     IGrantManagement grants,
     IUserService users,
     IAuthorizationService authorization,
+    ISettingsService settings,
     ILogger<GrantsAdminController> logger) : HumansControllerBase(users)
 {
     [HttpGet("")]
@@ -44,7 +46,8 @@ internal sealed class GrantsAdminController(
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> New(CancellationToken ct)
     {
-        return View("Form", await FillAsync(new ProgramFormViewModel { Year = grants.Today.Year }, ct));
+        var active = await settings.GetActiveEventSettingsAsync(ct);
+        return View("Form", await FillAsync(new ProgramFormViewModel { EventSettingsId = active?.Id }, ct));
     }
 
     [HttpPost("New")]
@@ -176,6 +179,10 @@ internal sealed class GrantsAdminController(
     private async Task<ProgramFormViewModel> FillAsync(ProgramFormViewModel model, CancellationToken ct)
     {
         model.People = await UserService.GetUserInfosAsync(model.ManagerUserIds, ct);
+        model.Events = (await settings.GetAllEventSettingsAsync(ct))
+            .Where(e => e.Status != EventSettingsStatus.Deleted)
+            .OrderByDescending(e => e.GateOpeningDate)
+            .ToList();
         return model;
     }
 }

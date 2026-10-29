@@ -60,7 +60,7 @@ Done when shared event dates/year continue working with Shifts disabled, existin
 
 ### 4. Open crosscut contracts to section-owned contributions
 
-- [ ] Remove the need to edit central domain catalogs for every feature: audit actions, notification sources/mappings, and feature-specific email factory methods. Starting points: `AuditAction`, `NotificationSource`, `NotificationSourceMapping`, `IEmailMessageFactory` (email factory methods done at peterdrier/Humans#1651; it keeps `FacilitatedMessage` only). GDPR export section keys are done: `GdprExportSections` is gone, each contributor declares its own constants, and `GdprExportDependencyInjectionTests`/`GdprErasureCoverageTests` derive their rosters by reflection (nobodies-collective/Humans#1116).
+- [ ] Remove the need to edit central domain catalogs for every feature: audit actions, notification sources/mappings, and feature-specific email factory methods. Starting points: `AuditAction`, `IEmailMessageFactory` (email factory methods done at peterdrier/Humans#1651; it keeps `FacilitatedMessage` only; notification sources done: each section declares `NotificationSourceDefinition`s on its own `NotificationSourceContributor`, and `NotificationSource` / `NotificationSourceMapping` are gone). GDPR export section keys are done: `GdprExportSections` is gone, each contributor declares its own constants, and `GdprExportDependencyInjectionTests`/`GdprErasureCoverageTests` derive their rosters by reflection (nobodies-collective/Humans#1116).
 - [ ] Preserve stored identifiers, historical rendering, export compatibility, and delivery behavior while moving domain meaning to its owner. Separate contracts from service implementations; do not turn `Section` into an email or audit business service.
 
 Done when a section adds its own audited action, notification/email content, and export contribution without editing the crosscut's feature catalog. Existing records remain readable.
@@ -114,7 +114,7 @@ Done when a section's public surface is its `Contracts/` folder or leaf plus the
 ### 10. Remove remaining assembly and tooling roll calls
 
 - [ ] Replace the explicit section project list in `Humans.Web.csproj` with a repository-appropriate inclusion convention. Move the `Extensions/Infrastructure/*` settings bindings (Email, Google, ticket-vendor port) and `MembershipRequiredFilter`'s Backdoor-scheme check behind seams, so Shell's compiled references shrink to the declared identity core (Users, Auth) and the guard stops pinning Backdoor, Email, GoogleIntegration and Tickets.
-- [ ] Remove hand-maintained section inventories from migration tooling and contributor expectations where discovery can supply them. Audit `SECTION_DB_CONTEXTS` in `build.yml`, GDPR contributor expectations, and tests reaching into another section's context.
+- [ ] Remove hand-maintained section inventories from migration tooling and contributor expectations where discovery can supply them. `SECTION_DB_CONTEXTS` in `build.yml` is gone (derived from the `Data/*DbContextFactory.cs` files); GDPR contributor expectations and tests reaching into another section's context remain to audit.
 - [x] Consolidate existing contribution declarations on `Section` (nobodies-collective/Humans#1088): every section's sibling `Section<Seam>.cs` classes folded into `Section.cs`.
 
 Done when adding a conventional section does not require a Shell project-list or migration-tooling edit, and section tests use the relevant public boundaries. Startup discovery and build-time project inclusion are separate concerns and both must work.

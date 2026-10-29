@@ -28,7 +28,7 @@ internal sealed class NotificationEmitter(
     }
 
     public async Task SendAsync(
-        NotificationSource source,
+        NotificationSourceDefinition source,
         NotificationClass notificationClass,
         NotificationPriority priority,
         string title,
@@ -48,7 +48,7 @@ internal sealed class NotificationEmitter(
         }
 
         var now = clock.GetCurrentInstant();
-        var category = source.ToMessageCategory();
+        var category = source.Category;
 
         var inboxDisabled = notificationClass == NotificationClass.Informational
             ? await preferenceService.GetUsersWithInboxDisabledAsync(recipientUserIds, category, cancellationToken)
@@ -74,7 +74,7 @@ internal sealed class NotificationEmitter(
                 ActionUrl = actionUrl,
                 ActionLabel = actionLabel,
                 Priority = priority,
-                Source = source,
+                Source = source.Name,
                 SourceKey = sourceKey,
                 Class = notificationClass,
                 TargetGroupName = targetGroupName,
