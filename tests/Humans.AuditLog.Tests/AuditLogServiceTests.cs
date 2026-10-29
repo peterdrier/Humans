@@ -344,6 +344,26 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetFilteredEntriesAsync_UserFilter_FollowsMergedIds()
+    {
+        var userId = Guid.NewGuid();
+        var source = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(WithMergedIds(userId, source)));
+
+        var now = _clock.GetCurrentInstant();
+        SeedAuditLogEntry(AuditAction.RoleAssigned, "Team", Guid.NewGuid(), now, actorUserId: source);
+        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", userId, now - Duration.FromHours(1));
+        SeedAuditLogEntry(AuditAction.RoleEnded, "User", Guid.NewGuid(), now - Duration.FromHours(2));
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.GetFilteredEntriesAsync(
+            userId: userId, ct: TestContext.Current.CancellationToken);
+
+        result.Select(e => e.Action).Should().Equal(AuditAction.RoleAssigned, AuditAction.VolunteerApproved);
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_ExportsActorEntityAndRelatedRows_AcrossMergedIds()
     {
         var userId = Guid.NewGuid();
