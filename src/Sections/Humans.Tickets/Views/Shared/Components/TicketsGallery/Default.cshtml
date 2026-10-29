@@ -20,11 +20,6 @@
         html.Append("</dl>");
         return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
     }
-
-    private static Microsoft.AspNetCore.Html.IHtmlContent AuthLine(string text)
-    {
-        return new Microsoft.AspNetCore.Html.HtmlString($"<div class=\"wg-auth-line\">{text}</div>");
-    }
 }
 
 <div class="wg-card">
