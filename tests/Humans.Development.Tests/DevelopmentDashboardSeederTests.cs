@@ -187,6 +187,9 @@ public class DevelopmentDashboardSeederTests
             Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(_events.GetValueOrDefault(id));
 
+        public Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<EventSettingsInfo>>([.. _events.Values]);
+
         public Task CreateActiveEventAsync(
             EventSettingsInfo settings, CancellationToken cancellationToken = default)
         {

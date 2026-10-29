@@ -56,6 +56,7 @@ internal sealed class ShiftManagementService(
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
     private ICampService CampService => serviceProvider.GetRequiredService<ICampService>();
     private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
+    private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
         IEnumerable<Guid> teamIds,
@@ -145,23 +146,20 @@ internal sealed class ShiftManagementService(
     public async Task<IReadOnlyList<(Guid EventSettingsId, string EventName, BuildSubPeriodStarts Starts)>> GetUncopiedBuildSubPeriodsAsync(
         CancellationToken ct = default)
     {
-        var rows = await repo.GetAllEventSettingsAsync(ct);
-        var pendingIds = rows
-            .Where(r => r.SubPeriodFirstCrewStart is null || r.SubPeriodSetupWeekStart is null
-                || r.SubPeriodPreEventWeekStart is null || r.SubPeriodFinishingWeekendStart is null)
-            .Select(r => r.Id)
-            .ToList();
-        if (await calendarResolver.GetActiveAsync(ct) is { } active && rows.All(r => r.Id != active.Id))
-            pendingIds.Add(active.Id);
-
-        // The resolver already fills each unset start from Settings, so its calendar holds the values to write.
+        var rowsById = (await repo.GetAllEventSettingsAsync(ct)).ToDictionary(r => r.Id);
         var pending = new List<(Guid, string, BuildSubPeriodStarts)>();
-        foreach (var id in pendingIds)
+        // Every Settings cycle, inactive ones included: a cycle without a Shifts row still leans on Settings' values.
+        foreach (var calendar in await SettingsService.GetAllEventSettingsAsync(ct))
         {
-            if (await calendarResolver.GetAsync(id, ct) is not { } calendar) continue;
-            pending.Add((id, calendar.EventName, new BuildSubPeriodStarts(
-                calendar.FirstCrewStartOffset, calendar.SetupWeekStartOffset,
-                calendar.PreEventWeekStartOffset, calendar.FinishingWeekendStartOffset)));
+            if (rowsById.TryGetValue(calendar.Id, out var row)
+                && row.SubPeriodFirstCrewStart is not null && row.SubPeriodSetupWeekStart is not null
+                && row.SubPeriodPreEventWeekStart is not null && row.SubPeriodFinishingWeekendStart is not null)
+                continue;
+
+            var resolved = EventCalendarResolver.WithSubPeriods(calendar, rowsById.GetValueOrDefault(calendar.Id));
+            pending.Add((calendar.Id, calendar.EventName, new BuildSubPeriodStarts(
+                resolved.FirstCrewStartOffset, resolved.SetupWeekStartOffset,
+                resolved.PreEventWeekStartOffset, resolved.FinishingWeekendStartOffset)));
         }
         return pending;
     }

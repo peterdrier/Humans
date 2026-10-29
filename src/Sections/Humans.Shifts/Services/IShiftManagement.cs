@@ -42,8 +42,8 @@ internal interface IShiftManagement
         BuildSubPeriodStarts subPeriods, Guid actorUserId);
 
     /// <summary>
-    /// Events whose build sub-periods still come from Settings, with the values the copy will write: every
-    /// Shifts row missing one, plus the active event when it has no Shifts row yet.
+    /// Settings cycles whose build sub-periods still come from Settings (no Shifts row, or one with a start unset),
+    /// with the values the copy will write.
     /// </summary>
     Task<IReadOnlyList<(Guid EventSettingsId, string EventName, BuildSubPeriodStarts Starts)>> GetUncopiedBuildSubPeriodsAsync(
         CancellationToken ct = default);
