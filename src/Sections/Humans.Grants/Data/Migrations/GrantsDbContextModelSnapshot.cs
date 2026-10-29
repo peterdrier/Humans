@@ -93,6 +93,9 @@ namespace Humans.Grants.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("EventSettingsId")
+                        .HasColumnType("uuid");
+
                     b.Property<LocalDate?>("GrantsExpireOn")
                         .HasColumnType("date");
 
@@ -122,6 +125,8 @@ namespace Humans.Grants.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId");
 
                     b.ToTable("grant_programs", (string)null);
                 });
