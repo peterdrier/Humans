@@ -422,7 +422,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            var result = await budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            if (result.Refusal is not null)
+            {
+                logger.LogWarning("Rejected budget line item amount for actor {ActorId}", user.Id);
+                SetError(result.Refusal);
+                return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+            }
             SetSuccess($"Line item '{description}' created.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -452,7 +458,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            var result = await budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            if (result.Refusal is not null)
+            {
+                logger.LogWarning("Rejected budget line item amount for actor {ActorId}", user.Id);
+                SetError(result.Refusal);
+                return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+            }
             SetSuccess($"Line item '{description}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }

@@ -328,7 +328,7 @@ internal sealed class DevelopmentBudgetSeeder(
 
             if (existing is null)
             {
-                await budgetService.CreateLineItemAsync(
+                var result = await budgetService.CreateLineItemAsync(
                     category.Id,
                     lineItem.Description,
                     lineItem.Amount,
@@ -338,11 +338,14 @@ internal sealed class DevelopmentBudgetSeeder(
                     vatRate: lineItem.VatRate,
                     actorUserId);
 
+                if (result.Refusal is not null)
+                    throw new InvalidOperationException(result.Refusal);
+
                 onLineItemCreated();
                 continue;
             }
 
-            await budgetService.UpdateLineItemAsync(
+            var update = await budgetService.UpdateLineItemAsync(
                 existing.Id,
                 lineItem.Description,
                 lineItem.Amount,
@@ -351,6 +354,8 @@ internal sealed class DevelopmentBudgetSeeder(
                 expectedDate: lineItem.ExpectedDate,
                 vatRate: lineItem.VatRate,
                 actorUserId);
+            if (update.Refusal is not null)
+                throw new InvalidOperationException(update.Refusal);
         }
     }
 

@@ -421,11 +421,14 @@ internal sealed class BudgetService(
             lineItem.IsCashflowOnly,
             lineItem.SortOrder);
 
-    public async Task<BudgetLineItemSnapshot> CreateLineItemAsync(
+    public async Task<BudgetLineItemSaveResult> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
     {
+        if (ValidateLineAmount(amount) is { } refusal)
+            return new(Refusal: refusal);
+
         ValidateVatRate(vatRate);
 
         var now = clock.GetCurrentInstant();
@@ -445,14 +448,17 @@ internal sealed class BudgetService(
             "Created line item '{Description}' in category {CategoryId}",
             description, budgetCategoryId);
 
-        return ToLineItemSnapshot(lineItem);
+        return new(ToLineItemSnapshot(lineItem));
     }
 
-    public async Task UpdateLineItemAsync(
+    public async Task<BudgetLineItemSaveResult> UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
     {
+        if (ValidateLineAmount(amount) is { } refusal)
+            return new(Refusal: refusal);
+
         ValidateVatRate(vatRate);
 
         var now = clock.GetCurrentInstant();
@@ -469,6 +475,15 @@ internal sealed class BudgetService(
         var ok = await repository.UpdateLineItemAsync(update, actorUserId, now);
         if (!ok)
             throw new InvalidOperationException($"Budget line item {lineItemId} not found");
+        return new();
+    }
+
+    private static string? ValidateLineAmount(decimal amount)
+    {
+        const decimal maxAmount = 9_999_999_999_999_999.99m;
+        return amount < -maxAmount || amount > maxAmount || decimal.Round(amount, 2) != amount
+            ? "Line item amounts must fit within 16 whole digits and two decimal places."
+            : null;
     }
 
     private static void ValidateVatRate(int vatRate)
