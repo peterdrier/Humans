@@ -155,6 +155,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
+
 - Legal-document forms require explicit required/active flags and grace-period days; omission redisplays field errors before any write and cannot reactivate a document, change its consent requirement or reset its grace period. Explicit false flags remain valid.
 
 - Legal-document creation and edits refuse empty or nonexistent owning teams with 404 before persistence, initial sync, cache invalidation or success audit. The service checks the team through `ITeamService`; existing inactive teams remain valid owners.
