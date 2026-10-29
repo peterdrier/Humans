@@ -125,4 +125,5 @@
   <data name="Store_UnknownCamp" xml:space="preserve"><value>(unbekanntes Camp)</value></data>
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(unbekannt)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Bestellung des Camps</value></data>
+  <data name="Store_PaymentPrecision" xml:space="preserve"><value>Gib einen Betrag mit höchstens zwei Nachkommastellen ein.</value></data>
 </root>

@@ -554,6 +554,8 @@ internal sealed class Service(
             errorKey = "Store_CheckoutUnconfigured";
         else if (amountEur <= 0)
             errorKey = "Store_PaymentPositive";
+        else if (decimal.Round(amountEur, 2) != amountEur)
+            errorKey = "Store_PaymentPrecision";
         else if (amountEur > order.BalanceEur)
         {
             errorKey = "Store_PaymentAboveBalance";

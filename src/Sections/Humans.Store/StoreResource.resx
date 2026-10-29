@@ -170,4 +170,5 @@
   <data name="Store_UnknownCamp" xml:space="preserve"><value>(unknown camp)</value></data>
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(unknown)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Camp order</value></data>
+  <data name="Store_PaymentPrecision" xml:space="preserve"><value>Enter an amount with no more than two decimal places.</value></data>
 </root>

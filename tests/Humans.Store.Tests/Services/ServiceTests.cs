@@ -1626,6 +1626,44 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData("0.001")]
+    [InlineData("1.005")]
+    [InlineData("9.999")]
+    public async Task CheckoutMoney_rejects_fractional_cents_before_calling_Stripe(string text)
+    {
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        var result = await _service.CreateStripeCheckoutSessionAsync(MakeOrderDto(balanceEur: 10m),
+            decimal.Parse(text, CultureInfo.InvariantCulture), "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Store_PaymentPrecision");
+        result.SessionUrl.Should().BeNull();
+        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
+            default!, default!, default, default!);
+    }
+
+    [HumansTheory]
+    [InlineData("0.50")]
+    [InlineData("1.2300")]
+    [InlineData("10.00")]
+    public async Task CheckoutMoney_passes_exact_cent_amounts_to_Stripe(string text)
+    {
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var order = MakeOrderDto(balanceEur: 10m);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        _stripeService.CreateCheckoutSessionAsync(order.Id, amount, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("https://stripe.test/session");
+
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, amount,
+            "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().BeNull();
+        result.SessionUrl.Should().Be("https://stripe.test/session");
+        await _stripeService.Received(1).CreateCheckoutSessionAsync(order.Id, amount,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(0)]
     [InlineData(-1)]
     public async Task Checkout_refuses_non_positive_amount_without_calling_Stripe(int amount)
