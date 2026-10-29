@@ -1259,7 +1259,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.ErrorKey.Should().Be("Teams_NotFound");
         result.Request.Should().BeNull();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -1273,7 +1273,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.ErrorKey.Should().Be("Teams_Team_CannotJoinSystem");
         result.Request.Should().BeNull();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -1288,7 +1288,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.ErrorKey.Should().Be("Teams_CannotJoinHidden");
         result.Request.Should().BeNull();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -1302,7 +1302,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.ErrorKey.Should().Be("Teams_JoinPolicyChanged");
         result.Request.Should().BeNull();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -1317,7 +1317,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.ErrorKey.Should().Be("Teams_Team_AlreadyPendingRequest");
         result.Request.Should().BeNull();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -1332,7 +1332,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.ErrorKey.Should().Be("Teams_Team_AlreadyMember");
         result.Request.Should().BeNull();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -1427,7 +1427,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var info = await _userService.GetUserInfoAsync(user.Id, TestContext.Current.CancellationToken);
         using var aborted = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         if (action is not "request")
-            AuditLog.WhenForAnyArgs(x => x.LogAsync(default, default!, default, default!, default(Guid)))
+            AuditLog.WhenForAnyArgs(x => x.LogAsync(default(AuditAction), default!, default, default!, default(Guid)))
                 .Do(_ => aborted.Cancel());
         async ValueTask<UserInfo?> LookupUserAsync(CancellationToken ct)
         {

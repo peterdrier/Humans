@@ -120,7 +120,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already exists");
         (await _service.ListDefinitionsAsync(true, Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle();
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -157,7 +157,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var stored = (await _service.ListDefinitionsAsync(true, ct)).Should().ContainSingle().Subject;
         stored.Name.Should().Be(definition.Name);
         stored.Slug.Should().Be(definition.Slug);
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]

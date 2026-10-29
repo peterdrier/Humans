@@ -172,7 +172,7 @@ public class PaymentDetailsTests
         (await _sut.RevealIbanAsync(target, Guid.NewGuid(), Ct)).Should().BeNull();
 
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(Guid));
+            default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]

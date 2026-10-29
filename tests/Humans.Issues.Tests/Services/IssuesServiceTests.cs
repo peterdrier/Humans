@@ -324,7 +324,7 @@ public sealed class IssuesServiceTests
                 Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
-            [new(Guid.NewGuid(), AuditAction.IssueGitHubLinked, nameof(Issue), issueId,
+            [new(Guid.NewGuid(), nameof(AuditAction.IssueGitHubLinked), nameof(Issue), issueId,
                 "GitHub link: 123", auditAt, null, null, null)]));
 
         await _service.PostCommentAsync(
@@ -337,7 +337,7 @@ public sealed class IssuesServiceTests
         thread[0].Should().BeOfType<IssueCommentEvent>()
             .Which.ActorDisplayName.Should().Be("Commenter");
         thread[1].Should().BeOfType<IssueAuditEvent>()
-            .Which.Action.Should().Be(AuditAction.IssueGitHubLinked);
+            .Which.Action.Should().Be(nameof(AuditAction.IssueGitHubLinked));
         thread[1].ActorUserId.Should().BeNull();
     }
 

@@ -132,7 +132,7 @@ public sealed class DuplicateAccountServiceTests
         _audit.GetFilteredEntriesAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<AuditAction>>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
             [
-                new(Guid.NewGuid(), AuditAction.DuplicateAccountFlagged, nameof(User), low, "already flagged",
+                new(Guid.NewGuid(), nameof(AuditAction.DuplicateAccountFlagged), nameof(User), low, "already flagged",
                     Now, null, high, nameof(User))
             ]));
 

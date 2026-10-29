@@ -43,15 +43,16 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 ## 3. Structure
 
 - **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the write path
-  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`, `ILegacyGoogleSyncAuditReader`) and the
+  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its contributor contract, the
+  transitional `AuditAction`, `ILegacyGoogleSyncAuditReader`) and the
   read+render types (`IAuditViewerService`, `AuditEvent`, `AuditEventPage`).
 - **Write:** `AuditLogService` (internal, implements `IAuditLogService` + `IAuditLogReader` +
   `IUserDataContributor` + `ILegacyGoogleSyncAuditReader`) → `IAuditLogRepository` (the only file
   that touches `DbContext.AuditLogEntries`) → `AuditLogDbContext` via `IDbContextFactory`.
 - **Read+render:** `AuditViewerService` (internal) wraps the section-internal `IAuditLogReader`
-  raw reads with `IEntityNameContributor` name resolution, producing `AuditEvent`. Verb tables
-  live once in `AuditEventTextualizer`, shared by `RenderPlainText` (agent) and `RenderStructured`
-  (HTML).
+  raw reads with `IEntityNameContributor` name resolution and `AuditActionRegistry` definition
+  resolution, producing `AuditEvent`. Verbs live on the definition, shared by `RenderPlainText`
+  (agent) and `RenderStructured` (HTML).
 - **UI:** one controller (`AuditLogController.Index`), one `<vc:audit-log>` component with a
   layout view per render shape (`line` / `table` / `activity`), one internal `AdminActivityCard`
   chrome component.
@@ -100,6 +101,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   and the read/render surface.
 - **`AuditLogRepository` is Singleton** while its context is Scoped — it owns context lifetime via
   `IDbContextFactory`, which is why it can be a singleton at all.
-- **The `AnomalousPermissionDetected` anomaly count and the Drive-activity trigger button** live
-  on the `/AuditLog` page though the Drive scan itself is Monitor's — the page is where an admin
-  looks for anomalies, so it surfaces the count and a link to Monitor's action.
+- **The alert counts (one per `Alert` action, today `AnomalousPermissionDetected`) and the
+  Drive-activity trigger button** live on the `/AuditLog` page though the Drive scan itself is
+  Monitor's — the page is where an admin looks for anomalies, so it surfaces the count and a link
+  to Monitor's action.

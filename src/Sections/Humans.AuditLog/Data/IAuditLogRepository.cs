@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.AuditLog.Domain;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;
 
@@ -9,8 +8,12 @@ internal interface IAuditLogRepository : IRepository
     /// <summary>The only write: saves at once.</summary>
     Task AddAsync(AuditLogEntry entry, CancellationToken ct = default);
 
-    Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
-        AuditAction? actionFilter, int page, int pageSize, CancellationToken ct = default);
+    /// <summary>
+    /// <paramref name="actionFilter"/> matches the stored name exactly; <paramref name="alertActions"/> are counted
+    /// over the whole log, one entry per name.
+    /// </summary>
+    Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, IReadOnlyDictionary<string, int> AlertCounts)> GetFilteredAsync(
+        string? actionFilter, IReadOnlyList<string> alertActions, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>Where the user is the subject (a User entity) or the related entity.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
@@ -27,7 +30,7 @@ internal interface IAuditLogRepository : IRepository
         string? entityType,
         Guid? entityId,
         IReadOnlyCollection<Guid>? userIds,
-        IReadOnlyList<AuditAction>? actions,
+        IReadOnlyList<string>? actions,
         int limit,
         CancellationToken ct = default);
 
@@ -39,7 +42,7 @@ internal interface IAuditLogRepository : IRepository
 
     Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
-        IReadOnlyList<AuditAction> actions,
+        IReadOnlyList<string> actions,
         CancellationToken ct = default);
 
     /// <summary>Oldest first, uncapped. Goes with the Google columns.</summary>

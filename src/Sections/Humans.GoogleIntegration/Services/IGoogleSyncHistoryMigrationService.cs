@@ -1,4 +1,3 @@
-using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Contracts;
@@ -52,5 +51,5 @@ internal sealed record GoogleSyncHistoryMovableRow(
 internal sealed record GoogleSyncHistorySkippedRow(
     Guid AuditId,
     Instant OccurredAt,
-    AuditAction Action,
+    string Action,
     string Reason);

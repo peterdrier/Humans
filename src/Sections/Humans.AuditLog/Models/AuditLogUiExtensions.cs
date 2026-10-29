@@ -1,6 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.AuditLog.Services;
-using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.AuditLog.Models;
@@ -21,44 +19,64 @@ internal static class AuditLogUiExtensions
         return currentFilter.IsAuditFilterSelected(filter) ? selectedClass : defaultClass;
     }
 
-    public static bool IsAnomalousPermissionAction(this AuditAction action)
+    public static string ToAuditEntryRowClass(this AuditActionDefinition action)
     {
-        return action == AuditAction.AnomalousPermissionDetected;
+        return action.Alert ? "table-warning" : string.Empty;
     }
 
-    public static string ToAuditEntryRowClass(this AuditAction action)
+    public static string ToAuditBadgeClass(this AuditActionDefinition action)
     {
-        return action.IsAnomalousPermissionAction() ? "table-warning" : string.Empty;
+        return action.Alert ? "bg-warning text-dark" : "bg-secondary";
     }
 
-    public static string ToAuditBadgeClass(this AuditAction action)
-    {
-        return action.IsAnomalousPermissionAction() ? "bg-warning text-dark" : "bg-secondary";
-    }
-
+    /// <summary>
+    /// Admin pages (no localizer) show the stored name. Member pages take <c>Enum_AuditAction_{Name}</c> from the
+    /// hub resx and fall back to the name split into words, so a section's new action renders before it is translated.
+    /// </summary>
     public static string ToAuditBadgeLabel(
-        this AuditAction action,
+        this AuditActionDefinition action,
         IStringLocalizer<AuditLogResource>? localizer = null)
     {
         if (localizer is null)
-            return action.IsAnomalousPermissionAction() ? "Anomaly" : action.ToString();
+            return action.Name;
 
-        return action.IsAnomalousPermissionAction()
-            ? localizer["AuditLog_Anomaly"]
-            : localizer.EnumDisplay(action);
+        var localized = localizer[$"Enum_AuditAction_{action.Name}"];
+        return localized.ResourceNotFound ? Humanize(action.Name) : localized.Value;
     }
 
+    /// <summary>
+    /// <c>AuditLog_{Verb|SelfVerb|NoSubjectVerb}_{Name}</c> from the hub resx, falling back to the definition's English
+    /// verb. Null when the action has no verb.
+    /// </summary>
     public static string? ToLocalizedAuditVerb(
-        this AuditAction action,
+        this AuditActionDefinition action,
         bool noVisibleSubject,
         IStringLocalizer<AuditLogResource> localizer)
     {
-        if (AuditEventTextualizer.GetActionVerb(action) is null)
+        if (action.Verb is null)
             return null;
 
         var form = noVisibleSubject
-            ? AuditEventTextualizer.GetActionSelfVerb(action) is not null ? "SelfVerb" : "NoSubjectVerb"
+            ? action.SelfVerb is not null ? "SelfVerb" : "NoSubjectVerb"
             : "Verb";
-        return localizer[$"AuditLog_{form}_{action}"];
+        var localized = localizer[$"AuditLog_{form}_{action.Name}"];
+        if (!localized.ResourceNotFound)
+            return localized.Value;
+
+        return noVisibleSubject
+            ? action.SelfVerb ?? AuditEvent.TrimDanglingPreposition(action.Verb)
+            : action.Verb;
+    }
+
+    private static string Humanize(string name)
+    {
+        var sb = new System.Text.StringBuilder(name.Length + 4);
+        for (var i = 0; i < name.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(name[i]) && !char.IsUpper(name[i - 1]))
+                sb.Append(' ');
+            sb.Append(name[i]);
+        }
+        return sb.ToString();
     }
 }

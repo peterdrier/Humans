@@ -144,7 +144,7 @@ public sealed class FacilitatedMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]

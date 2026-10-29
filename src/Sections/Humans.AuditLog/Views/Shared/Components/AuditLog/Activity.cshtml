@@ -9,16 +9,10 @@ else
 {
     foreach (var entry in Model.Events)
     {
-        var bubble = entry.Action switch
-        {
-            AuditAction.TierApplicationApproved or AuditAction.TierApplicationRejected => "✓",
-            AuditAction.RoleAssigned or AuditAction.RoleEnded => "🔑",
-            _ => "·"
-        };
         <div class="activity-item">
-            <div class="bubble">@bubble</div>
+            <div class="bubble">@(entry.Action.Alert ? "!" : "·")</div>
             <div>
-                <strong>@entry.Action</strong>
+                <strong>@entry.Action.Name</strong>
                 <p>@entry.Description</p>
             </div>
             <span class="time">@entry.OccurredAt.ToInvariantTimestamp()</span>

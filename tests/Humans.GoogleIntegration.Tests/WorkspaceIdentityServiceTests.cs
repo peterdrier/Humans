@@ -223,7 +223,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetAsync(info.Id, "alice@example.org", info.Id, Ct)).Should().BeFalse();
 
         _repo.Rows.Should().BeEmpty();
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]

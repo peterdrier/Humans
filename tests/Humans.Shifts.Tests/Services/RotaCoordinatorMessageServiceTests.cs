@@ -121,7 +121,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.Error.Should().Contain("required", "blank body must surface a clear error");
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(null!);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, Guid.Empty, null!, Guid.Empty);
+            default(AuditAction), null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]

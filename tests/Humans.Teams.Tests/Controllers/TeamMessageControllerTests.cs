@@ -138,7 +138,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<ForbidResult>();
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -151,7 +151,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]

@@ -1331,7 +1331,7 @@ public class HoldedFinanceServiceTests
             userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(string)!, default, default);
+            default(AuditAction), default!, default, default!, default(string)!, default, default);
     }
 
     [HumansFact]
@@ -1358,7 +1358,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(string)!, default, default);
+            default(AuditAction), default!, default, default!, default(string)!, default, default);
     }
 
     [HumansFact]
@@ -1629,7 +1629,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, Guid.Empty);
+            default(AuditAction), default!, default, default!, Guid.Empty);
     }
 
     [HumansFact]
@@ -1857,7 +1857,7 @@ public class HoldedFinanceServiceTests
 
         removed.Should().BeFalse();
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, Guid.Empty);
+            default(AuditAction), default!, default, default!, Guid.Empty);
     }
 
     [HumansFact]

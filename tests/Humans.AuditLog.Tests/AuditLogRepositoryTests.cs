@@ -25,12 +25,33 @@ public class AuditLogRepositoryTests
     public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierEntries()
     {
         await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
-        var first = await _sut.GetFilteredAsync(null, 1, 50, Xunit.TestContext.Current.CancellationToken);
+        var first = await _sut.GetFilteredAsync(null, [], 1, 50, Xunit.TestContext.Current.CancellationToken);
         first.Items.Should().ContainSingle();
-        var result = await _sut.GetFilteredAsync(null, int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.GetFilteredAsync(null, [], int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
         result.Items.Should().BeEmpty();
         result.TotalCount.Should().Be(1);
-        result.AnomalyCount.Should().Be(0);
+        result.AlertCounts.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_CountsEveryAlertActionOverTheWholeLog()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _sut.AddAsync(MakeEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid()), ct);
+
+        var result = await _sut.GetFilteredAsync(
+            nameof(AuditAction.MemberSuspended),
+            [nameof(AuditAction.AnomalousPermissionDetected), nameof(AuditAction.MemberSuspended)],
+            1, 50, ct);
+
+        result.Items.Should().ContainSingle();
+        result.AlertCounts.Should().BeEquivalentTo(new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [nameof(AuditAction.AnomalousPermissionDetected)] = 2,
+            [nameof(AuditAction.MemberSuspended)] = 1,
+        });
     }
 
     [HumansFact]
@@ -73,7 +94,7 @@ public class AuditLogRepositoryTests
     private static AuditLogEntry MakeGoogleSyncEntry(Instant occurredAt) => new()
     {
         Id = Guid.NewGuid(),
-        Action = AuditAction.GoogleResourceAccessGranted,
+        Action = nameof(AuditAction.GoogleResourceAccessGranted),
         EntityType = "GoogleResource",
         EntityId = Guid.NewGuid(),
         Description = "GoogleWorkspaceSyncService: Granted Drive access",
@@ -90,7 +111,7 @@ public class AuditLogRepositoryTests
         Instant? occurredAt = null) => new()
         {
             Id = Guid.NewGuid(),
-            Action = action,
+            Action = action.ToString(),
             EntityType = entityType,
             EntityId = entityId,
             Description = $"Test {action}",

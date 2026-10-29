@@ -158,7 +158,7 @@ public class HumanLifecycleServiceTests
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default, default, default, null!, null!, cancellationToken: Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, Guid.Empty);
+            default(AuditAction), null!, default, null!, Guid.Empty);
         _metrics.DidNotReceive().RecordMemberSuspended(Arg.Any<string>());
     }
 
@@ -292,7 +292,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeTrue();
         await _userService.DidNotReceiveWithAnyArgs().SetSuspensionAsync(default, default, default, Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, null!);
+            default(AuditAction), null!, default, null!, null!);
     }
 
     private static UserInfo MakeUserInfo(Guid id, UserState state) =>

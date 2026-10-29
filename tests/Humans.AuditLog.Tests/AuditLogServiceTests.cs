@@ -24,6 +24,7 @@ public class AuditLogServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IUserService _userService;
     private readonly AuditLogService _service;
+    private static readonly AuditActionRegistry Registry = new([new LegacyAuditActions()]);
 
     public AuditLogServiceTests()
     {
@@ -36,7 +37,7 @@ public class AuditLogServiceTests : IDisposable
         var repo = new AuditLogRepository(new TestDbContextFactory<AuditLogDbContext>(options));
         _userService = Substitute.For<IUserService>();
         // Default: nothing merged into anybody — reads take the single-id repo path.
-        _service = new AuditLogService(repo, _userService, _clock, NullLogger<AuditLogService>.Instance);
+        _service = new AuditLogService(repo, _userService, Registry, _clock, NullLogger<AuditLogService>.Instance);
     }
 
     public void Dispose()
@@ -49,7 +50,7 @@ public class AuditLogServiceTests : IDisposable
     public async Task AbandonedAuditPage_CancelsRepositoryReads()
     {
         using var request = new CancellationTokenSource();
-        var controller = new AuditLogController(_userService, new AuditViewerService(_service, []))
+        var controller = new AuditLogController(_userService, new AuditViewerService(_service, Registry, []), Registry)
         {
             ControllerContext = new ControllerContext
             {
@@ -73,7 +74,7 @@ public class AuditLogServiceTests : IDisposable
 
         // Repository auto-saves — entry should be visible immediately.
         var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        entry.Action.Should().Be(AuditAction.VolunteerApproved);
+        entry.Action.Should().Be(nameof(AuditAction.VolunteerApproved));
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
         entry.Description.Should().Be("SystemTeamSyncJob: Auto-approved");
@@ -93,7 +94,7 @@ public class AuditLogServiceTests : IDisposable
 
         var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.ActorUserId.Should().Be(actorId);
-        entry.Action.Should().Be(AuditAction.MemberSuspended);
+        entry.Action.Should().Be(nameof(AuditAction.MemberSuspended));
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
         entry.Description.Should().Be("Suspended for inactivity");
@@ -164,22 +165,49 @@ public class AuditLogServiceTests : IDisposable
 
         items.Should().HaveCount(2);
         totalCount.Should().Be(2);
-        items.Should().OnlyContain(e => e.Action == AuditAction.VolunteerApproved);
+        items.Should().OnlyContain(e => e.Action == nameof(AuditAction.VolunteerApproved));
     }
 
     [HumansFact]
-    public async Task GetFilteredAsync_ReturnsAnomalyCount()
+    public async Task GetFilteredAsync_ReturnsAlertCountsForTheDeclaredAlertActions()
     {
         var now = _clock.GetCurrentInstant();
         SeedAuditLogEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid(), now);
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(1));
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount, anomalyCount) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, TestContext.Current.CancellationToken);
+        var (items, totalCount, alertCounts) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         totalCount.Should().Be(1);
-        anomalyCount.Should().Be(1);
+        alertCounts.Should().Equal(new Dictionary<string, int>(StringComparer.Ordinal) { [nameof(AuditAction.AnomalousPermissionDetected)] = 1 });
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_MatchesTheFilterToADeclaredNameIgnoringCase()
+    {
+        var now = _clock.GetCurrentInstant();
+        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now);
+        SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (items, _, _) = await _service.GetFilteredAsync("volunteerapproved", 1, 10, TestContext.Current.CancellationToken);
+
+        items.Should().ContainSingle().Which.Action.Should().Be(nameof(AuditAction.VolunteerApproved));
+    }
+
+    [HumansFact]
+    public async Task LogAsync_DefinitionAndEnumOverloads_StoreTheSameName()
+    {
+        var entityId = Guid.NewGuid();
+
+        await _service.LogAsync(LegacyAuditActions.RoleAssigned, nameof(User), entityId, "by definition", "TestJob");
+        await _service.LogAsync(AuditAction.RoleAssigned, nameof(User), entityId, "by enum", "TestJob");
+
+        var stored = await _dbContext.AuditLogEntries.AsNoTracking()
+            .Select(e => e.Action)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        stored.Should().Equal(nameof(AuditAction.RoleAssigned), nameof(AuditAction.RoleAssigned));
     }
 
     [HumansFact]
@@ -266,7 +294,7 @@ public class AuditLogServiceTests : IDisposable
         var logger = loggerFactory.CreateLogger<AuditLogService>();
 
         var svc = new AuditLogService(
-            throwingRepo, _userService, _clock, logger);
+            throwingRepo, _userService, Registry, _clock, logger);
 
         // Must not throw: audit is best-effort.
         var act = () => svc.LogAsync(
@@ -286,7 +314,7 @@ public class AuditLogServiceTests : IDisposable
 
         var capturing = new CapturingLogger<AuditLogService>();
         var svc = new AuditLogService(
-            throwingRepo, _userService, _clock, capturing);
+            throwingRepo, _userService, Registry, _clock, capturing);
 
         await svc.LogAsync(
             AuditAction.MemberSuspended, nameof(User), Guid.NewGuid(),
@@ -357,7 +385,7 @@ public class AuditLogServiceTests : IDisposable
         var entry = new AuditLogEntry
         {
             Id = Guid.NewGuid(),
-            Action = action,
+            Action = action.ToString(),
             EntityType = entityType,
             EntityId = entityId,
             Description = $"Test {action}",

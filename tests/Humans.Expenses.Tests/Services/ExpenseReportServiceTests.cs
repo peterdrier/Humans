@@ -497,7 +497,7 @@ public sealed partial class ExpenseReportServiceTests
 
         // No audit on mere draft creation
         await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, Guid.Empty, null!, Guid.Empty);
+            default(AuditAction), null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]
@@ -2036,7 +2036,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status
             .Should().Be(ExpenseReportStatus.Approved);
         await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, Guid.Empty, null!, Guid.Empty);
+            default(AuditAction), null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]

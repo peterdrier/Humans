@@ -1318,7 +1318,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         result.Succeeded.Should().BeFalse();
         await _auditLog.DidNotReceiveWithAnyArgs()
-            .LogAsync(default, null!, default, null!, Guid.Empty);
+            .LogAsync(default(AuditAction), null!, default, null!, Guid.Empty);
     }
 
     [HumansFact]

@@ -1185,7 +1185,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             SeedUser(), Ct);
 
         (await act()).Refusal!.Key.Should().Be("Rideshare_Error_WindowOrder");
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]

@@ -17,6 +17,14 @@ namespace Humans.Users.Tests.Services;
 
 file sealed class StubAuditLog : IAuditLogService
 {
+    public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
+        string description, string jobName,
+        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
+
+    public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
+        string description, Guid actorUserId,
+        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
+
     public Task LogAsync(AuditAction action, string entityType, Guid entityId,
         string description, string jobName,
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
@@ -36,6 +44,15 @@ file sealed class StubAuditLog : IAuditLogService
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
+        string? entityType,
+        Guid? entityId,
+        Guid? userId,
+        IReadOnlyList<AuditActionDefinition> actions,
+        int limit = 20,
+        CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
@@ -43,6 +60,10 @@ file sealed class StubAuditLog : IAuditLogService
         int limit = 20,
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType, IReadOnlyList<AuditActionDefinition> actions, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>

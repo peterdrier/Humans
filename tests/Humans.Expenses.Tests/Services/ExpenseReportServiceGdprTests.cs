@@ -196,7 +196,7 @@ public class ExpenseReportServiceGdprTests
 
         var entry = new AuditLogEntrySnapshot(
             Guid.NewGuid(),
-            AuditAction.ExpenseSubmit,
+            nameof(AuditAction.ExpenseSubmit),
             "ExpenseReport",
             Guid.NewGuid(),
             "Submitted",
@@ -256,7 +256,7 @@ public class ExpenseReportServiceGdprTests
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>()).Returns([report]);
 
         var approval = new AuditLogEntrySnapshot(
-            Guid.NewGuid(), AuditAction.ExpenseApprove, "ExpenseReport", report.Id,
+            Guid.NewGuid(), nameof(AuditAction.ExpenseApprove), "ExpenseReport", report.Id,
             "Finance approved expense report.", FakeNow,
             ActorUserId: Guid.NewGuid(), RelatedEntityId: null, RelatedEntityType: null);
         _auditLogService.GetFilteredEntriesAsync(

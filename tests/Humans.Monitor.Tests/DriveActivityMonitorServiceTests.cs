@@ -61,7 +61,7 @@ public class DriveActivityMonitorServiceTests
         _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, Arg.Any<CancellationToken>());
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            default(AuditAction), null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -90,7 +90,7 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            default(AuditAction), null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -423,7 +423,7 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            default(AuditAction), null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -444,7 +444,7 @@ public class DriveActivityMonitorServiceTests
         count.Should().Be(0);
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            default(AuditAction), null!, default, null!, default(string)!);
     }
 
     [HumansFact]

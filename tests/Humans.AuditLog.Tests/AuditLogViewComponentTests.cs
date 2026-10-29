@@ -39,7 +39,7 @@ public class AuditLogViewComponentTests
     }
 
     private static AuditEvent Event(Instant occurredAt, string description = "entry") => new(
-        Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: AuditAction.StoreProductPriceChanged,
+        Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: LegacyAuditActions.StoreProductPriceChanged,
         ActorUserId: null, ActorDisplayName: null, EntityType: "StoreProduct", EntityId: Guid.NewGuid(),
         SubjectUserId: null, SubjectDisplayName: null, TargetTeamId: null, TargetTeamName: null,
         TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description);
@@ -55,7 +55,7 @@ public class AuditLogViewComponentTests
     {
         var kept = Event(Noon.Plus(Duration.FromDays(2)), "after the cutoff");
         _viewer.GetFilteredAsync("StoreProduct", Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([Event(Noon.Minus(Duration.FromDays(5)), "before the cutoff"), kept]);
 
         var (_, model) = Unwrap(await BuildSut().InvokeAsync(
@@ -70,10 +70,10 @@ public class AuditLogViewComponentTests
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Is<Guid?>(g => g == first), Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([Event(Noon, "oldest")]);
         _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Is<Guid?>(g => g == second), Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([Event(Noon.Plus(Duration.FromHours(1)), "newest")]);
 
         // The duplicate id must not produce a duplicate query.
@@ -82,7 +82,7 @@ public class AuditLogViewComponentTests
 
         model.Events.Select(e => e.Description).Should().Equal("newest", "oldest");
         await _viewer.Received(1).GetFilteredAsync(Arg.Any<string?>(), Arg.Is<Guid?>(g => g == first), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -95,7 +95,7 @@ public class AuditLogViewComponentTests
 
         model.Events.Should().BeEmpty();
         await _viewer.DidNotReceive().GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -159,7 +159,7 @@ public class AuditLogViewComponentTests
     public async Task A_viewer_failure_renders_the_empty_state_rather_than_throwing()
     {
         _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("boom"));
 
         var (_, model) = Unwrap(await BuildSut().InvokeAsync(userId: Guid.NewGuid()));
@@ -173,7 +173,7 @@ public class AuditLogViewComponentTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
         var act = () => BuildSut(cancellation.Token).InvokeAsync(userId: Guid.NewGuid());

@@ -70,8 +70,8 @@ internal sealed class GoogleSyncHistoryMigrationService(
     {
         var action = row.Action switch
         {
-            AuditAction.GoogleResourceAccessGranted => GoogleSyncLogAction.AccessGranted,
-            AuditAction.GoogleResourceAccessRevoked => GoogleSyncLogAction.AccessRevoked,
+            nameof(AuditAction.GoogleResourceAccessGranted) => GoogleSyncLogAction.AccessGranted,
+            nameof(AuditAction.GoogleResourceAccessRevoked) => GoogleSyncLogAction.AccessRevoked,
             _ => (GoogleSyncLogAction?)null
         };
 
@@ -106,7 +106,7 @@ internal sealed class GoogleSyncHistoryMigrationService(
     }
 
     private static string SkipReason(LegacyGoogleSyncAuditRow row) =>
-        row.Action is not (AuditAction.GoogleResourceAccessGranted or AuditAction.GoogleResourceAccessRevoked)
+        row.Action is not (nameof(AuditAction.GoogleResourceAccessGranted) or nameof(AuditAction.GoogleResourceAccessRevoked))
             ? $"{row.Action} has no google_sync_log action"
             : "no sync payload — SyncSource or Success is null";
 

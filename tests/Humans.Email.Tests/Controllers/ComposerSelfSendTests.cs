@@ -114,7 +114,7 @@ public sealed class ComposerSelfSendTests
             .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
 
         (await send.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -136,7 +136,7 @@ public sealed class ComposerSelfSendTests
 
         result.Should().BeOfType<UnauthorizedResult>();
         await _email.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
