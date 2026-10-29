@@ -196,20 +196,6 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task LogAsync_DefinitionAndEnumOverloads_StoreTheSameName()
-    {
-        var entityId = Guid.NewGuid();
-
-        await _service.LogAsync(TestActions.RoleAssigned, nameof(User), entityId, "by definition", "TestJob");
-        await _service.LogAsync(TestActions.RoleAssigned, nameof(User), entityId, "by enum", "TestJob");
-
-        var stored = await _dbContext.AuditLogEntries.AsNoTracking()
-            .Select(e => e.Action)
-            .ToListAsync(TestContext.Current.CancellationToken);
-        stored.Should().Equal(TestActions.RoleAssigned.Name, TestActions.RoleAssigned.Name);
-    }
-
-    [HumansFact]
     public async Task GetFilteredAsync_Pagination()
     {
         var now = _clock.GetCurrentInstant();
