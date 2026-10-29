@@ -103,7 +103,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   (`Data/IssuesRepository.cs:110`)
 - Actionable badge counts read current rows through `GetActionableCountForViewerAsync`; no count cache can republish stale state after a mutation.
 - The activity thread has no table of its own: it is `issue_comments` merged with the
-  `AuditAction.Issue*` rows at read time. (`Services/IssuesService.cs:396`)
+  `IssuesAuditActions.Issue*` rows at read time. (`Services/IssuesService.cs:396`)
 
 ## 5. Seams — specified, not built
 

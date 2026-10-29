@@ -83,7 +83,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             b.WithSourceApplication();
 
             // Append-only; chain-follow stitches at read time.
-            b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, auditDescription);
+            b.WithSourceAuditLogEntry("AccountAnonymized", auditDescription);
 
             // Shared (source drops) plus source-only (re-FKs).
             b.WithSourceRoleAssignment(sharedRole);

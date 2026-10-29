@@ -90,7 +90,7 @@ Summary:
 
 **Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
-`AuditAction` values: `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (Three additional values — `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved` — exist as positional reservations from the removed day-off feature.)
+Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (`VolunteerDayBlocked`, `VolunteerDayUnblocked` and `VolunteerOwnBlockedDaysSaved` from the removed day-off feature are no longer declared.)
 
 ## Workflows
 

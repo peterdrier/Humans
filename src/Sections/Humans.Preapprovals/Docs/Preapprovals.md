@@ -171,7 +171,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 ## Triggers
 
 - Every state change, program edit, manager add/remove and amount change writes an audit
-  entry (`AuditAction.Preapproval*`), related to the program, the expense report, or the
+  entry (`PreapprovalsAuditActions.Preapproval*`), related to the program, the expense report, or the
   affected user. Program kind edits before the first grant include the old and new sizing
   rules in the program-edit audit, alongside any per-person amount change.
 - The member program page localizes its breadcrumb navigation label in all six supported cultures.

@@ -328,7 +328,7 @@ Admin season opening, name-lock-date changes and EE slot-cap updates require the
 
 ### Touch-and-clean guidance
 
-- Lead authority is `CampRoleAssignment` only. The `AuditAction.CampLeadAdded` / `CampLeadRemoved` enum members stay because historical `audit_log` rows persist those strings.
+- Lead authority is `CampRoleAssignment` only. Historical `audit_log` rows still carry `CampLeadAdded` / `CampLeadRemoved`; nothing declares them any more, so they render with their bare name.
 - `CampMemberConfiguration.cs` lives in
   `src/Sections/Humans.Camps/Data/Configurations/` with the rest of the Camps entity configuration.
 

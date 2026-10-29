@@ -43,8 +43,8 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 ## 3. Structure
 
 - **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the write path
-  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its contributor contract, the
-  transitional `AuditAction`, `ILegacyGoogleSyncAuditReader`) and the
+  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its contributor contract,
+  `ILegacyGoogleSyncAuditReader`) and the
   read+render types (`IAuditViewerService`, `AuditEvent`, `AuditEventPage`).
 - **Write:** `AuditLogService` (internal, implements `IAuditLogService` + `IAuditLogReader` +
   `IUserDataContributor` + `ILegacyGoogleSyncAuditReader`) → `IAuditLogRepository` (the only file

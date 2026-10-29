@@ -25,14 +25,6 @@ file sealed class StubAuditLog : IAuditLogService
         string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
 
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, string jobName,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
@@ -52,21 +44,8 @@ file sealed class StubAuditLog : IAuditLogService
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        string? entityType = null,
-        Guid? entityId = null,
-        Guid? userId = null,
-        IReadOnlyList<AuditAction>? actions = null,
-        int limit = 20,
-        CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType, IReadOnlyList<AuditActionDefinition> actions, CancellationToken ct = default) =>
-        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 

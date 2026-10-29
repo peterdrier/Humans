@@ -334,12 +334,12 @@ public sealed class MergeFixtureBuilder
     }
 
     // Attached via ActorUserId, which the chain-follow read uses.
-    public MergeFixtureBuilder WithSourceAuditLogEntry(AuditAction action, string description)
+    public MergeFixtureBuilder WithSourceAuditLogEntry(string action, string description)
     {
         _pendingAuditLog.Add(db => db.AuditLogEntries.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
-            Action = action.ToString(),
+            Action = action,
             EntityType = "User",
             EntityId = SourceUserId,
             Description = description,

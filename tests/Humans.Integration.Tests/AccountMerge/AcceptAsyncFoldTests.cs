@@ -448,7 +448,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
-            b.WithSourceAuditLogEntry(AuditAction.AccountAnonymized, description);
+            b.WithSourceAuditLogEntry("AccountAnonymized", description);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 

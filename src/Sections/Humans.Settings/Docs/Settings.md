@@ -127,7 +127,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   a new id is created on demand, the first time a rota or knob edit needs it,
   never checked for on the way in here.
 - **Every successful `SaveEventSettingsAsync` call is audited.** Writes
-  `AuditAction.EventSettingsUpdated` naming the actor and the saved values
+  `SettingsAuditActions.EventSettingsUpdated` naming the actor and the saved values
   (peterdrier/Humans#1628).
 - **Every section reads the calendar from `settings_event`.** Repointed off the
   Shifts-owned row in nobodies-collective/Humans#1629/#1630; `/Settings#event` is the
@@ -172,7 +172,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 ## Triggers
 
 None — no background jobs, no notification fan-out. Every `SaveEventSettingsAsync`
-call writes one `AuditAction.EventSettingsUpdated` audit entry — see Invariants.
+call writes one `SettingsAuditActions.EventSettingsUpdated` audit entry — see Invariants.
 `Humans.Development`'s dashboard seeder calls `IEventSettingsSeeding.CreateActiveEventAsync`
 before seeding Shifts fixtures against the same id, and `DeleteEventAsync` on reset to drop
 that row again (no audit entry either way — seeding has no real actor).

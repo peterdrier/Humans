@@ -70,23 +70,6 @@ internal sealed class AuditLogService(
             action.Name, entityType, entityId, actorUserId, description);
     }
 
-    /// <inheritdoc />
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, string jobName,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) =>
-        LogAsync(Definition(action), entityType, entityId, description, jobName, relatedEntityId, relatedEntityType);
-
-    /// <inheritdoc />
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) =>
-        LogAsync(Definition(action), entityType, entityId, description, actorUserId, relatedEntityId, relatedEntityType);
-
-    private static AuditActionDefinition Definition(AuditAction action) => new(action.ToString());
-
-    private static IReadOnlyList<string> Names(IReadOnlyList<AuditAction> actions) =>
-        actions.Select(a => a.ToString()).ToList();
-
     private static IReadOnlyList<string> Names(IReadOnlyList<AuditActionDefinition> actions) =>
         actions.Select(a => a.Name).ToList();
 
@@ -153,16 +136,6 @@ internal sealed class AuditLogService(
         int limit = 20,
         CancellationToken ct = default) =>
         FilterByNamesAsync(entityType, entityId, userId, Names(actions), limit, ct);
-
-    /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        string? entityType = null,
-        Guid? entityId = null,
-        Guid? userId = null,
-        IReadOnlyList<AuditAction>? actions = null,
-        int limit = 20,
-        CancellationToken ct = default) =>
-        FilterByNamesAsync(entityType, entityId, userId, actions is null ? null : Names(actions), limit, ct);
 
     Task<IReadOnlyList<AuditLogEntrySnapshot>> IAuditLogReader.GetFilteredEntriesAsync(
         string? entityType,
@@ -239,12 +212,6 @@ internal sealed class AuditLogService(
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
         IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default) =>
-        repo.GetEntityIdsForEntityTypeActionsAsync(entityType, Names(actions), ct);
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default) =>
         repo.GetEntityIdsForEntityTypeActionsAsync(entityType, Names(actions), ct);
 
