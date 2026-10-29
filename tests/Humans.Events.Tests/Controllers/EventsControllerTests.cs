@@ -274,6 +274,18 @@ public class EventsControllerTests
     [Xunit.InlineData("AdminCamp", "invalidTimeDays")]
     [Xunit.InlineData("AdminCamp", "invalidTimeOverflow")]
     [Xunit.InlineData("AdminCamp", "validLastMinute")]
+    [Xunit.InlineData("Create", "StartDate")]
+    [Xunit.InlineData("Create", "validDateTime")]
+    [Xunit.InlineData("Update", "StartDate")]
+    [Xunit.InlineData("Update", "validDateTime")]
+    [Xunit.InlineData("BarrioCreate", "StartDate")]
+    [Xunit.InlineData("BarrioCreate", "validDateTime")]
+    [Xunit.InlineData("BarrioUpdate", "StartDate")]
+    [Xunit.InlineData("BarrioUpdate", "validDateTime")]
+    [Xunit.InlineData("AdminIndividual", "StartDate")]
+    [Xunit.InlineData("AdminIndividual", "validDateTime")]
+    [Xunit.InlineData("AdminCamp", "StartDate")]
+    [Xunit.InlineData("AdminCamp", "validDateTime")]
     public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
     {
         var userId = Guid.NewGuid();
@@ -343,6 +355,7 @@ public class EventsControllerTests
                 _ => "23:59"
             };
         }
+        if (string.Equals(scenario, "validDateTime", StringComparison.Ordinal)) fields["StartDate"] = "2026-08-01T12:00:00";
         var type = isModerator ? typeof(AdminEventFormViewModel)
             : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -441,14 +454,14 @@ public class EventsControllerTests
         var individual = new IndividualEventFormViewModel
         {
             Title = "Changed",
-            StartDate = new DateTime(2026, 8, 1),
+            StartDate = new DateOnly(2026, 8, 1),
             IsRecurring = true,
             RecurrenceDays = "0,3"
         };
         var barrio = new CampEventFormViewModel
         {
             Title = "Changed",
-            StartDate = new DateTime(2026, 8, 1),
+            StartDate = new DateOnly(2026, 8, 1),
             IsRecurring = true,
             RecurrenceDays = "0,3"
         };
@@ -875,7 +888,7 @@ public class EventsControllerTests
                 Description = "Description",
                 VenueId = Guid.NewGuid(),
                 CategoryId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1),
+                StartDate = new DateOnly(2026, 8, 1),
                 DurationMinutes = 60
             }),
             "barrio" => await controller.BarrioCreate(camp.Slug, new CampEventFormViewModel
@@ -883,7 +896,7 @@ public class EventsControllerTests
                 Title = "Music",
                 Description = "Description",
                 CategoryId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1),
+                StartDate = new DateOnly(2026, 8, 1),
                 DurationMinutes = 60
             }),
             _ => await controller.BulkUploadImport(camp.Slug, file)
@@ -928,7 +941,7 @@ public class EventsControllerTests
             var input = new CampEventFormViewModel
             {
                 Title = "Entered title", Description = "Entered description", CategoryId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+                StartDate = new DateOnly(2026, 8, 1), DurationMinutes = 60
             };
             model = input;
             result = edit ? await controller.BarrioUpdate(camp.Slug, existing.Id, input) : await controller.BarrioCreate(camp.Slug, input);
@@ -941,7 +954,7 @@ public class EventsControllerTests
             var input = new IndividualEventFormViewModel
             {
                 Title = "Entered title", Description = "Entered description", CategoryId = Guid.NewGuid(), VenueId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1), DurationMinutes = 60
+                StartDate = new DateOnly(2026, 8, 1), DurationMinutes = 60
             };
             model = input;
             result = edit ? await controller.Update(existing.Id, input) : await controller.Create(input);

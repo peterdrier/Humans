@@ -151,7 +151,7 @@ internal sealed class EventsModerationController(
             Description = guideEvent.Description,
             CategoryId = guideEvent.CategoryId,
             VenueId = guideEvent.GuideSharedVenueId,
-            StartDate = localStart.Date,
+            StartDate = DateOnly.FromDateTime(localStart),
             StartTime = TimeOnly.FromDateTime(localStart),
             IsAllDay = guideEvent.IsAllDay,
             DurationMinutes = guideEvent.DurationMinutes,
@@ -282,7 +282,7 @@ internal sealed class EventsModerationController(
             model.CategoryId,
             isCampEvent ? null : model.VenueId,
             model.Title, model.Description,
-            ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
+            ToInstant(model.StartDate.ToDateTime(TimeOnly.FromTimeSpan(startTime)), tz), durationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays,
             isCampEvent ? model.PriorityRank : null);
     }

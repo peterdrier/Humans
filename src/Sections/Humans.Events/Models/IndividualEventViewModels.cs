@@ -88,7 +88,8 @@ internal sealed class IndividualEventFormViewModel
 
     [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Date")]
-    public DateTime StartDate { get; set; }
+    [BindRequired]
+    public DateOnly StartDate { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Start Time")]

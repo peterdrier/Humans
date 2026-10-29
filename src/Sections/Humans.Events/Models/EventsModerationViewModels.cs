@@ -120,7 +120,8 @@ internal sealed class AdminEventFormViewModel
 
     [Required]
     [Display(Name = "Date")]
-    public DateTime StartDate { get; set; }
+    [BindRequired]
+    public DateOnly StartDate { get; set; }
 
     [Required]
     [Display(Name = "Start Time")]
