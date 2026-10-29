@@ -267,7 +267,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var vote = await _fx.AddVoteAsync();
         _fx.NotificationResolve
             .ResolveBySourceKeyAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<string>(), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("notifications are down"));
         var adminId = Guid.NewGuid();
@@ -285,7 +285,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var vote = await _fx.AddVoteAsync();
         _fx.NotificationResolve
             .ResolveBySourceKeyAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<string>(), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("notifications are down"));
         var adminId = Guid.NewGuid();

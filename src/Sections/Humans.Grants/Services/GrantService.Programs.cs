@@ -1,6 +1,8 @@
+using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Grants.Domain;
+using Humans.Settings.Contracts;
 using NodaTime;
 
 namespace Humans.Grants.Services;
@@ -16,7 +18,10 @@ internal sealed partial class GrantService
         ProgramSave save, Guid actorUserId, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        if ((Validate(save) ?? await SourceTakenAsync(save, programId: null, ct)) is { } refusal) return new(Refusal: refusal);
+        if (Validate(save) is { } invalid) return new(Refusal: invalid);
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        if (ChosenEvent(save, events) is not { } evt) return new(Refusal: NoEvent);
+        if (await SourceTakenAsync(save, programId: null, ct) is { } refusal) return new(Refusal: refusal);
 
         var now = clock.GetCurrentInstant();
         var program = new GrantProgram
@@ -25,7 +30,8 @@ internal sealed partial class GrantService
             Name = save.Name.Trim(),
             Entitles = save.Entitles.Trim(),
             Description = Trimmed(save.Description),
-            Year = save.Year,
+            Year = evt.Year,
+            EventSettingsId = evt.Id,
             IssuedBy = save.IssuedBy,
             SourceKey = SourceKeyOf(save),
             GrantsExpireOn = save.GrantsExpireOn,
@@ -40,7 +46,7 @@ internal sealed partial class GrantService
         await repository.AddProgramAsync(program, ct);
 
         await AuditProgramAsync(AuditAction.GrantProgramCreated, program,
-            $"Program \"{program.Name}\" ({program.Year}) created: entitles \"{program.Entitles}\", " +
+            $"Program \"{program.Name}\" ({evt.EventName}) created: entitles \"{program.Entitles}\", " +
             $"issued by {IssuerText(program.IssuedBy, program.SourceKey)}, " +
             $"expires {program.GrantsExpireOn?.ToInvariantDate() ?? "never"}, {program.Status}.",
             actorUserId);
@@ -57,13 +63,20 @@ internal sealed partial class GrantService
         ArgumentNullException.ThrowIfNull(save);
         var program = await repository.GetProgramAsync(programId, ct);
         if (program is null) return new("Program not found.");
-        if ((Validate(save) ?? await SourceTakenAsync(save, programId, ct)) is { } refusal) return new(refusal);
+        if (Validate(save) is { } invalid) return new(invalid);
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        if (ChosenEvent(save, events) is not { } evt) return new(NoEvent);
+        if (await SourceTakenAsync(save, programId, ct) is { } refusal) return new(refusal);
 
         var changes = new List<string>();
         Change(changes, "name", program.Name, save.Name.Trim(), v => program.Name = v);
         Change(changes, "entitles", program.Entitles, save.Entitles.Trim(), v => program.Entitles = v);
         Change(changes, "description", program.Description, Trimmed(save.Description), v => program.Description = v);
-        Change(changes, "year", program.Year, save.Year, v => program.Year = v);
+        // By id: two events may share a name.
+        if (EventOf(program, events) is var before && before?.Id != evt.Id)
+            changes.Add($"event {before?.EventName ?? program.Year.ToString(CultureInfo.InvariantCulture)} → {evt.EventName}");
+        program.EventSettingsId = evt.Id;
+        program.Year = evt.Year;
         Change(changes, "issued by", IssuerText(program.IssuedBy, program.SourceKey), IssuerText(save.IssuedBy, SourceKeyOf(save)), _ =>
         {
             program.IssuedBy = save.IssuedBy;
@@ -108,7 +121,6 @@ internal sealed partial class GrantService
         if (save.Name.Trim().Length > NameMax || save.Entitles.Trim().Length > EntitlesMax
             || (save.Description?.Length ?? 0) > DescriptionMax)
             return "A field is too long.";
-        if (save.Year is < 2000 or > 2100) return "The year is out of range.";
         if (!Enum.IsDefined(save.IssuedBy) || !Enum.IsDefined(save.Status)) return "The issuer or status is out of range.";
         if (save.IssuedBy == GrantIssuer.Source)
         {
@@ -127,6 +139,11 @@ internal sealed partial class GrantService
             .FirstOrDefault(p => p.Id != programId && IsOpenSource(p, key));
         return other is null ? null : $"\"{other.Name}\" is already the open program for {key}. Close it first.";
     }
+
+    private const string NoEvent = "Pick an event.";
+
+    private static EventSettingsInfo? ChosenEvent(ProgramSave save, IReadOnlyList<EventSettingsInfo> events) =>
+        events.FirstOrDefault(e => e.Id == save.EventSettingsId && e.Status != EventSettingsStatus.Deleted);
 
     private static string? SourceKeyOf(ProgramSave save) =>
         save.IssuedBy == GrantIssuer.Source ? Trimmed(save.SourceKey) : null;

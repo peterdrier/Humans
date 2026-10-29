@@ -63,8 +63,26 @@ internal sealed class CachingEventService(
             var saved = await WithInnerAsync(inner => inner.SaveGuideSettingsAsync(
                 existingId, eventSettingsId, submissionOpenAt, submissionCloseAt, guidePublishAt,
                 maxPrintSlots, ct));
-            if (saved) await RefreshSettingsAsync(ct);
+            if (saved)
+            {
+                await RefreshSettingsAsync(ct);
+                // The guide may now point at another event, which changes the approved set.
+                await RefreshAllEventsAsync(ct);
+            }
             return saved;
+        });
+
+    public Task<IReadOnlyList<(Guid EntryId, string Title, Instant StartAt, Guid EventSettingsId, string EventName)>> GetUnassignedGuideEntriesAsync(
+        CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetUnassignedGuideEntriesAsync(ct));
+
+    public Task<int> AssignGuideEntryEventIdsAsync(CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var written = await WithInnerAsync(inner => inner.AssignGuideEntryEventIdsAsync(ct));
+            // Entries assigned to another event leave the guide's approved set.
+            if (written > 0) await RefreshAllEventsAsync(ct);
+            return written;
         });
 
     public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
@@ -211,15 +229,16 @@ internal sealed class CachingEventService(
     public Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.BuildBulkUploadTemplateAsync(campId, campName, ct));
 
-    public Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default) =>
+    public Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
 
-    public Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
+    public Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
-            // Resubmit never leaves the event Approved.
-            _eventCache.Invalidate(eventId);
+            var result = await WithInnerAsync(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
+            // A successful resubmit never leaves the event Approved; a refusal preserves it.
+            if (result.ErrorKey is null) _eventCache.Invalidate(eventId);
+            return result;
         });
 
     public Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default) =>

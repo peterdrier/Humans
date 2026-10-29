@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
@@ -66,6 +67,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
         // On every section's context pipeline: catches User/UserEmail/CommunicationPreference

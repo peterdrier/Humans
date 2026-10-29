@@ -1,0 +1,72 @@
+@model Humans.Camps.ViewComponents.CampsGalleryViewModel
+
+@* The wg-* classes are the gallery page's (Debug's /Debug/WidgetGallery); this renders inside its
+   ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here. *@
+
+@functions {
+    private static Microsoft.AspNetCore.Html.IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        if (entries.Length == 0)
+        {
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
+        }
+        html.Append("</dl>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent AuthLine(string text)
+    {
+        return new Microsoft.AspNetCore.Html.HtmlString($"<div class=\"wg-auth-line\">{text}</div>");
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:my-camps&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Camps/Contracts/MyCampsViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">Camp memberships for the current human, grouped by year. Renders nothing if the human belongs to no camps.</div>
+    @ParamsBlock()
+    @AuthLine("Authenticated only — uses <code>UserManager.GetUserAsync</code>; logs and renders nothing on failure.")
+    <div class="wg-card-example">
+        <vc:my-camps />
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">CampsSearchResultViewComponent.cs</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Camps/ViewComponents/CampsSearchResultViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">One camp-search result row (<code>&lt;vc:camps-search-result&gt;</code>), keyed by camp id. Camps resolves the public-year season name itself and falls back to the slug when the camp has no season that year. Renders nothing when the id does not resolve.</div>
+    @ParamsBlock(
+        ("camp-id", "<code>Guid</code> — the matched camp")
+    )
+    <div class="wg-card-example">
+        @if (Model.CampId is { } campId)
+        {
+            <div class="list-group">
+                <vc:camps-search-result camp-id="@campId" />
+            </div>
+        }
+        else
+        {
+            <div class="text-muted small">No camp in this environment to key the row from.</div>
+        }
+    </div>
+</div>

@@ -82,7 +82,7 @@ internal sealed partial class WorkgroupService
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
 
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDocumentActivity,
+        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             "Enum_WorkgroupLogKind_DocumentPublished", info, document.Title, ct);
         return new();
     }
@@ -124,7 +124,7 @@ internal sealed partial class WorkgroupService
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
 
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CurrentMemberUserIds(), NotificationSource.WorkgroupDocumentActivity,
+        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             "Enum_WorkgroupLogKind_CommentPeriodOpened", info, document.Title, ct);
         return new();
     }
@@ -175,7 +175,7 @@ internal sealed partial class WorkgroupService
             document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
 
         var info = ToInfo(workgroup);
-        await NotifyBoardAsync(NotificationSource.WorkgroupDocumentActivity,
+        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             $"Delivered for a decision: {document.Title}", info,
             $"{workgroup.Name} delivered {document.Title} to the {workgroup.Audience}.", ct);
         await EmailBoardAsync(WorkgroupNoticeKind.Delivered, info, document.Title, ct);
@@ -247,7 +247,7 @@ internal sealed partial class WorkgroupService
         if (comment.AuthorUserId is { } author)
         {
             var info = ToInfo(workgroup);
-            await NotifyAsync([author], NotificationSource.WorkgroupDocumentActivity,
+            await NotifyAsync([author], WorkgroupsNotificationSources.WorkgroupDocumentActivity,
                 "Workgroups_CommentAnswered", info, $"{comment.Document.Title}: {Trimmed(response)}", ct);
         }
         return new();
@@ -289,7 +289,7 @@ internal sealed partial class WorkgroupService
 
         var info = ToInfo(workgroup);
         var authors = pending.Select(c => c.AuthorUserId).OfType<Guid>().Distinct().ToList();
-        await NotifyAsync(authors, NotificationSource.WorkgroupDocumentActivity,
+        await NotifyAsync(authors, WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             "Workgroups_CommentAnswered", info, $"{document.Title}: {Trimmed(response)}", ct);
         return new();
     }

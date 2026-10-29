@@ -18,7 +18,7 @@ namespace Humans.Events.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -46,6 +46,9 @@ namespace Humans.Events.Data.Migrations
 
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("EventSettingsId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("GuideSharedVenueId")
                         .HasColumnType("uuid");

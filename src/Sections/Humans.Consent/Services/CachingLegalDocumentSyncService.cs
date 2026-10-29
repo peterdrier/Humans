@@ -48,16 +48,8 @@ internal sealed class CachingLegalDocumentSyncService(
 
         return docs.Values
             .Where(d => d.TeamId == teamId)
-            .Select(d =>
-            {
-                var latest = d.Versions
-                    .Where(v => v.EffectiveFrom <= now)
-                    .MaxBy(v => v.EffectiveFrom);
-                if (latest is null) return null;
-                return ToRequiredVersionSnapshot(latest, d);
-            })
-            .Where(v => v is not null)
-            .Cast<RequiredDocumentVersionSnapshot>()
+            .Select(d => ToLatestRequiredVersionSnapshot(d, now))
+            .OfType<RequiredDocumentVersionSnapshot>()
             .ToList();
     }
 
@@ -68,16 +60,8 @@ internal sealed class CachingLegalDocumentSyncService(
         var now = clock.GetCurrentInstant();
 
         return docs.Values
-            .Select(d =>
-            {
-                var latest = d.Versions
-                    .Where(v => v.EffectiveFrom <= now)
-                    .MaxBy(v => v.EffectiveFrom);
-                if (latest is null) return null;
-                return ToRequiredVersionSnapshot(latest, d);
-            })
-            .Where(v => v is not null)
-            .Cast<RequiredDocumentVersionSnapshot>()
+            .Select(d => ToLatestRequiredVersionSnapshot(d, now))
+            .OfType<RequiredDocumentVersionSnapshot>()
             .ToList();
     }
 
@@ -144,9 +128,13 @@ internal sealed class CachingLegalDocumentSyncService(
         _versionToDocument = versionIndex;
     }
 
-    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(
-        LegalDocumentVersionSnapshot version, ActiveRequiredLegalDocumentSnapshot document) =>
-        new(
+    private static RequiredDocumentVersionSnapshot? ToLatestRequiredVersionSnapshot(
+        ActiveRequiredLegalDocumentSnapshot document, Instant now)
+    {
+        var version = document.Versions
+            .Where(v => v.EffectiveFrom <= now)
+            .MaxBy(v => v.EffectiveFrom);
+        return version is null ? null : new(
             version.Id,
             document.Id,
             document.Name,
@@ -155,6 +143,7 @@ internal sealed class CachingLegalDocumentSyncService(
             version.EffectiveFrom,
             version.RequiresReConsent,
             version.ChangesSummary);
+    }
 
     private async Task<TResult> WithInnerAsync<TResult>(Func<ILegalDocumentSyncManagement, Task<TResult>> action)
     {

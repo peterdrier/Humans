@@ -35,6 +35,7 @@ internal sealed class CantinaProfileController(
 
             var vm = DietaryViewModel.FromProfile(await dietary.GetDietaryProfileAsync(user.Id, ct));
             vm.ReturnAction = returnAction;
+            vm.UserId = user.Id;
             return View(vm);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
@@ -52,6 +53,8 @@ internal sealed class CantinaProfileController(
     {
         if (model.DeclineToAnswer)
             return await DeclineAsync(model.ReturnAction);
+
+        model.UserId = GetCurrentUserId() ?? Guid.Empty;
 
         if (!ModelState.IsValid)
             return View(model);

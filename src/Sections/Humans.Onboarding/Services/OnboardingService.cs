@@ -217,7 +217,7 @@ internal sealed class OnboardingService(
                 : string.Format(culture,
                     NoticeResources.GetString("Onboarding_Notification_ProfileRejectedWithReason", culture)!, reason);
             await notificationService.SendAsync(
-                NotificationSource.ProfileRejected,
+                OnboardingNotificationSources.ProfileRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 NoticeResources.GetString("Onboarding_Notification_ProfileRejectedTitle", culture)!,

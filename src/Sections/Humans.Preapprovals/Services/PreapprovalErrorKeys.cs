@@ -8,6 +8,8 @@ internal static class PreapprovalErrorKeys
     public const string PerPersonAmountRequired = "Preapprovals_Error_PerPersonAmountRequired";
     public const string PerPersonAmountNotAllowed = "Preapprovals_Error_PerPersonAmountNotAllowed";
     public const string AmountPositive = "Preapprovals_Error_AmountPositive";
+    public const string AmountPrecision = "Preapprovals_Error_AmountPrecision";
+    public const string AmountTooLarge = "Preapprovals_Error_AmountTooLarge";
     public const string AmountNotAllowed = "Preapprovals_Error_AmountNotAllowed";
     public const string AmountRequired = "Preapprovals_Error_AmountRequired";
     public const string AccountNotFound = "Preapprovals_Error_AccountNotFound";

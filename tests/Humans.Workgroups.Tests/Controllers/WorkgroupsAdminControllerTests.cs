@@ -30,6 +30,36 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     private readonly ILogger<WorkgroupsAdminController> _logger = Substitute.For<ILogger<WorkgroupsAdminController>>();
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BudgetPrecision_UsesExplicitOperatorFeedback_WithoutLocalization(bool bootstrap)
+    {
+        const string message = "Use whole cents for this budget.";
+        var refusal = new WorkgroupRefusal(message) { IsOperatorMessage = true };
+        var service = Substitute.For<IWorkgroupService>();
+        service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkgroupMutationResult<Guid>(Refusal: refusal));
+        service.SetBudgetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkgroupMutationResult<Humans.Finance.Contracts.HoldedExpenseAccountRef?>(Refusal: refusal));
+        var controller = MakeAdminController("Budget", errorMessage: "Unexpected localized text", service: service);
+
+        if (bootstrap)
+        {
+            var model = new RegisterExistingViewModel { RegisteredOn = new LocalDate(2025, 3, 1) };
+            var result = await controller.RegisterExisting(model, Ct);
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState[string.Empty]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(message);
+        }
+        else
+        {
+            var result = await controller.Budget(Guid.NewGuid(),
+                new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = "1.005" }, "group", Ct);
+            result.Should().BeOfType<RedirectToActionResult>();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(message);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(null)]
     [InlineData("not-a-date")]
     [InlineData("2025-03-01")]

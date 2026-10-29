@@ -2,8 +2,6 @@ using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Base.Controllers;
-using System.Security.Cryptography;
-using System.Text;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
@@ -31,11 +29,6 @@ internal sealed class GateController(
     ILogger<GateController> logger) : HumansControllerBase(users)
 {
     private const string ScannerSessionKey = "GateScannerId";
-    private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
-
-    // One bucket for the terminal, apart from the per-user claim buckets, so a fumbled override never locks a claim.
-    private const string SharedOverridePinKey = "override:shared";
-
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -67,22 +60,12 @@ internal sealed class GateController(
             return BadRequest();
         }
 
-        // Overrides need the shared supervisor PIN, verified before anything is recorded. It authorizes but cannot
-        // attribute, so the event records the gate account.
-        Guid? overrideBy = null;
-        if (childWithAdult || overrideEarly)
-        {
-            if (AuthorizeOverride(supervisorPin, barcode, childWithAdult) is { } errorCard)
-                return PartialView("_VerdictCard", errorCard);
-            overrideBy = scanner;
-        }
-
         var decision = await gate.RecordDecisionAsync(
             new GateDecisionInput(barcode, confirmed, childWithAdult, laneId,
-                ClientScanAt: null, Note: null, OverrideByUserId: overrideBy),
+                ClientScanAt: null, Note: null, OverrideEarly: overrideEarly, SupervisorPin: supervisorPin),
             scanner, ct);
 
-        return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode));
+        return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode, childWithAdult));
     }
 
     [HttpGet("Claim")]
@@ -292,46 +275,6 @@ internal sealed class GateController(
         HttpContext.Session.SetString(ScannerSessionKey, userId.ToString());
         return RedirectToAction(nameof(Index));
     }
-
-    // Returns null when the override is authorized; otherwise the error card to show.
-    private GateScanCardViewModel? AuthorizeOverride(string? pin, string barcode, bool childWithAdult)
-    {
-        // Fail closed: no configured PIN means no overrides, and the card says so.
-        if (string.IsNullOrEmpty(configuration[SupervisorPinConfigKey]))
-            return OverrideErrorCard(barcode, childWithAdult,
-                "Override PIN not configured — an admin must set it before overrides work");
-
-        // A lockout blocks only the override path, never scanning, and caps brute force at 5 tries per 15 min.
-        if (ThrottleWait(SharedOverridePinKey) is { } wait)
-            return OverrideErrorCard(barcode, childWithAdult, $"Too many PIN attempts — wait {wait}s");
-
-        if (!SupervisorPinValid(pin))
-        {
-            RecordPinFailure(SharedOverridePinKey);
-            return OverrideErrorCard(barcode, childWithAdult, "PIN not accepted — try again");
-        }
-
-        ResetPinThrottle(SharedOverridePinKey);
-        return null;
-    }
-
-    private bool SupervisorPinValid(string? pin)
-    {
-        var configured = configuration[SupervisorPinConfigKey];
-        if (string.IsNullOrEmpty(configured) || string.IsNullOrEmpty(pin))
-            return false;
-
-        // Compare fixed-width hashes so neither equality nor PIN length leaks via timing.
-        var a = SHA256.HashData(Encoding.UTF8.GetBytes(pin));
-        var b = SHA256.HashData(Encoding.UTF8.GetBytes(configured));
-        return CryptographicOperations.FixedTimeEquals(a, b);
-    }
-
-    private static GateScanCardViewModel OverrideErrorCard(string barcode, bool childWithAdult, string reason) =>
-        new(GateCardKind.Amber, "Supervisor", null, reason, IsEarly: false, barcode,
-            AllowChildWithAdult: false,
-            // The child waiver lives on the ID-confirm card, so a failed child auth just re-scans.
-            AllowSupervisorOverride: !childWithAdult);
 
     // Claim PINs throttle per target user: the proxy collapses all kiosk traffic to one IP, so an IP key would let
     // one bad run freeze every claim.

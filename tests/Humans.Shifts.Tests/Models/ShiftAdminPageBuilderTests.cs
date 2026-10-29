@@ -12,6 +12,8 @@ using Humans.Shifts.Services.Dtos;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
+using Humans.Users.Domain;
+using Humans.Shifts.Tests.Infrastructure;
 
 namespace Humans.Shifts.Tests.Models;
 
@@ -190,6 +192,41 @@ public sealed class ShiftAdminPageBuilderTests
             Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == ids.Count() && ids.Count() == 2),
             SystemTeamIds.Volunteers,
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task MedicalBadge_IsAFlagForViewersOnly_TheTextStaysOnTheServer(bool canViewMedical)
+    {
+        var userId = Guid.NewGuid();
+        StubRotas(MakeRota(MakeShift(MakePending(userId))));
+        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+                Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [userId] = UserInfoStubHelpers.MakeUserInfo(userId, profile: new Profile
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    BurnerName = "Ann",
+                    MedicalConditions = "Epilepsy",
+                    CreatedAt = TestNow,
+                    UpdatedAt = TestNow,
+                    IsApproved = true,
+                }),
+            });
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
+
+        var vm = await builder.BuildAsync(new ShiftAdminPageRequest(
+            Department, Event, CanManage: true, CanApprove: true, canViewMedical, IncompleteOnboarding: false, TestNow));
+
+        var badges = vm.VolunteerProfiles[userId];
+        badges.UserId.Should().Be(userId);
+        badges.CanRevealMedical.Should().Be(canViewMedical);
+        badges.HasMedicalConditions.Should().Be(canViewMedical);
     }
 
     private void StubRotas(params ShiftAdminRota[] rotas) =>

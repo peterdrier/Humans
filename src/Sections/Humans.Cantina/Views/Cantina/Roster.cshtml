@@ -38,6 +38,10 @@
 
     // From the service in the event timezone: view-side UTC highlights tomorrow late in the evening in Madrid.
     var todayForHighlight = Model.EventTodayDate;
+
+    // Named free-text entries are health data: they show only on the page load after the audited reveal POST.
+    var healthRevealed = ViewData[CantinaController.HealthRevealedKey] is true;
+    var hasHealthEntries = Model.AllergyOtherEntries.Count > 0 || Model.IntoleranceOtherEntries.Count > 0;
 }
 
 @section Styles {
@@ -77,6 +81,15 @@
                     <i class="fa-solid fa-chevron-right"></i>
                 </a>
             </div>
+            @if (hasHealthEntries && !healthRevealed)
+            {
+                <form asp-action="RevealHealth" asp-route-weekStartOffset="@Model.WeekStartOffset" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Cantina_Roster_RevealHealthNote"].Value">
+                        <i class="fa-solid fa-eye me-1"></i>@Localizer["Cantina_Roster_RevealHealth"]
+                    </button>
+                </form>
+            }
             <a asp-action="Csv" asp-route-weekStartOffset="@Model.WeekStartOffset"
                class="btn btn-sm btn-primary btn-download-csv">
                 <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Roster_DownloadCsv"]
@@ -129,7 +142,11 @@
         </div>
     </div>
 
-    @if (Model.AllergyOtherEntries.Count > 0 || Model.IntoleranceOtherEntries.Count > 0)
+    @if (hasHealthEntries && !healthRevealed)
+    {
+        <p class="text-muted small"><i class="fa-solid fa-lock me-1"></i>@Localizer["Cantina_Roster_HealthHidden"]</p>
+    }
+    @if (hasHealthEntries && healthRevealed)
     {
         <div class="row g-3 mb-4">
             @if (Model.AllergyOtherEntries.Count > 0)

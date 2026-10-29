@@ -33,7 +33,7 @@ public class NotificationRetentionTests : IDisposable
 
         var repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
         _retention = new NotificationInboxService(
-            repo, Substitute.For<IUserService>(), _clock);
+            repo, Substitute.For<IUserService>(), TestSources.Registry, _clock);
     }
 
     public void Dispose()
@@ -53,7 +53,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Old resolved",
-            Source = NotificationSource.TeamMemberAdded,
+            Source = TestSources.TeamUpdate.Name,
             Class = NotificationClass.Informational,
             Priority = NotificationPriority.Normal,
             CreatedAt = now - Duration.FromDays(10),
@@ -66,7 +66,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Recent resolved",
-            Source = NotificationSource.TeamMemberAdded,
+            Source = TestSources.TeamUpdate.Name,
             Class = NotificationClass.Informational,
             Priority = NotificationPriority.Normal,
             CreatedAt = now - Duration.FromDays(5),
@@ -79,7 +79,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Unresolved actionable",
-            Source = NotificationSource.ShiftCoverageGap,
+            Source = TestSources.ShiftUpdate.Name,
             Class = NotificationClass.Actionable,
             Priority = NotificationPriority.High,
             CreatedAt = now - Duration.FromDays(20),
@@ -106,7 +106,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Stale informational",
-            Source = NotificationSource.TeamMemberAdded,
+            Source = TestSources.TeamUpdate.Name,
             Class = NotificationClass.Informational,
             Priority = NotificationPriority.Normal,
             CreatedAt = now - Duration.FromDays(35),
@@ -117,7 +117,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Recent informational",
-            Source = NotificationSource.TeamMemberAdded,
+            Source = TestSources.TeamUpdate.Name,
             Class = NotificationClass.Informational,
             Priority = NotificationPriority.Normal,
             CreatedAt = now - Duration.FromDays(10),
@@ -129,7 +129,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Old actionable",
-            Source = NotificationSource.ShiftCoverageGap,
+            Source = TestSources.ShiftUpdate.Name,
             Class = NotificationClass.Actionable,
             Priority = NotificationPriority.High,
             CreatedAt = now - Duration.FromDays(60),
@@ -157,7 +157,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Legacy application submitted",
-            Source = NotificationSource.ApplicationSubmitted,
+            Source = TestSources.Retired.Name,
             Class = NotificationClass.Actionable,
             Priority = NotificationPriority.Normal,
             CreatedAt = now - Duration.FromHours(1),
@@ -168,7 +168,7 @@ public class NotificationRetentionTests : IDisposable
         {
             Id = Guid.NewGuid(),
             Title = "Live issue",
-            Source = NotificationSource.IssueSubmitted,
+            Source = TestSources.Plain.Name,
             Class = NotificationClass.Actionable,
             Priority = NotificationPriority.Normal,
             CreatedAt = now - Duration.FromHours(1),

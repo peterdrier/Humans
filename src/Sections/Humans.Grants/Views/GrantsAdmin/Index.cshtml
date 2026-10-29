@@ -22,7 +22,7 @@ else
             <thead>
                 <tr>
                     <th>Program</th>
-                    <th>Year</th>
+                    <th>Event</th>
                     <th>Entitles</th>
                     <th>Issued by</th>
                     <th class="text-end">Active</th>
@@ -35,7 +35,7 @@ else
                 {
                     <tr>
                         <td><a asp-action="Program" asp-route-programId="@p.Id" class="text-decoration-none">@p.Name</a></td>
-                        <td>@p.Year</td>
+                        <td>@p.EventName</td>
                         <td class="small">@p.Entitles</td>
                         <td>@(p.IssuedBy == GrantIssuer.Source ? p.SourceKey : "Managers")</td>
                         <td class="text-end">@p.Count(GrantState.Active, Model.Today)</td>

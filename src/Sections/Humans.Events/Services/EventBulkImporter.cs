@@ -14,12 +14,13 @@ internal sealed class EventBulkImporter(
     IStringLocalizer<EventsResource> localizer) : IApplicationService
 {
     public async Task<BulkImportResult> ImportAsync(
-        Guid campId, Guid submitterUserId, IReadOnlyList<BulkCsvRow> rows,
+        Guid campId, Guid submitterUserId, Guid eventSettingsId, IReadOnlyList<BulkCsvRow> rows,
         LocalDate gateOpeningDate, int eventEndOffset, DateTimeZone timeZone,
         CancellationToken ct = default)
     {
         var categories = await repo.GetActiveCategoriesAsync(ct);
-        var existingEvents = await repo.GetCampSubmissionsAsync(campId, ct);
+        var existingEvents = (await repo.GetCampSubmissionsAsync(campId, ct))
+            .Where(e => e.IsInEvent(eventSettingsId)).ToList();
 
         var errors = EventBulkImportValidator.ValidateRows(rows, categories, existingEvents, timeZone, localizer);
         if (errors.Count > 0)
@@ -43,7 +44,8 @@ internal sealed class EventBulkImporter(
                 {
                     Id = Guid.NewGuid(),
                     CampId = campId,
-                    SubmitterUserId = submitterUserId
+                    SubmitterUserId = submitterUserId,
+                    EventSettingsId = eventSettingsId
                 };
             var recurrenceChanged = true;
             if (row.Id.HasValue)

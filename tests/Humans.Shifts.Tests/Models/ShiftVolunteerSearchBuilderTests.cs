@@ -1,3 +1,4 @@
+using AwesomeAssertions;
 using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services.Dtos;
@@ -7,6 +8,7 @@ using Humans.Shifts.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Humans.Users.Domain;
 using Humans.Shifts.Helpers;
+using Humans.Shifts.Models;
 using Humans.Settings.Contracts;
 using NodaTime;
 using NSubstitute;
@@ -64,7 +66,7 @@ public class ShiftVolunteerSearchBuilderTests
         SetCachedSignups();
         _signupService.GetByUserAsync(_candidateId, PastBurnId, Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = await BuildSut().BuildForShiftAsync(target, "ann", false, cancellation.Token);
+        var result = await BuildSut().BuildForShiftAsync(target, "ann", cancellation.Token);
 
         Assert.Single(result.Results);
         await _burnSettings.Received(1).GetActiveAsync(cancellation.Token);
@@ -72,7 +74,6 @@ public class ShiftVolunteerSearchBuilderTests
         await _userService.Received(1).SearchUsersAsync("ann", PersonSearchFields.Name, int.MaxValue, cancellation.Token);
         await _tracking.Received(1).GetAvailableForDayAsync(PastBurnId, 1, cancellation.Token);
         await _shiftView.Received(1).GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), cancellation.Token);
-        await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
         await _signupService.Received(1).GetByUserAsync(_candidateId, PastBurnId, cancellation.Token);
     }
 
@@ -83,7 +84,7 @@ public class ShiftVolunteerSearchBuilderTests
         // Cached view is active-scoped, so it may be used as-is here.
         SetCachedSignups(MakeSignup(ActiveBurnId, dayOffset: 1, new LocalTime(12, 0), Duration.FromHours(4)));
 
-        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: false);
+        var result = await BuildSut().BuildForShiftAsync(target, "ann");
 
         var row = Assert.Single(result.Results);
         Assert.Equal(1, row.BookedShiftCount);
@@ -111,7 +112,7 @@ public class ShiftVolunteerSearchBuilderTests
                 ToCalendar(PastBurn)),
         ]);
 
-        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: false);
+        var result = await BuildSut().BuildForShiftAsync(target, "ann");
 
         var row = Assert.Single(result.Results);
         Assert.Equal(1, row.BookedShiftCount);
@@ -131,36 +132,20 @@ public class ShiftVolunteerSearchBuilderTests
 
         var result = await BuildSut().BuildForShiftAsync(
             MakeShift(unknownId, dayOffset: 0, new LocalTime(9, 0), Duration.FromHours(2)),
-            "ann",
-            canViewMedical: false);
+            "ann");
 
         Assert.Equal(VolunteerSearchBuildStatus.NotFound, result.Status);
     }
 
     [HumansFact]
-    public async Task CanViewMedical_True_SurfacesMedicalConditions()
+    public void SearchRows_NeverCarryMedicalConditions()
     {
-        var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
-        SetCachedSignups();
-        StubCandidateMedicalConditions("Epilepsy");
-
-        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: true);
-
-        var row = Assert.Single(result.Results);
-        Assert.Equal("Epilepsy", row.MedicalConditions);
-    }
-
-    [HumansFact]
-    public async Task CanViewMedical_False_RedactsMedicalConditions()
-    {
-        var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
-        SetCachedSignups();
-        StubCandidateMedicalConditions("Epilepsy");
-
-        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: false);
-
-        var row = Assert.Single(result.Results);
-        Assert.Null(row.MedicalConditions);
+        // Art. 9 data leaves the server only through ShiftsController.RevealMedical, one audited person at a time.
+        typeof(VolunteerSearchResult).GetProperties().Select(p => p.Name)
+            .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
+        typeof(VolunteerBadgesViewModel).GetProperties()
+            .Where(p => p.PropertyType == typeof(string)).Select(p => p.Name)
+            .Should().Equal(["DietaryPreference"], "the badge model carries a medical flag, never the text");
     }
 
     [HumansFact]
@@ -174,7 +159,7 @@ public class ShiftVolunteerSearchBuilderTests
                 [_candidateId] = new(_candidateId, "Vegan", [], null, [], null),
             });
 
-        var result = await BuildSut().BuildForShiftAsync(target, "ann", canViewMedical: false);
+        var result = await BuildSut().BuildForShiftAsync(target, "ann");
 
         Assert.Equal("Vegan", Assert.Single(result.Results).DietaryPreference);
     }
@@ -184,8 +169,7 @@ public class ShiftVolunteerSearchBuilderTests
     {
         var result = await BuildSut().BuildForShiftAsync(
             MakeShift(ActiveBurnId, dayOffset: 0, new LocalTime(9, 0), Duration.FromHours(2)),
-            "   ",
-            canViewMedical: false);
+            "   ");
 
         Assert.Equal(VolunteerSearchBuildStatus.EmptyQuery, result.Status);
         await _burnSettings.DidNotReceiveWithAnyArgs().GetActiveAsync();
@@ -196,22 +180,6 @@ public class ShiftVolunteerSearchBuilderTests
             .Returns(new Dictionary<Guid, ShiftUserView>
             {
                 [_candidateId] = new(_candidateId, null, null, null, [], signups, ToCalendar(ActiveBurn)),
-            });
-
-    private void StubCandidateMedicalConditions(string medicalConditions) =>
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>
-            {
-                [_candidateId] = UserInfoStubHelpers.MakeUserInfo(_candidateId, profile: new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = _candidateId,
-                    BurnerName = "Ann",
-                    MedicalConditions = medicalConditions,
-                    CreatedAt = Instant.MinValue,
-                    UpdatedAt = Instant.MinValue,
-                    IsApproved = true
-                })
             });
 
     // The target as GetShiftByIdAsync hands it over: the shift's own fields plus its rota.

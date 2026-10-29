@@ -1,12 +1,13 @@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<SharedResource> SharedLocalizer
 @{
-    ViewData["Title"] = "Guide — Temporarily unavailable";
+    ViewData["Title"] = $"{SharedLocalizer["SectionHelp_Guide"]} — {SharedLocalizer["Error_Title"]}";
 }
 
 <div class="row">
     <section class="col-md-9 offset-md-3">
-        <h1>Guide temporarily unavailable</h1>
-        <p>We couldn't load the guide content right now. Please try again in a few minutes.</p>
+        <h1>@SharedLocalizer["Error_SomethingWentWrong"]</h1>
+        <p>@SharedLocalizer["Error_TryAgainLater"]</p>
         @* Not the Guide home: that re-enters the same content load and lands back here. *@
-        <p><a asp-controller="Home" asp-action="Index">Return to the app home</a>.</p>
+        <p><a asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_ReturnHome"]</a></p>
     </section>
 </div>

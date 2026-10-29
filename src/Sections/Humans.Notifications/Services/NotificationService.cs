@@ -17,7 +17,7 @@ internal sealed class NotificationService(
     ILogger<NotificationService> logger) : INotificationService, IUserMerge
 {
     public Task SendAsync(
-        NotificationSource source,
+        NotificationSourceDefinition source,
         NotificationClass notificationClass,
         NotificationPriority priority,
         string title,
@@ -33,7 +33,7 @@ internal sealed class NotificationService(
             body, actionUrl, actionLabel, targetGroupName, sourceKey, cancellationToken);
 
     public async Task SendToRoleAsync(
-        NotificationSource source,
+        NotificationSourceDefinition source,
         NotificationClass notificationClass,
         NotificationPriority priority,
         string title,
@@ -52,7 +52,7 @@ internal sealed class NotificationService(
             return;
         }
 
-        var category = source.ToMessageCategory();
+        var category = source.Category;
         var inboxDisabled = notificationClass == NotificationClass.Informational
             ? await preferenceService.GetUsersWithInboxDisabledAsync(roleUserIds, category, cancellationToken)
             : null;
@@ -67,7 +67,7 @@ internal sealed class NotificationService(
             ActionUrl = actionUrl,
             ActionLabel = actionLabel,
             Priority = priority,
-            Source = source,
+            Source = source.Name,
             Class = notificationClass,
             TargetGroupName = roleName,
             CreatedAt = now,

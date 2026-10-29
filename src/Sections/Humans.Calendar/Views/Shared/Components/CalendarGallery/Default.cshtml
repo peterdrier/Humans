@@ -1,0 +1,42 @@
+@model Guid
+
+@* The wg-* classes are the gallery page's (Debug's /Debug/WidgetGallery); this renders inside its
+   ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here. *@
+
+@functions {
+    private static Microsoft.AspNetCore.Html.IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        if (entries.Length == 0)
+        {
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
+        }
+        html.Append("</dl>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Calendar/Contracts/UserCalendarViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups, favourited events, and meetings of the active workgroups they belong to). Never shows the secret feed URL.</div>
+    @ParamsBlock(
+        ("userId", "<code>Guid</code> — required")
+    )
+    <div class="wg-card-example">
+        <vc:user-calendar user-id="@Model" />
+    </div>
+</div>

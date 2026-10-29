@@ -330,22 +330,24 @@ internal sealed class ProfileController(
         if (user is null)
             return NotFound();
 
-        return View(new MedicalViewModel { MedicalConditions = user.Profile?.MedicalConditions });
+        return View(new MedicalViewModel { MedicalConditions = user.Profile?.MedicalConditions, UserId = user.Id });
     }
 
     [HttpPost("Me/Medical")]
     [ValidateAntiForgeryToken]
     [AllowBeforeActiveMembership]
-    public async Task<IActionResult> Medical(MedicalViewModel model)
+    public async Task<IActionResult> Medical([Bind(nameof(MedicalViewModel.MedicalConditions))] MedicalViewModel model)
     {
-        if (!ModelState.IsValid)
-            return View(model);
-
         try
         {
             var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound();
+
+            // From the principal, so the reveal list on a re-rendered form is always the member's own.
+            model.UserId = user.Id;
+            if (!ModelState.IsValid)
+                return View(model);
 
             await _userService.SaveMedicalConditionsAsync(user.Id,
                 string.IsNullOrWhiteSpace(model.MedicalConditions) ? null : model.MedicalConditions.Trim());

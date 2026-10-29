@@ -165,20 +165,24 @@ public sealed class RideshareControllerTests
     }
 
     [HumansTheory]
-    [InlineData(true, "Direction", true)]
-    [InlineData(true, "VehicleType", true)]
-    [InlineData(true, "LuggageCapacity", true)]
-    [InlineData(true, "CostSharing", true)]
-    [InlineData(true, "ExpectedDurationDays", true)]
-    [InlineData(true, "SeatsOffered", true)]
-    [InlineData(false, "Direction", true)]
-    [InlineData(false, "LuggageLoad", true)]
-    [InlineData(false, "PartySize", true)]
-    [InlineData(true, null, true)]
-    [InlineData(false, null, true)]
-    [InlineData(true, "CostSharing", false)]
-    [InlineData(false, "LuggageLoad", false)]
-    public async Task PostingForms_require_explicit_choices_and_counts_before_saving(bool offer, string? omitted, bool signedIn)
+    [InlineData(true, "Direction", true, false)]
+    [InlineData(true, "VehicleType", true, false)]
+    [InlineData(true, "LuggageCapacity", true, false)]
+    [InlineData(true, "CostSharing", true, false)]
+    [InlineData(true, "ExpectedDurationDays", true, false)]
+    [InlineData(true, "SeatsOffered", true, false)]
+    [InlineData(false, "Direction", true, false)]
+    [InlineData(false, "LuggageLoad", true, false)]
+    [InlineData(false, "PartySize", true, false)]
+    [InlineData(true, null, true, false)]
+    [InlineData(false, null, true, false)]
+    [InlineData(true, "CostSharing", false, false)]
+    [InlineData(false, "LuggageLoad", false, false)]
+    [InlineData(true, "WillingToDetour", true, false)]
+    [InlineData(false, "CanContributeToFuel", true, false)]
+    [InlineData(true, null, true, true)]
+    [InlineData(false, null, true, true)]
+    public async Task PostingForms_require_explicit_choices_and_counts_before_saving(bool offer, string? omitted, bool signedIn, bool choice)
     {
         var controller = BuildController(signedIn);
         var registrations = new ServiceCollection().AddLogging();
@@ -199,7 +203,9 @@ public sealed class RideshareControllerTests
             ["VehicleType"] = "0",
             ["LuggageCapacity"] = "0",
             ["LuggageLoad"] = "0",
-            ["CostSharing"] = "0"
+            ["CostSharing"] = "0",
+            ["WillingToDetour"] = choice ? "true" : "false",
+            ["CanContributeToFuel"] = choice ? "true" : "false"
         };
         if (omitted is not null) fields.Remove(omitted);
         var formType = offer ? typeof(OfferFormViewModel) : typeof(RequestFormViewModel);
@@ -244,10 +250,10 @@ public sealed class RideshareControllerTests
                 await _rideshare.Received(1).UpdateOfferAsync(Arg.Any<Guid>(), _me,
                     Arg.Is<TripSave>(save => (int)save.Direction == 0 && (int)save.VehicleType == 0
                         && (int)save.LuggageCapacity == 0 && (int)save.CostSharing == 0
-                        && save.ExpectedDurationDays == 1 && save.SeatsOffered == 1), Ct);
+                        && save.ExpectedDurationDays == 1 && save.SeatsOffered == 1 && save.WillingToDetour == choice), Ct);
             else
                 await _rideshare.Received(1).UpdateRequestAsync(Arg.Any<Guid>(), _me,
-                    Arg.Is<RequestSave>(save => (int)save.Direction == 0 && (int)save.LuggageLoad == 0 && save.PartySize == 1), Ct);
+                    Arg.Is<RequestSave>(save => (int)save.Direction == 0 && (int)save.LuggageLoad == 0 && save.PartySize == 1 && save.CanContributeToFuel == choice), Ct);
         }
     }
 

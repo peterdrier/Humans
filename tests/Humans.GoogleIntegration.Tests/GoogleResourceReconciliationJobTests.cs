@@ -98,7 +98,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _notifications.Received(1).SendToRoleAsync(
-            NotificationSource.GoogleDriftDetected,
+            GoogleIntegrationNotificationSources.GoogleDriftDetected,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -125,7 +125,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         _metrics.Received(1).RecordJobRun("google_resource_reconciliation", "partial_failure");
         _metrics.DidNotReceive().RecordJobRun("google_resource_reconciliation", "success");
         await _notifications.Received(1).SendToRoleAsync(
-            NotificationSource.SyncError,
+            GoogleIntegrationNotificationSources.SyncError,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),

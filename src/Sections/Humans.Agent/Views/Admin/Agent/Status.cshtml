@@ -14,7 +14,7 @@
             <a href="/Settings#agent" class="btn btn-outline-secondary">Settings</a>
             <a asp-controller="Agent" asp-action="Conversations" class="btn btn-outline-secondary">Conversations</a>
         </div>
-        <form asp-action="ReloadKnowledgeBase" method="post" class="ms-2 d-inline">
+        <form asp-action="ReloadKnowledgeBase" method="post" class="ms-2 d-inline" authorize-policy="AdminOnly">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-warning btn-sm"
                     title="Re-fetch the community knowledge base from GitHub and rebuild the agent's in-memory index (no restart needed).">

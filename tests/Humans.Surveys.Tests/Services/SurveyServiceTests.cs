@@ -559,6 +559,53 @@ public class SurveyServiceTests
             Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(null, null)]
+    [InlineData(1, 1)]
+    [InlineData(int.MaxValue, int.MaxValue)]
+    public async Task CreateAsync_accepts_default_and_single_value_rating_scales(int? min, int? max)
+    {
+        var question = Q("Rating", SurveyQuestionType.Rating, 1, 1) with
+        {
+            RatingMin = min,
+            RatingMax = max,
+        };
+
+        var result = await CreateService().CreateAsync(
+            Input(question), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(false, 5, 1)]
+    [InlineData(true, 5, 1)]
+    [InlineData(false, null, 0)]
+    [InlineData(true, null, 0)]
+    [InlineData(false, 6, null)]
+    [InlineData(true, 6, null)]
+    public async Task Rating_bounds_are_validated_before_authoring_writes(bool editing, int? min, int? max)
+    {
+        var survey = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        var question = Q("Rating", SurveyQuestionType.Rating, 1, 1) with
+        {
+            RatingMin = min,
+            RatingMax = max,
+        };
+        var service = CreateService();
+
+        var result = editing
+            ? await service.UpdateAsync(survey.Id, Input(question), Board(Guid.NewGuid()), TestContext.Current.CancellationToken)
+            : await service.CreateAsync(Input(question), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be("Surveys_Validation_RatingBounds");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task CreateAsync_rejects_a_grid_with_more_than_five_columns()
     {
