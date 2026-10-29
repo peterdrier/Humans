@@ -348,6 +348,8 @@ internal sealed class CachingCampService(
         MutateAsync(async () =>
         {
             await WithInnerAsync(inner => inner.OpenSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
+            // Seasons without an event id map to their year's open event, so opening one can move them.
+            RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);
         });
 
@@ -355,6 +357,7 @@ internal sealed class CachingCampService(
         MutateAsync(async () =>
         {
             await WithInnerAsync(inner => inner.CloseSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
+            RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);
         });
 
@@ -372,13 +375,14 @@ internal sealed class CachingCampService(
         });
 
     /// <summary>
-    /// Open seasons are derived from Settings' event years, so any event save can change them. Bumps the version so
-    /// a load already in flight returns its result without publishing it.
+    /// Open seasons and the event of each season without an event id are derived from Settings' events, so any event
+    /// save can change them. Bumps the version so a load already in flight returns its result without publishing it.
     /// </summary>
     public void EventSettingsChanged(Guid eventSettingsId)
     {
         Interlocked.Increment(ref _settingsVersion);
         _settings = null;
+        RefreshAll();
     }
 
     public Task SetNameLockDateAsync(

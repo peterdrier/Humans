@@ -573,6 +573,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], ct) },
         { nameof(ICampManagement.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(EventIdFor(2026), new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
+        // Seasons without an event id take their year's open event, so registration and event changes can remap them.
+        { nameof(ICampManagement.OpenSeasonAsync), (t, c, se, ct) => t._service.OpenSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.CloseSeasonAsync), (t, c, se, ct) => t._service.CloseSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },
+        { nameof(IEventSettingsChangeListener.EventSettingsChanged), (t, c, se, ct) => { t._service.EventSettingsChanged(EventIdFor(2026)); return Task.CompletedTask; } },
         { nameof(ICampManagement.RequestCampMembershipAsync), (t, c, se, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
         { nameof(ICampManagement.ApproveCampMemberAsync), (t, c, se, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.RejectCampMemberAsync), (t, c, se, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
