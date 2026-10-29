@@ -37,6 +37,8 @@ internal sealed class SurveyService(
     IGoogleTranslationService translation,
     IFileStorage fileStorage) : ISurveyService, IUserDataContributor, IUserMerge
 {
+    private readonly SurveyImageUploads imageUploads = new(fileStorage, logger);
+
     private static readonly TrackedLock ResponseFinalizationLock = new("Surveys.ResponseFinalization");
 
     internal const string SurveyResponses = "SurveyResponses";
@@ -46,17 +48,10 @@ internal sealed class SurveyService(
     private const int PublicSlugMaxLength = 80;
     private const int InvitationEmailSubjectMaxLength = 200;
     private const int InvitationEmailMessageMaxLength = 4000;
-    private const int MaxInformationImages = 5;
-    private const int MaxInformationImageFileNameLength = 256;
-    private const long MaxInformationImageBytes = 10 * 1024 * 1024;
     // A shared epoch, not the real time: a CompletionTracked public start's real CreatedAt would
     // correlate with the unlinked response's SubmittedAt and unmask the respondent.
     private static readonly Instant NonCorrelatablePublicParticipationCreatedAt =
         Instant.FromUtc(1970, 1, 1, 0, 0);
-    private static readonly HashSet<string> AllowedInformationImageContentTypes =
-        new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
-    private static readonly HashSet<string> AllowedInformationImageExtensions =
-        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
 
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -187,7 +182,7 @@ internal sealed class SurveyService(
         var surveyId = Guid.NewGuid();
         var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
-        var prepared = await PrepareInformationImagesAsync(surveyId, input, existing: null, ct);
+        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing: null, ct);
         if (prepared.Error is not null) return new(Error: prepared.Error);
         List<SurveyQuestion> questions;
         try
@@ -198,13 +193,13 @@ internal sealed class SurveyService(
                 ?? ValidateVoteConfiguration(input);
             if (error is not null)
             {
-                await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+                await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
                 return new(Error: error);
             }
         }
         catch
         {
-            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
             throw;
         }
 
@@ -272,7 +267,7 @@ internal sealed class SurveyService(
         }
         var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
-        var prepared = await PrepareInformationImagesAsync(surveyId, input, existing, ct);
+        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing, ct);
         if (prepared.Error is not null) return new(Error: prepared.Error);
         List<SurveyQuestion> questions;
         try
@@ -295,7 +290,7 @@ internal sealed class SurveyService(
                 ?? ValidateVoteConfiguration(input);
             if (error is not null)
             {
-                await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+                await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
                 return new(Error: error);
             }
             if (await repo.HasSavedAnswersAsync(surveyId, ct))
@@ -303,14 +298,14 @@ internal sealed class SurveyService(
                 error = ValidateRankedDefinitionFrozen(existing.Questions, questions);
                 if (error is not null)
                 {
-                    await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+                    await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
                     return new(Error: error);
                 }
             }
         }
         catch
         {
-            await DeleteFilesBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
             throw;
         }
 
@@ -2420,147 +2415,6 @@ internal sealed class SurveyService(
         }
     }
 
-    private async Task<PreparedInformationImages> PrepareInformationImagesAsync(
-        Guid surveyId,
-        SurveyEditInput input,
-        Survey? existing,
-        CancellationToken ct)
-    {
-        var existingImages = existing?.Questions
-            .SelectMany(question => question.InformationImages ?? [])
-            .ToDictionary(image => image.Id)
-            ?? new Dictionary<Guid, SurveyInformationImage>();
-        var newStoragePaths = new List<string>();
-        var preparedQuestions = new List<QuestionInput>(input.Questions.Count);
-
-        try
-        {
-            foreach (var question in input.Questions)
-            {
-                var questionId = question.Id ?? Guid.NewGuid();
-                if (question.Type != SurveyQuestionType.Information)
-                {
-                    preparedQuestions.Add(question with
-                    {
-                        Id = questionId,
-                        InformationImages = null,
-                    });
-                    continue;
-                }
-
-                var requestedImages = question.InformationImages ?? [];
-                if (requestedImages.Count > MaxInformationImages)
-                {
-                    return await RejectAsync(new("Surveys_Validation_ImagesLimit",
-                        $"An Information item can have at most {MaxInformationImages} images.", MaxInformationImages));
-                }
-
-                var preparedImages = new List<InformationImageInput>(requestedImages.Count);
-                foreach (var requested in requestedImages)
-                {
-                    if (requested.Upload is { } upload)
-                    {
-                        var imageError = ValidateInformationImage(upload);
-                        if (imageError is not null) return await RejectAsync(imageError);
-                        var fileName = DisplayFileName(upload.FileName);
-                        // Replacements get a fresh key so a failed database save cannot delete or
-                        // overwrite the still-authoritative existing file.
-                        var imageId = Guid.NewGuid();
-                        var extension = Path.GetExtension(fileName);
-                        var storagePath = $"uploads/surveys/{surveyId}/{questionId}/{imageId}{extension}";
-                        await fileStorage.SaveAsync(storagePath, upload.Content, ct);
-                        newStoragePaths.Add(storagePath);
-                        preparedImages.Add(requested with
-                        {
-                            Id = imageId,
-                            StoragePath = storagePath,
-                            ContentType = upload.ContentType,
-                            FileName = fileName,
-                            Upload = null,
-                        });
-                        continue;
-                    }
-
-                    if (requested.Id is { } existingId
-                        && existingImages.TryGetValue(existingId, out var persisted))
-                    {
-                        preparedImages.Add(requested with
-                        {
-                            StoragePath = persisted.StoragePath,
-                            ContentType = persisted.ContentType,
-                            FileName = persisted.FileName,
-                            Upload = null,
-                        });
-                        continue;
-                    }
-
-                    return await RejectAsync(new("Surveys_Validation_ImageRequired",
-                        "Select an image file for every image row. " +
-                        "If a previous save failed, select the file again."));
-                }
-
-                preparedQuestions.Add(question with
-                {
-                    Id = questionId,
-                    IsRequired = false,
-                    RatingMin = null,
-                    RatingMax = null,
-                    RatingMinLabel = LocalizedText.Empty,
-                    RatingMaxLabel = LocalizedText.Empty,
-                    Options = [],
-                    GridSelectionMode = null,
-                    GridRows = null,
-                    InformationImages = preparedImages,
-                });
-            }
-        }
-        catch
-        {
-            await DeleteFilesBestEffortAsync(newStoragePaths, CancellationToken.None);
-            throw;
-        }
-
-        return new PreparedInformationImages(
-            input with { Questions = preparedQuestions },
-            newStoragePaths);
-
-        async Task<PreparedInformationImages> RejectAsync(SurveyAuthoringError error)
-        {
-            await DeleteFilesBestEffortAsync(newStoragePaths, CancellationToken.None);
-            return new(input, [], error);
-        }
-    }
-
-    private static SurveyAuthoringError? ValidateInformationImage(SurveyImageUpload upload)
-    {
-        var fileName = DisplayFileName(upload.FileName);
-        if (upload.Length <= 0)
-        {
-            return new("Surveys_Validation_ImageEmpty", "The selected image is empty.");
-        }
-        if (!AllowedInformationImageContentTypes.Contains(upload.ContentType))
-        {
-            return new("Surveys_Validation_ImageContentType", "Only JPEG, PNG, and WebP images are allowed.");
-        }
-        if (upload.Length > MaxInformationImageBytes)
-        {
-            return new("Surveys_Validation_ImageSize", "Each Information image must be under 10 MB.");
-        }
-        if (!AllowedInformationImageExtensions.Contains(Path.GetExtension(fileName)))
-        {
-            return new("Surveys_Validation_ImageExtension", "Image filenames must end in .jpg, .jpeg, .png, or .webp.");
-        }
-        if (fileName.Length > MaxInformationImageFileNameLength)
-        {
-            return new("Surveys_Validation_ImageFileNameLength",
-                $"Image filename must be {MaxInformationImageFileNameLength} characters or fewer.", MaxInformationImageFileNameLength);
-        }
-
-        return null;
-    }
-
-    private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
-
     private async Task CleanupFailedInformationImageUploadAsync(
         Guid surveyId, IReadOnlyList<string> newStoragePaths)
     {
@@ -2570,7 +2424,7 @@ internal sealed class SurveyService(
             // A failed acknowledgement may follow a committed save. Retain any existing
             // survey's image versions, just as successful edits do for other open builders.
             if (await repo.GetByIdAsync(surveyId, CancellationToken.None) is null)
-                await DeleteFilesBestEffortAsync(newStoragePaths, CancellationToken.None);
+                await imageUploads.DeleteBestEffortAsync(newStoragePaths, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -2578,28 +2432,6 @@ internal sealed class SurveyService(
                 "Failed to verify survey {SurveyId} after a failed save; retaining newly uploaded images", surveyId);
         }
     }
-
-    private async Task DeleteFilesBestEffortAsync(
-        IEnumerable<string> storagePaths,
-        CancellationToken ct)
-    {
-        foreach (var storagePath in storagePaths.Distinct(StringComparer.Ordinal))
-        {
-            try
-            {
-                await fileStorage.DeleteAsync(storagePath, ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to delete survey Information image {StoragePath}", storagePath);
-            }
-        }
-    }
-
-    private sealed record PreparedInformationImages(
-        SurveyEditInput Input,
-        IReadOnlyList<string> NewStoragePaths,
-        SurveyAuthoringError? Error = null);
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
     private static List<SurveyQuestion> MapQuestions(Guid surveyId, SurveyEditInput input)
@@ -2687,10 +2519,10 @@ internal sealed class SurveyService(
                 return new("Surveys_Validation_InformationRequired", $"Information item {question.Id} cannot be required.", question.Id);
 
             var images = question.InformationImages ?? [];
-            if (images.Count > MaxInformationImages)
+            if (images.Count > SurveyImageUploads.MaxInformationImages)
             {
                 return new("Surveys_Validation_InformationImagesLimit",
-                    $"Information item {question.Id} can have at most {MaxInformationImages} images.", question.Id, MaxInformationImages);
+                    $"Information item {question.Id} can have at most {SurveyImageUploads.MaxInformationImages} images.", question.Id, SurveyImageUploads.MaxInformationImages);
             }
 
             if (!question.HelpText.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value))
