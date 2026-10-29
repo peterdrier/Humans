@@ -30,8 +30,8 @@
     <!--
       Both go through the other section's leaf, never its project, so the graph stays
       acyclic: ConsentService resolves required teams and completion through
-      IMembershipCalculator, and auto-resolves an AccessSuspended notification through
-      INotificationAutoResolve. Humans.Governance references Humans.Consent back (for
+      IMembershipCalculator, and declares its notification sources and emits through
+      Humans.Notifications.Contracts. Humans.Governance references Humans.Consent back (for
       ConsentResource, step 3b), which is fine — Humans.Governance.Contracts names no
       Consent type.
     -->

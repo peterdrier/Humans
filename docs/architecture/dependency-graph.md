@@ -717,6 +717,7 @@ graph LR
     Grant --> NotifEmitter
     Grant --> Email
     Grant --> Audit
+    Grant --> SettingsSvc
     LowIncome --> Grant
 
     %% ═══════════════════════════════════

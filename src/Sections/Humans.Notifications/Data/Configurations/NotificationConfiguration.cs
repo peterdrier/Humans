@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Notifications.Contracts;
 using Humans.Notifications.Domain;
 
 namespace Humans.Notifications.Data.Configurations;
@@ -31,8 +32,7 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
             .IsRequired();
 
         builder.Property(n => n.Source)
-            .HasConversion<string>()
-            .HasMaxLength(50)
+            .HasMaxLength(NotificationSourceDefinition.NameMaxLength)
             .IsRequired();
 
         builder.Property(n => n.SourceKey)

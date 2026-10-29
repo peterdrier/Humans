@@ -121,7 +121,7 @@ public sealed class OnboardingServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "signup_rejected"),
             Arg.Any<CancellationToken>());
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
-            default,
+            default!,
             default,
             default,
             default!,
@@ -191,7 +191,7 @@ public sealed class OnboardingServiceTests
             result!.Success.Should().BeTrue();
             _notificationService.ReceivedCalls().Should().ContainSingle();
             var args = _notificationService.ReceivedCalls().Single().GetArguments();
-            args[0].Should().Be(NotificationSource.ProfileRejected);
+            args[0].Should().Be(OnboardingNotificationSources.ProfileRejected);
             args[3].Should().Be("Your signup has been reviewed");
             await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         }
@@ -297,7 +297,7 @@ public sealed class OnboardingServiceTests
             Arg.Any<CancellationToken>());
 
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.ProfileRejected,
+            OnboardingNotificationSources.ProfileRejected,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             Arg.Any<string>(),

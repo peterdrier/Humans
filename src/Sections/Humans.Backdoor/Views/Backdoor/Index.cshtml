@@ -27,7 +27,7 @@
     members. Send it in the <code>X-Api-Key</code> header.
 </div>
 
-<div class="card mb-4">
+<div class="card mb-4" authorize-policy="AdminOnly">
     <div class="card-header">Allocate a key</div>
     <div class="card-body">
         <form asp-action="Issue" method="post" class="row g-2 align-items-end">
@@ -103,13 +103,13 @@ else
                         <td class="text-end">
                             @if (key.IsUsable)
                             {
-                                <form asp-action="Rotate" asp-route-id="@key.Id" method="post" class="d-inline">
+                                <form asp-action="Rotate" asp-route-id="@key.Id" method="post" class="d-inline" authorize-policy="AdminOnly">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Rotate</button>
                                 </form>
                             }
                             @if (!key.IsRevoked)
                             {
-                                <form asp-action="Revoke" asp-route-id="@key.Id" method="post" class="d-inline">
+                                <form asp-action="Revoke" asp-route-id="@key.Id" method="post" class="d-inline" authorize-policy="AdminOnly">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
                                 </form>
                             }

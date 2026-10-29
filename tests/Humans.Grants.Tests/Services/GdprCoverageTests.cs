@@ -48,6 +48,7 @@ public sealed class GdprCoverageTests : GrantsTestHarness
         $"{nameof(GrantProgram)}.{nameof(GrantProgram.Entitles)}",
         $"{nameof(GrantProgram)}.{nameof(GrantProgram.Description)}",
         $"{nameof(GrantProgram)}.{nameof(GrantProgram.Year)}",
+        $"{nameof(GrantProgram)}.{nameof(GrantProgram.EventSettingsId)}",
         $"{nameof(GrantProgram)}.{nameof(GrantProgram.IssuedBy)}",
         $"{nameof(GrantProgram)}.{nameof(GrantProgram.SourceKey)}",
         $"{nameof(GrantProgram)}.{nameof(GrantProgram.GrantsExpireOn)}",

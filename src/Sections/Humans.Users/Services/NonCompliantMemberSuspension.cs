@@ -92,7 +92,7 @@ internal sealed class NonCompliantMemberSuspension(
             try
             {
                 await notificationService.SendAsync(
-                    NotificationSource.AccessSuspended,
+                    UsersNotificationSources.AccessSuspended,
                     NotificationClass.Actionable,
                     NotificationPriority.Critical,
                     NoticeResources.GetString("Users_AccountStatus_HeadingSuspended", culture)!,

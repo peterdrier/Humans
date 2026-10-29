@@ -9,4 +9,4 @@
 | `DataMigrationsController` (`Index`, `Apply`) | Class | `Admin` | `PolicyNames.AdminOnly` (`/Debug/DataMigrations`; `Apply` is `[ValidateAntiForgeryToken]`) |
 | `GET /api/data-migrations` (minimal API, `ISectionEndpoints`) | Endpoint | `AllowAnonymous` | Keys, pending counts and done flags only — never row data |
 | `ColorPaletteController` | Class | `AllowAnonymous` | — (design reference page: palette, controls, typography; linked from the admin sidebar "Debug" group) |
-| `WidgetGalleryController` | Class | `Admin` | `PolicyNames.AdminOnly` (admin-only catalog of reusable UI widgets; companion to `/ColorPalette`) |
+| `WidgetGalleryController` | Class | `Board`, `Admin` | `PolicyNames.BoardOrAdmin` (Board-or-Admin catalog of reusable UI widgets; companion to `/ColorPalette`) |

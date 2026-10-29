@@ -205,7 +205,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   display); `IUserEmailService.GetNotificationTargetEmailsAsync`; implements `IUserMerge`.
 - **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
-- **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`.
+- **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`. Its sources are declared in `PreapprovalsNotificationSources` (`src/Sections/Humans.Preapprovals/PreapprovalsNotificationSources.cs`), one `NotificationSourceDefinition` each: `PreapprovalFileBy` (actionable, to the beneficiary: pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open); `PreapprovalApplicationReceived` (actionable, to the program's managers: someone applies to a pre-approval program; resolved on approve or decline); `PreapprovalGrantDecided` (informational (actionable when a revoked grant already has an expense report), to the beneficiary: pre-approval declined, revoked, or its amount changed).
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
 - **AuditLog**: `IAuditLogService.LogAsync` (actor and job overloads).
 - **Gdpr**: implements `IUserDataContributor`.

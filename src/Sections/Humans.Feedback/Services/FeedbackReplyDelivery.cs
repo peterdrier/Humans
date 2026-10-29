@@ -117,7 +117,7 @@ internal sealed class FeedbackReplyDelivery(
             // No action link: /Feedback/{id} is Admin-only now, so the reporter would land on a 403.
             // The response text itself reaches them in the FeedbackResponse email.
             await notificationService.SendAsync(
-                NotificationSource.FeedbackResponse,
+                FeedbackNotificationSources.FeedbackResponse,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 notification.Title,

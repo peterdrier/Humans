@@ -1323,6 +1323,28 @@
     var tagCreateUrl = '@Url.Action("CreateTag", "ShiftAdmin", new { slug = Model.Department.Slug })';
     var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
 
+    // Medical badge: the text is not in the page; each click is one audited reveal.
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.medical-reveal');
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        fetch(btn.getAttribute('data-reveal-url'), {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': antiForgeryToken }
+        })
+        .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function(data) {
+            var text = document.createElement('span');
+            text.className = 'badge bg-danger text-wrap text-start';
+            text.textContent = data.text;
+            btn.replaceWith(text);
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.title = btn.getAttribute('data-failed-text');
+        });
+    });
+
     document.querySelectorAll('[data-new-tag-btn]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var pickerId = this.getAttribute('data-new-tag-btn');

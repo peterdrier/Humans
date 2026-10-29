@@ -14,6 +14,12 @@ internal sealed class Event
     public Guid? CampId { get; set; }
     public Guid? GuideSharedVenueId { get; set; }
     public Guid SubmitterUserId { get; set; }
+
+    /// <summary>
+    /// Settings' event row this entry belongs to. Null only on rows older than the column; the
+    /// <c>events.event-ids</c> data migration assigns them, and until then they count as the guide's current event.
+    /// </summary>
+    public Guid? EventSettingsId { get; set; }
     public Guid CategoryId { get; set; }
 
     public string Title { get; set; } = string.Empty;
@@ -68,6 +74,13 @@ internal sealed class Event
     public static bool IsWithdrawableBySubmitter(EventStatus status, bool isCampEvent) =>
         status is EventStatus.Pending or EventStatus.Approved
         || (!isCampEvent && status is EventStatus.Draft);
+
+    /// <summary>
+    /// True when the entry belongs to <paramref name="eventSettingsId"/>. An unassigned entry, or a null event (the
+    /// guide is not configured yet), matches, so nothing disappears before the data migration runs.
+    /// </summary>
+    public bool IsInEvent(Guid? eventSettingsId) =>
+        eventSettingsId is null || EventSettingsId is null || EventSettingsId == eventSettingsId;
 
     /// <inheritdoc cref="IsEditableBySubmitter(EventStatus, bool)"/>
     public bool CanBeEditedBySubmitter => IsEditableBySubmitter(Status, CampId is not null);

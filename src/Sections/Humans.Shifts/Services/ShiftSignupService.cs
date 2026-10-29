@@ -1057,7 +1057,7 @@ internal sealed class ShiftSignupService(
         var culture = await GetRecipientCultureAsync(userId);
         var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
         await notificationService.SendAsync(
-            NotificationSource.ShiftAssigned,
+            ShiftsNotificationSources.ShiftAssigned,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             title,
@@ -1112,7 +1112,7 @@ internal sealed class ShiftSignupService(
 
             var title = $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}";
             await notificationService.SendAsync(
-                NotificationSource.ShiftCoverageGap,
+                ShiftsNotificationSources.ShiftCoverageGap,
                 NotificationClass.Actionable,
                 NotificationPriority.High,
                 title,
@@ -1153,7 +1153,7 @@ internal sealed class ShiftSignupService(
 
             var title = $"Shift signup change: {rotaName}";
             await notificationService.SendAsync(
-                NotificationSource.ShiftSignupChange,
+                ShiftsNotificationSources.ShiftSignupChange,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,

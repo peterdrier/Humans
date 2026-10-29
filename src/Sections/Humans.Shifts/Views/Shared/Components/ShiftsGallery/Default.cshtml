@@ -163,3 +163,136 @@
         <vc:dietary-missing-banner user-id="@Model.CurrentUserId" />
     </div>
 </div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_VolunteerProfileBadges.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
+    </div>
+    <div class="wg-card-note">
+        Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical. Synthetic sample below.
+    </div>
+    @ParamsBlock(
+        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina, medical from Profile)")
+    )
+    <div class="wg-auth-line"><code>CanRevealMedical=true</code> only for a MedicalDataViewer — gate at the call site; the text itself comes from the audited reveal, never the model.</div>
+    <div class="wg-card-example">
+        @await Html.PartialAsync("_VolunteerProfileBadges",
+            new VolunteerBadgesViewModel(
+                UserId: Guid.Empty,
+                Skills: ["Welding", "First Aid"],
+                Quirks: ["Early riser", "Coffee snob"],
+                Languages: ["English", "Spanish"],
+                DietaryPreference: null,
+                HasMedicalConditions: false,
+                CanRevealMedical: true))
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:shift-signups&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">A human's shift signups for the active event, split into Upcoming / Pending / Past.</div>
+    @ParamsBlock(
+        ("userId", "<code>Guid</code> — required"),
+        ("viewMode", "<code>ShiftSignupsViewMode</code> — Self · Admin"),
+        ("displayName", "<code>string?</code> — caller-provided name to label the panel")
+    )
+    <div class="wg-card-example">
+        <vc:shift-signups user-id="@Model.CurrentUserId" view-mode="@ShiftSignupsViewMode.Self" />
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_StaffingChart.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_StaffingChart.cshtml</span>
+    </div>
+    <div class="wg-card-note">Per-day staffing chart: confirmed vs total slots, set-up / event / strike. Caller passes a unique chart id so multiple instances can coexist. Synthetic days below.</div>
+    @ParamsBlock(
+        ("@@model", "<code>(List&lt;DailyStaffingData&gt; Data, string ChartId)</code> tuple — slots and bookings by day")
+    )
+    <div class="wg-card-example">
+        @await Html.PartialAsync("_StaffingChart", (Data: new List<DailyStaffingData>
+        {
+            new(-1, "Day -1", ConfirmedCount: 8, TotalSlots: 12, MinSlots: 6, Period: "Set-up"),
+            new(0, "Day 0", ConfirmedCount: 15, TotalSlots: 20, MinSlots: 10, Period: "Event"),
+            new(1, "Day 1", ConfirmedCount: 5, TotalSlots: 10, MinSlots: 4, Period: "Strike"),
+        }, ChartId: "wg-staffing-chart"))
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_StaffingHoursChart.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_StaffingHoursChart.cshtml</span>
+    </div>
+    <div class="wg-card-note">Per-day staffing hours, stacked by shift priority (Essential / Important / Normal). Hours = duration × MaxVolunteers; all-day shifts count 8h per slot. Synthetic days below.</div>
+    @ParamsBlock(
+        ("@@model", "<code>(List&lt;DailyStaffingHours&gt; Data, string ChartId)</code> tuple")
+    )
+    <div class="wg-card-example">
+        @await Html.PartialAsync("_StaffingHoursChart", (Data: new List<DailyStaffingHours>
+        {
+            new(-1, "Day -1", EssentialHours: 12.5, ImportantHours: 8.0, NormalHours: 4.0),
+            new(0, "Day 0", EssentialHours: 20.0, ImportantHours: 15.0, NormalHours: 10.0),
+            new(1, "Day 1", EssentialHours: 6.0, ImportantHours: 5.0, NormalHours: 2.0),
+        }, ChartId: "wg-staffing-hours-chart"))
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">ShiftsSearchResultViewComponent.cs</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/ShiftsSearchResultViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">One rota-search result row (<code>&lt;vc:shifts-search-result&gt;</code>), keyed by rota id. Shifts stitches the owning team's name itself; the link is the department-filtered list, since there is no single-rota page. Renders nothing when the id does not resolve.</div>
+    @ParamsBlock(
+        ("rota-id", "<code>Guid</code> — the matched rota")
+    )
+    <div class="wg-card-example">
+        @if (Model.Rota is not null)
+        {
+            <div class="list-group">
+                <vc:shifts-search-result rota-id="@Model.Rota.Id" />
+            </div>
+        }
+        else
+        {
+            <div class="text-muted small">No rota in the active burn to key the row from.</div>
+        }
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:volunteer-build-strip&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerHeatmap.cshtml</span>
+    </div>
+    <div class="wg-card-note">
+        Not rendered here: the single-user build heatmap (<code>_VolunteerHeatmap</code>, <code>ShowAvailabilityControls=true</code>) renders on the
+        <a href="/Profile/Me">profile</a>; the full-tracking variant (<code>_VolunteerUnbookedHeatmap</code>) needs the whole
+        <code>VolunteerTrackingPageViewModel</code>. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.
+    </div>
+    @ParamsBlock()
+</div>

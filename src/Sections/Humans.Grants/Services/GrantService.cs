@@ -1,8 +1,10 @@
+using System.Globalization;
 using Humans.Email.Contracts;
 using Humans.Grants.Data;
 using Humans.Grants.Domain;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -17,6 +19,7 @@ internal sealed partial class GrantService(
     IEmailService email,
     GrantsEmails emailFactory,
     IAuditLogService auditLog,
+    ISettingsService settingsService,
     IClock clock,
     ILogger<GrantService> logger) : IGrantManagement
 {
@@ -24,31 +27,69 @@ internal sealed partial class GrantService(
 
     public LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
-    public async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default) =>
-        (await repository.GetProgramsAsync(ct)).Select(ToInfo).ToList();
+    public async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default)
+    {
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        return (await repository.GetProgramsAsync(ct)).Select(p => ToInfo(p, events)).ToList();
+    }
 
     public async Task<ProgramInfo?> GetProgramAsync(Guid programId, CancellationToken ct = default)
     {
         var program = await repository.GetProgramAsync(programId, ct);
-        return program is null ? null : ToInfo(program);
+        return program is null ? null : ToInfo(program, await settingsService.GetAllEventSettingsAsync(ct));
     }
 
-    public async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct)).Select(ToInfo).ToList();
+    public async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var grants = await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct);
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        return grants.Select(g => ToInfo(g, g.Program, EventOf(g.Program, events))).ToList();
+    }
 
     public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
         await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
 
-    private static ProgramInfo ToInfo(GrantProgram p) => new(
-        p.Id, p.Name, p.Entitles, p.Description, p.Year, p.IssuedBy, p.SourceKey, p.GrantsExpireOn,
-        p.Status, p.CreatedByUserId, p.CreatedAt, p.UpdatedAt,
-        p.Managers.Select(m => m.UserId).ToList(),
-        p.Grants.OrderBy(g => g.IssuedAt).Select(g => ToInfo(g, p)).ToList());
+    private static ProgramInfo ToInfo(GrantProgram p, IReadOnlyList<EventSettingsInfo> events)
+    {
+        var evt = EventOf(p, events);
+        return new(
+            p.Id, p.Name, p.Entitles, p.Description, evt?.Year ?? p.Year, evt?.Id ?? p.EventSettingsId,
+            evt?.EventName ?? p.Year.ToString(CultureInfo.InvariantCulture),
+            p.IssuedBy, p.SourceKey, p.GrantsExpireOn,
+            p.Status, p.CreatedByUserId, p.CreatedAt, p.UpdatedAt,
+            p.Managers.Select(m => m.UserId).ToList(),
+            p.Grants.OrderBy(g => g.IssuedAt).Select(g => ToInfo(g, p, evt)).ToList());
+    }
 
-    private static GrantInfo ToInfo(Grant g) => ToInfo(g, g.Program);
+    /// <summary>The program's own event, else the one <c>grants.event-ids</c> would give it.</summary>
+    private static EventSettingsInfo? EventOf(GrantProgram p, IReadOnlyList<EventSettingsInfo> events) =>
+        p.EventSettingsId is { } id ? events.FirstOrDefault(e => e.Id == id) : PickEventForYear(events, p.Year);
 
-    private static GrantInfo ToInfo(Grant g, GrantProgram p) => new(
-        g.Id, g.ProgramId, p.Name, p.Entitles, p.Year, g.UserId, g.SourceRef, g.ExpiresOn,
+    /// <summary>The earliest non-deleted event of <paramref name="year"/> by gate opening; null when it has none.</summary>
+    internal static EventSettingsInfo? PickEventForYear(IReadOnlyList<EventSettingsInfo> events, int year) =>
+        events
+            .Where(e => e.Year == year && e.Status != EventSettingsStatus.Deleted)
+            .OrderBy(e => e.GateOpeningDate)
+            .FirstOrDefault();
+
+    public async Task<IReadOnlyList<(Guid ProgramId, string ProgramName, int Year, EventSettingsInfo Event)>> GetEventIdPlanAsync(
+        CancellationToken ct = default)
+    {
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        return [.. (await repository.GetProgramsAsync(ct))
+            .Where(p => p.EventSettingsId is null)
+            .Select(p => (p, Event: PickEventForYear(events, p.Year)))
+            .Where(x => x.Event is not null)
+            .Select(x => (x.p.Id, x.p.Name, x.p.Year, x.Event!))];
+    }
+
+    public async Task<int> AssignProgramEventIdsAsync(CancellationToken ct = default) =>
+        await repository.AssignEventIdsAsync(
+            (await GetEventIdPlanAsync(ct)).ToDictionary(p => p.ProgramId, p => p.Event.Id), ct);
+
+    /// <summary>The year comes from the event, which a gate-opening change can move to another year.</summary>
+    private static GrantInfo ToInfo(Grant g, GrantProgram p, EventSettingsInfo? evt) => new(
+        g.Id, g.ProgramId, p.Name, p.Entitles, evt?.Year ?? p.Year, g.UserId, g.SourceRef, g.ExpiresOn,
         g.ExpiresOn ?? p.GrantsExpireOn, g.IssuedAt, g.IssuedByUserId, g.NotifiedAt, g.RevokedAt,
         g.RevokedByUserId, g.RevokeReason);
 

@@ -124,6 +124,8 @@ internal sealed class LegacyAuditActions : AuditActionContributor
     // No writer since the EE start date moved to Settings.
     public static readonly AuditActionDefinition CampSettingsEeStartDateChanged = new("CampSettingsEeStartDateChanged");
 
+    public static readonly AuditActionDefinition MedicalConditionsRevealed = new("MedicalConditionsRevealed");
+
     public static readonly AuditActionDefinition VolunteerCampSetupSet = new("VolunteerCampSetupSet");
 
     public static readonly AuditActionDefinition VolunteerCampSetupCleared = new("VolunteerCampSetupCleared");
@@ -390,6 +392,8 @@ internal sealed class LegacyAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition EventGuideExported = new("EventGuideExported");
 
     public static readonly AuditActionDefinition CantinaRosterExported = new("CantinaRosterExported");
+
+    public static readonly AuditActionDefinition CantinaHealthDetailsRevealed = new("CantinaHealthDetailsRevealed");
 
     public static readonly AuditActionDefinition VolunteerTrackingExported = new("VolunteerTrackingExported");
 
