@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -22,7 +23,7 @@ public class ThingsToDoMedicalPromptTests
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly IServiceProvider _services;
-    private readonly SectionThingsToDo _sut = new();
+    private readonly ISectionThingsToDo _sut = new Section();
 
     public ThingsToDoMedicalPromptTests()
     {
@@ -44,7 +45,7 @@ public class ThingsToDoMedicalPromptTests
             .AddSingleton(_shiftView)
             .AddSingleton(_membershipCalculator)
             .AddSingleton(_localizer)
-            .AddSingleton<ILogger<SectionThingsToDo>>(NullLogger<SectionThingsToDo>.Instance)
+            .AddSingleton<ILogger<Section>>(NullLogger<Section>.Instance)
             .BuildServiceProvider();
     }
 

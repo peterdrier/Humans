@@ -4,7 +4,6 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Domain;
 
-/// <summary>Append-only.</summary>
 internal sealed class AuditLogEntry
 {
     public Guid Id { get; init; }

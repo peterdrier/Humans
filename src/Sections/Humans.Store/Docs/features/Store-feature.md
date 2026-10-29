@@ -19,7 +19,7 @@ The Store section lets Camp Leads order infrastructure-as-a-service items from t
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
-Refunds, payouts, and chargebacks remain Stripe-dashboard-manual (per `memory/architecture/refunds-manual-via-dashboard.md`). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment, and a refund issued in Stripe is recorded as a negative `Refund` payment, both by a Store admin.
+Payouts and chargebacks remain Stripe-dashboard-manual, and so do refunds until the guarded refund path ships (`memory/architecture/stripe-money-out.md`, nobodies-collective/Humans#1254). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment, and a refund issued in Stripe is recorded as a negative `Refund` payment, both by a Store admin.
 
 The section invariant doc is [`Store.md`](../Store.md).
 
@@ -195,7 +195,7 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 ## Related Features / Sections
 
 - [`Store.md`](../Store.md) — section invariants (canonical reference)
-- [`memory/architecture/refunds-manual-via-dashboard.md`](../../../../../memory/architecture/refunds-manual-via-dashboard.md) — money-out is dashboard-manual
+- [`memory/architecture/stripe-money-out.md`](../../../../../memory/architecture/stripe-money-out.md) — money-out rules: guarded refunds only, payouts dashboard-manual
 - [`memory/code/stripe-restricted-keys.md`](../../../../../memory/code/stripe-restricted-keys.md) — production keys must be RAKs
 - [`memory/architecture/provenance-fks-not-user-scoped.md`](../../../../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
 - [`Camps.md`](../../../Humans.Camps/Docs/Camps.md) — `CampSeason` is the order's owning aggregate

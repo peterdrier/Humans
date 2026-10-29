@@ -666,10 +666,12 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData("Create", "Budget_Flash_LineCreateFailed")]
-    [InlineData("Update", "Budget_Flash_LineUpdateFailed")]
-    [InlineData("Delete", "Budget_Flash_LineDeleteFailed")]
-    public async Task CoordinatorLineFailure_LogsExceptionWithoutDisplayingItsMessage(string action, string errorKey)
+    [InlineData("Create", "Budget_Flash_LineCreateFailed", false)]
+    [InlineData("Update", "Budget_Flash_LineUpdateFailed", false)]
+    [InlineData("Delete", "Budget_Flash_LineDeleteFailed", false)]
+    [InlineData("Create", "Budget_Flash_LineCreateFailed", true)]
+    [InlineData("Update", "Budget_Flash_LineUpdateFailed", true)]
+    public async Task CoordinatorLineFailure_DisplaysGenericLocalizedMessage(string action, string errorKey, bool refused)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
         var users = Substitute.For<IUserService>();
@@ -684,10 +686,16 @@ public sealed class BudgetServiceTests
             .Returns(AuthorizationResult.Success());
         var failure = new InvalidOperationException("Connection failed: internal-db.example; user=private-service");
         budget.CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId)
-            .Returns(Task.FromException<BudgetLineItemSnapshot>(failure));
+            .Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
         budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId)
-            .Returns(Task.FromException(failure));
+            .Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
         budget.DeleteLineItemAsync(_yearId, viewerId).Returns(Task.FromException(failure));
+        if (refused)
+        {
+            var refusal = new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: "Amount cannot be stored exactly.");
+            budget.CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId).Returns(refusal);
+            budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId).Returns(refusal);
+        }
         var resources = new System.Resources.ResourceManager(typeof(BudgetResource));
         var culture = CultureInfo.GetCultureInfo("en");
         var localizer = Substitute.For<IStringLocalizer<BudgetResource>>();
@@ -719,8 +727,146 @@ public sealed class BudgetServiceTests
         message.Should().Be(resources.GetString(errorKey, culture));
         _ = localizer.Received(1)[errorKey];
         var log = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        log[0].Should().Be(Microsoft.Extensions.Logging.LogLevel.Error);
-        log[3].Should().BeSameAs(failure);
+        log[0].Should().Be(refused ? Microsoft.Extensions.Logging.LogLevel.Warning : Microsoft.Extensions.Logging.LogLevel.Error);
+        if (refused) log[3].Should().BeNull();
+        else log[3].Should().BeSameAs(failure);
+    }
+
+    [HumansTheory]
+    [InlineData(false, "0.001")]
+    [InlineData(true, "-1.005")]
+    [InlineData(false, "10000000000000000")]
+    [InlineData(true, "-10000000000000000")]
+    [InlineData(true, "0.001")]
+    [InlineData(false, "-1.005")]
+    [InlineData(true, "10000000000000000")]
+    [InlineData(false, "-10000000000000000")]
+    public async Task CategoryAmount_RefusesRoundingAndOverflowWithoutWrites(bool update, string rawAmount)
+    {
+        var category = await SeedCategoryAsync();
+        var actor = Guid.NewGuid();
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        var result = update
+            ? await _service.UpdateCategoryAsync(category.Id, "Changed", amount, ExpenditureType.CapEx, actor)
+            : await _service.CreateCategoryAsync(category.BudgetGroupId, "Changed", amount, ExpenditureType.CapEx, null, actor);
+
+        result.Refusal.Should().NotBeNull();
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var persisted = (await ctx.BudgetCategories.ToListAsync(TestContext.Current.CancellationToken)).Should().ContainSingle().Subject;
+        persisted.Name.Should().Be(category.Name);
+        persisted.AllocatedAmount.Should().Be(0m);
+        persisted.ExpenditureType.Should().Be(category.ExpenditureType);
+        (await ctx.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData("0")]
+    [InlineData("-1.2300")]
+    [InlineData("9999999999999999.99")]
+    [InlineData("-9999999999999999.99")]
+    public async Task CategoryAmount_PreservesExactSignedValuesOnCreateAndUpdate(string rawAmount)
+    {
+        var category = await SeedCategoryAsync();
+        var actor = Guid.NewGuid();
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        var result = await _service.CreateCategoryAsync(category.BudgetGroupId, "Created", amount, ExpenditureType.OpEx, null, actor);
+        result.Refusal.Should().BeNull();
+        result.Value!.AllocatedAmount.Should().Be(amount);
+        var updated = await _service.UpdateCategoryAsync(result.Value.Id, "Changed", -amount, ExpenditureType.CapEx, actor);
+        updated.Refusal.Should().BeNull();
+        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var persisted = await ctx.BudgetCategories.SingleAsync(c => c.Id == result.Value.Id, TestContext.Current.CancellationToken);
+        persisted.AllocatedAmount.Should().Be(-amount);
+        persisted.Name.Should().Be("Changed");
+        persisted.ExpenditureType.Should().Be(ExpenditureType.CapEx);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminCategoryAmountRefusal_ShowsErrorWithoutSuccess(bool update)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(true);
+        const string refusal = "Amount cannot be stored exactly.";
+        budget.CreateCategoryAsync(_yearId, "Category", 1.005m, ExpenditureType.OpEx, null, viewerId)
+            .Returns(new BudgetSaveResult<BudgetCategoryDetail>(Refusal: refusal));
+        budget.UpdateCategoryAsync(_yearId, "Category", 1.005m, ExpenditureType.OpEx, viewerId)
+            .Returns(new BudgetSaveResult<BudgetCategoryDetail>(Refusal: refusal));
+        var result = update
+            ? await controller.UpdateCategory(_yearId, "Category", 1.005m, ExpenditureType.OpEx)
+            : await controller.CreateCategory(_yearId, "Category", 1.005m, ExpenditureType.OpEx, null, _yearId);
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(update ? nameof(BudgetAdminController.CategoryDetail) : nameof(BudgetAdminController.YearDetail));
+        redirect.RouteValues!["id"].Should().Be(_yearId);
+        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
+        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(false, "0.001")]
+    [InlineData(true, "-1.005")]
+    [InlineData(false, "10000000000000000")]
+    [InlineData(true, "-10000000000000000")]
+    [InlineData(true, "0.001")]
+    [InlineData(false, "-1.005")]
+    [InlineData(true, "10000000000000000")]
+    [InlineData(false, "-10000000000000000")]
+    public async Task LineAmount_RefusesRoundingAndOverflowWithoutWrites(bool update, string rawAmount)
+    {
+        var category = await SeedCategoryAsync();
+        var actor = Guid.NewGuid();
+        var existing = await _service.CreateLineItemAsync(category.Id, "Original", 10m, null, null, null, 0, actor);
+        await using var before = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var auditCount = await before.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken);
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+
+        var result = update
+            ? await _service.UpdateLineItemAsync(existing.Value!.Id, "Changed", amount, null, null, null, 0, actor)
+            : await _service.CreateLineItemAsync(category.Id, "Changed", amount, null, null, null, 0, actor);
+
+        result.Refusal.Should().NotBeNull();
+        await using var after = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var line = (await after.BudgetLineItems.ToListAsync(TestContext.Current.CancellationToken)).Should().ContainSingle().Subject;
+        line.Description.Should().Be("Original");
+        line.Amount.Should().Be(10m);
+        (await after.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(auditCount);
+    }
+
+    [HumansTheory]
+    [InlineData("0")]
+    [InlineData("-1.2300")]
+    [InlineData("9999999999999999.99")]
+    [InlineData("-9999999999999999.99")]
+    public async Task LineAmount_PreservesExactSignedValuesOnCreateAndUpdate(string rawAmount)
+    {
+        var category = await SeedCategoryAsync();
+        var actor = Guid.NewGuid();
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        var result = await _service.CreateLineItemAsync(category.Id, "Original", amount, null, null, null, 0, actor);
+        result.Refusal.Should().BeNull();
+        result.Value!.Amount.Should().Be(amount);
+        var updated = await _service.UpdateLineItemAsync(result.Value.Id, "Changed", -amount, null, null, null, 0, actor);
+        updated.Refusal.Should().BeNull();
+        (await _service.GetLineItemByIdAsync(result.Value.Id))!.Amount.Should().Be(-amount);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdminLineAmountRefusal_ShowsErrorWithoutSuccess(bool update)
+    {
+        var (controller, budget, viewerId) = CreateAdminController(true);
+        const string refusal = "Amount cannot be stored exactly.";
+        budget.CreateLineItemAsync(_yearId, "Item", 1.005m, null, null, null, 0, viewerId)
+            .Returns(new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: refusal));
+        budget.UpdateLineItemAsync(_yearId, "Item", 1.005m, null, null, null, 0, viewerId)
+            .Returns(new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: refusal));
+        var result = update
+            ? await controller.UpdateLineItem(_yearId, "Item", 1.005m, null, null, null, 0, _yearId)
+            : await controller.CreateLineItem(_yearId, "Item", 1.005m, null, null, null, 0);
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
+        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -753,8 +899,9 @@ public sealed class BudgetServiceTests
         var actor = Guid.NewGuid();
         var before = new string('x', noteLength);
         var after = new string('y', noteLength);
-        var line = await _service.CreateLineItemAsync(category.Id, "Item", 100m,
+        var saved = await _service.CreateLineItemAsync(category.Id, "Item", 100m,
             null, before, null, 0, actor);
+        var line = saved.Value!;
 
         await _service.UpdateLineItemAsync(line.Id, "Item", 100m, null, after, null, 0, actor);
 
@@ -790,7 +937,7 @@ public sealed class BudgetServiceTests
             0,
             Guid.NewGuid());
 
-        var persisted = await _service.GetLineItemByIdAsync(created.Id);
+        var persisted = await _service.GetLineItemByIdAsync(created.Value!.Id);
         persisted.Should().NotBeNull();
         persisted.Description.Should().Be("Test line item");
         persisted.Amount.Should().Be(100m);

@@ -45,7 +45,7 @@ internal static class SurveyResultsBuilder
         OptionCounts = q.OptionCounts,
         Grid = q.Grid,
         RatingDistribution = q.RatingDistribution,
-        RatingAverage = q.RatingAverage is { } avg ? avg.ToString("0.0", CultureInfo.InvariantCulture) : null,
+        RatingAverage = q.RatingAverage is { } avg ? avg.ToString("0.0", CultureInfo.CurrentUICulture) : null,
         FreeTextAnswers = q.FreeTextAnswers,
     };
 

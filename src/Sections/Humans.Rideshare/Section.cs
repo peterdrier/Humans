@@ -1,14 +1,17 @@
-using Humans.Rideshare.Contracts;
+using Humans.Base.Authorization;
+using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models.Tables;
 using Humans.Gdpr.Contracts;
+using Humans.Rideshare.Contracts;
 using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +19,12 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Rideshare;
 
-public sealed class Section : ISection, ISectionRoles
+public sealed class Section :
+    ISection,
+    ISectionRoles,
+    ISectionAdminNav,
+    ISectionNav,
+    ISectionPolicies
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -69,5 +77,24 @@ public sealed class Section : ISection, ISectionRoles
             [InterestStatus.Declined] = "bg-secondary",
             [InterestStatus.Withdrawn] = "bg-dark",
         });
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Rideshare", [
+            new("Settings & stats", "RideshareAdmin", "Index", null, null, "fa-solid fa-car",          PolicyNames.RideshareAdminOrAdmin),
+            new("Day roster",       "RideshareAdmin", "Day",   null, null, "fa-solid fa-calendar-day", PolicyNames.RideshareAdminOrAdmin)
+        ])
+    ];
+
+    IEnumerable<MemberNavItem> ISectionNav.Items() =>
+    [
+        new("Nav_Rideshare", Controller: "Rideshare", Action: "Index", Policy: PolicyNames.AppAccess, Weight: 55)
+    ];
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(PolicyNames.RideshareAdminOrAdmin, policy =>
+            policy.RequireRole(RideshareRoles.RideshareAdmin, RoleNames.Admin));
     }
 }

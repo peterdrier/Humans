@@ -54,7 +54,7 @@ public class AuditViewerServiceTests
         var events = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().BeEmpty();
-        // No name lookups should fire on empty input — short-circuit guard.
+        // Empty input fires no name lookups.
         await contributor.DidNotReceive().ResolveNamesAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }

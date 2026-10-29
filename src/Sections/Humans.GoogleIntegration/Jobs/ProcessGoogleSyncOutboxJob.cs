@@ -5,7 +5,7 @@ using Humans.GoogleIntegration.Contracts;
 namespace Humans.GoogleIntegration.Jobs;
 
 /// <summary>
-/// Scheduler shim around <see cref="IGoogleSyncOutboxProcessor"/>. Public because Section.cs and SectionJobs.cs
+/// Scheduler shim around <see cref="IGoogleSyncOutboxProcessor"/>. Public because Section.cs
 /// name it (HUM0034 allows public job types).
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]

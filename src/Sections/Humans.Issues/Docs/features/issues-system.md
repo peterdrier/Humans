@@ -174,7 +174,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 
 ## Navigation
 
-- **Signed-in user menu:** "Issues" link visible to all authenticated users, contributed via `SectionChrome`'s `ChromeSlots.UserMenu`; nav badge (`IssuesUserMenuViewComponent`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
+- **Signed-in user menu:** "Issues" link visible to all authenticated users, contributed via `ISectionChrome`'s `ChromeSlots.UserMenu`; nav badge (`IssuesUserMenuViewComponent`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
 - **Floating widget:** `Humans.Agent`'s `HelpWidgetViewComponent`, contributed into Shell's `body-end` chrome slot, renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
 - **`/Backdoor`:** allocate, rotate and revoke the keys that open this API.
 

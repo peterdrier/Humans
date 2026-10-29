@@ -461,6 +461,9 @@
   <data name="Error_SomethingWentWrong" xml:space="preserve">
     <value>Algo salió mal</value>
   </data>
+  <data name="Error_CodeAndReference" xml:space="preserve">
+    <value>Error {0} · Referencia {1}</value>
+  </data>
   <data name="Error_TryAgainLater" xml:space="preserve">
     <value>Se ha producido un error al procesar su solicitud. Por favor, inténtelo de nuevo más tarde.</value>
   </data>

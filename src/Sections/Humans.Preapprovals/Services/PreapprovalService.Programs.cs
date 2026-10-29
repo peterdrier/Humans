@@ -141,13 +141,13 @@ internal sealed partial class PreapprovalService
         if (save.Kind == ProgramKind.FixedPerPerson)
         {
             if (save.PerPersonAmount is not { } per) return new(PreapprovalErrorKeys.PerPersonAmountRequired);
-            if (per <= 0) return new(PreapprovalErrorKeys.AmountPositive);
+            if (MoneyRefusal(per) is { } amountRefusal) return amountRefusal;
         }
         else if (save.PerPersonAmount is not null)
         {
             return new(PreapprovalErrorKeys.PerPersonAmountNotAllowed);
         }
-        if (save.TotalCeiling is { } ceiling && ceiling <= 0) return new(PreapprovalErrorKeys.AmountPositive);
+        if (save.TotalCeiling is { } ceiling && MoneyRefusal(ceiling) is { } ceilingRefusal) return ceilingRefusal;
         // The kind decides how every grant is sized; once one exists it cannot change under them.
         if (existing is { Grants.Count: > 0 } && existing.Kind != save.Kind)
             return new(PreapprovalErrorKeys.KindLocked);

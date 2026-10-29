@@ -59,6 +59,7 @@ internal sealed class OfferFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? Restrictions { get; set; }
 
+    [BindRequired]
     public bool WillingToDetour { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]

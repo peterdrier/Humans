@@ -105,8 +105,10 @@ def load_corpus() -> str:
         if p.exists():
             add("SECTION INVARIANT", p)
 
-    for matrix in sorted((REPO_ROOT / "src" / "Sections").glob("*/SectionAccessMatrix.cs")):
-        add("ACCESS MATRIX", matrix)
+    # Access matrices are ISectionAccessMatrix contributions on each section's Section.cs.
+    for section_cs in sorted((REPO_ROOT / "src" / "Sections").glob("*/Section.cs")):
+        if "ISectionAccessMatrix" in section_cs.read_text(encoding="utf-8"):
+            add("ACCESS MATRIX", section_cs)
 
     return "".join(parts)
 

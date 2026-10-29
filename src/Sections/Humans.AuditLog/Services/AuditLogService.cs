@@ -77,7 +77,6 @@ internal sealed class AuditLogService(
         }
         catch (Exception ex)
         {
-            // Best-effort: never break the business operation.
             logger.LogError(ex,
                 "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
                 entry.Id, entry.Action, entry.EntityType, entry.EntityId);
@@ -118,14 +117,8 @@ internal sealed class AuditLogService(
         // the id asked with may itself be an archived one: the read resolves it forward, so
         // the ids are the resolved record's, not the caller's.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        if (allIds.Count == 1)
-        {
-            var entries = await repo.GetByUserAsync(allIds[0], count, ct);
-            return entries.Select(ToSnapshot).ToList();
-        }
-
-        var mergedEntries = await repo.GetByUserIdsAsync(allIds, count, ct);
-        return mergedEntries.Select(ToSnapshot).ToList();
+        var entries = await repo.GetByUserIdsAsync(allIds, count, ct);
+        return entries.Select(ToSnapshot).ToList();
     }
 
     /// <inheritdoc />
@@ -137,8 +130,6 @@ internal sealed class AuditLogService(
         int limit = 20,
         CancellationToken ct = default)
     {
-        // Rows attributed to an account merged into this one belong to the same human; the
-        // id list is the resolved record's, as in GetByUserAsync.
         IReadOnlyCollection<Guid>? userIds = null;
         if (userId.HasValue)
         {
@@ -151,26 +142,15 @@ internal sealed class AuditLogService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Rows attributed to an account merged into this one belong to the same human; the
-        // id list is the resolved record's, as in GetByUserAsync.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        IReadOnlyList<AuditLogEntry> entries;
-        if (allIds.Count == 1)
-        {
-            entries = await repo.GetAllForUserContributorAsync(allIds[0], ct);
-        }
-        else
-        {
-            entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
-        }
+        var entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
 
-        // Post-merge: source rows surface as Subject for the target (actor context anonymized via AnonymizeForMergeAsync).
         var shaped = entries.Select(a => new
         {
             a.Action,
             a.EntityType,
             OccurredAt = a.OccurredAt.ToIso8601(),
-            Role = a.ActorUserId == userId ? "Actor" : "Subject"
+            Role = a.ActorUserId is { } actor && allIds.Contains(actor) ? "Actor" : "Subject"
         }).ToList();
 
         return [new UserDataSlice(AuditLog, shaped)];

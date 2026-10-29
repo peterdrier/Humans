@@ -18,18 +18,14 @@ internal sealed class StoreWebhookRegistrationService(
     ILogger<StoreWebhookRegistrationService> logger) : IHostedService
 {
     private static readonly TimeSpan RegistrationTimeout = TimeSpan.FromSeconds(15);
-    private const string EventCheckoutSessionCompleted = "checkout.session.completed";
-    private const string EventCheckoutSessionAsyncPaymentSucceeded = "checkout.session.async_payment_succeeded";
-    private const string EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
-    private const string EventCheckoutSessionExpired = "checkout.session.expired";
 
     // Must match the event list on the dashboard-configured QA/prod webhook.
     private static readonly IReadOnlyList<string> SubscribedEvents =
     [
-        EventCheckoutSessionCompleted,
-        EventCheckoutSessionAsyncPaymentSucceeded,
-        EventCheckoutSessionAsyncPaymentFailed,
-        EventCheckoutSessionExpired,
+        EventTypes.CheckoutSessionCompleted,
+        EventTypes.CheckoutSessionAsyncPaymentSucceeded,
+        EventTypes.CheckoutSessionAsyncPaymentFailed,
+        EventTypes.CheckoutSessionExpired,
     ];
     private const string WebhookPath = "/Store/StripeWebhook";
     private const string OwnedHostSuffix = ".n.burn.camp";
@@ -55,7 +51,7 @@ internal sealed class StoreWebhookRegistrationService(
             return;
         }
 
-        var baseUrl = ResolveBaseUrl();
+        var baseUrl = configuration["Email:BaseUrl"];
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
             logger.LogWarning(
@@ -243,7 +239,4 @@ internal sealed class StoreWebhookRegistrationService(
         }).WaitAsync(ct);
         return prs.Select(p => p.Number).ToHashSet();
     }
-
-    /// <summary>Email:BaseUrl is already set per environment.</summary>
-    private string? ResolveBaseUrl() => configuration["Email:BaseUrl"];
 }

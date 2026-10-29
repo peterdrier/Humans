@@ -1,21 +1,23 @@
+using Humans.Base.Authorization;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
-using Humans.Gdpr.Contracts;
+using Humans.Base.Models.Tables;
 using Humans.Campaigns.Contracts;
-using Humans.Email.Contracts;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services;
-using Humans.Base.Hosting;
-using Humans.Base.Models.Tables;
+using Humans.Campaigns.ViewComponents;
+using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Users.Contracts;
 
 namespace Humans.Campaigns;
 
 /// <summary>No caching decorator: the admin pages are the only readers and they are not hot.</summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav, IUserPart
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -41,4 +43,17 @@ public sealed class Section : ISection
             [CampaignStatus.Completed] = "bg-info",
         });
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Campaigns", [
+            new("Campaigns", "Campaign", "Index", null, null, "fa-solid fa-bullhorn", PolicyNames.AdminOnly)
+        ])
+    ];
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.Profile, typeof(MyCodesViewComponent), Weight: 100),
+        new(UserPartSlots.AdminDetail, typeof(CampaignCodesViewComponent), Weight: 100),
+    ];
 }

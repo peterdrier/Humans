@@ -204,13 +204,13 @@ internal sealed class IssuesService(
     public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(id, ct);
-        return issue is null || !CanSee(issue, viewer) ? null : MapDetail(issue);
+        return issue is null || !await CanSeeAsync(issue, viewer, ct) ? null : MapDetail(issue);
     }
 
     public async Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(id, ct);
-        if (issue is null || !CanSee(issue, viewer) || issue.ScreenshotStoragePath is not { } key)
+        if (issue is null || !await CanSeeAsync(issue, viewer, ct) || issue.ScreenshotStoragePath is not { } key)
             return null;
 
         var content = await fileStorage.TryReadAsync(key, ct);
@@ -221,8 +221,14 @@ internal sealed class IssuesService(
         routing.CanHandle(issue.Section, viewer.Roles);
 
     /// <summary>The same test the queue applies row by row: a handler, or the reporter.</summary>
-    private bool CanSee(Issue issue, IssueViewer viewer) =>
-        CanHandle(issue, viewer) || issue.ReporterUserId == viewer.UserId;
+    private async Task<bool> CanSeeAsync(Issue issue, IssueViewer viewer, CancellationToken ct) =>
+        CanHandle(issue, viewer) || await IsReporterAsync(issue.ReporterUserId, viewer.UserId, ct);
+
+    private async Task<IReadOnlyList<Guid>> UserIdsAsync(Guid userId, CancellationToken ct) =>
+        (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+
+    private async Task<bool> IsReporterAsync(Guid reporterId, Guid userId, CancellationToken ct) =>
+        reporterId == userId || (await UserIdsAsync(userId, ct)).Contains(reporterId);
 
     /// <summary>
     /// Out of reach and gone are the same answer, so an id cannot probe for issues the caller's queue would never list.
@@ -262,15 +268,19 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         IReadOnlySet<string>? sectionFilter = null;
-        Guid? reporterFallback = null;
+        IReadOnlyCollection<Guid>? reporterFallback = null;
 
         if (!viewer.IsAdmin)
         {
             sectionFilter = routing.SectionsForRoles(viewer.Roles);
-            reporterFallback = viewer.UserId;
+            reporterFallback = await UserIdsAsync(viewer.UserId, ct);
         }
 
-        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, ct);
+        var reporterFilter = filter.ReporterUserId is { } reporterId
+            ? await UserIdsAsync(reporterId, ct) : null;
+        var assigneeFilter = filter.AssigneeUserId is { } assigneeId
+            ? await UserIdsAsync(assigneeId, ct) : null;
+        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, reporterFilter, assigneeFilter, ct);
         return await BuildListSnapshotsAsync(issues, ct);
     }
 
@@ -319,7 +329,7 @@ internal sealed class IssuesService(
         Guid issueId, IssueViewer viewer, CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(issueId, ct);
-        if (issue is null || !CanSee(issue, viewer))
+        if (issue is null || !await CanSeeAsync(issue, viewer, ct))
             throw new InvalidOperationException($"Issue {issueId} not found");
 
         // IssueCreated is written only by the machine path, where filer and reporter can differ, so it is the one
@@ -349,6 +359,7 @@ internal sealed class IssuesService(
             ? new Dictionary<Guid, UserInfo>()
             : await users.GetUserInfosAsync(actorIds, ct);
 
+        var reporterIds = await UserIdsAsync(issue.ReporterUserId, ct);
         var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
             c.Id,
             c.CreatedAt,
@@ -356,7 +367,7 @@ internal sealed class IssuesService(
             c.SenderUserId.HasValue && actorUsers.TryGetValue(c.SenderUserId.Value, out var sender)
                 ? sender.BurnerName
                 : null,
-            ActorIsReporter: c.SenderUserId.HasValue && c.SenderUserId == issue.ReporterUserId,
+            ActorIsReporter: c.SenderUserId is { } senderId && reporterIds.Contains(senderId),
             c.Content));
 
         var auditEvents = auditEntries.Select(a => (IssueThreadEvent)new IssueAuditEvent(
@@ -383,7 +394,7 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         var issue = await repo.FindForMutationAsync(issueId, ct);
-        if (issue is null || !CanSee(issue, viewer))
+        if (issue is null || !await CanSeeAsync(issue, viewer, ct))
         {
             logger.LogWarning("Issue {IssueId} not found during PostComment", issueId);
             return new IssueCommentResult(null, NotFound: true);
@@ -393,7 +404,8 @@ internal sealed class IssuesService(
         // handler's move, so the flag is dropped rather than refused.
         var viewerCanHandle = CanHandle(issue, viewer);
 
-        var senderIsReporter = senderUserId is not null && senderUserId == issue.ReporterUserId;
+        var senderIsReporter = senderUserId is { } senderId
+            && await IsReporterAsync(issue.ReporterUserId, senderId, ct);
 
         var now = clock.GetCurrentInstant();
         var comment = new IssueComment
@@ -672,10 +684,10 @@ internal sealed class IssuesService(
         }
     }
 
-    public Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
+    public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
         viewer.IsAdmin
-            ? repo.CountActionableAsync(null, null, ct)
-            : repo.CountActionableAsync(routing.SectionsForRoles(viewer.Roles), viewer.UserId, ct);
+            ? await repo.CountActionableAsync(null, null, ct)
+            : await repo.CountActionableAsync(routing.SectionsForRoles(viewer.Roles), await UserIdsAsync(viewer.UserId, ct), ct);
 
     public async Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(
         CancellationToken ct = default)
@@ -712,8 +724,7 @@ internal sealed class IssuesService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var user = await users.GetUserInfoAsync(userId, ct);
-        var userIds = (user?.AllUserIds ?? [userId]).ToHashSet();
+        var userIds = (await UserIdsAsync(userId, ct)).ToHashSet();
         var issues = new List<Issue>();
         foreach (var id in userIds)
             issues.AddRange(await repo.GetForUserExportAsync(id, ct));

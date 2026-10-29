@@ -110,4 +110,6 @@
   <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Pre-approval deadline changed: file by {1} for {0}</value></data>
   <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;The claim deadline of your pre-approval under &lt;strong&gt;{1}&lt;/strong&gt; moved.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Up to:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;New deadline:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;See your pre-approvals&lt;/a&gt;.&lt;/p&gt;</value></data>
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
+  <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Amounts must have at most two decimal places.</value></data>
+  <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>The amount is too large.</value></data>
 </root>

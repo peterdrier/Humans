@@ -38,7 +38,7 @@ public class ShiftUrgencyTests
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             new ShiftViewProbe().Cache,
-            new EventCalendarResolver(Substitute.For<ISettingsService>()),
+            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             new FakeClock(TestNow),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
     }

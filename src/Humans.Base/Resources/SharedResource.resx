@@ -257,6 +257,7 @@
   <data name="Error_Oops" xml:space="preserve"><value>Oops!</value></data>
   <data name="Error_SomethingWentWrong" xml:space="preserve"><value>Something went wrong</value></data>
   <data name="Error_TryAgainLater" xml:space="preserve"><value>An error occurred while processing your request. Please try again later.</value></data>
+  <data name="Error_CodeAndReference" xml:space="preserve"><value>Error {0} · Reference {1}</value></data>
   <data name="Error404_Title" xml:space="preserve"><value>Page Not Found</value></data>
   <data name="Error404_Description" xml:space="preserve"><value>The page you're looking for doesn't exist or has been moved.</value></data>
 

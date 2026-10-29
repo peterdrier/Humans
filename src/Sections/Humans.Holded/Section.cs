@@ -1,9 +1,11 @@
 using System.Globalization;
+using Humans.Base.Authorization;
+using Humans.Base.Configuration;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Jobs;
-using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -12,7 +14,7 @@ namespace Humans.Holded;
 
 /// <summary>No GDPR contributor: no table is user-scoped. The member-to-creditor binding is Finance's, and Finance
 /// exports it.</summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -53,5 +55,25 @@ public sealed class Section : ISection
         services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Holded", [
+            new("Holded", "Holded", "Index", null, null, "fa-solid fa-book", PolicyNames.FinanceAdminOrAdmin)
+        ])
+    ];
+
+    void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
+    {
+        configuration.GetOptionalSetting(registry, "Holded:BaseUrl", "Holded");
+        registry.RegisterEnvironmentVariable("HOLDED_API_KEY_V2", "Holded", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+    }
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "holded-sync", typeof(HoldedSyncJob), "0 3 * * *");
     }
 }

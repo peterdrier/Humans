@@ -1,5 +1,7 @@
-using Humans.Base.Hosting;
+using System.Globalization;
+using System.Security.Claims;
 using Humans.Base.Authorization;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models.Tables;
@@ -14,14 +16,24 @@ using Humans.Workgroups.Domain;
 using Humans.Workgroups.Jobs;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Services.Contributors;
+using Humans.Workgroups.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
+using NodaTime;
 
 namespace Humans.Workgroups;
 
-public sealed class Section : ISection, ISectionAdminNav
+public sealed class Section :
+    ISection,
+    ISectionAdminNav,
+    ISectionAdminTiles,
+    ISectionChrome,
+    ISectionJobs,
+    ISectionMemberDashboard,
+    ISectionThingsToDo
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
@@ -79,5 +91,89 @@ public sealed class Section : ISection, ISectionAdminNav
             [WorkgroupCommentDisposition.Incorporated] = "bg-success",
             [WorkgroupCommentDisposition.Noted] = "bg-info text-dark",
         });
+    }
+
+    IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
+    [
+        new AdminTile("workgroups.queue", "Workgroups", "fa-solid fa-people-group", QueueAsync,
+            Controller: "WorkgroupsAdmin", Action: "Index",
+            Policy: PolicyNames.BoardOrAdmin, Weight: 55)
+    ];
+
+    private static async ValueTask<AdminTileValue?> QueueAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var register = await sp.GetRequiredService<IWorkgroupService>().GetRegisterAsync(ct);
+        var now = sp.GetRequiredService<IClock>().GetCurrentInstant();
+
+        var pending = register.Count(w => w.Status is WorkgroupStatus.Applied or WorkgroupStatus.Referred);
+        var awaiting = register.Sum(w => w.AwaitingDisposition().Count());
+        var overdue = register.Count(w => w.IsRegistrationOverdue(now)) + register.Count(w => w.HasOverdueDisposition(now));
+
+        // Nothing waiting on a human: the tile disappears rather than reading zero.
+        if (pending == 0 && awaiting == 0)
+            return null;
+
+        return new AdminTileValue(
+            pending.ToString(CultureInfo.CurrentCulture),
+            Detail: awaiting == 0 ? null : $"{awaiting} awaiting a disposition",
+            Severity: overdue > 0 ? TileSeverity.Warning : TileSeverity.Normal,
+            Summary: $"{pending} working groups waiting on the Secretary");
+    }
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new ChromeComponent(ChromeSlots.GovernanceDashboard, typeof(GovernanceWorkgroupsViewComponent), Weight: 20)];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            WorkgroupRhythmJob.JobId, typeof(WorkgroupRhythmJob), "0 6 * * *");
+    }
+
+    IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
+        [new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MyWorkgroupsViewComponent), Weight: 35)];
+
+    async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            return [];
+
+        var now = services.GetRequiredService<IClock>().GetCurrentInstant();
+        var mine = await services.GetRequiredService<IWorkgroupService>().GetForMemberAsync(userId, ct);
+        var coordinated = mine.Where(w => w.CoordinatorUserIds().Contains(userId)).ToList();
+        if (coordinated.Count == 0)
+            return [];
+
+        var localizer = services.GetRequiredService<IStringLocalizer<WorkgroupsResource>>();
+        var entries = new List<ThingsToDoEntry>();
+
+        foreach (var workgroup in coordinated.Where(w => w.PendingMembers().Any()))
+        {
+            entries.Add(new ThingsToDoEntry($"workgroup-requests-{workgroup.Id}",
+                localizer["Workgroups_Todo_MembershipRequests_Title"].Value,
+                "fa-solid fa-user-plus",
+                RawHref: $"/Workgroups/{workgroup.Slug}", Weight: 40)
+            {
+                Description = string.Format(CultureInfo.CurrentCulture,
+                    localizer["Workgroups_Todo_MembershipRequests_Description"].Value,
+                    workgroup.Name, workgroup.PendingMembers().Count()),
+                ActionText = localizer["Workgroups_Todo_MembershipRequests_Action"].Value,
+            });
+        }
+
+        foreach (var workgroup in coordinated.Where(w => w.IsUpdateDue(now)))
+        {
+            entries.Add(new ThingsToDoEntry($"workgroup-update-{workgroup.Id}",
+                localizer["Workgroups_Todo_UpdateDue_Title"].Value,
+                "fa-solid fa-people-group",
+                RawHref: $"/Workgroups/{workgroup.Slug}", Weight: 45)
+            {
+                Description = string.Format(CultureInfo.CurrentCulture,
+                    localizer["Workgroups_Todo_UpdateDue_Description"].Value, workgroup.Name),
+                ActionText = localizer["Workgroups_Todo_UpdateDue_Action"].Value,
+            });
+        }
+
+        return entries;
     }
 }

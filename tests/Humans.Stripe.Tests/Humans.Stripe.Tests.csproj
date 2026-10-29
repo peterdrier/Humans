@@ -8,14 +8,12 @@
   <ItemGroup>
     <!--
       The signature tests sign a payload by hand and feed it to Stripe.NET's EventUtility, so
-      this project names the SDK directly. It is the only test project that may
-      (docs/sections/G5-SECTION-TEMPLATE.md step 8).
+      this project names the SDK directly. It is the only test project that may.
     -->
     <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The connector builds a StripeService over IOptions and an ILogger. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
