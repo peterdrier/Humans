@@ -46,7 +46,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/api/data-migrations` | GET | Anonymous | Data-migration progress JSON — keys, pending counts, done flags; never row data |
 | `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
 | `/Debug/Sections` | GET | Admin | The DI-published section catalog: every discovered section with its tables, contracts, resx set, seams, dependencies, and which of guide page / agent doc key / issue queue it has |
-| `/Debug/WidgetGallery` | GET | Admin | Catalog of every reusable widget rendered against sample data and live keys |
+| `/Debug/WidgetGallery` | GET | Board, Admin | Catalog of every reusable widget rendered against sample data and live keys |
 | `/ColorPalette` | GET | Anonymous | Static design reference: colour tokens, controls, typography |
 
 ## Actors & Roles
