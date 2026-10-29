@@ -35,8 +35,13 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - An **Interest** (`RideshareInterest`) is the "I'm interested" / "I can take you" action. It
   always anchors to the `Trip` whose seat it would consume, and optionally records the
   `Request` it answered. It carries a status and fires a notification; it is never a booking.
-- **Settings** (`RideshareSettings`) is a per-year singleton: the burn destination point and the
+- **Settings** (`RideshareSettings`) is a per-event singleton: the burn destination point and the
   inbound/outbound travel windows.
+- **Event scope.** Every settings row, trip and request belongs to an event (`EventSettingsId`); the
+  board, Mine and admin pages show the active event's. A row without an event id (from before events
+  were tracked) belongs to the earliest non-deleted event of its `Year` by gate opening, which is the
+  event the `rideshare.event-ids` data migration (on `/Debug/DataMigrations`) stamps on it. With no
+  active event the pages show "not set up" and posting is refused.
 - **SeatsRemaining** is derived, never stored: `SeatsOffered − Σ(Seats of Accepted interests on
   the trip)`. A trip `IsFull` when this is `≤ 0`.
 - **Matched** (on a request) is derived: an `Accepted` interest exists either authored by the
@@ -55,7 +60,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 |----------|------|-------|
 | Id | Guid | PK |
 | UserId | Guid | index; bare FK (driver) — no navigation |
-| Year | int | index; the active burn year at creation |
+| Year | int | index; the event's year at creation |
+| EventSettingsId | Guid? | index; the event; null until `rideshare.event-ids` stamps a legacy row |
 | Direction | RideshareDirection | string(50) |
 | MemberPlaceLabel | string | max 256, required |
 | MemberLatitude | double | required |
@@ -78,7 +84,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | CreatedAt | Instant | required |
 | UpdatedAt | Instant | required |
 
-**Indexes / constraints:** non-unique on `UserId` and `Year`; no database FK to users.
+**Indexes / constraints:** non-unique on `UserId`, `Year` and `EventSettingsId`; no database FK to users.
 
 **Derived (not stored):** `SeatsRemaining`, `IsFull`, `LastTravelDate`, `IsJoinable`.
 
@@ -91,6 +97,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Id | Guid | PK |
 | UserId | Guid | index; bare FK (rider) — no navigation |
 | Year | int | index |
+| EventSettingsId | Guid? | index; as on trips |
 | Direction | RideshareDirection | string(50) |
 | PickupPlaceLabel | string | max 256, required |
 | PickupLatitude | double | required |
@@ -104,7 +111,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | CreatedAt | Instant | required |
 | UpdatedAt | Instant | required |
 
-**Indexes / constraints:** non-unique on `UserId` and `Year`; no database FK to users.
+**Indexes / constraints:** non-unique on `UserId`, `Year` and `EventSettingsId`; no database FK to users.
 
 **Derived (not stored):** `IsMatched`.
 
@@ -135,7 +142,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| Year | int | indexed; one row per year is a repository upsert rule, not a constraint |
+| Year | int | indexed; the event's year |
+| EventSettingsId | Guid? | indexed; one row per event is a repository rule, not a constraint |
 | DestinationLabel | string | max 200, required |
 | DestinationLatitude | double | required |
 | DestinationLongitude | double | required |
@@ -145,7 +153,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | OutboundWindowEnd | LocalDate | required |
 | UpdatedAt | Instant | required |
 
-**Indexes / constraints:** non-unique on `Year`; one row per year is the repository upsert rule, not a constraint.
+**Indexes / constraints:** non-unique on `Year` and `EventSettingsId`; one row per event is the repository rule, not a constraint. Saving an event's settings stamps its year's legacy row rather than adding a second one.
 
 ### RideshareDirection
 
@@ -214,7 +222,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | `/Rideshare/Mine` | GET | `AppAccess` | Own offers, requests, and interests received/sent |
 | `/Rideshare/Interest` | POST | `AppAccess` | Express interest in a trip, optionally answering a request's pin |
 | `/Rideshare/Interest/{id}/Accept`, `/Decline`, `/Withdraw` | POST | `AppAccess` | Interest lifecycle transitions |
-| `/Rideshare/Admin` | GET/POST | `RideshareAdminOrAdmin` | Set the year's destination + travel windows; season statistics |
+| `/Rideshare/Admin` | GET/POST | `RideshareAdminOrAdmin` | Set the active event's destination + travel windows; season statistics |
 | `/Rideshare/Admin/Day?date=` | GET | `RideshareAdminOrAdmin` | Operational day roster: every trip happening that day, any status, with its accepted riders |
 | `/api/rideshare/board?date=&direction=` | GET | `AppAccess` | GeoJSON FeatureCollection of joinable trips, active requests, and the destination |
 
@@ -223,7 +231,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Actor | Capabilities |
 |-------|--------------|
 | Any active human | Browse the board; post/edit/cancel own offers and requests; express interest in a trip (optionally answering a request's pin); accept/decline/withdraw interests on own postings; view own offers/requests/interests on `Mine` |
-| RideshareAdmin | Set the year's destination and travel windows; view season statistics; view the operational day roster (every trip happening on a date, including full and cancelled, with its accepted rider roster). Board-grantable; confers nothing outside Rideshare |
+| RideshareAdmin | Set the active event's destination and travel windows; view season statistics; view the operational day roster (every trip happening on a date, including full and cancelled, with its accepted rider roster). Board-grantable; confers nothing outside Rideshare |
 | Admin | Everything RideshareAdmin can do (Admin is always a superset) |
 
 ## Invariants
@@ -233,7 +241,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
 - **Map popup dates follow the UI culture.** GeoJSON retains ISO departure/desired dates and provides display labels from the same formatter as the list; popups escape and render those labels.
 - **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
-- **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or year) and the reason or rule key, never the exception.
+- **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or event) and the reason or rule key, never the exception.
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
 - **Members-only board.** Every route requires `AppAccess` or `RideshareAdminOrAdmin`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
@@ -275,7 +283,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 ## Triggers
 
 - When an offer is created: the member point (or pickup) is geocoded, a route is computed once
-  through the year's destination and stored as `RouteGeoJson`, and a second, inverse-direction
+  through the event's destination and stored as `RouteGeoJson`, and a second, inverse-direction
   offer is auto-seeded (same driver/vehicle/seats/luggage/cost fields, waypoints reversed,
   `LinkedTripId` set on both rows).
 - When an offer is edited and the member point, waypoints, or direction changed, or no route was
@@ -303,8 +311,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   then drops interests the fold made self-interest (rider on their own trip, driver answering
   their own request) and duplicate pending interests on one trip/request (earliest wins).
   Idempotent; the decorator clears the snapshot cache afterwards.
-- **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active year settings anchor to
-  (`GetActiveYearAsync` falls back to the clock's UTC year when no active burn is set).
+- **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active event everything anchors to;
+  `GetAllEventSettingsAsync()` — names events and maps a legacy row's year to its event.
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
   notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
@@ -332,12 +340,12 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - `RideshareService` lives in `src/Sections/Humans.Rideshare/Services/` and never imports `Microsoft.EntityFrameworkCore`.
 - `IRideshareRepository` (impl `RideshareRepository`, `IDbContextFactory<RideshareDbContext>`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision** — caching decorator (`CachingRideshareService`, Singleton). One
-  `TrackedCache<int, RideshareSnapshot>` inherited by the decorator, keyed `"Rideshare.Snapshot"` (per year, `warmOnStartup: false`);
+  `TrackedCache<Guid, RideshareSnapshot>` inherited by the decorator, keyed `"Rideshare.Snapshot"` (per event, `warmOnStartup: false`; the no-event snapshot is not cached);
   its guarded loader prevents reads begun before a clear from repopulating stale snapshots.
   Every write delegates to the inner service, then the cache is cleared in full even if the
   inner call throws or is cancelled (a write may have committed before a later failure).
-  This includes GDPR erasure and account merge; the original failure still propagates. A year-graph
-  cache at this scale, cleared on any write, is acceptable rather than tracking per-year
+  This includes GDPR erasure and account merge; the original failure still propagates. An event-graph
+  cache at this scale, cleared on any write, is acceptable rather than tracking per-event
   invalidation keys.
 - **Display stitching** — cross-section display data resolves through `IUserService.GetUserInfosAsync`.
 - **Cross-section calls** — `IUserService`, `ISettingsService`, `INotificationEmitter`, `IAuditLogService`, `IClock` (NodaTime).

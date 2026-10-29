@@ -38,5 +38,6 @@ internal sealed class RideshareTripConfiguration : IEntityTypeConfiguration<Ride
 
         builder.HasIndex(t => t.UserId);
         builder.HasIndex(t => t.Year);
+        builder.HasIndex(t => t.EventSettingsId);
     }
 }

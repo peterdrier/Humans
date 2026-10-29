@@ -29,5 +29,6 @@ internal sealed class RideshareRequestConfiguration : IEntityTypeConfiguration<R
 
         builder.HasIndex(r => r.UserId);
         builder.HasIndex(r => r.Year);
+        builder.HasIndex(r => r.EventSettingsId);
     }
 }

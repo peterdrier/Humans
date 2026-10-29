@@ -9,9 +9,9 @@ Folder: `src/Sections/Humans.Rideshare/Services/` (namespace `Humans.Rideshare.S
 Owns `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings`.
 
 The inner `IRideshareService` is wrapped by `Humans.Rideshare.Services.CachingRideshareService`
-(Singleton decorator). It owns one `TrackedCache<int, RideshareSnapshot>`
-(`Rideshare.Snapshot`), keyed by year. Writes delegate to the inner service, then the whole
-cache is cleared (no per-year invalidation tracking — acceptable at this scale).
+(Singleton decorator). It owns one `TrackedCache<Guid, RideshareSnapshot>`
+(`Rideshare.Snapshot`), keyed by event id. Writes delegate to the inner service, then the whole
+cache is cleared (no per-event invalidation tracking — acceptable at this scale).
 
 ### RideshareService (Scoped, keyed `"rideshare-inner"` — inner of CachingRideshareService)
 
@@ -32,10 +32,10 @@ Cross-section calls: `IUserService`, `ISettingsService`, `INotificationEmitter`,
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<int, RideshareSnapshot>` (`Rideshare.Snapshot`) | Per-Year | yes | yes | yes (full `Clear()` after every delegated write) |
+| `TrackedCache<Guid, RideshareSnapshot>` (`Rideshare.Snapshot`) | Per-Event | yes | yes | yes (full `Clear()` after every delegated write) |
 
 Implements `IRideshareService`, `IUserDataContributor` and `IUserMerge` (both delegate to the
 inner service, then clear the cache), and exposes `ICacheStats SnapshotCacheStats`. No warmup —
-`warmOnStartup: false`; `GetSnapshotAsync(year)` populates lazily on miss.
+`warmOnStartup: false`; `GetSnapshotAsync(eventSettingsId)` populates lazily on miss.
 
 ---

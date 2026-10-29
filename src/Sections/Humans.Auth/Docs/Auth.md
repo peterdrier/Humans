@@ -110,7 +110,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 | CantinaAdmin | Cantina | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
 | ConsentCoordinator | Consent | Safety gate for onboarding consent checks |
 | ShiftsAdmin | Shifts (was `VolunteerCoordinator`) | Facilitation contact for onboarding; read-only access to onboarding review queue |
-| RideshareAdmin | Rideshare | Rideshare settings (year's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
+| RideshareAdmin | Rideshare | Rideshare settings (event's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
 | EarlyEntryAdmin | EarlyEntry (was `EETeamAdmin`) | Cross-team Early-Entry administrator — can grant/edit/revoke early-entry grants on ANY team that has `EarlyEntryEnabled`. Confers nothing else. Coordinators manage EE on their own team without this role |
 
 **Former names.** The six renamed roles carry their old name in `FormerNames`. Rows stored under a former name keep working: every read goes through `RoleCatalog.StoredNames`/`Canonical`, so claims, filters, counts and the GDPR export report the current name, and a new assignment under the current name is refused while an active row exists under the former one. The operator-run data migration `auth.role-renames` (`/Debug/DataMigrations`) rewrites those rows once and is idempotent.
