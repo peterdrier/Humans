@@ -8,3 +8,6 @@
 @* authorize-policy on the refresh form is Humans.Base's AuthorizeViewTagHelper: a section can
    only addTagHelper against Humans.Base, and a Shell-resident helper would render inert. *@
 @addTagHelper *, Humans.Base
+
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<GuideResource> Localizer
