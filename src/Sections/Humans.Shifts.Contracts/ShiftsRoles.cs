@@ -16,8 +16,8 @@ public static class ShiftsRoles
     public const string ShiftsAdmin = "ShiftsAdmin";
 
     /// <summary>
-    /// Shifts NoInfo: approves and voluntells shift signups but does not create or edit shifts; sees volunteer
-    /// event-profile medical data. Stored as <c>NoInfoAdmin</c> before 2026-10.
+    /// Shifts NoInfo: approves and voluntells shift signups but does not create or edit shifts; may reveal volunteer
+    /// medical data. Stored as <c>NoInfoAdmin</c> before 2026-10.
     /// </summary>
     public const string ShiftsNoInfo = "ShiftsNoInfo";
 
@@ -27,8 +27,9 @@ public static class ShiftsRoles
     public static bool CanManageDepartment(ClaimsPrincipal user) =>
         IsPrivilegedSignupApprover(user) || user.IsInRole(ShiftsAdmin);
 
+    /// <summary>Who may open a member's medical conditions through the audited reveal; mirrors <c>MedicalDataViewer</c>.</summary>
     public static bool CanViewMedical(ClaimsPrincipal user) =>
-        IsPrivilegedSignupApprover(user);
+        IsPrivilegedSignupApprover(user) || RoleChecks.IsBoard(user);
 
     /// <summary>Admin or Shifts Admin; deliberately excludes Shifts NoInfo, who approves signups but manages no rotas.</summary>
     public static bool IsVolunteerManager(ClaimsPrincipal user) =>

@@ -1,4 +1,6 @@
 using Humans.Email.Contracts;
+using Humans.Notifications.Contracts;
+using Humans.Notifications.Services;
 using Humans.Users.Contracts;
 using NSubstitute;
 
@@ -60,4 +62,17 @@ internal static class NotificationTestFixtures
     /// <summary>Minimal <see cref="UserInfo"/> projection — the meter tests only read counts.</summary>
     internal static UserInfo ToUserInfo(this User user) =>
         UserInfo.Create(user, [], [], [], profile: null, []);
+}
+
+/// <summary>Sources these tests own: the section's tests never borrow another section's definitions.</summary>
+internal sealed class TestSources : NotificationSourceContributor
+{
+    public static readonly NotificationSourceDefinition TeamUpdate = new("TestTeamUpdate", MessageCategory.TeamUpdates);
+    public static readonly NotificationSourceDefinition ShiftUpdate = new("TestShiftUpdate", MessageCategory.VolunteerUpdates, NotificationInboxGroup.Shifts);
+    public static readonly NotificationSourceDefinition Approval = new("TestApproval", MessageCategory.Governance, NotificationInboxGroup.Approvals);
+    public static readonly NotificationSourceDefinition Plain = new("TestPlain", MessageCategory.System);
+    public static readonly NotificationSourceDefinition Retired = new("TestRetired", MessageCategory.Governance, NotificationInboxGroup.Approvals, Retired: true);
+    public static readonly NotificationSourceDefinition RetiredToo = new("TestRetiredToo", MessageCategory.System, Retired: true);
+
+    public static NotificationSourceRegistry Registry => new([new TestSources()]);
 }

@@ -75,6 +75,7 @@ The member history page uses localized labels, including the link to each transc
 |---|---|
 | Authenticated human | Send messages, read own history at `/Agent/Conversations`, drill into a single transcript at `/Agent/Conversation/{id}` (issue nobodies-collective/Humans#632 — own conversations only; cross-user → 404) |
 | Admin | View operational status at `/Agent/Admin/Status` (usage / spend / refusals / top docs / top users / retention job / Anthropic balance), configure settings at `/Settings#agent` (peterdrier/Humans#1634), view all conversations at `/Agent/Conversations` (Human column + filters, Older/Newer paging), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
+| Board | Everything Admin reads (status, all conversations, diagnostic view, prompt preview) and nothing Admin changes: `/Agent/Admin` is `BoardOrAdmin`, settings save and knowledge-base reload are `AdminOnly` |
 | Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
 ## Invariants
@@ -125,6 +126,7 @@ Conversation list and transcript GETs propagate request cancellation through vie
 ## Negative Access Rules
 
 - Non-authenticated users never see the widget and always receive 401/403 from endpoints.
+- A Board member **cannot** change agent settings or reload the knowledge base; the reload form is hidden behind `authorize-policy="AdminOnly"` and the POSTs refuse.
 - Withdrawal of use: there is no in-app revoke button; users who want their conversation history deleted contact the Board via the email in the Terms.
 - A purged conversation (retention job, or GDPR erasure of the user) is gone from member, admin, and Backdoor views alike — there is no archive.
 

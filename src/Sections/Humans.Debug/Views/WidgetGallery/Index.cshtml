@@ -314,18 +314,19 @@
                     @ParamsBlock(
                         ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina, medical from Profile)")
                     )
-                    @AuthLine("<code>ShowMedical=true</code> only when the viewer is allowed to see medical info — gate at the call site.")
+                    @AuthLine("<code>CanRevealMedical=true</code> only for a MedicalDataViewer — gate at the call site; the text itself comes from the audited reveal, never the model.")
                     <div class="wg-card-example @(Model.SampleVolunteerProfile is null ? "is-empty" : "")">
                         @if (Model.SampleVolunteerProfile is not null)
                         {
                             @await Html.PartialAsync("_VolunteerProfileBadges",
                                 new VolunteerBadgesViewModel(
+                                    Model.SampleVolunteerProfile.UserId,
                                     Model.SampleVolunteerProfile.Skills,
                                     Model.SampleVolunteerProfile.Quirks,
                                     Model.SampleVolunteerProfile.Languages,
                                     DietaryPreference: null,
-                                    MedicalConditions: null,
-                                    ShowMedical: true))
+                                    HasMedicalConditions: false,
+                                    CanRevealMedical: true))
                         }
                         else
                         {

@@ -23,7 +23,7 @@ Admins and coordinators receive many email notifications that lack shared state.
 - `ActionUrl` (string, nullable, max 500) -- link for the action button
 - `ActionLabel` (string, nullable, max 50) -- button text; stored only -- not exported, no page renders it
 - `Priority` (NotificationPriority: Normal, High, Critical) -- stored as string
-- `Source` (NotificationSource) -- which system generated it, stored as string
+- `Source` (string, max 50) -- the emitting section's `NotificationSourceDefinition.Name`
 - `SourceKey` (string, nullable, max 128) -- optional correlation key for the specific source entity; enables `ResolveBySourceKeyAsync` auto-resolution
 - `Class` (NotificationClass: Informational, Actionable) -- stored as string
 - `TargetGroupName` (string, nullable, max 100) -- display name for group targets
@@ -79,7 +79,7 @@ Shared between popup and inbox. 3px left border accent by priority/class. Type t
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (currently `ApplicationSubmitted` and `ConsentReviewNeeded`) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Successful unresolved deletions evict all affected recipients' unread badge counts immediately, even if a later cleanup step fails.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Successful unresolved deletions evict all affected recipients' unread badge counts immediately, even if a later cleanup step fails.
 
 ## Authorization
 
@@ -87,56 +87,7 @@ All authenticated users can access their own notifications. No role-based restri
 
 ## Notification Sources
 
-| Source | Class | Recipients | Category | Trigger |
-|--------|-------|------------|----------|---------|
-| TeamMemberAdded | Informational | The user | TeamUpdates | User added to a team |
-| TeamMemberRemoved | Informational | The user | TeamUpdates | User removed from a team |
-| TeamJoinRequestSubmitted | Actionable | Team coordinators | TeamUpdates | User requests to join |
-| TeamJoinRequestDecided | Informational | The requester | TeamUpdates | Request approved/rejected |
-| ShiftCoverageGap | Actionable | Dept coordinators | VolunteerUpdates | Confirmed count drops below min |
-| ShiftSignupChange | Informational | Dept coordinators | VolunteerUpdates | Signup confirmed/bailed |
-| ShiftAssigned | Informational | The volunteer | VolunteerUpdates | Coordinator voluntells a shift |
-| ConsentReviewNeeded | Actionable | ConsentCoordinator role | System | *Retired* — no new rows emit this source; historical rows only |
-| ApplicationSubmitted | Actionable | Board role | Governance | *Retired* — no new rows emit this source; historical rows only |
-| ApplicationApproved | Informational | The applicant | Governance | Board approves application |
-| ApplicationRejected | Informational | The applicant | Governance | Board rejects application |
-| VolunteerApproved | Informational | The user | Governance | Profile cleared for membership |
-| ProfileRejected | Informational | The user | System | Admin rejects signup |
-| AccessSuspended | Actionable | The user | System | Non-compliance suspension |
-| ReConsentRequired | Actionable | All active members | System | Required doc updated |
-| LegalDocumentPublished | Actionable | All active members | System | New required doc published |
-| FeedbackResponse | Informational | The reporter | System | Admin responds to feedback |
-| WorkspaceCredentialsReady | Informational | The user | System | @nobodies.team provisioned |
-| SyncError | Actionable | Admin role | System | Google sync failure |
-| TermRenewalReminder | Actionable | The user | System | 90 days before term expiry |
-| RoleAssignmentChanged | Informational | The user | Governance | Role assigned or ended |
-| CampaignReceived | Informational | Campaign recipients | Marketing | Campaign code granted |
-| GoogleDriftDetected | Informational | Admin role | System | Reconciliation fixes drift |
-| FacilitatedMessageReceived | Informational | Camp leads | FacilitatedMessages | Facilitated message sent |
-| CampMembershipApproved | Informational | The user | TeamUpdates | Camp membership request approved |
-| CampMembershipRejected | Informational | The user | TeamUpdates | Camp membership request rejected |
-| CampMembershipSeasonClosed | Informational | The user | TeamUpdates | Camp season closed for new members |
-| CampRoleAssigned | Informational | The user | TeamUpdates | Camp role assigned |
-| IssueComment | Informational | Issue participants | System | Comment added to an issue |
-| IssueStatusChanged | Informational | Issue participants | System | Issue status changed |
-| IssueAssigned | Actionable | The assignee | System | Issue assigned to a user |
-| IssueSubmitted | Actionable | Admins + section role-holders | System | New issue submitted |
-| RideshareInterestReceived | Actionable | The trip/request owner | System | Someone expresses interest in a ride |
-| RideshareInterestAccepted | Informational | The interested user | System | Owner accepts the interest |
-| RideshareInterestDeclined | Informational | The interested user | System | Owner declines the interest |
-| AssemblyVoteOpened | Actionable | The assembly roster | Governance | An assembly vote opens |
-| WorkgroupRegistrationPending | Actionable | Board role | Governance | A working group applies, or its application goes overdue |
-| WorkgroupRegistrationDecided | Informational | The group's coordinators | Governance | Registration decided (registered, refused, withdrawn, ended, reactivated) |
-| WorkgroupReportingDue | Informational | The group's coordinators | Governance | Thirty days without an update or meeting |
-| WorkgroupDocumentActivity | Informational (Actionable to Board when a document is delivered for disposition) | Group members, comment authors, or Board role | Governance | Document published, comment opened/answered, or delivered for disposition |
-| WorkgroupDispositionRecorded | Informational | The group's current members | Governance | Board records its written disposition on a delivered document |
-| WorkgroupMembershipRequested | Informational | The group's coordinators | Governance | Someone asks to join a working group |
-| WorkgroupMembershipDecided | Informational | The requester or added person | Governance | Join request approved or declined, or a coordinator adds the person directly |
-| PreapprovalFileBy | Actionable | The beneficiary | System | Pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open |
-| PreapprovalApplicationReceived | Actionable | The program's managers | System | Someone applies to a pre-approval program; resolved on approve or decline |
-| PreapprovalGrantDecided | Informational (Actionable when a revoked grant already has an expense report) | The beneficiary | System | Pre-approval declined, revoked, or its amount changed |
-| GrantReceived | Informational | The grant holder | System | A grant issued to the person, or its notice resent |
-| GrantRevoked | Informational | The former holder | System | A grant the person held was revoked |
+Each emitting section declares its own sources as `public static readonly NotificationSourceDefinition` fields on its `<Section>NotificationSources` class (a `NotificationSourceContributor`, registered as an `INotificationSourceContributor` singleton). A definition carries the stored name, the `MessageCategory` the InboxEnabled check uses, the inbox filter group it belongs to (Shifts or Approvals) and whether it is retired. The section's own `Docs/<Section>.md` lists its sources with class, recipients and trigger; this document lists none, so a new section adds nothing here.
 
 ## Related Features
 

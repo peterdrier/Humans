@@ -16,7 +16,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Debug.Controllers;
 
-[Authorize(Policy = PolicyNames.AdminOnly)]
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Debug/WidgetGallery")]
 internal sealed class WidgetGalleryController(
     IUserService userService,

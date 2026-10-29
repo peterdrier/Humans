@@ -123,12 +123,13 @@ internal sealed class ShiftAdminPageBuilder(
             if (vep is null && person is null && diet is null) continue;
 
             result[uid] = new VolunteerBadgesViewModel(
+                UserId: uid,
                 Skills: vep?.Skills ?? [],
                 Quirks: vep?.Quirks ?? [],
                 Languages: vep?.Languages ?? [],
                 DietaryPreference: diet?.DietaryPreference,
-                MedicalConditions: canViewMedical ? person?.MedicalConditions : null,
-                ShowMedical: canViewMedical);
+                HasMedicalConditions: canViewMedical && !string.IsNullOrEmpty(person?.MedicalConditions),
+                CanRevealMedical: canViewMedical);
         }
 
         return result;

@@ -1,5 +1,6 @@
 using Humans.Agent.Contracts;
 using Humans.Agent.Authorization;
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using System.Globalization;
 using System.Text.Json;
@@ -100,7 +101,7 @@ internal sealed class AgentController(
         var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null) return missing;
 
-        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var isAdmin = RoleChecks.IsAdminOrBoard(User);
         var (rows, hasNext) = await LoadConversationsAsync(
             isAdmin, currentUser.Id, refusalsOnly, userId, page, cancellationToken);
         var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
@@ -127,7 +128,7 @@ internal sealed class AgentController(
         var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
         if (missing is not null) return missing;
 
-        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var isAdmin = RoleChecks.IsAdminOrBoard(User);
         var conv = await LoadConversationForViewerAsync(isAdmin, currentUser.Id, id, cancellationToken);
         if (conv is null) return NotFound();
 

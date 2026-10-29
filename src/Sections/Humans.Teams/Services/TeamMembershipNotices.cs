@@ -41,7 +41,7 @@ internal sealed class TeamMembershipNotices(
             var displayName = await GetDisplayNameAsync(userId, cancellationToken);
             var title = $"New join request for {team.Name}";
             await notificationService.SendAsync(
-                NotificationSource.TeamJoinRequestSubmitted,
+                TeamsNotificationSources.TeamJoinRequestSubmitted,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
                 title,
@@ -73,7 +73,7 @@ internal sealed class TeamMembershipNotices(
             var displayName = await GetDisplayNameAsync(userId, cancellationToken);
             var title = $"{displayName} joined {team.Name}";
             await notificationService.SendAsync(
-                NotificationSource.TeamMemberAdded,
+                TeamsNotificationSources.TeamMemberAdded,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
@@ -130,7 +130,7 @@ internal sealed class TeamMembershipNotices(
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
             var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name);
             await notificationService.SendAsync(
-                NotificationSource.TeamJoinRequestDecided,
+                TeamsNotificationSources.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
@@ -156,7 +156,7 @@ internal sealed class TeamMembershipNotices(
             var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
             var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name);
             await notificationService.SendAsync(
-                NotificationSource.TeamJoinRequestDecided,
+                TeamsNotificationSources.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
@@ -213,7 +213,7 @@ internal sealed class TeamMembershipNotices(
         {
             var title = string.Format(culture, NoticeResources.GetString("Teams_Email_AddedToTeam_Subject", culture)!, team.Name);
             await notificationService.SendAsync(
-                NotificationSource.TeamMemberAdded,
+                TeamsNotificationSources.TeamMemberAdded,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
@@ -236,7 +236,7 @@ internal sealed class TeamMembershipNotices(
             var culture = await GetRecipientCultureAsync(userId, cancellationToken);
             var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name);
             await notificationService.SendAsync(
-                NotificationSource.TeamMemberRemoved,
+                TeamsNotificationSources.TeamMemberRemoved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,

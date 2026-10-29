@@ -28,7 +28,7 @@ internal sealed class BackdoorNotificationsController(INotificationInboxRead inb
             notifications = snapshot.Notifications.Select(n => new
             {
                 date = n.CreatedAt,
-                source = n.Source.ToString(),
+                source = n.Source,
                 subject = n.Title,
                 link = n.ActionUrl,
                 priority = n.Priority.ToString().ToLowerInvariant(),

@@ -317,7 +317,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         info.CurrentMemberUserIds().Should().NotContain(requester);
         (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
         await Notifications.Received(1).SendAsync(
-            Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipRequested,
+            Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipRequested,
             Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
             Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
             Arg.Any<string>(),
@@ -347,7 +347,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipApproved, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), actor, requester, "User");
         await Notifications.Received(1).SendAsync(
-            Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipDecided,
+            Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
             Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),
@@ -398,7 +398,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipDeclined, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), coordinator, requester, "User");
         await Notifications.Received(1).SendAsync(
-            Humans.Notifications.Contracts.NotificationSource.WorkgroupMembershipDecided,
+            Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
             Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),

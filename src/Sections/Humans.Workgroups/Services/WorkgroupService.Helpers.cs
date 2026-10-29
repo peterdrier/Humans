@@ -335,7 +335,7 @@ internal sealed partial class WorkgroupService
 
     // Returns successful dispatch requests for the rhythm audit; Notifications applies inbox preferences.
     private async Task<int> NotifyAsync(
-        IReadOnlyList<Guid> recipientUserIds, NotificationSource source, string titleKey,
+        IReadOnlyList<Guid> recipientUserIds, NotificationSourceDefinition source, string titleKey,
         WorkgroupInfo w, string? body, CancellationToken ct)
     {
         if (recipientUserIds.Count == 0) return 0;
@@ -387,7 +387,7 @@ internal sealed partial class WorkgroupService
     }
 
     private async Task NotifyBoardAsync(
-        NotificationSource source, string title, WorkgroupInfo w, string body, CancellationToken ct)
+        NotificationSourceDefinition source, string title, WorkgroupInfo w, string body, CancellationToken ct)
     {
         try
         {
@@ -575,7 +575,7 @@ internal sealed partial class WorkgroupService
 
         var info = ToInfo(w);
         var coordinators = info.CoordinatorUserIds();
-        await NotifyAsync(coordinators, NotificationSource.WorkgroupRegistrationDecided,
+        await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
             "Enum_WorkgroupLogKind_Ended", info, Trimmed(reasons), ct);
         await EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
 

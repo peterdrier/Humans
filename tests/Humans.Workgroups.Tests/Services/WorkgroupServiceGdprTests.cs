@@ -177,7 +177,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         await NewService().EraseForUserAsync(onlyCoordinator, Ct);
 
         await Notifications.Received(1).SendToRoleAsync(
-            Arg.Any<NotificationSource>(),
+            Arg.Any<NotificationSourceDefinition>(),
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), RoleNames.Board, Arg.Any<string?>(),
@@ -206,7 +206,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
         await NewService().EraseForUserAsync(first, Ct);
 
         await Notifications.DidNotReceive().SendToRoleAsync(
-            Arg.Any<NotificationSource>(),
+            Arg.Any<NotificationSourceDefinition>(),
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), RoleNames.Board, Arg.Any<string?>(),

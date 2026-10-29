@@ -289,7 +289,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
         await Notifier.Received(1).SendAsync(
-            NotificationSource.CampRoleAssigned,
+            CampsNotificationSources.CampRoleAssigned,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -321,7 +321,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         outcome.Should().Be(AssignCampRoleOutcome.Assigned);
         request.IsCancellationRequested.Should().BeTrue();
         var notice = Notifier.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        notice[0].Should().Be(NotificationSource.CampRoleAssigned);
+        notice[0].Should().Be(CampsNotificationSources.CampRoleAssigned);
         ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(member.UserId);
         notice[10].Should().Be(CancellationToken.None);
         (await CampsDb.CampRoleAssignments.AsNoTracking().SingleAsync(ct)).CampMemberId.Should().Be(member.Id);

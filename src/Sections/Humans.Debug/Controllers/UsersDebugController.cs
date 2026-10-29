@@ -13,7 +13,7 @@ using Humans.Users.Contracts;
 namespace Humans.Debug.Controllers;
 
 // UserInfo cache diagnostic: tombstones included, since it shows what is in the cache.
-[Authorize(Policy = PolicyNames.AdminOnly)]
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Debug/Users")]
 internal sealed class UsersDebugController(
     IUserService userService, IConsentService consentService, ITicketService tickets,
