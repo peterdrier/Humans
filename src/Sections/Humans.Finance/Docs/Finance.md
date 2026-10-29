@@ -210,7 +210,7 @@ Every `/Finance/*` route except the one below is gated on `PolicyNames.FinanceAd
 |-------|---------|
 | `POST /Finance/Admin/Members/{id}/RevealIban` | `AdminOnly` (`PaymentDetailsAdminController`). Audits `IbanReveal`, hands the unmasked IBAN to the next render of the Payment Details card through TempData, redirects to `/Users/Admin/{id}` |
 
-The Payment Details card itself is `PaymentDetailsViewComponent`, contributed to `UserPartSlots.AdminDetailSidebar` by `SectionUserParts`; it is reached from the admin human-detail page, so it needs no nav entry of its own.
+The Payment Details card itself is `PaymentDetailsViewComponent`, contributed to `UserPartSlots.AdminDetailSidebar` by `IUserPart`; it is reached from the admin human-detail page, so it needs no nav entry of its own.
 
 ### Not this section — the Budget surface on the same prefix
 
@@ -383,7 +383,7 @@ Budget never calls into Finance.
 **Owned repository:** `IHoldedRepository` / `Repository` (`Humans.Finance.Data`) — tables under [Owned repository](#owned-repository)
 **Document-sync body:** Internal `HoldedDocumentSync` owns purchase-document fetching, matching, mirror writes and sync-state transitions. `Service.SyncAsync` (internal `IHoldedFinanceManagement`) delegates to it; the facade retains provisioning, creditor and payout operations.
 
-**Jobs:** `HoldedDocSyncJob` (internal, `Jobs/`, job id `holded-doc-sync`, nightly at 02:45, scheduled in `SectionJobs.cs`) runs `IHoldedFinanceManagement.SyncAsync`; with no `HOLDED_API_KEY_V2` it skips with an Information log. A failure records `Error` on the doc-sync state and fails the job. It runs ahead of Holded's own 03:00 ledger sweep (`HoldedSyncJob`, Holded's) to keep the two off the API at once, and both take the shared `holded-api` Hangfire job lock so a long doc pull still never overlaps the sweep; neither reads the other's output. The manual trigger is `POST /Finance/HoldedSync/Run` ("Sync Now" on `/Finance/HoldedUnmatched`). `SepaBankBookingJob` — see `ISepaBankBooking` below.
+**Jobs:** `HoldedDocSyncJob` (internal, `Jobs/`, job id `holded-doc-sync`, nightly at 02:45, scheduled in `Section.cs`) runs `IHoldedFinanceManagement.SyncAsync`; with no `HOLDED_API_KEY_V2` it skips with an Information log. A failure records `Error` on the doc-sync state and fails the job. It runs ahead of Holded's own 03:00 ledger sweep (`HoldedSyncJob`, Holded's) to keep the two off the API at once, and both take the shared `holded-api` Hangfire job lock so a long doc pull still never overlaps the sweep; neither reads the other's output. The manual trigger is `POST /Finance/HoldedSync/Run` ("Sync Now" on `/Finance/HoldedUnmatched`). `SepaBankBookingJob` — see `ISepaBankBooking` below.
 **Migrations:** `Data/Migrations/`, on `FinanceDbContext` with its own history table `__EFMigrationsHistory_Finance`.
 **Architecture tests:** `tests/Humans.Finance.Tests/FinanceArchitectureTests.cs`
 
@@ -396,7 +396,7 @@ Budget never calls into Finance.
 | `ISepaBankBooking` | [`ISepaBankBooking.cs`](../../Humans.Finance.Contracts/ISepaBankBooking.cs) | `RunAsync` — the two-hourly SEPA bank-line sweep as one call. `SepaBankBookingJob` is the Hangfire shim; nothing else calls it. |
 | `IFinanceService` (read) | [`IFinanceService.cs`](../../Humans.Finance.Contracts/IFinanceService.cs) | `GetIbanAsync` — Expenses (submit snapshot, the masked `/Expenses/{id}/Iban` page, the index's has-IBAN flag). |
 | `IFinanceWrite` | [`IFinanceWrite.cs`](../../Humans.Finance.Contracts/IFinanceWrite.cs) | `SetIbanAsync` — Expenses' `/Expenses/{id}/Iban`. The caller validates and audits (`IbanSet` / `IbanRemove`), because only it knows on whose behalf. |
-| `IPaymentDetailsManagement` | internal | `RevealIbanAsync` and the legacy copy, for `PaymentDetailsAdminController` and `SectionDataMigrations`. |
+| `IPaymentDetailsManagement` | internal | `RevealIbanAsync` and the legacy copy, for `PaymentDetailsAdminController` and `ISectionDataMigrations`. |
 | `IHoldedFinanceManagement` | internal | Finance's own full surface (`IHoldedFinanceService` + `IHoldedFinanceWrite` + `SyncAsync`), injected by `FinanceController` and `HoldedDocSyncJob`. |
 
 `GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.

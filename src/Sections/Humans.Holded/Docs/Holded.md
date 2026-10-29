@@ -145,7 +145,7 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `SectionJobs`, job id `holded-sync`): `SyncLedgerAsync(full: false)` only. Finance's purchase-doc sync is Finance's own job (`HoldedDocSyncJob`, 02:45); the sweep reads none of its output. Both jobs take the shared `holded-api` Hangfire job lock, so they never run on the rate-limited API at once.
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncLedgerAsync(full: false)` only. Finance's purchase-doc sync is Finance's own job (`HoldedDocSyncJob`, 02:45); the sweep reads none of its output. Both jobs take the shared `holded-api` Hangfire job lock, so they never run on the rate-limited API at once.
 - `/Holded` buttons: `SyncNow` (incremental + reconcile, ledger only), `FullSync`.
 
 ## Cross-Section Dependencies

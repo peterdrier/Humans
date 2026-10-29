@@ -184,7 +184,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             AuditLog, AdminAuthorization,
             new ServiceLocatorBuilder().With(_teamService).Build(),
             Cache, _views.Cache,
-            new EventCalendarResolver(settingsService), Clock,
+            new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         await service.CreateRotaAsync(NewRota(eventId, team.Id));

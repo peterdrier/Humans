@@ -268,7 +268,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     {
         SeedUser(LegacyProfile(LegacyConsentCheckStatus.Pending));
         var services = new ServiceCollection().AddSingleton(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations()
+        var migration = ((ISectionDataMigrations)new Section()).Migrations()
             .Should().ContainSingle(m => m.Key == "consent.profile-review").Subject;
 
         (await migration.Status(services, Ct)).Pending.Should().Be(1);
@@ -331,7 +331,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     [HumansFact]
     public void UserParts_ContributeTheReviewCardAndTheRejectionReason()
     {
-        new SectionUserParts().Parts().Should().BeEquivalentTo(
+        ((IUserPart)new Section()).Parts().Should().BeEquivalentTo(
         [
             new UserPart(UserPartSlots.AdminDetail, typeof(ConsentReviewCardViewComponent)),
             new UserPart(UserPartSlots.AccountStatus, typeof(RejectionReasonViewComponent)),

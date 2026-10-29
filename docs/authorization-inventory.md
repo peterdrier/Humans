@@ -293,7 +293,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 
 Policy *names* are shared vocabulary in `PolicyNames` — nav items and cross-section checks cite other sections' policies by name. Registration is split ([`section-contribution-seams`](../memory/architecture/section-contribution-seams.md)): the cross-section policies `AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `AppAccess` and `RoleAssignmentManage` are registered in Shell's `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`; every other policy is registered by its owning section's `SectionPolicies : ISectionPolicies`, discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied additively through `services.Configure<AuthorizationOptions>` in the same method.
 
-| Owning section | Policies registered in its `SectionPolicies.cs` |
+| Owning section | Policies registered in its `Section.cs` |
 |---|---|
 | Camps | `CampAdminOrAdmin`, `CampComplianceAccess` |
 | Cantina | `CantinaAdminOrAdmin` |

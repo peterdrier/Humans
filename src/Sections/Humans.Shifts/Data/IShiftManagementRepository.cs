@@ -12,6 +12,8 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>Null until a rota or knob edit creates the row.</summary>
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default);
+
     Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
 
     /// <summary>Also deletes every Shifts-owned row beneath it. Returns the number of event rows deleted.</summary>

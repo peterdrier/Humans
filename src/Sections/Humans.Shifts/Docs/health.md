@@ -51,9 +51,9 @@ The shapes imply:
   strike item — see §6.
 - Controllers translate only; page assembly lives in `*PageBuilder` classes (browse, admin,
   dashboard) and the volunteer search builder.
-- One resource set, one `Section.cs`, the Shell seams (`SectionNav`, `SectionAdminNav`,
-  `SectionAdminTiles`, `SectionChrome`, `SectionMemberDashboard`, `SectionPolicies`,
-  `SectionThingsToDo`).
+- One resource set, one `Section.cs`, the Shell seams (`ISectionNav`, `ISectionAdminNav`,
+  `ISectionAdminTiles`, `ISectionChrome`, `ISectionMemberDashboard`, `ISectionPolicies`,
+  `ISectionThingsToDo`).
 - Docs: `Shifts.md` (invariants), `authorization.md`, `data-access.md`, `features/*` (one per
   shipped feature), `health.md` (this), `debt.yml`. Dated design docs are history: their
   surviving constraints belong in `Shifts.md`, the rest is provenance.
