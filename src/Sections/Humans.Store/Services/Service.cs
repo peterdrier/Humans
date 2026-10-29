@@ -36,101 +36,13 @@ internal sealed class Service(
     private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
 
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
-        BuildIndexDataAsync(userId, allCounterparties: false, ct);
+        orderReader.GetIndexDataAsync(userId, ct);
 
     public Task<IndexData> GetAllCounterpartiesIndexDataAsync(CancellationToken ct = default) =>
-        BuildIndexDataAsync(userId: Guid.Empty, allCounterparties: true, ct);
+        orderReader.GetAllCounterpartiesIndexDataAsync(ct);
 
-    private async Task<IndexData> BuildIndexDataAsync(
-        Guid userId,
-        bool allCounterparties,
-        CancellationToken ct)
-    {
-        var year = await GetCurrentEventYearAsync(ct);
-        var catalog = await GetActiveCatalogAsync(year, ct);
-
-        var counterparties = new List<CounterpartyOrders>();
-
-        var campSeasons = new List<CampSeasonInfo>();
-        foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
-        {
-            if (allCounterparties)
-            {
-                var season = camp.GetSeasonForYear(year);
-                if (season is not null) campSeasons.Add(season);
-            }
-            else
-            {
-                var leadSeasonId = camp.GetLeadSeasonIdForYear(userId, year);
-                if (leadSeasonId is null) continue;
-                campSeasons.Add(camp.Seasons.First(season => season.Id == leadSeasonId.Value));
-                break; // a user leads at most one camp
-            }
-        }
-
-        var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.ParentTeamId is null
-                        && (allCounterparties
-                            || (t.ManagementRoleHolderUserIds is not null
-                                && t.ManagementRoleHolderUserIds.Contains(userId))))
-            .ToList();
-        var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
-            campSeasons.Select(s => s.Id).ToList(), ct);
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
-            teams.Select(t => t.Id).ToList(), year, ct);
-        var productIds = campOrders.Concat(teamOrders)
-            .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await orderReader.LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
-        var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
-
-        foreach (var season in campSeasons)
-        {
-            // One order per camp-season; for legacy duplicates, surface the highest-balance one and let the admin
-            // delete the rest.
-            var allOrders = new List<OrderDto>();
-            foreach (var order in campOrdersBySeason[season.Id])
-                allOrders.Add(await orderReader.MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
-            var primary = allOrders
-                .OrderByDescending(o => o.BalanceEur)
-                .FirstOrDefault();
-            IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
-            counterparties.Add(new CounterpartyOrders(
-                OrderCounterpartyType.Camp,
-                season.Id,
-                season.Name,
-                year,
-                orders));
-        }
-
-        foreach (var team in teams)
-        {
-            var existing = teamOrdersByTeam[team.Id].FirstOrDefault();
-            IReadOnlyList<OrderDto> orders = existing is null
-                ? []
-                : [await orderReader.MapOrderAsync(existing, productNames, currentPrices, ct, team.Name)];
-            counterparties.Add(new CounterpartyOrders(
-                OrderCounterpartyType.Team,
-                team.Id,
-                team.Name,
-                year,
-                orders));
-        }
-
-        return new IndexData(
-            year,
-            catalog,
-            counterparties);
-    }
-
-    public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
-    {
-        var products = await repo.GetActiveProductsForYearAsync(year, ct);
-        return products
-            .Select(MapProduct)
-            .ToList();
-    }
+    public Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default) =>
+        orderReader.GetActiveCatalogAsync(year, ct);
 
     public async Task<OrderPageData> GetOrderPageDataAsync(
         OrderDto order,
@@ -157,19 +69,11 @@ internal sealed class Service(
             stripeService.IsStoreCheckoutConfigured);
     }
 
-    public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
-    {
-        var products = await repo.GetAllProductsForYearAsync(year, ct);
-        return products
-            .Select(MapProduct)
-            .ToList();
-    }
+    public Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default) =>
+        orderReader.GetAllProductsForYearAsync(year, ct);
 
-    public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
-    {
-        var p = await repo.GetProductByIdAsync(productId, ct);
-        return p is null ? null : MapProduct(p);
-    }
+    public Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default) =>
+        orderReader.GetProductAsync(productId, ct);
 
     public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
@@ -1354,10 +1258,6 @@ internal sealed class Service(
                 o.CampSeasonId is { } sid && context.SeasonsForYear.TryGetValue(sid, out var season)
                     ? season.Name
                     : "(unknown camp)");
-
-    private static ProductDto MapProduct(Product p) =>
-        new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
-            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
 
     private Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         CancellationToken ct) => orderReader.LoadCurrentPricesAsync(ct);
