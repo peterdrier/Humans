@@ -32,7 +32,6 @@ public sealed class EventSettingsViewModelTests
     private static EventSettingsViewModel FilledForm() => new()
     {
         EventName = "Nowhere 2026",
-        TimeZoneId = "Europe/Madrid",
         GateOpeningDate = "2026-07-09",
     };
 

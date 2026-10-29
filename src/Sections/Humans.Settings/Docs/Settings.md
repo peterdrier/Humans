@@ -19,8 +19,11 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
   in `SettingKeys` (`Humans.Settings.Contracts`); values are strings, parsed by
   the caller.
 - **EventSettings** is one event cycle's app-wide values: name, public year,
-  timezone, gate-opening date, build calendar, early-entry window and capacity.
+  gate-opening date, build calendar, early-entry window and capacity.
   Crosses the boundary as `EventSettingsInfo`.
+- **The event timezone is global.** One `system_settings` key, `Event:TimeZoneId`
+  (absent means Europe/Madrid), applies to every event. `EventSettingsInfo.TimeZoneId`
+  is filled from it on every read.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
   No production path removes a row — other sections store the id — so a cycle
   ends by going `Inactive`, and nothing sets `Deleted` today. The one real row
@@ -76,7 +79,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | Id | Guid | PK — minted here for a new cycle (nobodies-collective/Humans#1631); Shifts creates its own knobs row against this id on demand |
 | EventName | string | |
 | Year | int | Always `GateOpeningDate.Year`; never edited on its own |
-| TimeZoneId | string | IANA |
+| TimeZoneId | string | IANA; a copy of the global `Event:TimeZoneId`, written on save and never read |
 | GateOpeningDate | LocalDate | Day 0 of every offset |
 | BuildStartOffset | int | Negative; `≤ FirstCrewStartOffset` |
 | EventEndOffset / StrikeEndOffset | int | |
@@ -109,7 +112,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 
 ## Invariants
 
-- Event forms require every rendered field to be posted. Missing keys cannot mint a new cycle or reset timezone, calendar, early-entry settings or flags through defaults. An explicitly blank id still starts a new cycle; blank optional early-entry values still clear them. Existing false and zero values remain valid.
+- Event forms require every rendered field to be posted. Missing keys cannot mint a new cycle or reset the calendar, early-entry settings or flags through defaults. An explicitly blank id still starts a new cycle; blank optional early-entry values still clear them. Existing false and zero values remain valid.
 
 - The event-name editor uses Elsewhere in its example.
 
@@ -136,6 +139,9 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   Active and the previous active row Inactive in one database save, audits once (`EventSettingsUpdated`), and
   notifies listeners for both ids. The form's own Active box still refuses a second
   active row.
+- **Changing the timezone moves every event.** `SaveTimeZoneAsync` refuses an unknown IANA
+  id, writes `Event:TimeZoneId`, audits once (`EventSettingsUpdated`, entity `EventTimeZone`),
+  and notifies listeners for every event row.
 - **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. The admin form, saves, and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).
 - **Calendar dates must be representable.** Admin saves and seeded activation reject gate/offset combinations whose dates or following day fall outside BCL date support, before writing or deactivating another cycle. Rejections log Warning without an exception stack and return the existing admin failure flash.
 - **Admin save refusals are results.** Invalid calendar dates, early-entry offsets and competing active cycles return internal refusal results before writes, audit or listener notifications. Unexpected dependency failures propagate instead of becoming operator conflict messages. Seed activation retains its throwing validation contract.

@@ -16,10 +16,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     [Required, MaxLength(256)]
     public string EventName { get; set; } = string.Empty;
 
-    [Required, MaxLength(100)]
-    [BindRequired]
-    public string TimeZoneId { get; set; } = "Europe/Madrid";
-
     [Required]
     public string GateOpeningDate { get; set; } = string.Empty;
 
@@ -127,7 +123,6 @@ internal static class EventSettingsFormMapper
     {
         Id = src.Id,
         EventName = src.EventName,
-        TimeZoneId = src.TimeZoneId,
         GateOpeningDate = LocalDatePattern.Iso.Format(src.GateOpeningDate),
         BuildStartOffset = src.BuildStartOffset,
         EventEndOffset = src.EventEndOffset,
@@ -175,9 +170,6 @@ internal static class EventSettingsFormMapper
     {
         var errors = new List<EventSettingsFormError>();
 
-        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
-            errors.Add(new EventSettingsFormError(nameof(model.TimeZoneId), "Invalid IANA timezone ID."));
-
         var parsedDate = LocalDatePattern.Iso.Parse(model.GateOpeningDate);
         if (!parsedDate.Success)
             errors.Add(new EventSettingsFormError(nameof(model.GateOpeningDate), "Invalid date format."));
@@ -211,7 +203,8 @@ internal static class EventSettingsFormMapper
                 Id: model.Id ?? Guid.NewGuid(),
                 EventName: model.EventName,
                 Year: gateOpening.Year,
-                TimeZoneId: model.TimeZoneId,
+                // The global timezone; the service stores it on save.
+                TimeZoneId: string.Empty,
                 GateOpeningDate: gateOpening,
                 BuildStartOffset: model.BuildStartOffset,
                 EventEndOffset: model.EventEndOffset,
