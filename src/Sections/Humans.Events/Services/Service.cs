@@ -205,7 +205,10 @@ internal sealed class EventService(
         if (!await IsSubmissionWindowOpenAsync(ct)) return new("Events_SubmissionWindowClosed");
         await EnsureValidRecurrenceDaysAsync(guideEvent.IsRecurring, guideEvent.RecurrenceDays, ct);
         if (await repo.GetCategoryAsync(guideEvent.CategoryId, ct) is not { IsActive: true })
-            return new("Events_CategoryUnavailable");
+            return new("Events_CategoryUnavailable", nameof(EventEdit.CategoryId));
+        if (guideEvent.CampId is null && (guideEvent.GuideSharedVenueId is not { } venueId
+            || venueId == Guid.Empty || await repo.GetVenueAsync(venueId, ct) is not { IsActive: true }))
+            return new("Events_VenueUnavailable", nameof(EventEdit.VenueId));
         guideEvent.Submit(clock);
         await repo.AddEventAsync(guideEvent, ct);
 
@@ -257,8 +260,11 @@ internal sealed class EventService(
     {
         await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct);
         if (await repo.GetCategoryAsync(edit.CategoryId, ct) is not { IsActive: true })
-            return new("Events_CategoryUnavailable");
+            return new("Events_CategoryUnavailable", nameof(EventEdit.CategoryId));
         var guideEvent = await LoadEventAsync(eventId, ct);
+        if (guideEvent.CampId is null && (edit.VenueId is not { } venueId
+            || venueId == Guid.Empty || await repo.GetVenueAsync(venueId, ct) is not { IsActive: true }))
+            return new("Events_VenueUnavailable", nameof(EventEdit.VenueId));
         ApplyEdit(guideEvent, edit);
         guideEvent.Resubmit(clock);
         await repo.SaveEventAsync(guideEvent, ct);

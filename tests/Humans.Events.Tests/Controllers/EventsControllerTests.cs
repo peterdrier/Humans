@@ -853,8 +853,12 @@ public class EventsControllerTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task CategoryRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(bool edit, bool barrio)
+    [Xunit.InlineData(false, false, "Events_VenueUnavailable")]
+    [Xunit.InlineData(true, false, "Events_VenueUnavailable")]
+    public async Task SelectionRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(
+        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable")
     {
+        var field = string.Equals(refusalKey, "Events_VenueUnavailable", StringComparison.Ordinal) ? "VenueId" : "CategoryId";
         var userId = Guid.NewGuid();
         var camp = new CampInfo(Guid.NewGuid(), "camp", "camp@example.org", "", false, 0, []);
         var existing = MakeEvent(barrio ? camp.Id : null, userId, EventStatus.ResubmitRequested);
@@ -864,8 +868,8 @@ public class EventsControllerTests
         _guide.GetEventForModerationAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
         _guide.GetCampEventAsync(existing.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(existing);
         StubEditableGuideSettings();
-        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult("Events_CategoryUnavailable"));
-        _guide.UpdateAndResubmitAsync(existing.Id, Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult("Events_CategoryUnavailable"));
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
+        _guide.UpdateAndResubmitAsync(existing.Id, Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = BuildController(userId);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
@@ -900,7 +904,7 @@ public class EventsControllerTests
         var view = result.Should().BeOfType<ViewResult>().Which;
         view.Model.Should().BeSameAs(model);
         view.ViewName.Should().Be(barrio ? "BarrioEventForm" : "IndividualEventForm");
-        controller.ModelState["CategoryId"]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Events_CategoryUnavailable");
+        controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(refusalKey);
         controller.TempData.Should().NotContainKey("SuccessMessage");
     }
 

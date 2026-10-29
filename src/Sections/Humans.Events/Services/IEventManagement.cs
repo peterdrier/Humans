@@ -44,7 +44,7 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
     Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
-    /// <summary>Refuses a closed submission window or unavailable category without writing or emailing.
+    /// <summary>Refuses a closed submission window or unavailable category/individual venue without writing or emailing.
     /// A null <paramref name="lifecycleActionUrl"/> skips the submitter's confirmation email.</summary>
     Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
     /// <summary>Re-queues for moderation; the event's own <c>CampId</c> picks the field set.</summary>
@@ -107,4 +107,4 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default);
 }
 
-internal sealed record EventSaveResult(string? ErrorKey = null);
+internal sealed record EventSaveResult(string? ErrorKey = null, string? Field = null);

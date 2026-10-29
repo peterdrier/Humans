@@ -179,7 +179,7 @@ internal sealed class EventsController(
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
         };
 
-        // The service validates the window, recurrence and category before the Submit transition.
+        // The service validates the window, recurrence and selections before the Submit transition.
         var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
         var result = await guide.SubmitEventAsync(guideEvent, viewUrl);
         if (result.ErrorKey is { } errorKey)
@@ -190,7 +190,7 @@ internal sealed class EventsController(
                 SetError(localizer[errorKey].Value);
                 return RedirectToAction(nameof(MySubmissions));
             }
-            ModelState.AddModelError(nameof(model.CategoryId), localizer[errorKey].Value);
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             await PopulateDropdownsAsync(model, eventSettings);
             return View("IndividualEventForm", model);
         }
@@ -283,7 +283,7 @@ internal sealed class EventsController(
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Event resubmission refused for event {EventId}, category {CategoryId}: {ErrorKey}", eventId, model.CategoryId, errorKey);
-            ModelState.AddModelError(nameof(model.CategoryId), localizer[errorKey].Value);
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.Id = eventId;
             await PopulateDropdownsAsync(model, eventSettings);
             return View("IndividualEventForm", model);
@@ -603,7 +603,7 @@ internal sealed class EventsController(
             PriorityRank = model.PriorityRank
         };
 
-        // The service validates the window, recurrence and category before the Submit transition.
+        // The service validates the window, recurrence and selections before the Submit transition.
         var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
         var result = await guide.SubmitEventAsync(guideEvent, viewUrl);
         if (result.ErrorKey is { } errorKey)
@@ -614,7 +614,7 @@ internal sealed class EventsController(
                 SetError(localizer[errorKey].Value);
                 return RedirectToAction(nameof(MySubmissions));
             }
-            ModelState.AddModelError(nameof(model.CategoryId), localizer[errorKey].Value);
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
@@ -709,7 +709,7 @@ internal sealed class EventsController(
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Event resubmission refused for event {EventId}, category {CategoryId}: {ErrorKey}", eventId, model.CategoryId, errorKey);
-            ModelState.AddModelError(nameof(model.CategoryId), localizer[errorKey].Value);
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.Id = eventId;
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);

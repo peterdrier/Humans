@@ -51,6 +51,58 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [InlineData(false, "missing")]
+    [InlineData(true, "missing")]
+    [InlineData(false, "inactive")]
+    [InlineData(true, "inactive")]
+    [InlineData(false, "none")]
+    [InlineData(true, "none")]
+    [InlineData(false, "active")]
+    [InlineData(true, "active")]
+    public async Task IndividualSaves_RequireAnActiveVenue_BeforeChangingTheEvent(bool edit, string venueState)
+    {
+        OpenSubmissionWindow();
+        var category = new EventCategory { Id = Guid.NewGuid() };
+        _repo.Categories.Add(category);
+        var originalVenue = new EventVenue { Id = Guid.NewGuid() };
+        _repo.Venues.Add(originalVenue);
+        Guid? selectedId = string.Equals(venueState, "none", StringComparison.Ordinal) ? null : Guid.NewGuid();
+        var active = string.Equals(venueState, "active", StringComparison.Ordinal);
+        if (selectedId is { } id && (active || string.Equals(venueState, "inactive", StringComparison.Ordinal)))
+            _repo.Venues.Add(new EventVenue { Id = id, IsActive = active });
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(), CategoryId = category.Id,
+            GuideSharedVenueId = edit ? originalVenue.Id : selectedId,
+            Title = "Original", Status = edit ? EventStatus.Approved : EventStatus.Draft,
+        };
+        if (edit) _repo.Events.Add(guideEvent);
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = edit
+            ? await _service.UpdateAndResubmitAsync(guideEvent.Id, EditOf(guideEvent) with { VenueId = selectedId, Title = "Changed" }, ct)
+            : await _service.SubmitEventAsync(guideEvent, "https://x/events", ct);
+
+        result.ErrorKey.Should().Be(active ? null : "Events_VenueUnavailable");
+        if (!active) result.Field.Should().Be("VenueId");
+        if (active)
+        {
+            guideEvent.Status.Should().Be(EventStatus.Pending);
+            guideEvent.GuideSharedVenueId.Should().Be(selectedId);
+        }
+        else
+        {
+            guideEvent.Status.Should().Be(edit ? EventStatus.Approved : EventStatus.Draft);
+            guideEvent.Title.Should().Be("Original");
+            guideEvent.GuideSharedVenueId.Should().Be(edit ? originalVenue.Id : selectedId);
+            _repo.SaveChangesCount.Should().Be(0);
+            if (!edit) _repo.Events.Should().BeEmpty();
+            _emailService.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, false, "missing")]
     [InlineData(false, true, "missing")]
     [InlineData(true, false, "missing")]
@@ -81,6 +133,7 @@ public sealed class EventServiceTests
             Status = edit ? EventStatus.Approved : EventStatus.Draft,
         };
         if (edit) _repo.Events.Add(guideEvent);
+        if (!camp) _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId!.Value });
         var ct = TestContext.Current.CancellationToken;
 
         var result = edit
@@ -573,6 +626,8 @@ public sealed class EventServiceTests
             Title = "Fire show",
         };
         _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+        guideEvent.GuideSharedVenueId ??= Guid.NewGuid();
+        _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
 
         await _service.SubmitEventAsync(guideEvent, "https://x/Events/MySubmissions", TestContext.Current.CancellationToken);
 
@@ -593,6 +648,8 @@ public sealed class EventServiceTests
         // Bulk import opts out — one email per CSV row would spam the uploader.
         var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid() };
         _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+        guideEvent.GuideSharedVenueId ??= Guid.NewGuid();
+        _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
 
         await _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
 
@@ -649,6 +706,8 @@ public sealed class EventServiceTests
         var repo = Substitute.For<IEventRepository>();
         repo.GetGuideSettingsAsync(request.Token).Returns(_repo.Settings);
         repo.GetCategoryAsync(guideEvent.CategoryId, request.Token).Returns(new EventCategory { Id = guideEvent.CategoryId });
+        guideEvent.GuideSharedVenueId = Guid.NewGuid();
+        repo.GetVenueAsync(guideEvent.GuideSharedVenueId.Value, request.Token).Returns(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
         repo.GetEventForModerationAsync(guideEvent.Id, request.Token).Returns(guideEvent);
         repo.AddEventAsync(guideEvent, request.Token).Returns(async _ =>
         {
@@ -719,6 +778,8 @@ public sealed class EventServiceTests
             Title = "Fire show",
         };
         _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+        guideEvent.GuideSharedVenueId ??= Guid.NewGuid();
+        _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
         _userService.GetUserInfoAsync(guideEvent.SubmitterUserId, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<UserInfo?>(new InvalidOperationException("User lookup unavailable")));
 
@@ -789,6 +850,8 @@ public sealed class EventServiceTests
             LastUpdatedAt = Instant.FromUtc(2026, 5, 1, 13, 0)
         };
         _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+        guideEvent.GuideSharedVenueId ??= Guid.NewGuid();
+        _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
         _repo.Events.Add(guideEvent);
 
         await _service.UpdateAndResubmitAsync(guideEvent.Id, EditOf(guideEvent), TestContext.Current.CancellationToken);
@@ -918,6 +981,8 @@ public sealed class EventServiceTests
         OpenSubmissionWindow();
         var guideEvent = new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid() };
         _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+        guideEvent.GuideSharedVenueId ??= Guid.NewGuid();
+        _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
 
         await _service.SubmitEventAsync(guideEvent, lifecycleActionUrl: null, TestContext.Current.CancellationToken);
 
