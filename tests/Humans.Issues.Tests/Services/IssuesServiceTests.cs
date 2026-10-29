@@ -2491,6 +2491,113 @@ public sealed class IssuesServiceTests
         (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
+    [HumansTheory]
+    [InlineData("detail")]
+    [InlineData("screenshot")]
+    [InlineData("list")]
+    [InlineData("mine")]
+    [InlineData("count")]
+    [InlineData("thread")]
+    public async Task Merged_reporter_keeps_own_issue_reads(string route)
+    {
+        var archived = SeedUser();
+        var survivor = SeedUser();
+        var stranger = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived.Id] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var own = await SeedIssueWithScreenshotAsync(archived.Id, "Tickets", "image/png", [1, 2]);
+        var other = await SeedIssueWithScreenshotAsync(stranger.Id, "Tickets", "image/png", [3]);
+        _issuesDb.IssueComments.Add(new IssueComment
+        {
+            Id = Guid.NewGuid(),
+            IssueId = own,
+            SenderUserId = survivor.Id,
+            Content = "My follow-up",
+            CreatedAt = Clock.GetCurrentInstant()
+        });
+        await _issuesDb.SaveChangesAsync(Ct);
+        var viewer = new IssueViewer(survivor.Id, []);
+        switch (route)
+        {
+            case "detail":
+                (await _service.GetIssueByIdAsync(own, viewer, Ct)).Should().NotBeNull();
+                (await _service.GetIssueByIdAsync(other, viewer, Ct)).Should().BeNull();
+                break;
+            case "screenshot":
+                (await _service.GetScreenshotAsync(own, viewer, Ct))!.Content.Should().Equal(1, 2);
+                (await _service.GetScreenshotAsync(other, viewer, Ct)).Should().BeNull();
+                break;
+            case "list":
+            case "mine":
+                var filter = new IssueListFilter(ReporterUserId: string.Equals(route, "mine", StringComparison.Ordinal) ? survivor.Id : null);
+                (await _service.GetIssueListAsync(filter, viewer, Ct)).Should().ContainSingle().Which.Id.Should().Be(own);
+                break;
+            case "count":
+                (await _service.GetActionableCountForViewerAsync(viewer, Ct)).Should().Be(1);
+                break;
+            default:
+                (await _service.GetThreadAsync(own, viewer, Ct)).OfType<IssueCommentEvent>()
+                    .Should().ContainSingle().Which.ActorIsReporter.Should().BeTrue();
+                break;
+        }
+    }
+
+    [HumansFact]
+    public async Task Merged_reporter_comment_reopens_without_handler_privileges_or_self_email()
+    {
+        var (archived, own) = await SeedIssueAsync(IssueStatus.Resolved, withResolvedFields: true, section: "Tickets");
+        var survivor = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var viewer = new IssueViewer(survivor.Id, []);
+        var other = await SeedIssueRowAsync(Guid.NewGuid(), IssueStatus.Resolved, "Other", "Tickets", withResolvedFields: true);
+
+        var result = await _service.PostCommentAsync(own, viewer, survivor.Id, "Still broken", resolveOnPost: true, ct: Ct);
+
+        result.Comment.Should().NotBeNull();
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == own, Ct);
+        stored.ReporterUserId.Should().Be(archived);
+        stored.Status.Should().Be(IssueStatus.Open);
+        stored.ResolvedAt.Should().BeNull();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        (await _service.PostCommentAsync(other, viewer, survivor.Id, "Not mine", ct: Ct)).NotFound.Should().BeTrue();
+        (await _service.GetThreadAsync(own, viewer, Ct)).OfType<IssueCommentEvent>()
+            .Should().ContainSingle().Which.ActorIsReporter.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Merged_assignee_filter_finds_both_accounts_without_granting_queue_access(bool filterByArchived)
+    {
+        var archived = SeedUser();
+        var survivor = SeedUser();
+        var stranger = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived.Id] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var expected = new List<Guid>();
+        foreach (var assignee in new[] { archived.Id, survivor.Id, stranger.Id })
+        {
+            var id = await SeedIssueRowAsync(Guid.NewGuid(), IssueStatus.Open, "Assigned", "Tickets");
+            var row = await _issuesDb.Issues.SingleAsync(i => i.Id == id, Ct);
+            row.AssigneeUserId = assignee;
+            if (assignee != stranger.Id) expected.Add(id);
+        }
+        await _issuesDb.SaveChangesAsync(Ct);
+        var filter = new IssueListFilter(AssigneeUserId: filterByArchived ? archived.Id : survivor.Id);
+
+        (await _service.GetIssueListAsync(filter, Admin, Ct)).Select(i => i.Id).Should().BeEquivalentTo(expected);
+        (await _service.GetIssueListAsync(filter, new IssueViewer(survivor.Id, []), Ct)).Should().BeEmpty();
+        (await _service.GetIssueListAsync(new IssueListFilter(AssigneeUserId: stranger.Id), Admin, Ct))
+            .Should().ContainSingle().Which.AssigneeUserId.Should().Be(stranger.Id);
+    }
+
     // Merged-away ids: in-app notifications reach the survivor, and the assignee is stored as the live id.
 
     [HumansFact]

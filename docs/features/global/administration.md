@@ -198,7 +198,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |
 | `shell.online.day` | Active (24h) | Shell | — | `IUserActivityTracker`, 24-hour window |
 | `teams.total` | Teams | Teams | — | `ITeamService.GetTeamsAsync` count |
-| `auditlog.total` | Audit events | Audit Log | — | `IAuditViewerService.GetPageAsync`'s `TotalCount` |
+| `auditlog.total` | Audit events | Audit Log | — | `AuditViewerService.GetPageAsync`'s `TotalCount` |
 | `email.outbox` | Emails | Email | — | `IEmailOutboxManagement.GetOutboxStatsAsync` (section-internal) total |
 | `store.orders` | Store orders | Store | StoreCatalogAdmin | Store's own `Service.GetStoreSummaryAsync` for the active event year; blank with no active event |
 | `expenses.reports` | Expense reports | Expenses | FinanceAdminOrAdmin | `IExpenseReportService.GetAllAsync`, all statuses |
@@ -211,7 +211,6 @@ Sections also contribute richer cards into the `admin-dashboard` chrome slot (`C
 | Card | Section | Content |
 |---|---|---|
 | Sign-in method | Shell | Google vs email-link sign-ins since the last restart |
-| Recent activity | Audit Log | Last 24h of audit history (AdminOnly) |
 | User set membership | Debug | Venn + UpSet plot over Active ∪ Ticketed ∪ Shifted, etc. |
 | Tier applications | Governance | Colaborador/Asociado application counts |
 | Staffing by department | Shifts | Event-wide coverage plus a per-department breakdown |

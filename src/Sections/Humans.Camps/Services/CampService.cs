@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Resources;
 using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
@@ -23,13 +22,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     internal const string CampRoleAssignments = "CampRoleAssignments";
     internal const string CampMemberships = "CampMemberships";
 
-    private static readonly ResourceManager NoticeResources = new(typeof(CampsResource));
-
     private readonly ICampRepository _repo;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
-    private readonly INotificationEmitter _notificationEmitter;
+    private readonly CampImageGallery _imageGallery;
+    private readonly CampMembershipNotices _membershipNotices;
     private readonly Lazy<ICampRoleService> _campRoleService;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
@@ -39,12 +37,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
 
-    private static readonly HashSet<string> AllowedImageContentTypes =
-        new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
-    private static readonly HashSet<string> AllowedImageExtensions =
-        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const int MaxHistoricalNameLength = 256;
-    private const int MaxImageFileNameLength = 256;
     private const int MaxCampSlugLength = 256;
 
     public CampService(
@@ -65,7 +58,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
-        _notificationEmitter = notificationEmitter;
+        _imageGallery = new CampImageGallery(repo, fileStorage, clock, auditLog, logger);
+        _membershipNotices = new CampMembershipNotices(repo, userService, notificationEmitter, logger);
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
         _userService = userService;
@@ -655,7 +649,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
+        await _membershipNotices.NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
         return new(true);
 
     }
@@ -698,62 +692,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
+        await _membershipNotices.NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
 
         return CampUpdateResult.Success();
 
-    }
-
-    private async Task NotifyPendingRequestersOfSeasonClosureAsync(
-        Guid seasonId, Guid campId, int year)
-    {
-        // The season change is committed; finish its notifications independently of the request.
-        try
-        {
-            var pendingUserIds = await _repo.GetPendingRequesterUserIdsForSeasonAsync(seasonId, CancellationToken.None);
-            if (pendingUserIds.Count == 0) return;
-
-            var camp = await _repo.GetByIdAsync(campId, CancellationToken.None);
-            var name = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug;
-            var slug = camp?.Slug;
-            var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
-            foreach (var userId in pendingUserIds)
-            {
-                var culture = await GetRecipientCultureAsync(userId);
-                if (!recipientsByCulture.TryGetValue(culture, out var recipients))
-                {
-                    recipients = [];
-                    recipientsByCulture.Add(culture, recipients);
-                }
-                recipients.Add(userId);
-            }
-            foreach (var (culture, recipients) in recipientsByCulture)
-            {
-                try
-                {
-                    var campName = name ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
-                    var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_SeasonClosed", culture)!, year, campName);
-                    await _notificationEmitter.SendAsync(
-                        NotificationSource.CampMembershipSeasonClosed,
-                        NotificationClass.Informational,
-                        NotificationPriority.Normal,
-                        title,
-                        recipients,
-                        body: NoticeResources.GetString("Camps_Notification_SeasonClosedBody", culture),
-                        actionUrl: slug is null ? null : $"/Barrios/{slug}",
-                        actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
-                        cancellationToken: CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to send CampMembershipSeasonClosed notification for season {SeasonId} in {Culture}", seasonId, culture.Name);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to prepare CampMembershipSeasonClosed notifications for season {SeasonId}", seasonId);
-        }
     }
 
     public async Task<CampUpdateResult> MarkSeasonFullAsync(
@@ -1010,119 +952,18 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
     }
 
-    public async Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampImageUploadResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
-        Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var imageCount = await _repo.CountImagesAsync(campId, cancellationToken);
-        if (imageCount >= 5)
-        {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageCount");
-        }
+        Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _imageGallery.UploadImageAsync(campId, fileStream, fileName, contentType, length, actorUserId, cancellationToken);
 
-        if (!AllowedImageContentTypes.Contains(contentType))
-        {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageType");
-        }
+    public Task<CampUpdateResult> DeleteImageAsync(
+        Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _imageGallery.DeleteImageAsync(scopedCampId, imageId, actorUserId, cancellationToken);
 
-        if (length > 10 * 1024 * 1024)
-        {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageSize");
-        }
-
-        // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
-        fileName = DisplayFileName(fileName);
-        if (fileName.Length > MaxImageFileNameLength)
-            return CampImageUploadResult.Failure("Camps_Validation_ImageFilenameLength");
-
-        var ext = Path.GetExtension(fileName);
-        if (!AllowedImageExtensions.Contains(ext))
-        {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageExtension");
-        }
-        var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
-        await _fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);
-
-        var image = new CampImage
-        {
-            Id = Guid.NewGuid(),
-            CampId = campId,
-            FileName = fileName,
-            StoragePath = storageKey,
-            ContentType = contentType,
-            UploadedAt = _clock.GetCurrentInstant()
-        };
-
-        try
-        {
-            await _repo.AddImageAsync(image, cancellationToken);
-        }
-        catch
-        {
-            try
-            {
-                // A failed save may have committed: only remove an unreferenced file.
-                if (await _repo.GetImageForMutationAsync(image.Id, CancellationToken.None) is null)
-                    await _fileStorage.DeleteAsync(storageKey, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to verify or clean up camp image upload {ImageId} at {StoragePath}", image.Id, storageKey);
-            }
-            throw;
-        }
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampImageUploaded, nameof(CampImage), image.Id,
-            $"Uploaded image '{fileName}'",
-            actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
-
-        return CampImageUploadResult.Success(image);
-    }
-
-    private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();
-
-    public async Task<CampUpdateResult> DeleteImageAsync(
-        Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var image = await _repo.GetImageForMutationAsync(imageId, cancellationToken);
-        if (image is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
-        if (image.CampId != scopedCampId)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_ImageWrongCamp");
-        }
-
-        var result = await _repo.DeleteImageAsync(imageId, cancellationToken);
-        if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
-            $"Deleted image {imageId}",
-            actorUserId,
-            relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
-
-        // Metadata and audit have committed; file cleanup must finish independently of the request.
-        try
-        {
-            await _fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex,
-                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
-                result.Value.StoragePath, imageId);
-        }
-
-        return CampUpdateResult.Success();
-
-    }
-
-    public async Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default)
-    {
-        await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
-    }
+    public Task ReorderImagesAsync(
+        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
+        _imageGallery.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
 
     public async Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default)
     {
@@ -1356,20 +1197,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         };
     }
 
-    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
-    {
-        try
-        {
-            var language = (await _userService.GetUserInfoAsync(userId, CancellationToken.None))?.PreferredLanguage;
-            return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to resolve notification language for user {UserId}; using English", userId);
-            return CultureInfo.GetCultureInfo("en");
-        }
-    }
-
     public async Task<CampMembershipMutationResult> ApproveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
         CancellationToken cancellationToken = default)
@@ -1394,30 +1221,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
-        // Membership is committed; request cancellation must not skip its notification.
-        try
-        {
-            var camp = await _repo.GetByIdAsync(scopedCampId, CancellationToken.None);
-            var slug = camp?.Slug;
-            var culture = await GetRecipientCultureAsync(member.UserId);
-            var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug
-                ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
-            var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipApproved", culture)!, campName);
-            await _notificationEmitter.SendAsync(
-                NotificationSource.CampMembershipApproved,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                title,
-                [member.UserId],
-                body: null,
-                actionUrl: slug is null ? null : $"/Barrios/{slug}",
-                actionLabel: slug is null ? null : NoticeResources.GetString("Camps_Notification_ViewCamp", culture),
-                cancellationToken: CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to notify requester {UserId} about approved camp membership {MemberId}", member.UserId, member.Id);
-        }
+        await _membershipNotices.NotifyApprovalAsync(scopedCampId, member.CampSeasonId, member.UserId, member.Id);
         return CampMembershipMutationResult.Success();
 
     }
@@ -1442,27 +1246,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             cascadeRoleAssignments: false,
             cancellationToken);
 
-        // Membership is committed; request cancellation must not skip its notification.
-        try
-        {
-            var camp = await _repo.GetByIdAsync(scopedCampId, CancellationToken.None);
-            var culture = await GetRecipientCultureAsync(requesterUserId);
-            var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug
-                ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
-            var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipRejected", culture)!, campName);
-            await _notificationEmitter.SendAsync(
-                NotificationSource.CampMembershipRejected,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                title,
-                [requesterUserId],
-                body: null,
-                cancellationToken: CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to notify requester {UserId} about rejected camp membership {MemberId}", requesterUserId, member.Id);
-        }
+        await _membershipNotices.NotifyRejectionAsync(scopedCampId, seasonId, requesterUserId, member.Id);
         return CampMembershipMutationResult.Success();
 
     }

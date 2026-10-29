@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Models;
 
@@ -6,7 +7,7 @@ namespace Humans.Tickets.Tests;
 public class SectionAccessMatrixTests
 {
     private static AccessMatrixData Matrix() =>
-        new SectionAccessMatrix().AccessMatrices.Should().ContainSingle().Subject;
+        ((ISectionAccessMatrix)new Section()).AccessMatrices.Should().ContainSingle().Subject;
 
     [HumansFact]
     public void Contributes_the_Tickets_matrix_under_the_key_the_page_calls_it_with()

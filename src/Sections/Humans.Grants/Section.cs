@@ -8,6 +8,7 @@ using Humans.Grants.Contracts;
 using Humans.Grants.Data;
 using Humans.Grants.Domain;
 using Humans.Grants.Services;
+using Humans.Grants.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -16,7 +17,7 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Grants;
 
-public sealed class Section : ISection, ISectionAdminNav
+public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUserPart
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
@@ -54,4 +55,13 @@ public sealed class Section : ISection, ISectionAdminNav
             [GrantProgramStatus.Closed] = "bg-secondary",
         });
     }
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options) =>
+        options.AddPolicy(GrantsPolicies.Manage, policy => policy.AddRequirements(new ManagesGrantsRequirement()));
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.Profile, typeof(MyGrantsViewComponent), Weight: 95),
+        new(UserPartSlots.AdminDetail, typeof(UserGrantsViewComponent), Weight: 95),
+    ];
 }

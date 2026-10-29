@@ -112,10 +112,13 @@ public static class SectionDiscoveryExtensions
     /// </summary>
     public static IReadOnlyList<Type> SectionResourceTypes() =>
         [.. ActiveSectionAssemblies()
-            .SelectMany(a => a.GetExportedTypes()
-                .Where(t => t is { IsClass: true, IsAbstract: false }
-                            && string.Equals(t.Name, SectionName(a) + "Resource", StringComparison.Ordinal)))
+            .SelectMany(a => a.GetExportedTypes().Where(t => IsResourceMarker(t, SectionName(a))))
             .OrderBy(t => t.Name, StringComparer.Ordinal)];
+
+    /// <summary>The one <c>&lt;Section&gt;Resource</c> matcher, shared by the boot diagnostic and <see cref="ISectionCatalog"/>.</summary>
+    internal static bool IsResourceMarker(Type type, string sectionName) =>
+        type is { IsClass: true, IsAbstract: false, IsPublic: true }
+        && string.Equals(type.Name, sectionName + "Resource", StringComparison.Ordinal);
 
     /// <summary>Every shipped section's entry point, paired with its section name and assembly.</summary>
     /// <remarks>

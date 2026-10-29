@@ -1,3 +1,4 @@
+using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Development.Services;
 
@@ -8,7 +9,7 @@ namespace Humans.Development;
 /// nothing. <c>Register</c> gets no <see cref="IHostEnvironment"/>, so the name comes from
 /// <see cref="HostDefaults.EnvironmentKey"/> in configuration.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -24,4 +25,12 @@ public sealed class Section : ISection
         services.AddScoped<DevelopmentDashboardSeeder>();
         services.AddScoped<DevPersonaSeeder>();
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Development", [
+            new("Seed data", "DevSeed", "Index", null, null, "fa-solid fa-seedling", PolicyNames.AdminOnly,
+                 EnvironmentGate: env => env.IsDevelopment())
+        ])
+    ];
 }

@@ -209,7 +209,7 @@ internal sealed class IssuesController(
         }
 
         var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
-        var isReporter = issue.ReporterUserId == user.Id;
+        var isReporter = user.AllUserIds.Contains(issue.ReporterUserId);
 
         var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
         var displayUsers = await GetIssueDisplayUsersAsync(issue, HttpContext.RequestAborted);

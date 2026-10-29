@@ -20,6 +20,11 @@ public class AuditActionRegistryTests
         public static readonly AuditActionDefinition Plain = new("Plain");
     }
 
+    private sealed class CaseOnlyDuplicateActions : AuditActionContributor
+    {
+        public static readonly AuditActionDefinition Plain = new("plain");
+    }
+
     private sealed class OverLongActions : AuditActionContributor
     {
         public static readonly AuditActionDefinition TooLong = new(new string('x', AuditActionDefinition.NameMaxLength + 1));
@@ -63,6 +68,14 @@ public class AuditActionRegistryTests
     public void DuplicateNameAcrossContributorsFailsConstruction()
     {
         var act = () => new AuditActionRegistry([new SectionActions(), new DuplicateActions()]);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Plain*");
+    }
+
+    [HumansFact]
+    public void NamesDifferingOnlyByCaseFailConstruction()
+    {
+        var act = () => new AuditActionRegistry([new SectionActions(), new CaseOnlyDuplicateActions()]);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*Plain*");
     }

@@ -98,7 +98,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Unique index:** `(UserId, Category)`.
 
-**Legacy fallback (until the retirement PR):** a (user, category) with no row here reads Users' frozen row from `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`, read only by `CommunicationPreferenceService.LegacyRows`). Single-user reads go through `GetUserInfoAsync` (merge chains resolved forward); writes and the copy use the raw id. A write seeds its untouched fields from the legacy row; a reset with a legacy row writes a cleared row, otherwise deletes. The data migration `email.communication-preferences` (Email's `SectionDataMigrations`, run from `/Debug/DataMigrations`) copies every legacy row without a row here; cleared rows count as present.
+**Legacy fallback (until the retirement PR):** a (user, category) with no row here reads Users' frozen row from `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`, read only by `CommunicationPreferenceService.LegacyRows`). Single-user reads go through `GetUserInfoAsync` (merge chains resolved forward); writes and the copy use the raw id. A write seeds its untouched fields from the legacy row; a reset with a legacy row writes a cleared row, otherwise deletes. The data migration `email.communication-preferences` (Email's `ISectionDataMigrations`, run from `/Debug/DataMigrations`) copies every legacy row without a row here; cleared rows count as present.
 
 ### MessageCategory
 

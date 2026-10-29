@@ -28,16 +28,16 @@ public class SectionDataMigrationsTests
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     private static DataMigration Migration(string key) =>
-        new SectionDataMigrations().Migrations().Single(m => string.Equals(m.Key, key, StringComparison.Ordinal));
+        ((ISectionDataMigrations)new Section()).Migrations().Single(m => string.Equals(m.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
     public void Registers_each_migration_under_a_unique_users_key()
     {
-        var migrations = new SectionDataMigrations().Migrations().ToList();
+        var migrations = ((ISectionDataMigrations)new Section()).Migrations().ToList();
 
         migrations.Select(m => m.Key).Should().BeEquivalentTo(
         [
-            SectionDataMigrations.LegacyIdentityEmailsKey,
+            Section.LegacyIdentityEmailsKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));
         migrations.Should().OnlyContain(m => !string.IsNullOrWhiteSpace(m.Title) && !string.IsNullOrWhiteSpace(m.Retires));
@@ -55,7 +55,7 @@ public class SectionDataMigrationsTests
             ]));
         _emailProblems.BackfillLegacyIdentityEmailsAsync(_actorId, Arg.Any<CancellationToken>())
             .Returns([(legacyUser, "old@x.com")]);
-        var migration = Migration(SectionDataMigrations.LegacyIdentityEmailsKey);
+        var migration = Migration(Section.LegacyIdentityEmailsKey);
 
         var status = await migration.Status(_services, Ct);
         status.PendingRows.Should().ContainSingle()

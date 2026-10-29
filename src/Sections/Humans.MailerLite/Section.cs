@@ -1,4 +1,6 @@
 using System.Net.Http.Headers;
+using Humans.Base.Authorization;
+using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
@@ -18,7 +20,7 @@ namespace Humans.MailerLite;
 /// <c>MailerLiteOptions</c> binds here, not in Shell: the section's own client is its only consumer. No caching
 /// decorator: the Singleton client holds its own snapshot and refreshes on demand.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -69,5 +71,30 @@ public sealed class Section : ISection
         services.AddScoped<IMailerLiteAudience, MarketingNoTicketAudience>();
 
         services.AddTransient<MailerLiteAudienceSyncJob>();
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("MailerLite", [
+            new("MailerLite", "MailerLiteAdmin", "Index", null, null, "fa-solid fa-paper-plane", PolicyNames.AdminOnly)
+        ])
+    ];
+
+    void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
+    {
+        configuration.GetOptionalSetting(registry, "MailerLite:ApiKey", "MailerLite", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+        registry.RegisterEnvironmentVariable("MAILERLITE_API_KEY", "MailerLite", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+    }
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        // Opt-in: with MailerLite:AudienceSyncCron unset the job is contributed but not scheduled, and admins
+        // sync from /MailerLite/Admin. Set e.g. "0 6 * * *" to enable.
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var cron = configuration.GetValue<string>("MailerLite:AudienceSyncCron") ?? string.Empty;
+
+        yield return new RecurringJobDescriptor("mailerlite-audience-sync", typeof(MailerLiteAudienceSyncJob), cron);
     }
 }

@@ -23,9 +23,6 @@ internal interface ISettingsWriteService : ISettingsService
     Task<EventSettingsSaveResult> SaveTimeZoneAsync(
         string timeZoneId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>Every row, Deleted included, unordered.</summary>
-    Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Makes <paramref name="eventSettingsId"/> the active event and the previously active one Inactive, in one
     /// audited step naming <paramref name="actorUserId"/>.

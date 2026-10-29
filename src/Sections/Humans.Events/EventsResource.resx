@@ -174,4 +174,6 @@
   <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Changes requested for your event submission</value></data>
   <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The moderation team has requested changes to your event &lt;strong&gt;{1}&lt;/strong&gt; before it can be approved.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Feedback:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Please update and resubmit here: &lt;a href="{3}"&gt;Edit event&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Choose each recurrence day once from this event’s calendar.</value></data>
+  <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Choose an active category. The selected category is no longer available.</value></data>
+  <data name="Events_VenueUnavailable" xml:space="preserve"><value>Choose an active venue. The selected venue is no longer available.</value></data>
 </root>

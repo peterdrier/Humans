@@ -170,7 +170,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 ### User parts
 
-`SectionUserParts` (`IUserPart`) contributes two cards to Users' pages; Users names neither:
+`IUserPart` (`IUserPart`) contributes two cards to Users' pages; Users names neither:
 
 | Slot | Component | Audience |
 |---|---|---|

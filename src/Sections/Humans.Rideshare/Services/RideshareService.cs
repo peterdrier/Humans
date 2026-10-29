@@ -29,6 +29,8 @@ internal sealed class RideshareService(
     internal const string RideshareRequests = "RideshareRequests";
     internal const string RideshareInterests = "RideshareInterests";
 
+    private readonly RideshareRouting _routing = new(routeProvider, logger);
+
     private const string MineUrl = "/Rideshare/Mine";
     private static readonly ResourceManager NoticeResources = new(typeof(RideshareResource));
     private static readonly TrackedLock InterestMutationLock = new("Rideshare.Interest");
@@ -76,9 +78,9 @@ internal sealed class RideshareService(
             ? settings.OutboundWindowStart
             : settings.InboundWindowStart;
         if (ValidateTrip(save, inverseDeparture) is { } inverseRefusal) return new(Refusal: inverseRefusal);
-        var (member, pointRefusal) = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
+        var (member, pointRefusal) = await _routing.ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
-        var (waypoints, waypointRefusal) = await GeocodeWaypointsAsync(save.WaypointLabels, [], ct);
+        var (waypoints, waypointRefusal) = await _routing.GeocodeWaypointsAsync(save.WaypointLabels, [], ct);
         if (waypointRefusal is not null) return new(Refusal: waypointRefusal);
         var reversedWaypoints = waypoints.AsEnumerable().Reverse().ToList();
         var destination = new GeoPoint(settings.DestinationLatitude, settings.DestinationLongitude);
@@ -94,8 +96,8 @@ internal sealed class RideshareService(
         original.LinkedTripId = inverse.Id;
         inverse.LinkedTripId = original.Id;
 
-        original.RouteGeoJson = await RouteAsync(original.Direction, member, waypoints, destination, ct);
-        inverse.RouteGeoJson = await RouteAsync(inverse.Direction, member, reversedWaypoints, destination, ct);
+        original.RouteGeoJson = await _routing.RouteAsync(original.Direction, member, waypoints, destination, ct);
+        inverse.RouteGeoJson = await _routing.RouteAsync(inverse.Direction, member, reversedWaypoints, destination, ct);
 
         await repository.AddTripsAsync([original, inverse], ct);
         return new(original.Id);
@@ -116,10 +118,10 @@ internal sealed class RideshareService(
         if (save.SeatsOffered < accepted)
             return new(Refusal: new("Rideshare_Error_SeatsBelowAccepted", accepted));
 
-        var (member, pointRefusal) = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
+        var (member, pointRefusal) = await _routing.ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
         var existingWaypoints = ParseWaypoints(trip.WaypointsJson);
-        var (waypoints, waypointRefusal) = await GeocodeWaypointsAsync(save.WaypointLabels, existingWaypoints, ct);
+        var (waypoints, waypointRefusal) = await _routing.GeocodeWaypointsAsync(save.WaypointLabels, existingWaypoints, ct);
         if (waypointRefusal is not null) return new(Refusal: waypointRefusal);
 
         var routeChanged = trip.Direction != save.Direction
@@ -137,7 +139,7 @@ internal sealed class RideshareService(
             var settings = await repository.GetSettingsAsync(trip.Year, ct);
             if (settings is null) return new(Refusal: new("Rideshare_Error_NotSetUp", trip.Year));
             var destination = new GeoPoint(settings.DestinationLatitude, settings.DestinationLongitude);
-            trip.RouteGeoJson = await RouteAsync(trip.Direction, member, waypoints, destination, ct);
+            trip.RouteGeoJson = await _routing.RouteAsync(trip.Direction, member, waypoints, destination, ct);
         }
 
         trip.UpdatedAt = clock.GetCurrentInstant();
@@ -164,7 +166,7 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default)
     {
         if (ValidateRequest(save) is { } requestRefusal) return new(Refusal: requestRefusal);
-        var (pickup, pointRefusal) = await ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
+        var (pickup, pointRefusal) = await _routing.ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
         var now = clock.GetCurrentInstant();
 
@@ -194,7 +196,7 @@ internal sealed class RideshareService(
             return new(Refusal: new("Rideshare_Error_CancelledRequestEdit"));
 
         if (ValidateRequest(save) is { } requestRefusal) return new(Refusal: requestRefusal);
-        var (pickup, pointRefusal) = await ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
+        var (pickup, pointRefusal) = await _routing.ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
 
         Apply(request, save, pickup);
@@ -461,67 +463,6 @@ internal sealed class RideshareService(
     /// <summary>Must stay idempotent.</summary>
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
-
-    private async Task<(GeoPoint Point, RideshareRefusal? Refusal)> ResolvePointAsync(
-        string label, double? latitude, double? longitude, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(label))
-            return (default, new("Rideshare_Error_PlaceRequired"));
-        if (latitude is { } lat && longitude is { } lng)
-            return (new GeoPoint(lat, lng), null);
-
-        var point = await routeProvider.GeocodeAsync(label.Trim(), ct);
-        return point is { } resolved
-            ? (resolved, null)
-            : (default, new("Rideshare_Error_PlaceNotFound", label.Trim()));
-    }
-
-    /// <summary>Geocodes each label; a label already on the trip keeps its point (no provider call).</summary>
-    private async Task<(IReadOnlyList<Waypoint> Waypoints, RideshareRefusal? Refusal)> GeocodeWaypointsAsync(
-        IReadOnlyList<string> labels, IReadOnlyList<Waypoint> existing, CancellationToken ct)
-    {
-        var result = new List<Waypoint>();
-        foreach (var raw in labels)
-        {
-            var label = Clean(raw);
-            if (label is null) continue;
-
-            var known = existing.FirstOrDefault(w => string.Equals(w.Label, label, StringComparison.OrdinalIgnoreCase));
-            if (known is not null)
-            {
-                result.Add(known);
-                continue;
-            }
-
-            var point = await routeProvider.GeocodeAsync(label, ct);
-            if (point is null) return ([], new("Rideshare_Error_StopNotFound", label));
-            result.Add(new Waypoint(label, point.Value.Latitude, point.Value.Longitude));
-        }
-        return (result, null);
-    }
-
-    /// <summary>
-    /// Inbound: member → waypoints → destination. Outbound: destination → waypoints → member.
-    /// Waypoints are stored in travel order, so they read the same way in both directions.
-    /// A null route is stored as null and never blocks the save.
-    /// </summary>
-    private async Task<string?> RouteAsync(
-        RideshareDirection direction, GeoPoint member, IReadOnlyList<Waypoint> waypoints, GeoPoint destination, CancellationToken ct)
-    {
-        var points = new List<GeoPoint>(waypoints.Count + 2);
-        points.Add(direction == RideshareDirection.Inbound ? member : destination);
-        points.AddRange(waypoints.Select(w => new GeoPoint(w.Latitude, w.Longitude)));
-        points.Add(direction == RideshareDirection.Inbound ? destination : member);
-
-        var route = await routeProvider.GetRouteGeoJsonAsync(points, ct);
-        if (route is null)
-        {
-            logger.LogWarning(
-                "No route for {Direction} trip from {Label}; saving without geometry",
-                direction, direction == RideshareDirection.Inbound ? "member point" : "destination");
-        }
-        return route;
-    }
 
     /// <summary>Entity twin of <see cref="TripView.CoversDate"/>: departure through departure + duration - 1.</summary>
     private static bool TravelsOn(RideshareTrip trip, LocalDate date) =>

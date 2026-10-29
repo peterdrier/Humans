@@ -204,8 +204,8 @@ internal sealed partial class WorkgroupService
         var budget = bootstrap.Budget is { Amount: not null } b ? b : null;
         if (budget is not null)
         {
-            if (budget.Amount < 0)
-                return new(Refusal: new(WorkgroupErrorKeys.BudgetNegative));
+            if (ValidateBudgetAmount(budget.Amount) is { } budgetRefusal)
+                return new(Refusal: budgetRefusal);
             var accountResult = await ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
             if (accountResult.Refusal is { } accountRefusal) return new(Refusal: accountRefusal);
             var account = accountResult.Value!;

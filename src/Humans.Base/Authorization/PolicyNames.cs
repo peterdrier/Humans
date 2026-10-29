@@ -106,7 +106,7 @@ public static class PolicyNames
 
     /// <summary>
     /// May view an expense report (the resource): submitter, its budget category's coordinator, or FinanceAdmin/Admin.
-    /// Registered by Expenses' <c>SectionPolicies</c> so an external caller (Backdoor's finance read API) reaches the
+    /// Registered by Expenses' <c>Section</c> so an external caller (Backdoor's finance read API) reaches the
     /// same check as <c>ExpensesController</c> without the requirement type leaving the section.
     /// </summary>
     public const string ExpenseReportView = nameof(ExpenseReportView);

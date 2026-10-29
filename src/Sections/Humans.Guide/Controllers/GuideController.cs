@@ -4,11 +4,17 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Guide.Models;
 using Humans.Guide.Services;
 using Humans.Base.Authorization;
+using Humans.Base;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Guide.Controllers;
 
 [Route("Guide")]
-internal sealed class GuideController(IGuideContentService content, IGuideRoleResolver roles) : Controller
+internal sealed class GuideController(
+    IGuideContentService content,
+    IGuideRoleResolver roles,
+    IStringLocalizer<GuideResource> localizer,
+    IStringLocalizer<SharedResource> sharedLocalizer) : Controller
 {
     [HttpGet("")]
     [AllowAnonymous]
@@ -72,38 +78,45 @@ internal sealed class GuideController(IGuideContentService content, IGuideRoleRe
             : "Document", viewModel);
     }
 
-    private static GuideSidebarModel BuildSidebar(string? activeStem)
+    private GuideSidebarModel BuildSidebar(string? activeStem)
     {
         var entries = new List<GuideSidebarEntry>
         {
-            new(GuideFiles.GettingStarted, DisplayName(GuideFiles.GettingStarted), "Start here")
+            new(GuideFiles.GettingStarted, DisplayName(GuideFiles.GettingStarted), localizer["Guide_Group_Start"].Value)
         };
         foreach (var section in GuideFiles.Sections)
         {
-            entries.Add(new GuideSidebarEntry(section, DisplayName(section), "Section guides"));
+            entries.Add(new GuideSidebarEntry(section, DisplayName(section), localizer["Guide_Group_Sections"].Value));
         }
         foreach (var faq in GuideFiles.CommonQuestions)
         {
-            entries.Add(new GuideSidebarEntry(faq, DisplayName(faq), "Common questions"));
+            entries.Add(new GuideSidebarEntry(faq, DisplayName(faq), localizer["Guide_Group_Questions"].Value));
         }
-        entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, DisplayName(GuideFiles.Glossary), "Appendix"));
+        entries.Add(new GuideSidebarEntry(GuideFiles.Glossary, DisplayName(GuideFiles.Glossary), localizer["Guide_Group_Appendix"].Value));
         return new GuideSidebarModel { Entries = entries, ActiveStem = activeStem };
     }
 
-    private static string DisplayName(string stem) => stem switch
+    private static readonly IReadOnlyDictionary<string, string> SharedPageLabels = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        GuideFiles.Readme => "Guide",
-        GuideFiles.GettingStarted => "Getting Started",
-        GuideFiles.Glossary => "Glossary",
-        "LegalAndConsent" => "Legal & Consent",
-        "CityPlanning" => "City Planning",
-        "GoogleIntegration" => "Google Integration",
-        "EmailAccount" => "Your @nobodies.team email",
-        "TwoStepVerification" => "Two-step verification (2FA)",
-        "TicketTransfers" => "Transferring your ticket",
-        "AiHelper" => "The in-app AI helper",
-        "SigningIn" => "Signing in & getting unstuck",
-        "YourData" => "Your data & privacy",
-        _ => stem
+        [GuideFiles.Readme] = "SectionHelp_Guide",
+        ["Admin"] = "Nav_Admin",
+        ["Teams"] = "LinkPreview_Teams_Title",
+        ["Shifts"] = "LinkPreview_Shifts_Title",
+        ["Tickets"] = "LinkPreview_Tickets_Title",
+        ["Camps"] = "LinkPreview_Camps_Title",
+        ["Events"] = "LinkPreview_Events_Title",
+        ["Calendar"] = "LinkPreview_Calendar_Title",
+        ["Issues"] = "LinkPreview_Issues_Title",
+        ["Feedback"] = "LinkPreview_Feedback_Title",
+        ["Governance"] = "LinkPreview_Governance_Title",
+        ["Budget"] = "LinkPreview_Budget_Title",
+        ["Expenses"] = "LinkPreview_Expenses_Title",
+        ["Store"] = "LinkPreview_Store_Title",
+        ["CityPlanning"] = "LinkPreview_CityPlanning_Title"
     };
+
+    private string DisplayName(string stem) =>
+        SharedPageLabels.TryGetValue(stem, out var sharedKey)
+            ? sharedLocalizer[sharedKey].Value
+            : localizer["Guide_Page_" + stem].Value;
 }

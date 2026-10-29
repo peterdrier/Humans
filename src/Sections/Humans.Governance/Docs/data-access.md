@@ -67,7 +67,7 @@ Cross-section reads: `IUserService` (legacy `ProfileInfo.MembershipTier` fallbac
 user has no row; read only in `LegacyTier`, inside `#pragma warning disable HUM_PROFILE_TIER`).
 Implements `IUserDataContributor` (slice `MembershipTier`; erasure retains the row — register
 of members, Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b)) and `IUserMerge` (survivor's tier
-wins). Data migration `governance.profile-tier` (`SectionDataMigrations`) copies legacy
+wins). Data migration `governance.profile-tier` (`ISectionDataMigrations`) copies legacy
 non-Volunteer profile tiers into rows.
 
 ### AssemblyVoteService (Scoped)

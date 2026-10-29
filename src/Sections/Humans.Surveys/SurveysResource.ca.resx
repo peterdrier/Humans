@@ -403,4 +403,5 @@
   <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Cada pregunta de selecció ha de tenir almenys una opció.</value></data>
   <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Els valors de les opcions d’una pregunta de selecció no poden estar buits.</value></data>
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Els valors de les opcions de cada pregunta de selecció han de ser únics.</value></data>
+  <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>El mínim de la valoració no pot superar el màxim.</value></data>
 </root>

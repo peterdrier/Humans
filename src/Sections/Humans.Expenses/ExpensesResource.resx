@@ -318,4 +318,5 @@
   <data name="Expenses_LegalName" xml:space="preserve"><value>Legal name</value></data>
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Required. Enter the project name this expense is for, e.g. the name of your art project.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Add a subject (the project name) before submitting.</value></data>
+  <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Enter an amount with no more than two decimal places.</value></data>
 </root>
