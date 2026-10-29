@@ -15,8 +15,7 @@ public class HomeController(
     IConsentService consentService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
-    IAuthorizationService authorizationService,
-    IWebHostEnvironment environment) : HumansControllerBase(userService)
+    IAuthorizationService authorizationService) : HumansControllerBase(userService)
 {
     // Public landing page and member dashboard on one route. MembershipRequiredFilter and NameRequiredFilter
     // still gate signed-in users here despite the attribute (see MembershipRequiredFilter.IsPublicEndpoint).
@@ -75,8 +74,7 @@ public class HomeController(
         // Exception text can carry any section's data, so only roles that may already read the logs see it.
         var exception = HttpContext.Features.Get<IExceptionHandlerFeature>()?.Error;
         var showDetail = exception is not null
-            && (environment.IsStaging()
-                || (await authorizationService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded);
+            && (await authorizationService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded;
 
         return View(new ErrorViewModel(
             statusCode ?? Response.StatusCode,

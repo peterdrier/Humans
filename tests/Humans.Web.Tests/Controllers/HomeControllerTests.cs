@@ -7,7 +7,6 @@ using Humans.Web.Controllers;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -28,11 +27,9 @@ public class HomeControllerTests
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
-    private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
 
     public HomeControllerTests()
     {
-        _environment.EnvironmentName.Returns("Production");
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
     }
@@ -44,8 +41,7 @@ public class HomeControllerTests
             _consentService,
             _configuration,
             _configRegistry,
-            _authorization,
-            _environment);
+            _authorization);
 
         ctrl.ControllerContext = new ControllerContext
         {
@@ -115,7 +111,7 @@ public class HomeControllerTests
     }
 
     [HumansFact]
-    public async Task Error_Exception_ShowsCodeButHidesDetailFromOrdinaryUserInProduction()
+    public async Task Error_Exception_ShowsCodeButHidesDetailFromOrdinaryUser()
     {
         var result = await WithException(BuildSut(Authenticated(Guid.NewGuid()))).Error();
 
@@ -131,17 +127,6 @@ public class HomeControllerTests
             .Returns(AuthorizationResult.Success());
 
         var result = await WithException(BuildSut(Authenticated(Guid.NewGuid()))).Error();
-
-        var model = Assert.IsType<ErrorViewModel>(Assert.IsType<ViewResult>(result).Model);
-        Assert.Contains("boom", model.ExceptionDetail);
-    }
-
-    [HumansFact]
-    public async Task Error_Exception_ShowsDetailToAnyoneOnQa()
-    {
-        _environment.EnvironmentName.Returns("Staging");
-
-        var result = await WithException(BuildSut(new ClaimsPrincipal(new ClaimsIdentity()))).Error();
 
         var model = Assert.IsType<ErrorViewModel>(Assert.IsType<ViewResult>(result).Model);
         Assert.Contains("boom", model.ExceptionDetail);
