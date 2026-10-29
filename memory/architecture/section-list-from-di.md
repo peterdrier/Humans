@@ -11,7 +11,7 @@ description: Before hand-writing a list of section names — in code, in a doc, 
 
 - New code that needs to know what sections exist → inject `ISectionCatalog`. Never a new const list.
 - A list that is a **deliberate subset** — the agent's user-facing keys, the sections that have an issue queue — stays owned by its section. The catalog does not replace it and must not be used to derive it: `IsKnown` answers "is this a section", not "may this section be named here".
-- Any such subset publishes an `ISectionAnnotations` contribution (`internal sealed class SectionAnnotations` at the section root, one `SectionAnnotation` per entry). An entry naming no discovered section lands in `ISectionCatalog.UnmatchedAnnotations`, is logged at startup and is shown at `/Debug/Sections`.
+- Any such subset publishes an `ISectionAnnotations` contribution (an explicit `ISectionAnnotations.Annotations()` on the section's `Section` class, one `SectionAnnotation` per entry). An entry naming no discovered section lands in `ISectionCatalog.UnmatchedAnnotations`, is logged at startup and is shown at `/Debug/Sections`.
 - Drift is a **warning, never a startup failure**. Nothing fails at runtime on a stale entry, and throwing would make a section rename un-shippable.
 - Validating a stored section string → validate against the list that owns the *behaviour* (`IssueSectionRouting` for an issue's queue), not against the catalog. The set of sections and the set of queues are not the same set.
 

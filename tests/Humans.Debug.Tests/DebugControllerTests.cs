@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base;
 using Humans.Base.Configuration;
 using Humans.Base.Data;
 using Humans.Base.Interfaces;
@@ -10,7 +11,10 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Serilog.Events;
 using Serilog.Parsing;
@@ -29,6 +33,7 @@ public class DebugControllerTests
     private readonly CapturingLogger<DebugController> _logger = new();
     private readonly ConfigurationRegistry _configuration = new();
     private readonly InMemoryLogSink _logSink = new();
+    private readonly ISectionCatalog _sectionCatalog = Substitute.For<ISectionCatalog>();
 
     public DebugControllerTests()
     {
@@ -99,6 +104,24 @@ public class DebugControllerTests
             .Which.Level.Should().Be(LogLevel.Warning, because: "the clear must reach production logs");
     }
 
+    [HumansFact]
+    public void Translations_renders_one_gallery_per_catalogued_resource_set()
+    {
+        _sectionCatalog.Sections.Returns(
+        [
+            new SectionInfo("Shifts", IsActive: true) { ResourceType = typeof(Humans.Shifts.ShiftsResource) },
+            new SectionInfo("Debug", IsActive: true),
+        ]);
+        var factory = new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
+
+        var model = BuildSut().Translations(new StringLocalizer<SharedResource>(factory), factory)
+            .Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<TranslationsPageViewModel>().Subject;
+
+        model.Sets.Select(s => s.Name).Should().Equal(TranslationsPageModelBuilder.SharedName, "Shifts");
+    }
+
     private DebugController BuildSut()
     {
         var controller = new DebugController(
@@ -111,7 +134,7 @@ public class DebugControllerTests
             Substitute.For<ICacheStatsProvider>(),
             [],
             _diagnostics,
-            Substitute.For<ISectionCatalog>(),
+            _sectionCatalog,
             _logSink);
 
         var http = new DefaultHttpContext();

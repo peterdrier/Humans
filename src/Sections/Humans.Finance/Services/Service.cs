@@ -53,6 +53,7 @@ internal sealed class Service(
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
     private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
+    private readonly SepaPayoutEmails payoutEmails = new(users, userEmails, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
@@ -1160,56 +1161,9 @@ internal sealed class Service(
                 actorUserId, t.UserId, nameof(User));
 
         // The payout is committed: abandoning the download must not suppress its notifications.
-        await SendPayoutEmailsAsync(transfers);
+        await payoutEmails.SendPayoutEmailsAsync(transfers);
 
         return new SepaPayoutResult(fileName, xml, null);
-    }
-
-    /// <summary>
-    /// After the save: an outbox row is a promise of money. Sent at generation, when the treasurer hands the file to
-    /// the bank, not at booking. A failure here must not block the download of the saved file.
-    /// </summary>
-    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers)
-    {
-        var ct = CancellationToken.None;
-        var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
-        IReadOnlyDictionary<Guid, UserInfo> infos;
-        IReadOnlyDictionary<Guid, string> targets;
-        try
-        {
-            infos = await users.GetUserInfosAsync(userIds, ct);
-            targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to resolve recipients for saved SEPA payout {FileId}", transfers[0].FileId);
-            return;
-        }
-
-        foreach (var t in transfers)
-        {
-            if (!infos.TryGetValue(t.UserId, out var member)
-                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
-            {
-                logger.LogWarning(
-                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
-                    t.Id, t.UserId);
-                continue;
-            }
-
-            try
-            {
-                var language = member.PreferredLanguage;
-                await emailService.SendAsync(emails.SepaPayoutGenerated(
-                    member.Id,
-                    recipient, member.BurnerName, t.Amount, t.IbanMasked,
-                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to queue email for saved SEPA payout transfer {TransferId}", t.Id);
-            }
-        }
     }
 
     /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
@@ -1233,7 +1187,7 @@ internal sealed class Service(
             + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
             actorUserId, transfer.UserId, nameof(User));
 
-        await SendWithdrawnEmailAsync(transfer, booking.FileDate(row));
+        await payoutEmails.SendWithdrawnEmailAsync(transfer, booking.FileDate(row));
 
         return new SepaBookingResult(true,
             $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
@@ -1257,36 +1211,6 @@ internal sealed class Service(
         if (paymentRefs is { Length: > 0 })
             return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — settle it in Holded instead.";
         return null;
-    }
-
-    /// <summary>The member was told a transfer was coming, so they are told it was cancelled. After the save, with no
-    /// request token.</summary>
-    private async Task SendWithdrawnEmailAsync(SepaPayoutTransfer t, LocalDate announcedOn)
-    {
-        var ct = CancellationToken.None;
-        try
-        {
-            var infos = await users.GetUserInfosAsync([t.UserId], ct);
-            var targets = await userEmails.GetNotificationTargetEmailsAsync([t.UserId], ct);
-            if (!infos.TryGetValue(t.UserId, out var member)
-                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
-            {
-                logger.LogWarning(
-                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} has no notification email",
-                    t.Id, t.UserId);
-                return;
-            }
-
-            var language = member.PreferredLanguage;
-            await emailService.SendAsync(emails.SepaPayoutWithdrawn(
-                member.Id,
-                recipient, member.BurnerName, t.Amount, t.IbanMasked, announcedOn,
-                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to queue email for withdrawn SEPA payout transfer {TransferId}", t.Id);
-        }
     }
 
     public Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>

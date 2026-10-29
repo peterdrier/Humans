@@ -53,21 +53,15 @@ public sealed class SettingsAdminControllerTests
     {
         Id = id,
         EventName = "Nowhere 2026",
-        TimeZoneId = "Europe/Madrid",
         GateOpeningDate = "2026-07-09",
         IsActive = isActive,
     };
 
     [HumansTheory]
     [Xunit.InlineData("Id", false)]
-    [Xunit.InlineData("TimeZoneId", false)]
     [Xunit.InlineData("BuildStartOffset", false)]
     [Xunit.InlineData("EventEndOffset", false)]
     [Xunit.InlineData("StrikeEndOffset", false)]
-    [Xunit.InlineData("FirstCrewStartOffset", false)]
-    [Xunit.InlineData("SetupWeekStartOffset", false)]
-    [Xunit.InlineData("PreEventWeekStartOffset", false)]
-    [Xunit.InlineData("FinishingWeekendStartOffset", false)]
     [Xunit.InlineData("EarlyEntryCapacityJson", false)]
     [Xunit.InlineData("BarriosEarlyEntryAllocationJson", false)]
     [Xunit.InlineData("EarlyEntryClose", false)]
@@ -88,13 +82,8 @@ public sealed class SettingsAdminControllerTests
         {
             ["Id"] = blankOptional ? "" : id.ToString(),
             ["EventName"] = "Nowhere 2026",
-            ["TimeZoneId"] = "Etc/UTC",
             ["GateOpeningDate"] = "2026-07-09",
             ["BuildStartOffset"] = "-30",
-            ["FirstCrewStartOffset"] = "-24",
-            ["SetupWeekStartOffset"] = "-15",
-            ["PreEventWeekStartOffset"] = "-8",
-            ["FinishingWeekendStartOffset"] = "-3",
             ["EventEndOffset"] = blankOptional ? "0" : "7",
             ["StrikeEndOffset"] = blankOptional ? "0" : "10",
             ["EarlyEntryCapacityJson"] = blankOptional ? "{}" : "{\"-7\":50}",
@@ -132,12 +121,7 @@ public sealed class SettingsAdminControllerTests
             var saved = Xunit.Assert.IsType<EventSettingsInfo>(_settings.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]);
             saved.Id.Should().NotBe(Guid.Empty);
             if (!blankOptional) saved.Id.Should().Be(id);
-            saved.TimeZoneId.Should().Be("Etc/UTC");
             saved.BuildStartOffset.Should().Be(-30);
-            saved.FirstCrewStartOffset.Should().Be(-24);
-            saved.SetupWeekStartOffset.Should().Be(-15);
-            saved.PreEventWeekStartOffset.Should().Be(-8);
-            saved.FinishingWeekendStartOffset.Should().Be(-3);
             saved.EventEndOffset.Should().Be(blankOptional ? 0 : 7);
             saved.StrikeEndOffset.Should().Be(blankOptional ? 0 : 10);
             saved.EarlyEntryCapacity.Should().BeEquivalentTo(blankOptional ? new Dictionary<int, int>() : new() { [-7] = 50 });
@@ -212,12 +196,12 @@ public sealed class SettingsAdminControllerTests
         // The form is only ever rendered by the /Settings#event tab, so a validation
         // failure has to name the broken rule in the flash or the operator sees nothing.
         var sut = BuildSut();
-        sut.ModelState.AddModelError(nameof(EventSettingsViewModel.TimeZoneId), "Timezone is required.");
+        sut.ModelState.AddModelError(nameof(EventSettingsViewModel.EventName), "Event name is required.");
 
         var result = await sut.Index(MakeForm(id: null, isActive: false), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Timezone is required.");
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Event name is required.");
         await _settings.DidNotReceiveWithAnyArgs().SaveEventSettingsAsync(default!, default);
     }
 
@@ -278,5 +262,31 @@ public sealed class SettingsAdminControllerTests
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
         sut.TempData[TempDataKeys.ErrorMessage].Should().Be("That event no longer exists.");
+    }
+
+    [HumansFact]
+    public async Task TimeZone_Post_SavesAndRedirectsToTheTab()
+    {
+        _settings.SaveTimeZoneAsync("Atlantic/Canary", Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+        var sut = BuildSut();
+
+        var result = await sut.TimeZone("Atlantic/Canary", TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
+        sut.TempData.Should().ContainKey(TempDataKeys.SuccessMessage);
+    }
+
+    [HumansFact]
+    public async Task TimeZone_Post_Refusal_FlashesTheReason()
+    {
+        _settings.SaveTimeZoneAsync("Mars/Olympus", Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(false, "Invalid IANA timezone ID."));
+        var sut = BuildSut();
+
+        var result = await sut.TimeZone("Mars/Olympus", TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#event");
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be("Invalid IANA timezone ID.");
     }
 }

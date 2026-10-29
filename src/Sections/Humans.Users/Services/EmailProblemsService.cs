@@ -75,9 +75,10 @@ internal sealed class EmailProblemsService(
         foreach (var (info, legacy) in GetUnmatchedLegacyEmails(allInfos))
         {
             // Plain verified row; the next OAuth sign-in attaches the provider tag.
+            // A refused row stays unmatched, so the status list keeps showing it; the add logs the reason.
             var emailAddition = await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
             if (emailAddition.ErrorKey is not null)
-                throw new InvalidOperationException("Could not add the verified email address.");
+                continue;
             await audit.LogAsync(
                 AuditAction.LegacyIdentityEmailBackfilled, nameof(User), info.Id,
                 $"Backfilled verified UserEmail row from legacy User.Email column: {legacy}",

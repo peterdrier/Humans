@@ -4,4 +4,5 @@ namespace Humans.Settings.Services;
 internal static class AuditEntityTypes
 {
     public const string EventSettings = "EventSettings";
+    public const string EventTimeZone = "EventTimeZone";
 }

@@ -1,17 +1,18 @@
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Base.Hosting;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Jobs;
 using Humans.Notifications.Services;
+using Humans.Notifications.ViewComponents;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Users.Contracts;
 
 namespace Humans.Notifications;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionChrome, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -36,5 +37,16 @@ public sealed class Section : ISection
         services.AddScoped<INotificationInboxRead, NotificationInboxRead>();
 
         services.AddScoped<CleanupNotificationsJob>();
+    }
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [
+            new(ChromeSlots.HeaderRight, typeof(NotificationBellViewComponent)),
+        ];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "notifications-cleanup", typeof(CleanupNotificationsJob), "30 4 * * *");
     }
 }

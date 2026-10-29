@@ -42,20 +42,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         return (items, totalCount, anomalyCount);
     }
 
-    public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e =>
-                (e.EntityType == "User" && e.EntityId == userId) ||
-                (e.RelatedEntityId == userId))
-            // arch:db-sort-ok top-N audit selector
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(count)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<AuditLogEntry>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, int count, CancellationToken ct = default)
     {
@@ -105,17 +91,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             // arch:db-sort-ok filtered audit window over append-only log
             .OrderByDescending(e => e.OccurredAt)
             .Take(limit)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<AuditLogEntry>> GetAllForUserContributorAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
-            // arch:db-sort-ok GDPR export stable chronology
-            .OrderByDescending(a => a.OccurredAt)
             .ToListAsync(ct);
     }
 

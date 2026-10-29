@@ -58,7 +58,7 @@ public class HoldedDocSyncJobTests
     [HumansFact]
     public void Job_IsScheduledNightly_ByFinance()
     {
-        new SectionJobs().Jobs(Substitute.For<IServiceProvider>())
+        ((ISectionJobs)new Section()).Jobs(Substitute.For<IServiceProvider>())
             .Should().ContainSingle(j => j.JobType == typeof(HoldedDocSyncJob))
             .Which.Should().Be(new RecurringJobDescriptor("holded-doc-sync", typeof(HoldedDocSyncJob), "45 2 * * *"));
     }

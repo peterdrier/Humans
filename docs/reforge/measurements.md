@@ -444,3 +444,201 @@ scale and does not hold on the 0.29.0 one; the receiving sections absorbed more 
 400 each (Email +323, Finance +182, GoogleIntegration +163, Tickets +126), consistent with each
 gaining a contracts surface. The solution total rose 816 (4.6%): the moved code is still counted, now with a
 repository, an `I<Section>Write`, a user-merge fold and an export contributor per target.
+
+---
+
+## 2026-10-29 — Humans b35ab2e39 — reforge 0.29.0
+
+Taken on `origin/main` `b35ab2e39` (no code changes on top; a docs-only stats commit landed on the branch mid-run). Full archive (`--all --top-symbols 0`), no truncation — JSON is 2.4 MB. Build clean (0 errors, 3 `HUM_USER_DISPLAYNAME` warnings), `build.degraded: false`; `--allow-degraded` was not used.
+
+Raw JSON and markdown report: `2026-10-29-b35ab2e39-reforge0.29.0.{json,md}` in the local archive (not committed; see README).
+· [`runs/2026-10-29-b35ab2e39-reforge0.29.0.md`](runs/2026-10-29-b35ab2e39-reforge0.29.0.md)
+
+reforge version string: `0.29.0+7bc639e8b15a66c3bcf253e06819ee857f38cb02` (same as the 2026-10-21 entry, so the comparison is like-for-like on tool version).
+
+Note: the 2026-10-21 entry preserved no `jq` invocations, so the queries below follow the 2026-08-16 entry's structure (a to e), re-expressed against the 0.29.0 JSON (`.build.degraded`, not top-level `.degraded`).
+
+### (a) Headline
+
+| Metric | 2026-10-21 | This tree | Delta |
+|---|---:|---:|---:|
+| total | 18,436 | 17,568 | -868 |
+| surfaceTotal | 14,297 | 13,702 | -595 |
+| internalComplexityTotal | 4,139 | 3,866 | -273 |
+| typesAnalyzed | 3,883 | 3,971 | +88 |
+| sections (groups) | 48 | 50 | +2 |
+| degraded | false | false | |
+
+Baseline verdict (`--baseline runs/2026-10-21-83c00df02-c16-reforge0.29.0.json`): `verdict=improved improvement=True`, surface 14297 -> 13702 (-595), internalComplexity 4139 -> 3866 (-273), total 18,436 -> 17,568 (-868).
+
+One `traded` verdict: **Base** — surface improved by 63 points but implementation complexity worsened by 1 (cognitiveComplexity +2 in `ProcessAsync`, `Convert`); not counted as an improvement. Other Suspicious Improvements flagged: parameter-bag consolidation for solution (+110: `ProfileSaveRequest`, `CreateShiftInput`, `CreateRotaInput`) and Users (+112: `ProfileSaveRequest`, `UserEmailAddCommand`, `UserEmailReconcilePlanCommand`); a helper-extraction-without-concept-deleted advisory for GoogleIntegration (4 methods moved sideways); and canonical-consolidation advisories for Auth, Campaigns, Email, Finance, Governance, Notifications, Teams, Tickets, Users.
+
+```json
+{
+  "total": 17568,
+  "surfaceTotal": 13702,
+  "internalComplexityTotal": 3866,
+  "typesAnalyzed": 3971,
+  "sections": 50,
+  "degraded": false
+}
+```
+
+```
+jq '{total,surfaceTotal,internalComplexityTotal,typesAnalyzed,sections:(.groups|length),degraded:.build.degraded}' docs/reforge/latest.json
+```
+
+#### Section movement vs 2026-10-21 (non-zero deltas)
+
+| Section | 2026-10-21 | This tree | Change |
+|---|---:|---:|---:|
+| Email | 839 | 662 | -177 |
+| Users | 2,975 | 2,847 | -128 |
+| GoogleIntegration | 1,085 | 986 | -99 |
+| Teams | 1,154 | 1,058 | -96 |
+| Shifts | 1,527 | 1,440 | -87 |
+| Tickets | 870 | 789 | -81 |
+| Base | 749 | 687 | -62 |
+| Governance | 550 | 506 | -44 |
+| Cantina | 134 | 92 | -42 |
+| Holded | 479 | 437 | -42 |
+| Camps | 477 | 436 | -41 |
+| Auth | 350 | 317 | -33 |
+| Gate | 104 | 81 | -23 |
+| Consent | 401 | 382 | -19 |
+| Store | 221 | 207 | -14 |
+| Campaigns | 136 | 122 | -14 |
+| Workgroups | 175 | 163 | -12 |
+| CityPlanning | 224 | 212 | -12 |
+| Expenses | 478 | 467 | -11 |
+| Finance | 1,149 | 1,141 | -8 |
+| EarlyEntry | 58 | 52 | -6 |
+| Development | 238 | 232 | -6 |
+| Surveys | 486 | 481 | -5 |
+| Settings | 85 | 82 | -3 |
+| Web | 450 | 447 | -3 |
+| Budget | 253 | 252 | -1 |
+| Backdoor | 65 | 64 | -1 |
+| Calendar | 142 | 144 | +2 |
+| Stripe | 68 | 70 | +2 |
+| Onboarding | 89 | 92 | +3 |
+| LowIncome | 0 | 4 | +4 |
+| Feedback | 146 | 151 | +5 |
+| MailerLite | 248 | 254 | +6 |
+| Gdpr | 155 | 163 | +8 |
+| Guide | 37 | 55 | +18 |
+| Notifications | 295 | 314 | +19 |
+| Agent | 389 | 410 | +21 |
+| Preapprovals | 107 | 132 | +25 |
+| Grants | 0 | 89 | +89 |
+| **Solution total** | 18,436 | 17,568 | -868 |
+
+### (b) Read-surface rules (the six reforge#19 proposes retiring)
+
+Measured subtotal **4,786** = 27.2% of total / 34.9% of surfaceTotal (2026-10-21: 4,842). `crossSectionWriteSurface` is absent from `byRule`; `canonicalReadDtoReturn` is a credit.
+
+| Rule | 2026-10-21 | This tree |
+|---|---:|---:|
+| crossSectionReadInterface | 1,266 | 1,302 |
+| readServiceInterfaceMethod | 2,232 | 2,190 |
+| readSurfaceProjectionMethod | 1,296 | 1,264 |
+| writeCapableInterfaceUsedReadOnly | 120 | 96 |
+| canonicalReadDtoReturn | -72 | -66 |
+| crossSectionWriteSurface | (absent) | (absent) |
+| **subtotal** | **4,842** | **4,786** |
+
+```json
+{
+  "rules": {
+    "crossSectionReadInterface": 1302,
+    "readServiceInterfaceMethod": 2190,
+    "readSurfaceProjectionMethod": 1264,
+    "writeCapableInterfaceUsedReadOnly": 96,
+    "canonicalReadDtoReturn": -66
+  },
+  "subtotal": 4786
+}
+```
+
+```
+jq '.byRule|{crossSectionReadInterface,readServiceInterfaceMethod,readSurfaceProjectionMethod,writeCapableInterfaceUsedReadOnly,crossSectionWriteSurface,canonicalReadDtoReturn}' docs/reforge/latest.json
+```
+
+### (c) The internal axis per rule
+
+The three size rules sum to 3,410 of 3,866 = 88.2%. The six rules queried sum to 3,866 = `internalComplexityTotal` exactly.
+
+| Rule | 2026-10-21 | This tree | Share of internal |
+|---|---:|---:|---:|
+| longMethod | 1,930 | 1,701 | 44.0% |
+| cognitiveComplexity | 1,123 | 1,144 | 29.6% |
+| largeClass | 630 | 565 | 14.6% |
+| mutationModeParameter | 360 | 360 | 9.3% |
+| actionDispatcher | 80 | 80 | 2.1% |
+| flagsControlFlow | 16 | 16 | 0.4% |
+| genericActionDispatcher | (absent) | (absent) | — |
+
+```json
+{
+  "longMethod": 1701,
+  "cognitiveComplexity": 1144,
+  "largeClass": 565,
+  "mutationModeParameter": 360,
+  "actionDispatcher": 80,
+  "flagsControlFlow": 16
+}
+```
+
+```
+jq '.byRule|{longMethod,cognitiveComplexity,largeClass,mutationModeParameter,actionDispatcher,flagsControlFlow,genericActionDispatcher}' docs/reforge/latest.json
+```
+
+### (d) Size-rule distributions
+
+Each `sum` matches its `byRule` figure (valid because the run used `--all`).
+
+| Rule | count | sum | max | p50 | p90 |
+|---|---:|---:|---:|---:|---:|
+| cognitiveComplexity | 126 | 1,144 | 77 | 5 | 20 |
+| longMethod | 366 | 1,701 | 68 | 2 | 16 |
+| largeClass | 15 | 565 | 95 | 20 | 75 |
+
+```
+jq --arg r <rule> '[.groups[].topEntries[]?|select(.rule==$r)|.points]|sort|{count:length,sum:add,max:max,p50:.[(length*0.5|floor)],p90:.[(length*0.9|floor)]}' docs/reforge/latest.json
+```
+
+### (e) Top 20 symbols across rules
+
+`.topSymbols` (uncapped: 3165 symbols in this run).
+
+<details>
+<summary>Top 20 cross-rule symbols</summary>
+
+| # | Symbol | File | Total |
+|--:|--------|------|------:|
+| 1 | SeedAsync | `src/Sections/Humans.Development/Services/DevelopmentDashboardSeeder.cs` | 141 |
+| 2 | ProfileSaveRequest | `src/Sections/Humans.Users.Contracts/ProfileSaveRequest.cs` | 132 |
+| 3 | BookOneTransferAsync | `src/Sections/Humans.Finance/Services/SepaBankBooking.cs` | 131 |
+| 4 | SurveyService | `src/Sections/Humans.Surveys/Services/SurveyService.cs` | 113 |
+| 5 | WorkgroupService | `src/Sections/Humans.Workgroups/Services/WorkgroupService.cs` | 97 |
+| 6 | RunTurnAsync | `src/Sections/Humans.Agent/Services/AgentService.cs` | 85 |
+| 7 | CreateShiftInput | `src/Sections/Humans.Shifts.Contracts/IShiftSeeding.cs` | 84 |
+| 8 | TeamService | `src/Sections/Humans.Teams/Services/TeamService.cs` | 81 |
+| 9 | ExpenseReportService | `src/Sections/Humans.Expenses/Services/ExpenseReportService.cs` | 77 |
+| 10 | StreamAsync | `src/Sections/Humans.Agent/Services/Anthropic/AnthropicClient.cs` | 71 |
+| 11 | AdvanceWizardAsync | `src/Sections/Humans.Surveys/Services/SurveyService.cs` | 70 |
+| 12 | AssemblyVoteService | `src/Sections/Humans.Governance/Services/AssemblyVoteService.cs` | 69 |
+| 13 | Service | `src/Sections/Humans.Finance/Services/Service.cs` | 69 |
+| 14 | ShiftManagementService | `src/Sections/Humans.Shifts/Services/ShiftManagementService.cs` | 69 |
+| 15 | ProcessAsync | `src/Humans.Base/TagHelpers/MarkdownEditorTagHelper.cs` | 64 |
+| 16 | CreateRotaInput | `src/Sections/Humans.Shifts.Contracts/IShiftSeeding.cs` | 62 |
+| 17 | GetSepaPayoutsAsync | `src/Sections/Humans.Finance/Services/SepaBankBooking.cs` | 62 |
+| 18 | LogAsync | `src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs` | 60 |
+| 19 | ReconcileOAuthIdentityAsync | `src/Sections/Humans.Users/Services/UserEmailService.cs` | 57 |
+| 20 | Configure | `src/Sections/Humans.Teams/Data/Configurations/TeamConfiguration.cs` | 55 |
+
+```
+jq '.topSymbols[:20]' docs/reforge/latest.json
+```
+
+</details>

@@ -14,9 +14,6 @@ public interface IAuditViewerService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
 
-    /// <summary><paramref name="actionFilter"/> is a case-insensitive <see cref="AuditAction"/> name match.</summary>
-    Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);
-
     Task<IReadOnlyList<AuditEvent>> GetFilteredAsync(
         string? entityType,
         Guid? entityId,
@@ -25,8 +22,3 @@ public interface IAuditViewerService : IApplicationService
         int limit,
         CancellationToken ct = default);
 }
-
-public sealed record AuditEventPage(
-    IReadOnlyList<AuditEvent> Items,
-    int TotalCount,
-    int AnomalyCount);

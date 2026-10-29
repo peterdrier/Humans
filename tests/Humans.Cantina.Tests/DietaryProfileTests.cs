@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
@@ -237,7 +238,7 @@ public class DietaryProfileTests
         SeedUser(alreadyCopied, legacyPreference: "Omnivore");
         SeedUser(Guid.NewGuid(), legacyMedical: "Diabetes");
         await _sut.SaveAsync(alreadyCopied, Answers(alreadyCopied, preference: "Pescatarian"), Ct);
-        var migration = new SectionDataMigrations().Migrations().Single();
+        var migration = ((ISectionDataMigrations)new Section()).Migrations().Single();
         var sp = new ServiceCollection().AddSingleton<IDietaryProfileManagement>(_sut).BuildServiceProvider();
 
         migration.Key.Should().Be("cantina.profile-dietary");
@@ -341,7 +342,7 @@ public class DietaryProfileTests
         var shifts = Substitute.For<IShiftService>();
         shifts.HasQualifyingCantinaSignupAsync(id, Arg.Any<CancellationToken>()).Returns(qualifying);
 
-        var entries = await new SectionThingsToDo().EntriesAsync(NudgeServices(shifts), Principal(id));
+        var entries = await ((ISectionThingsToDo)new Section()).EntriesAsync(NudgeServices(shifts), Principal(id));
 
         var entry = entries.Should().ContainSingle().Subject;
         entry.Key.Should().Be("dietary");
@@ -357,7 +358,7 @@ public class DietaryProfileTests
         SeedUser(id);
         await _sut.SaveAsync(id, Answers(id), Ct);
 
-        var entries = await new SectionThingsToDo().EntriesAsync(
+        var entries = await ((ISectionThingsToDo)new Section()).EntriesAsync(
             NudgeServices(Substitute.For<IShiftService>()), Principal(id));
 
         entries.Should().BeEmpty();
@@ -370,7 +371,7 @@ public class DietaryProfileTests
         SeedUser(id);
         await _sut.DeclineAsync(id, Ct);
 
-        var entries = await new SectionThingsToDo().EntriesAsync(
+        var entries = await ((ISectionThingsToDo)new Section()).EntriesAsync(
             NudgeServices(Substitute.For<IShiftService>()), Principal(id));
 
         entries.Should().BeEmpty();
@@ -399,7 +400,7 @@ public class DietaryProfileTests
                 .AddSingleton(Substitute.For<IStringLocalizer<SharedResource>>())
                 .BuildServiceProvider();
         }
-        var load = () => new SectionThingsToDo().EntriesAsync(services, Principal(id), aborted.Token).AsTask();
+        var load = () => ((ISectionThingsToDo)new Section()).EntriesAsync(services, Principal(id), aborted.Token).AsTask();
 
         await load.Should().ThrowAsync<OperationCanceledException>();
     }

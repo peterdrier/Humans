@@ -22,10 +22,10 @@ full-bleed hero, scroll animations) rather than the Shell chrome.
 - The section ships its own layout (`Views/Shared/_TourLayout.cshtml`) and static assets
   (`wwwroot/` css/js/img, served at `/_content/Humans.Tour/`). The layout's fixed header bar
   links back to `/` — the page must always offer the way back into Humans.
-- **Entry points.** A signed-out visitor gets a `Tour` link in the top nav (`SectionNav`, an
+- **Entry points.** A signed-out visitor gets a `Tour` link in the top nav (`ISectionNav`, an
   `ISectionNav` contribution visible only while anonymous) and a "New here?" link on the
   Welcome landing page (Onboarding's `Views/Welcome/Index.cshtml`, by URL). A signed-in member
-  gets a dashboard action card (`SectionMemberDashboard`, an `ISectionMemberDashboard`
+  gets a dashboard action card (`ISectionMemberDashboard`, an `ISectionMemberDashboard`
   contribution rendering `TourCardViewComponent` into the `member-dashboard` slot) and no nav slot — the
   signed-in nav is too busy for one.
 - Photos are event photography reused from the nobodies.team site (same organization).

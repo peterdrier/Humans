@@ -59,13 +59,13 @@ The shapes imply exactly today's layout:
 - **One POST endpoint** (`SettingsAdminController`, `/Settings/Admin`) behind
   `AdminOnly`, with no GET: the form it serves lives in the tab, and both outcomes redirect
   back to it.
-- **One contributed tab** — `SectionSettings` naming it, `EventSettingsTabViewComponent`
+- **One contributed tab** — `ISectionSettings` naming it, `EventSettingsTabViewComponent`
   choosing editable-or-read-only per viewer, `_EventSettingsForm` and the component's own
   view rendering the two faces.
-- **One way in** — `SectionChrome` putting `SettingsUserMenuViewComponent` in the
-  `user-menu` slot, since nothing else links to the page, plus `SectionAdminNav` pointing
+- **One way in** — `ISectionChrome` putting `SettingsUserMenuViewComponent` in the
+  `user-menu` slot, since nothing else links to the page, plus `ISectionAdminNav` pointing
   an admin at the same page's event tab.
-- **`Section.cs`, `SectionAdminNav.cs`, `SectionChrome.cs`, `SectionSettings.cs`,
+- **`Section.cs`, `Section.cs`, `Section.cs`, `Section.cs`,
   `SettingsResource.cs`** at the root and nothing else.
 
 ## 4. Invariants

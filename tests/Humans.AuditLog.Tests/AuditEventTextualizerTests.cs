@@ -27,7 +27,6 @@ public class AuditEventTextualizerTests
     [HumansFact]
     public void GetActionSelfVerb_ActionWithSelfForm_ReturnsSelfVerb()
     {
-        // ShiftSignupCreated maps to verb "created signup for" / self-verb "signed up for"
         var selfVerb = AuditEventTextualizer.GetActionSelfVerb(AuditAction.ShiftSignupCreated);
 
         selfVerb.Should().NotBeNull(
@@ -38,7 +37,6 @@ public class AuditEventTextualizerTests
     [HumansFact]
     public void GetActionSelfVerb_ActionWithNoSelfForm_ReturnsNull()
     {
-        // TeamMemberAdded has only a transitive verb — no dedicated self-form.
         var selfVerb = AuditEventTextualizer.GetActionSelfVerb(AuditAction.TeamMemberAdded);
 
         selfVerb.Should().BeNull(
@@ -66,7 +64,6 @@ public class AuditEventTextualizerTests
     [HumansFact]
     public void ShouldRenderDescriptionTail_TailStyleAction_ReturnsTrue()
     {
-        // ShiftSignupBailed is a "tail-style" action — description appended after the verb.
         var should = AuditEventTextualizer.ShouldRenderDescriptionTail(AuditAction.ShiftSignupBailed);
 
         should.Should().BeTrue(
@@ -76,7 +73,6 @@ public class AuditEventTextualizerTests
     [HumansFact]
     public void ShouldRenderDescriptionTail_SentenceStyleAction_ReturnsFalse()
     {
-        // TeamJoinedDirectly is a "sentence-style" action — description not appended.
         var should = AuditEventTextualizer.ShouldRenderDescriptionTail(AuditAction.TeamJoinedDirectly);
 
         should.Should().BeFalse(

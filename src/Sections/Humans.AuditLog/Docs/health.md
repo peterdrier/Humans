@@ -8,98 +8,102 @@ violation recognisable. Not a changelog — the run files under `docs/health/run
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-08-27 | Delete dead `GetRecentAsync` read chain; true up section doc | [#1545](https://github.com/peterdrier/Humans/pull/1545) |
+| 2 | 2026-10-29 | Label every audit action in all six languages; one read per per-person question; true up the docs | [#2194](https://github.com/peterdrier/Humans/pull/2194) |
 
 ## 1. What the section does
 
-A crosscut that records what the system and its admins did — who did what, when, to which
-entity — as an append-only trail, and renders that trail back on demand. Every other section
-*writes* into it after a privileged or irreversible action; almost nothing writes outward from
-it. Two faces:
+A crosscut that records what members, admins and jobs did to which record, as an append-only
+trail, and shows that trail back. Every other section writes into it after a privileged or
+irreversible action; it writes into no other section. Two faces:
 
-- **Write** — any service or job appends an entry, immediately and best-effort: a failed append
-  is logged loudly and swallowed so it never breaks the business operation, and audit is always
-  written *after* the business save so a rollback leaves no ghost row.
-- **Read + render** — a Board/Admin browser at `/AuditLog`, a per-entity/per-user history
-  rendered on any host page through a shared component, a recent-activity card on the admin
-  dashboard, and a plain-text feed for the agent's personal-history tool. Every rendered view
-  resolves actor/subject/team ids to display names inside the section, so no raw id ever reaches
-  a page and the section names none of the sections whose ids it shows.
+- **Write** — any service or job appends an entry. The append saves on its own and is
+  best-effort: a failure is logged loudly and swallowed, so it never breaks the business step that
+  called it. Callers append after their own save, so a rolled-back business change leaves no row.
+- **Read and show** — a Board/Admin browser at `/AuditLog`, a history panel any host page drops in
+  through one shared component, and a plain-text feed for the agent's personal-history tool. Every shown entry names people and teams, never
+  raw ids, and the section names none of the sections whose ids it shows.
 
-It also contributes each user's slice to the GDPR export, and retains everything — there is no
+It also contributes each person's slice to the GDPR export, and keeps everything: there is no
 prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 ## 2. The shapes
 
 | Shape | Surface | Callers |
 |---|---|---|
-| Append an action | `IAuditLogService.LogAsync` (human + job overloads) | most sections, after a privileged action |
-| Read rows as data | `IAuditLogService.GetFilteredEntriesAsync` | Issues (interleave with comments) |
-| Distinct entity ids for (type, actions) | `IAuditLogService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup reconcile |
-| Render a page/history | `IAuditViewerService` (`GetPageAsync`, `GetFilteredAsync`, `GetForUserAsync`) | `/AuditLog`, admin tile, `<vc:audit-log>`, Agent tool |
-| Render on a host page | `<vc:audit-log>` component, layouts `line` / `table` / `activity` | Web, Users, Teams, Store, Tickets, admin dashboard |
-| Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration migration screen — scaffolding, deleted with those columns |
+| Append an action | `IAuditLogService.LogAsync` (human and job overloads) | most sections, after a privileged action |
+| Read rows as data | `IAuditLogService.GetFilteredEntriesAsync` | Issues (interleaves audit with comments), Expenses (report history), Users (duplicate-account scan) |
+| Which entities ever had these actions | `IAuditLogService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup screen |
+| Named events for a filter or a person | `IAuditViewerService` (`GetFilteredAsync`, `GetForUserAsync`) | `<vc:audit-log>`, Agent tool |
+| Named events for a page | internal `AuditViewerService.GetPageAsync` | `/AuditLog`, admin tile |
+| Show history on a host page | `<vc:audit-log>`, layouts `line` / `table` | Calendar, Debug, Expenses, Store, Teams, Tickets, Users |
+| Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration's history-migration screen; leaves with those columns |
 | GDPR export slice | `IUserDataContributor` | Gdpr orchestrator |
 
 ## 3. Structure
 
-- **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the write path
-  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`, `ILegacyGoogleSyncAuditReader`) and the
-  read+render types (`IAuditViewerService`, `AuditEvent`, `AuditEventPage`).
-- **Write:** `AuditLogService` (internal, implements `IAuditLogService` + `IAuditLogReader` +
-  `IUserDataContributor` + `ILegacyGoogleSyncAuditReader`) → `IAuditLogRepository` (the only file
-  that touches `DbContext.AuditLogEntries`) → `AuditLogDbContext` via `IDbContextFactory`.
-- **Read+render:** `AuditViewerService` (internal) wraps the section-internal `IAuditLogReader`
-  raw reads with `IEntityNameContributor` name resolution, producing `AuditEvent`. Verb tables
-  live once in `AuditEventTextualizer`, shared by `RenderPlainText` (agent) and `RenderStructured`
-  (HTML).
-- **UI:** one controller (`AuditLogController.Index`), one `<vc:audit-log>` component with a
-  layout view per render shape (`line` / `table` / `activity`), one internal `AdminActivityCard`
-  chrome component.
-- **No caching decorator, no resource set** (admin-only English), on purpose.
+- **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the
+  append path (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`,
+  `ILegacyGoogleSyncAuditReader`) and the read surface (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
+  internal on `AuditViewerService`.
+- **Write and raw reads:** `AuditLogService` (internal; implements `IAuditLogService`,
+  `IAuditLogReader`, `IUserDataContributor`, `ILegacyGoogleSyncAuditReader`) over
+  `IAuditLogRepository`, the only type touching `AuditLogDbContext.AuditLogEntries`, through
+  `IDbContextFactory`. One repository read per question: a per-person read takes the
+  merge-resolved id list whatever its length.
+- **Read and name:** `AuditViewerService` (internal) wraps the internal `IAuditLogReader` reads
+  with the `IEntityNameContributor` fan-out and returns `AuditEvent`. Verb tables live once, in
+  `AuditEventTextualizer`, shared by the agent's plain text and the HTML entry partial.
+- **UI:** one controller action (`AuditLogController.Index`), one public `<vc:audit-log>`
+  component with a view per layout. No admin dashboard card.
+- **Resources:** `AuditLogResource` in all six cultures for the member-facing entry views
+  (`_Entry`, `Table`); the `/AuditLog` page is admin-only English.
 
 ## 4. Invariants
 
-- Append-only: repository exposes `AddAsync` and reads only — no `Update`/`Delete`/`Remove`;
-  Postgres triggers reject UPDATE/DELETE at the row regardless.
-- Self-persisting: each `LogAsync` opens its own context and saves; callers never flush audit,
-  and audit never rolls back with an outer transaction.
-- Best-effort: append failures are logged at Error and swallowed inside `PersistAsync`.
-- Audit after the business save, always.
-- `ActorUserId` nullable = system/job action; job overload prepends the job name.
-- Per-user reads chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds`,
-  and merge never rewrites the id columns.
-- Rendered output carries no raw Guid — ids resolve to names, and the viewer's own id renders as
-  "You" in agent output.
+- Append-only: the repository's one write is `AddAsync` (`Data/IAuditLogRepository.cs:10`), and
+  Postgres triggers reject UPDATE and DELETE on `audit_log` whatever the caller
+  (`Data/Migrations/20260810193154_BaselineAuditLog.cs:93`, `:99`).
+- Self-persisting: each append opens its own context and saves
+  (`Data/AuditLogRepository.cs:11`), so audit never rolls back with a caller's transaction.
+- Best-effort: an append failure is logged at Error and swallowed
+  (`Services/AuditLogService.cs:78`).
+- A job append records no actor and prefixes the job name to the description
+  (`Services/AuditLogService.cs:35`).
+- Per-person reads follow merges: they key on the resolved record's `AllUserIds`, never the id
+  asked with (`Services/AuditLogService.cs:119`, `:136`, `:145`), and no path rewrites the stored
+  id columns.
+- Plain-text output names people, never ids, and says "You" for the viewer
+  (`Contracts/AuditEvent.cs:41`).
+- An empty `entity-ids` list on the component means no matches, never "drop the id filter"
+  (`ViewComponents/AuditLogViewComponent.cs:87`).
+- Paging past the end clamps instead of overflowing (`Data/AuditLogRepository.cs:34`).
 
 ## 5. Seams (specified-but-unbuilt)
 
 - **Drop the Google-sync columns** (`ResourceId`, `Success`, `ErrorMessage`, `Role`,
   `SyncSource`, `UserEmail`) and `ILegacyGoogleSyncAuditReader` with them, once the
   GoogleIntegration history-migration screen has run in prod (`no-drops-until-prod-verified`).
-  A schema change — Peter's, not a doctor strike.
+  A schema change: Peter's, not a doctor strike.
 
 ## 6. Deliberately not done
 
-- **No caching decorator** — writes scatter across most sections, reads are admin-only and
-  index-filtered; a section cache buys nothing (§15 Option A).
-- **Admin pages stay English** — member-facing entry renderers use `AuditLogResource`; the two
-  admin-only pages add no localization keys.
-- **Predicate-pushed reads, not load-into-RAM** — `audit_log` is the one unbounded, ever-growing
-  table, written from most sections; the section keeps `Where`-at-the-DB query methods as a sanctioned
-  exception to `no-linq-at-db-layer`.
-- **No FK/nav on the id columns** — `ActorUserId`/`EntityId`/`RelatedEntityId` are bare
+- **No caching decorator**: writes scatter across most sections, reads are admin-only and
+  index-filtered; a cache buys nothing (§15 Option A).
+- **Predicate-pushed reads, not load-into-RAM**: `audit_log` is the one unbounded, ever-growing
+  table; the repository keeps `Where`-at-the-database reads as a sanctioned exception to
+  `no-linq-at-db-layer`.
+- **No FK or nav on the id columns**: `ActorUserId`, `EntityId`, `RelatedEntityId` are bare
   cross-section Guids; names come from the contributor fan-out, not a join.
+- **Admin pages stay English**: the `/AuditLog` page adds no resource keys.
 
 ## Load-bearing weirdness
 
-- **`AuditLogEntry` still carries the nullable Google-sync columns** (seam 5) with no writer. They exist
-  only so historical rows stay readable until the column-drop PR; the entity keeps them, the
-  snapshot/event shapes do not. Do not "clean them up" — the drop is sequenced behind a prod
-  verification (seam 5).
-- **One `Contracts/` folder** (namespace `Humans.AuditLog.Contracts`) carries both the write path
-  and the read/render surface.
-- **`AuditLogRepository` is Singleton** while its context is Scoped — it owns context lifetime via
-  `IDbContextFactory`, which is why it can be a singleton at all.
-- **The `AnomalousPermissionDetected` anomaly count and the Drive-activity trigger button** live
-  on the `/AuditLog` page though the Drive scan itself is Monitor's — the page is where an admin
-  looks for anomalies, so it surfaces the count and a link to Monitor's action.
+- **`AuditLogEntry` still carries the nullable Google-sync columns** (seam 5) with no writer, so
+  historical rows stay readable until the drop. The snapshot and event shapes do not carry them.
+  Do not "clean them up": the drop waits on a prod verification.
+- **`AuditLogRepository` is a singleton** over a scoped context: it owns context lifetime through
+  `IDbContextFactory`, which is why it can be one.
+- **The anomaly count and the Drive-activity check button** sit on `/AuditLog` though the Drive
+  scan is Monitor's: the page is where an admin looks for anomalies.
+- **`IAuditLogReader.GetFilteredEntriesAsync` repeats the contract method** so the viewer takes one
+  injection; both resolve to the same `AuditLogService` instance.

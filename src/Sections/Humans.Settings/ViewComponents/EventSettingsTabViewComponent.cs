@@ -26,7 +26,8 @@ internal sealed class EventSettingsTabViewComponent(
         {
             var active = await settingsService.GetActiveEventSettingsAsync(ct);
             return View(new EventSettingsTabViewModel(
-                active is null ? null : EventSettingsFormMapper.ToViewModel(active), CanEdit: false, Events: []));
+                active is null ? null : EventSettingsFormMapper.ToViewModel(active), CanEdit: false, Events: [],
+                TimeZoneId: active?.TimeZoneId ?? string.Empty));
         }
 
         var events = (await settingsService.GetAllEventSettingsAsync(ct)).OrderBy(e => e.GateOpeningDate).ToList();
@@ -44,10 +45,11 @@ internal sealed class EventSettingsTabViewComponent(
             ? EventSettingsFormMapper.ToViewModel(settings)
             : EventSettingsFormMapper.NextEvent(events.Where(e => e.Status != EventSettingsStatus.Deleted).LastOrDefault());
 
-        return View(new EventSettingsTabViewModel(viewModel, CanEdit: true, events));
+        return View(new EventSettingsTabViewModel(
+            viewModel, CanEdit: true, events, await settingsService.GetTimeZoneIdAsync(ct)));
     }
 }
 
 /// <summary><see cref="Settings"/> uses the same form model <c>/Settings/Admin</c> binds on POST.</summary>
 internal sealed record EventSettingsTabViewModel(
-    EventSettingsViewModel? Settings, bool CanEdit, IReadOnlyList<EventSettingsInfo> Events);
+    EventSettingsViewModel? Settings, bool CanEdit, IReadOnlyList<EventSettingsInfo> Events, string TimeZoneId);

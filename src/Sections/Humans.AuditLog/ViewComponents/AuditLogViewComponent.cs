@@ -104,7 +104,6 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
     private static string ViewNameFor(string layout) => layout switch
     {
         "table" => "Table",
-        "activity" => "Activity",
         _ => "Default"
     };
 

@@ -16,7 +16,7 @@ internal sealed class AgentSectionDocReader(
     private const string CacheKeyPrefix = "agent:section:";
 
     /// <summary>
-    /// Internal because <c>SectionAnnotations</c> and the docs health check use the same folder: one copy of the path.
+    /// Internal because <c>Section</c>'s annotations and the docs health check use the same folder: one copy of the path.
     /// </summary>
     internal static string SectionProjectFolder(string key) => $"src/Sections/Humans.{key}/Docs";
 

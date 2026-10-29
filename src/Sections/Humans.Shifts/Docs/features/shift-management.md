@@ -62,7 +62,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Filter by period (Set-up / Event / Strike toggle buttons)
 - Date picker and period tabs interact cleanly: selecting a date clears the active period tab (dates take precedence); selecting a period tab clears manual dates; date picker min/max constrains to the active period's range when a period is selected
 - Consecutive all-day shifts within the same rota are compressed into date ranges (e.g., "Jun 16–21, 6 days") with aggregated fill status; click to expand individual days
-- Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
+- Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all); single and range self-signup also refuse hidden rotas for non-privileged users, even with a retained rota or shift ID. Existing signups can still be bailed.
 - See fill status (confirmed count vs max)
 - Sign up for a shift with an Active account (auto-confirmed for Public policy, pending for RequireApproval). Single and range signup enforce account state even through onboarding and with privileged flags. Missing dietary info never blocks a signup.
 - Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. Date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) lives only in the onboarding-widget shift step
