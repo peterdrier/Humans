@@ -33,6 +33,12 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
+    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings.AsNoTracking().ToListAsync(ct);
+    }
+
     public async Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

@@ -21,6 +21,117 @@ internal sealed class StoreOrderReader(
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
+    public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
+        BuildIndexDataAsync(userId, allCounterparties: false, ct);
+
+    public Task<IndexData> GetAllCounterpartiesIndexDataAsync(CancellationToken ct = default) =>
+        BuildIndexDataAsync(userId: Guid.Empty, allCounterparties: true, ct);
+
+    private async Task<IndexData> BuildIndexDataAsync(
+        Guid userId,
+        bool allCounterparties,
+        CancellationToken ct)
+    {
+        var year = await GetCurrentEventYearAsync(ct);
+        var catalog = await GetActiveCatalogAsync(year, ct);
+
+        var counterparties = new List<CounterpartyOrders>();
+
+        var campSeasons = new List<CampSeasonInfo>();
+        foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
+        {
+            if (allCounterparties)
+            {
+                var season = camp.GetSeasonForYear(year);
+                if (season is not null) campSeasons.Add(season);
+            }
+            else
+            {
+                var leadSeasonId = camp.GetLeadSeasonIdForYear(userId, year);
+                if (leadSeasonId is null) continue;
+                campSeasons.Add(camp.Seasons.First(season => season.Id == leadSeasonId.Value));
+                break; // a user leads at most one camp
+            }
+        }
+
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.ParentTeamId is null
+                        && (allCounterparties
+                            || (t.ManagementRoleHolderUserIds is not null
+                                && t.ManagementRoleHolderUserIds.Contains(userId))))
+            .ToList();
+        var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+            campSeasons.Select(s => s.Id).ToList(), ct);
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+            teams.Select(t => t.Id).ToList(), year, ct);
+        var productIds = campOrders.Concat(teamOrders)
+            .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await LoadProductNamesAsync(productIds, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
+        var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
+
+        foreach (var season in campSeasons)
+        {
+            // One order per camp-season; for legacy duplicates, surface the highest-balance one and let the admin
+            // delete the rest.
+            var allOrders = new List<OrderDto>();
+            foreach (var order in campOrdersBySeason[season.Id])
+                allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
+            var primary = allOrders
+                .OrderByDescending(o => o.BalanceEur)
+                .FirstOrDefault();
+            IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
+            counterparties.Add(new CounterpartyOrders(
+                OrderCounterpartyType.Camp,
+                season.Id,
+                season.Name,
+                year,
+                orders));
+        }
+
+        foreach (var team in teams)
+        {
+            var existing = teamOrdersByTeam[team.Id].FirstOrDefault();
+            IReadOnlyList<OrderDto> orders = existing is null
+                ? []
+                : [await MapOrderAsync(existing, productNames, currentPrices, ct, team.Name)];
+            counterparties.Add(new CounterpartyOrders(
+                OrderCounterpartyType.Team,
+                team.Id,
+                team.Name,
+                year,
+                orders));
+        }
+
+        return new IndexData(
+            year,
+            catalog,
+            counterparties);
+    }
+
+    public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
+    {
+        var products = await repo.GetActiveProductsForYearAsync(year, ct);
+        return products
+            .Select(MapProduct)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
+    {
+        var products = await repo.GetAllProductsForYearAsync(year, ct);
+        return products
+            .Select(MapProduct)
+            .ToList();
+    }
+
+    public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
+    {
+        var p = await repo.GetProductByIdAsync(productId, ct);
+        return p is null ? null : MapProduct(p);
+    }
+
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
     public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
     {
@@ -108,4 +219,8 @@ internal sealed class StoreOrderReader(
         }
         return Resources.GetString("Store_UnknownCounterparty", CultureInfo.CurrentUICulture)!;
     }
+    private static ProductDto MapProduct(Product p) =>
+        new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
+            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
+
 }

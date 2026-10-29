@@ -5,18 +5,13 @@ namespace Humans.AuditLog.Models;
 
 internal static class AuditLogUiExtensions
 {
-    public static bool IsAuditFilterSelected(this string? currentFilter, string filter)
-    {
-        return string.Equals(currentFilter, filter, StringComparison.Ordinal);
-    }
-
     public static string ToAuditFilterButtonClass(
         this string? currentFilter,
         string filter,
         string selectedClass,
         string defaultClass)
     {
-        return currentFilter.IsAuditFilterSelected(filter) ? selectedClass : defaultClass;
+        return string.Equals(currentFilter, filter, StringComparison.Ordinal) ? selectedClass : defaultClass;
     }
 
     public static string ToAuditEntryRowClass(this AuditActionDefinition action)

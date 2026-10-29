@@ -1,4 +1,4 @@
-@model TranslationsGalleryViewModel
+@model TranslationsPageViewModel
 @{
     ViewData["Title"] = "Translations gallery";
 }
@@ -11,17 +11,18 @@
 
 <div class="alert alert-info">
     <i class="fa-solid fa-circle-info me-1"></i>
-    Every <code>SharedResource</code> key in every supported culture, enumerated through the real
+    Every key of every resource set (<code>SharedResource</code> and each section's own
+    <code>&lt;Section&gt;Resource</code>) in every supported culture, enumerated through the real
     localizer — a new key can't hide from this audit. A <span class="badge bg-warning text-dark">—</span>
     cell means the key is missing from that language file (the app falls back to English there).
     Coordinator/admin-only key families are intentionally untranslated.
 </div>
 
 <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
-    <strong>@Model.TotalKeys keys</strong>
-    @foreach (var lang in Model.Languages)
+    <strong>@Model.TotalKeys keys in @Model.Sets.Count resource sets</strong>
+    @foreach (var lang in Model.Sets[0].Gallery.Languages)
     {
-        var missing = Model.MissingByLanguage[lang];
+        var missing = Model.Sets.Sum(s => s.Gallery.MissingByLanguage[lang]);
         <span>
             <code>@lang</code>
             @if (missing == 0)
@@ -45,75 +46,118 @@
     </div>
 </div>
 
-<nav class="d-flex flex-wrap gap-1 mb-4" aria-label="Key prefix groups">
-    @foreach (var group in Model.Groups)
+<nav class="d-flex flex-wrap gap-1 mb-4" aria-label="Resource sets">
+    @foreach (var set in Model.Sets)
     {
-        var groupMissing = group.MissingByLanguage.Values.Sum();
-        <a class="btn btn-outline-secondary btn-sm" href="#loc-group-@group.Prefix">
-            @group.Prefix <span class="text-muted">(@group.Rows.Count)</span>
-            @if (groupMissing > 0)
+        var setMissing = set.Gallery.MissingByLanguage.Values.Sum();
+        <a class="btn btn-outline-primary btn-sm" href="#loc-set-@set.Name">
+            @set.Name <span class="text-muted">(@set.Gallery.TotalKeys)</span>
+            @if (setMissing > 0)
             {
-                <span class="badge bg-warning text-dark ms-1">@groupMissing</span>
+                <span class="badge bg-warning text-dark ms-1">@setMissing</span>
             }
         </a>
     }
 </nav>
 
-@if (Model.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
+@foreach (var set in Model.Sets)
 {
-    <div class="alert alert-warning">
-        <strong>Orphan keys</strong> — present in a language file but no longer in the English resx; safe to delete:
-        <ul class="mb-0">
-            @foreach (var (lang, keys) in Model.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
-            {
-                <li><code>@lang</code>: @string.Join(", ", keys)</li>
-            }
-        </ul>
-    </div>
-}
+    var gallery = set.Gallery;
+    <section class="loc-set mt-5" id="loc-set-@set.Name">
+        <h2 class="h4 border-bottom pb-1">
+            @set.Name
+            <small class="text-muted">— @gallery.TotalKeys @(gallery.TotalKeys == 1 ? "key" : "keys")</small>
+        </h2>
 
-@foreach (var group in Model.Groups)
-{
-    <h2 class="h5 mt-4" id="loc-group-@group.Prefix">
-        @group.Prefix
-        <small class="text-muted">— @group.Rows.Count @(group.Rows.Count == 1 ? "key" : "keys")</small>
-    </h2>
-    <div class="table-responsive">
-        <table class="table table-sm table-striped align-middle small loc-table">
-            <thead>
-                <tr>
-                    <th style="min-width: 16rem">Key</th>
-                    <th>en</th>
-                    @foreach (var lang in Model.Languages)
+        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+            @foreach (var lang in gallery.Languages)
+            {
+                var missing = gallery.MissingByLanguage[lang];
+                <span>
+                    <code>@lang</code>
+                    @if (missing == 0)
                     {
-                        <th>@lang</th>
+                        <span class="badge bg-success">complete</span>
                     }
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in group.Rows)
-                {
-                    var hasMissing = row.Values.Values.Any(v => v is null);
-                    <tr data-loc-missing="@(hasMissing ? "1" : "0")">
-                        <td><code>@row.Key</code></td>
-                        <td>@row.English</td>
-                        @foreach (var lang in Model.Languages)
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">@missing missing</span>
+                    }
+                </span>
+            }
+        </div>
+
+        <nav class="d-flex flex-wrap gap-1 mb-3" aria-label="@set.Name key prefix groups">
+            @foreach (var group in gallery.Groups)
+            {
+                var groupMissing = group.MissingByLanguage.Values.Sum();
+                <a class="btn btn-outline-secondary btn-sm" href="#loc-group-@set.Name-@group.Prefix">
+                    @group.Prefix <span class="text-muted">(@group.Rows.Count)</span>
+                    @if (groupMissing > 0)
+                    {
+                        <span class="badge bg-warning text-dark ms-1">@groupMissing</span>
+                    }
+                </a>
+            }
+        </nav>
+
+        @if (gallery.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
+        {
+            <div class="alert alert-warning">
+                <strong>Orphan keys</strong> — present in a language file but no longer in the English resx; safe to delete:
+                <ul class="mb-0">
+                    @foreach (var (lang, keys) in gallery.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
+                    {
+                        <li><code>@lang</code>: @string.Join(", ", keys)</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @foreach (var group in gallery.Groups)
+        {
+            <h3 class="h6 mt-4" id="loc-group-@set.Name-@group.Prefix">
+                @group.Prefix
+                <small class="text-muted">— @group.Rows.Count @(group.Rows.Count == 1 ? "key" : "keys")</small>
+            </h3>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle small loc-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 16rem">Key</th>
+                            <th>en</th>
+                            @foreach (var lang in gallery.Languages)
+                            {
+                                <th>@lang</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in group.Rows)
                         {
-                            var value = row.Values[lang];
-                            @if (value is null)
-                            {
-                                <td class="table-warning text-center">—</td>
-                            }
-                            else
-                            {
-                                <td>@value</td>
-                            }
+                            var hasMissing = row.Values.Values.Any(v => v is null);
+                            <tr data-loc-missing="@(hasMissing ? "1" : "0")">
+                                <td><code>@row.Key</code></td>
+                                <td>@row.English</td>
+                                @foreach (var lang in gallery.Languages)
+                                {
+                                    var value = row.Values[lang];
+                                    @if (value is null)
+                                    {
+                                        <td class="table-warning text-center">—</td>
+                                    }
+                                    else
+                                    {
+                                        <td>@value</td>
+                                    }
+                                }
+                            </tr>
                         }
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 }
 
 @section Scripts {
@@ -137,6 +181,10 @@
                     const anyVisible = Array.from(table.tBodies[0].rows).some(r => !r.classList.contains('d-none'));
                     wrapper.classList.toggle('d-none', !anyVisible);
                     heading.classList.toggle('d-none', !anyVisible);
+                }
+                for (const set of document.querySelectorAll('.loc-set')) {
+                    const anyVisible = Array.from(set.querySelectorAll('.loc-table tbody tr')).some(r => !r.classList.contains('d-none'));
+                    set.classList.toggle('d-none', !anyVisible);
                 }
             }
 

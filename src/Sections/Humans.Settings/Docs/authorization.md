@@ -12,5 +12,5 @@ calls `IAuthorizationService.AuthorizeAsync(user, null, PolicyNames.AdminOnly)` 
 the event list and the shared form only when it succeeds, else a read-only view of the active event with no
 `<form>` and no list (peterdrier/Humans#1628).
 
-`/Settings` is reachable from the signed-in user menu (`SectionChrome` contributes it to the
+`/Settings` is reachable from the signed-in user menu (`ISectionChrome` contributes it to the
 `user-menu` chrome slot, unconditionally — same gate as the page's own `[Authorize]`).

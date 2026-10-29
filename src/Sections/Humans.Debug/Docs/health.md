@@ -51,8 +51,8 @@ The shapes imply a section with no data layer at all:
   Base singletons' snapshots. No service layer: there is no rule to enforce, only projection.
 - **One static calculator** (`UserSetMembershipCalculator`) and its view component, because
   the dashboard card's mask math is the one piece of logic worth a unit test.
-- **Contribution seams at the root**: `SectionAdminNav` (the Debug
-  sidebar group) and `SectionChrome` (the dashboard card). `Section.Register` is empty and
+- **Contribution seams at the root**: `ISectionAdminNav` (the Debug
+  sidebar group) and `ISectionChrome` (the dashboard card). `Section.Register` is empty and
   the class exists only so Shell discovers the assembly.
 - **Docs** — the invariant doc, the authorization table, and one feature spec per
   telemetry screen that has non-obvious capture rules (client stats, HTTP errors).

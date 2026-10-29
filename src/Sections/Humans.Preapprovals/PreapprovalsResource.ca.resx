@@ -110,4 +110,6 @@
   <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Termini de preaprovació modificat: presenta abans del {1} per a {0}</value></data>
   <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;El termini de reclamació de la teva preaprovació dins de &lt;strong&gt;{1}&lt;/strong&gt; s'ha mogut.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Fins a:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nou termini:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Veure les teves preaprovacions&lt;/a&gt;.&lt;/p&gt;</value></data>
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
+  <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Els imports han de tenir com a màxim dos decimals.</value></data>
+  <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>L’import és massa elevat.</value></data>
 </root>

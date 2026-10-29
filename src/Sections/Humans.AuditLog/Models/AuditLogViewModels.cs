@@ -3,7 +3,7 @@ using Humans.Base.Models;
 
 namespace Humans.AuditLog.Models;
 
-internal sealed class AuditLogListViewModel() : PagedListViewModel(50)
+internal sealed class AuditLogListViewModel : PagedListViewModel
 {
     public IReadOnlyList<AuditEvent> Events { get; set; } = [];
     public string? ActionFilter { get; set; }

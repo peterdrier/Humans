@@ -92,7 +92,8 @@ internal sealed class WorkgroupsAdminController(
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Workgroups admin RegisterExisting: rule {Rule}", refusal.Key);
-            ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
+            ModelState.AddModelError(string.Empty,
+                refusal.IsOperatorMessage ? refusal.Key : localizer[refusal.Key, refusal.Args].Value);
             return await RegisterExistingViewAsync(model, ct);
         }
 
@@ -125,7 +126,7 @@ internal sealed class WorkgroupsAdminController(
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Workgroups admin Budget: rule {Rule}", refusal.Key);
-            SetError(localizer[refusal.Key, refusal.Args]);
+            SetError(refusal.IsOperatorMessage ? refusal.Key : localizer[refusal.Key, refusal.Args].Value);
         }
         else
         {

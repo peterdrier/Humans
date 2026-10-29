@@ -26,6 +26,7 @@ internal sealed class AuditViewerService(
         return await ResolveAsync(entries, ct);
     }
 
+    /// <summary><paramref name="actionFilter"/> is a case-insensitive match on a declared action name.</summary>
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
         var (items, totalCount, alertCounts) = await auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
@@ -114,7 +115,7 @@ internal sealed class AuditViewerService(
 
     private static Guid? ResolveSubjectId(AuditLogEntrySnapshot e)
     {
-        // Subject = person acted upon. Guid.Empty → null (e.g. unmatched WorkspaceAccount addresses).
+        // Guid.Empty is an unmatched address (e.g. WorkspaceAccount): no subject.
         Guid? subject = e.EntityType is "User" or "Profile" or "WorkspaceAccount"
             ? e.EntityId
             : string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal)
@@ -128,3 +129,9 @@ internal sealed class AuditViewerService(
         : string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) ? e.RelatedEntityId
         : null;
 }
+
+/// <summary><c>AlertCounts</c> is rows per <see cref="AuditActionDefinition.Alert"/> action over the whole log, keyed by name.</summary>
+internal sealed record AuditEventPage(
+    IReadOnlyList<AuditEvent> Items,
+    int TotalCount,
+    IReadOnlyDictionary<string, int> AlertCounts);

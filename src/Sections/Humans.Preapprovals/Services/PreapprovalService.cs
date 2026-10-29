@@ -187,5 +187,13 @@ internal sealed partial class PreapprovalService(
         return info is null ? [userId] : info.AllUserIds;
     }
 
+    private const decimal MaxStoredAmount = 9_999_999_999_999_999.99m;
+
+    private static PreapprovalRefusal? MoneyRefusal(decimal amount) =>
+        amount <= 0 ? new(PreapprovalErrorKeys.AmountPositive)
+        : amount > MaxStoredAmount ? new(PreapprovalErrorKeys.AmountTooLarge)
+        : decimal.Round(amount, 2) != amount ? new(PreapprovalErrorKeys.AmountPrecision)
+        : null;
+
     private static string Euros(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
 }

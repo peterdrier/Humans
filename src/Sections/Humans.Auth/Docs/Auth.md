@@ -4,9 +4,9 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Interfaces/ISectionRoles.cs
   src/Sections/Humans.Auth/Contracts/RoleCatalog.cs
-  src/Sections/Humans.Auth/SectionRoles.cs
+  src/Sections/Humans.Auth/Section.cs
   src/Sections/Humans.Auth/Authorization/RoleAssignmentRules.cs
-  src/Sections/Humans.Auth/SectionDataMigrations.cs
+  src/Sections/Humans.Auth/Section.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Authorization/**
   src/Humans.Web/Program.cs
@@ -18,7 +18,7 @@
   src/Sections/**/Authorization/**/*.cs
   src/Humans.Base/Interfaces/ISectionAccessMatrix.cs
   src/Humans.Base/Models/AccessMatrixData.cs
-  src/Sections/**/SectionAccessMatrix.cs
+  src/Sections/**/Section.cs
   src/Humans.Base/ViewComponents/AccessMatrixViewComponent.cs
   src/Sections/Humans.Auth/AuthResource*.resx
 -->
@@ -92,7 +92,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 ### Roles (the catalog)
 
-`RoleNames` (Base) holds only the two system-wide roles, `Admin` and `Board`. Every other role is declared by its owning section through `ISectionRoles` — a `RoleDefinition` with name (`<Section><Role>`), title, blurb, icon, `OpensAdminShell` and `FormerNames` — and lives as a `<Section>Roles` constant in that section's Contracts. Auth composes them into the singleton `RoleCatalog` (`Contracts/RoleCatalog.cs`) at startup, which throws on a duplicate name, a duplicate title, or a former name that still names a role; Auth declares `Admin` and `Board` itself (`SectionRoles.cs`). The catalog feeds the role-assignment UI, the Staff page, the authorization pill, the dev personas, the Guide's heading parentheticals (by title) and the Shell's `AnyAdminRole` policy (every role with `OpensAdminShell`). The pill reads each page's policy as registered: a role check shows its role titles, and a requirement that is not a role check implements `IDescribedRequirement` (Base) to say who it admits; `AuthorizationPillFilterTests` fails on a policy it can't read.
+`RoleNames` (Base) holds only the two system-wide roles, `Admin` and `Board`. Every other role is declared by its owning section through `ISectionRoles` — a `RoleDefinition` with name (`<Section><Role>`), title, blurb, icon, `OpensAdminShell` and `FormerNames` — and lives as a `<Section>Roles` constant in that section's Contracts. Auth composes them into the singleton `RoleCatalog` (`Contracts/RoleCatalog.cs`) at startup, which throws on a duplicate name, a duplicate title, or a former name that still names a role; Auth declares `Admin` and `Board` itself (`Section.cs`). The catalog feeds the role-assignment UI, the Staff page, the authorization pill, the dev personas, the Guide's heading parentheticals (by title) and the Shell's `AnyAdminRole` policy (every role with `OpensAdminShell`). The pill reads each page's policy as registered: a role check shows its role titles, and a requirement that is not a role check implements `IDescribedRequirement` (Base) to say who it admits; `AuthorizationPillFilterTests` fails on a policy it can't read.
 
 | Role | Declared by | Purpose |
 |------|-------------|---------|
@@ -178,12 +178,12 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 ## Access Matrix UI (per-section)
 
 
-Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Each matrix is contributed by the section that owns the page, through the `ISectionAccessMatrix` seam (`src/Humans.Base/Interfaces/`) implemented by that section's `SectionAccessMatrix` class and discovered from DI; Base keeps the seam and the row shape (`AccessMatrixData`) and none of the rows. Still **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Each matrix is contributed by the section that owns the page, through the `ISectionAccessMatrix` seam (`src/Humans.Base/Interfaces/`) implemented by that section's `ISectionAccessMatrix` class and discovered from DI; Base keeps the seam and the row shape (`AccessMatrixData`) and none of the rows. Still **static data, not DB-driven** — there is intentionally no `access_matrix` table.
 
 - **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
 - **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.
 - **Admin-only sections have no matrix.** Sections gated entirely to Admin would have no non-Admin columns to show, so they don't render the component.
-- **Maintenance hazard — the matrix can drift from the code.** The rows are hand-maintained and are not derived from `[Authorize]` attributes or `PolicyNames`. When you change a policy, update that section's `SectionAccessMatrix` in the same commit.
+- **Maintenance hazard — the matrix can drift from the code.** The rows are hand-maintained and are not derived from `[Authorize]` attributes or `PolicyNames`. When you change a policy, update that section's `ISectionAccessMatrix` in the same commit.
 
 ## Architecture
 
@@ -197,7 +197,7 @@ Auth is a **horizontal** section. `peters-hard-rules.md` forbids a horizontal fr
 
 - **In `Humans.Auth`:** the `RoleAssignment` entity, `AuthDbContext` + factory + configuration + `Data/Migrations/`, `RoleAssignmentRepository`, `RoleAssignmentService`, `CachingRoleAssignmentService`, `AdminAuthorizationService`, `RoleAssignmentAuthorizationHandler`, and the whole magic-link sign-in path: `MagicLinkService`, `IMagicLinkUrlBuilder` + `MagicLinkUrlBuilder`, `IMagicLinkRateLimiter` + `MagicLinkRateLimiter`. Everything except the `Contracts/` folder is `internal`.
 - **In `Humans.Auth/Contracts/`** (namespace `Humans.Auth.Contracts`, consumed throughout the Shell and other sections): `IRoleAssignmentService` (reads), `IRoleAssignmentWrite` (the writes other sections call), `IAdminAuthorizationService`, `ICurrentUserContext`, `RoleAssignmentRow`, `RoleAssignmentSnapshot`, `RoleAssignmentDetailSnapshot`, `RoleAssignmentSummarySnapshot`, `RoleAssignmentResult`, `IMagicLinkService` (Shell `AccountController` only; `VerifyLoginTokenAsync` returns `bool`), and `RoleAssignmentOperationRequirement`, which Shell registers under `PolicyNames.RoleAssignmentManage`; Auth's own `RoleAssignmentsController` passes that policy name to `IAuthorizationService.AuthorizeAsync`.
-- **Stayed in Shell:** `AccountController` and `Views/Account/*` with their `SharedResource` keys, `HttpCurrentUserContext`, and `RoleAssignmentClaimsTransformation`. `AccountController` stays in Shell: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`. The role-assignment admin pages are the section's other half: `RoleAssignmentsController` (`/Auth/Admin/Roles`, `/Auth/Admin/{id}/Roles/Add`, `/Auth/Admin/{id}/Roles/{roleId}/End`), its `Views/RoleAssignments/*`, and the Role Assignments card on the admin human-detail page, contributed to the `AdminDetail` user-part slot by `RoleAssignmentsCardViewComponent` (`SectionUserParts`; Weight 50). `SectionAdminNav` adds the "Roles" item to the Users admin group. The project is a Razor SDK project for those views; the controller, models and view component are `internal`/section-local. The assign/end audit entries are written by `RoleAssignmentService`, unchanged.
+- **Stayed in Shell:** `AccountController` and `Views/Account/*` with their `SharedResource` keys, `HttpCurrentUserContext`, and `RoleAssignmentClaimsTransformation`. `AccountController` stays in Shell: every action it exposes writes Users'/Profiles' tables through their services and none writes `role_assignments`. The role-assignment admin pages are the section's other half: `RoleAssignmentsController` (`/Auth/Admin/Roles`, `/Auth/Admin/{id}/Roles/Add`, `/Auth/Admin/{id}/Roles/{roleId}/End`), its `Views/RoleAssignments/*`, and the Role Assignments card on the admin human-detail page, contributed to the `AdminDetail` user-part slot by `RoleAssignmentsCardViewComponent` (`IUserPart`; Weight 50). `ISectionAdminNav` adds the "Roles" item to the Users admin group. The project is a Razor SDK project for those views; the controller, models and view component are `internal`/section-local. The assign/end audit entries are written by `RoleAssignmentService`, unchanged.
 
 The section's outbound reference set is `Humans.AuditLog`, `Humans.Gdpr` (horizontal sections), `Humans.Notifications.Contracts` (horizontal leaf), `Humans.Teams.Contracts` (`ISystemTeamSync`), `Humans.Users.Contracts` (display stitching, `UserManager<User>`, `IUserEmailService`) and `Humans.Email.Contracts` (the magic-link send), each with a reason recorded beside it in `Humans.Auth.csproj`.
 

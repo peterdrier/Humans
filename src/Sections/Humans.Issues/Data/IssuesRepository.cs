@@ -35,7 +35,9 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
     public async Task<IReadOnlyList<Issue>> GetListAsync(
         IssueListFilter f,
         IReadOnlySet<string>? sectionFilter,
-        Guid? reporterFallback,
+        IReadOnlyCollection<Guid>? reporterFallback,
+        IReadOnlyCollection<Guid>? reporterFilter,
+        IReadOnlyCollection<Guid>? assigneeFilter,
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -44,8 +46,8 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (f.Statuses is { Length: > 0 }) q = q.Where(i => f.Statuses.Contains(i.Status));
         if (f.Categories is { Length: > 0 }) q = q.Where(i => f.Categories.Contains(i.Category));
         if (f.Sections is { Length: > 0 }) q = q.Where(i => f.Sections.Contains(i.Section));
-        if (f.ReporterUserId is { } rid) q = q.Where(i => i.ReporterUserId == rid);
-        if (f.AssigneeUserId is { } aid) q = q.Where(i => i.AssigneeUserId == aid);
+        if (reporterFilter is not null) q = q.Where(i => reporterFilter.Contains(i.ReporterUserId));
+        if (assigneeFilter is not null) q = q.Where(i => i.AssigneeUserId.HasValue && assigneeFilter.Contains(i.AssigneeUserId.Value));
         if (!string.IsNullOrWhiteSpace(f.SearchText))
         {
             // ILike, not Contains: Contains is case-sensitive on Postgres. Escape first so % and _ match literally.
@@ -57,10 +59,10 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (sectionFilter is not null)
         {
             var sectionList = sectionFilter.ToList();
-            var fallback = reporterFallback;
+            var fallback = reporterFallback ?? [];
             q = q.Where(i =>
                 (i.Section != null && sectionList.Contains(i.Section)) ||
-                (fallback.HasValue && i.ReporterUserId == fallback.Value));
+                fallback.Contains(i.ReporterUserId));
         }
 
         return await q
@@ -95,7 +97,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
 
     public async Task<int> CountActionableAsync(
         IReadOnlySet<string>? sectionFilter,
-        Guid? viewerFallback,
+        IReadOnlyCollection<Guid>? viewerFallback,
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -105,10 +107,10 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (sectionFilter is not null)
         {
             var sectionList = sectionFilter.ToList();
-            var fallback = viewerFallback;
+            var fallback = viewerFallback ?? [];
             q = q.Where(i =>
                 (i.Section != null && sectionList.Contains(i.Section)) ||
-                (fallback.HasValue && i.ReporterUserId == fallback.Value));
+                fallback.Contains(i.ReporterUserId));
         }
 
         return await q.CountAsync(ct);

@@ -5,7 +5,7 @@ import { loginAs, type Persona } from '../helpers/auth';
  * Admin shell coverage (#604) — verifies the sidebar-driven /Admin surface.
  *
  * Source-of-truth for the group/item map is every section's
- * src/Sections/{Section}/SectionAdminNav.cs, merged by AdminNavComposition. Per-item
+ * src/Sections/{Section}/Section.cs (ISectionAdminNav), merged by AdminNavComposition. Per-item
  * policies determine which roles see which items. Each role's sidebar row set is
  * asserted exactly, so a gate change shows up here and the matrix moves with it.
  *

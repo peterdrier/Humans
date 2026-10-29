@@ -55,6 +55,14 @@ public class SectionCatalogTests
     }
 
     [HumansFact]
+    public void Catalog_Resource_Types_Are_The_Ones_The_Boot_Diagnostic_Checks()
+    {
+        // /Debug/Translations reads its set list from the catalog; it must not drift from the parity tests' list.
+        Build().Sections.Where(s => s.IsActive && s.ResourceType is not null).Select(s => s.ResourceType)
+            .Should().BeEquivalentTo(SectionDiscoveryExtensions.SectionResourceTypes());
+    }
+
+    [HumansFact]
     public void An_Annotation_Lands_On_Its_Section_Whatever_Its_Casing()
     {
         var catalog = Build(new Annotator(new SectionAnnotation("iSsUeS", "Guide page", "/Guide/Issues")));

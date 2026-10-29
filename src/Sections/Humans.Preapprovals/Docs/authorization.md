@@ -14,7 +14,7 @@
 
 Both policy names live in this section (`Authorization/PreapprovalsPolicies.cs`), not in Base's
 `PolicyNames` — nothing outside the section gates on them. They are registered in this section's
-`SectionPolicies.cs`; `Manage` = `ManagesPreapprovalsRequirement`, `Access` =
+`Section.cs`; `Manage` = `ManagesPreapprovalsRequirement`, `Access` =
 `PreapprovalsAccessRequirement`.
 
 ## Policy Handler

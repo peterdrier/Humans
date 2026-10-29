@@ -127,7 +127,7 @@ public class AuditEventTests
         var render = ev.RenderStructured();
 
         render.Verb.Should().Be("created signup for");
-        render.ShouldRenderDescriptionTail.Should().BeFalse(); // Description is empty
+        render.ShouldRenderDescriptionTail.Should().BeFalse();
     }
 
     [HumansFact]
