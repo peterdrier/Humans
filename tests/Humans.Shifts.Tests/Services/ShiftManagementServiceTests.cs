@@ -1204,13 +1204,15 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    private static readonly Guid ActorId = Guid.NewGuid();
+
     [HumansFact]
     public async Task SaveKnobsAsync_NoRowYet_CreatesOneOnDemand()
     {
         var eventId = Guid.NewGuid();
 
         await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true, globalVolunteerCap: 50, reminderLeadTimeHours: 12,
-            new BuildSubPeriodStarts(-28, -20, -10, -3));
+            new BuildSubPeriodStarts(-28, -20, -10, -3), actorUserId: ActorId);
 
         ShiftsDb.ChangeTracker.Clear();
         var saved = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == eventId, Xunit.TestContext.Current.CancellationToken);
@@ -1221,6 +1223,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         saved.SubPeriodSetupWeekStart.Should().Be(-20);
         saved.SubPeriodPreEventWeekStart.Should().Be(-10);
         saved.SubPeriodFinishingWeekendStart.Should().Be(-3);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.EventSettingsUpdated, nameof(EventSettings), eventId,
+            Arg.Is<string>(d => d.Contains("first crew -28") && d.Contains("finishing weekend -3")),
+            ActorId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -1237,7 +1243,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true, globalVolunteerCap: null, reminderLeadTimeHours: 24,
-            new BuildSubPeriodStarts(-25, -16, -9, -4));
+            new BuildSubPeriodStarts(-25, -16, -9, -4), actorUserId: ActorId);
 
         (await ShiftsDb.EventSettings.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }

@@ -397,6 +397,8 @@ internal sealed class ShiftsController(
             return Redirect("/Settings#shifts");
         }
 
+        if (GetCurrentUserId() is not { } actorId) return Challenge();
+
         // Shifts keeps only its own knobs, created on demand for Settings' active event.
         var active = await burnSettings.GetActiveAsync();
         if (active is null)
@@ -408,7 +410,8 @@ internal sealed class ShiftsController(
         await shiftMgmt.SaveKnobsAsync(
             active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours,
             new BuildSubPeriodStarts(model.FirstCrewStartOffset, model.SetupWeekStartOffset,
-                model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset));
+                model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset),
+            actorId);
 
         SetSuccess("Event settings saved.");
         return Redirect("/Settings#shifts");

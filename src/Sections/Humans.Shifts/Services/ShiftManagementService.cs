@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -120,7 +121,7 @@ internal sealed class ShiftManagementService(
 
     public async Task SaveKnobsAsync(
         Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods)
+        BuildSubPeriodStarts subPeriods, Guid actorUserId)
     {
         var entity = await EnsureKnobsRowAsync(eventSettingsId);
         entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
@@ -129,6 +130,13 @@ internal sealed class ShiftManagementService(
         SetSubPeriods(entity, subPeriods);
         entity.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
+        await auditLogService.LogAsync(
+            AuditAction.EventSettingsUpdated, nameof(EventSettings), eventSettingsId,
+            $"Shift settings saved: browsing {(isShiftBrowsingOpen ? "open" : "closed")}, "
+            + $"volunteer cap {globalVolunteerCap?.ToString(CultureInfo.InvariantCulture) ?? "none"}, reminder {reminderLeadTimeHours}h, "
+            + $"build sub-periods start first crew {subPeriods.FirstCrew}, set-up week {subPeriods.SetupWeek}, "
+            + $"pre-event week {subPeriods.PreEventWeek}, finishing weekend {subPeriods.FinishingWeekend}.",
+            actorUserId);
 
         EvictDashboardCaches(eventSettingsId);
         viewInvalidator.InvalidateAll();

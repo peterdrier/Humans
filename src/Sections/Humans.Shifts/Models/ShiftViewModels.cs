@@ -34,13 +34,14 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (FirstCrewStartOffset >= SetupWeekStartOffset
+        if (FirstCrewStartOffset < -365
+            || FirstCrewStartOffset >= SetupWeekStartOffset
             || SetupWeekStartOffset >= PreEventWeekStartOffset
             || PreEventWeekStartOffset >= FinishingWeekendStartOffset
             || FinishingWeekendStartOffset >= 0)
         {
             yield return new ValidationResult(
-                "Build sub-period starts must be strictly ascending and before gate opening: First crew < Set-up week < Pre-event week < Finishing weekend < 0.",
+                "Build sub-period starts must be strictly ascending, within a year before gate opening: -365 ≤ First crew < Set-up week < Pre-event week < Finishing weekend < 0.",
                 [
                     nameof(FirstCrewStartOffset),
                     nameof(SetupWeekStartOffset),

@@ -142,7 +142,7 @@ public sealed class ShiftsControllerSettingsTests
         {
             controller.ModelState.IsValid.Should().BeTrue();
             await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, !clear, clear ? null : 50, clear ? 0 : 12,
-                new BuildSubPeriodStarts(-28, -20, -10, -3));
+                new BuildSubPeriodStarts(-28, -20, -10, -3), Arg.Any<Guid>());
         }
     }
 
@@ -161,7 +161,7 @@ public sealed class ShiftsControllerSettingsTests
         var result = await ctrl.Settings(model);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
-        await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, true, 50, 12, new BuildSubPeriodStarts(-25, -16, -9, -4));
+        await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, true, 50, 12, new BuildSubPeriodStarts(-25, -16, -9, -4), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -175,7 +175,7 @@ public sealed class ShiftsControllerSettingsTests
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
         await _shiftMgmt.DidNotReceive().SaveKnobsAsync(
-            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>());
+            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -190,6 +190,6 @@ public sealed class ShiftsControllerSettingsTests
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Reminder lead time is invalid.");
         await _shiftMgmt.DidNotReceive().SaveKnobsAsync(
-            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>());
+            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>(), Arg.Any<Guid>());
     }
 }

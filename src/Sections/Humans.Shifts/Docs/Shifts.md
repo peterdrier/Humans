@@ -181,7 +181,7 @@ Selected routes:
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
 | `POST /Shifts/Mine/Availability` | Save general availability |
 | `POST /Shifts/Preferences/Tags` | Save volunteer tag preferences |
-| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, the four build sub-period starts) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
+| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, the four build sub-period starts, each `-365 ≤ start`; audited as `EventSettingsUpdated` with the actor) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
 | `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
 | `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftDepartmentManager` policy) |
 | `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |

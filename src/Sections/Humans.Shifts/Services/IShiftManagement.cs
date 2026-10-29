@@ -36,10 +36,10 @@ internal interface IShiftManagement
     /// <summary>Null until a rota or knob edit creates the row. The active event is Settings' concept.</summary>
     Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default);
 
-    /// <summary>Inserts the row on demand.</summary>
+    /// <summary>Inserts the row on demand. Audited as the actor's, since the sub-periods reclassify every build shift.</summary>
     Task SaveKnobsAsync(
         Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods);
+        BuildSubPeriodStarts subPeriods, Guid actorUserId);
 
     /// <summary>
     /// Events whose build sub-periods still come from Settings, with the values the copy will write: every
