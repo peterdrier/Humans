@@ -1830,6 +1830,49 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "0.001")]
+    [InlineData(nameof(PaymentMethod.Refund), "0.001")]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "10000000000")]
+    [InlineData(nameof(PaymentMethod.Refund), "10000000000")]
+    public async Task ManualPaymentMoney_rejects_values_that_cannot_be_stored_exactly(string methodName, string text)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var order = MakeDepositOrder(Guid.NewGuid(), 9_999_999_999.99m);
+        order.Lines.Single().Qty = 2;
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _service.RecordAdminPaymentAsync(order.Id, method,
+            decimal.Parse(text, CultureInfo.InvariantCulture), "re_test", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain("decimal places");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "0.01")]
+    [InlineData(nameof(PaymentMethod.Refund), "0.01")]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "0.0100")]
+    [InlineData(nameof(PaymentMethod.Refund), "0.0100")]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "9999999999.99")]
+    [InlineData(nameof(PaymentMethod.Refund), "9999999999.99")]
+    public async Task ManualPaymentMoney_preserves_exact_amounts_and_signs(string methodName, string text)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var order = MakeDepositOrder(Guid.NewGuid(), 9_999_999_999.99m);
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _service.RecordAdminPaymentAsync(order.Id, method,
+            amount, "re_test", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var expected = method == PaymentMethod.Refund ? -amount : amount;
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == expected), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(nameof(PaymentMethod.Stripe))]
     [InlineData(nameof(PaymentMethod.Manual))]
     public async Task RecordAdminPaymentAsync_rejects_other_methods(string methodName)

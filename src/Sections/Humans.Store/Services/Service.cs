@@ -653,6 +653,9 @@ internal sealed class Service(
             return RefuseAdminMutation(orderId, actorUserId, $"Only deposit returns and refunds can be recorded by hand, not {method}.");
         if (amountEur <= 0)
             return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
+        if (amountEur > 9_999_999_999.99m || decimal.Round(amountEur, 2) != amountEur)
+            return RefuseAdminMutation(orderId, actorUserId,
+                "Amount must be at most 9,999,999,999.99 with no more than two decimal places.");
         if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
             return RefuseAdminMutation(orderId, actorUserId, "A refund needs a reference (e.g. the Stripe refund id).");
 
