@@ -24,6 +24,8 @@ internal sealed class TicketTransferService(
     IClock clock,
     ILogger<TicketTransferService> logger) : ITicketTransferService
 {
+    private const int MaxTransferTextLength = 1000;
+    private const string AdminNotesTooLong = "Notes cannot exceed 1,000 characters.";
 
     // Fixed stripes coordinate instances: attendee id for creation, request id for decisions. Processing makes two
     // 90s vendor calls, so the five-minute acquisition timeout must outlast them.
@@ -80,6 +82,9 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferMutationResult> CreateRequestAsync(
         TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default)
     {
+        if (dto.Reason.Length > MaxTransferTextLength)
+            return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_ReasonTooLong");
+
         if (dto.ReceiverUserId == senderUserId)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
@@ -181,6 +186,9 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferMutationResult> ApproveAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        if (adminNotes is { Length: > MaxTransferTextLength })
+            return RefuseAdmin(transferRequestId, adminUserId, AdminNotesTooLong);
+
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var (request, refusal) = await LoadPendingAsync(transferRequestId, ct);
         if (request is null) return RefuseAdmin(transferRequestId, adminUserId, refusal!);
@@ -193,6 +201,9 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferMutationResult> ProcessTransferAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        if (adminNotes is { Length: > MaxTransferTextLength })
+            return RefuseAdmin(transferRequestId, adminUserId, AdminNotesTooLong);
+
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, ct);
         var (request, refusal) = await LoadPendingAsync(transferRequestId, ct);
         if (request is null) return RefuseAdmin(transferRequestId, adminUserId, refusal!);
@@ -248,6 +259,9 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferMutationResult> RetryReissueAsync(
         Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
     {
+        if (adminNotes is { Length: > MaxTransferTextLength })
+            return RefuseAdmin(transferRequestId, adminUserId, AdminNotesTooLong);
+
         // The original void is already committed; waiting must not cancel its reissue.
         using var decision = await DecisionLockFor(transferRequestId).AcquireAsync(logger, CancellationToken.None);
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
@@ -444,6 +458,9 @@ internal sealed class TicketTransferService(
     public async Task<TicketTransferMutationResult> RejectAsync(
         Guid transferRequestId, Guid adminUserId, string reason, CancellationToken ct = default)
     {
+        if (reason is { Length: > MaxTransferTextLength })
+            return RefuseAdmin(transferRequestId, adminUserId, AdminNotesTooLong);
+
         if (string.IsNullOrWhiteSpace(reason))
             return RefuseAdmin(transferRequestId, adminUserId, "A reason is required to cancel a transfer.");
 
