@@ -275,9 +275,11 @@ There is no central roll-call and no `AddScoped<...Job>()` list in `Program.cs`.
 
 ```csharp
 // src/Sections/Humans.Consent/Section.cs
-internal sealed class SectionJobs : ISectionJobs
+public sealed class Section : ISection, ISectionJobs
 {
-    public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
+    // Register(...) elsewhere in the file
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {
         yield return new RecurringJobDescriptor(
             "consent-reconsent-reminders", typeof(SendReConsentReminderJob), "0 4 * * *");
