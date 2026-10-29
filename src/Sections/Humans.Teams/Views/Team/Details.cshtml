@@ -312,7 +312,7 @@
                     @{
                         // Admin and TeamsAdmin reach the Store regardless of coordinator status.
                         var canOpenStore = (Model.IsCurrentUserCoordinator && Model.ParentTeam is null && Model.IsActive)
-                            || (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
+                            || (await AuthService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
                     }
                     @if (canOpenStore)
                     {

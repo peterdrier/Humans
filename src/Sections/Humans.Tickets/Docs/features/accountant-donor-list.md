@@ -54,7 +54,7 @@ Acceptance criteria:
 and the total in EUR.
 
 **As a TicketsAdmin or Board member**, I cannot download this file. The action carries
-`PolicyNames.AdminOnly`, tightening the controller-wide `TicketAdminBoardOrAdmin`; the button is
+`PolicyNames.AdminOnly`, tightening the controller-wide `TicketsPolicies.Read`; the button is
 only rendered for admins. Anonymous callers are denied by the same policy.
 
 ## Data Model

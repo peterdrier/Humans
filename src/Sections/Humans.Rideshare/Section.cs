@@ -82,8 +82,8 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Rideshare", [
-            new("Settings & stats", "RideshareAdmin", "Index", null, null, "fa-solid fa-car",          PolicyNames.RideshareAdminOrAdmin),
-            new("Day roster",       "RideshareAdmin", "Day",   null, null, "fa-solid fa-calendar-day", PolicyNames.RideshareAdminOrAdmin)
+            new("Settings & stats", "RideshareAdmin", "Index", null, null, "fa-solid fa-car",          RidesharePolicies.Read),
+            new("Day roster",       "RideshareAdmin", "Day",   null, null, "fa-solid fa-calendar-day", RidesharePolicies.Read)
         ])
     ];
 
@@ -94,7 +94,10 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.RideshareAdminOrAdmin, policy =>
+        options.AddPolicy(RidesharePolicies.Read, policy =>
+            policy.RequireRole(RideshareRoles.RideshareAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(RidesharePolicies.Manage, policy =>
             policy.RequireRole(RideshareRoles.RideshareAdmin, RoleNames.Admin));
     }
 }

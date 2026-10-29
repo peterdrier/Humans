@@ -1,40 +1,17 @@
 namespace Humans.Base.Authorization;
 
 /// <summary>
-/// Canonical authorization policy names. Each name corresponds to a registered ASP.NET Core
-/// authorization policy. Use these constants in [Authorize(Policy = ...)] attributes,
-/// authorize-policy TagHelper attributes, and IAuthorizationService calls.
+/// The authorization policies no one section owns: the two system-wide roles, app access, the admin shell, and the
+/// composites that span sections. A section's own policies live on its <c>&lt;Section&gt;Policies</c> class in its
+/// Contracts (<c>TeamsPolicies.Read</c>, <c>TeamsPolicies.Manage</c>).
 /// </summary>
 public static class PolicyNames
 {
     public const string AdminOnly = nameof(AdminOnly);
     public const string BoardOrAdmin = nameof(BoardOrAdmin);
-    public const string HumanAdminBoardOrAdmin = nameof(HumanAdminBoardOrAdmin);
-    public const string HumanAdminOrAdmin = nameof(HumanAdminOrAdmin);
-    public const string TeamsAdminBoardOrAdmin = nameof(TeamsAdminBoardOrAdmin);
 
-    /// <summary>
-    /// TeamsAdmin or Admin — deliberately narrower than <see cref="TeamsAdminBoardOrAdmin"/>
-    /// (Board is not included) for gates where Board access would dead-end the viewer
-    /// (e.g. the Team page's "Open store" link, which Board members can't otherwise use).
-    /// </summary>
-    public const string TeamsAdminOrAdmin = nameof(TeamsAdminOrAdmin);
-    public const string CampAdminOrAdmin = nameof(CampAdminOrAdmin);
-    public const string TicketAdminBoardOrAdmin = nameof(TicketAdminBoardOrAdmin);
-    public const string TicketAdminOrAdmin = nameof(TicketAdminOrAdmin);
-    public const string FinanceAdminOrAdmin = nameof(FinanceAdminOrAdmin);
-    public const string EventsAdminOrAdmin = nameof(EventsAdminOrAdmin);
-    public const string CantinaAdminOrAdmin = nameof(CantinaAdminOrAdmin);
-    public const string RideshareAdminOrAdmin = nameof(RideshareAdminOrAdmin);
-    public const string StoreCatalogAdmin = nameof(StoreCatalogAdmin);
     public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
     public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
-    public const string ShiftDashboardAccess = nameof(ShiftDashboardAccess);
-    public const string VolunteerTrackingWrite = nameof(VolunteerTrackingWrite);
-    public const string ShiftDepartmentManager = nameof(ShiftDepartmentManager);
-    public const string PrivilegedSignupApprover = nameof(PrivilegedSignupApprover);
-    public const string VolunteerManager = nameof(VolunteerManager);
-    public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>
     /// Scanner tools (/Scanner/*): TicketsAdmin, Board, or Admin — plus the shared
@@ -45,11 +22,9 @@ public static class PolicyNames
 
     /// <summary>
     /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Claim POST): records a
-    /// durable admission or claims the scanning session. Deliberately distinct
-    /// from the read-only <see cref="ScannerAccess"/> so the gate's write surface
-    /// never rides on the Scanner read gate. Same principals today (TicketsAdmin,
-    /// Board, Admin, or the shared gate-terminal account) but kept separate so the
-    /// two can diverge without re-opening the read path. Composite assertion policy.
+    /// durable admission or claims the scanning session. TicketsAdmin, Admin, or the
+    /// shared gate-terminal account; Board reads the gate through
+    /// <see cref="ScannerAccess"/> and admits no one. Composite assertion policy.
     /// </summary>
     public const string GateAdmit = nameof(GateAdmit);
 
@@ -57,25 +32,9 @@ public static class PolicyNames
     public const string AppAccess = nameof(AppAccess);
 
     /// <summary>
-    /// UsersAdmin who is NOT also Admin or Board. Used for the nav "Humans" link
-    /// that only shows when the user has UsersAdmin but not the broader Board/Admin access.
-    /// Composite policy requiring a custom authorization handler.
-    /// </summary>
-    public const string HumanAdminOnly = nameof(HumanAdminOnly);
-
-    /// <summary>
     /// Board member (standalone). Used rarely — most Board gates also include Admin.
     /// </summary>
     public const string BoardOnly = nameof(BoardOnly);
-
-    /// <summary>
-    /// Read-only Barrios compliance matrix: CampsAdmin OR Admin OR a coordinator /
-    /// management role-holder on any team or sub-team. Broader than
-    /// <see cref="CampAdminOrAdmin"/> (which gates the camp-management surface) so
-    /// team coordinators can also see role staffing across barrios. Composite
-    /// policy requiring a custom authorization handler.
-    /// </summary>
-    public const string CampComplianceAccess = nameof(CampComplianceAccess);
 
     /// <summary>
     /// City-planning map admin: CampsAdmin OR Admin OR a member of the city-planning team.

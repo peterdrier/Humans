@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
@@ -25,7 +26,7 @@ public class AdminSidebarViewComponentTests
         public IEnumerable<AdminNavGroup> Groups() =>
         [
             new("Tickets", [
-                new("Tickets", "Ticket",   "Index", null, null, "icon", PolicyNames.TicketAdminBoardOrAdmin),
+                new("Tickets", "Ticket",   "Index", null, null, "icon", TicketsPolicies.Read),
                 new("Scanner", "Scanner",  "Index", null, null, "icon", PolicyNames.ScannerAccess)
             ]),
             new("Debug", [
@@ -57,10 +58,10 @@ public class AdminSidebarViewComponentTests
         var auth = Substitute.For<IAuthorizationService>();
         // Allow only items in the Tickets group
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
-                Arg.Is<string>(p => p == PolicyNames.TicketAdminBoardOrAdmin))
+                Arg.Is<string>(p => p == TicketsPolicies.Read))
             .Returns(AuthorizationResult.Success());
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
-                Arg.Is<string>(p => p != PolicyNames.TicketAdminBoardOrAdmin))
+                Arg.Is<string>(p => p != TicketsPolicies.Read))
             .Returns(AuthorizationResult.Failed());
         var sut = MakeSut(auth, "Ticket", "Index");
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
@@ -156,7 +157,7 @@ public class AdminSidebarViewComponentTests
         var result = await tabs.InvokeAsync() as ViewViewComponentResult;
 
         ((IReadOnlyList<AdminSidebarItemViewModel>)result!.ViewData!.Model!).Select(t => t.Label).Should().Equal("Logs", "DB stats");
-        await auth.Received(1).AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.TicketAdminBoardOrAdmin);
+        await auth.Received(1).AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TicketsPolicies.Read);
     }
 
     private static IAuthorizationService AlwaysAllow()

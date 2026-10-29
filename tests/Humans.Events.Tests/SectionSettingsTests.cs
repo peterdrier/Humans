@@ -1,3 +1,4 @@
+using Humans.Events.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Interfaces;
 using System.ComponentModel.DataAnnotations;
@@ -38,6 +39,6 @@ public sealed class SectionSettingsTests
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("event-guide");
         tab.Label.Should().Be("Settings_TabEventGuide");
-        tab.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin);
+        tab.Policy.Should().Be(EventsPolicies.Manage);
     }
 }

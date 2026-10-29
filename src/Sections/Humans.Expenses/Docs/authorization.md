@@ -3,13 +3,13 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `ExpensesController` | Class | `[Authorize]` (authenticated) | — |
-| `ExpensesController.Review` | In-method | Any authenticated human — the queue is viewer-scoped (`GetReviewQueueAsync(userId, isFinanceAdmin)`); `PolicyNames.FinanceAdminOrAdmin` via `AuthorizeAsync` widens it to the finance view and the failed-Holded-push report list | Policy check |
-| `ExpensesController.Approve` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
-| `ExpensesController.Reject` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
-| `ExpensesController.HoldedRetry` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` (re-queues a stuck Holded push for an approved report; `ExpenseReportOperation.RequeueHoldedPush`) |
+| `ExpensesController.Review` | In-method | Any authenticated human — the queue is viewer-scoped (`GetReviewQueueAsync(userId, isFinanceAdmin)`); `FinancePolicies.Manage` via `AuthorizeAsync` widens it to the finance view and the failed-Holded-push report list | Policy check |
+| `ExpensesController.Approve` | Action | `FinanceAdmin, Admin` | `FinancePolicies.Manage` |
+| `ExpensesController.Reject` | Action | `FinanceAdmin, Admin` | `FinancePolicies.Manage` |
+| `ExpensesController.HoldedRetry` | Action | `FinanceAdmin, Admin` | `FinancePolicies.Manage` (re-queues a stuck Holded push for an approved report; `ExpenseReportOperation.RequeueHoldedPush`) |
 | `ExpensesController` runtime guards | In-method | `authService.AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(ExpenseReportOperation.X))` — `View` (Detail + Attachment), `Edit` (`Edit` GET/POST, `NewLine`, `AddLine`, `UpdateLine`, `RemoveLine`, `AttachFile`, `RemoveAttachment`, and the render flag on `LineEdit`/`LineProofs`), `Submit`, `Withdraw`, `Endorse`, `CoordinatorReject`, `DeclineLine` (`DeclineLine`/`UndoDeclineLine` POSTs), `Approve`, `FinanceReject`, `RequeueHoldedPush`. `View` is also registered as the named policy `PolicyNames.ExpenseReportView` (`Section.cs`), which `Humans.Backdoor`'s `BackdoorFinanceController` calls cross-section instead of naming `ExpenseReportOperationRequirement` directly (peterdrier/Humans#1838) | Resource-based (see handler below) |
 | `ExpensesController` owner guards | In-method | Owner checks use the current human’s `UserInfo.AllUserIds`, including archived accounts after a merge. `LineEdit`/`LineProofs` add the submitter as a read-only viewer past the `Edit` grant, and `Iban` GET/POST admits the submitter at any status or whoever `Edit` covers (`CanSetReportIbanAsync`) | Inline owner check |
-| `ExpensesController.New` | In-method | The **For member** picker renders, and a non-self `SubmitterUserId` is accepted, only for `PolicyNames.FinanceAdminOrAdmin`; anything else posting one gets `Forbid()` | Policy check (`IsFinanceAdminAsync`) |
+| `ExpensesController.New` | In-method | The **For member** picker renders, and a non-self `SubmitterUserId` is accepted, only for `FinancePolicies.Manage`; anything else posting one gets `Forbid()` | Policy check (`IsFinanceAdminAsync`) |
 
 ## Resource-Based Authorization Handlers
 

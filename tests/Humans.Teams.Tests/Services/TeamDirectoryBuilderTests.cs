@@ -130,6 +130,20 @@ public sealed class TeamDirectoryBuilderTests
     }
 
     [HumansFact]
+    public async Task Board_SeesHiddenTeamsButMayNotCreate()
+    {
+        var board = Guid.NewGuid();
+        _roles.IsUserBoardMemberAsync(board, Arg.Any<CancellationToken>()).Returns(true);
+        var hidden = Team("Secret", isHidden: true);
+
+        var result = await TeamDirectoryBuilder.BuildAsync(
+            Graph(hidden), _roles, board, Xunit.TestContext.Current.CancellationToken);
+
+        result.CanCreateTeam.Should().BeFalse();
+        result.HiddenTeams.Select(t => t.Name).Should().BeEquivalentTo("Secret");
+    }
+
+    [HumansFact]
     public void Tree_NestsSubTeamsUnderDepartments_AndDropsHiddenSystemInactive()
     {
         var member = Guid.NewGuid();

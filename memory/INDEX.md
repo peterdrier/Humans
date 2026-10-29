@@ -92,7 +92,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 - [`admin-role-superset`](code/admin-role-superset.md) — When writing role checks/lists, include Admin (system-wide) and the domain's *Admin role (TeamsAdmin/CampsAdmin/TicketsAdmin) — never one without the other.
 - [`always-log-problems`](code/always-log-problems.md) — When logging an expected/user-driven failure, use LogWarning and drop the exception object — LogInformation is invisible in prod.
-- [`authorization-conventions`](code/authorization-conventions.md) — Controllers/routes use `[Authorize(Policy = PolicyNames.X)]`; views use `authorize-policy` or `IAuthorizationService`. Never `[Authorize(Roles=...)]` or `User.IsInRole` chains.
+- [`authorization-conventions`](code/authorization-conventions.md) — Controllers use `[Authorize(Policy = ...)]`: a section's `<Section>Policies.Read` (Board reads) on the class, `.Manage` on every write; views use `authorize-policy`. Never `[Authorize(Roles=...)]` or `User.IsInRole` chains.
 - [`auth-in-views-self-resolving`](code/auth-in-views-self-resolving.md) — In reusable views/components, resolve auth via injected `IAuthorizationService` in the template — don't pass `Can…` auth booleans on the view model.
 - [`audit-pii-subject-allowed`](code/audit-pii-subject-allowed.md) — An audit entry may show PII unmasked only when the PII belongs to that entry's own subject.
 - [`data-exports-are-audited`](code/data-exports-are-audited.md) — HARD RULE. Every bulk export/download of personal data writes an audit entry (actor, what, row count) and carries the narrowest role; adding one is a decision for Peter first.

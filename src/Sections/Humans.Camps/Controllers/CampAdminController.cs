@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -7,7 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Camps.Controllers;
 
-[Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
+[Authorize(Policy = CampsPolicies.Read)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
 internal sealed class CampAdminController(
@@ -38,6 +39,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("Approve/{seasonId:guid}")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid seasonId, string? notes)
     {
@@ -59,6 +61,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("Reject/{seasonId:guid}")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid seasonId, string notes)
     {
@@ -86,6 +89,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("OpenSeason")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OpenSeason([FromForm, BindRequired] int year)
     {
@@ -108,6 +112,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("CloseSeason/{year:int}")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CloseSeason(int year)
     {
@@ -129,6 +134,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("SetNameLockDate")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetNameLockDate([BindRequired] int year, string lockDate)
     {
@@ -157,6 +163,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("SetCampSeasonEeSlotCount/{seasonId:guid}")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
         Guid seasonId, [BindRequired] int slotCount, CancellationToken cancellationToken)
@@ -183,6 +190,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("Reactivate/{seasonId:guid}")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reactivate(Guid seasonId, string? returnSlug)
     {
@@ -206,6 +214,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpGet("Export")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     public async Task<IActionResult> ExportCamps()
     {
         var actorUserId = GetCurrentUserId();
@@ -317,9 +326,11 @@ internal sealed class CampAdminController(
     }
 
     [HttpGet("Roles/Create")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
 
     [HttpPost("Roles/Create")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(CampRoleDefinitionFormViewModel form, CancellationToken ct)
     {
@@ -356,6 +367,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpGet("Roles/{id:guid}/Edit")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     public async Task<IActionResult> EditRole(Guid id, CancellationToken ct)
     {
         var def = await campRoleService.GetDefinitionByIdAsync(id, ct);
@@ -373,6 +385,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("Roles/{id:guid}/Edit")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRole(Guid id, CampRoleDefinitionFormViewModel form, CancellationToken ct)
     {
@@ -421,6 +434,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("Roles/{id:guid}/Deactivate")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateRole(Guid id, CancellationToken ct)
     {
@@ -446,6 +460,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("Roles/{id:guid}/Reactivate")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReactivateRole(Guid id, CancellationToken ct)
     {
@@ -471,6 +486,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpPost("SeedSystemRoles")]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedSystemRoles(CancellationToken ct)
     {

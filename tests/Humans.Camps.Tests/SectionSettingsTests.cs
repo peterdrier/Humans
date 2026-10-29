@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Interfaces;
 using AwesomeAssertions;
@@ -13,13 +14,13 @@ namespace Humans.Camps.Tests;
 public sealed class SectionSettingsTests
 {
     [HumansFact]
-    public void Tabs_ReturnsTheBarriosTabGatedOnCampAdminOrAdmin()
+    public void Tabs_ReturnsTheBarriosTabGatedOnCampsManage()
     {
         var tabs = ((ISectionSettings)new Section()).Tabs().ToList();
 
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("barrios");
         tab.Label.Should().Be("Settings_TabBarrios");
-        tab.Policy.Should().Be(PolicyNames.CampAdminOrAdmin);
+        tab.Policy.Should().Be(CampsPolicies.Manage);
     }
 }

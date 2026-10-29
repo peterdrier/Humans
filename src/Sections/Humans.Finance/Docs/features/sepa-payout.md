@@ -56,7 +56,7 @@ longer needs a redeploy.
 2. The checkboxes, amount boxes and the per-transfer cap field belong to a standalone `#sepaForm`
    via the HTML5 `form` attribute — each row already carries an Unbind form and forms cannot nest.
    The cap field is prefilled from `Sepa:MaxPayoutPerTransfer` but is editable per batch.
-3. `POST /Finance/Sepa/Generate` (`FinanceAdminOrAdmin`, antiforgery) parses the amounts and the cap
+3. `POST /Finance/Sepa/Generate` (`FinancePolicies.Manage`, antiforgery) parses the amounts and the cap
    **invariantly** rather than through model binding, which would use the request culture and read
    `12.34` as `1234` under a comma-decimal locale. An unparseable or non-positive cap refuses the
    whole batch before any selection is looked at.
@@ -205,7 +205,7 @@ ledger, so paying one would post against a document that does not exist for acco
 ### Withdrawing a transfer
 
 When the bank cancels a transfer by hand before execution (the 2026-10-18 file paid three inflated
-balances), **Withdraw** on the row (`POST /Finance/Sepa/Withdraw`, `FinanceAdminOrAdmin`,
+balances), **Withdraw** on the row (`POST /Finance/Sepa/Withdraw`, `FinancePolicies.Manage`,
 antiforgery, confirm dialog naming member, amount and file) stamps `WithdrawnAt` and the acting admin.
 Nothing is deleted. It is allowed only while the row is unbooked: no `BookedAt`, no
 `HoldedBankMovementId`, no `HoldedPaymentRefs` — a booked row shows the reason in place of the

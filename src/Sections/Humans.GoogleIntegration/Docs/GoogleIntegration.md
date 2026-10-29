@@ -113,7 +113,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | POST | same; resource must belong to the team | Toggle inherited-access restriction on a Drive folder |
 | `/Google/Teams/{slug}/Resources/{resourceId}/Unlink` | POST | same; resource must belong to the team | Soft-unlink (IsActive = false) |
 | `/Google/Teams/{slug}/Resources/{resourceId}/Sync` | POST | same; resource must belong to the team | Reconcile one resource now |
-| `/Google/Admin/{id}/WorkspaceEmail` | POST | UsersAdmin, Board, Admin (`HumanAdminBoardOrAdmin`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
+| `/Google/Admin/{id}/WorkspaceEmail` | POST | UsersAdmin, Admin (`UsersPolicies.Manage`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
 
 ## Actors & Roles
 
@@ -122,7 +122,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, link, reset password, combined Reset + 2FA recovery for locked-out humans). Provision per-human @nobodies.team email. Requeue permanently-failed outbox events (individually or all at once). Re-enqueue Google sync for a specific user across all their current teams. |
 | TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamResourcesController`. View resource status. Trigger per-resource sync |
 | Coordinator | Link and unlink Google resources for their own department (via `TeamResourcesController`). Trigger per-resource sync for their own department |
-| Board, Admin | View Drive activity anomaly check results. View sync audit logs |
+| Board, Admin | View Drive activity anomaly check results (running the check is Admin only). View sync audit logs |
 | UsersAdmin, Board, Admin | View per-human Google sync audit |
 | Background jobs | Automated sync: system team sync (hourly), resource reconciliation (daily at 03:00), sync outbox processing, resource provisioning |
 
@@ -199,7 +199,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - TeamsAdmin and Board **cannot** manage sync settings — that is Admin-only.
 - Coordinators **cannot** manage sync settings, execute bulk sync actions, or remediate Google Group settings drift.
 - Regular humans have no access to Google resource management.
-- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Google/WorkspaceEmail` acts on the signed-in member only, and `/Google/Admin/{id}/WorkspaceEmail` requires UsersAdmin, Board or Admin.
+- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Google/WorkspaceEmail` acts on the signed-in member only, and `/Google/Admin/{id}/WorkspaceEmail` requires UsersAdmin or Admin.
 - The admin Google Sync / @nobodies.team cards (`AdminDetailSidebar` user part) render nothing outside the admin view; the Re-run Google Sync button inside them is Admin-only.
 
 ## Triggers

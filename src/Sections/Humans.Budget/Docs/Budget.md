@@ -191,6 +191,7 @@ Stored as string via `HasConversion<string>()`.
 | Any active human | View a read-only summary of the active budget year |
 | Department coordinator | View the active year via `/Budget` (non-ticketing groups, restricted groups visible as headers + category names but no drill-in). Create, edit, and delete line items within categories linked to a department they coordinate |
 | FinanceAdmin, Admin | Full management of all budget years, groups, categories, and line items. View audit log. Sync departments (auto-create categories for departments that lack one). Manage restricted groups |
+| Board | Read every budget admin page (years, groups, categories, line items, audit log, ticketing projection); change nothing (`FinancePolicies.Read`) |
 
 ## Invariants
 
@@ -242,7 +243,7 @@ Stored as string via `HasConversion<string>()`.
 - Coordinators **cannot** edit budget groups or categories, and **cannot** edit any line items inside restricted or ticketing groups. They can only manage line items in non-restricted, non-ticketing categories linked to a department they coordinate.
 - Coordinators **cannot** drill into a restricted-group category (`/Budget/Category/{id}` returns `Forbid`); they only see the group header and category names in `/Budget` plus the rollup in `/Budget/Summary`.
 - Coordinators **cannot** see ticketing groups in `/Budget` and **cannot** open any ticketing category — only the rollup appears in `/Budget/Summary`.
-- Coordinators **cannot** create, activate, close, reactivate, or archive budget years (all `/Finance/Years/*` actions require `FinanceAdminOrAdmin`).
+- Coordinators **cannot** create, activate, close, reactivate, or archive budget years (all `/Finance/Years/*` actions require `FinancePolicies.Manage`).
 
 ## Triggers
 

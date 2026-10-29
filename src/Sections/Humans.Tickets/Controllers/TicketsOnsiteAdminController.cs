@@ -9,7 +9,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>ScannerAccess, not TicketAdminBoardOrAdmin, so the gate-terminal account can check the roster from the door.</summary>
+/// <summary>ScannerAccess, not TicketsPolicies.Read, so the gate-terminal account can check the roster from the door.</summary>
 [Authorize(Policy = PolicyNames.ScannerAccess)]
 [Route("Tickets/Admin/Onsite")]
 internal sealed class TicketsOnsiteAdminController(

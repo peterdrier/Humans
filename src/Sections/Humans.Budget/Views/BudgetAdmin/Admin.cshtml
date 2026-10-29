@@ -16,7 +16,7 @@
         <i class="fa-solid fa-plus me-1"></i>Create New Budget Year
     </div>
     <div class="card-body">
-        <form asp-action="CreateYear" method="post" class="row g-3 align-items-end">
+        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CreateYear" method="post" class="row g-3 align-items-end">
             @Html.AntiForgeryToken()
             <div class="col-md-3">
                 <label class="form-label">Year Identifier</label>
@@ -80,14 +80,14 @@
                 }
                 else if (budgetYear.Status == BudgetYearStatus.Draft)
                 {
-                    <form asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="status" value="@BudgetYearStatus.Active" />
                         <button type="submit" class="btn btn-success btn-sm">
                             <i class="fa-solid fa-play me-1"></i>Activate
                         </button>
                     </form>
-                    <form asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
@@ -96,7 +96,7 @@
                 }
                 else if (budgetYear.Status == BudgetYearStatus.Active)
                 {
-                    <form asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="status" value="@BudgetYearStatus.Closed" />
                         <button type="submit" class="btn btn-warning btn-sm" data-confirm="Close this budget year? It will become read-only.">
@@ -106,14 +106,14 @@
                 }
                 else if (budgetYear.Status == BudgetYearStatus.Closed)
                 {
-                    <form asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="status" value="@BudgetYearStatus.Active" />
                         <button type="submit" class="btn btn-outline-success btn-sm">
                             <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
                         </button>
                     </form>
-                    <form asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
@@ -125,7 +125,7 @@
             @if (!budgetYear.IsDeleted && budgetYear.Status != BudgetYearStatus.Closed)
             {
                 <div id="@yearEditId" class="collapse mb-3">
-                    <form asp-action="UpdateYear" asp-route-id="@budgetYear.Id" method="post" class="row g-2 align-items-end p-3 bg-light rounded">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UpdateYear" asp-route-id="@budgetYear.Id" method="post" class="row g-2 align-items-end p-3 bg-light rounded">
                         @Html.AntiForgeryToken()
                         <div class="col-md-3">
                             <label class="form-label form-label-sm">Year Identifier</label>
@@ -173,7 +173,7 @@
                             </button>
                             @if (!group.IsDepartmentGroup)
                             {
-                                <form asp-action="DeleteGroup" asp-route-id="@group.Id" method="post" class="d-inline">
+                                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="DeleteGroup" asp-route-id="@group.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-outline-danger btn-sm py-0" data-confirm="Delete this group and all its categories?">
                                         <i class="fa-solid fa-trash"></i>
@@ -182,7 +182,7 @@
                             }
                         </div>
                         <div id="@groupEditId" class="collapse mb-2 ps-3">
-                            <form asp-action="UpdateGroup" asp-route-id="@group.Id" method="post" class="row g-2 align-items-end p-2 bg-light rounded">
+                            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UpdateGroup" asp-route-id="@group.Id" method="post" class="row g-2 align-items-end p-2 bg-light rounded">
                                 @Html.AntiForgeryToken()
                                 <div class="col-md-4">
                                     <label class="form-label form-label-sm">Name</label>
@@ -208,7 +208,7 @@
                 }
 
                 <div class="ps-3 mt-2">
-                    <form asp-action="CreateGroup" method="post" class="row g-2 align-items-end">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CreateGroup" method="post" class="row g-2 align-items-end">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="budgetYearId" value="@budgetYear.Id" />
                         <div class="col-md-4">

@@ -2,7 +2,7 @@
 @inject IAuthorizationService AuthService
 @{
     var canSeeHiddenTeams =
-        (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded;
+        (await AuthService.AuthorizeAsync(User, Humans.Teams.Contracts.TeamsPolicies.Read)).Succeeded;
     IReadOnlyList<string> visibleHiddenTeams =
         canSeeHiddenTeams ? Model.HiddenTeams : [];
     var canSeeCamp =
@@ -14,7 +14,7 @@
     <div>
         <div class="fw-semibold">
             @Model.DisplayName
-            @if ((await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded
+            @if ((await AuthService.AuthorizeAsync(User, UsersPolicies.Read)).Succeeded
                 && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
             {
                 <span class="@Model.PreferredLanguage.ToFlagClass() ms-1" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>

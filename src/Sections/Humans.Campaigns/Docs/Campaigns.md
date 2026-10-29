@@ -117,7 +117,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - TicketsAdmin **cannot** create, edit, activate, or complete campaigns. They can only view details and generate codes.
 - Regular humans and other roles have no access to campaign management.
 - Humans see only their own grants on `/Profile/Me` (the "My Codes" card, `MyCodesViewComponent`, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`). The card renders only for the `Self` view mode and only when the signed-in user is the profile's owner, so it is absent on another member's profile for every role. No human can see another human's grants outside the admin card.
-- The "Campaign Codes" card (`CampaignCodesViewComponent`, every grant whatever the campaign's status) renders only in the `Admin` view mode for a viewer passing `HumanAdminBoardOrAdmin`, the same policy as the host page; any other viewer or audience gets nothing.
+- The "Campaign Codes" card (`CampaignCodesViewComponent`, every grant whatever the campaign's status) renders only in the `Admin` view mode for a viewer passing `UsersPolicies.Read`, the same policy as the host page; any other viewer or audience gets nothing.
 
 ## Triggers
 
@@ -174,7 +174,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 | Slot | Component | Audience |
 |---|---|---|
 | `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all six cultures) | Own profile only |
-| `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `HumanAdminBoardOrAdmin` |
+| `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `UsersPolicies.Read` |
 
 Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
 

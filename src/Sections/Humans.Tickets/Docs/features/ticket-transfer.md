@@ -31,7 +31,7 @@ member (the **Receiver**). A request notifies the team, who process it one of tw
   dashboard, then records the outcome; the next ticket sync reconciles the local attendee rows.
 
 Either way the team can instead cancel the request with a reason. Both decision actions are admin-only
-(`TicketAdminOrAdmin`); there is no per-environment toggle — the automated path is always available to the
+(`TicketsPolicies.Manage`); there is no per-environment toggle — the automated path is always available to the
 ticket team.
 
 Tracked in: peterdrier/Humans#382. The void+reissue mechanics are researched in
@@ -99,7 +99,7 @@ Member request and cancellation errors are localized in all six cultures. Unknow
   **cannot be cancelled, rejected, or re-processed** (that would strand or double-void the held seat).
 - **Mark transfer successful** sets `Approved` with no vendor call (manual void+reissue, or closing out a
   partial automated attempt); **Cancel transfer** requires a reason and sets `Rejected`. All three are
-  policy-gated to `TicketAdminOrAdmin` and audit-logged.
+  policy-gated to `TicketsPolicies.Manage` and audit-logged.
 - The manual path mutates no attendee rows — the next ticket sync picks up the team's TicketTailor-side
   void/reissue (which re-links the API-issued reissue to the original order and preserves its price).
 

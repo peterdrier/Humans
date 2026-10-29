@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
@@ -123,7 +124,7 @@ public class UserPartsTests
     private CampaignCodesViewComponent BuildCampaignCodes(bool authorized)
     {
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.HumanAdminBoardOrAdmin)
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), UsersPolicies.Read)
             .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         return new CampaignCodesViewComponent(_campaigns, authorization) { ViewComponentContext = Context(Guid.NewGuid()) };
     }

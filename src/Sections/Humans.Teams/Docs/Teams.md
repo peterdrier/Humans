@@ -140,13 +140,13 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `POST /Teams/{slug}/Join` | `Join` (POST) | `TeamController` | `[Authorize]` — hidden teams return 404 for non-admin |
 | `POST /Teams/{slug}/Leave` | `Leave` | `TeamController` | `[Authorize]` |
 | `POST /Teams/Requests/{id}/Withdraw` | `WithdrawRequest` | `TeamController` | `[Authorize]` |
-| `GET /Teams/Summary` | `Summary` | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
-| `GET /Teams/Create` | `CreateTeam` (GET) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
-| `POST /Teams/Create` | `CreateTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
-| `GET /Teams/{id:guid}/Edit` | `EditTeam` (GET) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
-| `POST /Teams/{id:guid}/Edit` | `EditTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
-| `POST /Teams/{id:guid}/Delete` | `DeleteTeam` | `TeamController` | `[Authorize(Policy = BoardOrAdmin)]` |
-| `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` — JSON API for resource picker |
+| `GET /Teams/Summary` | `Summary` | `TeamController` | `[Authorize(Policy = TeamsPolicies.Read)]` |
+| `GET /Teams/Create` | `CreateTeam` (GET) | `TeamController` | `[Authorize(Policy = TeamsPolicies.Manage)]` |
+| `POST /Teams/Create` | `CreateTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsPolicies.Manage)]` |
+| `GET /Teams/{id:guid}/Edit` | `EditTeam` (GET) | `TeamController` | `[Authorize(Policy = TeamsPolicies.Read)]` |
+| `POST /Teams/{id:guid}/Edit` | `EditTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsPolicies.Manage)]` |
+| `POST /Teams/{id:guid}/Delete` | `DeleteTeam` | `TeamController` | `[Authorize(Policy = PolicyNames.AdminOnly)]` |
+| `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `[Authorize(Policy = TeamsPolicies.Read)]` — JSON API for resource picker |
 | `GET /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (GET) | `TeamMessageController` | `[Authorize]` + `ITeamMessageOptionsProvider` — send as team: the team must be one the viewer may send as (see Invariants); 403 otherwise, redirect to the profile for self or an opted-out recipient |
 | `POST /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (POST) | `TeamMessageController` | `[Authorize]`, anti-forgery, same guards re-checked |
 | `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamManagementAsync` (coordinator or TeamsAdmin/Admin) |
@@ -185,8 +185,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | EarlyEntryAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
 | Sub-team Manager | Manage members, approve/reject join requests, manage roles, manage shifts, and edit the team page for their sub-team only. Cannot manage Google resources, the parent department, or sibling sub-teams |
 | TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, directory promotion, Early Entry enabled flag), toggle the management role, and link/unlink Google resources on all teams. **Cannot** change the sensitive flag via Edit Team (Admin-only — a non-Admin's save leaves `IsSensitive` unchanged) |
-| Board | All TeamsAdmin capabilities. Additionally can delete (deactivate) teams |
-| Admin | All Board capabilities. Additionally can change the sensitive flag (`IsSensitive`) via Edit Team, execute Google sync actions, trigger system team sync, and view sync previews |
+| Board | Read the teams summary, team settings and Google resource sync; create, edit and delete nothing (`TeamsPolicies.Read`). Board still passes the per-team admin checks until those split into read and manage |
+| Admin | All TeamsAdmin capabilities. Additionally can delete (deactivate) teams, change the sensitive flag (`IsSensitive`) via Edit Team, execute Google sync actions, trigger system team sync, and view sync previews |
 
 ## Invariants
 

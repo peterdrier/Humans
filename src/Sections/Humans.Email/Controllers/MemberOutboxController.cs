@@ -24,7 +24,7 @@ internal sealed class MemberOutboxController(
         return View("Outbox", messages);
     }
 
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
+    [Authorize(Policy = UsersPolicies.Read)]
     [HttpGet("Email/Admin/{id:guid}/Outbox")]
     public async Task<IActionResult> AdminOutbox(Guid id, CancellationToken ct)
     {

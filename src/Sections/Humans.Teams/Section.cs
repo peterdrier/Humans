@@ -149,12 +149,10 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.TeamsAdminBoardOrAdmin, policy =>
+        options.AddPolicy(TeamsPolicies.Read, policy =>
             policy.RequireRole(TeamsRoles.TeamsAdmin, RoleNames.Board, RoleNames.Admin));
 
-        // Narrower than TeamsAdminBoardOrAdmin: for gates where Board access would dead-end the viewer (e.g. the Team
-        // page's "Open store" link).
-        options.AddPolicy(PolicyNames.TeamsAdminOrAdmin, policy =>
+        options.AddPolicy(TeamsPolicies.Manage, policy =>
             policy.RequireRole(TeamsRoles.TeamsAdmin, RoleNames.Admin));
     }
 

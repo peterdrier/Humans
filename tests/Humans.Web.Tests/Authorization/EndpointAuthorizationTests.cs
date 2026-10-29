@@ -1,4 +1,8 @@
+using Humans.Finance.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Tickets.Contracts;
 using Humans.Users.Controllers;
+using Humans.Users.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Web.Controllers;
@@ -56,9 +60,9 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Email.Controllers.EmailController"), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "Index", "BoardOrAdmin" },
-        { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "BoardOrAdmin" },
+        { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Resource", "BoardOrAdmin" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Human", "HumanAdminBoardOrAdmin" },
+        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Human", UsersPolicies.Read },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "UpdateSyncSetting", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSystemTeams", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncResults", "AdminOnly" },
@@ -68,7 +72,7 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
-        { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin" },
+        { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, FinancePolicies.Read },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), null, "AdminOnly" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Index", "AdminOnly" },
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Detail", "AdminOnly" },
@@ -78,10 +82,10 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Feedback.Controllers.FeedbackController"), "SetGitHubIssue", "AdminOnly" },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
-        { SectionType("Humans.Tickets.Controllers.TicketsGateAdminController"), null, "TicketAdminOrAdmin" },
-        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, "ShiftDepartmentManager" },
-        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", "ShiftDashboardAccess" },
-        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", "ShiftDashboardAccess" },
+        { SectionType("Humans.Tickets.Controllers.TicketsGateAdminController"), null, TicketsPolicies.Read },
+        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, ShiftsPolicies.DepartmentRead },
+        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", ShiftsPolicies.Manage },
+        { SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", ShiftsPolicies.Manage },
     };
 
     [HumansTheory]
@@ -154,28 +158,28 @@ public class EndpointAuthorizationTests
     }
 
     [HumansFact]
-    public void BudgetAdminController_RequiresFinanceAdminOrAdmin()
+    public void BudgetAdminController_RequiresFinanceRead()
     {
-        AssertHasPolicy(SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, "FinanceAdminOrAdmin");
+        AssertHasPolicy(SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, FinancePolicies.Read);
     }
 
     // Page entry uses the wider policy so any coordinator can land; Voluntell and SearchVolunteers narrow it per action.
     [HumansFact]
-    public void ShiftDashboardController_RequiresShiftDepartmentManager()
+    public void ShiftDashboardController_RequiresShiftsDepartmentRead()
     {
-        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, "ShiftDepartmentManager");
+        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), null, ShiftsPolicies.DepartmentRead);
     }
 
     [HumansFact]
-    public void ShiftDashboardController_SearchVolunteers_RequiresShiftDashboardAccess()
+    public void ShiftDashboardController_SearchVolunteers_RequiresShiftsManage()
     {
-        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", "ShiftDashboardAccess");
+        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "SearchVolunteers", ShiftsPolicies.Manage);
     }
 
     [HumansFact]
-    public void ShiftDashboardController_Voluntell_RequiresShiftDashboardAccess()
+    public void ShiftDashboardController_Voluntell_RequiresShiftsManage()
     {
-        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", "ShiftDashboardAccess");
+        AssertHasPolicy(SectionType("Humans.Shifts.Controllers.ShiftDashboardController"), "Voluntell", ShiftsPolicies.Manage);
     }
 
     [HumansFact]

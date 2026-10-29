@@ -75,7 +75,7 @@ recorded, not a structural need.
   one — accepted, not a guarantee.
 - Write routes carry `GateAdmit` (`Controllers/GateController.cs:55`), read routes
   `ScannerAccess` (`Controllers/GateController.cs:23`); the staff-PIN and settings routes
-  `TicketAdminOrAdmin` (`Controllers/GateController.cs:201`); the backfill page `AdminOnly`
+  `TicketsPolicies.Manage` (`Controllers/GateController.cs:201`); the backfill page `AdminOnly`
   (`Controllers/GateVendorBackfillAdminController.cs:16`). The card carries name + verdict + one
   reason; EE source, prior scanner identity, and GUIDs stay server-side
   (`Models/GateViewModels.cs:22`).

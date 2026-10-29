@@ -97,15 +97,15 @@ internal sealed class ShiftsController(
 
     // One policy across all three scopes: the global page exposes the superset, so the narrower ones share it.
     [HttpGet("Summary")]
-    [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
+    [Authorize(Policy = ShiftsPolicies.DepartmentRead)]
     public Task<IActionResult> Summary() => RenderSummaryAsync(null, null);
 
     [HttpGet("Summary/{teamSlug}")]
-    [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
+    [Authorize(Policy = ShiftsPolicies.DepartmentRead)]
     public Task<IActionResult> SummaryTeam(string teamSlug) => RenderSummaryAsync(teamSlug, null);
 
     [HttpGet("Summary/{teamSlug}/{rotaGuid:guid}")]
-    [Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
+    [Authorize(Policy = ShiftsPolicies.DepartmentRead)]
     public Task<IActionResult> SummaryRota(string teamSlug, Guid rotaGuid) =>
         RenderSummaryAsync(teamSlug, rotaGuid);
 
@@ -519,7 +519,7 @@ internal sealed class ShiftsController(
     /// The text never renders in a page: the badge in <c>_VolunteerProfileBadges</c> posts here and shows the answer.
     /// </summary>
     [HttpPost("Medical/{userId:guid}/Reveal")]
-    [Authorize(Policy = PolicyNames.MedicalDataViewer)]
+    [Authorize(Policy = ShiftsPolicies.MedicalDataViewer)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealMedical(Guid userId, CancellationToken ct)
     {

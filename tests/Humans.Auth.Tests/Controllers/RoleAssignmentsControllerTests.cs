@@ -223,13 +223,13 @@ public sealed class RoleAssignmentsControllerTests
     public void Authorization_BoardReadsTheRoster_OnlyUsersAdminOrAdminWrite_AndEveryPostIsAntiForgeryProtected()
     {
         typeof(RoleAssignmentsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
-            .Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
+            .Policy.Should().Be(UsersPolicies.Read);
 
         // Board passes the class gate but RoleAssignmentRules lets it manage nothing, so the add/end actions narrow
         // to the principals that can: otherwise Board lands on an empty add-role form and 404s on every End.
         foreach (var action in typeof(RoleAssignmentsController).GetMethods()
                      .Where(m => m.Name is nameof(RoleAssignmentsController.AddRole) or nameof(RoleAssignmentsController.EndRole)))
-            action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.HumanAdminOrAdmin, action.ToString());
+            action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(UsersPolicies.Manage, action.ToString());
         typeof(RoleAssignmentsController).GetMethod(nameof(RoleAssignmentsController.Roles))!
             .GetCustomAttribute<AuthorizeAttribute>().Should().BeNull("the roster stays readable to Board");
 

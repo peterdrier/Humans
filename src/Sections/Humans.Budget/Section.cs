@@ -61,7 +61,7 @@ public sealed class Section :
         new("Budget", [
             // "BudgetAdmin", not "Finance": the tag helper resolves controller names, not routes, and a name that
             // resolves to no action renders the anchor with no href.
-            new("Overview", "BudgetAdmin", "Index", null, null, "fa-solid fa-coins", PolicyNames.FinanceAdminOrAdmin)
+            new("Overview", "BudgetAdmin", "Index", null, null, "fa-solid fa-coins", FinancePolicies.Read)
         ])
     ];
 

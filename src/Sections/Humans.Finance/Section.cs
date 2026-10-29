@@ -87,7 +87,7 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Finance", [
-            new("Holded connector", "Finance", "Holded", null, null, "fa-solid fa-plug", PolicyNames.FinanceAdminOrAdmin)
+            new("Holded connector", "Finance", "Holded", null, null, "fa-solid fa-plug", FinancePolicies.Read)
         ])
     ];
 
@@ -148,7 +148,10 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
+        options.AddPolicy(FinancePolicies.Read, policy =>
+            policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(FinancePolicies.Manage, policy =>
             policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
     }
 

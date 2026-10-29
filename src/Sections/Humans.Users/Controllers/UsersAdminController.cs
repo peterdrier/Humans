@@ -20,7 +20,7 @@ using Humans.Application.Services.Users.AccountLifecycle;
 
 namespace Humans.Users.Controllers;
 
-[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
+[Authorize(Policy = UsersPolicies.Read)]
 [Route("Users/Admin")]
 internal sealed class UsersAdminController(
     IUserManagement userService,
@@ -124,6 +124,7 @@ internal sealed class UsersAdminController(
     }
 
     [HttpPost("{id:guid}/Suspend")]
+    [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
@@ -140,6 +141,7 @@ internal sealed class UsersAdminController(
     }
 
     [HttpPost("{id:guid}/Unsuspend")]
+    [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
@@ -156,6 +158,7 @@ internal sealed class UsersAdminController(
     }
 
     [HttpPost("{id:guid}/Reject")]
+    [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {

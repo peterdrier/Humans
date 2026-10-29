@@ -41,7 +41,7 @@ public sealed class ShiftsControllerRevealMedicalTests
 
         action.GetCustomAttribute<HttpPostAttribute>().Should().NotBeNull();
         action.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
-        action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.MedicalDataViewer);
+        action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(ShiftsPolicies.MedicalDataViewer);
     }
 
     [HumansFact]

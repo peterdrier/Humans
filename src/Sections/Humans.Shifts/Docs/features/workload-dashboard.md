@@ -94,13 +94,13 @@ The admin workload view includes every shift on every rota in the active event �
 
 | Route | Purpose | Auth |
 |---|---|---|
-| `GET /Shifts/Admin/Workload` | Workload dashboard (three tabs) | `ShiftDashboardAccess` (Admin / ShiftsNoInfo / ShiftsAdmin) |
+| `GET /Shifts/Admin/Workload` | Workload dashboard (three tabs) | `ShiftsPolicies.Manage` (Admin / ShiftsNoInfo / ShiftsAdmin) |
 
 Lives under `/Shifts/Admin/*` per `memory/architecture/no-admin-url-section.md`. Surfaced in the admin sidebar under the "Shifts" group.
 
 ## Authorization
 
-Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow policy that controls the privileged sub-panels on the existing `/Shifts/Dashboard`. Department coordinators do **not** see this view (they have per-department visibility on `/Shifts/Dashboard` already).
+Gated to `ShiftsPolicies.Manage` at the controller — same narrow policy that controls the privileged sub-panels on the existing `/Shifts/Dashboard`. Department coordinators do **not** see this view (they have per-department visibility on `/Shifts/Dashboard` already).
 
 ## Architecture
 

@@ -69,7 +69,7 @@ but the decision to admit-and-record from inside Humans is yours to bless.
   `GateVendorCheckInJob` enqueued fire-and-forget on admit. `gate_scan_events` stays
   the dedupe authority; the vendor POST is only a dashboard/offline-app mirror.
 - **Terminal UI + auth** — `GateController` (`/Gate`, `ScannerAccess`; settings
-  `TicketAdminOrAdmin`), tap-to-claim (session-derived `scannedByUserId`), merged
+  `TicketsPolicies.Manage`), tap-to-claim (session-derived `scannedByUserId`), merged
   ID-confirm (green only on Yes), supervisor-PIN-gated child waiver, leaderboard, and
   the tablet JS/CSS (colour-blind-safe verdicts, anti-mistap Yes/No, sounds/haptics,
   neutral flash, keyboard-wedge auto-submit).

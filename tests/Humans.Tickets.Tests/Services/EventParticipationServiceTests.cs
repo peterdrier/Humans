@@ -305,7 +305,7 @@ public sealed class EventParticipationServiceTests : IDisposable
         settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn(year: 2026));
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.TicketAdminBoardOrAdmin)
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TicketsPolicies.Read)
             .Returns(viewerPassesPolicy ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var component = WithContext(new OnsiteChipViewComponent(tickets, settings, authorization));
 

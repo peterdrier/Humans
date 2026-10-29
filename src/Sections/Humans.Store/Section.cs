@@ -45,18 +45,18 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Store", [
-            new("Catalog",     "StoreAdmin", "Catalog",    null, null, "fa-solid fa-tags",           PolicyNames.StoreCatalogAdmin),
-            new("Summary",     "StoreAdmin", "Summary",    null, null, "fa-solid fa-chart-column",   PolicyNames.StoreCatalogAdmin),
-            new("Payments",    "StoreAdmin", "Payments",   null, null, "fa-solid fa-credit-card",    PolicyNames.StoreCatalogAdmin),
-            new("Order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", PolicyNames.StoreCatalogAdmin),
-            new("Payment methods", "StoreAdmin", "PaymentMethods", null, null, "fa-solid fa-wrench", PolicyNames.StoreCatalogAdmin)
+            new("Catalog",     "StoreAdmin", "Catalog",    null, null, "fa-solid fa-tags",           StorePolicies.Read),
+            new("Summary",     "StoreAdmin", "Summary",    null, null, "fa-solid fa-chart-column",   StorePolicies.Read),
+            new("Payments",    "StoreAdmin", "Payments",   null, null, "fa-solid fa-credit-card",    StorePolicies.Read),
+            new("Order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", StorePolicies.Read),
+            new("Payment methods", "StoreAdmin", "PaymentMethods", null, null, "fa-solid fa-wrench", StorePolicies.Read)
         ])
     ];
 
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
         new AdminTile("store.orders", "Store orders", "fa-solid fa-cart-shopping", OrdersAsync,
-            Policy: PolicyNames.StoreCatalogAdmin, Weight: 120)
+            Policy: StorePolicies.Read, Weight: 120)
     ];
 
     private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
@@ -73,7 +73,10 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.StoreCatalogAdmin, policy =>
+        options.AddPolicy(StorePolicies.Read, policy =>
+            policy.RequireRole(StoreRoles.StoreAdmin, FinanceRoles.FinanceAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(StorePolicies.Manage, policy =>
             policy.RequireRole(StoreRoles.StoreAdmin, FinanceRoles.FinanceAdmin, RoleNames.Admin));
     }
 }

@@ -70,7 +70,7 @@ Humans can view their campaign codes on their profile page. The profile page sho
 
 ## Authorization
 
-- `/Campaigns/Admin` routes: `Admin` role required (`PolicyNames.AdminOnly`), except `GET /Campaigns/Admin/{id}` (detail) and `POST /Campaigns/Admin/{id}/GenerateCodes`, which use `PolicyNames.TicketAdminOrAdmin`
+- `/Campaigns/Admin` routes: `Admin` role required (`PolicyNames.AdminOnly`), except `GET /Campaigns/Admin/{id}` (detail) and `POST /Campaigns/Admin/{id}/GenerateCodes`, which use `TicketsPolicies.Manage`
 - `/Email/Unsubscribe/{token}`: public (no authentication required)
 - Profile code lookup: authenticated user, own profile only
 

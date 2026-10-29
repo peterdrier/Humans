@@ -4,7 +4,7 @@
 |---|---|---|---|
 | `RideshareController` | Class | Any active human | `PolicyNames.AppAccess` (board, offer/request create-edit-cancel, interest lifecycle, `Mine`) |
 | `RideshareApiController` | Class | Any active human | `PolicyNames.AppAccess` (`/api/rideshare/board` GeoJSON feed) |
-| `RideshareAdminController` | Class | RideshareAdmin, Admin | `PolicyNames.RideshareAdminOrAdmin` (settings + season stats at `/Rideshare/Admin`, day roster at `/Rideshare/Admin/Day`) |
+| `RideshareAdminController` | Class | RideshareAdmin, Board, Admin; saving settings RideshareAdmin, Admin | `RidesharePolicies.Read`, `RidesharePolicies.Manage` on the POST (settings + season stats at `/Rideshare/Admin`, day roster at `/Rideshare/Admin/Day`) |
 
 `RideshareController`'s offer/request edit and cancel actions additionally gate on ownership in
 the service layer (`actor == trip.UserId` / `actor == request.UserId`) — `AppAccess` alone does

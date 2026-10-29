@@ -1,3 +1,4 @@
+using Humans.Rideshare.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Rideshare.Models;
@@ -10,7 +11,7 @@ using NodaTime;
 
 namespace Humans.Rideshare.Controllers;
 
-[Authorize(Policy = PolicyNames.RideshareAdminOrAdmin)]
+[Authorize(Policy = RidesharePolicies.Read)]
 [Route("Rideshare/Admin")]
 internal sealed class RideshareAdminController(
     IRideshareService rideshare,
@@ -27,6 +28,7 @@ internal sealed class RideshareAdminController(
     }
 
     [HttpPost("")]
+    [Authorize(Policy = RidesharePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(RideshareSettingsViewModel model, CancellationToken ct)
     {

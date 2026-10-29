@@ -174,7 +174,7 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Users", [
-            new("Humans", "UsersAdmin", "AdminList", null, null, "fa-solid fa-users",    PolicyNames.HumanAdminBoardOrAdmin, Weight: 0),
+            new("Humans", "UsersAdmin", "AdminList", null, null, "fa-solid fa-users",    UsersPolicies.Read, Weight: 0),
             new("Account merges", "UsersAdminAccountMerges", "Index", null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly, Weight: 30),
             new("Email problems", "ProfileAdmin", "EmailProblems", null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly, Weight: 40),
             new("Audience segmentation", "UsersAdmin", "Audience", null, null, "fa-solid fa-chart-pie", PolicyNames.AdminOnly, Weight: 50)
@@ -270,13 +270,13 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.HumanAdminBoardOrAdmin, policy =>
+        options.AddPolicy(UsersPolicies.Read, policy =>
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Board, RoleNames.Admin));
 
-        options.AddPolicy(PolicyNames.HumanAdminOrAdmin, policy =>
+        options.AddPolicy(UsersPolicies.Manage, policy =>
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Admin));
 
-        options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
+        options.AddPolicy(UsersPolicies.UsersAdminOnly, policy =>
             policy.AddRequirements(new HumanAdminOnlyRequirement()));
     }
 

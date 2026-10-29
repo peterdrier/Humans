@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
@@ -181,12 +182,12 @@ internal sealed class GateController(
 
     // GET is the Staff PINs page; the POST is the save target of the /Settings#gate tab.
     [HttpGet("Admin")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public IActionResult Admin() => View();
 
     [HttpPost("Admin")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> Admin(GateSettingsViewModel model, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -210,7 +211,7 @@ internal sealed class GateController(
     // Stored AdminEnrolled. Kiosk overrides use the shared Gate:SupervisorPin, not these PINs.
     [HttpPost("Admin/SetPin")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> SetStaffPin(Guid userId, string? pin, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actor)
@@ -227,7 +228,7 @@ internal sealed class GateController(
 
     [HttpPost("Admin/ResetPin")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ResetStaffPin(Guid userId, CancellationToken ct)
     {
         if (GetCurrentUserId() is not { } actor)

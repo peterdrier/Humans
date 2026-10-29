@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Tickets.Services;
@@ -8,7 +9,7 @@ using Humans.Users.Contracts;
 namespace Humans.Tickets.Controllers;
 
 /// <summary>The shared gate account is provisioned on the first password set.</summary>
-[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+[Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets/Admin/Gate")]
 internal sealed class TicketsGateAdminController(
     IUserService userService,
@@ -22,6 +23,7 @@ internal sealed class TicketsGateAdminController(
     }
 
     [HttpPost("SetPassword")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPassword(string? password)
     {

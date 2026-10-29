@@ -180,11 +180,11 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Shifts", [
-            new("Dashboard",         "ShiftDashboard",      "Index",          null, null, "fa-solid fa-gauge",            PolicyNames.ShiftDepartmentManager),
-            new("Summary by camp",   "Shifts",              "Summary",        null, null, "fa-solid fa-campground",       PolicyNames.ShiftDepartmentManager),
-            new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       PolicyNames.ShiftDashboardAccess),
-            new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess),
-            new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        PolicyNames.ShiftDashboardAccess),
+            new("Dashboard",         "ShiftDashboard",      "Index",          null, null, "fa-solid fa-gauge",            ShiftsPolicies.DepartmentRead),
+            new("Summary by camp",   "Shifts",              "Summary",        null, null, "fa-solid fa-campground",       ShiftsPolicies.DepartmentRead),
+            new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       ShiftsPolicies.Read),
+            new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", ShiftsPolicies.Read),
+            new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        ShiftsPolicies.Read),
             new("Orphan signups",    "Shifts",              "OrphanSignups",  null, null, "fa-solid fa-user-secret",      PolicyNames.AdminOnly)
         ])
     ];
@@ -235,25 +235,25 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        // Three-role list; ShiftDepartmentManager below additionally admits any team coordinator.
-        options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
+        // DepartmentRead below additionally admits any team coordinator.
+        options.AddPolicy(ShiftsPolicies.Read, policy =>
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin));
+
+        options.AddPolicy(ShiftsPolicies.Manage, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin));
 
-        options.AddPolicy(PolicyNames.VolunteerTrackingWrite, policy =>
+        options.AddPolicy(ShiftsPolicies.ManageVolunteers, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
 
         // The role-or-team-coordinator disjunction lives in one handler because policy requirements AND.
-        options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
+        options.AddPolicy(ShiftsPolicies.DepartmentRead, policy =>
             policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 
-        options.AddPolicy(PolicyNames.PrivilegedSignupApprover, policy =>
+        options.AddPolicy(ShiftsPolicies.PrivilegedSignupApprover, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
 
-        options.AddPolicy(PolicyNames.VolunteerManager, policy =>
-            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
-
         // Every reveal is audited (ShiftsController.RevealMedical), which is what lets Board in.
-        options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
+        options.AddPolicy(ShiftsPolicies.MedicalDataViewer, policy =>
             policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
     }
 

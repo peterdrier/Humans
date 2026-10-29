@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Shifts.Authorization;
 
 /// <summary>
-/// Any team coordinator or management-role holder, without the privileged sub-panels behind
-/// <see cref="PolicyNames.ShiftDashboardAccess"/>.
+/// Any team coordinator, a Shifts role holder, Board or Admin, without the privileged sub-panels behind
+/// <see cref="ShiftsPolicies.Read"/>.
 /// </summary>
 internal sealed class IsAnyTeamManagerOrCoordinatorRequirement : IAuthorizationRequirement, IDescribedRequirement
 {
-    public IReadOnlyList<string> Admits => [RoleNames.Admin, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin, "Team Coordinator"];
+    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin, "Team Coordinator"];
 }

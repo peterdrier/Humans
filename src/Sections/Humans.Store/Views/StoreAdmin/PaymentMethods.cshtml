@@ -23,7 +23,7 @@
 }
 else
 {
-    <form asp-action="RepairPaymentMethods" method="post" class="mb-3">
+    <form authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="RepairPaymentMethods" method="post" class="mb-3">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-warning"
                 data-confirm="Copy the method into the string column on @Model.Count payment(s)?">

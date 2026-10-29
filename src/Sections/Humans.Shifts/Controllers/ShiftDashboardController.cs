@@ -13,8 +13,8 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-// The wider policy for entry; views gate the privileged sub-panels on ShiftDashboardAccess.
-[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
+// The wider policy for entry; views gate the privileged sub-panels on ShiftsPolicies.Read.
+[Authorize(Policy = ShiftsPolicies.DepartmentRead)]
 [Route("Shifts/Dashboard")]
 internal sealed class ShiftDashboardController(
     IBurnSettingsService burnSettings,
@@ -71,7 +71,7 @@ internal sealed class ShiftDashboardController(
         return View(model);
     }
 
-    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+    [Authorize(Policy = ShiftsPolicies.Read)]
     [HttpGet("PostEventStats")]
     public async Task<IActionResult> PostEventStats(CancellationToken ct = default)
     {
@@ -100,7 +100,7 @@ internal sealed class ShiftDashboardController(
     }
 
     // Narrower than the controller's policy: subteam managers can't reach it.
-    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+    [Authorize(Policy = ShiftsPolicies.Manage)]
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query, CancellationToken ct = default)
     {
@@ -128,8 +128,8 @@ internal sealed class ShiftDashboardController(
         }
     }
 
-    // Narrower than the controller's policy: only ShiftDashboardAccess can assign.
-    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+    // Narrower than the controller's policy: subteam managers and Board can't assign.
+    [Authorize(Policy = ShiftsPolicies.Manage)]
     [HttpPost("Voluntell")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)

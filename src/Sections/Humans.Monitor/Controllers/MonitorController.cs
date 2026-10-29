@@ -14,7 +14,7 @@ internal sealed class MonitorController(
     ILogger<MonitorController> logger) : HumansControllerBase(userService)
 {
     [HttpPost("CheckDriveActivity")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckDriveActivity(
         [FromServices] IDriveActivityMonitorService monitorService)

@@ -36,9 +36,9 @@
 
 | Endpoint | Policy | Seeder | What it does |
 |---|---|---|---|
-| `/dev/seed/budget` | `FinanceAdminOrAdmin` | `IBudgetDemoSeeder` | Demo budget year with teams, categories, and line items |
-| `/dev/seed/camp-roles` | `CampAdminOrAdmin` | `DevelopmentCampRoleSeeder` | The five system camp-role definitions |
-| `/dev/seed/dashboard` | `ShiftDashboardAccess` | `DevelopmentDashboardSeeder` | Teams, humans, shifts, and signups behind the shift dashboard |
+| `/dev/seed/budget` | `FinancePolicies.Manage` | `IBudgetDemoSeeder` | Demo budget year with teams, categories, and line items |
+| `/dev/seed/camp-roles` | `CampsPolicies.Manage` | `DevelopmentCampRoleSeeder` | The five system camp-role definitions |
+| `/dev/seed/dashboard` | `ShiftsPolicies.Manage` | `DevelopmentDashboardSeeder` | Teams, humans, shifts, and signups behind the shift dashboard |
 | `/dev/seed/dashboard/reset` | `AdminOnly` | `DevelopmentDashboardSeeder` | Deletes the dashboard demo rows, then reseeds |
 
 `DevPersonaSeeder` (Development) is the other runtime seeder: `GET /dev/login/{persona}` (behind the same `DevAuth:Enabled` + non-production gate) calls it to ensure the persona's User, Profile, emails, roles, and dev fixtures (system-team memberships, test department, barrio camp/lead, city-planning team) through the owning sections' services before signing in.

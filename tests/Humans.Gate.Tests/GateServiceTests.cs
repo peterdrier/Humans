@@ -800,10 +800,20 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task AuthorizeOverride_RefusesBoard()
+    {
+        var board = Guid.NewGuid();
+        _roles.HasActiveRoleAsync(board, RoleNames.Board, Arg.Any<CancellationToken>()).Returns(true);
+        await _svc.AdminSetPinAsync(board, "2580", Guid.NewGuid());
+
+        (await _svc.AuthorizeOverrideAsync(board, "2580")).Should().BeFalse("Board reads the gate and authorizes no override");
+    }
+
+    [HumansFact]
     public async Task AuthorizeOverride_RequiresEnrolledSupervisorAndCorrectPin()
     {
         var sup = Guid.NewGuid();
-        _roles.HasActiveRoleAsync(sup, RoleNames.Board, Arg.Any<CancellationToken>()).Returns(true);
+        _roles.HasActiveRoleAsync(sup, TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>()).Returns(true);
         await _svc.AdminSetPinAsync(sup, "2580", Guid.NewGuid());
 
         (await _svc.AuthorizeOverrideAsync(sup, "2580")).Should().BeTrue();

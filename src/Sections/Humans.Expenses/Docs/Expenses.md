@@ -110,7 +110,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
 | `/Expenses` | GET | Authenticated | Submitter dashboard — shows member's reports, plus their Holded creditor-account statement (`AccountLedger`) once bound to a 40000000–41999999 account. The statement is the cached daybook lines for that account verbatim, both sides; it is not mixed with locally-held report rows. Unbound members get an explanatory note instead. |
-| `/Expenses/New` | GET/POST | Authenticated; the **For member** picker only for FinanceAdminOrAdmin | Create draft. Default submitter is self; a finance admin may file for another member, who owns the report from that moment. `?grant={id}` preselects a pre-approval (the "File expense" links on `/Expenses` and `/Preapprovals`) |
+| `/Expenses/New` | GET/POST | Authenticated; the **For member** picker only for FinancePolicies.Manage | Create draft. Default submitter is self; a finance admin may file for another member, who owns the report from that moment. `?grant={id}` preselects a pre-approval (the "File expense" links on `/Expenses` and `/Preapprovals`) |
 | `/Expenses/{id}` | GET | Authenticated (resource-based: owner + Finance) | Detail |
 | `/Expenses/{id}/Edit` | GET/POST | Authenticated (resource-based `Edit`: owner in Draft, FinanceAdmin in Draft/Submitted/CoordinatorEndorsed) | Edit header |
 | `/Expenses/{id}/Lines/New` | GET | Authenticated (resource-based `Edit`) | Focused add-line page (receipt default; `?type=Invoice` for the invoice flow). One submit creates line + attachment together |
@@ -127,9 +127,9 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/{id}/Lines/{lineId}/Decline` | POST | Authenticated (resource-based `DeclineLine`: finance admin while Submitted/CoordinatorEndorsed, the category's coordinator while Submitted) | Decline one line, with a required reason |
 | `/Expenses/{id}/Lines/{lineId}/UndoDecline` | POST | Same as Decline | Undo a decline |
 | `/Expenses/Review` | GET | Authenticated | The review queue, scoped to the viewer — see Invariants. Member layout for everyone, admins included |
-| `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve. Carries the max-amount and account-override inputs, so it is also how a wrong cap is corrected |
-| `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
-| `/Expenses/{id}/HoldedRetry` | POST | FinanceAdminOrAdmin (resource-based, Approved only) | Re-queue a failed or backing-off Holded push |
+| `/Expenses/{id}/Approve` | POST | FinancePolicies.Manage (resource-based) | Approve. Carries the max-amount and account-override inputs, so it is also how a wrong cap is corrected |
+| `/Expenses/{id}/Reject` | POST | FinancePolicies.Manage (resource-based) | Finance reject |
+| `/Expenses/{id}/HoldedRetry` | POST | FinancePolicies.Manage (resource-based, Approved only) | Re-queue a failed or backing-off Holded push |
 | `/Finance/Admin/Members/{id}/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged; Finance's route, listed for the access rules) |
 
 The submitter-facing `/Expenses/{id}/Edit` and `/Expenses/{id}/Lines/New` views use `ExpensesResource` for every label, status, action, confirmation, explanatory message, and accessibility label in all supported cultures.

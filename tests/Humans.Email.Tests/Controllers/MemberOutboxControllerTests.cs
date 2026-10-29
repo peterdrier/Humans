@@ -147,7 +147,7 @@ public sealed class MemberOutboxControllerTests
         // cannot read another member's outbox through it.
         typeof(MemberOutboxController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         Method(nameof(MemberOutboxController.AdminOutbox)).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
-            .Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
+            .Policy.Should().Be(UsersPolicies.Read);
         Method(nameof(MemberOutboxController.MyOutbox)).GetParameters().Should().BeEmpty();
         Method(nameof(MemberOutboxController.MyOutbox)).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().BeNull();
     }

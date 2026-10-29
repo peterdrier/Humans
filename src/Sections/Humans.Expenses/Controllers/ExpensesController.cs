@@ -761,7 +761,7 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/Approve")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> Approve(Guid id, ApproveInputModel input)
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Approve);
@@ -782,7 +782,7 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/Reject")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> Reject(Guid id, FinanceRejectInputModel input)
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.FinanceReject);
@@ -802,7 +802,7 @@ internal sealed class ExpensesController(
 
     [HttpPost("{id:guid}/HoldedRetry")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> HoldedRetry(Guid id)
     {
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.RequeueHoldedPush);
@@ -872,7 +872,7 @@ internal sealed class ExpensesController(
     /// Handed to the service so its ownership and status checks know an admin is acting for a member.
     /// </summary>
     private async Task<bool> IsFinanceAdminAsync() =>
-        (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+        (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
 
     /// <summary>
     /// The line pages stay open to the submitter after submission as a read-only view of their receipts, so access is

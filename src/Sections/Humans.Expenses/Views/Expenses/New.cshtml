@@ -24,7 +24,7 @@
 
                     @* Finance admins file for members who cannot do it themselves. The report is the
                        member's from the moment it is created — the admin is only the actor. *@
-                    <div class="mb-3" authorize-policy="FinanceAdminOrAdmin">
+                    <div class="mb-3" authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage">
                         <label class="form-label" for="human-search-expense-submitter">@Localizer["Expenses_ForMember"]</label>
                         <vc:human-search field-name="SubmitterUserId"
                                          instance-key="expense-submitter"

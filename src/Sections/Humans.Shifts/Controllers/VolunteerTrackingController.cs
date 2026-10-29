@@ -14,9 +14,9 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-/// <summary>Reads need ShiftDashboardAccess; writes add VolunteerTrackingWrite.</summary>
+/// <summary>Reads need ShiftsPolicies.Read; the export needs Manage and writes need ManageVolunteers.</summary>
 [Route("Shifts/Dashboard/VolunteerTracking")]
-[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+[Authorize(Policy = ShiftsPolicies.Read)]
 internal sealed class VolunteerTrackingController(
     IVolunteerTrackingManagement service,
     IShiftManagement shiftManagementService,
@@ -99,6 +99,7 @@ internal sealed class VolunteerTrackingController(
     }
 
     [HttpGet("ExportXlsx")]
+    [Authorize(Policy = ShiftsPolicies.Manage)]
     public async Task<IActionResult> ExportXlsx(
         Guid? departmentId,
         string? startDate,
@@ -172,7 +173,7 @@ internal sealed class VolunteerTrackingController(
     }
 
     [HttpPost("SetCampSetup")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetCampSetup(SetCampSetupForm form, string? returnUrl, CancellationToken ct)
     {
@@ -211,7 +212,7 @@ internal sealed class VolunteerTrackingController(
     }
 
     [HttpPost("ClearCampSetup")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearCampSetup(Guid userId, string? returnUrl, CancellationToken ct)
     {
@@ -231,7 +232,7 @@ internal sealed class VolunteerTrackingController(
     }
 
     [HttpPost("SetDayOff")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetDayOff(SetDayOffForm form, string? returnUrl, CancellationToken ct)
     {
@@ -267,7 +268,7 @@ internal sealed class VolunteerTrackingController(
     }
 
     [HttpPost("ClearDayOff")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearDayOff(ClearDayOffForm form, string? returnUrl, CancellationToken ct)
     {
@@ -298,14 +299,14 @@ internal sealed class VolunteerTrackingController(
     }
 
     [HttpPost("SetAvailabilityDay")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> SetAvailabilityDay(
         Guid? userId, int? dayOffset, string? returnUrl, CancellationToken ct)
         => UpdateAvailabilityDayAsync(userId, dayOffset, returnUrl, available: true, ct);
 
     [HttpPost("ClearAvailabilityDay")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> ClearAvailabilityDay(
         Guid? userId, int? dayOffset, string? returnUrl, CancellationToken ct)

@@ -133,9 +133,9 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Barrios", [
-            new("Overview",   "CampAdmin",      "Index",      null, null, "fa-solid fa-tents",           PolicyNames.CampAdminOrAdmin, Weight: 0),
-            new("Roles",      "CampAdmin",      "Roles",      null, null, "fa-solid fa-user-tag",        PolicyNames.CampAdminOrAdmin, Weight: 10),
-            new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", PolicyNames.CampComplianceAccess, Weight: 20)
+            new("Overview",   "CampAdmin",      "Index",      null, null, "fa-solid fa-tents",           CampsPolicies.Read, Weight: 0),
+            new("Roles",      "CampAdmin",      "Roles",      null, null, "fa-solid fa-user-tag",        CampsPolicies.Read, Weight: 10),
+            new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", CampsPolicies.Compliance, Weight: 20)
         ])
     ];
 
@@ -152,18 +152,21 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.CampAdminOrAdmin, policy =>
+        options.AddPolicy(CampsPolicies.Read, policy =>
+            policy.RequireRole(CampsRoles.CampsAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(CampsPolicies.Manage, policy =>
             policy.RequireRole(CampsRoles.CampsAdmin, RoleNames.Admin));
 
-        // CampAdmin/Admin OR any team coordinator — the OR lives in
+        // CampsAdmin, Board, Admin OR any team coordinator — the OR lives in
         // CampComplianceAccessHandler so the policy is a single requirement
         // (policy requirements AND together).
-        options.AddPolicy(PolicyNames.CampComplianceAccess, policy =>
+        options.AddPolicy(CampsPolicies.Compliance, policy =>
             policy.AddRequirements(new CampComplianceAccessRequirement()));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [
-        new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), PolicyNames.CampAdminOrAdmin)
+        new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), CampsPolicies.Manage)
     ];
 }

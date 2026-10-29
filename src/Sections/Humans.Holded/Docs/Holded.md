@@ -108,7 +108,8 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 | Actor | Capabilities |
 |-------|--------------|
-| Finance admin / Admin | Everything above (`PolicyNames.FinanceAdminOrAdmin`). |
+| Finance admin / Admin | Everything above (`FinancePolicies.Manage`). |
+| Board | Read the overview, account statements and entry legs; trigger no sync (`FinancePolicies.Read`). |
 | Other sections | Read via `IHoldedService`; trigger sync (nightly job). |
 | Any human | None directly. |
 

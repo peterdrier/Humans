@@ -140,7 +140,7 @@ The layout matches.
   Users reference the section project directly because Cantina reaches back only into their
   `.Contracts` leaves, so no cycle needs breaking. `ICantinaRosterService` stays `internal` in
   `Services/`; the decision follows the consumer list, never the name.
-- **No access service.** `CantinaAdminOrAdmin` is a policy; there is no `ICantinaAccessService`.
+- **No access service.** `CantinaPolicies.Read` is a policy; there is no `ICantinaAccessService`.
 - **No gap-filling between arrival and departure, and no departure-day feeding.** Only the single
   arrival day is added. Asked and answered when the arrival rule was designed.
 - **No profile piece (`IUserPart`).** The profile page links to the dietary form; Cantina
