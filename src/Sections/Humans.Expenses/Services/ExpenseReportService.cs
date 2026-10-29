@@ -134,13 +134,17 @@ internal sealed class ExpenseReportService(
                 .Where(a => a.Line.HoldedDocId is not null)
                 .Sum(a => a.Booked);
 
-    private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent)
+    private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent) =>
+        ResolveSyncState(outboxEvent, holdedClient.IsConfigured);
+
+    internal static ExpenseHoldedSyncState ResolveSyncState(
+        HoldedExpenseOutboxEvent? outboxEvent, bool holdedConfigured)
     {
         if (outboxEvent is null) return ExpenseHoldedSyncState.NotQueued;
         // Written off sets ProcessedAt too, so it has to be tested before the success case.
         if (outboxEvent.FailedPermanently) return ExpenseHoldedSyncState.Failed;
         if (outboxEvent.ProcessedAt is not null) return ExpenseHoldedSyncState.Pushed;
-        if (!holdedClient.IsConfigured) return ExpenseHoldedSyncState.NotConfigured;
+        if (!holdedConfigured) return ExpenseHoldedSyncState.NotConfigured;
         return outboxEvent.RetryCount > 0
             ? ExpenseHoldedSyncState.Retrying
             : ExpenseHoldedSyncState.Queued;
