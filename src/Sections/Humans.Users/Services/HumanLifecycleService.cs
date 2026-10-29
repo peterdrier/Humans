@@ -42,7 +42,7 @@ internal sealed class HumanLifecycleService(
                 : string.Format(culture,
                     NoticeResources.GetString("Users_Notification_AdminSuspendedWithReason", culture)!, notes);
             await notificationService.SendAsync(
-                NotificationSource.AccessSuspended,
+                UsersNotificationSources.AccessSuspended,
                 NotificationClass.Actionable,
                 NotificationPriority.Critical,
                 NoticeResources.GetString("Users_AccountStatus_HeadingSuspended", culture)!,
@@ -78,7 +78,7 @@ internal sealed class HumanLifecycleService(
 
         try
         {
-            await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+            await notificationAutoResolve.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, ct);
         }
         catch (Exception ex)
         {
@@ -106,6 +106,15 @@ internal sealed class HumanLifecycleService(
             userId,
             "Unsuspended after completing required consents",
             nameof(RestoreConsentSuspensionAsync));
+
+        try
+        {
+            await notificationAutoResolve.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
+        }
 
         return result;
     }

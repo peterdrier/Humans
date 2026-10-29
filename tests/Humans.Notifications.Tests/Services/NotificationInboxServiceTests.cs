@@ -35,7 +35,7 @@ public class NotificationInboxServiceTests : IDisposable
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
-        _service = new NotificationInboxService(_repo, _userService, _clock);
+        _service = new NotificationInboxService(_repo, _userService, TestSources.Registry, _clock);
     }
 
     public void Dispose()
@@ -46,7 +46,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     private async Task<Notification> CreateNotificationAsync(
         NotificationClass cls = NotificationClass.Informational,
-        NotificationSource source = NotificationSource.TeamMemberAdded,
+        NotificationSourceDefinition? source = null,
         Instant? resolvedAt = null,
         Guid? resolvedByUserId = null)
     {
@@ -57,7 +57,7 @@ public class NotificationInboxServiceTests : IDisposable
             Body = "Test body",
             ActionUrl = "/test",
             Priority = NotificationPriority.Normal,
-            Source = source,
+            Source = (source ?? TestSources.TeamUpdate).Name,
             Class = cls,
             CreatedAt = _clock.GetCurrentInstant(),
             ResolvedAt = resolvedAt,
@@ -82,7 +82,7 @@ public class NotificationInboxServiceTests : IDisposable
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var otherUserId = Guid.NewGuid();
-        var shared = await CreateNotificationAsync(NotificationClass.Actionable, NotificationSource.AccessSuspended);
+        var shared = await CreateNotificationAsync(NotificationClass.Actionable, TestSources.Plain);
         shared.SourceKey = "suspension";
         var unrelated = await CreateNotificationAsync();
         foreach (var notification in new[] { shared, unrelated })
@@ -98,7 +98,7 @@ public class NotificationInboxServiceTests : IDisposable
         (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((1, 1));
         (await _service.GetUnreadBadgeCountsAsync(otherUserId, ct)).Should().Be((1, 1));
 
-        await _service.ResolveBySourceAsync(_userId, NotificationSource.AccessSuspended, ct, sourceKey);
+        await _service.ResolveBySourceAsync(_userId, TestSources.Plain, ct, sourceKey);
 
         (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
         (await _service.GetUnreadBadgeCountsAsync(otherUserId, ct)).Should().Be((0, 1));
@@ -112,7 +112,7 @@ public class NotificationInboxServiceTests : IDisposable
         var repo = Substitute.For<INotificationRepository>();
         repo.GetUnreadBadgeCountsAsync(_userId, ct)
             .Returns(snapshot.Task, Task.FromResult((Actionable: 0, Informational: 0)));
-        var service = new NotificationInboxService(repo, _userService, _clock);
+        var service = new NotificationInboxService(repo, _userService, TestSources.Registry, _clock);
 
         var beforeWrite = service.GetUnreadBadgeCountsAsync(_userId, ct);
         await service.MarkAllReadAsync(_userId, ct);
@@ -129,7 +129,7 @@ public class NotificationInboxServiceTests : IDisposable
         var otherUserId = Guid.NewGuid();
         var stale = await CreateNotificationAsync();
         _clock.Advance(Duration.FromDays(40));
-        var retired = await CreateNotificationAsync(NotificationClass.Actionable, NotificationSource.ApplicationSubmitted);
+        var retired = await CreateNotificationAsync(NotificationClass.Actionable, TestSources.Retired);
         await CreateNotificationAsync(); // Fresh informational notification survives.
         foreach (var notification in new[] { stale, retired })
         {
@@ -157,11 +157,11 @@ public class NotificationInboxServiceTests : IDisposable
         var repo = Substitute.For<INotificationRepository>();
         repo.DeleteUnresolvedInformationalOlderThanAsync(Arg.Any<Instant>(), ct)
             .Returns(1);
-        repo.DeleteUnresolvedBySourcesAsync(Arg.Any<IReadOnlyList<NotificationSource>>(), ct)
+        repo.DeleteUnresolvedBySourcesAsync(Arg.Any<IReadOnlyList<string>>(), ct)
             .Returns<Task<int>>(_ =>
                 throw new InvalidOperationException("Retention storage failed."));
         repo.GetUnreadBadgeCountsAsync(_userId, ct).Returns((0, 1), (0, 0));
-        var service = new NotificationInboxService(repo, _userService, _clock);
+        var service = new NotificationInboxService(repo, _userService, TestSources.Registry, _clock);
         (await service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
 
         await ((Func<Task>)(async () => await service.PurgeExpiredAsync(ct)))

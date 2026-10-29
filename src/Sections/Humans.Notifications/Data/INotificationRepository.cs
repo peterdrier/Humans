@@ -35,30 +35,31 @@ internal interface INotificationRepository : IRepository
 
     /// <summary>Resolves matching notifications shared with the user.</summary>
     Task ResolveBySourceAsync(
-        Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null);
+        Guid userId, string source, Instant now, CancellationToken ct = default, string? sourceKey = null);
 
     /// <summary>
     /// Across all recipients. A null
     /// <paramref name="resolvedByUserId"/> means no actor.
     /// </summary>
     Task ResolveBySourceKeyAsync(
-        NotificationSource source, string sourceKey, Instant now,
+        string source, string sourceKey, Instant now,
         Guid? resolvedByUserId, CancellationToken ct = default);
 
     /// <summary>For retired sources: nothing emits them and nothing can resolve them.</summary>
     Task<int> DeleteUnresolvedBySourcesAsync(
-        IReadOnlyList<NotificationSource> sources, CancellationToken ct = default);
+        IReadOnlyList<string> sources, CancellationToken ct = default);
 
     Task<int> DeleteResolvedOlderThanAsync(Instant resolvedCutoff, CancellationToken ct = default);
 
     Task<int> DeleteUnresolvedInformationalOlderThanAsync(
         Instant createdCutoff, CancellationToken ct = default);
 
-    /// <summary>Unordered: callers sort.</summary>
+    /// <summary>Unordered: callers sort. <paramref name="filterSources"/> is the source list a Shifts or Approvals filter keeps.</summary>
     Task<IReadOnlyList<NotificationRecipient>> GetInboxAsync(
         Guid userId,
         string? search,
         NotificationInboxFilter filter,
+        IReadOnlyList<string> filterSources,
         NotificationInboxTab tab,
         Instant resolvedCutoff,
         CancellationToken ct = default);

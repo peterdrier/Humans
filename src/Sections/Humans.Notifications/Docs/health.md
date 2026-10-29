@@ -82,8 +82,9 @@ Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-s
 Specified or known, not built; reserved, not ranked:
 
 - **The Notification Board redesign** (`Docs/features/notification-board.md`, approved) replaces
-  the stored inbox with an in-memory board of section-published entries and retires the
-  `NotificationSource` enum. Until its phase 4 lands, `notification-inbox.md` describes what runs.
+  the stored inbox with an in-memory board of section-published entries (the `NotificationSource`
+  enum it set out to retire is already gone: sections declare `NotificationSourceDefinition`s). Until
+  its phase 4 lands, `notification-inbox.md` describes what runs.
 - **Role fan-out takes no `sourceKey`**, so `ResolveBySourceKeyAsync` can never clear it.
 - **Dispatch is described as fire-and-forget but is not wrapped**; an emit failure reaches the
   caller.
@@ -107,9 +108,9 @@ Specified or known, not built; reserved, not ranked:
 - **No FK and no navigation on `ResolvedByUserId` or `NotificationRecipient.UserId`**
   (nobodies-collective/Humans#992, nobodies-collective/Humans#996); names are stitched from
   `IUserService`.
-- **`ApplicationSubmitted` and `ConsentReviewNeeded` are retired sources**: nothing emits them,
-  the purge deletes their unresolved rows, and the inbox's approvals filter still names them
-  while any remain.
+- **Retired sources stay declared** (`Retired: true` on the owning section's definition): nothing
+  emits them, the purge deletes their unresolved rows, and the inbox's approvals filter still
+  names them while any remain.
 - **The repository is a Singleton over `IDbContextFactory`** so Singleton-lifetime callers can
   inject it.
 

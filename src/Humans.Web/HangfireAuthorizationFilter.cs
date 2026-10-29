@@ -3,7 +3,7 @@ using Humans.Base.Authorization;
 
 namespace Humans.Web;
 
-/// <summary>Hangfire dashboard: authenticated administrators only.</summary>
+/// <summary>Hangfire dashboard: Admin and Board; <c>Program.cs</c> makes it read-only for everyone but Admin.</summary>
 public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context)
@@ -11,6 +11,6 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
         var httpContext = context.GetHttpContext();
 
         return httpContext.User.Identity?.IsAuthenticated == true
-            && RoleChecks.IsAdmin(httpContext.User);
+            && RoleChecks.IsAdminOrBoard(httpContext.User);
     }
 }

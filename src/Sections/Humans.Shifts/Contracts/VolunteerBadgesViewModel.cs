@@ -1,13 +1,16 @@
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// <see cref="MedicalConditions"/> is GDPR Art. 9: set only once the builder has confirmed MedicalDataViewer, and the
-/// partial also guards on <see cref="ShowMedical"/>. Public because Debug's widget gallery constructs it.
+/// Medical conditions are GDPR Art. 9 data and never travel in this model: the partial renders a reveal control when
+/// <see cref="HasMedicalConditions"/> and <see cref="CanRevealMedical"/> both hold, and the text comes back from
+/// <c>POST /Shifts/Medical/{userId}/Reveal</c>, which audits every reveal. The builder sets both flags only once it has
+/// confirmed MedicalDataViewer. Public because Debug's widget gallery constructs it.
 /// </summary>
 public sealed record VolunteerBadgesViewModel(
+    Guid UserId,
     IReadOnlyList<string> Skills,
     IReadOnlyList<string> Quirks,
     IReadOnlyList<string> Languages,
     string? DietaryPreference,
-    string? MedicalConditions,
-    bool ShowMedical);
+    bool HasMedicalConditions,
+    bool CanRevealMedical);

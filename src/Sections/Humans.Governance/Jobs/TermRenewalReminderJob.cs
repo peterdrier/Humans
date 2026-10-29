@@ -105,7 +105,7 @@ internal sealed class TermRenewalReminderJob(
                         using var cultureScope = new CultureScope(culture.Name);
                         var expiryDate = application.TermExpiresAt.Value.ToDate();
                         await notificationService.SendAsync(
-                            NotificationSource.TermRenewalReminder,
+                            GovernanceNotificationSources.TermRenewalReminder,
                             NotificationClass.Actionable,
                             NotificationPriority.Normal,
                             string.Format(culture, NoticeResources.GetString("Governance_Notification_TermRenewalReminder", culture)!, application.MembershipTier, expiryDate),

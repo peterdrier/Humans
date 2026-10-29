@@ -445,8 +445,9 @@ public class ProfileControllerEditTests
 
         var result = await _controller.Medical(CancellationToken.None);
 
-        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>()
-            .Which.MedicalConditions.Should().Be("Epilepsy");
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>().Which;
+        model.MedicalConditions.Should().Be("Epilepsy");
+        model.UserId.Should().Be(_userId, "the reveal list below the form is keyed on the signed-in member");
         await _userService.Received().GetUserInfoAsync(_userId, Arg.Any<CancellationToken>());
     }
 
@@ -465,13 +466,16 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Medical_Post_InvalidModel_DoesNotSave()
+    public async Task Medical_Post_InvalidModel_DoesNotSave_AndReRendersForTheSignedInMember()
     {
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }));
         _controller.ModelState.AddModelError(nameof(MedicalViewModel.MedicalConditions), "Validation_MaxLength");
 
-        var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = "x" });
+        var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = "x", UserId = Guid.NewGuid() });
 
-        result.Should().BeOfType<ViewResult>();
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>()
+            .Which.UserId.Should().Be(_userId, "a posted id never picks whose reveal list renders");
         await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default, default);
     }
 

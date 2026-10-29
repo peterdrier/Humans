@@ -38,6 +38,18 @@
                 <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
             </div>
         </form>
+
+        @* Every reveal through the Shifts badge writes MedicalConditionsRevealed against this member; the member
+           sees the same rows the Board and admins see in the audit log. The AuditLog section ships no resource
+           set, so the column headers are passed in. *@
+        <div class="mt-5">
+            <vc:audit-log entity-type="User" entity-id="@Model.UserId"
+                          actions="MedicalConditionsRevealed" limit="50"
+                          layout="table" columns="when,actor"
+                          column-labels="@($"when:{SharedLocalizer["Common_Date"].Value},actor:{Localizer["Users_Medical_RevealedBy"].Value}")"
+                          title="@Localizer["Users_Medical_RevealsTitle"].Value"
+                          empty-text="@Localizer["Users_Medical_RevealsEmpty"].Value" />
+        </div>
     </div>
 </div>
 

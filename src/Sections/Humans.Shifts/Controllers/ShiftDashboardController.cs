@@ -108,8 +108,7 @@ internal sealed class ShiftDashboardController(
         {
             var result = await volunteerSearchBuilder.BuildForShiftAsync(
                 await shiftMgmt.GetShiftByIdAsync(shiftId, ct),
-                query,
-                ShiftsRoles.CanViewMedical(User), ct);
+                query, ct);
             return result.Status switch
             {
                 VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),

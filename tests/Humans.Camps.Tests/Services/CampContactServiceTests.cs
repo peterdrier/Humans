@@ -106,7 +106,7 @@ public class CampContactServiceTests : IDisposable
             "Hello", false, [leadId], "/Barrios/camp");
 
         await _notificationEmitter.Received(1).SendAsync(
-            NotificationSource.FacilitatedMessageReceived, NotificationClass.Informational,
+            CampsNotificationSources.FacilitatedMessageReceived, NotificationClass.Informational,
             NotificationPriority.Normal, title,
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == leadId),
             null, "/Barrios/camp", actionLabel, null, null, Arg.Any<CancellationToken>());
@@ -124,7 +124,7 @@ public class CampContactServiceTests : IDisposable
             "Hello", false, [leadId], "/Barrios/camp");
 
         await _notificationEmitter.Received(1).SendAsync(
-            NotificationSource.FacilitatedMessageReceived, NotificationClass.Informational,
+            CampsNotificationSources.FacilitatedMessageReceived, NotificationClass.Informational,
             NotificationPriority.Normal, "New message for Camp - check your email",
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == leadId),
             null, "/Barrios/camp", "View camp", null, null, Arg.Any<CancellationToken>());
@@ -140,7 +140,7 @@ public class CampContactServiceTests : IDisposable
             {
                 [spanishLead] = UserInfo.Create(new User { Id = spanishLead, PreferredLanguage = "es" }, [], [], [], null, [])
             });
-        _notificationEmitter.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+        _notificationEmitter.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(), Arg.Any<string>(),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(spanishLead)), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -152,7 +152,7 @@ public class CampContactServiceTests : IDisposable
 
         result.Success.Should().BeTrue();
         await _notificationEmitter.Received(1).SendAsync(
-            NotificationSource.FacilitatedMessageReceived, NotificationClass.Informational,
+            CampsNotificationSources.FacilitatedMessageReceived, NotificationClass.Informational,
             NotificationPriority.Normal, "New message for Camp - check your email",
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == englishLead),
             null, "/Barrios/camp", "View camp", null, null, Arg.Any<CancellationToken>());

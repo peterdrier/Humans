@@ -55,7 +55,7 @@ public sealed class TermRenewalReminderJobTests
         await job.ExecuteAsync(CancellationToken.None);
 
         var args = notifications.ReceivedCalls().Single().GetArguments();
-        args[0].Should().Be(NotificationSource.TermRenewalReminder);
+        args[0].Should().Be(GovernanceNotificationSources.TermRenewalReminder);
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
         var spanish = string.Equals(language, "es", StringComparison.Ordinal);
         var expectedCulture = spanish ? "es" : "en";

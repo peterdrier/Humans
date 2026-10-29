@@ -29,6 +29,9 @@
     var isToday = Model.EventTodayDate is not null
         && Model.CalendarDate.HasValue
         && Model.EventTodayDate.Value == Model.CalendarDate.Value;
+
+    // Health columns show only on the page load that follows the audited reveal POST.
+    var healthRevealed = ViewData[CantinaController.HealthRevealedKey] is true;
 }
 
 @section Styles {
@@ -65,11 +68,25 @@
             <a class="btn btn-sm btn-outline-secondary" asp-action="Roster" asp-route-weekStartOffset="@Model.WeekStartOffset">
                 <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Cantina_Roster_PageTitle"]
             </a>
+            @if (!healthRevealed && Model.People.Count > 0)
+            {
+                <form asp-action="RevealDayHealth" asp-route-dayOffset="@Model.DayOffset" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Cantina_Roster_RevealHealthNote"].Value">
+                        <i class="fa-solid fa-eye me-1"></i>@Localizer["Cantina_Roster_RevealHealth"]
+                    </button>
+                </form>
+            }
             <a class="btn btn-sm btn-primary" asp-action="DayCsv" asp-route-dayOffset="@Model.DayOffset">
                 <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Day_DownloadCsv"]
             </a>
         </div>
     </div>
+
+    @if (!healthRevealed && Model.People.Count > 0)
+    {
+        <p class="text-muted small"><i class="fa-solid fa-lock me-1"></i>@Localizer["Cantina_Roster_HealthHidden"]</p>
+    }
 
     <div class="card mb-4">
         <div class="card-body">
@@ -105,18 +122,21 @@
                         {
                             <th scope="col" class="text-center matrix-narrow" title="@d">@d.Substring(0, 3)</th>
                         }
-                        @foreach (var a in allergyChips)
+                        @if (healthRevealed)
                         {
-                            <th scope="col" class="text-center matrix-narrow" title="@a">@AbbrevChip(a)</th>
+                            @foreach (var a in allergyChips)
+                            {
+                                <th scope="col" class="text-center matrix-narrow" title="@a">@AbbrevChip(a)</th>
+                            }
+                            <th scope="col" class="text-center matrix-narrow" title="@Localizer["Cantina_Matrix_OtherAllergy"]">OAl</th>
+                            <th scope="col" class="matrix-other-text">@Localizer["Cantina_Matrix_OtherAllergyText"]</th>
+                            @foreach (var i in intoleranceChips)
+                            {
+                                <th scope="col" class="text-center matrix-narrow" title="@i">@AbbrevChip(i)</th>
+                            }
+                            <th scope="col" class="text-center matrix-narrow" title="@Localizer["Cantina_Matrix_OtherIntolerance"]">OIt</th>
+                            <th scope="col" class="matrix-other-text">@Localizer["Cantina_Matrix_OtherIntoleranceText"]</th>
                         }
-                        <th scope="col" class="text-center matrix-narrow" title="@Localizer["Cantina_Matrix_OtherAllergy"]">OAl</th>
-                        <th scope="col" class="matrix-other-text">@Localizer["Cantina_Matrix_OtherAllergyText"]</th>
-                        @foreach (var i in intoleranceChips)
-                        {
-                            <th scope="col" class="text-center matrix-narrow" title="@i">@AbbrevChip(i)</th>
-                        }
-                        <th scope="col" class="text-center matrix-narrow" title="@Localizer["Cantina_Matrix_OtherIntolerance"]">OIt</th>
-                        <th scope="col" class="matrix-other-text">@Localizer["Cantina_Matrix_OtherIntoleranceText"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -128,18 +148,21 @@
                             {
                                 <td class="text-center">@(p.DietaryPreference == d ? "x" : Html.Raw("&middot;"))</td>
                             }
-                            @foreach (var a in allergyChips)
+                            @if (healthRevealed)
                             {
-                                <td class="text-center">@(p.Allergies.Contains(a) ? "x" : Html.Raw("&middot;"))</td>
+                                @foreach (var a in allergyChips)
+                                {
+                                    <td class="text-center">@(p.Allergies.Contains(a) ? "x" : Html.Raw("&middot;"))</td>
+                                }
+                                <td class="text-center">@(p.Allergies.Contains(DietaryOptions.OtherOption) ? "x" : Html.Raw("&middot;"))</td>
+                                <td class="small">@(p.AllergyOtherText ?? "")</td>
+                                @foreach (var i in intoleranceChips)
+                                {
+                                    <td class="text-center">@(p.Intolerances.Contains(i) ? "x" : Html.Raw("&middot;"))</td>
+                                }
+                                <td class="text-center">@(p.Intolerances.Contains(DietaryOptions.OtherOption) ? "x" : Html.Raw("&middot;"))</td>
+                                <td class="small">@(p.IntoleranceOtherText ?? "")</td>
                             }
-                            <td class="text-center">@(p.Allergies.Contains(DietaryOptions.OtherOption) ? "x" : Html.Raw("&middot;"))</td>
-                            <td class="small">@(p.AllergyOtherText ?? "")</td>
-                            @foreach (var i in intoleranceChips)
-                            {
-                                <td class="text-center">@(p.Intolerances.Contains(i) ? "x" : Html.Raw("&middot;"))</td>
-                            }
-                            <td class="text-center">@(p.Intolerances.Contains(DietaryOptions.OtherOption) ? "x" : Html.Raw("&middot;"))</td>
-                            <td class="small">@(p.IntoleranceOtherText ?? "")</td>
                         </tr>
                     }
                 </tbody>
@@ -150,18 +173,21 @@
                         {
                             <td class="text-center fw-bold">@Model.People.Count(p => p.DietaryPreference == d)</td>
                         }
-                        @foreach (var a in allergyChips)
+                        @if (healthRevealed)
                         {
-                            <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(a))</td>
+                            @foreach (var a in allergyChips)
+                            {
+                                <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(a))</td>
+                            }
+                            <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(DietaryOptions.OtherOption))</td>
+                            <td class="text-muted">—</td>
+                            @foreach (var i in intoleranceChips)
+                            {
+                                <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(i))</td>
+                            }
+                            <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(DietaryOptions.OtherOption))</td>
+                            <td class="text-muted">—</td>
                         }
-                        <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(DietaryOptions.OtherOption))</td>
-                        <td class="text-muted">—</td>
-                        @foreach (var i in intoleranceChips)
-                        {
-                            <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(i))</td>
-                        }
-                        <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(DietaryOptions.OtherOption))</td>
-                        <td class="text-muted">—</td>
                     </tr>
                 </tfoot>
             </table>

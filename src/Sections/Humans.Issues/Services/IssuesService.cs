@@ -848,7 +848,7 @@ internal sealed class IssuesService(
         try
         {
             await SendLocalizedNotificationAsync(
-                NotificationSource.IssueComment,
+                IssuesNotificationSources.IssueComment,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 targets,
@@ -914,7 +914,7 @@ internal sealed class IssuesService(
         try
         {
             await SendLocalizedNotificationAsync(
-                NotificationSource.IssueStatusChanged,
+                IssuesNotificationSources.IssueStatusChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 targets,
@@ -954,7 +954,7 @@ internal sealed class IssuesService(
         try
         {
             await SendLocalizedNotificationAsync(
-                NotificationSource.IssueSubmitted,
+                IssuesNotificationSources.IssueSubmitted,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
                 recipients.ToList(),
@@ -975,7 +975,7 @@ internal sealed class IssuesService(
         try
         {
             await notificationInbox.ResolveBySourceKeyAsync(
-                NotificationSource.IssueSubmitted, issue.Id.ToString(), actorUserId, ct);
+                IssuesNotificationSources.IssueSubmitted, issue.Id.ToString(), actorUserId, ct);
         }
         catch (Exception ex)
         {
@@ -1010,7 +1010,7 @@ internal sealed class IssuesService(
         try
         {
             await SendLocalizedNotificationAsync(
-                NotificationSource.IssueAssigned,
+                IssuesNotificationSources.IssueAssigned,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
                 [newAssigneeUserId],
@@ -1029,7 +1029,7 @@ internal sealed class IssuesService(
         string.Format(culture, NoticeResources.GetString(key, culture)!, arguments);
 
     private async Task SendLocalizedNotificationAsync(
-        NotificationSource source,
+        NotificationSourceDefinition source,
         NotificationClass notificationClass,
         NotificationPriority priority,
         IReadOnlyList<Guid> recipients,

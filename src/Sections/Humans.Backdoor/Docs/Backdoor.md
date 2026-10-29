@@ -77,8 +77,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 | Actor | Capabilities |
 |-------|--------------|
 | Holder of an active key | Everything the APIs expose to that person, acting as themselves and scoped to their own roles |
-| Board member | May be issued a key |
-| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` |
+| Board member | May be issued a key. Reads the key list at `/Backdoor` (owner, label, prefix, dates); never a key value |
+| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` (the three POSTs are `AdminOnly`, their forms hidden from Board) |
 
 ## Invariants
 
@@ -113,6 +113,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A former Admin or Board member **cannot** keep using a key issued while they held the role — 401 from the next request on.
 - A suspended Admin or Board member **cannot** use their key: the machine surface is exempt from the onboarding gates the account-status wall runs through, so eligibility is the only thing standing between a suspended account and the API.
 - A plain member or volunteer **cannot** be issued a key, however the request is made.
+- A Board member **cannot** issue, rotate or revoke a key: `/Backdoor` is `BoardOrAdmin` to read, and each POST is `AdminOnly`.
 - Backdoor **cannot** read another section's tables. Anything it serves comes from that section's published contracts interface.
 
 ## Triggers
