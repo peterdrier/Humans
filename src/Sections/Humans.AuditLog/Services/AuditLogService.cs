@@ -145,13 +145,12 @@ internal sealed class AuditLogService(
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
         var entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
 
-        // Role compares against the requested id only, so a row acted by a merged-away id exports as Subject.
         var shaped = entries.Select(a => new
         {
             a.Action,
             a.EntityType,
             OccurredAt = a.OccurredAt.ToIso8601(),
-            Role = a.ActorUserId == userId ? "Actor" : "Subject"
+            Role = a.ActorUserId is { } actor && allIds.Contains(actor) ? "Actor" : "Subject"
         }).ToList();
 
         return [new UserDataSlice(AuditLog, shaped)];

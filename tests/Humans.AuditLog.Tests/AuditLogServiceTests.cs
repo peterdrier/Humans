@@ -364,7 +364,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_ExportsActorEntityAndRelatedRows_AcrossMergedIds()
+    public async Task ContributeForUserAsync_ExportsActorEntityAndRelatedRows_AcrossMergedIds_AsTheSamePerson()
     {
         var userId = Guid.NewGuid();
         var source = Guid.NewGuid();
@@ -376,7 +376,9 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", source, now - Duration.FromHours(1));
         SeedAuditLogEntry(AuditAction.TeamMemberAdded, "Team", Guid.NewGuid(), now - Duration.FromHours(2),
             relatedEntityId: userId);
-        SeedAuditLogEntry(AuditAction.RoleEnded, "User", Guid.NewGuid(), now - Duration.FromHours(3));
+        SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now - Duration.FromHours(3),
+            actorUserId: source);
+        SeedAuditLogEntry(AuditAction.RoleEnded, "User", Guid.NewGuid(), now - Duration.FromHours(4));
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slice = (await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken)).Single();
@@ -389,7 +391,8 @@ public class AuditLogServiceTests : IDisposable
         [
             (Action: AuditAction.RoleAssigned, Role: "Actor"),
             (Action: AuditAction.VolunteerApproved, Role: "Subject"),
-            (Action: AuditAction.TeamMemberAdded, Role: "Subject")
+            (Action: AuditAction.TeamMemberAdded, Role: "Subject"),
+            (Action: AuditAction.MemberSuspended, Role: "Actor")
         ]);
     }
 
