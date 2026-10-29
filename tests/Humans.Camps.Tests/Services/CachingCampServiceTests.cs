@@ -696,6 +696,33 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task EventSettingsChanged_DuringASettingsLoad_DropsTheLoadedSnapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loads = 0;
+        _innerSubstitute.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            if (Interlocked.Increment(ref loads) == 1)
+            {
+                started.SetResult();
+                await release.Task.WaitAsync(ct);
+                return new CampSettingsInfo(2026, [2026]);
+            }
+            return new CampSettingsInfo(2026, [2027]);
+        });
+        var load = _service.GetSettingsAsync(ct);
+        await started.Task.WaitAsync(ct);
+
+        _service.EventSettingsChanged(Guid.NewGuid());
+        release.SetResult();
+        await load.WaitAsync(ct);
+
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Equal(2027);
+    }
+
+    [HumansFact]
     public async Task Warmup_DoesNotRepublishSettingsChangedDuringCampLoads()
     {
         var ct = TestContext.Current.CancellationToken;

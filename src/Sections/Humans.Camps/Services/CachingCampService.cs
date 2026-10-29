@@ -23,6 +23,7 @@ internal sealed class CachingCampService(
 
     private readonly SemaphoreSlim _settingsLock = new(1, 1);
     private CampSettingsInfo? _settings;
+    private int _settingsVersion;
     // Years populated by warmup; cold-year reads fall back to the inner service.
     private volatile IReadOnlySet<int>? _warmYears;
 
@@ -356,8 +357,15 @@ internal sealed class CachingCampService(
             return written;
         });
 
-    /// <summary>Open seasons are derived from Settings' event years, so any event save can change them.</summary>
-    public void EventSettingsChanged(Guid eventSettingsId) => _settings = null;
+    /// <summary>
+    /// Open seasons are derived from Settings' event years, so any event save can change them. Bumps the version so
+    /// a load already in flight returns its result without publishing it.
+    /// </summary>
+    public void EventSettingsChanged(Guid eventSettingsId)
+    {
+        Interlocked.Increment(ref _settingsVersion);
+        _settings = null;
+    }
 
     public Task SetNameLockDateAsync(
         int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>
@@ -655,8 +663,11 @@ internal sealed class CachingCampService(
         try
         {
             if (_settings is not null) return _settings;
-            _settings = await WithInnerAsync(inner => inner.GetSettingsAsync(ct));
-            return _settings;
+            var version = Volatile.Read(ref _settingsVersion);
+            var loaded = await WithInnerAsync(inner => inner.GetSettingsAsync(ct));
+            if (version == Volatile.Read(ref _settingsVersion))
+                _settings = loaded;
+            return loaded;
         }
         finally
         {
