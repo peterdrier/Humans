@@ -5,22 +5,6 @@ using NodaTime;
 
 namespace Humans.Budget.Services;
 
-internal sealed record DevelopmentBudgetSeedResult(
-    Guid BudgetYearId,
-    string BudgetYearCode,
-    string BudgetYearName,
-    bool ActivatedBudgetYear,
-    int TeamsCreated,
-    int TeamsUpdated,
-    int DepartmentCategoriesSynced,
-    int GroupsCreated,
-    int CategoriesCreated,
-    int LineItemsCreated)
-{
-    public string SuccessMessage =>
-        $"Budget demo data seeded: {TeamsCreated} teams created, {TeamsUpdated} updated, {CategoriesCreated} categories, {LineItemsCreated} line items.";
-}
-
 internal sealed class DevelopmentBudgetSeeder(
     IBudgetManagement budgetService,
     ITeamService teamService,
@@ -183,21 +167,14 @@ internal sealed class DevelopmentBudgetSeeder(
             }
         }
 
-        var departmentCategoriesSynced = await budgetService.SyncDepartmentsAsync(budgetYearId, actorUserId);
-
-        var groupsCreated = 0;
-        if ((await budgetService.EnsureTicketingGroupAsync(budgetYearId, actorUserId)).Created)
-        {
-            groupsCreated++;
-        }
+        await budgetService.SyncDepartmentsAsync(budgetYearId, actorUserId);
+        await budgetService.EnsureTicketingGroupAsync(budgetYearId, actorUserId);
 
         var activeYear = await budgetService.GetActiveYearAsync();
-        var activatedBudgetYear = false;
         if (activeYear is null)
         {
             var activation = await budgetService.UpdateYearStatusAsync(budgetYearId, BudgetYearStatus.Active, actorUserId);
             if (!activation.Succeeded) throw new InvalidOperationException(activation.Refusal);
-            activatedBudgetYear = true;
         }
 
         var currentYear = await budgetService.GetYearByIdAsync(budgetYearId)
@@ -216,7 +193,6 @@ internal sealed class DevelopmentBudgetSeeder(
             var createdGroup = await budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
             sharedServicesGroupId = createdGroup.Id;
             sharedServicesGroupRestricted = createdGroup.IsRestricted;
-            groupsCreated++;
         }
         else
         {
@@ -303,17 +279,7 @@ internal sealed class DevelopmentBudgetSeeder(
             "Development budget seed completed for {BudgetYearCode}: teamsCreated={TeamsCreated}, teamsUpdated={TeamsUpdated}, categoriesCreated={CategoriesCreated}, lineItemsCreated={LineItemsCreated}",
             budgetYearCode, teamsCreated, teamsUpdated, categoriesCreated, lineItemsCreated);
 
-        return new DevelopmentBudgetSeedResult(
-            BudgetYearId: budgetYearId,
-            BudgetYearCode: budgetYearCode,
-            BudgetYearName: budgetYearName,
-            ActivatedBudgetYear: activatedBudgetYear,
-            TeamsCreated: teamsCreated,
-            TeamsUpdated: teamsUpdated,
-            DepartmentCategoriesSynced: departmentCategoriesSynced,
-            GroupsCreated: groupsCreated,
-            CategoriesCreated: categoriesCreated,
-            LineItemsCreated: lineItemsCreated).SuccessMessage;
+        return $"Budget demo data seeded: {teamsCreated} teams created, {teamsUpdated} updated, {categoriesCreated} categories, {lineItemsCreated} line items.";
     }
 
     private async Task EnsureBudgetTeamAsync(

@@ -198,7 +198,7 @@ Stored as string via `HasConversion<string>()`.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: year-metadata rename returns an internal refusal result; other repository mutations, including the ticketing sync pair, refuse with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
-- Year status changes, metadata edits and archives return internal results for missing/archived targets and existing lifecycle guards. The admin actions display expected reasons and log Warning with year/actor identifiers; unexpected dependency failures propagate. Refusals write no audit or state changes. Seed activation still throws on refusal.
+- Year status changes, metadata edits and archives return internal results for missing/archived targets and existing lifecycle guards. The admin actions display expected reasons and log Warning with year/actor identifiers; unexpected dependency failures propagate. Refusals write no audit or state changes. Seed activation still throws on refusal. The demo seeder returns a summary of teams created/updated, categories created and line items created; it keeps no separate seed-result payload.
 - Member index, summary and category GETs preserve request cancellation through actor resolution,
   coordinator scope and page reads. Cancellation does not display a load-failure flash.
 - Admin GET pages preserve browser cancellation through year/category/audit reads, team names,
