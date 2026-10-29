@@ -69,7 +69,7 @@ recorded, not a structural need.
   (`Services/GateService.cs:178`).
 - Vendor mirror is best-effort, non-retrying (`Jobs/GateVendorCheckInJob.cs:16`), gated by
   `Gate:VendorMirrorEnabled` (`Jobs/GateVendorCheckInJob.cs:37`). The backfill claims the ledger
-  atomically before enqueueing (`Controllers/GateVendorBackfillAdminController.cs:86`), so
+  atomically before enqueueing (`GateService.EnqueueVendorCheckInBackfillAsync`), so
   overlapping backfill sends never double-post; live admits mark the ledger *after* their
   enqueue (`Services/GateService.cs:147`), so a backfill click in that instant can still re-send
   one — accepted, not a guarantee.

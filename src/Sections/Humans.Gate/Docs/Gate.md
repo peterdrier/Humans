@@ -105,6 +105,10 @@ after the retention window.
   local admits against the vendor's check-in status, supports a single test send before the bulk
   run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteBackfillAsync`,
   unix seconds), and skips anything the ledger already claimed until the ticket sync confirms it.
+  `GateService` owns the pending/sent split and `EnqueueVendorCheckInBackfillAsync` rechecks the
+  current diff, refuses sends while mirroring is disabled, and atomically claims each ticket
+  before enqueueing. Both send routes use that workflow; the controller only dispatches and
+  formats feedback. An empty or unknown single-ticket id enqueues nothing.
 - **Vendor-checked-in dedupe signal** — `GateService.EvaluateAsync` treats either the synced
   `TicketAttendee.CheckedInAt` timestamp or legacy `Status == CheckedIn` as an existing vendor
   check-in. Cross-device duplicate detection remains secondary to the gate's own unique index,

@@ -28,6 +28,10 @@ internal interface IGateService : IApplicationService
     /// <summary>Local admits against the vendor's check-in status as of the last ticket sync.</summary>
     Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default);
 
+    /// <summary>Rechecks pending admits and claims each ticket before enqueueing. Null selects all pending tickets;
+    /// an empty or unknown id selects none. Disabled mirroring enqueues nothing.</summary>
+    Task<GateVendorBackfillResult> EnqueueVendorCheckInBackfillAsync(string? vendorTicketId, CancellationToken ct = default);
+
     /// <summary>
     /// De-duplicated signups whose gate shift starts within ±2 hours of now, event-local. Empty with no active event.
     /// </summary>
@@ -148,4 +152,8 @@ internal sealed record GateVendorBackfillSnapshot(
     int AdmitCount,
     int AlreadyCheckedInCount,
     IReadOnlyList<GateVendorBackfillRow> Pending,
-    IReadOnlyList<GateVendorBackfillRow> Unmirrorable);
+    IReadOnlyList<GateVendorBackfillRow> Unmirrorable,
+    IReadOnlyList<GateVendorBackfillRow> SentAwaitingSync,
+    bool MirrorEnabled);
+
+internal sealed record GateVendorBackfillResult(bool MirrorEnabled, IReadOnlyList<GateVendorBackfillRow> Enqueued);

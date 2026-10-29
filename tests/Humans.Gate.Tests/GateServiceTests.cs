@@ -116,16 +116,17 @@ public class GateServiceTests
         GateDb.SaveChanges();
     }
 
-    private void StubTicket(
+    private TicketOrderInfo StubTicket(
         TicketAttendeeStatus status = TicketAttendeeStatus.Valid,
         Guid? matchedUserId = null,
         string barcode = Barcode,
         Guid? attendeeId = null,
-        Instant? checkedInAt = null)
+        Instant? checkedInAt = null,
+        string vendorTicketId = "v1")
     {
         var attendee = new TicketAttendeeInfo(
             Id: attendeeId ?? Guid.NewGuid(),
-            VendorTicketId: "v1",
+            VendorTicketId: vendorTicketId,
             AttendeeName: "Jane Donovan",
             AttendeeEmail: "jane@example.com",
             TicketTypeName: "GA",
@@ -152,6 +153,7 @@ public class GateServiceTests
 
         _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TicketOrderInfo> { order });
+        return order;
     }
 
     private Task<GateDecisionResult> RecordAsync(bool idConfirmed, bool child = false, bool overrideEarly = false, string? pin = null) =>
@@ -819,6 +821,110 @@ public class GateServiceTests
         _roles.HasActiveRoleAsync(selfSetSup, RoleNames.Admin, Arg.Any<CancellationToken>()).Returns(true);
         await _svc.SetOwnPinAsync(selfSetSup, "2580");                                 // AdminEnrolled = false
         (await _svc.AuthorizeOverrideAsync(selfSetSup, "2580")).Should().BeFalse();    // correct PIN + role, but not admin-enrolled
+    }
+
+    private async Task SeedBackfillAsync()
+    {
+        var first = StubTicket(barcode: "TIX-A", vendorTicketId: "vt-A");
+        await _svc.RecordDecisionAsync(new GateDecisionInput("TIX-A", true, false, null, null, null), AgentId);
+        var second = StubTicket(barcode: "TIX-B", vendorTicketId: "vt-B");
+        await _svc.RecordDecisionAsync(new GateDecisionInput("TIX-B", true, false, null, null, null), AgentId);
+        _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(new List<TicketOrderInfo> { first, second });
+        _jobs.ClearReceivedCalls();
+        _config["Gate:VendorMirrorEnabled"] = "true";
+    }
+
+    private Job[] BackfillJobs() => _jobs.ReceivedCalls()
+        .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IBackgroundJobClient.Create), StringComparison.Ordinal))
+        .Select(c => (Job)c.GetArguments()[0]!).ToArray();
+
+    [HumansFact]
+    public async Task VendorBackfill_TestThenBulk_ClaimsEachTicketOnce_WithOriginalAdmitTime()
+    {
+        await SeedBackfillAsync();
+        var admittedAt = Clock.GetCurrentInstant();
+        Clock.Advance(Duration.FromHours(1));
+
+        var one = await _svc.EnqueueVendorCheckInBackfillAsync("vt-A");
+        one.Enqueued.Should().ContainSingle().Which.VendorTicketId.Should().Be("vt-A");
+        _ledger.WasSent("vt-A").Should().BeTrue();
+        _ledger.WasSent("vt-B").Should().BeFalse();
+        var snapshot = await _svc.GetVendorCheckInBackfillAsync();
+        snapshot.Pending.Should().ContainSingle().Which.VendorTicketId.Should().Be("vt-B");
+        snapshot.SentAwaitingSync.Should().ContainSingle().Which.VendorTicketId.Should().Be("vt-A");
+        snapshot.MirrorEnabled.Should().BeTrue();
+
+        (await _svc.EnqueueVendorCheckInBackfillAsync("vt-A")).Enqueued.Should().BeEmpty();
+        (await _svc.EnqueueVendorCheckInBackfillAsync(null)).Enqueued
+            .Should().ContainSingle().Which.VendorTicketId.Should().Be("vt-B");
+        (await _svc.EnqueueVendorCheckInBackfillAsync(null)).Enqueued.Should().BeEmpty();
+        var jobs = BackfillJobs();
+        jobs.Select(j => (string)j.Args[0]).Should().Equal("vt-A", "vt-B");
+        foreach (var job in jobs)
+        {
+            job.Method.Name.Should().Be(nameof(GateVendorCheckInJob.ExecuteBackfillAsync));
+            job.Args[1].Should().Be(admittedAt.ToUnixTimeSeconds());
+            job.Args[2].Should().Be(CancellationToken.None);
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData("unknown")]
+    public async Task VendorBackfill_UnknownTicket_EnqueuesNothing(string vendorTicketId)
+    {
+        await SeedBackfillAsync();
+
+        (await _svc.EnqueueVendorCheckInBackfillAsync(vendorTicketId)).Enqueued.Should().BeEmpty();
+
+        BackfillJobs().Should().BeEmpty();
+        _ledger.WasSent("vt-A").Should().BeFalse();
+        _ledger.WasSent("vt-B").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_Disabled_NeitherReadsNorClaimsNorEnqueues()
+    {
+        await SeedBackfillAsync();
+        _config["Gate:VendorMirrorEnabled"] = "false";
+        _tickets.ClearReceivedCalls();
+
+        foreach (var id in new string?[] { "vt-A", null })
+        {
+            var result = await _svc.EnqueueVendorCheckInBackfillAsync(id);
+            result.MirrorEnabled.Should().BeFalse();
+            result.Enqueued.Should().BeEmpty();
+        }
+
+        await _tickets.DidNotReceive().GetTicketOrdersAsync(Arg.Any<CancellationToken>());
+        BackfillJobs().Should().BeEmpty();
+        _ledger.WasSent("vt-A").Should().BeFalse();
+        _ledger.WasSent("vt-B").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task VendorBackfill_RechecksVendorStatusBeforeEnqueueing()
+    {
+        var attendeeId = Guid.NewGuid();
+        StubTicket(attendeeId: attendeeId);
+        await RecordAsync(idConfirmed: true);
+        (await _svc.GetVendorCheckInBackfillAsync()).Pending.Should().ContainSingle();
+        StubTicket(attendeeId: attendeeId, checkedInAt: Clock.GetCurrentInstant());
+        _config["Gate:VendorMirrorEnabled"] = "true";
+        _jobs.ClearReceivedCalls();
+
+        (await _svc.EnqueueVendorCheckInBackfillAsync("v1")).Enqueued.Should().BeEmpty();
+
+        BackfillJobs().Should().BeEmpty();
+        _ledger.WasSent("v1").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void VendorMirrorLedger_ClaimsAnIdExactlyOnce()
+    {
+        _ledger.TryMarkSent("vt-X").Should().BeTrue();
+        _ledger.TryMarkSent("vt-X").Should().BeFalse();
+        _ledger.WasSent("vt-X").Should().BeTrue();
     }
 
     [HumansFact]

@@ -265,6 +265,7 @@ internal sealed class GateService(
 
         List<GateVendorBackfillRow> pending = [];
         List<GateVendorBackfillRow> unmirrorable = [];
+        List<GateVendorBackfillRow> sent = [];
         var alreadyCheckedIn = 0;
 
         foreach (var admit in admits)
@@ -277,11 +278,40 @@ internal sealed class GateService(
             else if (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
                 alreadyCheckedIn++;
             else
-                pending.Add(new GateVendorBackfillRow(
-                    admit.Barcode, attendee.AttendeeName, admit.OccurredAt, attendee.VendorTicketId));
+            {
+                var row = new GateVendorBackfillRow(admit.Barcode, attendee.AttendeeName, admit.OccurredAt, attendee.VendorTicketId);
+                (mirrorLedger.WasSent(attendee.VendorTicketId) ? sent : pending).Add(row);
+            }
         }
 
-        return new GateVendorBackfillSnapshot(admits.Count, alreadyCheckedIn, pending, unmirrorable);
+        return new GateVendorBackfillSnapshot(admits.Count, alreadyCheckedIn, pending, unmirrorable, sent,
+            configuration.GetValue<bool>(VendorMirrorEnabledKey));
+    }
+
+    public async Task<GateVendorBackfillResult> EnqueueVendorCheckInBackfillAsync(
+        string? vendorTicketId, CancellationToken ct = default)
+    {
+        if (!configuration.GetValue<bool>(VendorMirrorEnabledKey))
+            return new GateVendorBackfillResult(false, []);
+
+        var snapshot = await GetVendorCheckInBackfillAsync(ct);
+        List<GateVendorBackfillRow> enqueued = [];
+        foreach (var row in snapshot.Pending)
+        {
+            if (vendorTicketId is not null && !string.Equals(row.VendorTicketId, vendorTicketId, StringComparison.Ordinal))
+                continue;
+            // Claim before enqueue: overlapping backfill requests must not double-post a check-in.
+            if (!mirrorLedger.TryMarkSent(row.VendorTicketId!))
+                continue;
+
+            var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
+            // The job keeps the original admit time and runs independently of the admin request.
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j =>
+                j.ExecuteBackfillAsync(row.VendorTicketId!, admittedAtUnixSeconds, CancellationToken.None));
+            enqueued.Add(row);
+        }
+
+        return new GateVendorBackfillResult(true, enqueued);
     }
 
     public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(

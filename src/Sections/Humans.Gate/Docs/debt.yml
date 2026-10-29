@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 4
-inbox:
-  - added: 2026-10-27
-    id: GATE-3
-    what: "GateVendorBackfillAdminController (temp backfill page) splits pending from sent against GateVendorMirrorLedger and claims-then-enqueues GateVendorCheckInJob in the controller; that logic belongs in GateService, or the page is deleted once the backfill has run. Found by section-doctor."
-    review: panel
+inbox: []

@@ -1,15 +1,9 @@
-using Hangfire;
 using Humans.Gate.Controllers;
 using Humans.Gate.Services;
-using Humans.Gate.Services.Stores;
-using Hangfire.Common;
-using Humans.Gate.Jobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
@@ -18,12 +12,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Gate.Tests;
 
-/// <summary>
-/// The vendor check-in backfill page's double-post guards: a just-sent ticket is
-/// excluded from both the single test send and the bulk send until the ticket sync
-/// confirms it (TicketTailor check-ins double-record on repeat), and nothing is
-/// enqueued while <c>Gate:VendorMirrorEnabled</c> is off.
-/// </summary>
 public class GateVendorBackfillControllerTests
 {
     private static readonly GateVendorBackfillRow RowA =
@@ -34,23 +22,18 @@ public class GateVendorBackfillControllerTests
 
     private readonly IGateService _gate = Substitute.For<IGateService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IBackgroundJobClient _jobs = Substitute.For<IBackgroundJobClient>();
-    private readonly GateVendorMirrorLedger _ledger = new(new MemoryCache(new MemoryCacheOptions()));
 
     public GateVendorBackfillControllerTests()
     {
         _gate.GetVendorCheckInBackfillAsync(Arg.Any<CancellationToken>())
-            .Returns(new GateVendorBackfillSnapshot(2, 0, [RowA, RowB], []));
+            .Returns(new GateVendorBackfillSnapshot(2, 0, [RowB], [], [RowA], true));
+        _gate.EnqueueVendorCheckInBackfillAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new GateVendorBackfillResult(true, [RowA]));
     }
 
-    private GateVendorBackfillAdminController BuildController(bool mirrorEnabled = true)
+    private GateVendorBackfillAdminController BuildController()
     {
-        var config = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["Gate:VendorMirrorEnabled"] = mirrorEnabled ? "true" : null,
-            }).Build();
-        var controller = new GateVendorBackfillAdminController(_users, _gate, config, _ledger, _jobs);
+        var controller = new GateVendorBackfillAdminController(_users, _gate);
 
         // SetError resolves ILoggerFactory from RequestServices and reads the action
         // descriptor; RedirectToAction lazily resolves Url — stub all three.
@@ -68,96 +51,37 @@ public class GateVendorBackfillControllerTests
         return controller;
     }
 
-    private string[] EnqueuedVendorIds() =>
-        _jobs.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IBackgroundJobClient.Create), StringComparison.Ordinal))
-            .Select(c => (string)((Job)c.GetArguments()[0]!).Args[0]!)
-            .ToArray();
-
-    [HumansFact]
-    public async Task RunOne_EnqueuesThatTicket_AndMarksItSent()
+    [HumansTheory]
+    [InlineData("vt-A", "vt-A")]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    public async Task RunOne_ForwardsOnlyTheSelectedTicket(string? postedId, string expectedId)
     {
         var controller = BuildController();
 
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
+        Assert.IsType<RedirectToActionResult>(await controller.RunOne(postedId!, TestContext.Current.CancellationToken));
 
-        Assert.Equal(["vt-A"], EnqueuedVendorIds());
-        Assert.True(_ledger.WasSent("vt-A"));
-        Assert.False(_ledger.WasSent("vt-B"));
+        await _gate.Received(1).EnqueueVendorCheckInBackfillAsync(expectedId, TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
-    public async Task RunOne_PreservesTheOriginalAdmitTime()
+    public async Task Run_SelectsAllPendingTickets()
     {
         var controller = BuildController();
 
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
+        Assert.IsType<RedirectToActionResult>(await controller.Run(TestContext.Current.CancellationToken));
 
-        // ExecuteBackfillAsync(vendorTicketId, admittedAtUnixSeconds, ct) — the vendor
-        // check-in must carry the gate admit time, not the moment the admin clicked Send.
-        var job = (Job)_jobs.ReceivedCalls().Single(c =>
-            string.Equals(c.GetMethodInfo().Name, nameof(IBackgroundJobClient.Create), StringComparison.Ordinal))
-            .GetArguments()[0]!;
-        Assert.Equal(nameof(GateVendorCheckInJob.ExecuteBackfillAsync), job.Method.Name);
-        Assert.Equal(RowA.AdmittedAt.ToUnixTimeSeconds(), (long)job.Args[1]!);
+        await _gate.Received(1).EnqueueVendorCheckInBackfillAsync(null, TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
-    public async Task Run_AfterRunOne_ExcludesTheTestTicket()
+    public async Task Index_RendersTheServiceSnapshot()
     {
-        var controller = BuildController();
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
-
-        // The vendor record now exists but the local sync hasn't run — RowA is still in
-        // the service's Pending. The bulk send must not re-post it.
-        await controller.Run(TestContext.Current.CancellationToken);
-
-        Assert.Equal(["vt-A", "vt-B"], EnqueuedVendorIds());
-    }
-
-    [HumansFact]
-    public async Task RunOne_ForAnAlreadySentTicket_IsRefused()
-    {
-        var controller = BuildController();
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
-
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
-
-        Assert.Equal(["vt-A"], EnqueuedVendorIds()); // second attempt enqueued nothing
-    }
-
-    [HumansFact]
-    public async Task MirrorDisabled_NothingIsEnqueued()
-    {
-        var controller = BuildController(mirrorEnabled: false);
-
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
-        await controller.Run(TestContext.Current.CancellationToken);
-
-        Assert.Empty(EnqueuedVendorIds());
-        Assert.False(_ledger.WasSent("vt-A"));
-    }
-
-    [HumansFact]
-    public void TryMarkSent_ClaimsAnIdExactlyOnce()
-    {
-        // The atomic claim is the double-post guard: of two overlapping requests
-        // (double-click / second admin), exactly one may enqueue a given ticket.
-        Assert.True(_ledger.TryMarkSent("vt-X"));
-        Assert.False(_ledger.TryMarkSent("vt-X"));
-        Assert.True(_ledger.WasSent("vt-X"));
-    }
-
-    [HumansFact]
-    public async Task Index_SplitsPendingFromSentAwaitingSync()
-    {
-        var controller = BuildController();
-        await controller.RunOne("vt-A", TestContext.Current.CancellationToken);
-
-        var model = Assert.IsType<GateVendorBackfillViewModel>(
-            Assert.IsType<ViewResult>(await controller.Index(TestContext.Current.CancellationToken)).Model);
+        var model = Assert.IsType<GateVendorBackfillSnapshot>(
+            Assert.IsType<ViewResult>(await BuildController().Index(TestContext.Current.CancellationToken)).Model);
 
         Assert.Equal(["vt-B"], model.Pending.Select(r => r.VendorTicketId), StringComparer.Ordinal);
         Assert.Equal(["vt-A"], model.SentAwaitingSync.Select(r => r.VendorTicketId), StringComparer.Ordinal);
+        Assert.True(model.MirrorEnabled);
     }
 }
