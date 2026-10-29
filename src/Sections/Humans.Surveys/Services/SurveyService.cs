@@ -2494,6 +2494,9 @@ internal sealed class SurveyService(
             var error = question.Type switch
             {
                 SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice => ValidateChoiceQuestion(question),
+                SurveyQuestionType.Rating when (question.RatingMin ?? 1) > (question.RatingMax ?? 5) =>
+                    new("Surveys_Validation_RatingBounds",
+                        $"Rating question {question.Id} minimum must not exceed its maximum."),
                 SurveyQuestionType.Information => ValidateInformationQuestion(question),
                 SurveyQuestionType.RankedChoice => ValidateRankedQuestion(question),
                 SurveyQuestionType.Grid => ValidateGridQuestion(question),
