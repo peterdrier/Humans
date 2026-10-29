@@ -151,4 +151,5 @@
     <value>Der Bilddateiname muss auf .jpg, .jpeg, .png oder .webp enden.</value>
   </data>
   <data name="Containers_Error_PlacementNotFound" xml:space="preserve"><value>Platzierung nicht gefunden. Platziere den Container zuerst auf der Karte.</value></data>
+  <data name="Containers_Error_PlacementNotesLength" xml:space="preserve"><value>Platzierungsnotizen dürfen höchstens {0} Zeichen lang sein.</value></data>
 </root>
