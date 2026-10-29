@@ -60,8 +60,24 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampUpdateResult> DeleteImageAsync(Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
-    Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Every non-deleted Settings event, latest gate opening first, with whether camp registration is open for it.
+    /// An event Camps has no row for falls back to the legacy open-season years until <c>camps.event-ids</c> runs.
+    /// </summary>
+    Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(CancellationToken cancellationToken = default);
+    /// <summary>Audited when it changes the event's registration state.</summary>
+    Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="OpenSeasonAsync"/>
+    Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Seasons without an event id, each with the event <see cref="AssignSeasonEventIdsAsync"/> will give it.</summary>
+    Task<IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)>> GetUnassignedSeasonsAsync(
+        CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Writes an event id onto every season <see cref="GetUnassignedSeasonsAsync"/> lists and gives every event in a
+    /// legacy open-season year its own registration row. Returns the rows written.
+    /// </summary>
+    Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
@@ -168,6 +184,8 @@ internal sealed record CampUpdateResult(bool Succeeded, string? ErrorKey)
 
     public static CampUpdateResult Failure(string errorMessage) => new(false, errorMessage);
 }
+
+internal sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen);
 
 internal enum CampMemberRequestOutcome
 {

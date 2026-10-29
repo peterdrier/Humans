@@ -158,17 +158,18 @@ internal partial interface ICampRepository : IRepository
     /// </summary>
     Task<CampSettings?> GetSettingsReadOnlyAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Adds <paramref name="year"/> to <c>OpenSeasons</c> if not present.
-    /// Returns true if the list changed.
-    /// </summary>
-    Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<CampEventSettings>> GetEventSettingsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Removes <paramref name="year"/> from <c>OpenSeasons</c>. Returns true
-    /// if the list changed.
-    /// </summary>
-    Task<bool> CloseSeasonAsync(int year, CancellationToken ct = default);
+    /// <summary>Upserts the event's row. Returns true if the stored state changed (a new row counts as a change).</summary>
+    Task<bool> SetRegistrationOpenAsync(Guid eventSettingsId, bool open, CancellationToken ct = default);
+
+    /// <summary>Inserts only the events that have no row yet. Returns the rows inserted.</summary>
+    Task<int> AddMissingEventSettingsAsync(IReadOnlyDictionary<Guid, bool> registrationOpenByEventId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<CampSeason>> GetSeasonsWithoutEventIdAsync(CancellationToken ct = default);
+
+    /// <summary>Only seasons still without an event id are written. Returns the rows written.</summary>
+    Task<int> AssignSeasonEventIdsAsync(IReadOnlyDictionary<Guid, Guid> eventSettingsIdBySeasonId, CancellationToken ct = default);
 
     /// <summary>
     /// Idempotent insert of a Pending membership row. Handles the 23505

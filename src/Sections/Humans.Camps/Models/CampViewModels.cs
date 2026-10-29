@@ -267,7 +267,7 @@ internal sealed class CampAdminViewModel
     public bool HasMissingSpecialRoles { get; set; }
 }
 
-internal sealed record CampBarriosSettingsViewModel(IReadOnlyList<int> OpenSeasons);
+internal sealed record CampBarriosSettingsViewModel(IReadOnlyList<CampEventRegistration> Events);
 
 internal sealed class CampSummaryRowViewModel
 {

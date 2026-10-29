@@ -67,6 +67,7 @@ public sealed class Section :
         services.AddSingleton<ICampSeeding>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingCampService>());
 
         // Merge, GDPR erasure and role writes change rows the projection serves, so the
         // decorator carries them and drops the projection itself after the inner write.

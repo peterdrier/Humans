@@ -715,7 +715,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         settings.OpenSeasons = [2026, 2027];
         await SaveAllAsync(ct);
         // A settings write verb is the decorator's own settings-slot eviction path.
-        await _service.OpenSeasonAsync(2027, TestActorId, ct);
+        await _service.OpenSeasonAsync(Guid.NewGuid(), TestActorId, ct);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
         release.SetResult();
         await warmup.WaitAsync(ct);
@@ -731,7 +731,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         using var mutationCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
         await SeedSettingsAsync(2026, [2026]);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().NotContain(2027);
-        _innerSubstitute.OpenSeasonAsync(2027, Arg.Any<Guid>(), mutationCancellation.Token).Returns(async _ =>
+        _innerSubstitute.OpenSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), mutationCancellation.Token).Returns(async _ =>
         {
             var settings = await CampsDb.CampSettings.SingleAsync(ct);
             settings.OpenSeasons = [2026, 2027];
@@ -739,7 +739,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             await mutationCancellation.CancelAsync();
         });
 
-        Func<Task> open = () => _service.OpenSeasonAsync(2027, Guid.NewGuid(), mutationCancellation.Token);
+        Func<Task> open = () => _service.OpenSeasonAsync(Guid.NewGuid(), Guid.NewGuid(), mutationCancellation.Token);
         (await open.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken
             .Should().Be(mutationCancellation.Token);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
@@ -747,8 +747,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, CancellationToken, Task>> SettingsWriteVerbs => new()
     {
-        { nameof(ICampManagement.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(2027, Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(2026, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.OpenSeasonAsync), (t, ct) => t._service.OpenSeasonAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.CloseSeasonAsync), (t, ct) => t._service.CloseSeasonAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.SetNameLockDateAsync), (t, ct) => t._service.SetNameLockDateAsync(2026, new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
     };
 

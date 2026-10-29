@@ -85,44 +85,43 @@ internal sealed class CampAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("OpenSeason")]
+    [HttpPost("OpenSeason/{eventSettingsId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> OpenSeason([FromForm, BindRequired] int year)
+    public async Task<IActionResult> OpenSeason(Guid eventSettingsId)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
-        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         try
         {
-            await campService.OpenSeasonAsync(year, user.Id);
-            SetSuccess($"Season {year} opened for registration.");
+            await campService.OpenSeasonAsync(eventSettingsId, user.Id);
+            SetSuccess("Camp registration opened.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to open season {Year}", year);
-            SetError($"Failed to open season: {ex.Message}");
+            logger.LogError(ex, "Failed to open camp registration for event {EventSettingsId}", eventSettingsId);
+            SetError($"Failed to open registration: {ex.Message}");
         }
         // Posted from the /Settings#barrios tab, so post-redirect-get lands back there.
         return Redirect("/Settings#barrios");
     }
 
-    [HttpPost("CloseSeason/{year:int}")]
+    [HttpPost("CloseSeason/{eventSettingsId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CloseSeason(int year)
+    public async Task<IActionResult> CloseSeason(Guid eventSettingsId)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
         try
         {
-            await campService.CloseSeasonAsync(year, user.Id);
-            SetSuccess($"Season {year} closed for registration.");
+            await campService.CloseSeasonAsync(eventSettingsId, user.Id);
+            SetSuccess("Camp registration closed.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to close season {Year}", year);
-            SetError($"Failed to close season: {ex.Message}");
+            logger.LogError(ex, "Failed to close camp registration for event {EventSettingsId}", eventSettingsId);
+            SetError($"Failed to close registration: {ex.Message}");
         }
         // Posted from the /Settings#barrios tab, so post-redirect-get lands back there.
         return Redirect("/Settings#barrios");

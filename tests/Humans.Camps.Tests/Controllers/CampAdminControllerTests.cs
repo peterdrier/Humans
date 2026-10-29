@@ -135,8 +135,6 @@ public class CampAdminControllerTests
     }
 
     [HumansTheory]
-    [InlineData(nameof(CampAdminController.OpenSeason), "year", null)]
-    [InlineData(nameof(CampAdminController.OpenSeason), "year", "invalid")]
     [InlineData(nameof(CampAdminController.SetNameLockDate), "year", null)]
     [InlineData(nameof(CampAdminController.SetNameLockDate), "year", "invalid")]
     [InlineData(nameof(CampAdminController.SetCampSeasonEeSlotCount), "slotCount", null)]
@@ -176,7 +174,6 @@ public class CampAdminControllerTests
 
         var result = action switch
         {
-            nameof(CampAdminController.OpenSeason) => await controller.OpenSeason(0),
             nameof(CampAdminController.SetNameLockDate) => await controller.SetNameLockDate(0, "2027-05-01"),
             nameof(CampAdminController.SetCampSeasonEeSlotCount) =>
                 await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 0, TestContext.Current.CancellationToken),
@@ -211,11 +208,12 @@ public class CampAdminControllerTests
         camps.DeleteCampAsync(targetId, actorId).Returns(new CampAdminMutationResult(true));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
         var lockDate = new LocalDate(2026, 3, 1);
+        var eventId = Guid.NewGuid();
 
         var result = action switch
         {
-            "Open" => await controller.OpenSeason(2027),
-            "Close" => await controller.CloseSeason(2026),
+            "Open" => await controller.OpenSeason(eventId),
+            "Close" => await controller.CloseSeason(eventId),
             "LockDate" => await controller.SetNameLockDate(2026, "2026-03-01"),
             "Reactivate" => await controller.Reactivate(targetId, null),
             "Delete" => await controller.Delete(targetId),
@@ -231,8 +229,8 @@ public class CampAdminControllerTests
 
         switch (action)
         {
-            case "Open": await camps.Received(1).OpenSeasonAsync(2027, actorId); break;
-            case "Close": await camps.Received(1).CloseSeasonAsync(2026, actorId); break;
+            case "Open": await camps.Received(1).OpenSeasonAsync(eventId, actorId); break;
+            case "Close": await camps.Received(1).CloseSeasonAsync(eventId, actorId); break;
             case "LockDate": await camps.Received(1).SetNameLockDateAsync(2026, lockDate, actorId); break;
             case "Reactivate": await camps.Received(1).ReactivateSeasonAsync(targetId, actorId); break;
             case "Delete": await camps.Received(1).DeleteCampAsync(targetId, actorId); break;

@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.EarlyEntry.Contracts;
@@ -14,7 +15,8 @@ internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampRoleService, IUserDataContributor, IEarlyEntryProvider
+    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampRoleService, IUserDataContributor, IEarlyEntryProvider,
+    IEventSettingsChangeListener
 {
     /// <summary>DI key for the undecorated inner <see cref="ICampManagement"/>.</summary>
     public const string InnerServiceKey = "camp-inner";
@@ -324,19 +326,39 @@ internal sealed class CachingCampService(
             await InvalidateCampAsync(campId, cancellationToken);
         });
 
-    public Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetRegistrationByEventAsync(cancellationToken));
+
+    public Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.OpenSeasonAsync(year, actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.OpenSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 
-    public Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default) =>
+    public Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.CloseSeasonAsync(year, actorUserId, cancellationToken));
+            await WithInnerAsync(inner => inner.CloseSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
+
+    public Task<IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)>> GetUnassignedSeasonsAsync(
+        CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetUnassignedSeasonsAsync(cancellationToken));
+
+    public Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            var written = await WithInnerAsync(inner => inner.AssignSeasonEventIdsAsync(cancellationToken));
+            // Seasons gained event ids and registration moved to per-event rows.
+            RefreshAll();
+            await InvalidateSettingsAsync(cancellationToken);
+            return written;
+        });
+
+    /// <summary>Open seasons are derived from Settings' event years, so any event save can change them.</summary>
+    public void EventSettingsChanged(Guid eventSettingsId) => _settings = null;
 
     public Task SetNameLockDateAsync(
         int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>

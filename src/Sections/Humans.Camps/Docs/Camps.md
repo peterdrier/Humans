@@ -23,7 +23,7 @@ Themed community camps (Barrios) with per-year season registrations, leads, imag
 - Registration and editing validate required name, contact email, descriptions and languages on the server, plus email syntax and stored bounds for name, contact details, descriptions, languages and optional kids/performance text. Invalid forms redisplay with shared validation messages before any creation or update. The existing browser short-description limit remains stricter than its stored bound.
 - A **Camp Role Definition** is a CampsAdmin-managed catalogue row describing a per-camp role with a slot count, compliance threshold (`MinimumRequired`), and sort order. `MinimumRequired = 0` means the role is optional and not tracked in the compliance report; `MinimumRequired ≥ 1` means the compliance report tracks it with that threshold. The catalogue ships empty — CampsAdmin creates every definition. Soft-deleted via `DeactivatedAt` so historical assignments survive removal from the active catalogue.
 - A **Camp Role Assignment** is a per-season binding of a `CampMember` to a `CampRoleDefinition`. "Camp Lead" and "Workshop Lead" **are** `CampRoleDefinition` rows (special, `SpecialRole != None`); lead authority is resolved entirely from `CampRoleAssignment`.
-- **Camp Settings** is a singleton controlling which seasons accept new registrations. The public year is not stored here — it resolves from Settings' active event (falling back to the clock year when no event is active).
+- **Camp registration** opens and closes per Settings event (`camp_event_settings`); `CampSettingsInfo.OpenSeasons` is the years of the open events, plus any legacy open year that has no Settings event. **Camp Settings** is a singleton holding the legacy open-season year list. The public year is not stored here — it resolves from Settings' active event (falling back to the clock year when no event is active).
 
 ## Data Model
 
@@ -35,9 +35,15 @@ Core entity: contact info, slug, flags.
 
 ### CampSeason
 
-Per-year season data (name, blurbs, community info, placement). `EeSlotCount` (int, default 0) tracks the Early Entry slot cap for the season; managed by CampsAdmin.
+Per-year season data (name, blurbs, community info, placement). `EeSlotCount` (int, default 0) tracks the Early Entry slot cap for the season; managed by CampsAdmin. `EventSettingsId` (Guid?, bare id of Settings' `settings_event` row) is stamped on creation with the season's event: of the year's events, the earliest open for registration, else the earliest. It is null only on seasons older than the column, until the `camps.event-ids` data migration assigns them. Season reads still key on `Year`.
 
 **Table:** `camp_seasons`
+
+### CampEventSettings
+
+Camps' own row per Settings event, keyed by that event's id: `RegistrationOpen`. No row means the event falls back to the legacy `CampSettings.OpenSeasons` year list.
+
+**Table:** `camp_event_settings`
 
 ### CampImage
 
@@ -55,7 +61,7 @@ Name history for tracking renames.
 
 ### CampSettings
 
-Singleton settings: open seasons and per-season name-lock dates (`NameLockDate`, `NameLockedAt`
+Singleton settings: the legacy open-season year list (read only as the fallback described under `CampEventSettings`; `camps.event-ids` turns it into per-event rows) and per-season name-lock dates (`NameLockDate`, `NameLockedAt`
 live on `CampSeason`, not here). `PublicYear` and `EeStartDate` columns are **dead**
 (nobodies-collective#1632, #1633): no longer read or written, kept mapped only so the EF model
 matches the database until a Peter-approved follow-up drops them. The public year resolves
@@ -186,7 +192,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 | Anyone (including anonymous) | Browse the camps directory, view camp details and season details — for publicly visible (`Active`/`Full`) seasons only; other statuses 404 unless the viewer is a lead of that camp or CampsAdmin (nobodies-collective/Humans#993) |
 | Any authenticated human | Register a new camp (which creates a new season in Pending status). Request to join a camp for its open season; withdraw their own pending request; leave their own active membership. |
 | Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. Add an active member directly to their camp (lead-driven shortcut). Assign / unassign per-camp role assignments for their camp. Mark their camp's Active season Full — an informational label only, shown to visitors, that does not block join requests. |
-| CampsAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Set name lock dates. Open and close seasons from the Barrios tab on `/Settings` (`/Settings#barrios`). View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the role-staffing compliance matrix. |
+| CampsAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Set name lock dates. Open and close camp registration per event from the Barrios tab on `/Settings` (`/Settings#barrios`). View withdrawn seasons on the admin dashboard. Export camp data as CSV. Manage the role-definition catalogue (create, edit, deactivate, reactivate). View the role-staffing compliance matrix. |
 | Team/sub-team coordinator | View the read-only role-staffing compliance matrix at `/Camps/Admin/Compliance` (via `CampComplianceAccess`) — no camp-management authority. |
 | Admin | Delete camps |
 
@@ -213,7 +219,8 @@ Admin season opening, name-lock-date changes and EE slot-cap updates require the
 - Camp and image deletions commit their metadata and audit before cleaning up image files. Cleanup ignores caller cancellation and logs storage failures without failing the committed deletion.
 - Manually supplied historical names are trimmed and must contain 1–256 characters. Registration validates every supplied historical name before creating any camp rows; later additions return localized refusals without persisting invalid names.
 - **Name-lock + historical-name auto-log:** renaming a season (`ChangeSeasonNameAsync`) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
-- Camp settings control which seasons accept registrations. Opening/closing registration and changing the yearly name-lock date audit the acting admin, target year and saved change against `CampSettings`. No-op writes leave no audit; save and audit completion ignore caller cancellation once the write starts.
+- Camp registration is open or closed per Settings event. Opening/closing it audits the acting admin and the event name against `CampEventSettings` (keyed by the event id); changing the yearly name-lock date audits the target year against `CampSettings`. `CachingCampService` listens for Settings event saves (`IEventSettingsChangeListener`) and drops its settings snapshot, since open years derive from event years.
+- Data migration `camps.event-ids` (`/Debug/DataMigrations`) first writes a registration row for every event that is open today (so the legacy year list stops deciding), then gives each season without an event id the event of its year (same rule as on creation). Seasons whose year has no Settings event stay unassigned. No-op writes leave no audit; save and audit completion ignore caller cancellation once the write starts.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
 - Membership is **per-season**. One live (`Pending`/`Active`) row per `(CampSeasonId, UserId)` enforced by a partial unique index. `Removed` rows are kept for audit and do not block re-requests.
 - Membership mutations (approve, reject, remove) are **scoped to the authorizing camp**. A lead or CampsAdmin operating on camp A cannot mutate a member row whose season belongs to camp B even if they know the row id.

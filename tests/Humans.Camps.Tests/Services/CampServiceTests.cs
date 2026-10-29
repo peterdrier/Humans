@@ -954,22 +954,23 @@ public sealed class CampServiceTests : CampsTestHarness
         await CreateTestCampAsync();
         var actorId = Guid.NewGuid();
         var lockDate = new LocalDate(2026, 3, 1);
+        var (e2026, e2027) = StubTwoEvents();
         AuditLog.ClearReceivedCalls();
         var observedSave = false;
         AuditLog.When(a => a.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()))
             .Do(_ => observedSave = action switch
             {
-                "Open" => CampsDb.CampSettings.AsNoTracking().Single().OpenSeasons.Contains(2027),
-                "Close" => !CampsDb.CampSettings.AsNoTracking().Single().OpenSeasons.Contains(2026),
+                "Open" => CampsDb.CampEventSettings.AsNoTracking().Single(r => r.EventSettingsId == e2027.Id).RegistrationOpen,
+                "Close" => !CampsDb.CampEventSettings.AsNoTracking().Single(r => r.EventSettingsId == e2026.Id).RegistrationOpen,
                 "LockDate" => CampsDb.CampSeasons.AsNoTracking().Single().NameLockDate == lockDate,
                 _ => false
             });
 
         switch (action)
         {
-            case "Open": await _service.OpenSeasonAsync(2027, actorId, ct); break;
-            case "Close": await _service.CloseSeasonAsync(2026, actorId, ct); break;
+            case "Open": await _service.OpenSeasonAsync(e2027.Id, actorId, ct); break;
+            case "Close": await _service.CloseSeasonAsync(e2026.Id, actorId, ct); break;
             case "LockDate": await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct); break;
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
@@ -983,9 +984,15 @@ public sealed class CampServiceTests : CampsTestHarness
         };
         var arguments = AuditLog.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         arguments[0].Should().Be(expectedAction);
-        arguments[1].Should().Be(nameof(CampSettings));
-        arguments[2].Should().Be((await CampsDb.CampSettings.AsNoTracking().SingleAsync(ct)).Id);
-        arguments[3]!.ToString().Should().Contain(string.Equals(action, "Open", StringComparison.Ordinal) ? "2027" : "2026");
+        var (entityType, entityId, mentions) = action switch
+        {
+            "Open" => (nameof(CampEventSettings), e2027.Id, e2027.EventName),
+            "Close" => (nameof(CampEventSettings), e2026.Id, e2026.EventName),
+            _ => (nameof(CampSettings), (await CampsDb.CampSettings.AsNoTracking().SingleAsync(ct)).Id, "2026")
+        };
+        arguments[1].Should().Be(entityType);
+        arguments[2].Should().Be(entityId);
+        arguments[3]!.ToString().Should().Contain(mentions);
         arguments[4].Should().Be(actorId);
         observedSave.Should().BeTrue();
     }
@@ -999,10 +1006,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var actorId = Guid.NewGuid();
         var lockDate = new LocalDate(2026, 3, 1);
         await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
+        var (e2026, e2027) = StubTwoEvents();
         AuditLog.ClearReceivedCalls();
 
-        await _service.OpenSeasonAsync(2026, actorId, ct);
-        await _service.CloseSeasonAsync(2027, actorId, ct);
+        // 2026 is open and 2027 closed through the legacy year list: pinning that state is not a change.
+        await _service.OpenSeasonAsync(e2026.Id, actorId, ct);
+        await _service.CloseSeasonAsync(e2027.Id, actorId, ct);
         await _service.SetNameLockDateAsync(2026, lockDate, actorId, ct);
         await _service.SetNameLockDateAsync(2027, lockDate, actorId, ct);
 
@@ -1014,15 +1023,90 @@ public sealed class CampServiceTests : CampsTestHarness
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
+        var (_, e2027) = StubTwoEvents();
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         AuditLog.ClearReceivedCalls();
 
-        var open = () => _service.OpenSeasonAsync(2027, Guid.NewGuid(), cancellation.Token);
+        var open = () => _service.OpenSeasonAsync(e2027.Id, Guid.NewGuid(), cancellation.Token);
 
         await open.Should().ThrowAsync<OperationCanceledException>();
-        (await CampsDb.CampSettings.AsNoTracking().SingleAsync(ct)).OpenSeasons.Should().NotContain(2027);
+        (await CampsDb.CampEventSettings.AsNoTracking().AnyAsync(ct)).Should().BeFalse();
         AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Registration_FollowsTheEventRow_AndFallsBackToTheLegacyYearList()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var (e2026, e2027) = StubTwoEvents();
+
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Equal(2026);
+
+        await _service.OpenSeasonAsync(e2027.Id, Guid.NewGuid(), ct);
+        await _service.CloseSeasonAsync(e2026.Id, Guid.NewGuid(), ct);
+
+        (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Equal(2027);
+        (await _service.GetRegistrationByEventAsync(ct)).Should().Equal(
+            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true),
+            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false));
+    }
+
+    [HumansFact]
+    public async Task AssignSeasonEventIdsAsync_StampsSeasonsByYear_AndPinsLegacyOpenYears()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        await CreateTestCampAsync();
+        var season = await CampsDb.CampSeasons.SingleAsync(ct);
+        season.EventSettingsId = null;
+        await SaveAllAsync(ct);
+        var (e2026, _) = StubTwoEvents();
+
+        var pending = await _service.GetUnassignedSeasonsAsync(ct);
+        var written = await _service.AssignSeasonEventIdsAsync(ct);
+
+        pending.Should().ContainSingle().Which.EventSettingsId.Should().Be(e2026.Id);
+        written.Should().Be(2, "one registration row for the open 2026 event, one season");
+        (await CampsDb.CampSeasons.AsNoTracking().SingleAsync(ct)).EventSettingsId.Should().Be(e2026.Id);
+        (await CampsDb.CampEventSettings.AsNoTracking().SingleAsync(ct)).Should().BeEquivalentTo(
+            new CampEventSettings { EventSettingsId = e2026.Id, RegistrationOpen = true });
+        (await _service.GetUnassignedSeasonsAsync(ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task CreateCampAsync_StampsTheSeasonWithTheEventOfItsYear()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var (e2026, _) = StubTwoEvents();
+
+        await CreateTestCampAsync();
+
+        (await CampsDb.CampSeasons.AsNoTracking().SingleAsync(ct)).EventSettingsId.Should().Be(e2026.Id);
+    }
+
+    [HumansFact]
+    public void PickSeasonEvent_PrefersTheOpenEventOfTheYear_ElseTheEarliest()
+    {
+        var late = new CampEventRegistration(Guid.NewGuid(), "Autumn 2027", 2027, false);
+        var open = new CampEventRegistration(Guid.NewGuid(), "Summer 2027", 2027, true);
+        var early = new CampEventRegistration(Guid.NewGuid(), "Spring 2027", 2027, false);
+
+        CampService.PickSeasonEvent([late, open, early], 2027).Should().Be(open);
+        CampService.PickSeasonEvent([late, early], 2027).Should().Be(early);
+        CampService.PickSeasonEvent([late, early], 2028).Should().BeNull();
+    }
+
+    private (EventSettingsInfo E2026, EventSettingsInfo E2027) StubTwoEvents()
+    {
+        var e2026 = BurnFixtures.Burn(id: Guid.NewGuid(), eventName: "Nowhere 2026", year: 2026,
+            gateOpeningDate: new LocalDate(2026, 7, 7));
+        var e2027 = BurnFixtures.Burn(id: Guid.NewGuid(), eventName: "Nowhere 2027", year: 2027,
+            gateOpeningDate: new LocalDate(2027, 7, 6));
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([e2026, e2027]);
+        return (e2026, e2027);
     }
 
     [HumansFact]

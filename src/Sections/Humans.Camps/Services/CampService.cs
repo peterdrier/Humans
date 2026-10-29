@@ -121,6 +121,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         };
 
         var season = CreateSeasonFromData(camp.Id, year, name, seasonData, now);
+        season.EventSettingsId = await ResolveSeasonEventIdAsync(year, cancellationToken);
 
         var member = new CampMember
         {
@@ -263,9 +264,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (settings is null)
             throw new InvalidOperationException("Camp settings not found.");
 
-        var info = new CampSettingsInfo(
-            await GetActiveYearAsync(cancellationToken),
-            settings.OpenSeasons.ToList());
+        var registration = await GetRegistrationByEventAsync(cancellationToken);
+        var eventYears = registration.Select(r => r.Year).ToHashSet();
+        // A legacy open year with no Settings event at all stays open: there is no event row to carry it.
+        var openYears = registration.Where(r => r.RegistrationOpen).Select(r => r.Year)
+            .Concat(settings.OpenSeasons.Where(y => !eventYears.Contains(y)))
+            .Distinct()
+            .ToList();
+        var info = new CampSettingsInfo(await GetActiveYearAsync(cancellationToken), openYears);
         if (info.OpenSeasons.Count == 0)
         {
             return info;
@@ -523,6 +529,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             ? previousSeason.CreateApprovedRenewal(Guid.NewGuid(), year, now)
             : previousSeason.CreatePendingRenewal(Guid.NewGuid(), year, now);
 
+        newSeason.EventSettingsId = await ResolveSeasonEventIdAsync(year, cancellationToken);
         await _repo.AddSeasonAsync(newSeason, cancellationToken);
 
         var description = $"Opted in to season {year} (auto-approved: {hasApprovedSeason})";
@@ -1124,28 +1131,78 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
     }
 
-    public async Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(
+        CancellationToken cancellationToken = default)
     {
-        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Camp settings not found.");
+        var legacyOpenYears = (await _repo.GetSettingsReadOnlyAsync(cancellationToken))?.OpenSeasons ?? [];
+        var rows = (await _repo.GetEventSettingsAsync(cancellationToken)).ToDictionary(r => r.EventSettingsId);
+        return [.. (await _settingsService.GetAllEventSettingsAsync(cancellationToken))
+            .Where(e => e.Status != EventSettingsStatus.Deleted)
+            .OrderByDescending(e => e.GateOpeningDate)
+            .Select(e => new CampEventRegistration(e.Id, e.EventName, e.Year,
+                rows.TryGetValue(e.Id, out var row) ? row.RegistrationOpen : legacyOpenYears.Contains(e.Year)))];
+    }
+
+    public Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        SetRegistrationOpenAsync(eventSettingsId, open: true, actorUserId, cancellationToken);
+
+    public Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        SetRegistrationOpenAsync(eventSettingsId, open: false, actorUserId, cancellationToken);
+
+    private async Task SetRegistrationOpenAsync(
+        Guid eventSettingsId, bool open, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        var target = (await GetRegistrationByEventAsync(cancellationToken))
+            .FirstOrDefault(r => r.EventSettingsId == eventSettingsId)
+            ?? throw new InvalidOperationException($"Event {eventSettingsId} not found.");
         // Complete the save and audit together even if the caller stops waiting.
-        if (await _repo.OpenSeasonAsync(year, CancellationToken.None))
+        var changed = await _repo.SetRegistrationOpenAsync(eventSettingsId, open, CancellationToken.None);
+        if (changed && target.RegistrationOpen != open)
         {
-            await _auditLog.LogAsync(AuditAction.CampRegistrationOpened, nameof(CampSettings), settings.Id,
-                $"Opened camp registration for {year}", actorUserId);
+            await _auditLog.LogAsync(
+                open ? AuditAction.CampRegistrationOpened : AuditAction.CampRegistrationClosed,
+                nameof(CampEventSettings), eventSettingsId,
+                $"{(open ? "Opened" : "Closed")} camp registration for {target.EventName}", actorUserId);
         }
     }
 
-    public async Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)>> GetUnassignedSeasonsAsync(
+        CancellationToken cancellationToken = default)
     {
-        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Camp settings not found.");
-        // Complete the save and audit together even if the caller stops waiting.
-        if (await _repo.CloseSeasonAsync(year, CancellationToken.None))
+        var registration = await GetRegistrationByEventAsync(cancellationToken);
+        var pending = new List<(Guid, string, int, Guid, string)>();
+        foreach (var season in await _repo.GetSeasonsWithoutEventIdAsync(cancellationToken))
         {
-            await _auditLog.LogAsync(AuditAction.CampRegistrationClosed, nameof(CampSettings), settings.Id,
-                $"Closed camp registration for {year}", actorUserId);
+            if (PickSeasonEvent(registration, season.Year) is { } owner)
+                pending.Add((season.Id, season.Name, season.Year, owner.EventSettingsId, owner.EventName));
         }
+
+        return pending;
+    }
+
+    public async Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default)
+    {
+        // Pin today's effective registration state first, so the legacy year list stops deciding it.
+        var registration = await GetRegistrationByEventAsync(cancellationToken);
+        var rowsAdded = await _repo.AddMissingEventSettingsAsync(
+            registration.Where(r => r.RegistrationOpen).ToDictionary(r => r.EventSettingsId, r => r.RegistrationOpen),
+            cancellationToken);
+        var pending = await GetUnassignedSeasonsAsync(cancellationToken);
+        return rowsAdded + await _repo.AssignSeasonEventIdsAsync(
+            pending.ToDictionary(p => p.SeasonId, p => p.EventSettingsId), cancellationToken);
+    }
+
+    private async Task<Guid?> ResolveSeasonEventIdAsync(int year, CancellationToken cancellationToken) =>
+        PickSeasonEvent(await GetRegistrationByEventAsync(cancellationToken), year)?.EventSettingsId;
+
+    /// <summary>
+    /// Of the year's events, the earliest one open for registration, else the earliest. Null when Settings has no
+    /// event that year. <paramref name="registration"/> is ordered latest gate opening first.
+    /// </summary>
+    internal static CampEventRegistration? PickSeasonEvent(IReadOnlyList<CampEventRegistration> registration, int year)
+    {
+        var ofYear = registration.Where(r => r.Year == year).ToList();
+        return ofYear.LastOrDefault(r => r.RegistrationOpen) ?? ofYear.LastOrDefault();
     }
 
     public async Task SetNameLockDateAsync(

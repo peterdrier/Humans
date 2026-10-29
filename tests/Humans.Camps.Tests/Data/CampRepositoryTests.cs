@@ -229,26 +229,51 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task OpenSeasonAsync_AddsWhenMissing_ReturnsTrue()
+    public async Task SetRegistrationOpenAsync_InsertsThenReportsOnlyRealChanges()
     {
-        await SeedSettingsAsync();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var eventId = Guid.NewGuid();
 
-        var changed = await _repo.OpenSeasonAsync(2027, Xunit.TestContext.Current.CancellationToken);
+        (await _repo.SetRegistrationOpenAsync(eventId, true, ct)).Should().BeTrue();
+        (await _repo.SetRegistrationOpenAsync(eventId, true, ct)).Should().BeFalse();
+        (await _repo.SetRegistrationOpenAsync(eventId, false, ct)).Should().BeTrue();
 
-        changed.Should().BeTrue();
-        var settings = await _dbContext.CampSettings.AsNoTracking().FirstAsync(Xunit.TestContext.Current.CancellationToken);
-        settings.OpenSeasons.Should().Contain(2027);
+        (await _repo.GetEventSettingsAsync(ct)).Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new CampEventSettings { EventSettingsId = eventId, RegistrationOpen = false });
     }
 
     [HumansFact]
-    public async Task OpenSeasonAsync_NoOp_WhenAlreadyOpen()
+    public async Task AddMissingEventSettingsAsync_LeavesExistingRowsAlone()
     {
-        await SeedSettingsAsync();
-        await _repo.OpenSeasonAsync(2027, Xunit.TestContext.Current.CancellationToken);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var closed = Guid.NewGuid();
+        var fresh = Guid.NewGuid();
+        await _repo.SetRegistrationOpenAsync(closed, false, ct);
 
-        var changed = await _repo.OpenSeasonAsync(2027, Xunit.TestContext.Current.CancellationToken);
+        var added = await _repo.AddMissingEventSettingsAsync(
+            new Dictionary<Guid, bool> { [closed] = true, [fresh] = true }, ct);
 
-        changed.Should().BeFalse();
+        added.Should().Be(1);
+        (await _repo.GetEventSettingsAsync(ct)).Should().BeEquivalentTo(
+        [
+            new CampEventSettings { EventSettingsId = closed, RegistrationOpen = false },
+            new CampEventSettings { EventSettingsId = fresh, RegistrationOpen = true },
+        ]);
+    }
+
+    [HumansFact]
+    public async Task AssignSeasonEventIdsAsync_WritesOnlySeasonsWithoutAnEventId()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var season = await SeedCampWithSeasonAsync("event-id-camp");
+        var target = Guid.NewGuid();
+
+        (await _repo.GetSeasonsWithoutEventIdAsync(ct)).Select(s => s.Id).Should().Contain(season.Id);
+        (await _repo.AssignSeasonEventIdsAsync(new Dictionary<Guid, Guid> { [season.Id] = target }, ct)).Should().Be(1);
+        (await _repo.AssignSeasonEventIdsAsync(new Dictionary<Guid, Guid> { [season.Id] = Guid.NewGuid() }, ct)).Should().Be(0);
+
+        (await _dbContext.CampSeasons.AsNoTracking().SingleAsync(s => s.Id == season.Id, ct)).EventSettingsId.Should().Be(target);
+        (await _repo.GetSeasonsWithoutEventIdAsync(ct)).Select(s => s.Id).Should().NotContain(season.Id);
     }
 
     [HumansFact]
