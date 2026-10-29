@@ -11,6 +11,7 @@ using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -65,6 +66,7 @@ public sealed class Section :
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingRideshareService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingRideshareService>().SnapshotCacheStats);
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingRideshareService>());
 
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {

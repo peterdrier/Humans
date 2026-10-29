@@ -227,4 +227,15 @@ public sealed class CachingRideshareServiceTests
 
         await _inner.Received(2).GetSnapshotAsync(null, Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task AnEventSettingsChange_ClearsTheSnapshots()
+    {
+        await _service.GetSnapshotAsync(Event2026, Ct);
+
+        _service.EventSettingsChanged(Event2027);
+        await _service.GetSnapshotAsync(Event2026, Ct);
+
+        await _inner.Received(2).GetSnapshotAsync(Event2026, Arg.Any<CancellationToken>());
+    }
 }

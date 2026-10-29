@@ -1,6 +1,7 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -16,7 +17,7 @@ internal sealed class CachingRideshareService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingRideshareService> logger)
     : TrackedCache<Guid, RideshareSnapshot>("Rideshare.Snapshot", warmOnStartup: false, logger),
-      IRideshareService, IUserDataContributor, IUserMerge
+      IRideshareService, IUserDataContributor, IUserMerge, IEventSettingsChangeListener
 {
     public const string InnerServiceKey = "rideshare-inner";
 
@@ -75,6 +76,9 @@ internal sealed class CachingRideshareService(
 
     public Task<int> AssignEventIdsAsync(CancellationToken ct = default) =>
         MutateAsync(inner => inner.AssignEventIdsAsync(ct));
+
+    // A rename changes the snapshot's name, and a gate-opening change can move a year's legacy rows to another event.
+    public void EventSettingsChanged(Guid eventSettingsId) => Clear();
 
     // Static table: the erasure-coverage architecture test reads it from an
     // uninitialized instance. Every category is erased in full.
