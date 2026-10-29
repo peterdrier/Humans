@@ -504,6 +504,28 @@ internal sealed class ShiftsController(
             .ThenBy(r => r.CreatedAt)
             .ToList();
     }
+
+    /// <summary>
+    /// Hands one member's medical conditions to a MedicalDataViewer and records who looked (the IBAN reveal pattern).
+    /// The text never renders in a page: the badge in <c>_VolunteerProfileBadges</c> posts here and shows the answer.
+    /// </summary>
+    [HttpPost("Medical/{userId:guid}/Reveal")]
+    [Authorize(Policy = PolicyNames.MedicalDataViewer)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevealMedical(Guid userId, CancellationToken ct)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Forbid();
+
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        var text = info?.Profile?.MedicalConditions;
+        if (info is null || string.IsNullOrEmpty(text)) return NotFound();
+
+        // Entity "User" + the subject's id is what the member's own medical page lists.
+        await auditLogService.LogAsync(
+            AuditAction.MedicalConditionsRevealed, "User", info.Id,
+            $"Medical conditions revealed for user {info.Id}", actorUserId);
+        return Json(new { text });
+    }
 }
 
 internal sealed record OrphanSignupRow(

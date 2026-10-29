@@ -43,15 +43,15 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         _audit = audit;
     }
 
-    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, Guid? exportActorUserId = null, CancellationToken ct = default)
+    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
     {
         var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         var roster = await BuildWeeklyRosterAsync(
             burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
-        if (exportActorUserId is { } actor)
-            await _audit.LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
-                $"Weekly Cantina roster exported: {roster.People.Count} people rows, week of {roster.WeekStartDate.ToInvariantDate() ?? "no active event"}",
-                actor).ConfigureAwait(false);
+        if (disclosure is not null)
+            await _audit.LogAsync(disclosure.Action, "EventSettings", burn?.Id ?? Guid.Empty,
+                $"Weekly Cantina roster {disclosure.Verb}: {roster.People.Count} people rows, week of {roster.WeekStartDate.ToInvariantDate() ?? "no active event"}",
+                disclosure.ActorUserId).ConfigureAwait(false);
         return roster;
     }
 
@@ -169,15 +169,15 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             ? Period.Between(burn.GateOpeningDate, today, PeriodUnits.Days).Days
             : 0;
 
-    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, Guid? exportActorUserId = null, CancellationToken ct = default)
+    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
     {
         var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
         var matrix = await BuildDailyRosterAsync(
             burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
-        if (exportActorUserId is { } actor)
-            await _audit.LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
-                $"Daily Cantina roster exported: {matrix.People.Count} people rows, day {matrix.CalendarDate.ToInvariantDate() ?? "no active event"}",
-                actor).ConfigureAwait(false);
+        if (disclosure is not null)
+            await _audit.LogAsync(disclosure.Action, "EventSettings", burn?.Id ?? Guid.Empty,
+                $"Daily Cantina roster {disclosure.Verb}: {matrix.People.Count} people rows, day {matrix.CalendarDate.ToInvariantDate() ?? "no active event"}",
+                disclosure.ActorUserId).ConfigureAwait(false);
         return matrix;
     }
 

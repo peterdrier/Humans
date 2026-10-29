@@ -205,7 +205,8 @@ Selected routes:
 | `POST /Teams/{slug}/Shifts/Signups/{signupId}/Refuse` | Refuse signup |
 | `POST /Teams/{slug}/Shifts/Signups/{signupId}/NoShow` | Mark no-show |
 | `POST /Teams/{slug}/Shifts/Signups/{signupId}/Remove` | Remove (coordinator unassign) |
-| `GET /Teams/{slug}/Shifts/SearchVolunteers` | Volunteer search for voluntell |
+| `GET /Teams/{slug}/Shifts/SearchVolunteers` | Volunteer search for voluntell (never carries medical text) |
+| `POST /Shifts/Medical/{userId}/Reveal` | `MedicalDataViewer`; audited reveal of one volunteer's medical conditions, returned as JSON for the badge |
 | `POST /Teams/{slug}/Shifts/Voluntell` | Voluntell single shift |
 | `POST /Teams/{slug}/Shifts/VoluntellRange` | Voluntell range |
 | `GET /Teams/{slug}/Shifts/Tags/Search` | Tag autocomplete |
@@ -233,8 +234,9 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 | Department coordinator | Manage rotas and shifts for their department and all sub-teams. Approve, refuse, and bail signups. Voluntell humans (single or range) on their own department's shifts. Mark no-show. Remove confirmed signups. Manage rota tags. View volunteer event profiles (except medical data). View the cross-department shift dashboard, but the coordinator-activity panel and the per-shift voluntell action on it remain gated to ShiftsAdmin/Admin/ShiftsNoInfo |
 | Sub-team manager | Manage rotas and shifts for their sub-team only. Approve, refuse, and bail signups on their sub-team. Voluntell humans on their own sub-team's shifts. Cannot manage sibling sub-teams or the parent department. View the cross-department shift dashboard with the same privileged-panel restrictions as a department coordinator |
 | ShiftsAdmin | All coordinator capabilities across all departments (rotas, shifts, signups, voluntell, no-show, remove). Move rotas between departments. Access the cross-department shift dashboard including the coordinator-activity panel and per-shift voluntell action. Cannot view medical data |
-| ShiftsNoInfo | Approve, refuse, and bail signups across all departments. Voluntell humans. Mark no-show. Remove confirmed signups. View volunteer medical data. Access the cross-department shift dashboard including the privileged sub-panels. **Cannot create or edit rotas or shifts** (management is gated to Admin/ShiftsAdmin + dept coordinators) |
-| Admin | All ShiftsNoInfo capabilities plus full rota/shift management system-wide. Manage event settings (dates, timezone, early-entry capacity, barrios EE allocation, early-entry close, global volunteer cap, reminder lead time, shift browsing toggle). View medical data |
+| ShiftsNoInfo | Approve, refuse, and bail signups across all departments. Voluntell humans. Mark no-show. Remove confirmed signups. Reveal volunteer medical data (audited, per person). Access the cross-department shift dashboard including the privileged sub-panels. **Cannot create or edit rotas or shifts** (management is gated to Admin/ShiftsAdmin + dept coordinators) |
+| Admin | All ShiftsNoInfo capabilities plus full rota/shift management system-wide. Manage event settings (dates, timezone, early-entry capacity, barrios EE allocation, early-entry close, global volunteer cap, reminder lead time, shift browsing toggle). Reveal medical data |
+| Board | Reveal volunteer medical data (`MedicalDataViewer`) on any page they can already reach; nothing else in this section |
 
 ## Invariants
 
@@ -304,7 +306,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - A rota may only be **moved** to a top-level department: the target must exist, have no `ParentTeamId`, not be a system team, and not already own the rota. Each rejection returns a `RotaMoveResult.Failure` with its own message and writes no audit entry.
 - Shift create, update and both bulk-generation paths require `MinVolunteers ≥ 0`, `MaxVolunteers ≥ 1` and minimum ≤ maximum. Timed durations must be positive and finite; all-day durations remain ignored. Invalid inputs return an operator refusal before changing rows or generating any shifts.
 - Bulk build/strike staffing generation is **additive**: day offsets that already have a shift on the rota are skipped rather than updated, so re-submitting the grid never clobbers existing staffing. When the same day appears twice in one submission the last entry wins.
-- Medical data is now a `Profile` field (Users section), present on the cached `UserInfo`. It is restricted to Admin and ShiftsNoInfo (`MedicalDataViewer` policy / `ShiftsRoles.CanViewMedical`) and **gated at every render/serialize surface** (volunteer search, the volunteer badges partial), not stripped at a service. `IShiftManagement.GetShiftProfileAsync` no longer carries medical (it returns only Skills/Quirks/Languages).
+- Medical data is a `Profile` field (Users section), present on the cached `UserInfo`. It never renders or serializes on a page: the volunteer badges partial shows a **Medical** button only to `MedicalDataViewer` holders (Admin, Board, ShiftsNoInfo; `ShiftsRoles.CanViewMedical`) and only when text exists, the click posts to `POST /Shifts/Medical/{userId}/Reveal`, and the controller records `MedicalConditionsRevealed` (entity `User`, actor) before returning the text. The volunteer search projection carries no medical field for anyone (`ShiftVolunteerSearchBuilderTests.SearchRows_NeverCarryMedicalConditions`). The member sees every reveal on `/Profile/Me/Medical`. `IShiftManagement.GetShiftProfileAsync` no longer carries medical (it returns only Skills/Quirks/Languages).
 - When shift browsing is closed (`IsShiftBrowsingOpen = false`), regular volunteers can only see shifts if they already have signups (`hasSignups = true`). Coordinators and privileged roles can always browse. Sign-up and range sign-up are also gated by this flag.
 - `GET /Shifts/Dashboard` carries request cancellation through page composition, urgent-shift reads, staffing charts, overview, coordinator activity, trends, and department choices, including their repository and cross-section reads. The post-event statistics and dashboard volunteer search GETs also forward request cancellation through their calendar and data reads; cancelled searches propagate without a failure response or log. Aborted cold metric loads propagate cancellation without caching partial results; the member dashboard urgency card also propagates an aborted read.
 - Day toggles reject HTTP redirects and retain the displayed row with localized failure feedback. Only the endpoint’s explicit `X-Redirect` header navigates; account-status pages cannot replace a shift row.
@@ -367,8 +369,9 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Department coordinators **cannot** manage rotas or approve signups outside their own department.
 - Sub-team managers **cannot** manage rotas or approve signups outside their own sub-team (not siblings, not parent department).
 - Department coordinators **cannot** view volunteer medical data.
-- ShiftsNoInfo **cannot** create or edit rotas or shifts (management gates to Admin/ShiftsAdmin + dept coordinators). They can manage signups (approve, refuse, bail, voluntell, mark no-show, remove) and view medical data.
+- ShiftsNoInfo **cannot** create or edit rotas or shifts (management gates to Admin/ShiftsAdmin + dept coordinators). They can manage signups (approve, refuse, bail, voluntell, mark no-show, remove) and reveal medical data.
 - ShiftsAdmin **cannot** view volunteer medical data.
+- Nobody **can** read medical conditions without an audit entry: the text is absent from page HTML and search JSON and comes back only from the reveal POST, which audits first (`ShiftsControllerRevealMedicalTests`).
 
 ## Triggers
 

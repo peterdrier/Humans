@@ -49,7 +49,7 @@ public class AuthorizationPillFilter(RoleCatalog catalog) : IActionFilter
         [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin, TeamCoordinatorPillLabel],
         [PolicyNames.PrivilegedSignupApprover] = [RoleNames.Admin, ShiftsRoles.ShiftsNoInfo],
         [PolicyNames.VolunteerManager] = [RoleNames.Admin, ShiftsRoles.ShiftsAdmin],
-        [PolicyNames.MedicalDataViewer] = [RoleNames.Admin, ShiftsRoles.ShiftsNoInfo],
+        [PolicyNames.MedicalDataViewer] = [RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo],
     };
 
     public void OnActionExecuting(ActionExecutingContext context)
