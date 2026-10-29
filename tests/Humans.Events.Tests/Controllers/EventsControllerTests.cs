@@ -250,6 +250,30 @@ public class EventsControllerTests
     [Xunit.InlineData("AdminCamp", "validBlankRank")]
     [Xunit.InlineData("AdminCamp", "validFalse")]
     [Xunit.InlineData("AdminCamp", "validTrue")]
+    [Xunit.InlineData("Create", "invalidTimeNegative")]
+    [Xunit.InlineData("Create", "invalidTimeDays")]
+    [Xunit.InlineData("Create", "invalidTimeOverflow")]
+    [Xunit.InlineData("Create", "validLastMinute")]
+    [Xunit.InlineData("Update", "invalidTimeNegative")]
+    [Xunit.InlineData("Update", "invalidTimeDays")]
+    [Xunit.InlineData("Update", "invalidTimeOverflow")]
+    [Xunit.InlineData("Update", "validLastMinute")]
+    [Xunit.InlineData("BarrioCreate", "invalidTimeNegative")]
+    [Xunit.InlineData("BarrioCreate", "invalidTimeDays")]
+    [Xunit.InlineData("BarrioCreate", "invalidTimeOverflow")]
+    [Xunit.InlineData("BarrioCreate", "validLastMinute")]
+    [Xunit.InlineData("BarrioUpdate", "invalidTimeNegative")]
+    [Xunit.InlineData("BarrioUpdate", "invalidTimeDays")]
+    [Xunit.InlineData("BarrioUpdate", "invalidTimeOverflow")]
+    [Xunit.InlineData("BarrioUpdate", "validLastMinute")]
+    [Xunit.InlineData("AdminIndividual", "invalidTimeNegative")]
+    [Xunit.InlineData("AdminIndividual", "invalidTimeDays")]
+    [Xunit.InlineData("AdminIndividual", "invalidTimeOverflow")]
+    [Xunit.InlineData("AdminIndividual", "validLastMinute")]
+    [Xunit.InlineData("AdminCamp", "invalidTimeNegative")]
+    [Xunit.InlineData("AdminCamp", "invalidTimeDays")]
+    [Xunit.InlineData("AdminCamp", "invalidTimeOverflow")]
+    [Xunit.InlineData("AdminCamp", "validLastMinute")]
     public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
     {
         var userId = Guid.NewGuid();
@@ -308,6 +332,17 @@ public class EventsControllerTests
         fields.Remove(isCamp ? "IsAllDay" : "PriorityRank");
         if (string.Equals(scenario, "validBlankRank", StringComparison.Ordinal)) fields["PriorityRank"] = "";
         if (!valid) fields.Remove(scenario);
+        if (scenario.StartsWith("invalidTime", StringComparison.Ordinal)
+            || string.Equals(scenario, "validLastMinute", StringComparison.Ordinal))
+        {
+            fields["StartTime"] = scenario switch
+            {
+                "invalidTimeNegative" => "-01:00:00",
+                "invalidTimeDays" => "1.00:00:00",
+                "invalidTimeOverflow" => "10675199.02:48:05.4775807",
+                _ => "23:59"
+            };
+        }
         var type = isModerator ? typeof(AdminEventFormViewModel)
             : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -336,7 +371,17 @@ public class EventsControllerTests
         if (!valid)
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-            controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            if (scenario.StartsWith("invalidTime", StringComparison.Ordinal))
+            {
+                var errors = controller.ModelState["StartTime"]!.Errors;
+                errors.Should().HaveCount(2);
+                errors[0].ErrorMessage.Should().Contain(fields["StartTime"].ToString());
+                errors[1].ErrorMessage.Should().Contain("StartTime");
+            }
+            else
+            {
+                controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            }
             writes.Should().BeEmpty();
         }
         else
@@ -359,8 +404,10 @@ public class EventsControllerTests
                 saved.PriorityRank.Should().Be(expectedRank);
             }
             saved.DurationMinutes.Should().Be(checkedChoices && !isCamp ? 1440 : 60);
-            saved.StartAt.Should().Be(new LocalDate(2026, 8, 1)
-                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+            var expectedTime = string.Equals(scenario, "validLastMinute", StringComparison.Ordinal)
+                ? new LocalTime(23, 59) : LocalTime.Midnight;
+            saved.StartAt.Should().Be(new LocalDate(2026, 8, 1).At(expectedTime)
+                .InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
         }
     }
 

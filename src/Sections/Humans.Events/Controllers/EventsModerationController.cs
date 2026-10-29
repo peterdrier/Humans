@@ -152,7 +152,7 @@ internal sealed class EventsModerationController(
             CategoryId = guideEvent.CategoryId,
             VenueId = guideEvent.GuideSharedVenueId,
             StartDate = localStart.Date,
-            StartTime = localStart.TimeOfDay,
+            StartTime = TimeOnly.FromDateTime(localStart),
             IsAllDay = guideEvent.IsAllDay,
             DurationMinutes = guideEvent.DurationMinutes,
             LocationNote = guideEvent.LocationNote,
@@ -277,7 +277,7 @@ internal sealed class EventsModerationController(
     private static EventEdit BuildEdit(AdminEventFormViewModel model, bool isCampEvent, DateTimeZone? tz)
     {
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
-            !isCampEvent && model.IsAllDay, model.StartTime, model.DurationMinutes);
+            !isCampEvent && model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
         return new EventEdit(
             model.CategoryId,
             isCampEvent ? null : model.VenueId,

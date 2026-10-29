@@ -93,7 +93,7 @@ internal sealed class IndividualEventFormViewModel
     [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Start Time")]
     [BindRequired]
-    public TimeSpan StartTime { get; set; }
+    public TimeOnly StartTime { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
     [Range(15, 1440, ErrorMessage = "Validation_Range")]

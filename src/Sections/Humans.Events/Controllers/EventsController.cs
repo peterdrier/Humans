@@ -160,7 +160,7 @@ internal sealed class EventsController(
 
         var tz = GetTimeZone(eventSettings);
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
-            model.IsAllDay, model.StartTime, model.DurationMinutes);
+            model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
         var guideEvent = new Event
         {
@@ -231,7 +231,7 @@ internal sealed class EventsController(
         model.CategoryId = guideEvent.CategoryId;
         model.VenueId = guideEvent.GuideSharedVenueId ?? Guid.Empty;
         model.StartDate = localStart.Date;
-        model.StartTime = localStart.TimeOfDay;
+        model.StartTime = TimeOnly.FromDateTime(localStart);
         model.IsAllDay = guideEvent.IsAllDay;
         model.DurationMinutes = guideEvent.DurationMinutes;
         model.LocationNote = guideEvent.LocationNote;
@@ -274,7 +274,7 @@ internal sealed class EventsController(
 
         var tz = GetTimeZone(eventSettings);
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
-            model.IsAllDay, model.StartTime, model.DurationMinutes);
+            model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
         var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
             model.CategoryId, model.VenueId, model.Title, model.Description,
@@ -596,7 +596,7 @@ internal sealed class EventsController(
             Description = model.Description,
             LocationNote = model.LocationNote,
             Host = model.Host,
-            StartAt = ToInstant(model.StartDate.Add(model.StartTime), tz),
+            StartAt = ToInstant(model.StartDate.Add(model.StartTime.ToTimeSpan()), tz),
             DurationMinutes = model.DurationMinutes,
             IsRecurring = model.IsRecurring,
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
@@ -656,7 +656,7 @@ internal sealed class EventsController(
         model.Description = guideEvent.Description;
         model.CategoryId = guideEvent.CategoryId;
         model.StartDate = localStart.Date;
-        model.StartTime = localStart.TimeOfDay;
+        model.StartTime = TimeOnly.FromDateTime(localStart);
         model.DurationMinutes = guideEvent.DurationMinutes;
         model.LocationNote = guideEvent.LocationNote;
         model.Host = guideEvent.Host;
@@ -704,7 +704,7 @@ internal sealed class EventsController(
         var tz = GetTimeZone(eventSettings);
         var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
             model.CategoryId, VenueId: null, model.Title, model.Description,
-            ToInstant(model.StartDate.Add(model.StartTime), tz), model.DurationMinutes,
+            ToInstant(model.StartDate.Add(model.StartTime.ToTimeSpan()), tz), model.DurationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, model.PriorityRank));
         if (result.ErrorKey is { } errorKey)
         {

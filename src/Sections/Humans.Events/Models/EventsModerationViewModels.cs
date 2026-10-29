@@ -125,7 +125,7 @@ internal sealed class AdminEventFormViewModel
     [Required]
     [Display(Name = "Start Time")]
     [BindRequired]
-    public TimeSpan StartTime { get; set; }
+    public TimeOnly StartTime { get; set; }
 
     [Required]
     [Range(15, 1440)]
