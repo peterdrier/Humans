@@ -11,10 +11,10 @@ using Humans.Users.Contracts;
 namespace Humans.Shifts.Models;
 
 /// <summary>
-/// Shifts-owned knobs only. The app-wide calendar (name, dates, offsets, early entry) is Settings', edited at
-/// <c>/Settings#event</c>.
+/// Shifts-owned knobs and build sub-period starts. The app-wide calendar (name, dates, build/event/strike
+/// offsets, early entry) is Settings', edited at <c>/Settings#event</c>.
 /// </summary>
-internal sealed class EventSettingsViewModel
+internal sealed class EventSettingsViewModel : IValidatableObject
 {
     [BindRequired]
     public bool IsShiftBrowsingOpen { get; set; }
@@ -22,6 +22,34 @@ internal sealed class EventSettingsViewModel
     public int? GlobalVolunteerCap { get; set; }
     [BindRequired]
     public int ReminderLeadTimeHours { get; set; } = 24;
+
+    [BindRequired]
+    public int FirstCrewStartOffset { get; set; } = -25;
+    [BindRequired]
+    public int SetupWeekStartOffset { get; set; } = -16;
+    [BindRequired]
+    public int PreEventWeekStartOffset { get; set; } = -9;
+    [BindRequired]
+    public int FinishingWeekendStartOffset { get; set; } = -4;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FirstCrewStartOffset < -365
+            || FirstCrewStartOffset >= SetupWeekStartOffset
+            || SetupWeekStartOffset >= PreEventWeekStartOffset
+            || PreEventWeekStartOffset >= FinishingWeekendStartOffset
+            || FinishingWeekendStartOffset >= 0)
+        {
+            yield return new ValidationResult(
+                "Build sub-period starts must be strictly ascending, within a year before gate opening: -365 ≤ First crew < Set-up week < Pre-event week < Finishing weekend < 0.",
+                [
+                    nameof(FirstCrewStartOffset),
+                    nameof(SetupWeekStartOffset),
+                    nameof(PreEventWeekStartOffset),
+                    nameof(FinishingWeekendStartOffset)
+                ]);
+        }
+    }
 }
 
 internal class CreateRotaModel

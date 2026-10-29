@@ -505,4 +505,37 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>());
     }
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_RefusedAdd_SkipsThatUserAndContinues()
+    {
+        var refused = Guid.NewGuid();
+        var ok = Guid.NewGuid();
+        AddInfo(MakeInfo(refused, identityEmailColumn: "refused@x.com"));
+        AddInfo(MakeInfo(ok, identityEmailColumn: "ok@x.com"));
+        _userEmailService.AddVerifiedEmailAsync(refused, "refused@x.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.Empty, false, false, ErrorKey: "Users_EmailUpdate_AccountUnavailable"));
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle().Which.Should().Be((ok, "ok@x.com"));
+        await _audit.DidNotReceive().LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), refused,
+            Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_MergedSentinelColumnBehindVerifiedRow_SkipsUser()
+    {
+        var userId = Guid.NewGuid();
+        AddInfo(MakeInfo(userId, identityEmailColumn: $"{userId:N}@merged.local", emails:
+        [
+            Email(userId, "real@x.com", isVerified: true, isPrimary: true)
+        ]));
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEmpty();
+        await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 }

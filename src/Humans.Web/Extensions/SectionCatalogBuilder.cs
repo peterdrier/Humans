@@ -86,8 +86,7 @@ internal static class SectionCatalogBuilder
             Repositories = [.. Named(own, t => Marker<IRepository>(t))],
             HasContracts = contracts is not null
                            || own.Any(t => t.IsPublic && string.Equals(t.Namespace, $"Humans.{shipped.Name}.Contracts", StringComparison.Ordinal)),
-            HasResources = own.Any(t => t is { IsClass: true, IsAbstract: false, IsPublic: true }
-                                        && t.Name.EndsWith("Resource", StringComparison.Ordinal)),
+            ResourceType = own.SingleOrDefault(t => SectionDiscoveryExtensions.IsResourceMarker(t, shipped.Name)),
             Annotations = [.. annotations[shipped.Name].OrderBy(a => a.Facet, StringComparer.Ordinal)]
         };
     }

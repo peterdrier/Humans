@@ -346,6 +346,92 @@ public class StripeServiceContractTests
         }
     }
 
+    private const string PermissionErrorBody =
+        """{"error":{"type":"invalid_request_error","code":"permission_error","message":"key lacks scope"}}""";
+
+    private static StripeService Answering(StripeSettings settings, HttpStatusCode status, string body)
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(status, headers.Headers, body));
+        return new StripeService(Options.Create(settings), new CapturingLogger<StripeService>(), http);
+    }
+
+    [HumansFact]
+    public async Task Reads_return_null_when_the_key_lacks_the_scope()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var tickets = Answering(new StripeSettings { TicketsKey = "rk_test_t" }, HttpStatusCode.Forbidden, PermissionErrorBody);
+        var store = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.Forbidden, PermissionErrorBody);
+
+        (await tickets.GetPaymentDetailsAsync("pi_x", ct)).Should().BeNull();
+        (await store.ListStoreCheckoutSessionsAsync(ct)).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(HttpStatusCode.Unauthorized, "authentication_error")]
+    [InlineData(HttpStatusCode.TooManyRequests, "rate_limit_error")]
+    [InlineData(HttpStatusCode.InternalServerError, "api_error")]
+    public async Task Reads_and_the_write_propagate_every_other_stripe_failure(HttpStatusCode status, string type)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var body = $$$"""{"error":{"type":"{{{type}}}","message":"boom"}}""";
+        var settings = new StripeSettings { TicketsKey = "rk_test_t", StoreKey = "rk_test_s" };
+
+        var paymentDetails = () => Answering(settings, status, body).GetPaymentDetailsAsync("pi_x", ct);
+        var list = () => Answering(settings, status, body).ListStoreCheckoutSessionsAsync(ct);
+        var create = () => Answering(settings, status, body).CreateCheckoutSessionAsync(
+            Guid.NewGuid(), 10m, "https://x/ok", "https://x/no", null, "Order", ct);
+
+        await paymentDetails.Should().ThrowAsync<StripeException>();
+        await list.Should().ThrowAsync<StripeException>();
+        await create.Should().ThrowAsync<StripeException>();
+    }
+
+    [HumansFact]
+    public async Task CreateCheckoutSession_rethrows_a_permission_error()
+    {
+        var svc = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.Forbidden, PermissionErrorBody);
+
+        var act = () => svc.CreateCheckoutSessionAsync(
+            Guid.NewGuid(), 10m, "https://x/ok", "https://x/no", null, "Order", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<StripeException>();
+    }
+
+    [HumansFact]
+    public async Task PaymentDetails_returns_null_when_the_intent_has_no_charge()
+    {
+        var svc = Answering(new StripeSettings { TicketsKey = "rk_test_t" }, HttpStatusCode.OK,
+            """{"id":"pi_none","object":"payment_intent","latest_charge":null}""");
+
+        (await svc.GetPaymentDetailsAsync("pi_none", TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ListStoreCheckoutSessions_rejects_the_whole_list_when_one_session_is_not_euro()
+    {
+        var svc = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.OK, """
+            {"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[
+              {"id":"cs_eur","object":"checkout.session","currency":"eur","amount_total":1000,"created":1750000000},
+              {"id":"cs_usd","object":"checkout.session","currency":"usd","amount_total":1000,"created":1750000000}]}
+            """);
+
+        var act = () => svc.ListStoreCheckoutSessionsAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*EUR*");
+    }
+
+    [HumansFact]
+    public async Task ListStoreCheckoutSessions_returns_an_empty_list_when_stripe_holds_none()
+    {
+        var svc = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.OK,
+            """{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}""");
+
+        (await svc.ListStoreCheckoutSessionsAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
     private static string SessionPayload(
         string eventType, Guid? orderId = null, string? metadataJson = null)
     {

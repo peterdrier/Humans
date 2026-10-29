@@ -1,13 +1,15 @@
-using Humans.Base.Interfaces;
-using Humans.Gdpr.Contracts;
+using Humans.Base.Authorization;
 using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Issues.Authorization;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
-using Humans.Issues.Authorization;
 using Humans.Issues.Jobs;
 using Humans.Issues.Services;
+using Humans.Issues.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +19,7 @@ namespace Humans.Issues;
 /// <summary>
 /// Issue reads, including per-viewer actionable counts, query the repository directly.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -38,5 +40,21 @@ public sealed class Section : ISection
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         services.AddScoped<CleanupIssuesJob>();
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Issues", [
+            new("Issues", "Issues", "Index", null, null, "fa-solid fa-bug", PolicyNames.AnyAdminRole, Weight: 0)
+        ])
+    ];
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.UserMenu, typeof(IssuesUserMenuViewComponent))];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "issues-cleanup", typeof(CleanupIssuesJob), "0 5 * * *");
     }
 }

@@ -5,7 +5,7 @@
 @using Humans.Tickets.Contracts
 @using Humans.Base.Enums
 @* Widgets of sections this page doesn't otherwise reference render through the ChromeSlots.WidgetGallery chrome
-   slot: each section contributes its sample cards through its SectionChrome. *@
+   slot: each section contributes its sample cards through its Section (ISectionChrome). *@
 @{
     ViewData["Title"] = "Widget Gallery";
 }
@@ -290,7 +290,7 @@
                 <div class="wg-card-note" style="margin-bottom: 1.5rem;">
                     The cards below render through one shared chrome slot — <code>ChromeSlots.WidgetGallery</code>
                     (see <code>&lt;vc:chrome-slot&gt;</code> under <a href="#layout">Layout Bits</a>). Each owning
-                    section contributes its own sample(s) via its existing <code>SectionChrome</code>
+                    section contributes its own sample(s) via its existing <code>ISectionChrome</code> contribution
                     (<code>ISectionChrome</code>): Users (<code>&lt;vc:profile-card&gt;</code>,
                     <code>_ProfileCard</code>/<code>_HumanPopover</code>, <code>&lt;vc:human-summary&gt;</code>,
                     and GoogleIntegration's <code>&lt;vc:nobodies-email-badge&gt;</code>), Email

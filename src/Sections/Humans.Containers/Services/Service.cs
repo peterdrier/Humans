@@ -28,6 +28,7 @@ internal sealed class Service(
     private const long MaxImageBytes = 10 * 1024 * 1024;
     private const int MaxImagesPerContainer = 5;
     private const int MaxImageFileNameLength = 256;
+    private const int MaxPlacementNotesLength = 5000;
 
     public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {
@@ -306,6 +307,9 @@ internal sealed class Service(
         Guid actorUserId,
         CancellationToken ct = default)
     {
+        if (notes is { Length: > MaxPlacementNotesLength } && !string.IsNullOrWhiteSpace(notes))
+            return new(null, "Containers_Error_PlacementNotesLength", [MaxPlacementNotesLength]);
+
         if (ValidateImage(image) is { } imageError) return imageError.ToResult<ContainerPlacementDto>();
 
         var placement = await repo.GetPlacementAsync(containerId, year, ct);

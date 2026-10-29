@@ -285,7 +285,7 @@ Surveys becomes generically self-service with an approval gate; it never referen
 
 ## 13. Reporting rhythm and the daily job
 
-One Hangfire job (`SectionJobs` seam), daily, Active groups only. Every action it takes writes a log entry, an audit entry, and a notification:
+One Hangfire job (`ISectionJobs` seam), daily, Active groups only. Every action it takes writes a log entry, an audit entry, and a notification:
 
 | Condition | Action |
 |-----------|--------|

@@ -344,7 +344,7 @@ public sealed class WorkspaceIdentityServiceTests
     {
         Seed(new Addr("a@example.org", Primary: true, Google: true));
         var services = new ServiceCollection().AddSingleton<IWorkspaceIdentityManagement>(_sut).BuildServiceProvider();
-        var migration = new SectionDataMigrations().Migrations().Should().ContainSingle().Subject;
+        var migration = ((ISectionDataMigrations)new Section()).Migrations().Should().ContainSingle().Subject;
 
         migration.Key.Should().Be("google.workspace-identities");
         (await migration.Status(services, Ct)).Pending.Should().Be(1);
@@ -482,7 +482,7 @@ public sealed class WorkspaceIdentityServiceTests
     [HumansFact]
     public void UserParts_ContributeTheCardsToTheAdminDetailSidebar()
     {
-        IUserPart contribution = new SectionUserParts();
+        IUserPart contribution = ((IUserPart)new Section());
 
         contribution.Parts().Should().ContainSingle().Which.Slot.Should().Be(UserPartSlots.AdminDetailSidebar);
     }

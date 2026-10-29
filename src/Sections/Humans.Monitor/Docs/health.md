@@ -36,7 +36,7 @@ this project.
 - `Services/DriveActivityMonitorService.cs` — the scan: walk the resource set, decide whether
   the marker advances, turn an activity event into a sentence. People-id resolution is its
   own nested class, `PersonNameResolver`, because its caches are per-run state.
-- `Jobs/DriveActivityMonitorJob.cs` and `SectionJobs.cs` — the hourly trigger, its metric
+- `Jobs/DriveActivityMonitorJob.cs` and `Section.cs` — the hourly trigger, its metric
   and its schedule.
 - `Controllers/MonitorController.cs` — the manual trigger: dispatch, banner, redirect to the
   filtered audit log. No views.
@@ -97,7 +97,7 @@ None.
   The scan is its own section because it is a distinct read model with its own job, not part
   of the audit log it writes to.
 - **`DriveActivityMonitorJob` is `public`.** HUM0034 allows a section's public types under
-  `Jobs/`; `Section.cs` and `SectionJobs.cs` name the type.
+  `Jobs/`; `Section.cs` and `Section.cs` name the type.
 - **The scan reads Users through `IUserService.GetAllUserInfosAsync`**, the whole user
   set, lazily, once per run, and only when the Directory connector could not resolve a
   people-id.

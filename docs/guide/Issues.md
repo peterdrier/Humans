@@ -5,7 +5,7 @@
   src/Sections/Humans.Issues/Data/Configurations/**
   src/Sections/Humans.Issues/Views/**
   src/Sections/Humans.Issues/Models/**
-  src/Sections/Humans.Issues/SectionJobs.cs
+  src/Sections/Humans.Issues/Section.cs
   src/Sections/*/Section.cs
 -->
 <!-- freshness:flag-on-change

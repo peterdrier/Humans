@@ -347,7 +347,7 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 
 ## Background job
 
-The section's `SectionJobs`: one nightly job (`PreapprovalRemindersJob`, 05:00), `preapprovals-reminders`, which **sends** the
+The section's `ISectionJobs`: one nightly job (`PreapprovalRemindersJob`, 05:00), `preapprovals-reminders`, which **sends** the
 14-day and 3-day reminders to `Open` grant holders and records each send in
 `pre_reminders_sent` (GrantId, Kind `D14` | `D3`, ClaimBy, SentAt; PK GrantId + Kind + ClaimBy). The in-app
 notification, the email outbox row, the marker and one audit entry

@@ -48,7 +48,7 @@ None. Guide owns no database tables. All content is fetched from GitHub and cach
 | GET | `/Guide/{name}` | `GuideController.Document` → renders named stem | `[AllowAnonymous]` |
 | POST | `/Guide/Refresh` | `GuideController.Refresh` → re-fetches every stem in `GuideFiles.All` | `[Authorize(AdminOnly)]` |
 
-Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cache returns 503 (`Unavailable.cshtml`).
+Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cache returns 503 (`Unavailable.cshtml`). Both public fallback pages use shared error/navigation resources in all six UI cultures. The 404 links to Guide home; the 503 links to app home so recovery does not repeat the failed content fetch.
 
 ## Actors & Roles
 
@@ -64,6 +64,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Invariants
 
+- Public page titles, sidebar headings and links, and navigation accessibility labels follow the current UI culture in all six supported languages. They use Guide resources and existing shared section labels. Authored Markdown and canonical route/cache stems remain unchanged; refresh controls remain admin-only.
 - All content above the first `## As a …` heading in a file is always visible regardless of role.
 - All content at or below a non-`As a …` `##` heading (e.g. `## Related sections`) is always visible.
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.
@@ -98,15 +99,15 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - **Teams**: `GuideRoleResolver` calls `ITeamService.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampService.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
-- **Base (inward, publishing)**: `SectionAnnotations` (`ISectionAnnotations`) publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
-- **Base (inward, publishing)**: `SectionNav` (`ISectionNav`) contributes a single `Guide` item to the member top nav, with no `Visible` predicate — `/Guide` is `[AllowAnonymous]`, so the link is the anonymous reader's way in.
+- **Base (inward, publishing)**: `ISectionAnnotations` (`ISectionAnnotations`) publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
+- **Base (inward, publishing)**: `ISectionNav` (`ISectionNav`) contributes a single `Guide` item to the member top nav, with no `Visible` predicate — `/Guide` is `[AllowAnonymous]`, so the link is the anonymous reader's way in.
 - **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
 
 **Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter` (static), `GuideFilter` (static), `GuideRolePrivilegeMap` (static) — all `internal` in `Humans.Guide.Services`
 **Owned tables:** None — orchestrator over the Base GitHub content source + `IMemoryCache`
-**Status:** (A) Migrated — `src/Sections/Humans.Guide` (nobodies-collective/Humans#866, G5). No repository and no `DbContext` (no tables), no `Resources/` set (no localized copy), and `Contracts/` is an empty folder: nothing outside the section reads a guide page.
+**Status:** (A) Migrated — `src/Sections/Humans.Guide` (nobodies-collective/Humans#866, G5). No repository and no `DbContext` (no tables), `GuideResource` owns localized navigation copy (fallback pages reuse Base’s shared resources), and `Contracts/` is an empty folder: nothing outside the section reads a guide page.
 
 #### Accepted deviations
 

@@ -1,16 +1,17 @@
-using Humans.Users.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Filters;
 using Humans.Backdoor.Services;
+using Humans.Base.Authorization;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Gdpr.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Backdoor;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -25,4 +26,11 @@ public sealed class Section : ISection
         // [ServiceFilter] resolves the filter from the container, so it must be registered.
         services.AddScoped<BackdoorApiKeyAuthFilter>();
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Backdoor", [
+            new("API keys", "Backdoor", "Index", null, null, "fa-solid fa-key", PolicyNames.BoardOrAdmin)
+        ])
+    ];
 }

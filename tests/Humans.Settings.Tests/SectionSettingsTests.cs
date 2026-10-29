@@ -1,3 +1,5 @@
+using Humans.Settings.Contracts;
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 
 namespace Humans.Settings.Tests;
@@ -12,7 +14,7 @@ public sealed class SectionSettingsTests
     [HumansFact]
     public void Tabs_ReturnsTheEventTabWithNoPolicy()
     {
-        var tabs = new SectionSettings().Tabs().ToList();
+        var tabs = ((ISectionSettings)new Section()).Tabs().ToList();
 
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("event");

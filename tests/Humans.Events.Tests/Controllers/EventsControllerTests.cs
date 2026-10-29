@@ -46,6 +46,12 @@ public class EventsControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EventsResource> _localizer = Substitute.For<IStringLocalizer<EventsResource>>();
 
+    public EventsControllerTests()
+    {
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
+        _guide.UpdateAndResubmitAsync(Arg.Any<Guid>(), Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
+    }
+
     [HumansTheory]
     [Xunit.InlineData("SubmissionOpenAt", "0")]
     [Xunit.InlineData("SubmissionCloseAt", "0")]
@@ -244,6 +250,69 @@ public class EventsControllerTests
     [Xunit.InlineData("AdminCamp", "validBlankRank")]
     [Xunit.InlineData("AdminCamp", "validFalse")]
     [Xunit.InlineData("AdminCamp", "validTrue")]
+    [Xunit.InlineData("Create", "invalidTimeNegative")]
+    [Xunit.InlineData("Create", "invalidTimeDays")]
+    [Xunit.InlineData("Create", "invalidTimeOverflow")]
+    [Xunit.InlineData("Create", "validLastMinute")]
+    [Xunit.InlineData("Update", "invalidTimeNegative")]
+    [Xunit.InlineData("Update", "invalidTimeDays")]
+    [Xunit.InlineData("Update", "invalidTimeOverflow")]
+    [Xunit.InlineData("Update", "validLastMinute")]
+    [Xunit.InlineData("BarrioCreate", "invalidTimeNegative")]
+    [Xunit.InlineData("BarrioCreate", "invalidTimeDays")]
+    [Xunit.InlineData("BarrioCreate", "invalidTimeOverflow")]
+    [Xunit.InlineData("BarrioCreate", "validLastMinute")]
+    [Xunit.InlineData("BarrioUpdate", "invalidTimeNegative")]
+    [Xunit.InlineData("BarrioUpdate", "invalidTimeDays")]
+    [Xunit.InlineData("BarrioUpdate", "invalidTimeOverflow")]
+    [Xunit.InlineData("BarrioUpdate", "validLastMinute")]
+    [Xunit.InlineData("AdminIndividual", "invalidTimeNegative")]
+    [Xunit.InlineData("AdminIndividual", "invalidTimeDays")]
+    [Xunit.InlineData("AdminIndividual", "invalidTimeOverflow")]
+    [Xunit.InlineData("AdminIndividual", "validLastMinute")]
+    [Xunit.InlineData("AdminCamp", "invalidTimeNegative")]
+    [Xunit.InlineData("AdminCamp", "invalidTimeDays")]
+    [Xunit.InlineData("AdminCamp", "invalidTimeOverflow")]
+    [Xunit.InlineData("AdminCamp", "validLastMinute")]
+    [Xunit.InlineData("Create", "StartDate")]
+    [Xunit.InlineData("Create", "validDateTime")]
+    [Xunit.InlineData("Update", "StartDate")]
+    [Xunit.InlineData("Update", "validDateTime")]
+    [Xunit.InlineData("BarrioCreate", "StartDate")]
+    [Xunit.InlineData("BarrioCreate", "validDateTime")]
+    [Xunit.InlineData("BarrioUpdate", "StartDate")]
+    [Xunit.InlineData("BarrioUpdate", "validDateTime")]
+    [Xunit.InlineData("AdminIndividual", "StartDate")]
+    [Xunit.InlineData("AdminIndividual", "validDateTime")]
+    [Xunit.InlineData("AdminCamp", "StartDate")]
+    [Xunit.InlineData("AdminCamp", "validDateTime")]
+    [Xunit.InlineData("Create", "invalidScheduleEarly")]
+    [Xunit.InlineData("Create", "invalidScheduleLate")]
+    [Xunit.InlineData("Create", "validDateEarly")]
+    [Xunit.InlineData("Create", "validDateLate")]
+    [Xunit.InlineData("Update", "invalidScheduleEarly")]
+    [Xunit.InlineData("Update", "invalidScheduleLate")]
+    [Xunit.InlineData("Update", "validDateEarly")]
+    [Xunit.InlineData("Update", "validDateLate")]
+    [Xunit.InlineData("BarrioCreate", "invalidScheduleEarly")]
+    [Xunit.InlineData("BarrioCreate", "invalidScheduleLate")]
+    [Xunit.InlineData("BarrioCreate", "validDateEarly")]
+    [Xunit.InlineData("BarrioCreate", "validDateLate")]
+    [Xunit.InlineData("BarrioUpdate", "invalidScheduleEarly")]
+    [Xunit.InlineData("BarrioUpdate", "invalidScheduleLate")]
+    [Xunit.InlineData("BarrioUpdate", "validDateEarly")]
+    [Xunit.InlineData("BarrioUpdate", "validDateLate")]
+    [Xunit.InlineData("AdminIndividual", "invalidScheduleEarly")]
+    [Xunit.InlineData("AdminIndividual", "invalidScheduleLate")]
+    [Xunit.InlineData("AdminIndividual", "validDateEarly")]
+    [Xunit.InlineData("AdminIndividual", "validDateLate")]
+    [Xunit.InlineData("AdminCamp", "invalidScheduleEarly")]
+    [Xunit.InlineData("AdminCamp", "invalidScheduleLate")]
+    [Xunit.InlineData("AdminCamp", "validDateEarly")]
+    [Xunit.InlineData("AdminCamp", "validDateLate")]
+    [Xunit.InlineData("Create", "invalidScheduleAllDay")]
+    [Xunit.InlineData("Update", "invalidScheduleAllDay")]
+    [Xunit.InlineData("AdminIndividual", "invalidScheduleAllDay")]
     public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
     {
         var userId = Guid.NewGuid();
@@ -251,7 +320,8 @@ public class EventsControllerTests
         var isModerator = route.StartsWith("Admin", StringComparison.Ordinal);
         var isCamp = route.StartsWith("Barrio", StringComparison.Ordinal) || string.Equals(route, "AdminCamp", StringComparison.Ordinal);
         var valid = scenario.StartsWith("valid", StringComparison.Ordinal);
-        var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal);
+        var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal)
+            || string.Equals(scenario, "invalidScheduleAllDay", StringComparison.Ordinal);
         var season = new CampSeasonInfo(
             Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
@@ -261,6 +331,9 @@ public class EventsControllerTests
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         StubEditableGuideSettings();
+        var timeZoneId = scenario.EndsWith("Early", StringComparison.Ordinal) ? "Europe/Paris" : "Europe/Madrid";
+        _guide.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(MakeBurnSettings() with { TimeZoneId = timeZoneId });
         var existing = MakeEvent(isCamp ? campId : null, userId,
             isModerator ? EventStatus.Approved : EventStatus.ResubmitRequested) with
         {
@@ -302,6 +375,29 @@ public class EventsControllerTests
         fields.Remove(isCamp ? "IsAllDay" : "PriorityRank");
         if (string.Equals(scenario, "validBlankRank", StringComparison.Ordinal)) fields["PriorityRank"] = "";
         if (!valid) fields.Remove(scenario);
+        if (scenario.StartsWith("invalidTime", StringComparison.Ordinal)
+            || string.Equals(scenario, "validLastMinute", StringComparison.Ordinal))
+        {
+            fields["StartTime"] = scenario switch
+            {
+                "invalidTimeNegative" => "-01:00:00",
+                "invalidTimeDays" => "1.00:00:00",
+                "invalidTimeOverflow" => "10675199.02:48:05.4775807",
+                _ => "23:59"
+            };
+        }
+        if (string.Equals(scenario, "validDateTime", StringComparison.Ordinal)) fields["StartDate"] = "2026-08-01T12:00:00";
+        if (scenario.Contains("Schedule", StringComparison.Ordinal) || scenario.StartsWith("validDateE", StringComparison.Ordinal)
+            || string.Equals(scenario, "validDateLate", StringComparison.Ordinal))
+        {
+            fields["StartDate"] = scenario.EndsWith("Early", StringComparison.Ordinal) ? "0001-01-01" : "9999-12-31";
+            fields["StartTime"] = scenario switch
+            {
+                "invalidScheduleEarly" => "00:00",
+                "invalidScheduleLate" => "23:30",
+                _ => "09:30"
+            };
+        }
         var type = isModerator ? typeof(AdminEventFormViewModel)
             : isCamp ? typeof(CampEventFormViewModel) : typeof(IndividualEventFormViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -330,7 +426,17 @@ public class EventsControllerTests
         if (!valid)
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
-            controller.ModelState[scenario]!.Errors.Should().ContainSingle();
+            if (scenario.StartsWith("invalidTime", StringComparison.Ordinal))
+            {
+                var errors = controller.ModelState["StartTime"]!.Errors;
+                errors.Should().HaveCount(2);
+                errors[0].ErrorMessage.Should().Contain(fields["StartTime"].ToString());
+                errors[1].ErrorMessage.Should().Contain("StartTime");
+            }
+            else
+            {
+                controller.ModelState[scenario.StartsWith("invalidSchedule", StringComparison.Ordinal) ? "StartDate" : scenario]!.Errors.Should().ContainSingle();
+            }
             writes.Should().BeEmpty();
         }
         else
@@ -353,8 +459,17 @@ public class EventsControllerTests
                 saved.PriorityRank.Should().Be(expectedRank);
             }
             saved.DurationMinutes.Should().Be(checkedChoices && !isCamp ? 1440 : 60);
-            saved.StartAt.Should().Be(new LocalDate(2026, 8, 1)
-                .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant());
+            var expectedTime = string.Equals(scenario, "validLastMinute", StringComparison.Ordinal)
+                ? new LocalTime(23, 59) : LocalTime.Midnight;
+            var expectedDate = new LocalDate(2026, 8, 1);
+            if (string.Equals(scenario, "validDateEarly", StringComparison.Ordinal) || string.Equals(scenario, "validDateLate", StringComparison.Ordinal))
+            {
+                expectedDate = string.Equals(scenario, "validDateEarly", StringComparison.Ordinal)
+                    ? new LocalDate(1, 1, 1) : new LocalDate(9999, 12, 31);
+                expectedTime = new LocalTime(9, 30);
+            }
+            saved.StartAt.Should().Be(expectedDate.At(expectedTime)
+                .InZoneLeniently(DateTimeZoneProviders.Tzdb[timeZoneId]).ToInstant());
         }
     }
 
@@ -388,14 +503,14 @@ public class EventsControllerTests
         var individual = new IndividualEventFormViewModel
         {
             Title = "Changed",
-            StartDate = new DateTime(2026, 8, 1),
+            StartDate = new DateOnly(2026, 8, 1),
             IsRecurring = true,
             RecurrenceDays = "0,3"
         };
         var barrio = new CampEventFormViewModel
         {
             Title = "Changed",
-            StartDate = new DateTime(2026, 8, 1),
+            StartDate = new DateOnly(2026, 8, 1),
             IsRecurring = true,
             RecurrenceDays = "0,3"
         };
@@ -802,7 +917,7 @@ public class EventsControllerTests
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         StubEditableGuideSettings();
-        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(false);
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult("Events_SubmissionWindowClosed"));
         _guide.BulkImportAsync(camp.Id, userId, Arg.Any<IReadOnlyList<BulkCsvRow>>(),
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<DateTimeZone>(), Arg.Any<CancellationToken>())
             .Returns(new BulkImportResult([], 0, 0, RefusalKey: "Events_SubmissionWindowClosed"));
@@ -822,7 +937,7 @@ public class EventsControllerTests
                 Description = "Description",
                 VenueId = Guid.NewGuid(),
                 CategoryId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1),
+                StartDate = new DateOnly(2026, 8, 1),
                 DurationMinutes = 60
             }),
             "barrio" => await controller.BarrioCreate(camp.Slug, new CampEventFormViewModel
@@ -830,7 +945,7 @@ public class EventsControllerTests
                 Title = "Music",
                 Description = "Description",
                 CategoryId = Guid.NewGuid(),
-                StartDate = new DateTime(2026, 8, 1),
+                StartDate = new DateOnly(2026, 8, 1),
                 DurationMinutes = 60
             }),
             _ => await controller.BulkUploadImport(camp.Slug, file)
@@ -842,9 +957,76 @@ public class EventsControllerTests
         controller.TempData.Should().NotContainKey("BulkErrors_camp");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(false, false, "Events_VenueUnavailable")]
+    [Xunit.InlineData(true, false, "Events_VenueUnavailable")]
+    public async Task SelectionRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(
+        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable")
+    {
+        var field = string.Equals(refusalKey, "Events_VenueUnavailable", StringComparison.Ordinal) ? "VenueId" : "CategoryId";
+        var userId = Guid.NewGuid();
+        var camp = new CampInfo(Guid.NewGuid(), "camp", "camp@example.org", "", false, 0, []);
+        var existing = MakeEvent(barrio ? camp.Id : null, userId, EventStatus.ResubmitRequested);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _guide.GetEventForModerationAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _guide.GetCampEventAsync(existing.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        StubEditableGuideSettings();
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
+        _guide.UpdateAndResubmitAsync(existing.Id, Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        object model;
+        IActionResult result;
+        if (barrio)
+        {
+            var input = new CampEventFormViewModel
+            {
+                Title = "Entered title",
+                Description = "Entered description",
+                CategoryId = Guid.NewGuid(),
+                StartDate = new DateOnly(2026, 8, 1),
+                DurationMinutes = 60
+            };
+            model = input;
+            result = edit ? await controller.BarrioUpdate(camp.Slug, existing.Id, input) : await controller.BarrioCreate(camp.Slug, input);
+            input.Title.Should().Be("Entered title");
+            input.Description.Should().Be("Entered description");
+            input.CampId.Should().Be(camp.Id);
+        }
+        else
+        {
+            var input = new IndividualEventFormViewModel
+            {
+                Title = "Entered title",
+                Description = "Entered description",
+                CategoryId = Guid.NewGuid(),
+                VenueId = Guid.NewGuid(),
+                StartDate = new DateOnly(2026, 8, 1),
+                DurationMinutes = 60
+            };
+            model = input;
+            result = edit ? await controller.Update(existing.Id, input) : await controller.Create(input);
+            input.Title.Should().Be("Entered title");
+            input.Description.Should().Be("Entered description");
+        }
+        var view = result.Should().BeOfType<ViewResult>().Which;
+        view.Model.Should().BeSameAs(model);
+        view.ViewName.Should().Be(barrio ? "BarrioEventForm" : "IndividualEventForm");
+        controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(refusalKey);
+        controller.TempData.Should().NotContainKey("SuccessMessage");
+    }
+
     private void StubEditableGuideSettings()
     {
-        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(true);
+        _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
         var settingsId = Guid.NewGuid();
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new EventGuideSettingsView(

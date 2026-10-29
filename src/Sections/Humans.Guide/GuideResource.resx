@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Guide_Group_Start" xml:space="preserve"><value>Start here</value></data>
+  <data name="Guide_Group_Sections" xml:space="preserve"><value>Section guides</value></data>
+  <data name="Guide_Group_Questions" xml:space="preserve"><value>Common questions</value></data>
+  <data name="Guide_Group_Appendix" xml:space="preserve"><value>Appendix</value></data>
+  <data name="Guide_Navigation" xml:space="preserve"><value>Guide navigation</value></data>
+  <data name="Guide_Breadcrumbs" xml:space="preserve"><value>Breadcrumbs</value></data>
+  <data name="Guide_Page_GettingStarted" xml:space="preserve"><value>Getting Started</value></data>
+  <data name="Guide_Page_Glossary" xml:space="preserve"><value>Glossary</value></data>
+  <data name="Guide_Page_Profiles" xml:space="preserve"><value>Profiles</value></data>
+  <data name="Guide_Page_Onboarding" xml:space="preserve"><value>Onboarding</value></data>
+  <data name="Guide_Page_LegalAndConsent" xml:space="preserve"><value>Legal &amp; Consent</value></data>
+  <data name="Guide_Page_Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Guide_Page_Campaigns" xml:space="preserve"><value>Campaigns</value></data>
+  <data name="Guide_Page_GoogleIntegration" xml:space="preserve"><value>Google Integration</value></data>
+  <data name="Guide_Page_EmailAccount" xml:space="preserve"><value>Your @nobodies.team email</value></data>
+  <data name="Guide_Page_TwoStepVerification" xml:space="preserve"><value>Two-step verification (2FA)</value></data>
+  <data name="Guide_Page_TicketTransfers" xml:space="preserve"><value>Transferring your ticket</value></data>
+  <data name="Guide_Page_AiHelper" xml:space="preserve"><value>The in-app AI helper</value></data>
+  <data name="Guide_Page_SigningIn" xml:space="preserve"><value>Signing in &amp; getting unstuck</value></data>
+  <data name="Guide_Page_YourData" xml:space="preserve"><value>Your data &amp; privacy</value></data>
+</root>

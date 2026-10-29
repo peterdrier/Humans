@@ -1,3 +1,4 @@
+using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
@@ -25,6 +26,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly Humans.Settings.Contracts.ISettingsService _settingsService = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -59,6 +61,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .With(_userService)
             .With(_userService)
             .With(_roleAssignmentService)
+            .With(_settingsService)
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -527,7 +530,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
             new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
             new ShiftViewProbe().Cache,
-            new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>()), Clock,
+            new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
@@ -1203,18 +1206,29 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    private static readonly Guid ActorId = Guid.NewGuid();
+
     [HumansFact]
     public async Task SaveKnobsAsync_NoRowYet_CreatesOneOnDemand()
     {
         var eventId = Guid.NewGuid();
 
-        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true, globalVolunteerCap: 50, reminderLeadTimeHours: 12);
+        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true, globalVolunteerCap: 50, reminderLeadTimeHours: 12,
+            new BuildSubPeriodStarts(-28, -20, -10, -3), actorUserId: ActorId);
 
         ShiftsDb.ChangeTracker.Clear();
         var saved = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == eventId, Xunit.TestContext.Current.CancellationToken);
         saved.IsShiftBrowsingOpen.Should().BeTrue();
         saved.GlobalVolunteerCap.Should().Be(50);
         saved.ReminderLeadTimeHours.Should().Be(12);
+        saved.SubPeriodFirstCrewStart.Should().Be(-28);
+        saved.SubPeriodSetupWeekStart.Should().Be(-20);
+        saved.SubPeriodPreEventWeekStart.Should().Be(-10);
+        saved.SubPeriodFinishingWeekendStart.Should().Be(-3);
+        await AuditLog.Received(1).LogAsync(
+            AuditAction.EventSettingsUpdated, nameof(EventSettings), eventId,
+            Arg.Is<string>(d => d.Contains("first crew -28") && d.Contains("finishing weekend -3")),
+            ActorId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -1230,9 +1244,79 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         ShiftsDb.EventSettings.Add(existing);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true, globalVolunteerCap: null, reminderLeadTimeHours: 24);
+        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true, globalVolunteerCap: null, reminderLeadTimeHours: 24,
+            new BuildSubPeriodStarts(-25, -16, -9, -4), actorUserId: ActorId);
 
         (await ShiftsDb.EventSettings.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    // Build sub-periods moved from Settings to Shifts: unset ones fall back to Settings until the copy runs.
+
+    private static Humans.Settings.Contracts.EventSettingsInfo SettingsCycle(Guid id, string name, int firstCrew) => new(
+        Id: id, EventName: name, Year: 2026, TimeZoneId: "Europe/Madrid", GateOpeningDate: new LocalDate(2026, 7, 9),
+        BuildStartOffset: -30, EventEndOffset: 6, StrikeEndOffset: 9,
+        FirstCrewStartOffset: firstCrew, SetupWeekStartOffset: -20, PreEventWeekStartOffset: -10, FinishingWeekendStartOffset: -3,
+        EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null, EarlyEntryClose: null,
+        Status: Humans.Settings.Contracts.EventSettingsStatus.Inactive);
+
+    [HumansFact]
+    public async Task GetUncopiedBuildSubPeriodsAsync_ListsEveryCycleStillLeaningOnSettings()
+    {
+        var unsetRow = new EventSettings { Id = Guid.NewGuid(), CreatedAt = TestNow, UpdatedAt = TestNow };
+        var copiedRow = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            SubPeriodFirstCrewStart = -30,
+            SubPeriodSetupWeekStart = -21,
+            SubPeriodPreEventWeekStart = -11,
+            SubPeriodFinishingWeekendStart = -2,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        ShiftsDb.EventSettings.AddRange(unsetRow, copiedRow);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var noShiftsRow = Guid.NewGuid();
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            SettingsCycle(unsetRow.Id, "Nowhere 2026", -28),
+            SettingsCycle(copiedRow.Id, "Nowhere 2025", -25),
+            SettingsCycle(noShiftsRow, "Nowhere 2027", -27),
+        ]);
+
+        var pending = await _service.GetUncopiedBuildSubPeriodsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        pending.Should().BeEquivalentTo(new[]
+        {
+            (unsetRow.Id, "Nowhere 2026", new BuildSubPeriodStarts(-28, -20, -10, -3)),
+            (noShiftsRow, "Nowhere 2027", new BuildSubPeriodStarts(-27, -20, -10, -3)),
+        });
+    }
+
+    [HumansFact]
+    public async Task CopyBuildSubPeriodsAsync_WritesSettingsValuesOntoShiftsRowsCreatingMissingOnes()
+    {
+        var unsetRow = new EventSettings { Id = Guid.NewGuid(), CreatedAt = TestNow, UpdatedAt = TestNow };
+        ShiftsDb.EventSettings.Add(unsetRow);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var noShiftsRow = Guid.NewGuid();
+        _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            SettingsCycle(unsetRow.Id, "Nowhere 2026", -28),
+            SettingsCycle(noShiftsRow, "Nowhere 2027", -27),
+        ]);
+
+        (await _service.CopyBuildSubPeriodsAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+
+        ShiftsDb.ChangeTracker.Clear();
+        var saved = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == unsetRow.Id, Xunit.TestContext.Current.CancellationToken);
+        saved.SubPeriodFirstCrewStart.Should().Be(-28);
+        saved.SubPeriodSetupWeekStart.Should().Be(-20);
+        saved.SubPeriodPreEventWeekStart.Should().Be(-10);
+        saved.SubPeriodFinishingWeekendStart.Should().Be(-3);
+        var created = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == noShiftsRow, Xunit.TestContext.Current.CancellationToken);
+        created.SubPeriodFirstCrewStart.Should().Be(-27);
+        created.IsShiftBrowsingOpen.Should().BeFalse();
+        (await _service.GetUncopiedBuildSubPeriodsAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
     [HumansFact]

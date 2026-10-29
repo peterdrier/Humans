@@ -175,7 +175,7 @@ public class DataMigrationsTests
     private static RouteEndpoint MapStatusEndpoint()
     {
         var app = WebApplication.CreateSlimBuilder().Build();
-        new SectionEndpoints().MapEndpoints(app);
+        ((ISectionEndpoints)new Section()).MapEndpoints(app);
         return ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(d => d.Endpoints)
             .OfType<RouteEndpoint>()

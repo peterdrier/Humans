@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Debug.Controllers;
 
-/// <summary>The anonymous counts-only twin is <c>/api/data-migrations</c> (<see cref="SectionEndpoints"/>).</summary>
+/// <summary>The anonymous counts-only twin is <c>/api/data-migrations</c> (<see cref="Section"/>).</summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Debug/DataMigrations")]
 internal sealed class DataMigrationsController(

@@ -179,4 +179,6 @@
   <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Des modifications sont demandées pour votre événement</value></data>
   <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;L'équipe de modération demande des modifications à votre événement &lt;strong&gt;{1}&lt;/strong&gt; avant de pouvoir l'approuver.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Commentaires :&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Merci de le mettre à jour et de le soumettre à nouveau ici : &lt;a href="{3}"&gt;Modifier l'événement&lt;/a&gt;&lt;/p&gt;</value></data>
   <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Choisissez chaque jour de récurrence une seule fois dans le calendrier de cet événement.</value></data>
+  <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Choisissez une catégorie active. La catégorie sélectionnée n’est plus disponible.</value></data>
+  <data name="Events_VenueUnavailable" xml:space="preserve"><value>Choisissez un lieu actif. Le lieu sélectionné n’est plus disponible.</value></data>
 </root>

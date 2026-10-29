@@ -1,3 +1,5 @@
+using Humans.Settings.Contracts;
+using Humans.Base.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Xunit;
 using Humans.Events.Models;
@@ -31,7 +33,7 @@ public sealed class SectionSettingsTests
     [HumansFact]
     public void Tabs_ReturnsTheEventGuideTabGatedOnEventsAdminOrAdmin()
     {
-        var tabs = new SectionSettings().Tabs().ToList();
+        var tabs = ((ISectionSettings)new Section()).Tabs().ToList();
 
         var tab = tabs.Should().ContainSingle().Which;
         tab.Key.Should().Be("event-guide");
