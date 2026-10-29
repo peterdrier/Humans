@@ -20,6 +20,7 @@ internal interface IIssuesRepository : IRepository
         IReadOnlySet<string>? sectionFilter,
         IReadOnlyCollection<Guid>? reporterFallback,
         IReadOnlyCollection<Guid>? reporterFilter,
+        IReadOnlyCollection<Guid>? assigneeFilter,
         CancellationToken ct = default);
 
     Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default);

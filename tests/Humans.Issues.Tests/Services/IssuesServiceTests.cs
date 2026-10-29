@@ -2563,6 +2563,35 @@ public sealed class IssuesServiceTests
             .Should().ContainSingle().Which.ActorIsReporter.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Merged_assignee_filter_finds_both_accounts_without_granting_queue_access(bool filterByArchived)
+    {
+        var archived = SeedUser();
+        var survivor = SeedUser();
+        var stranger = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived.Id] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var expected = new List<Guid>();
+        foreach (var assignee in new[] { archived.Id, survivor.Id, stranger.Id })
+        {
+            var id = await SeedIssueRowAsync(Guid.NewGuid(), IssueStatus.Open, "Assigned", "Tickets");
+            var row = await _issuesDb.Issues.SingleAsync(i => i.Id == id, Ct);
+            row.AssigneeUserId = assignee;
+            if (assignee != stranger.Id) expected.Add(id);
+        }
+        await _issuesDb.SaveChangesAsync(Ct);
+        var filter = new IssueListFilter(AssigneeUserId: filterByArchived ? archived.Id : survivor.Id);
+
+        (await _service.GetIssueListAsync(filter, Admin, Ct)).Select(i => i.Id).Should().BeEquivalentTo(expected);
+        (await _service.GetIssueListAsync(filter, new IssueViewer(survivor.Id, []), Ct)).Should().BeEmpty();
+        (await _service.GetIssueListAsync(new IssueListFilter(AssigneeUserId: stranger.Id), Admin, Ct))
+            .Should().ContainSingle().Which.AssigneeUserId.Should().Be(stranger.Id);
+    }
+
     // Merged-away ids: in-app notifications reach the survivor, and the assignee is stored as the live id.
 
     [HumansFact]

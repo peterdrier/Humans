@@ -37,6 +37,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         IReadOnlySet<string>? sectionFilter,
         IReadOnlyCollection<Guid>? reporterFallback,
         IReadOnlyCollection<Guid>? reporterFilter,
+        IReadOnlyCollection<Guid>? assigneeFilter,
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -46,7 +47,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         if (f.Categories is { Length: > 0 }) q = q.Where(i => f.Categories.Contains(i.Category));
         if (f.Sections is { Length: > 0 }) q = q.Where(i => f.Sections.Contains(i.Section));
         if (reporterFilter is not null) q = q.Where(i => reporterFilter.Contains(i.ReporterUserId));
-        if (f.AssigneeUserId is { } aid) q = q.Where(i => i.AssigneeUserId == aid);
+        if (assigneeFilter is not null) q = q.Where(i => i.AssigneeUserId.HasValue && assigneeFilter.Contains(i.AssigneeUserId.Value));
         if (!string.IsNullOrWhiteSpace(f.SearchText))
         {
             // ILike, not Contains: Contains is case-sensitive on Postgres. Escape first so % and _ match literally.

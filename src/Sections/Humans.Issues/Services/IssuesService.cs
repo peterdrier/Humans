@@ -278,7 +278,9 @@ internal sealed class IssuesService(
 
         var reporterFilter = filter.ReporterUserId is { } reporterId
             ? await UserIdsAsync(reporterId, ct) : null;
-        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, reporterFilter, ct);
+        var assigneeFilter = filter.AssigneeUserId is { } assigneeId
+            ? await UserIdsAsync(assigneeId, ct) : null;
+        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, reporterFilter, assigneeFilter, ct);
         return await BuildListSnapshotsAsync(issues, ct);
     }
 
