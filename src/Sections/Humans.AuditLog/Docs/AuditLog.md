@@ -11,6 +11,11 @@
 
 Append-only system audit trail: who did what, when, to which entity. Used by every section that performs a privileged or irreversible action. Enforced append-only per design-rules §12.
 
+- **For:** the Board can see what people, admins and automation did to members' records and the association's data, after the fact, without trusting anyone's memory.
+- **Good looks like:** every privileged or automated change leaves one row, written after the change saves; nothing can edit or delete a row; any page can show the history of the thing it shows without reading audit itself; every shown entry names people, never ids.
+- **Deliberate choices:** best-effort writes (an audit hiccup never fails the business step); no cache; database-side filtering because the table never stops growing; no retention or pruning, under GDPR Art. 30 and 17(3)(b).
+- **Out of scope:** field-level change history (Budget keeps its own), Google sync history (GoogleIntegration's own log), deciding anything from audit rows.
+
 ## Concepts
 
 - An **Audit Log Entry** is an append-only record of a single user-initiated or job-initiated action. Captures actor, action, entity type + id, free-text description, and timestamp. The retired Google-sync columns (see below) are kept for historical rows only.
@@ -111,16 +116,14 @@ Per-resource and per-human sync audits belong to
 | `GET /Google/Resource/{id}` | `GoogleController.Resource`, `BoardOrAdmin` |
 | `GET /Google/Human/{id}` | `GoogleController.Human`, `HumanAdminBoardOrAdmin` |
 
-`AuditLogController` injects `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
-
-Note: the `/Admin` dashboard's "Recent activity" card is this section's own `AdminActivityCard`, contributed into the Shell's `admin-dashboard` chrome slot (`SectionChrome`) — it renders `AuditLogViewComponent` with `layout="activity", limit=8`. That is a chrome contribution, not route ownership. AuditLog owns no Admin routes.
+`AuditLogController` injects the internal `AuditViewerService` — no controller touches `IAuditLogService` or any repository directly. AuditLog owns no Admin routes and contributes no admin dashboard card; its only `/Admin` presence is the "Audit events" tile.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
 | Any service / job | Write audit entries via `IAuditLogService.LogAsync(...)` (human or job overload). No authorization check at the log site — the caller has already authorized the underlying action |
-| Board, Admin | View the system audit log via `GET /AuditLog` (`[Authorize(Policy = PolicyNames.BoardOrAdmin)]`), with filter + pagination via `IAuditViewerService.GetPageAsync` |
+| Board, Admin | View the system audit log via `GET /AuditLog` (`[Authorize(Policy = PolicyNames.BoardOrAdmin)]`), with filter + pagination via the internal `AuditViewerService.GetPageAsync` |
 | Any authenticated viewer of an entity page | See per-entity audit history rendered through the shared `AuditLogViewComponent` (e.g. on Profile, Team, Calendar, Store order) — entries are scoped by the `<vc:audit-log>` predicate attributes and inherit the host page's authorization |
 
 No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to BoardOrAdmin; per-entity audit history is gated by the host page's policy.
@@ -147,7 +150,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history.
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
-- **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`; `activity` is the dashboard feed (bubble · action · description · timestamp) the admin `AdminActivityCard` renders. The Google sync grid is GoogleIntegration's own `<vc:google-sync-log>`, not a layout here.
+- **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is GoogleIntegration's own `<vc:google-sync-log>`, not a layout here.
 - **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. A localized host page supplies the chrome; AuditLogResource supplies entry labels, action badges and narrative verbs in all six cultures. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
 - Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests` (`Humans.Integration.Tests`, nightly, not CI).
 
@@ -158,7 +161,7 @@ A section that wants to *show* audit history emits `<vc:audit-log>` with a predi
 - Services **cannot** call `IAuditLogService.LogAsync` inside an outer `DbContext` transaction expecting audit to roll back with it — audit uses its own context via `IDbContextFactory`.
 - Services **cannot** bypass `IAuditLogService` and write `audit_log` directly. `AuditLogRepository` is the only file that touches `DbContext.AuditLogEntries`.
 - The log **cannot** be pruned by production admins. There is no retention/cleanup job — entries persist indefinitely.
-- Controllers **cannot** read `audit_log` directly. The Board/Admin dashboard goes through `IAuditViewerService.GetPageAsync`, and per-entity / per-user views go through the other `IAuditViewerService` overloads — the viewer service composes the page (entries + actor/subject/team display batching, with display names resolved through Base's `IEntityNameContributor` fan-out) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
+- Controllers **cannot** read `audit_log` directly. The `/AuditLog` page goes through the internal `AuditViewerService.GetPageAsync`, and per-entity / per-user views go through `IAuditViewerService` — the viewer service composes the page (entries + actor/subject/team display batching, with display names resolved through Base's `IEntityNameContributor` fan-out) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
 
 ## Triggers
 
@@ -186,7 +189,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 `AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). Project references are `Humans.Base`, `Humans.Gdpr` (the `IUserDataContributor` contract) and `Humans.Users.Contracts` (merge-tombstone chain-following).
 
-**One Contracts home.** The section's `Contracts/` folder (namespace `Humans.AuditLog.Contracts`) carries `IAuditLogService` — the append path, called from most sections — plus `IAuditViewerService` / `AuditEvent` / `AuditEventPage` and `ILegacyGoogleSyncAuditReader`.
+**One Contracts home.** The section's `Contracts/` folder (namespace `Humans.AuditLog.Contracts`) carries `IAuditLogService` — the append path, called from most sections — plus `IAuditViewerService` / `AuditEvent` and `ILegacyGoogleSyncAuditReader`.
 
 **Section-internal reads: `IAuditLogReader`.** `internal interface IAuditLogReader` (`Services/IAuditLogReader.cs`) holds the raw-snapshot reads whose only caller is `AuditViewerService` — `GetFilteredAsync`, `GetByUserAsync`, plus `GetFilteredEntriesAsync` so the viewer takes one injection rather than two. `AuditLogService` implements it alongside `IAuditLogService`; `Section.Register` maps both to the same scoped instance. Nothing outside this assembly can name it, which is the point: those reads stay off the public surface.
 
@@ -200,7 +203,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 - **Own DbContext (#858):** `AuditLogDbContext` (`src/Sections/Humans.AuditLog/Data/AuditLogDbContext.cs`) maps only `audit_log`, migrates under `Data/Migrations/` against `__EFMigrationsHistory_AuditLog`, and carries the immutability triggers in its baseline.
 - **Cross-domain navs on the entity:** `ActorUserId`, `EntityId` and `RelatedEntityId` are bare cross-section Guid columns — no FK constraint, no nav property. Display names for those Guids come from the `IEntityNameContributor` fan-out.
 
-- **Member-facing resources.** `AuditLogResource` localizes line/table entry labels, action badges and subject/self/no-subject verb forms in en, es, de, it, fr and ca. Stored descriptions and `AuditEventTextualizer` plain-text output stay unchanged. Admin-only `/AuditLog` pages and the dashboard activity feed retain English copy under the admin localization exemption.
+- **Member-facing resources.** `AuditLogResource` localizes line/table entry labels, action badges and subject/self/no-subject verb forms in en, es, de, it, fr and ca. Stored descriptions and `AuditEventTextualizer` plain-text output stay unchanged. Admin-only `/AuditLog` pages retain English copy under the admin localization exemption.
 
 ### Touch-and-clean guidance
 

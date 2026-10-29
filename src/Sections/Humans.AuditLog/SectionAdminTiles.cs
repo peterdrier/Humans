@@ -1,5 +1,5 @@
 using System.Globalization;
-using Humans.AuditLog.Contracts;
+using Humans.AuditLog.Services;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,7 +15,7 @@ internal sealed class SectionAdminTiles : ISectionAdminTiles
     // Page size 1, no filter: TotalCount is the tile.
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var total = (await sp.GetRequiredService<IAuditViewerService>().GetPageAsync(null, 1, 1, ct)).TotalCount;
+        var total = (await sp.GetRequiredService<AuditViewerService>().GetPageAsync(null, 1, 1, ct)).TotalCount;
         return new AdminTileValue(total.ToString("N0", CultureInfo.CurrentCulture), Detail: "every automated action, logged");
     }
 }

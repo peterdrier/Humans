@@ -23,6 +23,7 @@ public sealed class Section : ISection
         // Temporary: goes with the six Google columns.
         services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
 
-        services.AddScoped<IAuditViewerService, AuditViewerService>();
+        services.AddScoped<AuditViewerService>();
+        services.AddScoped<IAuditViewerService>(sp => sp.GetRequiredService<AuditViewerService>());
     }
 }

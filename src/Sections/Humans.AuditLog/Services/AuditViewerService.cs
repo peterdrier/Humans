@@ -25,6 +25,7 @@ internal sealed class AuditViewerService(
         return await ResolveAsync(entries, ct);
     }
 
+    /// <summary><paramref name="actionFilter"/> is a case-insensitive <see cref="AuditAction"/> name match.</summary>
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
         var (items, totalCount, anomalyCount) = await auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
@@ -127,3 +128,8 @@ internal sealed class AuditViewerService(
         : string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) ? e.RelatedEntityId
         : null;
 }
+
+internal sealed record AuditEventPage(
+    IReadOnlyList<AuditEvent> Items,
+    int TotalCount,
+    int AnomalyCount);

@@ -20,8 +20,7 @@ irreversible action; it writes into no other section. Two faces:
   best-effort: a failure is logged loudly and swallowed, so it never breaks the business step that
   called it. Callers append after their own save, so a rolled-back business change leaves no row.
 - **Read and show** — a Board/Admin browser at `/AuditLog`, a history panel any host page drops in
-  through one shared component, a recent-activity card on the admin dashboard, and a plain-text
-  feed for the agent's personal-history tool. Every shown entry names people and teams, never
+  through one shared component, and a plain-text feed for the agent's personal-history tool. Every shown entry names people and teams, never
   raw ids, and the section names none of the sections whose ids it shows.
 
 It also contributes each person's slice to the GDPR export, and keeps everything: there is no
@@ -34,8 +33,9 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 | Append an action | `IAuditLogService.LogAsync` (human and job overloads) | most sections, after a privileged action |
 | Read rows as data | `IAuditLogService.GetFilteredEntriesAsync` | Issues (interleaves audit with comments), Expenses (report history), Users (duplicate-account scan) |
 | Which entities ever had these actions | `IAuditLogService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup screen |
-| Named events for a page, a filter or a person | `IAuditViewerService` (`GetPageAsync`, `GetFilteredAsync`, `GetForUserAsync`) | `/AuditLog`, admin tile, `<vc:audit-log>`, Agent tool |
-| Show history on a host page | `<vc:audit-log>`, layouts `line` / `table` / `activity` | Calendar, Debug, Expenses, Store, Teams, Tickets, Users, the admin dashboard card |
+| Named events for a filter or a person | `IAuditViewerService` (`GetFilteredAsync`, `GetForUserAsync`) | `<vc:audit-log>`, Agent tool |
+| Named events for a page | internal `AuditViewerService.GetPageAsync` | `/AuditLog`, admin tile |
+| Show history on a host page | `<vc:audit-log>`, layouts `line` / `table` | Calendar, Debug, Expenses, Store, Teams, Tickets, Users |
 | Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration's history-migration screen; leaves with those columns |
 | GDPR export slice | `IUserDataContributor` | Gdpr orchestrator |
 
@@ -43,8 +43,8 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 - **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the
   append path (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`,
-  `ILegacyGoogleSyncAuditReader`) and the read surface (`IAuditViewerService`, `AuditEvent`,
-  `AuditEventPage`).
+  `ILegacyGoogleSyncAuditReader`) and the read surface (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
+  internal on `AuditViewerService`.
 - **Write and raw reads:** `AuditLogService` (internal; implements `IAuditLogService`,
   `IAuditLogReader`, `IUserDataContributor`, `ILegacyGoogleSyncAuditReader`) over
   `IAuditLogRepository`, the only type touching `AuditLogDbContext.AuditLogEntries`, through
@@ -54,9 +54,9 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   with the `IEntityNameContributor` fan-out and returns `AuditEvent`. Verb tables live once, in
   `AuditEventTextualizer`, shared by the agent's plain text and the HTML entry partial.
 - **UI:** one controller action (`AuditLogController.Index`), one public `<vc:audit-log>`
-  component with a view per layout, one internal `AdminActivityCard` chrome component.
+  component with a view per layout. No admin dashboard card.
 - **Resources:** `AuditLogResource` in all six cultures for the member-facing entry views
-  (`_Entry`, `Table`); the `/AuditLog` page and the activity feed are admin-only English.
+  (`_Entry`, `Table`); the `/AuditLog` page is admin-only English.
 
 ## 4. Invariants
 
@@ -94,7 +94,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   `no-linq-at-db-layer`.
 - **No FK or nav on the id columns**: `ActorUserId`, `EntityId`, `RelatedEntityId` are bare
   cross-section Guids; names come from the contributor fan-out, not a join.
-- **Admin pages stay English**: the `/AuditLog` page and the activity feed add no resource keys.
+- **Admin pages stay English**: the `/AuditLog` page adds no resource keys.
 
 ## Load-bearing weirdness
 
