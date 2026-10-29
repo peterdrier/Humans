@@ -39,8 +39,12 @@ internal sealed partial class GrantService(
         return program is null ? null : ToInfo(program, await settingsService.GetAllEventSettingsAsync(ct));
     }
 
-    public async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct)).Select(ToInfo).ToList();
+    public async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var grants = await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct);
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        return grants.Select(g => ToInfo(g, g.Program, EventOf(g.Program, events))).ToList();
+    }
 
     public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
         await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
@@ -49,12 +53,12 @@ internal sealed partial class GrantService(
     {
         var evt = EventOf(p, events);
         return new(
-            p.Id, p.Name, p.Entitles, p.Description, p.Year, evt?.Id ?? p.EventSettingsId,
+            p.Id, p.Name, p.Entitles, p.Description, evt?.Year ?? p.Year, evt?.Id ?? p.EventSettingsId,
             evt?.EventName ?? p.Year.ToString(CultureInfo.InvariantCulture),
             p.IssuedBy, p.SourceKey, p.GrantsExpireOn,
             p.Status, p.CreatedByUserId, p.CreatedAt, p.UpdatedAt,
             p.Managers.Select(m => m.UserId).ToList(),
-            p.Grants.OrderBy(g => g.IssuedAt).Select(g => ToInfo(g, p)).ToList());
+            p.Grants.OrderBy(g => g.IssuedAt).Select(g => ToInfo(g, p, evt)).ToList());
     }
 
     /// <summary>The program's own event, else the one <c>grants.event-ids</c> would give it.</summary>
@@ -83,10 +87,9 @@ internal sealed partial class GrantService(
         await repository.AssignEventIdsAsync(
             (await GetEventIdPlanAsync(ct)).ToDictionary(p => p.ProgramId, p => p.Event.Id), ct);
 
-    private static GrantInfo ToInfo(Grant g) => ToInfo(g, g.Program);
-
-    private static GrantInfo ToInfo(Grant g, GrantProgram p) => new(
-        g.Id, g.ProgramId, p.Name, p.Entitles, p.Year, g.UserId, g.SourceRef, g.ExpiresOn,
+    /// <summary>The year comes from the event, which a gate-opening change can move to another year.</summary>
+    private static GrantInfo ToInfo(Grant g, GrantProgram p, EventSettingsInfo? evt) => new(
+        g.Id, g.ProgramId, p.Name, p.Entitles, evt?.Year ?? p.Year, g.UserId, g.SourceRef, g.ExpiresOn,
         g.ExpiresOn ?? p.GrantsExpireOn, g.IssuedAt, g.IssuedByUserId, g.NotifiedAt, g.RevokedAt,
         g.RevokedByUserId, g.RevokeReason);
 

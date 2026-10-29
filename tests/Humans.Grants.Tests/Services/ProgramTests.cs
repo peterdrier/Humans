@@ -181,4 +181,29 @@ public sealed class ProgramTests : GrantsTestHarness
         await using var db = OpenContext();
         (await db.Programs.SingleAsync(Ct)).EventSettingsId.Should().Be(Event2027.Id);
     }
+
+    [HumansFact]
+    public async Task Update_AuditsAMoveBetweenTwoEventsOfTheSameName()
+    {
+        var twin = BurnFixtures.Burn(eventName: Event2027.EventName, year: 2027, gateOpeningDate: new LocalDate(2027, 10, 1));
+        Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([Event2027, twin]);
+        var program = await SeedProgramAsync();
+        var actor = SeedUser();
+
+        await NewService().UpdateProgramAsync(program.Id, Save() with { EventSettingsId = twin.Id }, actor, Ct);
+
+        await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
+            Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task TheYearFollowsTheEvent_WhenTheEventMovesToAnotherYear()
+    {
+        var program = await SeedProgramAsync();
+        await NewService().AssignProgramEventIdsAsync(Ct);
+        var moved = Event2027 with { Year = 2028, GateOpeningDate = new LocalDate(2028, 1, 5) };
+        Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([moved]);
+
+        (await NewService().GetProgramAsync(program.Id, Ct))!.Year.Should().Be(2028);
+    }
 }
