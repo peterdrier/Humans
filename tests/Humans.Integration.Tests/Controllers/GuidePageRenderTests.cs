@@ -42,12 +42,13 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
     private void SeedRenderedPages(params string[] stems)
     {
         var cache = Factory.Services.GetRequiredService<IMemoryCache>();
+        var segmenter = Factory.Services.GetRequiredService<GuideSegmenter>();
 
         foreach (var stem in stems)
         {
             // Mirrors GuideContentService's private cache key. The cache holds the segmented document: the role filter
             // runs before Markdig, per request.
-            cache.Set($"guide:{stem}", GuideSegmenter.Segment(Markdown));
+            cache.Set($"guide:{stem}", segmenter.Segment(Markdown));
         }
     }
 

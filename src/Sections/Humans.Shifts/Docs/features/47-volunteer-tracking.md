@@ -18,7 +18,7 @@ Adds a `/Shifts/Dashboard/VolunteerTracking` sub-page that surfaces volunteers w
 
 ## Business Context
 
-Building the camp before gates open is a multi-week effort with rolling crew turnover. Volunteers commit to date ranges months ahead, then real life happens — they arrive late, leave early, or join camp set-up halfway through. The Volunteer Coordinator (VC) needs a single view that answers:
+Building the camp before gates open is a multi-week effort with rolling crew turnover. Volunteers commit to date ranges months ahead, then real life happens — they arrive late, leave early, or join camp set-up halfway through. The Shifts Admin (VC) needs a single view that answers:
 
 - **Who said they'd be on build but isn't covered today?** (signup gaps)
 - **Who declared participation and gave availability but never signed up for anything?** (the unbooked cohort)
@@ -37,7 +37,7 @@ This feature adds:
 A coordinator can mark any single build-window day as "day off" for a volunteer, with an optional reason. Day-offs are stored as a sorted jsonb list (`DayOffs`) on the same `VolunteerBuildStatus` row and render as striped-grey cells (`vt-dayoff`) on the heatmap. They do **not** count toward `GapCount`, so a volunteer who's e.g. at a doctor on day -5 is not flagged as a coverage gap that day.
 
 Negative-space rules:
-- Only Volunteer Coordinators can mark/clear day-offs (no volunteer self-service).
+- Only Shifts Admins can mark/clear day-offs (no volunteer self-service).
 - A day-off cannot be marked on a cell that already has a Confirmed/Pending signup — the popover surfaces a "Bail this signup before marking a day off" muted message instead of the Mark button.
 - A day-off cannot overlap an active camp-setup span; setting/extending camp-setup auto-clears any day-offs that fall on or after the new setup-start date (one `VolunteerDayOffCleared` audit row per cleared offset).
 - Re-marking the same offset replaces the entry (no duplicates); clearing a non-existent entry writes nothing and shows an informational "no day off was set" toast rather than the success message.
@@ -47,7 +47,7 @@ Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design sp
 ## User Stories
 
 ### US-47.1: VC identifies a volunteer with a schedule gap
-**As a** Volunteer Coordinator
+**As a** Shifts Admin
 **I want to** see at a glance which volunteers committed to build days and have no signup on a given day
 **So that** I can chase them up or backfill the slot before it becomes a real coverage problem
 
@@ -60,7 +60,7 @@ Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design sp
 - An empty state ("Everyone is on track.") renders when no row has gaps after filtering.
 
 ### US-47.2: VC marks a volunteer as gone to camp set-up
-**As a** Volunteer Coordinator
+**As a** Shifts Admin
 **I want to** record that a volunteer left scheduled rotas to join camp set-up from a specific day
 **So that** the gap detection stops flagging their (now-irrelevant) build-period coverage as missing
 
@@ -119,7 +119,7 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 ### Write paths
 
-- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` / `SetAvailabilityDay` / `ClearAvailabilityDay` — all gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
+- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` / `SetAvailabilityDay` / `ClearAvailabilityDay` — all gated by the `VolunteerTrackingWrite` policy (Admin or ShiftsAdmin).
 
 All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrackingRepository`; the service, not the controller, writes the audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
 

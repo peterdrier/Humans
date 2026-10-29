@@ -97,7 +97,7 @@ public sealed class ContainerAuthorizationHandlerTests
         var admin = new ClaimsPrincipal(new ClaimsIdentity(
         [
             new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Role, RoleNames.CampAdmin)
+            new Claim(ClaimTypes.Role, CampsRoles.CampsAdmin)
         ], "TestAuth"));
 
         var result = await EvaluateAsync(admin, ContainerOperationRequirement.Manage);
@@ -131,7 +131,7 @@ public sealed class ContainerAuthorizationHandlerTests
             ? new ClaimsPrincipal(new ClaimsIdentity(
             [
                 new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Role, RoleNames.CampAdmin)
+                new Claim(ClaimTypes.Role, CampsRoles.CampsAdmin)
             ], "TestAuth"))
             : CreateUserWithId(LeadUserId);
         _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>())

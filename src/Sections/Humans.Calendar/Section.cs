@@ -1,3 +1,4 @@
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Calendar.Contracts;
@@ -5,14 +6,13 @@ using Humans.Calendar.Data;
 using Humans.Calendar.Services;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
-using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Calendar;
 
 /// <summary>The keyed inner service and the Singleton decorator move as a unit.</summary>
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionNav, IUserPart
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -36,4 +36,9 @@ public sealed class Section : ISection
 
         services.AddScoped<IICalFeedService, ICalFeedService>();
     }
+
+    IEnumerable<MemberNavItem> ISectionNav.Items() =>
+        [new("Calendar", Controller: "Calendar", Action: "Index", Weight: 30)];
+
+    IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.AdminDetail, typeof(UserCalendarViewComponent))];
 }

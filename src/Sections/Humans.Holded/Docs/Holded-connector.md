@@ -124,7 +124,7 @@ this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.
 a shim over `IExpenseReportBackgroundProcessor`. A job is free to sit in its own section because
 `AddOrUpdate<T>(id, …)` is keyed on the job id, not on the declaring type. Neither job references
 this section's connector types directly — each section names its own concrete job class in its
-`SectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
+`ISectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IHoldedFinanceService` / `IHoldedFinanceWrite`) is the `IUserDataContributor` that exports the member's

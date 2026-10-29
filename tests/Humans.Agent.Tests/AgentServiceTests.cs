@@ -736,6 +736,34 @@ public class AgentServiceTests
     }
 
     [HumansFact]
+    public async Task Ask_replays_a_thinking_model_tool_turn_block_for_block()
+    {
+        var dispatcher = Substitute.For<IAgentToolDispatcher>();
+        dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(new AnthropicToolResult(call.Arg<AnthropicToolCall>().Id, "Teams doc", IsError: false)));
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
+        var truncated = new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"tea""");
+        client.EnqueueTurn(
+            new AgentTurnToken(null, truncated, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-5-5", "tool_use"),
+                AssistantContent: [new AnthropicThinkingBlock("Need the Teams doc.", "sig"), new AnthropicToolUseBlock(truncated)]));
+        client.EnqueueTurn(
+            new AgentTurnToken("Teams are groups of volunteers.", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-5-5", "end_turn")));
+
+        await foreach (var _ in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.Empty, UserId: Guid.NewGuid(), Message: "What are teams?", Locale: "en"),
+            Xunit.TestContext.Current.CancellationToken))
+        {
+        }
+
+        // The thinking block leads, as produced; unparseable arguments are still neutralised to {}.
+        client.LastRequest!.Messages.Single(m => string.Equals(m.Role, "assistant", StringComparison.Ordinal)).AssistantContent.Should().Equal(
+            new AnthropicThinkingBlock("Need the Teams doc.", "sig"),
+            new AnthropicToolUseBlock(truncated with { JsonArguments = "{}" }));
+    }
+
+    [HumansFact]
     public async Task Ask_continues_the_tool_loop_when_a_tool_call_is_truncated_by_max_tokens()
     {
         // A max_tokens cutoff mid tool-call JSON must not
@@ -1132,7 +1160,9 @@ public class AgentServiceTests
         var clock = new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0));
         var store = new AgentSettingsStore();
         var repo = new AgentRepository(db, clock);
-        var settingsService = new AgentSettingsService(repo, store, clock, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>());
+        var settingsService = new AgentSettingsService(repo, store, clock, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+            Substitute.For<IAnthropicClient>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AgentSettingsService>.Instance);
         await settingsService.LoadAsync(Xunit.TestContext.Current.CancellationToken);
         var ratelimit = rateLimitStore ?? new AgentRateLimitStore();
         var abuse = new AgentAbuseDetector();

@@ -1,25 +1,56 @@
+using System.Globalization;
+using Humans.Base.Authorization;
+using Humans.Base.Configuration;
 using Humans.Base.Constants;
-using Humans.Issues.Contracts;
+using Humans.Base.Extensions;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Base.Models;
+using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Base.Hosting;
+using Humans.Issues.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
+using Humans.Tickets.Health;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Stores;
-using Humans.Base.Models.Tables;
+using Humans.Tickets.ViewComponents;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Users.Contracts;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Tickets;
 
-public sealed class Section : ISection, IIssueQueueOwner
+public sealed class Section :
+    ISection,
+    IIssueQueueOwner,
+    ISectionRoles,
+    ISectionAccessMatrix,
+    ISectionAdminNav,
+    ISectionConfiguration,
+    ISectionDataMigrations,
+    ISectionHealthChecks,
+    ISectionHelp,
+    ISectionJobs,
+    ISectionMemberDashboard,
+    ISectionPolicies,
+    IUserPart
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(TicketsRoles.TicketsAdmin, "Tickets Admin",
+            "They conjure tickets from vendor APIs, match purchases to humans, and make sure the numbers add up before the gates open.",
+            "fa-solid fa-ticket",
+            FormerNames: ["TicketAdmin"]),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
@@ -97,5 +128,121 @@ public sealed class Section : ISection, IIssueQueueOwner
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["tickets"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [RoleNames.TicketAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [TicketsRoles.TicketsAdmin];
+
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "Tickets",
+            SectionName = "Tickets",
+            Order = 70,
+            Roles = ["Board", "TicketsAdmin"],
+            Features =
+            [
+                Of("View tickets & orders", ("Board", Allowed), ("TicketsAdmin", Allowed)),
+                Of("Sync operations", ("Board", Denied), ("TicketsAdmin", Allowed)),
+                Of("Discount codes", ("Board", Allowed), ("TicketsAdmin", Allowed)),
+            ]
+        }
+    ];
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Tickets", [
+            new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin, Weight: 0),
+            new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin, Weight: 10,
+                 PillCount: PillCounts.TransferQueueAsync),
+            new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", PolicyNames.TicketAdminOrAdmin, Weight: 20),
+            new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30)
+        ])
+    ];
+
+    void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
+    {
+        configuration.GetOptionalSetting(registry, "TicketVendor:EventId", "Ticket Vendor");
+        configuration.GetOptionalSetting(registry, "TicketVendor:Provider", "Ticket Vendor");
+        configuration.GetOptionalSetting(registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor");
+
+        registry.RegisterEnvironmentVariable("TICKET_VENDOR_API_KEY", "Ticket Vendor", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+    }
+
+    internal const string EventParticipationsKey = "tickets.event-participations";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(EventParticipationsKey, "Tickets",
+            "Copy every event-participation row from Users' event_participations into tickets_event_participations",
+            "EventParticipationService's legacy fallback, its cleared rows, UserInfo.EventParticipations and the Legacy* participation enums; then a drop PR for event_participations",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Year", "Status", "Source", "Declared at", "Checked in at"],
+            [.. (await sp.GetRequiredService<IEventParticipationManagement>().GetUncopiedLegacyParticipationsAsync(ct))
+                .Select(p => (IReadOnlyList<string>)
+                [
+                    p.UserId.ToString(), p.Year.ToString(CultureInfo.InvariantCulture),
+                    p.Status.ToString(), p.Source.ToString(),
+                    p.DeclaredAt.ToIso8601() ?? string.Empty, p.CheckedInAt.ToIso8601() ?? string.Empty,
+                ])]);
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<IEventParticipationManagement>().CopyLegacyParticipationsAsync(ct);
+
+    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
+    {
+        builder.AddCheck<TicketVendorHealthCheck>("ticket-vendor", tags: [HealthCheckTags.External]);
+    }
+
+    IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => Entries;
+
+    private static readonly IReadOnlyList<SectionHelpEntry> Entries =
+    [
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Tickets", 90),
+    ];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var registry = services.GetRequiredService<ConfigurationRegistry>();
+        var syncIntervalMinutes = configuration.GetSettingValue(
+            registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
+
+        yield return new RecurringJobDescriptor(
+            "tickets-vendor-sync", typeof(TicketSyncJob), $"*/{syncIntervalMinutes} * * * *");
+    }
+
+    IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
+    [
+        new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MemberTicketStatusViewComponent), Weight: 20),
+        new ChromeComponent(ChromeSlots.GuestPage, typeof(GuestTicketOrdersViewComponent))
+    ];
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(PolicyNames.TicketAdminBoardOrAdmin, policy =>
+            policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin, RoleNames.Board));
+
+        options.AddPolicy(PolicyNames.TicketAdminOrAdmin, policy =>
+            policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin));
+    }
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.Profile, typeof(OnsiteChipViewComponent), Weight: 10),
+        new(UserPartSlots.ProfileSidebar, typeof(TicketHoldingsViewComponent)),
+        new(UserPartSlots.AdminDetailSidebar, typeof(TicketHoldingsViewComponent)),
+    ];
+}
+
+internal static class PillCounts
+{
+    public static async ValueTask<int?> TransferQueueAsync(IServiceProvider sp)
+    {
+        var transfers = sp.GetRequiredService<ITicketTransferQueue>();
+        var count = await transfers.CountPendingAsync();
+        return count > 0 ? count : null;
+    }
 }

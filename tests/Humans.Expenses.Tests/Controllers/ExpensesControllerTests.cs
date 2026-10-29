@@ -234,7 +234,7 @@ public sealed class ExpensesControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([
                 new Claim(ClaimTypes.NameIdentifier, actorId.ToString()),
-                new Claim(ClaimTypes.Role, RoleNames.FinanceAdmin)], "test"))
+                new Claim(ClaimTypes.Role, FinanceRoles.FinanceAdmin)], "test"))
         };
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));

@@ -461,6 +461,9 @@
   <data name="Error_SomethingWentWrong" xml:space="preserve">
     <value>Etwas ist schiefgelaufen</value>
   </data>
+  <data name="Error_CodeAndReference" xml:space="preserve">
+    <value>Fehler {0} · Referenz {1}</value>
+  </data>
   <data name="Error_TryAgainLater" xml:space="preserve">
     <value>Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</value>
   </data>
@@ -1529,7 +1532,7 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
-    <value>Veranstaltung</value>
+    <value>Veranstaltungen</value>
   </data>
 
   <data name="Settings_TabAgent" xml:space="preserve">

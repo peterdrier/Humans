@@ -10,7 +10,8 @@
   src/Humans.Web/Views/Admin/**
   src/Sections/Humans.Governance/Views/Governance/**
   src/Humans.Base/Constants/RoleNames.cs
-  src/Humans.Base/Constants/RoleGroups.cs
+  src/Humans.Base/Interfaces/ISectionRoles.cs
+  src/Sections/Humans.Auth/Contracts/RoleCatalog.cs
 -->
 <!-- freshness:flag-on-change
   Admin/Profile/Google route tables, role catalog, dashboard metrics, and the Board-vs-Admin role split — review when admin-area controllers, role names, or authorization policies change.
@@ -95,19 +96,19 @@ There is no `/Board/*` route prefix. `BoardController` was removed in nobodies-c
 
 ### UsersAdminController (`/Users/Admin`) — Human management actions
 
-Human management is now on `UsersAdminController` under `/Users/Admin`, accessible to HumanAdmin, Board, and Admin roles.
+Human management is now on `UsersAdminController` under `/Users/Admin`, accessible to UsersAdmin, Board, and Admin roles.
 
 | Route | Action | Roles |
 |-------|--------|-------|
-| `/Users/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
-| `/Users/Admin/{id}` | AdminDetail | HumanAdmin, Board, Admin — member detail |
-| `/Email/Admin/{id}/Outbox` | MemberOutbox.AdminOutbox (Email) | HumanAdmin, Board, Admin — view email outbox |
-| `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: HumanAdmin, Board, Admin |
-| `/Users/Admin/{id}/Reject` | RejectSignup | POST: HumanAdmin, Board, Admin |
-| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: HumanAdmin, Board, Admin |
-| `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: HumanAdmin, Board, Admin |
-| `/Auth/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | HumanAdmin, Board, Admin — role assignments across members |
+| `/Users/Admin` | AdminList | UsersAdmin, Board, Admin — member list |
+| `/Users/Admin/{id}` | AdminDetail | UsersAdmin, Board, Admin — member detail |
+| `/Email/Admin/{id}/Outbox` | MemberOutbox.AdminOutbox (Email) | UsersAdmin, Board, Admin — view email outbox |
+| `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: UsersAdmin, Board, Admin |
+| `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: UsersAdmin, Board, Admin |
+| `/Users/Admin/{id}/Reject` | RejectSignup | POST: UsersAdmin, Board, Admin |
+| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: UsersAdmin, Admin |
+| `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: UsersAdmin, Admin |
+| `/Auth/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | UsersAdmin, Board, Admin — role assignments across members |
 | `/Users/Admin/Audience` | Audience | Admin only — audience segmentation (accounts with a ticket / a profile / both / neither) for a year |
 
 ### GoogleController (`/Google/`) — Admin (mostly)
@@ -131,8 +132,8 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/Sync/ExecuteAll/{resourceType}` | Admin | POST: Sync all of a type |
 | `/Monitor/CheckDriveActivity` (`MonitorController`, not `GoogleController` — nobodies-collective/Humans#866) | Board, Admin | POST: Manual Drive Activity check |
 | `/Google/Resource/{id}` (`GoogleController`) | Board, Admin | GET: Per-resource sync audit log |
-| `/Google/Human/{id}` (`GoogleController`) | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
-| `/Google/Human/{id}/ProvisionEmail` | HumanAdmin, Admin | POST: Provision @nobodies.team email |
+| `/Google/Human/{id}` (`GoogleController`) | UsersAdmin, Board, Admin | GET: Per-user sync audit log |
+| `/Google/Human/{id}/ProvisionEmail` | UsersAdmin, Admin | POST: Provision @nobodies.team email |
 | `/Google/Accounts` | Admin | GET: All @nobodies.team accounts |
 | `/Google/Accounts/Provision` | Admin | POST: Provision account |
 | `/Google/Accounts/Suspend` | Admin | POST: Suspend account |
@@ -343,15 +344,15 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 
 ### Additional Roles
 
-All roles are defined in `RoleNames` constants and use temporal `RoleAssignment` records (same as Board and Admin).
+`Admin` and `Board` are `RoleNames` constants in Base; every other role is declared by its owning section through `ISectionRoles` (`UsersRoles.UsersAdmin`, `CampsRoles.CampsAdmin`, …) and composed into Auth's `RoleCatalog` at startup. All use temporal `RoleAssignment` records.
 
 | Role | Purpose |
 |------|---------|
-| **HumanAdmin** | View human admin pages, suspend/reject humans, provision @nobodies.team accounts, manage role assignments. Does NOT include Board or Admin capabilities. |
+| **UsersAdmin** | View human admin pages, suspend/reject humans, provision @nobodies.team accounts, manage role assignments. Does NOT include Board or Admin capabilities. |
 | **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign coordinators, configure Google Group prefixes). Can view sync status at `/Google/Sync` but cannot execute sync actions. |
-| **CampAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
-| **TicketAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
-| **NoInfoAdmin** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
+| **CampsAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
+| **TicketsAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
+| **ShiftsNoInfo** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
 | **EventsAdmin** | Event Guide dashboard, moderation, settings, categories, venues, and export. |
 | **FeedbackAdmin** | None since nobodies-collective/Humans#977 — Feedback is retired and every screen is `AdminOnly`. The role stays assignable (Staff page, Guide, `AnyAdminRole`) but grants no feedback access. |
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
@@ -359,8 +360,8 @@ All roles are defined in `RoleNames` constants and use temporal `RoleAssignment`
 | **CantinaAdmin** | Cantina weekly roster. |
 | **RideshareAdmin** | Rideshare settings (year's destination, travel windows), season statistics, and the day roster. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
-| **VolunteerCoordinator** | Read-only access to onboarding review queue. |
-| **EETeamAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
+| **ShiftsAdmin** | Read-only access to onboarding review queue. |
+| **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
 
 ### Authorization Foundation
 
@@ -371,7 +372,8 @@ Role claims are synced from the `RoleAssignment` table to Identity claims via `R
 ### Role Assignment Authorization
 Resource-based: `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.Auth`) call `IAuthorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)`, evaluated by `RoleAssignmentAuthorizationHandler` (`Humans.Auth`) against the target role name (the resource):
 - **Admin** can assign/end any role
-- **Board** or **HumanAdmin** can assign/end any role in `RoleNames.BoardManageableRoles` — Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, FeedbackAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EETeamAdmin, RideshareAdmin, ConsentCoordinator, VolunteerCoordinator (not Admin)
+- **UsersAdmin** can assign/end any role but `Admin` (`RoleAssignmentRules` in Auth)
+- **Board** cannot assign or end roles; it sees the roster
 - Everyone else is denied
 - Attempting to assign a role outside your permissions returns 403 Forbidden; ending one outside your permissions returns 404 (the row is treated as not found rather than as a permissions error)
 
@@ -422,7 +424,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 
 | Tab key | Section | Policy | Old route (now removed) |
 |---|---|---|---|
-| `city-planning` | CityPlanning | `CityPlanningMapAdmin` (CampAdmin/Admin or a city-planning team member — wider than the `CampAdminOrAdmin`-gated "Barrio map" nav item, since this tab is the only route to these controls) | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
+| `city-planning` | CityPlanning | `CityPlanningMapAdmin` (CampsAdmin/Admin or a city-planning team member — wider than the `CampAdminOrAdmin`-gated "Barrio map" nav item, since this tab is the only route to these controls) | Settings portion of `/CityPlanning/BarrioMap/Admin` (page stays for GeoJSON/containers/export) |
 | `gate` | Gate | `TicketAdminOrAdmin` | Settings portion of `/Gate/Admin` (page stays for staff PIN admin) |
 | `event-guide` | Events | `EventsAdminOrAdmin` | `/Events/Admin/Settings` (admin-nav item removed; the Events member-nav "Guide Settings" link points at the tab) |
 | `barrios` | Camps | `CampAdminOrAdmin` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |

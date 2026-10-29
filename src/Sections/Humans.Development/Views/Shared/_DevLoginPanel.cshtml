@@ -1,5 +1,6 @@
 @inject IWebHostEnvironment HostEnv
 @inject IConfiguration Config
+@inject Humans.Auth.Contracts.RoleCatalog Catalog
 @*
     Lives here, not in Shell's /Account/Login, because PersonasFor is internal to this section; Shell renders it by
     name. Shell's devAuthEnabled guard keeps it out of Production. ReturnUrl comes from the calling view's ViewData.
@@ -15,7 +16,7 @@
                 <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
                     @* PersonasFor drops the Admin persona unless the host allows it — the
                        button and the route share one predicate. *@
-                    @foreach (var persona in DevLoginController.PersonasFor(HostEnv, Config))
+                    @foreach (var persona in DevLoginController.PersonasFor(HostEnv, Config, Catalog))
                     {
                         <a asp-controller="DevLogin" asp-action="SignIn"
                            asp-route-persona="@persona.Slug"

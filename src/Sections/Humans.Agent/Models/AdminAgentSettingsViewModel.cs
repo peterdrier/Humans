@@ -1,4 +1,5 @@
 using Humans.Agent.Domain;
+using Humans.Agent.Services;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -11,6 +12,9 @@ internal sealed class AdminAgentSettingsViewModel
     [Required, StringLength(64)]
     [BindRequired]
     public string Model { get; set; } = "claude-sonnet-4-6";
+    /// <summary>Display only; never bound from the form.</summary>
+    [BindNever]
+    public AgentModelOptions ModelOptions { get; set; } = new([], LiveListAvailable: false);
     [BindRequired]
     public AgentPreloadConfig PreloadConfig { get; set; }
     [BindRequired]

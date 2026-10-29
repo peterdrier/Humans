@@ -57,7 +57,7 @@ test.describe('Scanner', () => {
       };
     });
 
-    await loginAs(page, 'ticket-admin');
+    await loginAs(page, 'tickets-admin');
     await page.goto('/Scanner/Barcode');
 
     await page.getByRole('button', { name: /scan|escanear|scannen|scanner|scansiona/i }).click();

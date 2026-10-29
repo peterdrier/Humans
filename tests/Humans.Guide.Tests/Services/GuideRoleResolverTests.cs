@@ -44,7 +44,7 @@ public class GuideRoleResolverTests
         return new ClaimsPrincipal(identity);
     }
 
-    private GuideRoleResolver CreateResolver() => new(_teamService, _campLeads);
+    private GuideRoleResolver CreateResolver() => new(_teamService, _campLeads, GuideTestRoles.Map);
 
     private TeamInfo BuildTeam(Guid teamId, params TeamMemberInfo[] members) => new(
         Id: teamId,
@@ -208,7 +208,7 @@ public class GuideRoleResolverTests
     public static TheoryData<string> MappedRoles()
     {
         var data = new TheoryData<string>();
-        foreach (var role in GuideRolePrivilegeMap.MappedRoles)
+        foreach (var role in GuideTestRoles.Map.MappedRoles)
         {
             data.Add(role);
         }

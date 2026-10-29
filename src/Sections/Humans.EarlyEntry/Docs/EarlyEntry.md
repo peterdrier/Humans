@@ -4,7 +4,7 @@
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Camps/Services/CampService.cs
   src/Sections/Humans.Shifts/Section.cs
-  src/Sections/Humans.Shifts/SectionPolicies.cs
+  src/Sections/Humans.Shifts/Section.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Teams/Section.cs
@@ -55,7 +55,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 |-------|--------------|
 | Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, transfer wizard). The stub and holdings view components answer for the user they are invoked with; an admin profile view shows the profiled user's. |
 | Gate / Scanner staff | Sees the *scanned attendee's* EE on the gate card (`ScannerController`, `GateService`). |
-| `ShiftDashboardAccess` (Admin, NoInfoAdmin, VolunteerCoordinator) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
+| `ShiftDashboardAccess` (Admin, ShiftsNoInfo, ShiftsAdmin) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
 
 ## Invariants
 

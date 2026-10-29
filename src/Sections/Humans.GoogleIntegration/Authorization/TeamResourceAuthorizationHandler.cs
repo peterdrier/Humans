@@ -21,7 +21,7 @@ internal sealed class TeamResourceAuthorizationHandler(
         TeamResourceManageRequirement requirement,
         TeamInfo resource)
     {
-        if (RoleChecks.IsTeamsAdminBoardOrAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdminBoardOrAdmin(context.User))
         {
             context.Succeed(requirement);
             return;

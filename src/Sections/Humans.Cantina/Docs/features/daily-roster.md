@@ -246,7 +246,7 @@ New / updated components:
 |---|---|---|
 | Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftService`, `ISettingsService`, `IUserService` + `ICantinaService` |
 | Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
-| Base | `RoleNames.CantinaAdmin` | Grantable admin role; wired into `RoleNames.All` + `AnyAdminRole` + the `CantinaAdminOrAdmin` policy |
+| Cantina.Contracts | `CantinaRoles.CantinaAdmin` | Grantable admin role, declared through `ISectionRoles` (so it joins `AnyAdminRole`) and gated by the `CantinaAdminOrAdmin` policy |
 | Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
 | Section | `Roster.cshtml`, `Day.cshtml` | Weekly overview (aggregates + per-day mini-table) and the per-day matrix |
 

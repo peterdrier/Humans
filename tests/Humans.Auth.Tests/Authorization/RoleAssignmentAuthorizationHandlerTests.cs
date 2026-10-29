@@ -2,7 +2,13 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Auth.Authorization;
 using Humans.Auth.Contracts;
+using Humans.Auth.Tests.Infrastructure;
 using Humans.Base.Constants;
+using Humans.Camps.Contracts;
+using Humans.Finance.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;
 
@@ -15,104 +21,81 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
-    [InlineData(RoleNames.CampAdmin)]
-    [InlineData(RoleNames.TicketAdmin)]
-    [InlineData(RoleNames.NoInfoAdmin)]
-    [InlineData(RoleNames.FeedbackAdmin)]
-    [InlineData(RoleNames.FinanceAdmin)]
-    [InlineData(RoleNames.ConsentCoordinator)]
-    [InlineData(RoleNames.VolunteerCoordinator)]
-    [InlineData(RoleNames.HumanAdmin)]
+    [InlineData(UsersRoles.UsersAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
+    [InlineData(CampsRoles.CampsAdmin)]
+    [InlineData(TicketsRoles.TicketsAdmin)]
+    [InlineData(FinanceRoles.FinanceAdmin)]
     public async Task Admin_CanManageAnyRole(string roleName)
     {
         var user = CreateUserWithRoles(RoleNames.Admin);
-        var result = await EvaluateAsync(user, roleName);
-        result.Should().BeTrue();
+        (await EvaluateAsync(user, roleName)).Should().BeTrue();
     }
 
     [HumansTheory]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.HumanAdmin)]
-    [InlineData(RoleNames.TeamsAdmin)]
-    [InlineData(RoleNames.CampAdmin)]
-    [InlineData(RoleNames.TicketAdmin)]
-    [InlineData(RoleNames.NoInfoAdmin)]
-    [InlineData(RoleNames.ConsentCoordinator)]
-    [InlineData(RoleNames.VolunteerCoordinator)]
-    [InlineData(RoleNames.FeedbackAdmin)]
-    [InlineData(RoleNames.FinanceAdmin)]
-    public async Task Board_CanManageAllowedRoles(string roleName)
+    [InlineData(UsersRoles.UsersAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
+    [InlineData(CampsRoles.CampsAdmin)]
+    [InlineData(TicketsRoles.TicketsAdmin)]
+    [InlineData(FinanceRoles.FinanceAdmin)]
+    public async Task UsersAdmin_CanManageEveryRoleButAdmin(string roleName)
     {
-        var user = CreateUserWithRoles(RoleNames.Board);
-        var result = await EvaluateAsync(user, roleName);
-        result.Should().BeTrue();
+        var user = CreateUserWithRoles(UsersRoles.UsersAdmin);
+        (await EvaluateAsync(user, roleName)).Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task Board_CannotManageAdminRole()
+    public async Task UsersAdmin_CannotManageAdminRole()
     {
-        var user = CreateUserWithRoles(RoleNames.Board);
-        var result = await EvaluateAsync(user, RoleNames.Admin);
-        result.Should().BeFalse();
+        var user = CreateUserWithRoles(UsersRoles.UsersAdmin);
+        (await EvaluateAsync(user, RoleNames.Admin)).Should().BeFalse();
     }
 
     [HumansTheory]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.HumanAdmin)]
-    [InlineData(RoleNames.TeamsAdmin)]
-    [InlineData(RoleNames.CampAdmin)]
-    [InlineData(RoleNames.TicketAdmin)]
-    [InlineData(RoleNames.NoInfoAdmin)]
-    [InlineData(RoleNames.ConsentCoordinator)]
-    [InlineData(RoleNames.VolunteerCoordinator)]
-    [InlineData(RoleNames.FeedbackAdmin)]
-    [InlineData(RoleNames.FinanceAdmin)]
-    public async Task HumanAdmin_CanManageAllowedRoles(string roleName)
+    [InlineData(TeamsRoles.TeamsAdmin)]
+    [InlineData(RoleNames.Admin)]
+    public async Task Board_NoLongerManagesRoles(string roleName)
     {
-        var user = CreateUserWithRoles(RoleNames.HumanAdmin);
-        var result = await EvaluateAsync(user, roleName);
-        result.Should().BeTrue();
+        // Board is a governance body, not an operator (Peter, 2026-10-22): role assignment moved to UsersAdmin.
+        var user = CreateUserWithRoles(RoleNames.Board);
+        (await EvaluateAsync(user, roleName)).Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task HumanAdmin_CannotManageAdminRole()
+    [HumansTheory]
+    [InlineData(TeamsRoles.TeamsAdmin)]
+    [InlineData(FinanceRoles.FinanceAdmin)]
+    public async Task OtherSectionAdmins_CannotManageRoles(string holderRole)
     {
-        var user = CreateUserWithRoles(RoleNames.HumanAdmin);
-        var result = await EvaluateAsync(user, RoleNames.Admin);
-        result.Should().BeFalse();
+        var user = CreateUserWithRoles(holderRole);
+        (await EvaluateAsync(user, RoleNames.Board)).Should().BeFalse();
     }
 
     [HumansFact]
     public async Task RegularUser_DeniedForAnyRole()
     {
         var user = CreateUserWithRoles();
-        var result = await EvaluateAsync(user, RoleNames.Board);
-        result.Should().BeFalse();
+        (await EvaluateAsync(user, RoleNames.Board)).Should().BeFalse();
     }
 
     [HumansFact]
     public async Task UnauthenticatedUser_Denied()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity());
-        var result = await EvaluateAsync(user, RoleNames.Board);
-        result.Should().BeFalse();
+        (await EvaluateAsync(user, RoleNames.Board)).Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task TeamsAdmin_CannotManageRoles()
+    public void Assignable_FollowsTheSameRule_InCatalogOrder()
     {
-        var user = CreateUserWithRoles(RoleNames.TeamsAdmin);
-        var result = await EvaluateAsync(user, RoleNames.Board);
-        result.Should().BeFalse();
-    }
+        var catalog = TestRoles.Catalog();
 
-    [HumansFact]
-    public async Task FinanceAdmin_CannotManageRoles()
-    {
-        var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
-        var result = await EvaluateAsync(user, RoleNames.Board);
-        result.Should().BeFalse();
+        RoleAssignmentRules.Assignable(CreateUserWithRoles(RoleNames.Admin), catalog)
+            .Select(r => r.Name).Should().Equal(catalog.Roles.Select(r => r.Name));
+        RoleAssignmentRules.Assignable(CreateUserWithRoles(UsersRoles.UsersAdmin), catalog)
+            .Select(r => r.Name).Should().Equal(catalog.Roles.Select(r => r.Name).Where(n => !string.Equals(n, RoleNames.Admin, StringComparison.Ordinal)));
+        RoleAssignmentRules.Assignable(CreateUserWithRoles(RoleNames.Board), catalog).Should().BeEmpty();
     }
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, string roleName)

@@ -17,7 +17,7 @@ Barrios are themed villages or spaces at events. Any human can register a barrio
 4. **Full** — a lead marked the barrio as full (informational)
 5. **Withdrawn** — a lead withdrew the season
 
-A Pending season becomes Active (approved), Rejected or Withdrawn. An Active season can become Full or Withdrawn. A Camp Admin can reactivate a Full season (back to Active) or a Withdrawn one (back to Pending). A returning barrio that was approved before is approved straight away.
+A Pending season becomes Active (approved), Rejected or Withdrawn. An Active season can become Full or Withdrawn. A Camps Admin can reactivate a Full season (back to Active) or a Withdrawn one (back to Pending). A returning barrio that was approved before is approved straight away.
 
 ### Barrio Leads
 

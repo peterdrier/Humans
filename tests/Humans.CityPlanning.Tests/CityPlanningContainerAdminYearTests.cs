@@ -61,7 +61,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     {
         _containerService.CreateAsync(Arg.Any<ContainerData>(), _userId, Arg.Any<CancellationToken>())
             .Returns(new ContainerMutationResult<ContainerDto>(ContainerDtoFor(Guid.NewGuid())));
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
 
         var result = await controller.CreateBarrioContainer(
             RouteYear, Guid.NewGuid(), new ContainerFormModel { Name = "Box" }, TestContext.Current.CancellationToken);
@@ -72,7 +72,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     [HumansFact]
     public async Task CreateBarrioContainer_InvalidModel_RedirectsToTheRouteYear()
     {
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
         controller.ModelState.AddModelError("Name", "Required");
 
         var result = await controller.CreateBarrioContainer(
@@ -88,7 +88,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         _containerService.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(ContainerDtoFor(id));
         _containerService.UpdateAsync(id, Arg.Any<ContainerData>(), _userId, Arg.Any<CancellationToken>())
             .Returns(new ContainerMutationResult<ContainerDto>(ContainerDtoFor(Guid.NewGuid())));
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
 
         var result = await controller.EditContainer(
             RouteYear, id, new ContainerFormModel { Name = "Box" }, TestContext.Current.CancellationToken);
@@ -101,7 +101,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     {
         var id = Guid.NewGuid();
         _containerService.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(ContainerDtoFor(id));
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
         controller.ModelState.AddModelError("Name", "Required");
 
         var result = await controller.EditContainer(
@@ -115,7 +115,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     {
         var id = Guid.NewGuid();
         _containerService.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(ContainerDtoFor(id));
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
 
         var result = await controller.DeleteContainer(RouteYear, id, TestContext.Current.CancellationToken);
 
@@ -171,7 +171,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(null));
-        var controller = CreateController(service, MapAdminAuthorization(service), RoleNames.CampAdmin);
+        var controller = CreateController(service, MapAdminAuthorization(service), CampsRoles.CampsAdmin);
 
         var result = await controller.ContainerMap(RouteYear, TestContext.Current.CancellationToken);
 

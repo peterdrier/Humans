@@ -5,7 +5,7 @@
   src/Sections/Humans.Issues/Data/Configurations/**
   src/Sections/Humans.Issues/Views/**
   src/Sections/Humans.Issues/Models/**
-  src/Sections/Humans.Issues/SectionJobs.cs
+  src/Sections/Humans.Issues/Section.cs
   src/Sections/*/Section.cs
 -->
 <!-- freshness:flag-on-change
@@ -58,23 +58,23 @@ Six months after an issue is finally closed, it and its attachment are deleted f
 
 Other people's issues. You see exactly the ones you reported — no more, in any area — unless you hold a role that owns a queue.
 
-## As a Coordinator (Ticket Admin, Camp Admin, Teams Admin, No Info Admin, Consent Coordinator, Volunteer Coordinator, Human Admin, Finance Admin, Board)
+## As a Coordinator (Tickets Admin, Camps Admin, Teams Admin, Shifts NoInfo, Consent Coordinator, Shifts Admin, Users Admin, Finance Admin, Board)
 
 If you hold a role that owns an area, that area's queue is yours. You see it at `/Issues` alongside your own reports, and the badge in your user menu counts everything in it still needing attention — issues in **Triage** or **Open**.
 
 | Area | Who handles it |
 |---|---|
-| Tickets | Ticket Admin |
-| Camps | Camp Admin |
+| Tickets | Tickets Admin |
+| Camps | Camps Admin |
 | Teams | Teams Admin |
 | Shifts | No-Info Admin |
-| Onboarding | Consent Coordinator, Volunteer Coordinator, Human Admin |
-| Profiles | Human Admin |
+| Onboarding | Consent Coordinator, Shifts Admin, Users Admin |
+| Profiles | Users Admin |
 | Budget | Finance Admin |
 | Governance | Board |
 | Legal | Consent Coordinator |
-| City Planning | Camp Admin |
-| Scanner | Ticket Admin, Board |
+| City Planning | Camps Admin |
+| Scanner | Tickets Admin, Board |
 | *(no area set)* | Admin only |
 
 Admins see and handle everything.

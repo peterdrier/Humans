@@ -303,6 +303,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             AgentTurnFinalizer? iterationUsage = null;
             var iterationAssistantText = new StringBuilder();
             var pendingToolCalls = new List<AnthropicToolCall>();
+            IReadOnlyList<AnthropicContentBlock>? iterationContent = null;
 
             await foreach (var token in _client.StreamAsync(
                 new AnthropicRequest(settings.Model, systemPrompt, sdkMessages, tools,
@@ -328,6 +329,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 else if (token.Finalizer is { } f)
                 {
                     finalFinalizer = f;
+                    iterationContent = token.AssistantContent;
                 }
             }
 
@@ -354,7 +356,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                 Role: "assistant",
                 Text: iterationAssistantText.Length > 0 ? iterationAssistantText.ToString() : null,
                 ToolCalls: ReplayableToolCalls(pendingToolCalls),
-                ToolResults: null));
+                ToolResults: null,
+                AssistantContent: iterationContent is null ? null : ReplayableContent(iterationContent)));
 
             var results = new List<AnthropicToolResult>();
             foreach (var call in pendingToolCalls)
@@ -676,6 +679,15 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     /// </remarks>
     private static List<AnthropicToolCall> ReplayableToolCalls(List<AnthropicToolCall> calls) =>
         [.. calls.Select(c => IsReplayableArguments(c.JsonArguments) ? c : c with { JsonArguments = "{}" })];
+
+    /// <summary>The produced blocks in order, minus empty text (which the API rejects), with unparseable tool
+    /// arguments neutralised as in <see cref="ReplayableToolCalls"/>.</summary>
+    private static List<AnthropicContentBlock> ReplayableContent(IReadOnlyList<AnthropicContentBlock> content) =>
+        [.. content
+            .Where(b => b is not AnthropicTextBlock { Text.Length: 0 })
+            .Select(b => b is AnthropicToolUseBlock { Call: var c } && !IsReplayableArguments(c.JsonArguments)
+                ? new AnthropicToolUseBlock(c with { JsonArguments = "{}" })
+                : b)];
 
     private static bool IsReplayableArguments(string jsonArguments)
     {

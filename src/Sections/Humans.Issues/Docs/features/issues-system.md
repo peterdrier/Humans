@@ -11,7 +11,7 @@
 
 ## Business Context
 
-The Issues section is the in-app issue tracker — bugs, feature requests, and questions raised by humans against any section of the app. Submissions are routed by `Issue.Section` to the role-holders who own that section (e.g. an issue tagged `Tickets` lands in the queue of every `TicketAdmin`), so triage is decentralised: each section's coordinators see only the issues that concern them, while Admin sees everything. A reporter can have a back-and-forth conversation with handlers right inside the issue detail; "ball-in-court" is derived from the latest comment so the system never lies about whose move it is. Claude Code agents have programmatic read/write access via an API key for automated triage and follow-up.
+The Issues section is the in-app issue tracker — bugs, feature requests, and questions raised by humans against any section of the app. Submissions are routed by `Issue.Section` to the role-holders who own that section (e.g. an issue tagged `Tickets` lands in the queue of every `TicketsAdmin`), so triage is decentralised: each section's coordinators see only the issues that concern them, while Admin sees everything. A reporter can have a back-and-forth conversation with handlers right inside the issue detail; "ball-in-court" is derived from the latest comment so the system never lies about whose move it is. Claude Code agents have programmatic read/write access via an API key for automated triage and follow-up.
 
 Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedback/Docs/features/feedback-system.md`), the single global queue it replaced, accepts no new reports and is Admin-only.
 
@@ -34,7 +34,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 
 ### US-28.2: Section-Routed Triage
 
-**As** a section role-holder (e.g., `TicketAdmin`, `CampAdmin`, `Board`) **or** an Admin, **I want** to see and triage the issues filed against my section, **so that** my queue stays focused on what I actually own.
+**As** a section role-holder (e.g., `TicketsAdmin`, `CampsAdmin`, `Board`) **or** an Admin, **I want** to see and triage the issues filed against my section, **so that** my queue stays focused on what I actually own.
 
 **Acceptance Criteria:**
 - Unified page at `/Issues` — Admin sees all issues; section role-holders see issues where `Issue.Section` maps to one of their roles (per `IssueSectionRouting.RolesFor`); a regular human sees only the issues they reported
@@ -174,7 +174,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 
 ## Navigation
 
-- **Signed-in user menu:** "Issues" link visible to all authenticated users, contributed via `SectionChrome`'s `ChromeSlots.UserMenu`; nav badge (`IssuesUserMenuViewComponent`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
+- **Signed-in user menu:** "Issues" link visible to all authenticated users, contributed via `ISectionChrome`'s `ChromeSlots.UserMenu`; nav badge (`IssuesUserMenuViewComponent`) shows the actionable count for the current viewer (sum across all sections they own + their own reported issues that need their reply).
 - **Floating widget:** `Humans.Agent`'s `HelpWidgetViewComponent`, contributed into Shell's `body-end` chrome slot, renders on every page for authenticated users and hosts the Issues section's `_IssueWidgetModal` partial.
 - **`/Backdoor`:** allocate, rotate and revoke the keys that open this API.
 
@@ -185,4 +185,4 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 - Notifications (`src/Sections/Humans.Notifications/Docs/features/notification-inbox.md`) — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
 - `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count.
-- Role management — `TicketAdmin`, `CampAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `VolunteerCoordinator`, `HumanAdmin`, `NoInfoAdmin`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.
+- Role management — `TicketsAdmin`, `CampsAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `ShiftsAdmin`, `UsersAdmin`, `ShiftsNoInfo`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.

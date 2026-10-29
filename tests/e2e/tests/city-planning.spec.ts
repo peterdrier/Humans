@@ -81,8 +81,8 @@ test.describe('City Planning (38-city-planning)', () => {
     // was meant to remove. The admin forms only exist on the real admin page.
     const adminForm = 'form[action*="/CityPlanning/BarrioMap/Admin/"]';
 
-    test('camp-admin can access /CityPlanning/BarrioMap/Admin', async ({ page }) => {
-      await loginAs(page, 'camp-admin');
+    test('camps-admin can access /CityPlanning/BarrioMap/Admin', async ({ page }) => {
+      await loginAs(page, 'camps-admin');
       await page.goto('/CityPlanning/BarrioMap/Admin');
 
       expect(page.url()).toContain('/CityPlanning/BarrioMap/Admin');

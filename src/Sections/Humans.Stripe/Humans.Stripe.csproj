@@ -8,10 +8,8 @@
 
   <ItemGroup>
     <!--
-      The payments connector section. Stripe.net stops here: Contracts/IStripeService.cs is
-      the §15i seam and no SDK type crosses it. No tables, no controllers and no views, so
-      this is plain Microsoft.NET.Sdk rather than Sdk.Razor. Base is the only reference —
-      it supplies ILogger.TimeOperation and the GitHubSettings the webhook registrar reads.
+      Stripe.net stops here: Contracts/IStripeService.cs is the seam (design-rules §15i)
+      and no SDK type crosses it.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
@@ -29,7 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

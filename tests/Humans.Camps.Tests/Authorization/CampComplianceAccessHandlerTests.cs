@@ -1,3 +1,5 @@
+using Humans.Teams.Contracts;
+using Humans.Camps.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -20,11 +22,11 @@ public sealed class CampComplianceAccessHandlerTests
     }
 
     [HumansTheory]
-    [InlineData(RoleNames.CampAdmin, true)]
+    [InlineData(CampsRoles.CampsAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
-    [InlineData(RoleNames.TeamsAdmin, false)]
-    [InlineData(RoleNames.VolunteerCoordinator, false)]
+    [InlineData(TeamsRoles.TeamsAdmin, false)]
+    [InlineData(ShiftsRoles.ShiftsAdmin, false)]
     public async Task ChecksCorrectRoles(string role, bool expected)
     {
         var result = await EvaluateAsync(CreateUserWithRole(role));
@@ -56,7 +58,7 @@ public sealed class CampComplianceAccessHandlerTests
     [HumansFact]
     public async Task CampAdmin_ShortCircuitsWithoutCallingShiftService()
     {
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.CampAdmin));
+        var result = await EvaluateAsync(CreateUserWithRole(CampsRoles.CampsAdmin));
 
         result.Should().BeTrue();
         await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());

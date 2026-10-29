@@ -1,3 +1,10 @@
+using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Camps.Contracts;
+using Humans.Tickets.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Finance.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
@@ -23,18 +30,18 @@ internal static class TestIssueQueues
     public static IssueSectionRouting Routing(params IIssueQueueOwner[] owners) => new(owners);
 
     public static IssueSectionRouting Shipped() => Routing(
-        new TestQueueOwner("Budget", [RoleNames.FinanceAdmin]),
-        new TestQueueOwner("Camps", [RoleNames.CampAdmin]),
-        new TestQueueOwner("CityPlanning", [RoleNames.CampAdmin]),
+        new TestQueueOwner("Budget", [FinanceRoles.FinanceAdmin]),
+        new TestQueueOwner("Camps", [CampsRoles.CampsAdmin]),
+        new TestQueueOwner("CityPlanning", [CampsRoles.CampsAdmin]),
         new TestQueueOwner("Governance", [RoleNames.Board]),
         // Users declares "Profiles" and Consent declares "Legal" — the spellings their rows
         // were stored under before those sections were renamed.
-        new TestQueueOwner("Legal", [RoleNames.ConsentCoordinator]),
+        new TestQueueOwner("Legal", [ConsentRoles.ConsentCoordinator]),
         new TestQueueOwner("Onboarding",
-            [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin]),
-        new TestQueueOwner("Profiles", [RoleNames.HumanAdmin]),
-        new TestQueueOwner("Scanner", [RoleNames.TicketAdmin, RoleNames.Board]),
-        new TestQueueOwner("Shifts", [RoleNames.NoInfoAdmin]),
-        new TestQueueOwner("Teams", [RoleNames.TeamsAdmin]),
-        new TestQueueOwner("Tickets", [RoleNames.TicketAdmin]));
+            [ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin]),
+        new TestQueueOwner("Profiles", [UsersRoles.UsersAdmin]),
+        new TestQueueOwner("Scanner", [TicketsRoles.TicketsAdmin, RoleNames.Board]),
+        new TestQueueOwner("Shifts", [ShiftsRoles.ShiftsNoInfo]),
+        new TestQueueOwner("Teams", [TeamsRoles.TeamsAdmin]),
+        new TestQueueOwner("Tickets", [TicketsRoles.TicketsAdmin]));
 }

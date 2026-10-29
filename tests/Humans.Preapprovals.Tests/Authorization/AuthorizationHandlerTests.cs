@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -47,7 +48,7 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Admin)]
     [Xunit.InlineData(RoleNames.Board)]
-    [Xunit.InlineData(RoleNames.FinanceAdmin)]
+    [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
     public async Task ManagingRoles_ManageAndAdministerEveryProgram(string role)
     {
         var program = (await NewService().GetProgramAsync((await SeedProgramAsync()).Id, Ct))!;

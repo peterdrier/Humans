@@ -9,8 +9,7 @@ namespace Humans.Stripe.Tests.Architecture;
 /// </summary>
 public class StripeConnectorArchitectureTests
 {
-    // Nothing enforces "only Humans.Stripe references Stripe.net" any more: the hub and Web assertions were
-    // dropped (nobodies-collective/Humans#866). Restore it from a host-level architecture test project.
+    // Nothing enforces "only Humans.Stripe references Stripe.net"; restore it from a host-level architecture test project.
 
     [HumansFact]
     public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()
@@ -29,9 +28,7 @@ public class StripeConnectorArchitectureTests
             because: "IStripeService is the bridge — SDK types must stay on the section's Services/ side of the seam (design-rules §15i)");
     }
 
-    // Recursively expose every type referenced by a surface type — unwrapping
-    // Nullable<>, arrays/by-ref/pointers, and all generic arguments (at any depth)
-    // so a nested leak like Task<List<Stripe.X>> cannot bypass the guard.
+    // Walks to any generic depth so a nested leak like Task<List<Stripe.X>> cannot bypass the guard.
     private static IEnumerable<Type> WalkTypes(Type type)
     {
         var seen = new HashSet<Type>();

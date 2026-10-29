@@ -6,7 +6,7 @@ namespace Humans.Guide.Services;
 /// A "## As a …" heading opens a segment that runs to the next <c>##</c> heading or EOF; everything else is an
 /// unscoped segment everyone sees.
 /// </summary>
-internal static class GuideSegmenter
+internal sealed class GuideSegmenter(GuideRolePrivilegeMap privileges)
 {
     // Internal so the guard test can hold guide content to the exact heading grammar the
     // segmenter uses, rather than a second copy that can drift from it.
@@ -30,7 +30,7 @@ internal static class GuideSegmenter
 
     private static readonly string[] NoPrivileges = [];
 
-    public static GuideDocument Segment(string markdown)
+    public GuideDocument Segment(string markdown)
     {
         ArgumentNullException.ThrowIfNull(markdown);
 
@@ -40,7 +40,7 @@ internal static class GuideSegmenter
         var start = 0;
         string? role = null;
         string? openFence = null;
-        IReadOnlyList<string> privileges = NoPrivileges;
+        IReadOnlyList<string> privilegeTokens = NoPrivileges;
 
         for (var i = 0; i < lines.Length; i++)
         {
@@ -93,7 +93,7 @@ internal static class GuideSegmenter
                     "board" => GuideDocument.BoardAdmin,
                     _ => GuideDocument.Volunteer
                 };
-                privileges = GuideRolePrivilegeMap.ParseParenthetical(
+                privilegeTokens = privileges.ParseParenthetical(
                     roleMatch.Groups["paren"].Success ? roleMatch.Groups["paren"].Value : null);
                 start = i;
                 continue;
@@ -103,7 +103,7 @@ internal static class GuideSegmenter
             {
                 Flush(i);
                 role = null;
-                privileges = NoPrivileges;
+                privilegeTokens = NoPrivileges;
                 start = i;
             }
         }
@@ -123,7 +123,7 @@ internal static class GuideSegmenter
 
             segments.Add(new GuideSegment(
                 role,
-                privileges,
+                privilegeTokens,
                 string.Join('\n', lines[start..end])));
         }
     }

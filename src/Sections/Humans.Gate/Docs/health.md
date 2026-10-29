@@ -125,7 +125,7 @@ recorded, not a structural need.
 - Kiosk JS: quiet-timer submit (no reliance on wedge Enter-suffix), anti-mistap arming delay,
   typing `logout` is the only way off the route-locked gate account.
 - `GateVendorCheckInJob` is `public`: Hangfire resolves it from the enqueue's serialized method
-  reference. `GateRetentionJob` is `internal`, scheduled through the section's own `SectionJobs`.
+  reference. `GateRetentionJob` is `internal`, scheduled through the section's own `ISectionJobs`.
 - The settings form lives in the Settings tab view component but posts to `GateController`'s
   `Admin` action, naming the controller explicitly — inside `/Settings` the ambient route would
   resolve `Admin` against the wrong controller.

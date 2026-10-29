@@ -56,6 +56,14 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
+    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid excludingId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -85,10 +93,6 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             existing.BuildStartOffset = settings.BuildStartOffset;
             existing.EventEndOffset = settings.EventEndOffset;
             existing.StrikeEndOffset = settings.StrikeEndOffset;
-            existing.FirstCrewStartOffset = settings.FirstCrewStartOffset;
-            existing.SetupWeekStartOffset = settings.SetupWeekStartOffset;
-            existing.PreEventWeekStartOffset = settings.PreEventWeekStartOffset;
-            existing.FinishingWeekendStartOffset = settings.FinishingWeekendStartOffset;
             existing.EarlyEntryCapacity = settings.EarlyEntryCapacity;
             existing.BarriosEarlyEntryAllocation = settings.BarriosEarlyEntryAllocation;
             existing.EarlyEntryClose = settings.EarlyEntryClose;
@@ -99,6 +103,31 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
         }
 
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<EventSettings>> SetActiveEventSettingsAsync(
+        Guid id, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var target = await ctx.EventSettings.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (target is null)
+            return [];
+
+        var changed = await ctx.EventSettings
+            .Where(e => e.Status == EventSettingsStatus.Active && e.Id != id)
+            .ToListAsync(ct);
+        foreach (var previous in changed)
+        {
+            previous.Status = EventSettingsStatus.Inactive;
+            previous.UpdatedAt = now;
+        }
+
+        target.Status = EventSettingsStatus.Active;
+        target.UpdatedAt = now;
+        changed.Add(target);
+
+        await ctx.SaveChangesAsync(ct);
+        return changed;
     }
 
     public async Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default)

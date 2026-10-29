@@ -148,7 +148,7 @@ Agent dispatcher tool that returns the calling user's audit history as plain tex
 
 ## Authorization
 
-The global audit log (`/AuditLog`) and per-resource/per-user views are visible only to Board and Admin (or HumanAdmin for the per-user view) — they live on `AuditLogController` with the appropriate policies. The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin.
+The global audit log (`/AuditLog`) and per-resource/per-user views are visible only to Board and Admin (or UsersAdmin for the per-user view) — they live on `AuditLogController` with the appropriate policies. The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin.
 
 ## Related Features
 

@@ -175,7 +175,7 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | Board-vote meter | Governance | one per (application, board member) still to vote, since "awaiting *your* vote" is per person | `Role:Board`, with a single-member recipient set on each entry, so a Board membership refresh attributes to the role | voted or decided |
 | AccessSuspended | Users | one while suspended | `User` | unsuspended |
 | ReConsentRequired, LegalDocumentPublished, consents things-to-do | Governance | one per required consent outstanding | `User` | consent signed |
-| Consent-review meter, onboarding-pending meter | Users | one per profile awaiting review | `Role:ConsentCoordinator`, `Role:Board`, `Role:VolunteerCoordinator` | reviewed |
+| Consent-review meter, onboarding-pending meter | Users | one per profile awaiting review | `Role:ConsentCoordinator`, `Role:Board`, `Role:ShiftsAdmin` | reviewed |
 | Pending-deletions meter | Users | one per pending deletion | `Role:Admin` | deletion executed or cancelled |
 | SyncError, failed-sync meter | GoogleIntegration | one per failed sync event | `Role:Admin` | retried or discarded |
 | Ticket-sync meter | Tickets | one while in error state | `Role:Admin` | sync recovers |

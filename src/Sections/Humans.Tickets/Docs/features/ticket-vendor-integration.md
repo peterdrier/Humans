@@ -16,7 +16,7 @@
 
 ## Business Context
 
-Nobodies Collective sells event tickets through external vendors (currently TicketTailor). Discount codes are distributed to humans via the campaign system. This feature creates a dedicated Tickets section giving the ticketing team (TicketAdmin role) a dashboard with sales data, revenue metrics, attendee tracking, and operational tools.
+Nobodies Collective sells event tickets through external vendors (currently TicketTailor). Discount codes are distributed to humans via the campaign system. This feature creates a dedicated Tickets section giving the ticketing team (TicketsAdmin role) a dashboard with sales data, revenue metrics, attendee tracking, and operational tools.
 
 ## Data Model
 
@@ -58,7 +58,7 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 
 ## Authorization
 
-| Action | TicketAdmin | Admin | Board |
+| Action | TicketsAdmin | Admin | Board |
 |--------|:-----------:|:-----:|:-----:|
 | View dashboard/orders/attendees/codes | Yes | Yes | Yes |
 | Trigger sync, CSV exports, generate codes | Yes | Yes | No |

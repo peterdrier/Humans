@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- Holded invoice/sales-receipt issuance (IHoldedClient). The connector is its own
          section per memory/architecture/vendor-connectors-own-sections.md; Store consumes it

@@ -1,3 +1,8 @@
+using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Camps.Contracts;
+using Humans.Tickets.Contracts;
+using Humans.Consent.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Issues.Domain;
@@ -40,7 +45,7 @@ public class IssueStatusTransitionTests
         _routing.RolesFor(section).Should().BeEmpty();
         _routing.Resolve(section).Should().BeNull();
         _routing.AllKnownSections.Should().NotContain(section);
-        _routing.CanHandle(section, [RoleNames.HumanAdmin]).Should().BeFalse();
+        _routing.CanHandle(section, [UsersRoles.UsersAdmin]).Should().BeFalse();
         _routing.CanHandle(section, [RoleNames.Admin]).Should().BeTrue();
     }
 
@@ -49,10 +54,10 @@ public class IssueStatusTransitionTests
     public void Routing_is_built_from_the_contributions()
     {
         var routing = TestIssueQueues.Routing(
-            new TestQueueOwner("Elsewhere", [RoleNames.TeamsAdmin]));
+            new TestQueueOwner("Elsewhere", [TeamsRoles.TeamsAdmin]));
 
         routing.AllKnownSections.Should().Equal("Elsewhere");
-        routing.RolesFor("Elsewhere").Should().Equal(RoleNames.TeamsAdmin);
+        routing.RolesFor("Elsewhere").Should().Equal(TeamsRoles.TeamsAdmin);
         routing.Resolve("elsewhere").Should().Be("Elsewhere");
         routing.RolesFor("Tickets").Should().BeEmpty();
 
@@ -65,36 +70,36 @@ public class IssueStatusTransitionTests
     /// filed before those renames keep reaching their handlers.
     /// </summary>
     [HumansTheory]
-    [InlineData("Profiles", RoleNames.HumanAdmin)]
-    [InlineData("Legal", RoleNames.ConsentCoordinator)]
+    [InlineData("Profiles", UsersRoles.UsersAdmin)]
+    [InlineData("Legal", ConsentRoles.ConsentCoordinator)]
     public void Renamed_sections_keep_routing_their_stored_queue_key(string section, string role)
     {
         _routing.RolesFor(section).Should().Equal(role);
         _routing.Resolve(section).Should().Be(section);
         _routing.CanHandle(section, [role]).Should().BeTrue();
-        _routing.CanHandle(section, [RoleNames.TicketAdmin]).Should().BeFalse();
+        _routing.CanHandle(section, [TicketsRoles.TicketsAdmin]).Should().BeFalse();
     }
 
     [HumansFact]
     public void RolesFor_known_section_includes_owner_role()
     {
         _routing.RolesFor("Tickets")
-            .Should().Contain(RoleNames.TicketAdmin);
+            .Should().Contain(TicketsRoles.TicketsAdmin);
 
         _routing.RolesFor("Scanner")
-            .Should().Contain([RoleNames.TicketAdmin, RoleNames.Board]);
+            .Should().Contain([TicketsRoles.TicketsAdmin, RoleNames.Board]);
     }
 
     [HumansFact]
     public void SectionsForRoles_returns_sections_user_can_handle()
     {
-        var sections = _routing.SectionsForRoles([RoleNames.CampAdmin]);
+        var sections = _routing.SectionsForRoles([CampsRoles.CampsAdmin]);
 
         sections.Should().Contain("Camps");
         sections.Should().Contain("CityPlanning");
         sections.Should().NotContain("Tickets");
 
-        _routing.SectionsForRoles([RoleNames.TicketAdmin])
+        _routing.SectionsForRoles([TicketsRoles.TicketsAdmin])
             .Should().Contain(["Tickets", "Scanner"]);
     }
 

@@ -30,7 +30,7 @@
 
 The Admin section is the global control panel: managing humans (suspending, rejecting, assigning roles, purging in non-production), configuring Google sync, reading the audit log, triaging the notification inbox, and running technical operations like configuration review, in-memory logs, database version, cache and query stats, and Hangfire lock cleanup.
 
-Admin is layered. **Board** and **HumanAdmin** can do human management — the list, detail, role assignments, suspend/unsuspend, and reject. **Admin** is the superset and additionally owns technical operations, sync settings, duplicate-account resolution, and workspace-account provisioning. Domain admins like Teams Admin, Camp Admin, and Ticket Admin are separate roles covered in their own section guides.
+Admin is layered. **Board** and **UsersAdmin** can do human management — the list, detail, role assignments, suspend/unsuspend, and reject. **Admin** is the superset and additionally owns technical operations, sync settings, duplicate-account resolution, and workspace-account provisioning. Domain admins like Teams Admin, Camps Admin, and Tickets Admin are separate roles covered in their own section guides.
 
 ![TODO: screenshot — Admin dashboard home showing the stat tile strip and sync status]
 
@@ -55,7 +55,7 @@ Admin pages are not visible to you.
 
 ## As a Coordinator
 
-The Coordinator role does not include global admin access; the domain-specific admin roles (Teams Admin, Camp Admin, Ticket Admin, Finance Admin, and so on) are separate and covered in their respective section guides. Feedback Admin is the exception — the role is still assignable but grants nothing since Feedback was retired.
+The Coordinator role does not include global admin access; the domain-specific admin roles (Teams Admin, Camps Admin, Tickets Admin, Finance Admin, and so on) are separate and covered in their respective section guides. Feedback Admin is the exception — the role is still assignable but grants nothing since Feedback was retired.
 
 ## As a Board member / Admin
 
@@ -69,7 +69,7 @@ Open `/Users/Admin`. Search by name or email, filter by `UserState` (`bare`, `ac
 
 - **Reject** a signup. Audited, and the human is notified. (There is no "approve volunteer" action — app access is automatic once the human enters their legal name (`UserState == Active`); Volunteers-team / Google Workspace provisioning follows from name + consents via the scheduled sync.)
 - **Suspend** or **Unsuspend**. Suspension requires a note; it revokes Google Workspace access on the next sync and ends current memberships. Unsuspension clears the flag and re-queues access.
-- **Add role** or **End role**. Role assignments are temporal — valid-from plus optional valid-to — and every change is audited. **Admin** can assign any role. **Board** and **HumanAdmin** can assign any role **except** Admin. The first Admin must be seeded directly in the database.
+- **Add role** or **End role**. Role assignments are temporal — valid-from plus optional valid-to — and every change is audited. **Admin** can assign any role. **Board** and **UsersAdmin** can assign any role **except** Admin. The first Admin must be seeded directly in the database.
 
 Every human-admin action writes an audit entry with your user as the actor.
 
@@ -113,4 +113,4 @@ See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 - [Teams](Teams.md) — Teams Admin and Coordinator duties live here; system team sync is triggered from the Google overview page (`/Google`).
 - [Google Integration](GoogleIntegration.md) — sync settings, workspace accounts, and sync audit views.
 - [Feedback](Feedback.md) — retired and closed to new reports; full Admins triage the historical queue. All admins use the shared notification inbox.
-- [Governance](Governance.md) — role assignments (Admin, Board, HumanAdmin, Coordinator roles) and tier application vote finalization.
+- [Governance](Governance.md) — role assignments (Admin, Board, UsersAdmin, Coordinator roles) and tier application vote finalization.

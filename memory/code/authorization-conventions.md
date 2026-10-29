@@ -7,7 +7,7 @@ Authorization in Humans is **policy-based, end to end** — controllers, views, 
 
 **Rules:**
 
-- **Controller / route gates:** `[Authorize(Policy = PolicyNames.X)]`. **Never** `[Authorize(Roles = "...")]` or `[Authorize(Roles = RoleGroups.X)]` — those are the legacy form and have all been migrated out.
+- **Controller / route gates:** `[Authorize(Policy = PolicyNames.X)]`. **Never** `[Authorize(Roles = "...")]` — those are the legacy form and have all been migrated out.
 - **View element visibility:** `authorize-policy="X"` tag helper attribute, e.g. `<li authorize-policy="IsActiveMember">`.
 - **View conditional logic that needs more than visibility** (computing a flag, branching markup): `@inject IAuthorizationService AuthService` + `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded`. See [`auth-in-views-self-resolving`](auth-in-views-self-resolving.md).
 - **No inline `User.IsInRole(...)` chains anywhere** for access decisions — they're the legacy form of the same check the policy already encodes.

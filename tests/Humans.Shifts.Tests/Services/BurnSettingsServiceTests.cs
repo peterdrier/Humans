@@ -20,7 +20,7 @@ public sealed class BurnSettingsServiceTests
 
     public BurnSettingsServiceTests()
     {
-        _service = new BurnSettingsService(_repo, new EventCalendarResolver(_settingsService));
+        _service = new BurnSettingsService(_repo, new EventCalendarResolver(_settingsService, _repo));
     }
 
     private void StubActiveCalendar(EventSettingsInfo info) =>
@@ -44,6 +44,27 @@ public sealed class BurnSettingsServiceTests
         result.EventName.Should().Be(calendar.EventName);
         result.TimeZoneId.Should().Be(calendar.TimeZoneId);
         result.GateOpeningDate.Should().Be(calendar.GateOpeningDate);
+    }
+
+    [HumansFact]
+    public async Task GetByIdAsync_ShiftsOwnSubPeriodsWin_UnsetOnesFallBackToSettings()
+    {
+        var id = Guid.NewGuid();
+        var calendar = NewCalendar(id);
+        StubCalendarById(calendar);
+        _repo.GetEventSettingsByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new EventSettings
+        {
+            Id = id,
+            SubPeriodFirstCrewStart = -30,
+            SubPeriodFinishingWeekendStart = -2,
+        });
+
+        var result = await _service.GetByIdAsync(id, Xunit.TestContext.Current.CancellationToken);
+
+        result!.FirstCrewStartOffset.Should().Be(-30);
+        result.SetupWeekStartOffset.Should().Be(calendar.SetupWeekStartOffset);
+        result.PreEventWeekStartOffset.Should().Be(calendar.PreEventWeekStartOffset);
+        result.FinishingWeekendStartOffset.Should().Be(-2);
     }
 
     [HumansFact]

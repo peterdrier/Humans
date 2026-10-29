@@ -31,7 +31,7 @@ A stub for the future Low Income process. Today it is one Admin-only page that g
 
 ## Negative Access Rules
 
-- Board, HumanAdmin, program managers and every other role **cannot** reach the page or post its actions (`PolicyNames.AdminOnly` on the class and on each POST).
+- Board, UsersAdmin, program managers and every other role **cannot** reach the page or post its actions (`PolicyNames.AdminOnly` on the class and on each POST).
 
 ## Triggers
 

@@ -1,3 +1,7 @@
+using Humans.Users.Contracts;
+using Humans.Camps.Contracts;
+using Humans.Tickets.Contracts;
+using Humans.Consent.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -17,21 +21,21 @@ public sealed class IssuesAuthorizationHandlerTests
     {
         { [RoleNames.Admin], "Tickets", true },
         { [RoleNames.Admin], null, true },
-        { [RoleNames.TicketAdmin], "Tickets", true },
-        { [RoleNames.TicketAdmin], "Scanner", true },
+        { [TicketsRoles.TicketsAdmin], "Tickets", true },
+        { [TicketsRoles.TicketsAdmin], "Scanner", true },
         { [RoleNames.Board], "Scanner", true },
-        { [RoleNames.TicketAdmin], "Camps", false },
-        { [RoleNames.CampAdmin], "Scanner", false },
-        { [RoleNames.CampAdmin], "Camps", true },
-        { [RoleNames.CampAdmin], "CityPlanning", true },
-        { [RoleNames.ConsentCoordinator], "Onboarding", true },
+        { [TicketsRoles.TicketsAdmin], "Camps", false },
+        { [CampsRoles.CampsAdmin], "Scanner", false },
+        { [CampsRoles.CampsAdmin], "Camps", true },
+        { [CampsRoles.CampsAdmin], "CityPlanning", true },
+        { [ConsentRoles.ConsentCoordinator], "Onboarding", true },
         { [], "Tickets", false },
-        { [RoleNames.TicketAdmin, RoleNames.CampAdmin], null, false },
-        { [RoleNames.TicketAdmin], "ZSomeUnknownSection", false },
+        { [TicketsRoles.TicketsAdmin, CampsRoles.CampsAdmin], null, false },
+        { [TicketsRoles.TicketsAdmin], "ZSomeUnknownSection", false },
         // Keys that outlived their section names: Users declares Profiles, Consent declares Legal.
-        { [RoleNames.HumanAdmin], "Profiles", true },
-        { [RoleNames.ConsentCoordinator], "Legal", true },
-        { [RoleNames.TicketAdmin], "Profiles", false },
+        { [UsersRoles.UsersAdmin], "Profiles", true },
+        { [ConsentRoles.ConsentCoordinator], "Legal", true },
+        { [TicketsRoles.TicketsAdmin], "Profiles", false },
     };
 
     [HumansTheory]

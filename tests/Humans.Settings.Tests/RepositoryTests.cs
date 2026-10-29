@@ -256,4 +256,38 @@ public sealed class RepositoryTests : IDisposable
 
         deleted.Should().Be(0);
     }
+
+    [HumansFact]
+    public async Task SetActiveEventSettingsAsync_SwapsTheActiveRowInOneSave()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var oldId = Guid.NewGuid();
+        var newId = Guid.NewGuid();
+        _seedContext.EventSettings.AddRange(
+            MakeEvent(oldId, EventSettingsStatus.Active), MakeEvent(newId, EventSettingsStatus.Inactive));
+        await _seedContext.SaveChangesAsync(ct);
+        var now = NodaTime.Instant.FromUtc(2026, 10, 28, 12, 0);
+
+        var changed = await _repository.SetActiveEventSettingsAsync(newId, now, ct);
+
+        changed.Select(e => e.Id).Should().Equal(oldId, newId);
+        var rows = await _seedContext.EventSettings.AsNoTracking().ToDictionaryAsync(e => e.Id, ct);
+        rows[oldId].Status.Should().Be(EventSettingsStatus.Inactive);
+        rows[newId].Status.Should().Be(EventSettingsStatus.Active);
+        rows[newId].UpdatedAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task SetActiveEventSettingsAsync_UnknownId_ChangesNothing()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var activeId = Guid.NewGuid();
+        _seedContext.EventSettings.Add(MakeEvent(activeId, EventSettingsStatus.Active));
+        await _seedContext.SaveChangesAsync(ct);
+
+        var changed = await _repository.SetActiveEventSettingsAsync(Guid.NewGuid(), default, ct);
+
+        changed.Should().BeEmpty();
+        (await _seedContext.EventSettings.AsNoTracking().SingleAsync(ct)).Status.Should().Be(EventSettingsStatus.Active);
+    }
 }

@@ -34,6 +34,7 @@ internal sealed class AdminAgentController(
     {
         if (!ModelState.IsValid)
         {
+            vm.ModelOptions = await settings.GetModelOptionsAsync(ct);
             return View("~/Views/Admin/Agent/Settings.cshtml", vm);
         }
 

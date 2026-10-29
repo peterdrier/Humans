@@ -11,7 +11,7 @@ internal sealed class HumanAdminOnlyHandler : AuthorizationHandler<HumanAdminOnl
     {
         var user = context.User;
 
-        if (RoleChecks.IsHumanAdmin(user) && !RoleChecks.IsAdminOrBoard(user))
+        if (UsersRoleChecks.IsUsersAdmin(user) && !RoleChecks.IsAdminOrBoard(user))
         {
             context.Succeed(requirement);
         }

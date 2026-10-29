@@ -11,7 +11,7 @@
   src/Sections/Humans.GoogleIntegration/GoogleIntegrationResource*.resx
 -->
 <!-- freshness:flag-on-change
-  Provisioning step ordering, recovery email handling, credentials email template, admin/HumanAdmin authorization, or post-provisioning account management (2FA enrollment status, recovery-email visibility, password reset, combined Reset+2FA recovery flow on `/Google/Accounts`) may have changed.
+  Provisioning step ordering, recovery email handling, credentials email template, admin/UsersAdmin authorization, or post-provisioning account management (2FA enrollment status, recovery-email visibility, password reset, combined Reset+2FA recovery flow on `/Google/Accounts`) may have changed.
 -->
 
 # Workspace Account Provisioning
@@ -191,7 +191,7 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 
 | Action | Required Role |
 |--------|---------------|
-| Provision account | HumanAdmin, Admin |
+| Provision account | UsersAdmin, Admin |
 | Link existing account | Admin |
 | View `/Google/Accounts` (2FA status, recovery email, etc.) | Admin |
 | Reset password (one-shot delivery) | Admin |

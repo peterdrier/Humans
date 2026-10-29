@@ -49,7 +49,7 @@ internal sealed class GateService(
     private static readonly Duration RosterWindow = Duration.FromHours(2);
 
     /// <summary>Server-verified, never client-asserted.</summary>
-    private static readonly string[] SupervisorRoles = [RoleNames.Admin, RoleNames.Board, RoleNames.TicketAdmin];
+    private static readonly string[] SupervisorRoles = [RoleNames.Admin, RoleNames.Board, TicketsRoles.TicketsAdmin];
 
     public async Task<GateScanResult> EvaluateAsync(string barcode, CancellationToken ct = default)
     {

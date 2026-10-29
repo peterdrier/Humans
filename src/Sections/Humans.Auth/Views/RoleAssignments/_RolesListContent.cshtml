@@ -1,4 +1,5 @@
-@using Humans.Base.Constants
+@using Humans.Auth.Contracts
+@inject RoleCatalog Catalog
 @model Humans.Auth.Models.AdminRoleAssignmentListViewModel
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -13,14 +14,11 @@
                class="btn @(string.IsNullOrEmpty(Model.RoleFilter) ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["Auth_Roles_All"]
             </a>
-            @foreach (var role in RoleNames.All)
+            @foreach (var role in Catalog.Roles)
             {
-                var label = role != RoleNames.Admin && role.EndsWith(RoleNames.Admin, StringComparison.Ordinal)
-                    ? role[..^RoleNames.Admin.Length]
-                    : role;
-                <a asp-action="Roles" asp-route-role="@role" asp-route-showInactive="@Model.ShowInactive"
-                   class="btn @(Model.RoleFilter == role ? "btn-primary" : "btn-outline-primary")">
-                    @label
+                <a asp-action="Roles" asp-route-role="@role.Name" asp-route-showInactive="@Model.ShowInactive"
+                   class="btn @(Model.RoleFilter == role.Name ? "btn-primary" : "btn-outline-primary")">
+                    @role.Title
                 </a>
             }
         </div>
@@ -78,7 +76,7 @@
                 @<text>
                     @if (item.IsActive)
                     {
-                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline"
+                        <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline" authorize-policy="HumanAdminOrAdmin"
                               data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Auth_Roles_End"]</button>

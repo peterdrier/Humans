@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Xunit;
 using Humans.Base.Helpers;
 using Humans.Base.Extensions;
@@ -65,6 +66,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
             new CachingRoleAssignmentService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
                 NullLogger<CachingRoleAssignmentService>.Instance),
+            new RoleCatalog(new RoleDefinition[]
+            {
+                new(RoleNames.Admin, "Admin", "", ""),
+                new(RoleNames.Board, "Board", "", ""),
+                new(TeamsRoles.TeamsAdmin, "Teams Admin", "", ""),
+            }),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
         _teamResourceService = Substitute.For<ITeamResourceManagement>();
@@ -97,7 +104,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             serviceProvider,
             Cache,
             new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
-            new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb()),
+            new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 

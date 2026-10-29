@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.Localization;
 using Humans.GoogleIntegration.Contracts;
@@ -44,8 +45,8 @@ internal sealed class NotificationMeterProvider(
 
         var isAdmin = user.IsInRole(RoleNames.Admin);
         var isBoard = user.IsInRole(RoleNames.Board);
-        var isVolunteerCoordinator = user.IsInRole(RoleNames.VolunteerCoordinator);
-        var isConsentCoordinator = user.IsInRole(RoleNames.ConsentCoordinator);
+        var isVolunteerCoordinator = user.IsInRole(ShiftsRoles.ShiftsAdmin);
+        var isConsentCoordinator = user.IsInRole(ConsentRoles.ConsentCoordinator);
 
         if (isConsentCoordinator && counts.ConsentReviewsPending > 0)
         {

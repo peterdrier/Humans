@@ -8,8 +8,8 @@
 | **Barrio Lead** | The human responsible for a camp — the only non-admin who can edit that camp's polygon. |
 | **Placement Phase** | The window during which barrio leads can draw or edit their polygons: Open, then Adjustments only (edit an existing polygon, no new ones), then Closed. Runs on its schedule unless a Map Admin forces it open or closed. |
 | **Placement Window / Dates** | The schedule's days, set relative to the event's gate opening: opening day, last day to place, last day to adjust. Shown in the map's help. |
-| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` or being a member of the `city-planning` team. |
-| **CampAdmin** | System role with full admin access to camps and city planning. |
+| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampsAdmin` or being a member of the `city-planning` team. |
+| **CampsAdmin** | System role with full admin access to camps and city planning. |
 | **Limit Zone** | A GeoJSON polygon showing the boundary of the event site, displayed on the map for reference. |
 | **Official Zones** | A GeoJSON layer of pre-defined zones (e.g., quiet zones, sound stages) displayed as an overlay. |
 | **GeoJSON** | The open standard file format used for map polygons. Used for imports (limit zone, official zones) and exports. |

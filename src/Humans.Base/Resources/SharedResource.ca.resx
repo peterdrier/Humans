@@ -461,6 +461,9 @@
   <data name="Error_SomethingWentWrong" xml:space="preserve">
     <value>Alguna cosa ha anat malament</value>
   </data>
+  <data name="Error_CodeAndReference" xml:space="preserve">
+    <value>Error {0} · Referència {1}</value>
+  </data>
   <data name="Error_TryAgainLater" xml:space="preserve">
     <value>S'ha produït un error en processar la teva sol·licitud. Si us plau, torna-ho a provar més tard.</value>
   </data>
@@ -1529,7 +1532,7 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
-    <value>Esdeveniment</value>
+    <value>Esdeveniments</value>
   </data>
 
   <data name="Settings_TabAgent" xml:space="preserve">

@@ -8,7 +8,7 @@
 | `ProfileViewController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |
 | `ProfileEmailsController.AdminAddVerifiedEmail` (`{id:guid}/Admin/Emails/AddVerified`) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileEmailsController.AdminVerifyEmail` (`{id:guid}/Admin/Emails/Verify`) | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `UsersAdminController` | Class | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` (class-level — `AdminList`, `AdminDetail`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup` all inherit) |
+| `UsersAdminController` | Class | `UsersAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` (class-level — `AdminList`, `AdminDetail`, `SuspendHuman`, `UnsuspendHuman`, `RejectSignup` all inherit) |
 | `ProfileEmailsController` email-action runtime guards | In-method | `authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` — every mutating `Me/Emails/*` and `{id}/Admin/Emails/*` action plus `Me/LinkedAccounts/Unlink` and the `{id}/Admin/Emails` GET, except the `AdminOnly` overrides above. The Google column's `/Google/WorkspaceEmail` and `/Google/Admin/{id}/WorkspaceEmail` are GoogleIntegration's `WorkspaceIdentityController` (Users decomposition commit 15; see that section's authorization.md) | Resource-based (see handler below) |
 | `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileApiController.Search` | Action | `[Authorize]` inherited (`[HttpGet("search")]`) | — (people search; admin bit never set on this endpoint) |
@@ -24,4 +24,4 @@
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`Edit`) | `Guid` (target user id) | `Authorization/UserEmailAuthorizationHandler.cs` (registered in `Section.cs`) |
-| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | none (role check: HumanAdmin but not Admin/Board) | `Authorization/HumanAdminOnlyHandler.cs` (registered in `Section.cs`; backs `PolicyNames.HumanAdminOnly`, which has no `[Authorize(Policy=...)]` call site yet) |
+| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | none (role check: UsersAdmin but not Admin/Board) | `Authorization/HumanAdminOnlyHandler.cs` (registered in `Section.cs`; backs `PolicyNames.HumanAdminOnly`, which has no `[Authorize(Policy=...)]` call site yet) |

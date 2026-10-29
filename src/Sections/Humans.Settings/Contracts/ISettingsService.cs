@@ -18,4 +18,10 @@ public interface ISettingsService : IApplicationService
 
     /// <summary>Includes inactive cycles. Null when the id is unknown.</summary>
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every row, Deleted included, unordered. Public so sections re-keying their own year-based data onto event ids
+    /// can map every cycle, not only the active one.
+    /// </summary>
+    Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(CancellationToken cancellationToken = default);
 }

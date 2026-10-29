@@ -103,27 +103,6 @@
   <data name="Auth_AddRole_SelectRole" xml:space="preserve">
     <value>Selecciona un rol...</value>
   </data>
-  <data name="Auth_AddRole_AdminDesc" xml:space="preserve">
-    <value>Accés complet al sistema</value>
-  </data>
-  <data name="Auth_AddRole_BoardDesc" xml:space="preserve">
-    <value>Permisos de membre de la junta</value>
-  </data>
-  <data name="Auth_AddRole_TeamsAdminDesc" xml:space="preserve">
-    <value>Gestionar tots els equips i pertinences</value>
-  </data>
-  <data name="Auth_AddRole_ConsentCoordinatorDesc" xml:space="preserve">
-    <value>Verificacions de seguretat durant la incorporació</value>
-  </data>
-  <data name="Auth_AddRole_CampAdminDesc" xml:space="preserve">
-    <value>Gestionar el mapa del camp i les fases de col·locació</value>
-  </data>
-  <data name="Auth_AddRole_VolunteerCoordinatorDesc" xml:space="preserve">
-    <value>Facilitació de la incorporació, gestió de torns global</value>
-  </data>
-  <data name="Auth_AddRole_NoInfoAdminDesc" xml:space="preserve">
-    <value>Aprovar inscripcions en torns, veure dades mèdiques de voluntaris</value>
-  </data>
   <data name="Auth_AddRole_NotesLabel" xml:space="preserve">
     <value>Notes (opcional)</value>
   </data>

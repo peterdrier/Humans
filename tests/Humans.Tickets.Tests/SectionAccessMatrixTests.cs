@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Models;
 
@@ -6,7 +7,7 @@ namespace Humans.Tickets.Tests;
 public class SectionAccessMatrixTests
 {
     private static AccessMatrixData Matrix() =>
-        new SectionAccessMatrix().AccessMatrices.Should().ContainSingle().Subject;
+        ((ISectionAccessMatrix)new Section()).AccessMatrices.Should().ContainSingle().Subject;
 
     [HumansFact]
     public void Contributes_the_Tickets_matrix_under_the_key_the_page_calls_it_with()
@@ -16,7 +17,7 @@ public class SectionAccessMatrixTests
         matrix.Key.Should().Be("Tickets");
         matrix.SectionName.Should().Be("Tickets");
         matrix.Order.Should().Be(70);
-        matrix.Roles.Should().Equal("Board", "TicketAdmin");
+        matrix.Roles.Should().Equal("Board", "TicketsAdmin");
     }
 
     [HumansFact]
@@ -25,8 +26,8 @@ public class SectionAccessMatrixTests
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
             .Should().Equal(
-                "View tickets & orders: Board=Allowed, TicketAdmin=Allowed",
-                "Sync operations: Board=Denied, TicketAdmin=Allowed",
-                "Discount codes: Board=Allowed, TicketAdmin=Allowed");
+                "View tickets & orders: Board=Allowed, TicketsAdmin=Allowed",
+                "Sync operations: Board=Denied, TicketsAdmin=Allowed",
+                "Discount codes: Board=Allowed, TicketsAdmin=Allowed");
     }
 }

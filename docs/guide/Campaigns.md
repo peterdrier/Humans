@@ -30,7 +30,7 @@ A campaign bundles three things: the **codes** (imported in bulk or generated th
 - **Create campaign** (`/Campaigns/Admin/Create`) — form for title, description, email subject, email body template (markdown, supports `{{Code}}` and `{{Name}}`), and optional Reply-To address
 - **Edit campaign** (`/Campaigns/Admin/Edit/{id}`) — the same fields as Create, editable at any status
 - **Import codes** — CSV upload for code values, available on Draft and Active campaigns
-- **Generate codes** — vendor-issued discount codes (count, type, value), Draft campaigns only; available to TicketAdmin and Admin
+- **Generate codes** — vendor-issued discount codes (count, type, value), Draft campaigns only; available to TicketsAdmin and Admin
 - **Send wave** (`/Campaigns/Admin/{id}/SendWave`) — targets a single team, assigns free codes to eligible humans, and queues the emails
 
 ## As a Volunteer
@@ -53,7 +53,7 @@ Your Communication Preferences page (`/Email/Guest/CommunicationPreferences`) st
 
 ## As a Board member / Admin
 
-Full campaign management requires the **Admin** role. **TicketAdmin** can view campaign details and generate discount codes through the ticket vendor, but cannot create, edit, activate, or complete campaigns.
+Full campaign management requires the **Admin** role. **TicketsAdmin** can view campaign details and generate discount codes through the ticket vendor, but cannot create, edit, activate, or complete campaigns.
 
 ### Create a campaign
 

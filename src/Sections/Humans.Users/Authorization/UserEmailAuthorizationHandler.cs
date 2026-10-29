@@ -20,7 +20,7 @@ internal sealed class UserEmailAuthorizationHandler
             return Task.CompletedTask;
         }
 
-        if (RoleChecks.IsHumanAdminBoardOrAdmin(context.User))
+        if (UsersRoleChecks.IsUsersAdminBoardOrAdmin(context.User))
         {
             context.Succeed(requirement);
         }

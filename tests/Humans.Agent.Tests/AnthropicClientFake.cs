@@ -27,6 +27,9 @@ internal sealed class AnthropicClientFake : IAnthropicClient
             : Task.FromResult(CountTokensResult);
     }
 
+    public Task<IReadOnlyList<AnthropicModelInfo>> ListModelsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AnthropicModelInfo>>([]);
+
     public async IAsyncEnumerable<AgentTurnToken> StreamAsync(
         AnthropicRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -57,7 +60,10 @@ internal sealed class AnthropicClientFake : IAnthropicClient
     /// </remarks>
     private static void RejectUnmappableToolCalls(AnthropicRequest request)
     {
-        foreach (var call in request.Messages.SelectMany(m => m.ToolCalls ?? []))
+        var replayed = request.Messages.SelectMany(m => m.AssistantContent is { } content
+            ? content.OfType<AnthropicToolUseBlock>().Select(b => b.Call)
+            : m.ToolCalls ?? []);
+        foreach (var call in replayed)
         {
             var input = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(call.JsonArguments);
             if (input is null)

@@ -105,7 +105,7 @@ conventional controller, skip this heading entirely.
 
 <!--
 Required. One row per distinct capability bucket. Combine roles on the same
-row when they share capabilities ("HumanAdmin, Board, Admin"). Do NOT restate
+row when they share capabilities ("UsersAdmin, Board, Admin"). Do NOT restate
 capabilities for a more-privileged row — use "All <lower role> capabilities.
 Additionally ..." so the inheritance is visible.
 -->

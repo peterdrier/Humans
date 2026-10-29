@@ -54,7 +54,7 @@ public sealed class AdminAgentControllerTests
         else
         {
             result.Should().BeOfType<UnauthorizedResult>();
-            settings.ReceivedCalls().Should().BeEmpty();
+            await settings.DidNotReceive().UpdateAsync(Arg.Any<Action<AgentSettings>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         }
     }
 
@@ -121,7 +121,7 @@ public sealed class AdminAgentControllerTests
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             controller.ModelState[omitted]!.Errors.Should().ContainSingle();
-            settings.ReceivedCalls().Should().BeEmpty();
+            await settings.DidNotReceive().UpdateAsync(Arg.Any<Action<AgentSettings>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
             saved.RetentionDays.Should().Be(90);
         }
         else

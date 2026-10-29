@@ -1770,7 +1770,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_teamService).With(_teamService)
             .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
-            _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings),
+            _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             AuditLog, Notifier, AdminAuthorization, _views.Cache,
             serviceProvider, Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 

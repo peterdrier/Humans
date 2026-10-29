@@ -98,7 +98,7 @@ Stored as string via `HasConversion<string>()`.
 
 **Table:** `team_early_entry_grants`
 
-One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EETeamAdmin` role (and TeamsAdmin/Board/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
+One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EarlyEntryAdmin` role (and TeamsAdmin/Board/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
 
 ### SystemTeamType
 
@@ -182,7 +182,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | Anyone (including anonymous) | Browse the team directory and view public team pages |
 | Any active human | View team detail pages, request to join a team, leave a team, withdraw a pending request, view own memberships, browse the birthday calendar, search humans, view the roster and map |
 | Coordinator | Manage members, approve/reject join requests, manage roles, edit the team page, manage Google resources, and (when `EarlyEntryEnabled`) grant/edit/revoke Early Entry for their department (and its sub-teams) |
-| EETeamAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
+| EarlyEntryAdmin | Cross-team role: grant/edit/revoke Early Entry on **any** team that has `EarlyEntryEnabled` (the `ManageEarlyEntry` operation only — no other team-management authority) |
 | Sub-team Manager | Manage members, approve/reject join requests, manage roles, manage shifts, and edit the team page for their sub-team only. Cannot manage Google resources, the parent department, or sibling sub-teams |
 | TeamsAdmin | All coordinator capabilities on all teams. Create teams, edit team settings (name, slug, approval mode, parent, Google group prefix, budget flag, hidden flag, directory promotion, Early Entry enabled flag), toggle the management role, and link/unlink Google resources on all teams. **Cannot** change the sensitive flag via Edit Team (Admin-only — a non-Admin's save leaves `IsSensitive` unchanged) |
 | Board | All TeamsAdmin capabilities. Additionally can delete (deactivate) teams |
@@ -269,8 +269,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Inactive teams grant no Early Entry: the roster excludes grants of deactivated teams. Grants are kept and resume if the team is reactivated.
 - Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
 - `RemoveEarlyEntryGrantAsync` is idempotent (removing an absent grant is a no-op).
-- `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EETeamAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
-- `EETeamAdmin` is in `RoleNames.All` and `RoleNames.BoardManageableRoles` (board-grantable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
+- `ManageEarlyEntry` authority: Admin / TeamsAdmin / Board on any team; `EarlyEntryAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
+- `EarlyEntryAdmin` is declared by EarlyEntry's `ISectionRoles` with `OpensAdminShell: false` (assignable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
 - The Members page's `@nobodies.team` column is this section's own: `TeamAdminController.Members` batches each member's verified nobodies.team email through `IUserService.GetUserInfosAsync` and the view renders the address, or a form posting to this controller's own `ProvisionEmail`, itself (nobodies-collective/Humans#1815). It is not a cross-section widget.
 - Workspace provisioning shows credential-handoff warnings separately from account creation: a created and linked account remains successful when its credentials email cannot be queued or has no recovery address. The coordinator sees the admin password-reset guidance; accepted handoffs are described as queued rather than delivered.
 
@@ -278,7 +278,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 A queued team message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient, team and contact-sharing details for reconciliation; queueing failures still propagate.
 
-A coordinator can relay a one-off message to another member on behalf of a team, with replies going to the team's Google Group. The rule is Teams' own (`TeamMessageOptionsProvider`, internal): an **active** team the viewer **coordinates** (`TeamMemberRole.Coordinator`), with a Google Group prefix whose group is linked (`ITeamResourceService`, GoogleIntegration), active, synced at least once and error-free, matched on the group's URL. `TeamMessageButtonsViewComponent` (a `Profile` user part, weight 200, registered by `SectionUserParts`) offers one button per such team on another member's profile; `TeamMessageController` re-checks the same list on GET and POST. Both refuse an opted-out recipient (`ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync`) and self-send. The message goes through Email's `IEmailMessageFactory.FacilitatedMessage` with the group as `replyTo`, then `IEmailService.SendAsync`, and is audited `FacilitatedMessageSent` against the recipient, with the team as the related entity; the audit text names the team and never copies its address. Nothing else is stored. Personal facilitated messages stay with Email (`/Email/SendMessage/{id}`).
+A coordinator can relay a one-off message to another member on behalf of a team, with replies going to the team's Google Group. The rule is Teams' own (`TeamMessageOptionsProvider`, internal): an **active** team the viewer **coordinates** (`TeamMemberRole.Coordinator`), with a Google Group prefix whose group is linked (`ITeamResourceService`, GoogleIntegration), active, synced at least once and error-free, matched on the group's URL. `TeamMessageButtonsViewComponent` (a `Profile` user part, weight 200, registered by `IUserPart`) offers one button per such team on another member's profile; `TeamMessageController` re-checks the same list on GET and POST. Both refuse an opted-out recipient (`ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync`) and self-send. The message goes through Email's `IEmailMessageFactory.FacilitatedMessage` with the group as `replyTo`, then `IEmailService.SendAsync`, and is audited `FacilitatedMessageSent` against the recipient, with the team as the related entity; the audit text names the team and never copies its address. Nothing else is stored. Personal facilitated messages stay with Email (`/Email/SendMessage/{id}`).
 
 ## Negative Access Rules
 
@@ -374,7 +374,7 @@ Teams-owned resource keys use the `Teams_` prefix in all six cultures. Shared vo
 
 ### System-team reconciler
 
-`SystemTeamSyncJob` is Teams' own: `Services/SystemTeamSyncJob.cs`, `internal sealed`, registered in `Section.cs` and scheduled by `SectionJobs.cs`. Its interface `ISystemTeamSync` lives on `Humans.Teams.Contracts`, which is what the consuming sections reference. Hangfire keys the recurring job on its id and rewrites the stored type name at every startup, so the implementation's assembly and namespace are free to move.
+`SystemTeamSyncJob` is Teams' own: `Services/SystemTeamSyncJob.cs`, `internal sealed`, registered in `Section.cs` and scheduled by `Section.cs`. Its interface `ISystemTeamSync` lives on `Humans.Teams.Contracts`, which is what the consuming sections reference. Hangfire keys the recurring job on its id and rewrites the stored type name at every startup, so the implementation's assembly and namespace are free to move.
 
 ## Issue queue
 

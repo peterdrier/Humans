@@ -257,6 +257,7 @@
   <data name="Error_Oops" xml:space="preserve"><value>Oops!</value></data>
   <data name="Error_SomethingWentWrong" xml:space="preserve"><value>Something went wrong</value></data>
   <data name="Error_TryAgainLater" xml:space="preserve"><value>An error occurred while processing your request. Please try again later.</value></data>
+  <data name="Error_CodeAndReference" xml:space="preserve"><value>Error {0} · Reference {1}</value></data>
   <data name="Error404_Title" xml:space="preserve"><value>Page Not Found</value></data>
   <data name="Error404_Description" xml:space="preserve"><value>The page you're looking for doesn't exist or has been moved.</value></data>
 
@@ -917,7 +918,7 @@
   <data name="Todo_AssemblyVote_Action" xml:space="preserve"><value>Vote</value></data>
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
-  <data name="Settings_TabEvent" xml:space="preserve"><value>Event</value></data>
+  <data name="Settings_TabEvent" xml:space="preserve"><value>Events</value></data>
   <data name="Settings_TabAgent" xml:space="preserve"><value>Agent</value></data>
   <data name="Settings_TabGoogleSync" xml:space="preserve"><value>Google Sync</value></data>
   <data name="Settings_TabEmail" xml:space="preserve"><value>Email</value></data>

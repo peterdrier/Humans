@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Authorization;
@@ -15,7 +16,7 @@ public sealed class UserEmailAuthorizationHandlerTests
     {
         { null, true },
         { RoleNames.Admin, true },
-        { RoleNames.HumanAdmin, true },
+        { UsersRoles.UsersAdmin, true },
         { RoleNames.Board, true },
         { "SomeOtherRole", false },
     };

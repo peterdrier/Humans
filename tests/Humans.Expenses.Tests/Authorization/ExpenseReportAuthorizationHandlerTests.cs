@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
@@ -244,7 +245,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CanView_AnyReport()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.View);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.View);
         result.Should().BeTrue();
     }
 
@@ -252,7 +253,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CanApprove_SubmittedReport()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Approve);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.Approve);
         result.Should().BeTrue();
     }
 
@@ -260,7 +261,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CanFinanceReject_SubmittedReport()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.FinanceReject);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.FinanceReject);
         result.Should().BeTrue();
     }
 
@@ -278,7 +279,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     {
         var op = Enum.Parse<ExpenseReportOperation>(operationName);
         var report = MakeReport(SubmitterId, status);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, op);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, op);
         result.Should().Be(expected);
     }
 
@@ -289,7 +290,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CanEdit_ReportStillOpenToCorrection(ExpenseReportStatus status)
     {
         var report = MakeReport(SubmitterId, status);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Edit);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.Edit);
         result.Should().BeTrue();
     }
 
@@ -299,7 +300,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CannotEdit_ClosedReport(ExpenseReportStatus status)
     {
         var report = MakeReport(SubmitterId, status);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Edit);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.Edit);
         result.Should().BeFalse();
     }
 
@@ -307,7 +308,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CanSubmit_DraftOnBehalf()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Draft);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Submit);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.Submit);
         result.Should().BeTrue();
     }
 
@@ -315,7 +316,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CannotSubmit_AlreadySubmittedReport()
     {
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Submit);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.Submit);
         result.Should().BeFalse();
     }
 
@@ -332,7 +333,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     {
         // FinanceAdmin has all coordinator capabilities, including Endorse (gated to Submitted).
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
-        var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Endorse);
+        var result = await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.Endorse);
         result.Should().BeTrue();
     }
 
@@ -427,7 +428,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CanDeclineLine_WhileTheReportAwaitsADecision(ExpenseReportStatus status)
     {
         var report = MakeReport(SubmitterId, status);
-        (await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeTrue();
+        (await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeTrue();
     }
 
     [HumansTheory]
@@ -437,7 +438,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task FinanceAdmin_CannotDeclineLine_OutsideTheDecisionWindow(ExpenseReportStatus status)
     {
         var report = MakeReport(SubmitterId, status);
-        (await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
+        (await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeFalse();
     }
 
     [HumansTheory]

@@ -38,6 +38,7 @@ internal sealed class DevPersonaSeeder(
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
     IOptions<CityPlanningOptions> cityPlanningOptions,
+    RoleCatalog catalog,
     ILogger<DevPersonaSeeder> logger)
 {
     /// <summary>Returns the resolved user id: legacy personas keep their old hardcoded GUIDs.</summary>
@@ -600,24 +601,20 @@ internal sealed class DevPersonaSeeder(
     }
 
     /// <summary>Null for "volunteer".</summary>
-    internal static string? RoleNameFromSlug(string slug)
+    internal string? RoleNameFromSlug(string slug)
     {
         if (string.Equals(slug, "volunteer", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        return RoleNameValues
+        return GrantableRoleNames
             .FirstOrDefault(r => string.Equals(PascalToKebab(r), slug, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
-    /// Every <see cref="RoleNames"/> constant. <c>DevLoginController</c> builds one persona per
-    /// entry and <see cref="RoleNameFromSlug"/> reverses the slug, so both read this one list.
+    /// Every catalogued role. <c>DevLoginController</c> builds one persona per entry and
+    /// <see cref="RoleNameFromSlug"/> reverses the slug, so both read this one list.
     /// </summary>
-    internal static IReadOnlyList<string> RoleNameValues { get; } = typeof(RoleNames)
-        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy)
-        .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
-        .Select(f => (string)f.GetRawConstantValue()!)
-        .ToList();
+    internal IReadOnlyList<string> GrantableRoleNames { get; } = [.. catalog.Roles.Select(r => r.Name)];
 
     /// <summary>Shared with <c>DevLoginController</c> so the persona list, the route and the reverse lookup agree.</summary>
     internal static string PascalToKebab(string pascal)

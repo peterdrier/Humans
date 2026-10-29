@@ -14,10 +14,10 @@ const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-d
 // in-process instead, by tests/Humans.Integration.Tests (DevPersona.Admin).
 export const PERSONAS = [
   'volunteer', 'board', 'consent-coordinator', 'teams-admin',
-  'camp-admin', 'ticket-admin', 'no-info-admin', 'volunteer-coordinator',
-  'human-admin', 'finance-admin', 'feedback-admin', 'city-planning',
+  'camps-admin', 'tickets-admin', 'shifts-no-info', 'shifts-admin',
+  'users-admin', 'finance-admin', 'feedback-admin', 'city-planning',
   'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
-  'e-e-team-admin', 'barrio-1-lead',
+  'early-entry-admin', 'barrio-1-lead',
 ] as const;
 export type Persona = (typeof PERSONAS)[number];
 

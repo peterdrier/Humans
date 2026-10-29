@@ -160,8 +160,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 | Controller | Route prefix | Audience |
 |-----------|--------------|----------|
 | `EventsController` | `/Events/` | All active members |
-| `EventsController` (barrio actions) | `/Events/Barrio/{slug}/` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
-| `EventsController` (barrio bulk upload) | `/Events/Barrio/{slug}/BulkUpload` | Camp Lead or Workshop Lead (per camp); CampAdmin / Admin globally |
+| `EventsController` (barrio actions) | `/Events/Barrio/{slug}/` | Camp Lead or Workshop Lead (per camp); CampsAdmin / Admin globally |
+| `EventsController` (barrio bulk upload) | `/Events/Barrio/{slug}/BulkUpload` | Camp Lead or Workshop Lead (per camp); CampsAdmin / Admin globally |
 | `EventsModerationController` | `/Events/Moderate/` | EventsAdmin, Admin |
 | `EventsDashboardController` | `/Events/Dashboard/` | EventsAdmin, Admin |
 | `EventsExportController` | `/Events/Export/` | EventsAdmin, Admin |
@@ -234,7 +234,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - A submitter **cannot** moderate their own event.
 - The public API (`/api/events/events`, `/api/events/barrios`, `/api/events/categories`) **cannot** return unapproved events.
 - Favourites and preferences endpoints **cannot** be accessed cross-origin (enforced by `[DisableCors]` on all `[Authorize]` API actions).
-- Barrio events **cannot** be submitted by a user who is not a Camp Lead, Workshop Lead, CampAdmin, or Admin for that camp.
+- Barrio events **cannot** be submitted by a user who is not a Camp Lead, Workshop Lead, CampsAdmin, or Admin for that camp.
 
 ## Triggers
 

@@ -14,8 +14,11 @@ internal interface IRoleAssignmentRepository : IRepository
     /// <summary>Newest <c>ValidFrom</c> first.</summary>
     Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// <paramref name="roleNames"/> is every stored name of one role (current and former), or null for all roles.
+    /// </summary>
     Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
-        string? roleFilter,
+        IReadOnlyList<string>? roleNames,
         bool activeOnly,
         int page,
         int pageSize,
@@ -24,14 +27,14 @@ internal interface IRoleAssignmentRepository : IRepository
 
     Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
-        string roleName,
+        IReadOnlyList<string> roleNames,
         Instant validFrom,
         Instant? validTo,
         CancellationToken ct = default);
 
     Task<bool> HasActiveRoleAsync(
         Guid userId,
-        string roleName,
+        IReadOnlyList<string> roleNames,
         Instant now,
         CancellationToken ct = default);
 
@@ -51,12 +54,17 @@ internal interface IRoleAssignmentRepository : IRepository
         CancellationToken ct = default);
 
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
-        string roleName,
+        IReadOnlyList<string> roleNames,
         Instant now,
         CancellationToken ct = default);
 
     Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>Tracked, for <see cref="UpdateManyAsync"/>: every row, active or ended, stored under one of the names.</summary>
+    Task<IReadOnlyList<RoleAssignment>> GetByRoleNamesForMutationAsync(
+        IReadOnlyList<string> roleNames,
         CancellationToken ct = default);
 
     Task AddAsync(RoleAssignment assignment, CancellationToken ct = default);
@@ -68,11 +76,13 @@ internal interface IRoleAssignmentRepository : IRepository
 
     /// <summary>
     /// A source row active at <paramref name="updatedAt"/> for a role the target also holds then is dropped (the
-    /// target's row wins); every other source row moves, so history is kept. One SaveChanges.
+    /// target's row wins); every other source row moves, so history is kept. One SaveChanges. Roles compare by
+    /// <paramref name="canonicalName"/>, so a row still stored under a former role name matches the current one.
     /// </summary>
     Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,
+        Func<string, string> canonicalName,
         CancellationToken ct = default);
 }

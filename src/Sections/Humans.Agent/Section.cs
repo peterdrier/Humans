@@ -1,16 +1,21 @@
 using Humans.Agent.Authorization;
 using Humans.Agent.Contracts;
 using Humans.Agent.Data;
+using Humans.Agent.Health;
 using Humans.Agent.Jobs;
 using Humans.Agent.Services;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Preload;
 using Humans.Agent.Services.Stores;
-using Humans.Base.Interfaces;
-using Humans.Gdpr.Contracts;
+using Humans.Agent.ViewComponents;
+using Humans.Base.Authorization;
 using Humans.Base.Configuration;
+using Humans.Base.Constants;
 using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Humans.Base.Services;
+using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +27,15 @@ namespace Humans.Agent;
 /// The Anthropic connector lives here, not in Base: <c>IAnthropicClient</c> streams the section's own
 /// <c>AgentTurnToken</c>.
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section :
+    ISection,
+    ISectionAdminNav,
+    ISectionAnnotations,
+    ISectionChrome,
+    ISectionConfiguration,
+    ISectionHealthChecks,
+    ISectionJobs,
+    ISectionSettings
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -72,4 +85,50 @@ public sealed class Section : ISection
 
         services.AddScoped<AgentConversationRetentionJob>();
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Agent", [
+            new("Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.AdminOnly),
+            new("History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.AdminOnly)
+        ])
+    ];
+
+    IEnumerable<SectionAnnotation> ISectionAnnotations.Annotations() =>
+        AgentSectionKeys.All.Select(key => new SectionAnnotation(
+            key,
+            "Agent doc key",
+            $"{AgentSectionDocReader.SectionProjectFolder(key)}/{key}.md"));
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.BodyEnd, typeof(HelpWidgetViewComponent))];
+
+    void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
+    {
+        configuration.GetOptionalSetting(registry, "Anthropic:ApiKey", "Anthropic", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+        configuration.GetOptionalSetting(registry, "Anthropic:DefaultModel", "Anthropic");
+
+        configuration.GetOptionalSetting(registry, "CommunityKb:Owner", "Community KB");
+        configuration.GetOptionalSetting(registry, "CommunityKb:Repository", "Community KB");
+        configuration.GetOptionalSetting(registry, "CommunityKb:Branch", "Community KB");
+        configuration.GetOptionalSetting(registry, "CommunityKb:AccessToken", "Community KB", isSensitive: true);
+    }
+
+    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
+    {
+        builder.AddCheck<AnthropicHealthCheck>("anthropic-api-reachable", tags: [HealthCheckTags.External]);
+        builder.AddCheck<AgentDocsHealthCheck>("agent-grounding-docs");
+    }
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor(
+            "agent-conversation-retention", typeof(AgentConversationRetentionJob), "15 3 * * *");
+    }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("agent", "Settings_TabAgent", typeof(AgentSettingsTabViewComponent), PolicyNames.AdminOnly)
+    ];
 }

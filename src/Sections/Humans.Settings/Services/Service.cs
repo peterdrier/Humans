@@ -23,13 +23,37 @@ internal sealed class Service(
         CancellationToken cancellationToken = default) =>
         repository.SetValueAsync(key, value, cancellationToken);
 
+    /// <summary>Every row was entered as Europe/Madrid before the timezone became global.</summary>
+    private const string DefaultTimeZoneId = "Europe/Madrid";
+
     public async Task<EventSettingsInfo?> GetActiveEventSettingsAsync(
         CancellationToken cancellationToken = default) =>
-        ToDto(await repository.GetActiveEventSettingsAsync(cancellationToken));
+        ToDto(await repository.GetActiveEventSettingsAsync(cancellationToken), await GetTimeZoneIdAsync(cancellationToken));
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
         Guid id, CancellationToken cancellationToken = default) =>
-        ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken));
+        ToDto(await repository.GetEventSettingsByIdAsync(id, cancellationToken), await GetTimeZoneIdAsync(cancellationToken));
+
+    public async Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
+        await repository.GetValueAsync(SettingKeys.EventTimeZoneId, cancellationToken) ?? DefaultTimeZoneId;
+
+    public async Task<EventSettingsSaveResult> SaveTimeZoneAsync(
+        string timeZoneId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(timeZoneId) is null)
+            return new(false, "Invalid IANA timezone ID.");
+
+        var previous = await GetTimeZoneIdAsync(cancellationToken);
+        await repository.SetValueAsync(SettingKeys.EventTimeZoneId, timeZoneId, cancellationToken);
+        await auditLog.LogAsync(
+            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
+
+        // Every event's derived dates move with the timezone.
+        foreach (var row in await repository.GetAllEventSettingsAsync(cancellationToken))
+            NotifyChangeListeners(row.Id);
+        return new(true);
+    }
 
     public async Task<EventSettingsSaveResult> SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -52,8 +76,22 @@ internal sealed class Service(
             return new(false, "Early entry start offset must be between build start and 0 (exclusive).");
         }
 
+        var overlapping = (await repository.GetAllEventSettingsAsync(cancellationToken))
+            .FirstOrDefault(other => other.Id != settings.Id
+                && other.Status != EventSettingsStatus.Deleted
+                && WindowsOverlap(settings, other));
+        if (overlapping is not null)
+        {
+            logger.LogWarning("Rejected event settings {EventId}: its build-to-strike window overlaps event {OtherEventId}",
+                settings.Id, overlapping.Id);
+            return new(false,
+                $"The build start to strike end window overlaps '{overlapping.EventName}' "
+                + $"({FormatWindow(overlapping)}). Events must not overlap.");
+        }
+
         await repository.UpsertEventSettingsAsync(
-            ToEntity(settings), clock.GetCurrentInstant(), cancellationToken);
+            ToEntity(settings with { TimeZoneId = await GetTimeZoneIdAsync(cancellationToken) }),
+            clock.GetCurrentInstant(), cancellationToken);
 
         var description =
             $"Event settings saved for '{settings.EventName}' ({settings.Year}): "
@@ -67,6 +105,52 @@ internal sealed class Service(
         NotifyChangeListeners(settings.Id);
         return new(true);
     }
+
+    public async Task<IReadOnlyList<EventSettingsInfo>> GetAllEventSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var timeZoneId = await GetTimeZoneIdAsync(cancellationToken);
+        return (await repository.GetAllEventSettingsAsync(cancellationToken))
+            .Select(e => ToDto(e, timeZoneId)!)
+            .ToList();
+    }
+
+    public async Task<EventSettingsSaveResult> ActivateEventSettingsAsync(
+        Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var target = await repository.GetEventSettingsByIdAsync(eventSettingsId, cancellationToken);
+        if (target is null || target.Status == EventSettingsStatus.Deleted)
+        {
+            logger.LogWarning("Rejected activating event settings {EventId}: no such event", eventSettingsId);
+            return new(false, "That event no longer exists.");
+        }
+
+        if (target.Status == EventSettingsStatus.Active)
+            return new(true);
+
+        var changed = await repository.SetActiveEventSettingsAsync(
+            eventSettingsId, clock.GetCurrentInstant(), cancellationToken);
+        var previous = changed.Where(e => e.Id != eventSettingsId).Select(e => $"'{e.EventName}'").ToList();
+
+        var description = previous.Count == 0
+            ? $"Event '{target.EventName}' made active; no event was active before."
+            : $"Event '{target.EventName}' made active; {string.Join(", ", previous)} set inactive.";
+        await auditLog.LogAsync(
+            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, target.Id, description, actorUserId);
+
+        foreach (var row in changed)
+            NotifyChangeListeners(row.Id);
+        return new(true);
+    }
+
+    /// <summary>Both windows are inclusive day ranges, build start to strike end.</summary>
+    private static bool WindowsOverlap(EventSettingsInfo settings, EventSettings other) =>
+        settings.GateOpeningDate.PlusDays(settings.BuildStartOffset) <= other.GateOpeningDate.PlusDays(other.StrikeEndOffset)
+        && other.GateOpeningDate.PlusDays(other.BuildStartOffset) <= settings.GateOpeningDate.PlusDays(settings.StrikeEndOffset);
+
+    private static string FormatWindow(EventSettings e) =>
+        $"{LocalDatePattern.Iso.Format(e.GateOpeningDate.PlusDays(e.BuildStartOffset))} to "
+        + LocalDatePattern.Iso.Format(e.GateOpeningDate.PlusDays(e.StrikeEndOffset));
 
     /// <inheritdoc />
     /// <remarks>No audit entry: seeding fixtures have no real actor.</remarks>
@@ -141,11 +225,11 @@ internal sealed class Service(
             listener.EventSettingsChanged(eventSettingsId);
     }
 
-    private static EventSettingsInfo? ToDto(EventSettings? src) => src is null ? null : new EventSettingsInfo(
+    private static EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(
         Id: src.Id,
         EventName: src.EventName,
         Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
+        TimeZoneId: timeZoneId,
         GateOpeningDate: src.GateOpeningDate,
         BuildStartOffset: src.BuildStartOffset,
         EventEndOffset: src.EventEndOffset,

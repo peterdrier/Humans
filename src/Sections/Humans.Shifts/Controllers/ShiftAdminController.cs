@@ -61,7 +61,7 @@ internal sealed class ShiftAdminController(
             es,
             canManage,
             canApprove,
-            ShiftRoleChecks.CanViewMedical(User),
+            ShiftsRoles.CanViewMedical(User),
             incompleteOnboarding,
             clock.GetCurrentInstant()), ct);
 
@@ -695,7 +695,7 @@ internal sealed class ShiftAdminController(
             var result = await volunteerSearchBuilder.BuildForShiftAsync(
                 await GetShiftForTeamAsync(shiftId, team.Id, ct),
                 query,
-                ShiftRoleChecks.CanViewMedical(User), ct);
+                ShiftsRoles.CanViewMedical(User), ct);
             return result.Status switch
             {
                 VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),
@@ -850,13 +850,13 @@ internal sealed class ShiftAdminController(
     private async Task<bool> CanManageDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
     {
         // NoInfoAdmin can approve signups but not manage rotas or shifts.
-        return RoleChecks.IsVolunteerManager(User) ||
+        return ShiftsRoles.IsVolunteerManager(User) ||
                await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
     }
 
     private async Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
     {
-        return ShiftRoleChecks.CanManageDepartment(User) ||
+        return ShiftsRoles.CanManageDepartment(User) ||
                await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
     }
 }

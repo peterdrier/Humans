@@ -68,7 +68,7 @@ public class SectionCatalogTests
     public void An_Annotation_Naming_No_Section_Is_Surfaced_Not_Dropped()
     {
         var catalog = Build(new Annotator(
-            new SectionAnnotation("Profiles", "Issue queue", "HumanAdmin"),
+            new SectionAnnotation("Profiles", "Issue queue", "UsersAdmin"),
             new SectionAnnotation("Issues", "Issue queue", "Admin")));
 
         catalog.UnmatchedAnnotations.Should().ContainSingle()

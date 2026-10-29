@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -186,7 +187,7 @@ public class NotificationMeterProviderTests : IDisposable
         _applicationDecisionService.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfoWithPendingRequest(userId)]);
-        var principal = CreatePrincipalWithId(userId, RoleNames.Admin, RoleNames.Board, RoleNames.ConsentCoordinator);
+        var principal = CreatePrincipalWithId(userId, RoleNames.Admin, RoleNames.Board, ConsentRoles.ConsentCoordinator);
         var keys = new[]
         {
             "ConsentReviewsPending", "ApplicationsPendingVote", "PendingAccountDeletions",
@@ -235,7 +236,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.VolunteerCoordinator), TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(ShiftsRoles.ShiftsAdmin), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal) &&
@@ -256,7 +257,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(ConsentRoles.ConsentCoordinator), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&
@@ -271,7 +272,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.ConsentCoordinator), TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(ConsentRoles.ConsentCoordinator), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&

@@ -28,4 +28,4 @@ await _auditLog.LogAsync(AuditEntityTypes.Team, ...);
 
 **Auth-specific:**
 - Never hardcode role names in controllers, views, or authorization helpers
-- Use `RoleNames`, `RoleGroups`, or shared `RoleChecks` helpers
+- Use `RoleNames` (Admin, Board only), the owning section's `<Section>Roles` constants, or `PolicyNames`

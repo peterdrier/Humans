@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 102
+next_id: 103
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -190,3 +190,7 @@ inbox:
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
+  - added: 2026-10-26
+    id: CENTRAL-102
+    what: "tests/Humans.Testing/CapturingLogger.cs appends to an unsynchronized List from Log, so a service that logs from concurrent tasks (StripeStartupSmokeService runs its probes under Task.WhenAll) can race the list in a test. Found by section-doctor on Stripe."
+    review: light

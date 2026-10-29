@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Shifts.Contracts;
@@ -14,7 +15,7 @@ internal sealed class CampComplianceAccessHandler(IShiftService shiftManagement)
     {
         var user = context.User;
 
-        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.CampAdmin))
+        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(CampsRoles.CampsAdmin))
         {
             context.Succeed(requirement);
             return;

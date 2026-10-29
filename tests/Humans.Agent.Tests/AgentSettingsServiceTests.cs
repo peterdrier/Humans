@@ -5,7 +5,9 @@ using System.ComponentModel.DataAnnotations;
 using NSubstitute;
 using Humans.Agent.Data;
 using Humans.Agent.Services;
+using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Stores;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Agent.Domain;
@@ -36,7 +38,8 @@ public class AgentSettingsServiceTests
         var clock = new TestClock(Instant.FromUtc(2026, 4, 22, 9, 0));
         var repo = new AgentRepository(db, clock);
         var audit = Substitute.For<IAuditLogService>();
-        var service = new AgentSettingsService(repo, store, clock, audit);
+        var service = new AgentSettingsService(repo, store, clock, audit, Substitute.For<IAnthropicClient>(),
+            NullLogger<AgentSettingsService>.Instance);
         await service.LoadAsync(Xunit.TestContext.Current.CancellationToken);
 
         var actorId = Guid.NewGuid();
@@ -71,6 +74,49 @@ public class AgentSettingsServiceTests
 
         Validator.TryValidateObject(model, new ValidationContext(model), errors, validateAllProperties: true)
             .Should().Be(valid);
+    }
+
+    [HumansFact]
+    public async Task Model_options_list_live_models_with_prices_and_keep_the_saved_one()
+    {
+        var anthropic = Substitute.For<IAnthropicClient>();
+        anthropic.ListModelsAsync(Arg.Any<CancellationToken>()).Returns(new List<AnthropicModelInfo>
+        {
+            new("claude-sonnet-5-5", "Claude Sonnet 5.5"),
+            new("claude-brand-new", "Claude Brand New"),
+        });
+        var service = CreateModelOptionsService(anthropic, savedModel: "claude-sonnet-4-6");
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var options = await service.GetModelOptionsAsync(ct);
+
+        options.LiveListAvailable.Should().BeTrue();
+        options.Models.Select(m => m.Id).Should().Equal("claude-sonnet-4-6", "claude-sonnet-5-5", "claude-brand-new");
+        options.Models[1].Price!.Input.Should().Be(2.00m);
+        options.Models[2].Price.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Model_options_fall_back_to_the_saved_model_when_anthropic_fails()
+    {
+        var anthropic = Substitute.For<IAnthropicClient>();
+        anthropic.ListModelsAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<AnthropicModelInfo>>(_ => throw new HttpRequestException("down"));
+        var service = CreateModelOptionsService(anthropic, savedModel: "claude-sonnet-4-6");
+
+        var options = await service.GetModelOptionsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        options.LiveListAvailable.Should().BeFalse();
+        options.Models.Should().ContainSingle().Which.Id.Should().Be("claude-sonnet-4-6");
+    }
+
+    private static AgentSettingsService CreateModelOptionsService(IAnthropicClient anthropic, string savedModel)
+    {
+        var store = new AgentSettingsStore();
+        store.Set(new AgentSettings { Model = savedModel });
+        var clock = new TestClock(Instant.FromUtc(2026, 10, 28, 9, 0));
+        return new AgentSettingsService(Substitute.For<IAgentRepository>(), store, clock, Substitute.For<IAuditLogService>(),
+            anthropic, NullLogger<AgentSettingsService>.Instance);
     }
 
     private static AgentDbContext CreateDb()

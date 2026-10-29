@@ -3,7 +3,7 @@ import { loginAs, expectBlocked } from '../helpers/auth';
 
 test.describe('Tickets (24-ticket-vendor-integration)', () => {
   test('ticket admin can access dashboard', async ({ page }) => {
-    await loginAs(page, 'ticket-admin');
+    await loginAs(page, 'tickets-admin');
     await page.goto('/Tickets');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
@@ -11,7 +11,7 @@ test.describe('Tickets (24-ticket-vendor-integration)', () => {
   });
 
   test('orders page loads at /Tickets/Orders', async ({ page }) => {
-    await loginAs(page, 'ticket-admin');
+    await loginAs(page, 'tickets-admin');
     await page.goto('/Tickets/Orders');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();

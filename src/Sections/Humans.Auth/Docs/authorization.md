@@ -6,9 +6,10 @@
 
 | Controller / action | Level | Roles | Policy |
 |---|---|---|---|
-| `RoleAssignmentsController` | Class | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` (`Roles`, `AddRole` GET/POST, `EndRole` all inherit) |
+| `RoleAssignmentsController` | Class | `UsersAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` (`Roles` roster) |
+| `RoleAssignmentsController.AddRole` (GET/POST) / `EndRole` | Action | `UsersAdmin, Admin` | `PolicyNames.HumanAdminOrAdmin` — Board reads the roster but manages no role (`RoleAssignmentRules`) |
 | `RoleAssignmentsController.AddRole` (POST) / `EndRole` runtime guards | In-method | per target role name | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` — resource-based, evaluated by `RoleAssignmentAuthorizationHandler`. `AddRole` answers `Forbid`, `EndRole` answers `404` so a denied actor cannot probe assignment ids |
-| `RoleAssignmentsCardViewComponent` | User part (`AdminDetail`) | `HumanAdmin, Board, Admin` | Renders only in `ProfileCardViewMode.Admin` and when the viewer passes `HumanAdminBoardOrAdmin`; nothing otherwise |
+| `RoleAssignmentsCardViewComponent` | User part (`AdminDetail`) | `UsersAdmin, Board, Admin` | Renders only in `ProfileCardViewMode.Admin` and when the viewer passes `HumanAdminBoardOrAdmin`; nothing otherwise |
 
 ## Resource-Based Authorization Handler
 

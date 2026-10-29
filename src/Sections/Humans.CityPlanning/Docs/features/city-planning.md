@@ -214,7 +214,7 @@ Full-screen map with a sidebar listing placed/unplaced containers. Containers ar
 | Place / remove containers on map, edit placement notes/sketch | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` — enforced by `ContainerOperationRequirement.Place` |
 | Export container GeoJSON | Map admin (all), barrio lead (own camp) |
 
-Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampAdmin`, **or** member of the City Planning team (`ICityPlanningService.IsCityPlanningTeamMemberAsync`).
+Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampsAdmin`, **or** member of the City Planning team (`ICityPlanningService.IsCityPlanningTeamMemberAsync`).
 
 ## URL Structure
 

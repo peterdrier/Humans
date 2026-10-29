@@ -40,8 +40,8 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 |-------|--------------|
 | Anyone (anonymous) | `/dev/login/*`, in dev/preview only. This is the point of the section: it exists to get *into* an account |
 | Finance Admin / Admin | `/dev/seed/budget` |
-| Camp Admin / Admin | `/dev/seed/camp-roles` |
-| Volunteer Coordinator / NoInfo Admin / Admin | `/dev/seed/dashboard` |
+| Camps Admin / Admin | `/dev/seed/camp-roles` |
+| Shifts Admin / Shifts NoInfo / Admin | `/dev/seed/dashboard` |
 | Admin | `/dev/seed` (the seed page) |
 | Admin | `/dev/seed/dashboard/reset` - destructive, deletes seeded humans and teams |
 | Everyone, in Production | Nothing |

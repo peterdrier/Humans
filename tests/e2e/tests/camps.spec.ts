@@ -20,7 +20,7 @@ test.describe('Camps (20-camps)', () => {
   });
 
   test('US-20.6: camp admin can access admin dashboard', async ({ page }) => {
-    await loginAs(page, 'camp-admin');
+    await loginAs(page, 'camps-admin');
     await page.goto('/Camps/Admin');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();

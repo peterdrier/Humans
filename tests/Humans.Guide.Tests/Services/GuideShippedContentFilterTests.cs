@@ -22,7 +22,7 @@ public class GuideShippedContentFilterTests
 
         foreach (var file in Directory.GetFiles(GuideDir(), "*.md"))
         {
-            var document = GuideSegmenter.Segment(File.ReadAllText(file));
+            var document = GuideTestRoles.Segmenter.Segment(File.ReadAllText(file));
             var visible = GuideFilter.Apply(document, GuideRoleContext.Anonymous);
 
             foreach (var line in visible.Split('\n').Select(l => l.TrimEnd('\r')))
@@ -52,7 +52,7 @@ public class GuideShippedContentFilterTests
         {
             var markdown = File.ReadAllText(file);
 
-            GuideFilter.Apply(GuideSegmenter.Segment(markdown), context)
+            GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(markdown), context)
                 .Should().Be(markdown, because: $"{Path.GetFileName(file)} must reach an admin intact");
         }
     }

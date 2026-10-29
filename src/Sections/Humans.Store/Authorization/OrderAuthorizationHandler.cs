@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Store.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
@@ -32,14 +33,14 @@ internal sealed class OrderAuthorizationHandler(
         if (!TryResolveResource(context.Resource, out var resource))
             return;
 
-        if (RoleChecks.CanAdministerStore(context.User))
+        if (StoreRoles.CanAdministerStore(context.User))
         {
             foreach (var req in pending)
             {
                 // Even admins can't Pay or EditCounterparty a team order: it has no billing.
                 if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
                     continue;
-                if (req == OrderOperationRequirement.Refund && !RoleChecks.IsFinanceAdmin(context.User))
+                if (req == OrderOperationRequirement.Refund && !FinanceRoles.IsFinanceAdmin(context.User))
                     continue;
                 if (req == OrderOperationRequirement.DeletePayment && !RoleChecks.IsAdmin(context.User))
                     continue;
@@ -53,7 +54,7 @@ internal sealed class OrderAuthorizationHandler(
             && await settingsService.TodayInEventZoneAsync(clock) > until;
 
         // Additive: fall through so a TeamsAdmin who is also a camp lead picks up camp rights below.
-        if (RoleChecks.IsTeamsAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdmin(context.User))
         {
             foreach (var req in pending)
             {

@@ -77,12 +77,12 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Redirects to detail page with success message
 
 ### US-20.4: Edit Camp
-**As a** camp lead or CampAdmin
+**As a** camp lead or CampsAdmin
 **I want to** update my camp's information
 **So that** the listing stays current
 
 **Acceptance Criteria:**
-- Leads can edit their own camp; CampAdmin/Admin can edit any
+- Leads can edit their own camp; CampsAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
 - Manual historical names must contain 1–256 characters after trimming, both during registration and when added later. Invalid entries are refused before saving.
@@ -104,7 +104,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Redirects to edit page
 
 ### US-20.6: Approve/Reject Season Registration
-**As a** CampAdmin or Admin
+**As a** CampsAdmin or Admin
 **I want to** review and approve or reject pending camp registrations
 **So that** only legitimate camps appear in the public listing
 
@@ -116,7 +116,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Missing or already-reviewed seasons return an admin refusal without a transition or audit; dependency failures remain errors. Reactivation refuses a missing or ineligible season, and deletion refuses a missing camp; these expected outcomes likewise preserve state and do not disguise dependency failures.
 
 ### US-20.7: Manage Seasons
-**As a** CampAdmin or Admin
+**As a** CampsAdmin or Admin
 **I want to** open/close registration seasons and configure name lock dates
 **So that** the camp registration lifecycle is controlled
 
@@ -133,7 +133,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** invalid or test entries can be removed
 
 **Acceptance Criteria:**
-- Admin-only action (not CampAdmin)
+- Admin-only action (not CampsAdmin)
 - Deletes camp and all related data (seasons, leads, images, historical names)
 - Requires confirmation
 
@@ -158,7 +158,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Both endpoints are public (no authentication required)
 
 ### US-20.11: Export Camps CSV
-**As a** CampAdmin or Admin
+**As a** CampsAdmin or Admin
 **I want to** export camp data as CSV
 **So that** I can analyze camp registrations in a spreadsheet
 
@@ -169,26 +169,26 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - CSV file named `barrios-{year}.csv`
 
 ### US-20.12: Per-camp roles
-**As a** camp lead, CampAdmin, or Admin
-**I want to** assign humans in my camp to per-camp roles defined by CampAdmin
+**As a** camp lead, CampsAdmin, or Admin
+**I want to** assign humans in my camp to per-camp roles defined by CampsAdmin
 **So that** the org knows who is responsible for the role each season and can flag camps that are missing required leads
 
-**As a** CampAdmin
+**As a** CampsAdmin
 **I want to** manage the catalogue of role definitions (name, description, slot count, minimum required for compliance, sort order, required-for-compliance flag)
 **So that** the role list can evolve year over year without code changes
 
 **Acceptance Criteria:**
-- CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact. Create/edit validation refusals redisplay the submitted form with their reason; operational failures show a generic error and are logged with the exception.
+- CampsAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact. Create/edit validation refusals redisplay the submitted form with their reason; operational failures show a generic error and are logged with the exception.
 - Membership decisions, season closures and role assignments finish their notifications after saving even if the browser disconnects. Notification preparation and delivery failures are logged without failing the committed mutation.
 - Per-camp role assignments live on the Camp Members page (`/Camps/{slug}/Edit/Members`), one block per active role definition, ordered by `SortOrder`. The role heading carries a `{filled}/{SlotCount} filled` count, a `required` badge when applicable, and (for managers) an info-icon button that collapses/expands the role description so it no longer crowds the panel. Filled slots render as a wrap of avatar pills (one `<vc:human>` avatar+name per assignee, each with an inline unassign button for managers). When the role has empty slots, a `+` button reveals a single collapsed `<vc:human-search>` typeahead form (search-as-you-type, burner-name match via `scope="Name"`); the per-empty-slot repeated picker is gone.
 - The picker excludes humans already filling the same role from its suggestions (`exclude-user-ids`), so leads can't accidentally re-assign the same human.
 - Add-member and role-picker posts retain the displayed season year, including on redirect. They require that year's Active/Full season; callers without a year use the active event year. A legacy assignment by member ID uses that member's season within the camp. Other open years are never substituted.
 - Assigning a role: the picker posts to `/Camps/{slug}/Roles/AssignByUser` which adds the picked human as a CampMember (Active) if they're not already one and assigns the role in one step (`ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync`). Audited as `CampMemberAddedByLead` for the membership add. The legacy `/Roles/Assign` endpoint (taking a `campMemberId`) remains available for callers that already have a member id.
 - Service still rejects with `MemberNotActive` / `MemberSeasonMismatch` if a stale member id is submitted to the legacy endpoint, and with `AlreadyHoldsRole` if the same human is re-submitted before the page refreshes.
-- Soft-cap: the service rejects an assignment that would exceed `SlotCount`. If a CampAdmin reduces `SlotCount` below current usage, the card renders an "over capacity" indicator and a lead must unassign one to drop back into capacity.
+- Soft-cap: the service rejects an assignment that would exceed `SlotCount`. If a CampsAdmin reduces `SlotCount` below current usage, the card renders an "over capacity" indicator and a lead must unassign one to drop back into capacity.
 - A human cannot hold the same role twice in the same season (DB unique index + `AlreadyHoldsRole` outcome).
 - Lead-add-active-member shortcut: leads can also add members without assigning a role at `/Camps/{slug}/Members/Add` (creates `CampMember(Active)` without going through the request/approve flow). Audited as `CampMemberAddedByLead`.
-- Role-staffing compliance matrix at `/Camps/Admin/Compliance` (`CampComplianceController`) shows a grid of all active barrios (Active/Full) for the chosen year (defaults to current public year): rows are barrios with a member-count column, columns are the active role definitions, and each cell renders the assignees' avatars plus a dashed placeholder for every unfilled required slot. A barrio is flagged when any role's holder count is below its `MinimumRequired`. Access is gated by the `CampComplianceAccess` policy — CampAdmin/Admin or any team/sub-team coordinator — broader than the CampAdmin-only camp-management surface.
+- Role-staffing compliance matrix at `/Camps/Admin/Compliance` (`CampComplianceController`) shows a grid of all active barrios (Active/Full) for the chosen year (defaults to current public year): rows are barrios with a member-count column, columns are the active role definitions, and each cell renders the assignees' avatars plus a dashed placeholder for every unfilled required slot. A barrio is flagged when any role's holder count is below its `MinimumRequired`. Access is gated by the `CampComplianceAccess` policy — CampsAdmin/Admin or any team/sub-team coordinator — broader than the CampsAdmin-only camp-management surface.
 - All role visibility is **auth-gated**. The public Camp Details page does not render role assignments — only authenticated users see the roles section.
 - Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member via `ICampRoleService.RemoveAllForMemberAsync`.
 - Role email lists (the derived Google Groups `barrios-{year}-{slug}`) fall back to the camp's barrio lead(s): for a **non-Lead** role, any camp that has a Lead for that year but no direct assignee for the role contributes its Lead(s) as stand-in recipients, so messages to an unfilled role still reach the camp's lead instead of nobody (`CampRoleService.GetExpectedAsync`).
@@ -205,7 +205,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member. Missing-membership and invalid-status failures are localized in all six cultures.
 - Membership state (Pending / Active) is never rendered on anonymous views.
-- Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season. Each active member row also shows a shift-signup count badge (sourced from `IShiftView.GetUsersAsync`) — the number of active (pending or confirmed) shift signups for the current event — colour-coded by count.
+- Leads and CampsAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season. Each active member row also shows a shift-signup count badge (sourced from `IShiftView.GetUsersAsync`) — the number of active (pending or confirmed) shift signups for the current event — colour-coded by count.
 - Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.
 - Concurrent duplicate "request" submissions resolve idempotently — the second one returns the winning row instead of a 500.
 - When a season is rejected or withdrawn, pending requesters receive a notification. Pending rows are left as-is (so if the season is later reactivated, the request is still live).
@@ -303,7 +303,7 @@ CampMember
   re-requesting.
 - The request flow is idempotent: a concurrent duplicate insert that races past
   the pre-check is caught (`23505`) and resolved to the winning row.
-- Mutations by leads / CampAdmin (approve, reject, remove) are scoped by the
+- Mutations by leads / CampsAdmin (approve, reject, remove) are scoped by the
   authorizing camp id: a member id belonging to a different camp resolves to
   "not found" rather than being mutated cross-camp.
 - When a season is rejected or withdrawn, pending requesters receive a
@@ -313,7 +313,7 @@ CampMember
 
 ### CampRoleDefinition (catalogue of per-camp roles, issue nobodies-collective#489)
 
-CampAdmin-managed catalogue. Each row defines a per-camp role (name, slot count,
+CampsAdmin-managed catalogue. Each row defines a per-camp role (name, slot count,
 compliance threshold). Soft-deleted definitions preserve historical assignments
 but are hidden from new-assignment UI.
 
@@ -349,7 +349,7 @@ CampRoleAssignment
 - Unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold the same role twice in the same season.
 - Service precondition: the linked `CampMember` must have `Status = Active` for the same `CampSeasonId`.
 - Cascades: removing a `CampMember` (Leave / Withdraw / Remove paths) calls `ICampRoleService.RemoveAllForMemberAsync` to clear assignments before the soft-delete.
-- The catalogue ships empty. There are no default role definitions — CampAdmin creates every row via the management UI.
+- The catalogue ships empty. There are no default role definitions — CampsAdmin creates every row via the management UI.
 
 ### Enums
 ```
@@ -414,13 +414,13 @@ Authenticated User
   └────┬────┘  └───────────┘  └────┬─────┘
        │                           │
   ┌────┼─────┐                Reactivate
-  │          │                (CampAdmin only)
+  │          │                (CampsAdmin only)
 ┌─▼──┐ ┌────▼─────┐               │
 │Full│ │Withdrawn │               │
 └─┬──┘ └──────────┘               │
   │                                │
 Reactivate                    ┌────▼────┐
-(CampAdmin only)               │ Pending │
+(CampsAdmin only)               │ Pending │
   │                            └─────────┘
 ┌─▼───────┐
 │ Active  │
@@ -432,11 +432,11 @@ Transitions:
 - Pending → Rejected (admin rejects)
 - Pending → Withdrawn (lead withdraws)
 - Active → Withdrawn (lead withdraws)
-- Active → Full (lead or CampAdmin marks full via `MarkFull`)
-- Full → Active (CampAdmin reactivates)
-- Withdrawn → Pending (CampAdmin reactivates; requires re-approval)
+- Active → Full (lead or CampsAdmin marks full via `MarkFull`)
+- Full → Active (CampsAdmin reactivates)
+- Withdrawn → Pending (CampsAdmin reactivates; requires re-approval)
 
-Note: `Full` is informational only — it does not gate join requests. A camp lead or CampAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.MarkSeasonFullAsync` → `CampSeason.MarkFull`, both guarded to accept only Active seasons).
+Note: `Full` is informational only — it does not gate join requests. A camp lead or CampsAdmin marks an Active season Full via `POST /Camps/{slug}/MarkFull/{seasonId}` (`CampService.MarkSeasonFullAsync` → `CampSeason.MarkFull`, both guarded to accept only Active seasons).
 
 ## Authorization
 
@@ -445,18 +445,18 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | Browse camps | Public (AllowAnonymous) |
 | View camp details | Public (AllowAnonymous) |
 | Register camp | Authenticated |
-| Edit camp | Camp Lead, CampAdmin, or Admin |
-| Opt-in to season | Camp Lead, CampAdmin, or Admin |
-| Upload/delete images | Camp Lead, CampAdmin, or Admin |
-| Approve/reject season | CampAdmin or Admin |
-| Open/close season | CampAdmin or Admin |
-| Set name lock date | CampAdmin or Admin |
+| Edit camp | Camp Lead, CampsAdmin, or Admin |
+| Opt-in to season | Camp Lead, CampsAdmin, or Admin |
+| Upload/delete images | Camp Lead, CampsAdmin, or Admin |
+| Approve/reject season | CampsAdmin or Admin |
+| Open/close season | CampsAdmin or Admin |
+| Set name lock date | CampsAdmin or Admin |
 | Delete camp | Admin only |
-| Manage role definitions (create/edit/deactivate/reactivate) | CampAdmin or Admin |
-| Assign / unassign per-camp role | Camp Lead, CampAdmin, or Admin |
-| Add active member to camp (lead-driven shortcut) | Camp Lead, CampAdmin, or Admin |
+| Manage role definitions (create/edit/deactivate/reactivate) | CampsAdmin or Admin |
+| Assign / unassign per-camp role | Camp Lead, CampsAdmin, or Admin |
+| Add active member to camp (lead-driven shortcut) | Camp Lead, CampsAdmin, or Admin |
 | View role assignments | Authenticated users only (no anonymous render) |
-| Role-staffing compliance matrix | CampAdmin, Admin, or any team/sub-team coordinator (`CampComplianceAccess`) |
+| Role-staffing compliance matrix | CampsAdmin, Admin, or any team/sub-team coordinator (`CampComplianceAccess`) |
 | JSON API | Public (AllowAnonymous) |
 
 ## URL Structure
@@ -475,7 +475,7 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
 | `POST /Camps/{slug}/Withdraw/{seasonId}` | Lead withdraws a season |
-| `POST /Camps/{slug}/MarkFull/{seasonId}` | Lead or CampAdmin marks an Active season Full |
+| `POST /Camps/{slug}/MarkFull/{seasonId}` | Lead or CampsAdmin marks an Active season Full |
 | `POST /Camps/{slug}/HistoricalNames/Add` | Manually add a historical name |
 | `POST /Camps/{slug}/HistoricalNames/Remove/{nameId}` | Remove a historical name |
 | `POST /Camps/{slug}/Images/Upload` | Upload image |
@@ -484,9 +484,9 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/{slug}/Members/Request` | Request membership for the current season |
 | `POST /Camps/{slug}/Members/Withdraw/{campMemberId}` | Withdraw a pending membership request |
 | `POST /Camps/{slug}/Members/Leave/{campMemberId}` | Leave an active membership |
-| `POST /Camps/{slug}/Members/Approve/{campMemberId}` | Lead/CampAdmin approves a pending request |
-| `POST /Camps/{slug}/Members/Reject/{campMemberId}` | Lead/CampAdmin rejects a pending request |
-| `POST /Camps/{slug}/Members/Remove/{campMemberId}` | Lead/CampAdmin removes an active member |
+| `POST /Camps/{slug}/Members/Approve/{campMemberId}` | Lead/CampsAdmin approves a pending request |
+| `POST /Camps/{slug}/Members/Reject/{campMemberId}` | Lead/CampsAdmin rejects a pending request |
+| `POST /Camps/{slug}/Members/Remove/{campMemberId}` | Lead/CampsAdmin removes an active member |
 | `POST /Camps/{slug}/Members/{campMemberId}/EarlyEntry` | Grant / revoke Early Entry on a member |
 | `GET /Camps/Admin` | Admin dashboard |
 | `POST /Camps/Admin/Approve/{seasonId}` | Approve season |
@@ -496,7 +496,7 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `GET /Camps/Admin/Export` | Export camps CSV |
 | `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |
-| `POST /Camps/Admin/Reactivate/{seasonId}` | CampAdmin reactivates a season (Full→Active, Withdrawn→Pending) |
+| `POST /Camps/Admin/Reactivate/{seasonId}` | CampsAdmin reactivates a season (Full→Active, Withdrawn→Pending) |
 | `POST /Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | Set a season's Early Entry slot cap |
 | `GET /Camps/Admin/Roles` | List role definitions |
 | `GET /Camps/Admin/Roles/{slug}` | Cross-camp roster for one role definition (assignees + mailto to the derived group email) |

@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,7 @@ internal sealed class CampAuthorizationHandler(ICampService campService) : Autho
         if (campId is null)
             return;
 
-        if (RoleChecks.IsCampAdmin(context.User))
+        if (CampsRoles.IsCampsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;

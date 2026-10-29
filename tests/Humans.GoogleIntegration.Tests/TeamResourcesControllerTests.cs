@@ -173,7 +173,7 @@ public class TeamResourcesControllerTests
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(TeamsRoles.TeamsAdmin)]
     public async Task TeamsAdminBoardOrAdmin_ManagesAnyTeam_WithoutTheResourceManagerCheck(string role)
     {
         var controller = BuildSut(role);

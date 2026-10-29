@@ -1,3 +1,6 @@
+using Humans.Teams.Contracts;
+using Humans.Camps.Contracts;
+using Humans.Tickets.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using System.Security.Claims;
@@ -382,7 +385,7 @@ public sealed class IssuesServiceTests
             .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([adminId, reporterId]));
         _roleService
-            .GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>())
+            .GetActiveUserIdsInRoleAsync(TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([ticketAdminId]));
 
         IReadOnlyList<Guid>? capturedRecipients = null;
@@ -584,7 +587,7 @@ public sealed class IssuesServiceTests
             additionalContext: "browser details",
             screenshot: null,
             dueDate: null,
-            reporterRoles: [RoleNames.TeamsAdmin, RoleNames.Admin], ct: TestContext.Current.CancellationToken)).Issue!;
+            reporterRoles: [TeamsRoles.TeamsAdmin, RoleNames.Admin], ct: TestContext.Current.CancellationToken)).Issue!;
 
         issue.AdditionalContext.Should().Be("browser details | roles: Admin, TeamsAdmin");
     }
@@ -864,7 +867,7 @@ public sealed class IssuesServiceTests
             .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([adminId]));
         _roleService
-            .GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>())
+            .GetActiveUserIdsInRoleAsync(TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([ticketAdminId]));
 
         IReadOnlyList<Guid>? capturedRecipients = null;
@@ -1491,8 +1494,8 @@ public sealed class IssuesServiceTests
         var actorId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
         var teamsAdminId = Guid.NewGuid();
-        var ticketViewer = new IssueViewer(ticketAdminId, [RoleNames.TicketAdmin]);
-        var teamsViewer = new IssueViewer(teamsAdminId, [RoleNames.TeamsAdmin]);
+        var ticketViewer = new IssueViewer(ticketAdminId, [TicketsRoles.TicketsAdmin]);
+        var teamsViewer = new IssueViewer(teamsAdminId, [TeamsRoles.TeamsAdmin]);
         (await _service.GetActionableCountForViewerAsync(ticketViewer, TestContext.Current.CancellationToken)).Should().Be(1);
         (await _service.GetActionableCountForViewerAsync(teamsViewer, TestContext.Current.CancellationToken)).Should().Be(0);
 
@@ -1520,7 +1523,7 @@ public sealed class IssuesServiceTests
     {
         // Authorized against the source section: a Ticket Admin holds no Teams role.
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
-        var ticketAdmin = new IssueViewer(Guid.NewGuid(), [RoleNames.TicketAdmin]);
+        var ticketAdmin = new IssueViewer(Guid.NewGuid(), [TicketsRoles.TicketsAdmin]);
 
         var result = await _service.UpdateSectionAsync(
             issueId, ticketAdmin, "Teams", ticketAdmin.UserId, TestContext.Current.CancellationToken);
@@ -1759,7 +1762,7 @@ public sealed class IssuesServiceTests
         var ownReport = await SeedIssueRowAsync(
             viewerId, IssueStatus.Open, "Mine, elsewhere", "Camps");
 
-        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [RoleNames.TicketAdmin]), ct: TestContext.Current.CancellationToken);
+        var result = await _service.GetIssueListAsync(new IssueListFilter(), new IssueViewer(viewerId, Roles: [TicketsRoles.TicketsAdmin]), ct: TestContext.Current.CancellationToken);
 
         result.Select(i => i.Id).Should().BeEquivalentTo([inSection, ownReport]);
     }
@@ -1814,7 +1817,7 @@ public sealed class IssuesServiceTests
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Unrouted");
 
         var count = await _service.GetActionableCountForViewerAsync(
-            new IssueViewer(viewerId, [RoleNames.TicketAdmin]),
+            new IssueViewer(viewerId, [TicketsRoles.TicketsAdmin]),
             TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
@@ -1942,12 +1945,12 @@ public sealed class IssuesServiceTests
 
         var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's", "Camps");
         var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's", "Tickets");
-        var owner = new IssueViewer(Guid.NewGuid(), [RoleNames.CampAdmin]);
-        var unrelated = new IssueViewer(Guid.NewGuid(), [RoleNames.TicketAdmin]);
+        var owner = new IssueViewer(Guid.NewGuid(), [CampsRoles.CampsAdmin]);
+        var unrelated = new IssueViewer(Guid.NewGuid(), [TicketsRoles.TicketsAdmin]);
         var reporter = new IssueViewer(aliceId, []);
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>()).Returns([Admin.UserId]);
-        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.CampAdmin, Arg.Any<CancellationToken>()).Returns([owner.UserId]);
-        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>()).Returns([unrelated.UserId]);
+        _roleService.GetActiveUserIdsInRoleAsync(CampsRoles.CampsAdmin, Arg.Any<CancellationToken>()).Returns([owner.UserId]);
+        _roleService.GetActiveUserIdsInRoleAsync(TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>()).Returns([unrelated.UserId]);
         var ct = TestContext.Current.CancellationToken;
         (await _service.GetActionableCountForViewerAsync(Admin, ct)).Should().Be(2);
         (await _service.GetActionableCountForViewerAsync(owner, ct)).Should().Be(1);
@@ -1998,7 +2001,7 @@ public sealed class IssuesServiceTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>Holds a role that owns the Tickets section, so Tickets issues are theirs.</summary>
-    private static IssueViewer Handler() => new(Guid.NewGuid(), [RoleNames.TicketAdmin]);
+    private static IssueViewer Handler() => new(Guid.NewGuid(), [TicketsRoles.TicketsAdmin]);
 
     /// <summary>Holds nothing and reported nothing.</summary>
     private static IssueViewer Stranger() => new(Guid.NewGuid(), []);

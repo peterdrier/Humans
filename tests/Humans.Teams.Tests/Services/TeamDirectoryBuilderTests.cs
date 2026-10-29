@@ -50,13 +50,13 @@ public sealed class TeamDirectoryBuilderTests
     [Xunit.InlineData("member")]
     [Xunit.InlineData(RoleNames.Admin)]
     [Xunit.InlineData(RoleNames.Board)]
-    [Xunit.InlineData(RoleNames.TeamsAdmin)]
+    [Xunit.InlineData(TeamsRoles.TeamsAdmin)]
     public async Task HiddenParentMetadata_RequiresPrivilegedRole(string role)
     {
         var viewer = Guid.NewGuid();
         _roles.IsUserAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
         _roles.IsUserBoardMemberAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
-        _roles.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.TeamsAdmin, StringComparison.Ordinal));
+        _roles.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, TeamsRoles.TeamsAdmin, StringComparison.Ordinal));
         var parent = Team("Private", isHidden: true);
         var child = Team("Visible", parentId: parent.Id, isPromoted: true);
 
@@ -64,7 +64,7 @@ public sealed class TeamDirectoryBuilderTests
             string.Equals(role, "anonymous", StringComparison.Ordinal) ? null : viewer, Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Departments.Should().ContainSingle().Subject;
-        var privileged = role is RoleNames.Admin or RoleNames.Board or RoleNames.TeamsAdmin;
+        var privileged = role is RoleNames.Admin or RoleNames.Board or TeamsRoles.TeamsAdmin;
         row.ParentTeamName.Should().Be(privileged ? parent.Name : null);
         row.ParentTeamSlug.Should().Be(privileged ? parent.Slug : null);
     }

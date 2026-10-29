@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Anthropic.Core;
 using Anthropic.Models.Messages;
+using Anthropic.Models.Models;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
 using SdkAnthropicClient = Anthropic.AnthropicClient;
@@ -70,6 +71,8 @@ internal sealed class AnthropicClient : IAnthropicClient
 
         // Tool args stream as input_json_delta; accumulate per-block and emit on content_block_stop.
         var pendingToolBlocks = new Dictionary<long, (string Id, string Name, System.Text.StringBuilder Json)>();
+        // Every block of the response by index, so a tool-use turn can be replayed exactly as produced.
+        var responseBlocks = new SortedDictionary<long, ResponseBlock>();
 
         AgentTurnFinalizer Snapshot(string? reason = null) => new(
             ClampToInt(inputTokens), ClampToInt(outputTokens), ClampToInt(cacheReadTokens),
@@ -115,7 +118,19 @@ internal sealed class AnthropicClient : IAnthropicClient
                 {
                     if (deltaEvent.Delta.TryPickText(out var textDelta))
                     {
+                        if (responseBlocks.TryGetValue(deltaEvent.Index, out var textBlock))
+                            textBlock.Content.Append(textDelta.Text);
                         yield return new AgentTurnToken(textDelta.Text, null, null);
+                    }
+                    else if (deltaEvent.Delta.TryPickThinking(out var thinkingDelta))
+                    {
+                        if (responseBlocks.TryGetValue(deltaEvent.Index, out var thinkingBlock))
+                            thinkingBlock.Content.Append(thinkingDelta.Thinking);
+                    }
+                    else if (deltaEvent.Delta.TryPickSignature(out var signatureDelta))
+                    {
+                        if (responseBlocks.TryGetValue(deltaEvent.Index, out var signedBlock))
+                            signedBlock.Signature += signatureDelta.Signature;
                     }
                     else if (deltaEvent.Delta.TryPickInputJson(out var inputJsonDelta))
                     {
@@ -129,7 +144,18 @@ internal sealed class AnthropicClient : IAnthropicClient
 
                 if (evt.TryPickContentBlockStart(out var blockStartEvent))
                 {
-                    if (blockStartEvent.ContentBlock.TryPickToolUse(out var toolUseBlock))
+                    var started = blockStartEvent.ContentBlock;
+                    if (started.TryPickText(out var startedText))
+                        responseBlocks[blockStartEvent.Index] = new ResponseBlock(ResponseBlockKind.Text, startedText.Text);
+                    else if (started.TryPickThinking(out var startedThinking))
+                        responseBlocks[blockStartEvent.Index] = new ResponseBlock(ResponseBlockKind.Thinking, startedThinking.Thinking)
+                        {
+                            Signature = startedThinking.Signature,
+                        };
+                    else if (started.TryPickRedactedThinking(out var redacted))
+                        responseBlocks[blockStartEvent.Index] = new ResponseBlock(ResponseBlockKind.RedactedThinking, redacted.Data);
+
+                    if (started.TryPickToolUse(out var toolUseBlock))
                     {
                         pendingToolBlocks[blockStartEvent.Index] = (
                             toolUseBlock.ID,
@@ -145,10 +171,9 @@ internal sealed class AnthropicClient : IAnthropicClient
                     {
                         // "{}" so JsonDocument.Parse won't fail on zero-arg tools.
                         var jsonArgs = completed.Json.Length > 0 ? completed.Json.ToString() : "{}";
-                        yield return new AgentTurnToken(
-                            null,
-                            new AnthropicToolCall(completed.Id, completed.Name, jsonArgs),
-                            null);
+                        var call = new AnthropicToolCall(completed.Id, completed.Name, jsonArgs);
+                        responseBlocks[blockStopEvent.Index] = new ResponseBlock(ResponseBlockKind.ToolUse, "") { ToolCall = call };
+                        yield return new AgentTurnToken(null, call, null);
                     }
                     continue;
                 }
@@ -175,7 +200,8 @@ internal sealed class AnthropicClient : IAnthropicClient
                     yield return new AgentTurnToken(
                         null,
                         null,
-                        Snapshot(stopReason));
+                        Snapshot(stopReason),
+                        AssistantContent: [.. responseBlocks.Values.Select(b => b.ToContentBlock())]);
                 }
             }
         }
@@ -215,6 +241,12 @@ internal sealed class AnthropicClient : IAnthropicClient
         return ClampToInt(result.InputTokens);
     }
 
+    public async Task<IReadOnlyList<AnthropicModelInfo>> ListModelsAsync(CancellationToken cancellationToken = default)
+    {
+        var page = await _sdk.Models.List(new ModelListParams { Limit = 100 }, cancellationToken).ConfigureAwait(false);
+        return page.Items.Select(m => new AnthropicModelInfo(m.ID, m.DisplayName)).ToList();
+    }
+
     private static int ClampToInt(long value) => value > int.MaxValue ? int.MaxValue : (int)value;
 
     private static List<MessageParam> MapMessages(IReadOnlyList<AnthropicMessage> messages)
@@ -225,19 +257,20 @@ internal sealed class AnthropicClient : IAnthropicClient
         {
             var contentBlocks = new List<ContentBlockParam>();
 
-            if (msg.Text is not null)
+            if (msg.AssistantContent is not null)
+            {
+                contentBlocks.AddRange(msg.AssistantContent.Select(MapAssistantBlock));
+            }
+            else if (msg.Text is not null)
             {
                 contentBlocks.Add(new ContentBlockParam(new TextBlockParam(msg.Text)));
             }
 
-            if (msg.ToolCalls is not null)
+            if (msg.AssistantContent is null && msg.ToolCalls is not null)
             {
                 foreach (var tc in msg.ToolCalls)
                 {
-                    var input = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(tc.JsonArguments)
-                                ?? new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-                    contentBlocks.Add(new ContentBlockParam(
-                        new ToolUseBlockParam { ID = tc.Id, Name = tc.Name, Input = input }));
+                    contentBlocks.Add(MapToolUse(tc));
                 }
             }
 
@@ -260,6 +293,39 @@ internal sealed class AnthropicClient : IAnthropicClient
         }
 
         return result;
+    }
+
+    private static ContentBlockParam MapAssistantBlock(AnthropicContentBlock block) => block switch
+    {
+        AnthropicTextBlock t => new ContentBlockParam(new TextBlockParam(t.Text)),
+        AnthropicThinkingBlock t => new ContentBlockParam(new ThinkingBlockParam { Thinking = t.Thinking, Signature = t.Signature }),
+        AnthropicRedactedThinkingBlock r => new ContentBlockParam(new RedactedThinkingBlockParam { Data = r.Data }),
+        AnthropicToolUseBlock u => MapToolUse(u.Call),
+        _ => throw new ArgumentOutOfRangeException(nameof(block), block.GetType().Name, "Unknown assistant block"),
+    };
+
+    private static ContentBlockParam MapToolUse(AnthropicToolCall call)
+    {
+        var input = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(call.JsonArguments)
+                    ?? new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        return new ContentBlockParam(new ToolUseBlockParam { ID = call.Id, Name = call.Name, Input = input });
+    }
+
+    private enum ResponseBlockKind { Text, Thinking, RedactedThinking, ToolUse }
+
+    private sealed class ResponseBlock(ResponseBlockKind kind, string initial)
+    {
+        public System.Text.StringBuilder Content { get; } = new(initial);
+        public string Signature { get; set; } = "";
+        public AnthropicToolCall? ToolCall { get; init; }
+
+        public AnthropicContentBlock ToContentBlock() => kind switch
+        {
+            ResponseBlockKind.Text => new AnthropicTextBlock(Content.ToString()),
+            ResponseBlockKind.Thinking => new AnthropicThinkingBlock(Content.ToString(), Signature),
+            ResponseBlockKind.RedactedThinking => new AnthropicRedactedThinkingBlock(Content.ToString()),
+            _ => new AnthropicToolUseBlock(ToolCall!),
+        };
     }
 
     private static InputSchema MapInputSchema(string jsonSchema)

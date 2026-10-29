@@ -77,7 +77,7 @@ Member request and cancellation errors are localized in all six cultures. Unknow
   needed, linking to the admin detail page).
 
 ### US-42.4: Ticket team processes and decides
-**As a** Ticket Admin
+**As a** Tickets Admin
 **I want to** process the transfer (automatically, or by hand in TicketTailor) and record the outcome
 **So that** the request queue reflects reality and the parties are notified
 

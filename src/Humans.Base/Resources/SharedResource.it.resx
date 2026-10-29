@@ -461,6 +461,9 @@
   <data name="Error_SomethingWentWrong" xml:space="preserve">
     <value>Qualcosa è andato storto</value>
   </data>
+  <data name="Error_CodeAndReference" xml:space="preserve">
+    <value>Errore {0} · Riferimento {1}</value>
+  </data>
   <data name="Error_TryAgainLater" xml:space="preserve">
     <value>Si è verificato un errore durante l'elaborazione della Sua richiesta. La preghiamo di riprovare più tardi.</value>
   </data>
@@ -1529,7 +1532,7 @@
 
   <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
   <data name="Settings_TabEvent" xml:space="preserve">
-    <value>Evento</value>
+    <value>Eventi</value>
   </data>
 
   <data name="Settings_TabAgent" xml:space="preserve">

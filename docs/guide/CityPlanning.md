@@ -26,7 +26,7 @@ Three entities back this section: `CityPlanningSettings` (per-year singleton, co
 - **Overview map** (`/CityPlanning`) — authenticated humans view the live full-screen map, with layer toggles for containers and barrio zones and a measuring tool. Read-only.
 - **Barrio map** (`/CityPlanning/BarrioMap`) — where placements are actually drawn and edited. Linked from the overview map for camp leads while placement is open, and for map admins at any time.
 - **Container map** (`/CityPlanning/ContainerMap/{year}`) — where containers are placed. Containers have their **own** placement phase, separate from barrio placement: unless you are a map admin, you can only open this page while container placement is open and you lead a camp.
-- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camp Admin or City Planning team members) upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed. Toggling barrio placement, setting informational placement dates, and editing the barrio registration-page markdown live on `/Settings#city-planning`.
+- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camps Admin or City Planning team members) upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed. Toggling barrio placement, setting informational placement dates, and editing the barrio registration-page markdown live on `/Settings#city-planning`.
 
 Each map is its own full-screen view. On the barrio map, editing, polygon history and the placement-phase card are surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded.
 
@@ -52,9 +52,9 @@ On the barrio map:
 
 You can only edit your own camp's placement, and only while placement is open. To change it after placement closes, ask a map admin.
 
-## As a Board member / Admin (Camp Admin)
+## As a Board member / Admin (Camps Admin)
 
-Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and members of the **City Planning team** (slug `city-planning`). Map admins act on any placement at any time — the placement-open restriction doesn't apply to you.
+Map admin access is held by **Camps Admin**, **[Admin](Glossary.md#admin)**, and members of the **City Planning team** (slug `city-planning`). Map admins act on any placement at any time — the placement-open restriction doesn't apply to you.
 
 - **Edit any camp's placement.** Draw, reshape, or move any placement regardless of who leads the camp and regardless of placement phase.
 - **Place on behalf of a camp.** The admin dropdown lists camp seasons without a placement; pick one to start drawing.
@@ -70,5 +70,5 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 ## Related sections
 
 - [Camps](Camps.md) — `CampSeason` is the anchor entity; placement requires an approved camp season for the current year, and the camp's leads are the ones allowed to edit that camp's placement.
-- [Teams](Teams.md) — membership in the City Planning team (slug `city-planning`) grants map admin access without needing a global Camp Admin or Admin role.
+- [Teams](Teams.md) — membership in the City Planning team (slug `city-planning`) grants map admin access without needing a global Camps Admin or Admin role.
 - [Glossary](Glossary.md) — definitions for "barrio" and "sound zone".

@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Base.Models;
 
 namespace Humans.Auth.Models;
@@ -28,5 +29,5 @@ internal sealed class CreateRoleAssignmentViewModel
     public Guid UserId { get; set; }
     public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
-    public List<string> AvailableRoles { get; set; } = [];
+    public IReadOnlyList<RoleDefinition> AvailableRoles { get; set; } = [];
 }

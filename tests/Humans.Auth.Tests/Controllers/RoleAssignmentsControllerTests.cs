@@ -1,7 +1,9 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Auth.Authorization;
 using Humans.Auth.Contracts;
+using Humans.Auth.Tests.Infrastructure;
 using Humans.Auth.Controllers;
 using Humans.Auth.Models;
 using Humans.Auth.Services;
@@ -37,6 +39,7 @@ public sealed class RoleAssignmentsControllerTests
     private readonly IRoleAssignmentManagement _write = Substitute.For<IRoleAssignmentManagement>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
+    private readonly RoleCatalog _catalog = TestRoles.Catalog();
 
     public RoleAssignmentsControllerTests()
     {
@@ -55,7 +58,7 @@ public sealed class RoleAssignmentsControllerTests
             [new Claim(ClaimTypes.NameIdentifier, ActorId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Admin)], "test"));
         var http = new DefaultHttpContext { User = principal, RequestAborted = aborted };
         return new RoleAssignmentsController(
-            _users, _roles, _write, _clock, _authorization, NullLogger<RoleAssignmentsController>.Instance, _localizer)
+            _users, _roles, _write, _clock, _authorization, _catalog, NullLogger<RoleAssignmentsController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -110,7 +113,7 @@ public sealed class RoleAssignmentsControllerTests
         var model = result.Should().BeOfType<ViewResult>().Which.Model
             .Should().BeOfType<CreateRoleAssignmentViewModel>().Subject;
         model.UserId.Should().Be(TargetId);
-        model.AvailableRoles.Should().Equal(RoleChecks.GetAssignableRoles(BuildController().User));
+        model.AvailableRoles.Should().Equal(RoleAssignmentRules.Assignable(BuildController().User, _catalog));
         await _users.Received(1).GetRawUserInfoAsync(TargetId, source.Token);
     }
 
@@ -217,10 +220,18 @@ public sealed class RoleAssignmentsControllerTests
     }
 
     [HumansFact]
-    public void Authorization_IsHumanAdminBoardOrAdmin_AndEveryPostIsAntiForgeryProtected()
+    public void Authorization_BoardReadsTheRoster_OnlyUsersAdminOrAdminWrite_AndEveryPostIsAntiForgeryProtected()
     {
         typeof(RoleAssignmentsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(PolicyNames.HumanAdminBoardOrAdmin);
+
+        // Board passes the class gate but RoleAssignmentRules lets it manage nothing, so the add/end actions narrow
+        // to the principals that can: otherwise Board lands on an empty add-role form and 404s on every End.
+        foreach (var action in typeof(RoleAssignmentsController).GetMethods()
+                     .Where(m => m.Name is nameof(RoleAssignmentsController.AddRole) or nameof(RoleAssignmentsController.EndRole)))
+            action.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be(PolicyNames.HumanAdminOrAdmin, action.ToString());
+        typeof(RoleAssignmentsController).GetMethod(nameof(RoleAssignmentsController.Roles))!
+            .GetCustomAttribute<AuthorizeAttribute>().Should().BeNull("the roster stays readable to Board");
 
         foreach (var post in typeof(RoleAssignmentsController).GetMethods()
                      .Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null))

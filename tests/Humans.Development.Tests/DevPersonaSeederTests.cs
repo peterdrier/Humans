@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Base.Interfaces;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
@@ -77,6 +79,11 @@ public class DevPersonaSeederTests
         _humanLifecycle,
         _clock,
         Options.Create(new CityPlanningOptions()),
+        new RoleCatalog(new RoleDefinition[]
+            {
+                new(RoleNames.Admin, "Admin", "", ""),
+                new(RoleNames.Board, "Board", "", ""),
+            }),
         NullLogger<DevPersonaSeeder>.Instance);
 
     private static UserInfo NamedUserInfo(Guid userId, UserState state) =>

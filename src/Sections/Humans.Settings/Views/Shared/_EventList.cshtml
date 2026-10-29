@@ -1,0 +1,74 @@
+@using Humans.Settings.Contracts
+@using Humans.Settings.ViewComponents
+@using NodaTime.Text
+@model EventSettingsTabViewModel
+
+@* Admin-only, so not localized. Posts name the SettingsAdminController route explicitly, as the form does. *@
+<form method="post" asp-controller="SettingsAdmin" asp-action="TimeZone" class="row g-2 align-items-end mb-4">
+    @Html.AntiForgeryToken()
+    <div class="col-auto">
+        <label for="timeZoneId" class="form-label">Timezone (IANA), for every event</label>
+        <input id="timeZoneId" name="timeZoneId" value="@Model.TimeZoneId" class="form-control" placeholder="e.g., Europe/Madrid" required />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Save timezone</button>
+    </div>
+</form>
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="mb-0">Events</h5>
+    <a class="btn btn-sm btn-outline-primary" href="/Settings?event=new#event">
+        <i class="fa-solid fa-plus"></i> Create next event
+    </a>
+</div>
+@if (Model.Events.Count == 0)
+{
+    <p class="text-muted">No events yet. Fill in the form below to create the first one.</p>
+}
+else
+{
+    <div class="table-responsive mb-4">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Gate opening</th>
+                    <th>Build start to strike end</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model.Events)
+                {
+                    var selected = Model.Settings?.Id == e.Id;
+                    <tr class="@(selected ? "table-active" : "")">
+                        <td>@e.EventName</td>
+                        <td>@LocalDatePattern.Iso.Format(e.GateOpeningDate)</td>
+                        <td>@LocalDatePattern.Iso.Format(e.GateOpeningDate.PlusDays(e.BuildStartOffset)) to @LocalDatePattern.Iso.Format(e.GateOpeningDate.PlusDays(e.StrikeEndOffset))</td>
+                        <td>
+                            @if (e.Status == EventSettingsStatus.Active)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@e.Status</span>
+                            }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" href="/Settings?event=@e.Id#event">Edit</a>
+                            @if (e.Status == EventSettingsStatus.Inactive)
+                            {
+                                <form method="post" asp-controller="SettingsAdmin" asp-action="Activate" asp-route-id="@e.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Make active</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+<h5 class="mb-2">@(Model.Settings?.Id is null ? "New event" : $"Editing {Model.Settings.EventName}")</h5>

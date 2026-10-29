@@ -1,3 +1,4 @@
+using Humans.EarlyEntry.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -59,7 +60,7 @@ public sealed class TeamAuthorizationHandlerTests
     [HumansFact]
     public async Task EETeamAdmin_can_manage_early_entry_on_any_team_but_not_coordinators()
     {
-        var user = CreateUserWithRoles(RoleNames.EETeamAdmin);
+        var user = CreateUserWithRoles(EarlyEntryRoles.EarlyEntryAdmin);
         var team = CreateTeam("other");
 
         var canManageEarlyEntry = await EvaluateAsync(user, team, TeamOperationRequirement.ManageEarlyEntry);
@@ -136,7 +137,7 @@ public sealed class TeamAuthorizationHandlerTests
         kind switch
         {
             "admin" => CreateUserWithRoles(RoleNames.Admin),
-            "teams-admin" => CreateUserWithRoles(RoleNames.TeamsAdmin),
+            "teams-admin" => CreateUserWithRoles(TeamsRoles.TeamsAdmin),
             "board" => CreateUserWithRoles(RoleNames.Board),
             "coordinator" => CreateUserWithId(UserId),
             "regular" => CreateUserWithId(regularUserId),

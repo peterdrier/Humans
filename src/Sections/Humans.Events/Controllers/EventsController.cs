@@ -500,7 +500,7 @@ internal sealed class EventsController(
     {
         var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent is null || guideEvent.CampId != null) return (NotFound(), null);
-        if (guideEvent.SubmitterUserId != userId && !RoleChecks.IsEventsAdmin(User))
+        if (guideEvent.SubmitterUserId != userId && !EventsRoles.IsEventsAdmin(User))
             return (Forbid(), null);
         if (!guideEvent.CanEdit)
         {

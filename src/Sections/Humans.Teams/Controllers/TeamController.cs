@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Teams.Data;
 using Humans.GoogleIntegration.Contracts;
@@ -99,7 +100,7 @@ internal sealed class TeamController(
         var teamPage = await teamPageService.GetTeamPageDetailAsync(
             slug,
             effectiveUserId,
-            ShiftRoleChecks.CanManageDepartment(User),
+            ShiftsRoles.CanManageDepartment(User),
             ct);
         if (teamPage is null)
         {
@@ -289,7 +290,7 @@ internal sealed class TeamController(
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
     {
         var roster = await teamPageService.GetRosterAsync(priority, status, period, ct);
-        var canSeeHiddenTeams = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
+        var canSeeHiddenTeams = TeamsRoles.IsTeamsAdminBoardOrAdmin(User);
         var teamsById = await teamService.GetTeamsAsync(ct);
         var teamsBySlug = teamsById.Values.ToDictionary(team => team.Slug, StringComparer.OrdinalIgnoreCase);
         var viewerId = GetCurrentUserId();
@@ -372,7 +373,7 @@ internal sealed class TeamController(
         }
 
         var teamsById = await teamService.GetTeamsAsync(ct);
-        var canSeeHiddenTeams = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
+        var canSeeHiddenTeams = TeamsRoles.IsTeamsAdminBoardOrAdmin(User);
         var membershipVMs = (await teamPageService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
@@ -430,7 +431,7 @@ internal sealed class TeamController(
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+        if (team.IsHidden && !TeamsRoles.IsTeamsAdminBoardOrAdmin(User))
         {
             return NotFound();
         }
@@ -481,7 +482,7 @@ internal sealed class TeamController(
             return BadRequest();
         }
 
-        if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+        if (team.IsHidden && !TeamsRoles.IsTeamsAdminBoardOrAdmin(User))
         {
             return NotFound();
         }

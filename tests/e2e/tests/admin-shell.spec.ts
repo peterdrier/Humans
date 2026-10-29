@@ -5,7 +5,7 @@ import { loginAs, type Persona } from '../helpers/auth';
  * Admin shell coverage (#604) — verifies the sidebar-driven /Admin surface.
  *
  * Source-of-truth for the group/item map is every section's
- * src/Sections/{Section}/SectionAdminNav.cs, merged by AdminNavComposition. Per-item
+ * src/Sections/{Section}/Section.cs (ISectionAdminNav), merged by AdminNavComposition. Per-item
  * policies determine which roles see which items. Each role's sidebar row set is
  * asserted exactly, so a gate change shows up here and the matrix moves with it.
  *
@@ -45,7 +45,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'humanAdmin',
-    persona: 'human-admin',
+    persona: 'users-admin',
     groups: [
       { label: 'Issues', items: ['Issues'] },
       { label: 'Surveys', items: ['Surveys'] },
@@ -54,7 +54,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'ticketAdmin',
-    persona: 'ticket-admin',
+    persona: 'tickets-admin',
     groups: [
       { label: 'Gate', items: ['Terminal'] },
       { label: 'Issues', items: ['Issues'] },
@@ -74,7 +74,7 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
   {
     name: 'volunteerCoordinator',
-    persona: 'volunteer-coordinator',
+    persona: 'shifts-admin',
     groups: [
       { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Issues', items: ['Issues'] },

@@ -319,7 +319,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     {
         var ct = TestContext.Current.CancellationToken;
 
-        var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+        var result = await CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
 
         result.Should().BeOfType<OkObjectResult>();
@@ -335,7 +335,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData("""{"type":"Polygon","coordinates":[[]]}""")]
     public async Task SaveCampPolygon_InvalidGeoJson_ReturnsBadRequestWithoutSaving(string geoJson)
     {
-        var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+        var result = await CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(geoJson, 10),
             TestContext.Current.CancellationToken);
 
@@ -352,7 +352,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task SaveCampPolygon_NegativeArea_ReturnsBadRequestWithoutSavingOrBroadcasting()
     {
-        var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+        var result = await CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, -1),
             TestContext.Current.CancellationToken);
 
@@ -392,7 +392,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _allClients.SendCoreAsync(default!, default!)
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("hub down"));
 
-        var result = await CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+        var result = await CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
 
         result.Should().BeOfType<OkObjectResult>();
@@ -413,7 +413,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         }
         _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Camp directory unavailable"));
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
 
         var result = restore
             ? await controller.RestoreCampPolygon(_campSeasonId, historyId, ct)
@@ -440,7 +440,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _service = new CityPlanningService(repo, Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
-        var controller = CreateController(RoleNames.CampAdmin);
+        var controller = CreateController(CampsRoles.CampsAdmin);
         Func<Task> act = async () =>
         {
             if (restore)
@@ -461,7 +461,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _allClients.SendCoreAsync(default!, default!, cancellation.Token)
             .ReturnsForAnyArgs(_ => CancelBroadcastAsync(cancellation));
 
-        var act = () => CreateController(RoleNames.CampAdmin).SaveCampPolygon(
+        var act = () => CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, 10), cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();

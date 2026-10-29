@@ -11,7 +11,7 @@ test.describe('Onboarding (16-onboarding-pipeline + 17-coordinator-roles)', () =
   });
 
   test('US-17.3: volunteer coordinator can view queue but no action buttons', async ({ page }) => {
-    await loginAs(page, 'volunteer-coordinator');
+    await loginAs(page, 'shifts-admin');
     await page.goto('/OnboardingReview');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();

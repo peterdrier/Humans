@@ -116,7 +116,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 
 `POST /Feedback` is gone — the controller has no root-`POST` route at all.
 
-**FeedbackAdmin role:** grants **no** Feedback access (#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin`, `RoleGroups.FeedbackAdminOrAdmin`, and `RoleChecks.IsFeedbackAdmin` do not exist.
+**FeedbackAdmin role:** grants **no** Feedback access (#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin` and `RoleChecks.IsFeedbackAdmin` do not exist.
 
 ## URL Routes
 
@@ -151,14 +151,14 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 Since #977:
 
-- **Admin:** "Feedback queue" tab in the admin shell's Issues group (the sidebar shows one row per group with a summed pill; `AdminTabsViewComponent` renders the group's tabs, this one with the actionable count), contributed via `SectionAdminNav.PillCounts.FeedbackQueueAsync` and merged by `AdminNavComposition` with every other section's `ISectionAdminNav`, plus the `/Admin` dashboard tile via `SectionAdminTiles` — both `AdminOnly`
+- **Admin:** "Feedback queue" tab in the admin shell's Issues group (the sidebar shows one row per group with a summed pill; `AdminTabsViewComponent` renders the group's tabs, this one with the actionable count), contributed via `SectionAdminNav.PillCounts.FeedbackQueueAsync` and merged by `AdminNavComposition` with every other section's `ISectionAdminNav`, plus the `/Admin` dashboard tile via `ISectionAdminTiles` — both `AdminOnly`
 - **Everyone else:** nothing — no dropdown link, no Help-widget entry; the widget's report action is "Create issue"
 
 ## Related Features
 
 - Email outbox (`EmailOutboxMessage`) — used for admin reply notification emails
 - Audit log (`AuditLogEntry`) — tracks status changes
-- `SectionAdminNav` / `PillCounts.FeedbackQueueAsync` — Feedback's contribution to the admin nav (tab and sidebar group pill), composed by `AdminNavComposition`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`FeedbackService.BadgeCacheKey`, 2-min TTL) and evicted by that service
+- `ISectionAdminNav` / `PillCounts.FeedbackQueueAsync` — Feedback's contribution to the admin nav (tab and sidebar group pill), composed by `AdminNavComposition`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`FeedbackService.BadgeCacheKey`, 2-min TTL) and evicted by that service
 - Role management — FeedbackAdmin role assignable via `/Admin/Roles`
 
 Triage mutations return explicit missing/refused/success results. Missing reports map to 404; dependency failures follow the logged error path, regardless of exception wording. Undefined statuses leave the report and audit unchanged.

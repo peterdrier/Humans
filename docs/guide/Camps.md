@@ -16,7 +16,7 @@
   src/Sections/Humans.Camps/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  Camps directory, registration, season lifecycle, lead/co-lead management, name lock, public JSON API, and Camp Admin dashboard. Review when camp views, controllers, services, or entities change.
+  Camps directory, registration, season lifecycle, lead/co-lead management, name lock, public JSON API, and Camps Admin dashboard. Review when camp views, controllers, services, or entities change.
 -->
 
 # Camps
@@ -25,7 +25,7 @@
 
 Camps (also called "[barrios](Glossary.md#barrio)") are self-organizing themed communities that register each year to participate in the event. Each camp has a unique URL slug, one or more leads, optional images, and a per-year **[Camp Season](Glossary.md#camp-season)** capturing that year's name, description, vibes, space needs, and placement details.
 
-Camp Admins control which seasons are open for new registrations or opt-ins; the public year follows the active event. The directory is public; registering or leading a camp requires an account.
+Camps Admins control which seasons are open for new registrations or opt-ins; the public year follows the active event. The directory is public; registering or leading a camp requires an account.
 
 ![TODO: screenshot — Camps directory page showing camp list and filters]
 
@@ -35,8 +35,8 @@ Camp Admins control which seasons are open for new registrations or opt-ins; the
 - **Camp detail** (`/Camps/{slug}`) — public detail page for a single camp with description, images, and current season.
 - **Camp detail for a specific year** (`/Camps/{slug}/Season/{year}`) — public detail for a camp's past season.
 - **Register a new camp** (`/Camps/Register`) — authenticated humans register a new camp when a season is open.
-- **Edit a camp** (`/Camps/{slug}/Edit`) — camp leads, Camp Admin, and Admin edit camp identity and season data.
-- **Camps admin dashboard** (`/Camps/Admin`) — Camp Admin and Admin review pending seasons, set name lock dates, and export data.
+- **Edit a camp** (`/Camps/{slug}/Edit`) — camp leads, Camps Admin, and Admin edit camp identity and season data.
+- **Camps admin dashboard** (`/Camps/Admin`) — Camps Admin and Admin review pending seasons, set name lock dates, and export data.
 
 A public JSON API at `/api/camps/{year}` and `/api/camps/{year}/placement` is available for integrating listings into other sites.
 
@@ -47,10 +47,10 @@ Most of what the directory offers is open to anyone, signed in or not:
 - **Browse the directory** at [/Camps](/Camps). Cards show each camp's name, short blurb, image, vibes, and status badges. Filter by vibe, [sound zone](Glossary.md#sound-zone), kids-friendliness, and whether the camp is accepting humans. Tick **Show lead positions** to add coverage pills to each card — one per camp role (e.g. `lnt lead: 1/2`), showing how many slots are filled out of the total. The header also links the **Barrio Guide 2026** (opens in a new tab).
 - **View a camp's detail page** at `/Camps/{slug}` for the long description, images, links, current season info, and leads by display name. Previous names appear unless the camp has chosen to hide them. If you're signed in and the camp is hosting approved events this year, an **Events** card lists them — tap the heart on a row to add it to your favourites.
 - **Contact a camp** via the "Contact this camp" button on the detail page. The camp's email is never exposed publicly — the button opens a facilitated form. Signing in is required so the camp knows who reached out.
-- **Register a new camp** at [/Camps/Register](/Camps/Register) when a season is open. You'll fill in the camp's identity (name, contact info, times at the event, Swiss camp flag) and season-specific details (blurb, languages, vibes, kids policy, sound zone, performance space, space requirement). On submit you become a lead of the camp and the season is created in **Pending** status, waiting on Camp Admin approval.
+- **Register a new camp** at [/Camps/Register](/Camps/Register) when a season is open. You'll fill in the camp's identity (name, contact info, times at the event, Swiss camp flag) and season-specific details (blurb, languages, vibes, kids policy, sound zone, performance space, space requirement). On submit you become a lead of the camp and the season is created in **Pending** status, waiting on Camps Admin approval.
 - **View previous seasons** at `/Camps/{slug}/Season/{year}` to see how a camp described itself in earlier years.
 
-**Request to join a camp.** When a camp's current-year season is Active or Full, the detail page shows a "Request to join" button. This does **not** physically join you to the camp — every camp runs its own admissions process (website, spreadsheet, WhatsApp). The request just tells Humans about the relationship so the app can support per-camp roles (e.g. LNT lead), Early Entry allocations, and notifications. Camp leads see your pending request and approve or reject it; you can withdraw a pending request, or leave the camp once you're an active member, at any time. Membership state is only visible to you and the camp's leads/Camp Admin — never to anonymous visitors.
+**Request to join a camp.** When a camp's current-year season is Active or Full, the detail page shows a "Request to join" button. This does **not** physically join you to the camp — every camp runs its own admissions process (website, spreadsheet, WhatsApp). The request just tells Humans about the relationship so the app can support per-camp roles (e.g. LNT lead), Early Entry allocations, and notifications. Camp leads see your pending request and approve or reject it; you can withdraw a pending request, or leave the camp once you're an active member, at any time. Membership state is only visible to you and the camp's leads/Camps Admin — never to anonymous visitors.
 
 ### Step-by-step: register your camp (2026)
 
@@ -61,11 +61,11 @@ Any authenticated human can register a camp once a registration season is open. 
 3. Click **Register your camp**.
 4. Fill in the camp profile: community info (public — name, blurb, vibes, sound zone, languages, kids policy) and placement info (internal — preferred zone, footprint, infrastructure needs). You become the camp's first lead automatically; add co-leads afterward from the Members page.
 5. Indicate whether your camp is accepting humans this year.
-6. Submit. The season is created in **Pending** status. A Camp Admin reviews and approves; once approved your camp appears in the public listing and on the Elsewhere website.
+6. Submit. The season is created in **Pending** status. A Camps Admin reviews and approves; once approved your camp appears in the public listing and on the Elsewhere website.
 
 After registration, Barrio Support (Ellen — [ellen@nobodies.team](mailto:ellen@nobodies.team)) typically adds you to the **Camp Leads** team in Humans so you receive coordinator comms — water schedules, LNT reminders, power obligations. If those aren't reaching you, ask Ellen.
 
-Your camp profile is **persistent year to year** — next year you only update it, you don't start from scratch. Opt in to each year you're attending (from the Edit page once Camp Admins open the new season); a camp that has no Active or Full season for the current year doesn't appear in the active listing.
+Your camp profile is **persistent year to year** — next year you only update it, you don't start from scratch. Opt in to each year you're attending (from the Edit page once Camps Admins open the new season); a camp that has no Active or Full season for the current year doesn't appear in the active listing.
 
 ### How your camp data feeds other systems
 
@@ -81,17 +81,17 @@ Your camp profile is **persistent year to year** — next year you only update i
 If you are a **Camp Lead**, you can manage your specific camp. You cannot edit camps you don't lead.
 
 - **Edit your camp** at `/Camps/{slug}/Edit`. Update contact info, links, the current season's data (blurb, vibes, kids policy, space and sound needs, performance info), and camp-level fields like times at the event and the Swiss camp flag. Toggle **Hide historical names** to suppress the "Also known as" section on the public page.
-- **Manage names.** If a Camp Admin has set a name lock date for the year, name changes are blocked after that date. Any rename is automatically recorded as a historical name; you can also add or remove historical names by hand from the Edit page.
-- **Manage co-leads** from the Members page, in the same Roles panel used for every other per-camp role: search for a human to add them as Camp Lead, or unassign one to remove them. The Camp Lead role's slot count (2 by default) is set on the shared role definition, not per camp — ask a Camp Admin to raise it if your camp needs more leads.
+- **Manage names.** If a Camps Admin has set a name lock date for the year, name changes are blocked after that date. Any rename is automatically recorded as a historical name; you can also add or remove historical names by hand from the Edit page.
+- **Manage co-leads** from the Members page, in the same Roles panel used for every other per-camp role: search for a human to add them as Camp Lead, or unassign one to remove them. The Camp Lead role's slot count (2 by default) is set on the shared role definition, not per camp — ask a Camps Admin to raise it if your camp needs more leads.
 - **Upload, delete, and reorder images** from the Edit page. Images appear on the directory card and detail page in the order you set.
-- **Opt into a new season** when Camp Admins open one. The new season carries your camp's identity forward from the previous one. If your camp has any previously approved season it auto-approves to Active; if it has never been approved it goes to Pending for Camp Admin review. Either way, review and update the season-specific fields before the event.
-- **Mark your season Full.** On an Active season, use **Mark Season Full** on the camp detail page to flag your camp as full. This is informational only — it shows a "Full" badge and a note to visitors, but people can still request to join, and camp management stays fully available. Reactivating a season that's been marked **Full** back to Active is a Camp Admin action.
-- **Withdraw a season** if plans change. Bringing a Withdrawn season back (to Pending, for re-approval) is a Camp Admin action — contact one if you withdrew by mistake.
+- **Opt into a new season** when Camps Admins open one. The new season carries your camp's identity forward from the previous one. If your camp has any previously approved season it auto-approves to Active; if it has never been approved it goes to Pending for Camps Admin review. Either way, review and update the season-specific fields before the event.
+- **Mark your season Full.** On an Active season, use **Mark Season Full** on the camp detail page to flag your camp as full. This is informational only — it shows a "Full" badge and a note to visitors, but people can still request to join, and camp management stays fully available. Reactivating a season that's been marked **Full** back to Active is a Camps Admin action.
+- **Withdraw a season** if plans change. Bringing a Withdrawn season back (to Pending, for re-approval) is a Camps Admin action — contact one if you withdrew by mistake.
 - **Approve, reject, or remove camp members.** Pending and active members for the current season are listed on the Members page; approve a request to make someone an active member, reject to dismiss the request, or remove an existing active member. Approvals and rejections trigger an in-app notification to the requester. An **EE** badge next to the active-members heading shows how many Early Entry slots you've granted out of your camp's allocation for the year (e.g. `EE: 3/5`). Each active member row also shows a badge with how many shift signups they currently have for the event.
 
-## As a Board member / Admin (Camp Admin)
+## As a Board member / Admin (Camps Admin)
 
-**Camp Admin** is the domain admin for this section; **[Admin](Glossary.md#admin)** is a superset that can also delete a camp outright. Admin tools live under [/Camps/Admin](/Camps/Admin).
+**Camps Admin** is the domain admin for this section; **[Admin](Glossary.md#admin)** is a superset that can also delete a camp outright. Admin tools live under [/Camps/Admin](/Camps/Admin).
 
 - **Review season registrations.** Pending seasons are listed on the dashboard. **Approve** moves a season to Active; **Reject** requires notes explaining why and records your user id and timestamp. Withdrawn seasons are also surfaced on the dashboard for follow-up.
 - **Reactivate seasons** that were marked Full or Withdrawn. Full seasons go back to Active; Withdrawn seasons go back to Pending for re-approval.
@@ -99,7 +99,7 @@ If you are a **Camp Lead**, you can manage your specific camp. You cannot edit c
 - **Set name lock dates** per year, after which camp name changes are no longer allowed for that year's season.
 - **Edit any camp** (all the lead-level Edit actions above, on any camp).
 - **Export camps as CSV** from the dashboard. The export covers every camp for the current public year and includes name, slug, status, contact info, leads, and placement-relevant season data. The file is named `barrios-{year}.csv`.
-- **Delete a camp** (Admin only — not Camp Admin). This permanently removes the camp and all of its seasons, leads, images, and historical names. Confirmation is required.
+- **Delete a camp** (Admin only — not Camps Admin). This permanently removes the camp and all of its seasons, leads, images, and historical names. Confirmation is required.
 
 ## Key contacts (2026)
 
