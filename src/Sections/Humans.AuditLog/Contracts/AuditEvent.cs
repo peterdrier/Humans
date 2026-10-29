@@ -1,6 +1,5 @@
 using System.Text;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Domain;
 using Humans.AuditLog.Services;
 using NodaTime;
 
@@ -45,7 +44,6 @@ public sealed record AuditEvent(
                 : (ActorDisplayName ?? "Someone")
             : "System";
 
-        // Suppress subject when actor == subject ("You signed up", not "You created signup for You").
         string? subject = null;
         if (SubjectUserId.HasValue && !actorIsSubject)
         {

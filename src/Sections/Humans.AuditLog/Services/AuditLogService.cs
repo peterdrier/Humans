@@ -77,7 +77,6 @@ internal sealed class AuditLogService(
         }
         catch (Exception ex)
         {
-            // Best-effort: never break the business operation.
             logger.LogError(ex,
                 "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
                 entry.Id, entry.Action, entry.EntityType, entry.EntityId);
@@ -137,8 +136,6 @@ internal sealed class AuditLogService(
         int limit = 20,
         CancellationToken ct = default)
     {
-        // Rows attributed to an account merged into this one belong to the same human; the
-        // id list is the resolved record's, as in GetByUserAsync.
         IReadOnlyCollection<Guid>? userIds = null;
         if (userId.HasValue)
         {
@@ -151,8 +148,6 @@ internal sealed class AuditLogService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        // Rows attributed to an account merged into this one belong to the same human; the
-        // id list is the resolved record's, as in GetByUserAsync.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
         IReadOnlyList<AuditLogEntry> entries;
         if (allIds.Count == 1)
@@ -164,7 +159,7 @@ internal sealed class AuditLogService(
             entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
         }
 
-        // Post-merge: source rows surface as Subject for the target (actor context anonymized via AnonymizeForMergeAsync).
+        // Role compares against the requested id only, so a row acted by a merged-away id exports as Subject.
         var shaped = entries.Select(a => new
         {
             a.Action,

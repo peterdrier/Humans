@@ -71,7 +71,6 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.VolunteerApproved, nameof(User), entityId,
             "Auto-approved", "SystemTeamSyncJob");
 
-        // Repository auto-saves — entry should be visible immediately.
         var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.Action.Should().Be(AuditAction.VolunteerApproved);
         entry.EntityType.Should().Be("User");
@@ -208,7 +207,6 @@ public class AuditLogServiceTests : IDisposable
             now - Duration.FromHours(1));
         SeedAuditLogEntry(AuditAction.RoleAssigned, "Team", Guid.NewGuid(),
             now, relatedEntityId: userId);
-        // Entry that should NOT match
         SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(),
             now - Duration.FromHours(2));
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -268,7 +266,6 @@ public class AuditLogServiceTests : IDisposable
         var svc = new AuditLogService(
             throwingRepo, _userService, _clock, logger);
 
-        // Must not throw: audit is best-effort.
         var act = () => svc.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), Guid.NewGuid(),
             "Auto-approved", "TestJob");
@@ -300,7 +297,6 @@ public class AuditLogServiceTests : IDisposable
     [HumansFact]
     public async Task GetByUserAsync_SurfacesMergedSourceRows_ForFoldTarget()
     {
-        // Two source IDs were merged into targetId.
         var targetId = Guid.NewGuid();
         var source1 = Guid.NewGuid();
         var source2 = Guid.NewGuid();
@@ -311,12 +307,9 @@ public class AuditLogServiceTests : IDisposable
 
         var now = _clock.GetCurrentInstant();
 
-        // Rows attributed to each merged source should surface.
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", source1, now - Duration.FromHours(3));
         SeedAuditLogEntry(AuditAction.MemberSuspended, "User", source2, now - Duration.FromHours(2));
-        // Row attributed directly to the target.
         SeedAuditLogEntry(AuditAction.RoleAssigned, "User", targetId, now - Duration.FromHours(1));
-        // Row for an unrelated user — must NOT appear.
         SeedAuditLogEntry(AuditAction.RoleEnded, "User", unrelated, now);
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 

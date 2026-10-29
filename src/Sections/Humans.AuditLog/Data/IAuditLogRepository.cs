@@ -20,8 +20,7 @@ internal interface IAuditLogRepository : IRepository
         IReadOnlyCollection<Guid> userIds, int count, CancellationToken ct = default);
 
     /// <summary>
-    /// A non-empty <paramref name="userIds"/> matches the actor, the related entity or a User entity, so callers can
-    /// pass the target plus its merged-away ids.
+    /// A non-empty <paramref name="userIds"/> matches the actor, the related entity or a User entity.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType,
