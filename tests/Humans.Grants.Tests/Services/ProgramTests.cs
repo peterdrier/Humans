@@ -30,9 +30,9 @@ public sealed class ProgramTests : GrantsTestHarness
         var program = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
         program.Id.Should().Be(result.Value);
         program.Managers.Select(m => m.UserId).Should().Equal(manager);
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramCreated, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramCreated, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, manager, AuditEntityTypes.User);
     }
 
@@ -92,11 +92,11 @@ public sealed class ProgramTests : GrantsTestHarness
         var saved = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
         saved.Name.Should().Be("Renamed");
         saved.Managers.Select(m => m.UserId).Should().Equal(newManager);
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
             Arg.Is<string>(s => s.Contains("Renamed")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, newManager, AuditEntityTypes.User);
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, oldManager, AuditEntityTypes.User);
     }
 

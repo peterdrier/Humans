@@ -69,7 +69,7 @@ public class DataMigrationsTests
         rows.Should().Be(2);
         _migrations.LastActor.Should().Be(_actorId);
         await _audit.Received(1).LogAsync(
-            AuditAction.DataMigrationApplied, "DataMigration", Guid.Empty,
+            DebugAuditActions.DataMigrationApplied, "DataMigration", Guid.Empty,
             Arg.Is<string>(s => s.Contains(Key) && s.Contains("2 row(s)")),
             _actorId);
     }

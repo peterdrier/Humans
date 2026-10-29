@@ -17,7 +17,7 @@ internal sealed class CalendarFeedTokenService(ICalendarRepository repo, IAuditL
     {
         var (token, created) = await repo.GetOrAddFeedTokenAsync(userId, Guid.NewGuid(), ct);
         if (created)
-            await audit.LogAsync(AuditAction.CalendarFeedTokenCreated, "User", userId,
+            await audit.LogAsync(CalendarAuditActions.CalendarFeedTokenCreated, "User", userId,
                 "Personal calendar feed token created", userId);
         return token;
     }
@@ -26,7 +26,7 @@ internal sealed class CalendarFeedTokenService(ICalendarRepository repo, IAuditL
     {
         var token = Guid.NewGuid();
         await repo.SetFeedTokenAsync(userId, token, ct);
-        await audit.LogAsync(AuditAction.CalendarFeedTokenRotated, "User", userId,
+        await audit.LogAsync(CalendarAuditActions.CalendarFeedTokenRotated, "User", userId,
             "Personal calendar feed token rotated", userId);
         return token;
     }

@@ -288,6 +288,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `SurveysAuditActions` (`src/Sections/Humans.Surveys/SurveysAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `SurveyCreated`, `SurveyUpdated`, `SurveyOpened`, `SurveyClosed`, `SurveyInvitesSent`, `SurveyReminderSent`, `SurveySubmittedForApproval`, `SurveyApproved`, `SurveyRejected`, `SurveyResponsesExported`.
 - **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
 - **Teams:** `ITeamService` — `Team`-audience member ids and team display data.
 - **Consent:** `IConsentService.GetConsentReviewsAsync` — the Consent Coordinator's approval, which gates the approved-members audience (it does not gate Asociado voting).

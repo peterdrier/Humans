@@ -8,6 +8,7 @@ using Humans.Users.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Calendar;
 
@@ -16,6 +17,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CalendarAuditActions>();
         services.AddSectionDbContext<CalendarDbContext>(sentinelTable: "calendar_events");
 
         services.AddSingleton<ICalendarRepository, CalendarRepository>();

@@ -378,7 +378,7 @@ internal sealed class RideshareService(
             $"inbound {settings.InboundWindowStart.ToInvariantDate()} to {settings.InboundWindowEnd.ToInvariantDate()}; " +
             $"outbound {settings.OutboundWindowStart.ToInvariantDate()} to {settings.OutboundWindowEnd.ToInvariantDate()}");
         await auditLog.LogAsync(
-            AuditAction.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, settings.Id, description, actorUserId);
+            RideshareAuditActions.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, settings.Id, description, actorUserId);
         return new();
     }
 

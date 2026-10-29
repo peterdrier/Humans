@@ -293,7 +293,7 @@ internal sealed class GateService(
         // nobodies-collective/Humans#933) rejects a self-enrolled PIN.
         await StorePinAsync(userId, pin, adminEnrolled: false, ct);
         // Actor is the claimed staffer; the PIN value is never logged.
-        await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
+        await auditLog.LogAsync(GateAuditActions.GateStaffPinSet, nameof(GateStaffPin), userId,
             "Staffer self-enrolled their gate claim PIN at the kiosk", userId);
         return GatePinSetResult.Ok;
     }
@@ -304,7 +304,7 @@ internal sealed class GateService(
             return false;
         // The only PIN AuthorizeOverrideAsync accepts (uncalled outside tests; see SetOwnPinAsync).
         await StorePinAsync(userId, pin, adminEnrolled: true, ct);
-        await auditLog.LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), userId,
+        await auditLog.LogAsync(GateAuditActions.GateStaffPinSet, nameof(GateStaffPin), userId,
             "Admin set a staffer's gate PIN (override-enrolled)", actorUserId);
         return true;
     }
@@ -331,7 +331,7 @@ internal sealed class GateService(
     public async Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
         await repository.DeleteStaffPinAsync(userId, ct);
-        await auditLog.LogAsync(AuditAction.GateStaffPinReset, nameof(GateStaffPin), userId,
+        await auditLog.LogAsync(GateAuditActions.GateStaffPinReset, nameof(GateStaffPin), userId,
             "Admin reset a staffer's gate PIN", actorUserId);
     }
 

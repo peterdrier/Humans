@@ -403,7 +403,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await _sut.OpenPlacementAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementOpened,
+            CityPlanningAuditActions.CityPlanningPlacementOpened,
             nameof(CityPlanningSettings),
             settings.Id,
             Arg.Any<string>(),
@@ -421,7 +421,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await _sut.ClosePlacementAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementClosed,
+            CityPlanningAuditActions.CityPlanningPlacementClosed,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -438,7 +438,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
             .SingleAsync(s => s.Year == 2027, TestContext.Current.CancellationToken);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningRegistrationInfoUpdated,
+            CityPlanningAuditActions.CityPlanningRegistrationInfoUpdated,
             nameof(CityPlanningSettings),
             row.Id,
             Arg.Any<string>(),
@@ -457,11 +457,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await _sut.CloseContainerPlacementAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningContainerPlacementOpened,
+            CityPlanningAuditActions.CityPlanningContainerPlacementOpened,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningContainerPlacementClosed,
+            CityPlanningAuditActions.CityPlanningContainerPlacementClosed,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -477,11 +477,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await _sut.DeleteLimitZoneAsync(userId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningOfficialZonesUpdated,
+            CityPlanningAuditActions.CityPlanningOfficialZonesUpdated,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningLimitZoneDeleted,
+            CityPlanningAuditActions.CityPlanningLimitZoneDeleted,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -497,7 +497,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         result.Success.Should().BeFalse();
         await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.CityPlanningLimitZoneUpdated,
+            CityPlanningAuditActions.CityPlanningLimitZoneUpdated,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -531,7 +531,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         await sut.OpenPlacementAsync(userId, cts.Token);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementOpened,
+            CityPlanningAuditActions.CityPlanningPlacementOpened,
             nameof(CityPlanningSettings),
             settingsId,
             Arg.Any<string>(),
@@ -581,7 +581,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<int>(), Arg.Any<Action<CityPlanningSettings>>(),
             Arg.Any<Instant>(), Arg.Is<CancellationToken>(t => !t.CanBeCanceled));
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementOpened,
+            CityPlanningAuditActions.CityPlanningPlacementOpened,
             nameof(CityPlanningSettings),
             settingsId,
             Arg.Any<string>(),

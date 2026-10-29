@@ -7,6 +7,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Cantina;
 
@@ -21,6 +22,7 @@ public sealed class Section : ISection, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CantinaAuditActions>();
         services.AddSectionDbContext<CantinaDbContext>(sentinelTable: "cantina_dietary_profiles");
         services.AddScoped<IDietaryProfileRepository, DietaryProfileRepository>();
         services.AddScoped<DietaryProfileService>();

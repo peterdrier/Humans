@@ -94,7 +94,7 @@ public class CantinaRosterServiceTests
         var file = result.Should().BeOfType<FileContentResult>().Which;
         if (populated)
             HumansCsv.Utf8WithBom.GetString(file.FileContents).Should().Contain("Chef").And.Contain("Peanuts");
-        await _audit.Received(1).LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn.Id,
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaRosterExported, "EventSettings", burn.Id,
             Arg.Is<string>(text => text.StartsWith(daily ? "Daily" : "Weekly", StringComparison.Ordinal)
                 && text.Contains($"{(populated ? 1 : 0)} people rows", StringComparison.Ordinal)), actorId);
         var page = daily ? await controller.Day(0, ct) : await controller.Roster(0, ct);

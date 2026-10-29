@@ -140,7 +140,7 @@ public class BackdoorApiKeyServiceTests
         await _sut.IssueAsync(_owner, "triage agent", _actor);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.BackdoorApiKeyIssued,
+            BackdoorAuditActions.BackdoorApiKeyIssued,
             AuditEntityTypes.BackdoorApiKey,
             Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("triage agent")),
@@ -170,7 +170,7 @@ public class BackdoorApiKeyServiceTests
         (await _sut.RevokeAsync(key.Id, _actor)).Should().BeTrue();
 
         await _audit.Received(1).LogAsync(
-            AuditAction.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
+            BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
             Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
     }
 
@@ -226,10 +226,10 @@ public class BackdoorApiKeyServiceTests
         Received.InOrder(() =>
         {
             _ = _audit.LogAsync(
-                AuditAction.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
+                BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
                 Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
             _ = _audit.LogAsync(
-                AuditAction.BackdoorApiKeyIssued, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
+                BackdoorAuditActions.BackdoorApiKeyIssued, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
                 Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
         });
     }

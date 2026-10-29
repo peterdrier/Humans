@@ -573,7 +573,7 @@ internal sealed class EventService(
                 csv.WriteRow(row);
             }
         });
-        await audit.LogAsync(AuditAction.EventGuideExported, "EventGuide", settings?.Id ?? Guid.Empty,
+        await audit.LogAsync(EventsAuditActions.EventGuideExported, "EventGuide", settings?.Id ?? Guid.Empty,
             $"Approved event guide CSV exported: {rows.Count} rows", actorUserId);
         return bytes;
     }

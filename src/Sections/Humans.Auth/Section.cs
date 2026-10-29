@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Auth;
 
@@ -18,6 +19,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, AuthAuditActions>();
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
 
         // Composed from every section's ISectionRoles (registered by discovery); throws on a duplicate name.

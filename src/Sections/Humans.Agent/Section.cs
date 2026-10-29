@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Agent;
 
@@ -26,6 +27,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, AgentAuditActions>();
         services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
 
         services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));

@@ -12,6 +12,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Grants;
 
@@ -27,6 +28,7 @@ public sealed class Section : ISection, ISectionAdminNav
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, GrantsAuditActions>();
         services.AddSectionDbContext<GrantsDbContext>(sentinelTable: "grant_programs");
 
         services.AddSingleton<IGrantRepository, GrantRepository>();

@@ -62,12 +62,12 @@ internal sealed partial class GrantService(
     private static string? Trimmed(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
-    private Task AuditGrantAsync(AuditAction action, Grant grant, string description, Guid actorUserId) =>
+    private Task AuditGrantAsync(AuditActionDefinition action, Grant grant, string description, Guid actorUserId) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
             relatedEntityId: grant.UserId, relatedEntityType: AuditEntityTypes.User);
 
     private Task AuditProgramAsync(
-        AuditAction action, GrantProgram program, string description, Guid actorUserId, Guid? relatedUserId = null) =>
+        AuditActionDefinition action, GrantProgram program, string description, Guid actorUserId, Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,
             relatedEntityType: relatedUserId is null ? null : AuditEntityTypes.User);

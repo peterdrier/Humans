@@ -14,6 +14,7 @@ using Humans.Users.Contracts;
 using Humans.Base.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Events;
 
@@ -32,6 +33,7 @@ public sealed class Section : ISection, IUserPart, ICampPart, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, EventsAuditActions>();
         services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");
 
         services.AddScoped<EventsFeatureFilter>();

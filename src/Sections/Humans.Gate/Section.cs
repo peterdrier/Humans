@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Gate;
 
@@ -18,6 +19,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, GateAuditActions>();
         services.AddSectionDbContext<GateDbContext>(sentinelTable: "gate_settings");
 
         services.AddSingleton<IGateRepository, GateRepository>();

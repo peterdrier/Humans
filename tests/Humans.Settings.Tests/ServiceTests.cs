@@ -217,7 +217,7 @@ public sealed class ServiceTests
         await BuildSut().SaveEventSettingsAsync(dto, Actor, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, id,
+            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, id,
             Arg.Is<string>(d => d.Contains("Nowhere 2027") && d.Contains("2027-07-08")),
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -452,7 +452,7 @@ public sealed class ServiceTests
         await _repository.DidNotReceive().UpsertEventSettingsAsync(
             Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         // A refused save is not audited — nothing happened for the Board to see.
-        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -536,7 +536,7 @@ public sealed class ServiceTests
         result.Succeeded.Should().BeTrue();
         await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.EventSettingsUpdated, Arg.Any<string>(), next.Id,
+            SettingsAuditActions.EventSettingsUpdated, Arg.Any<string>(), next.Id,
             "Event 'Nowhere 2027' made active; 'Nowhere 2026' set inactive.", Actor);
         _listenerOne.Received(1).EventSettingsChanged(previous.Id);
         _listenerOne.Received(1).EventSettingsChanged(next.Id);
@@ -559,7 +559,7 @@ public sealed class ServiceTests
 
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default, default);
-        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     // Settings mints ids for new cycles with no existence check against Shifts: a Shifts knobs
@@ -618,7 +618,7 @@ public sealed class ServiceTests
         result.Succeeded.Should().BeTrue();
         await _repository.Received(1).SetValueAsync(SettingKeys.EventTimeZoneId, "Atlantic/Canary", Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
             Arg.Is<string>(d => d.Contains("Europe/Madrid") && d.Contains("Atlantic/Canary")),
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         _listenerOne.Received(1).EventSettingsChanged(first);

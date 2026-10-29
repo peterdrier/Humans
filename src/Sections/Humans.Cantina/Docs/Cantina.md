@@ -98,6 +98,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `CantinaAuditActions` (`src/Sections/Humans.Cantina/CantinaAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CantinaRosterExported`.
 - **AuditLog:** `IAuditLogService` records existing weekly/daily personal-data CSV disclosures.
 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.

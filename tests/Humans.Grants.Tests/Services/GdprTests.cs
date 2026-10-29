@@ -132,7 +132,7 @@ public sealed class GdprTests : GrantsTestHarness
         var revoked = grants.Single(g => g.Id == duplicate.Id);
         revoked.RevokedAt.Should().NotBeNull();
         revoked.RevokedByUserId.Should().Be(actor);
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantRevoked, AuditEntityTypes.Grant, duplicate.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, duplicate.Id,
             Arg.Any<string>(), actor, to, AuditEntityTypes.User);
     }
 }

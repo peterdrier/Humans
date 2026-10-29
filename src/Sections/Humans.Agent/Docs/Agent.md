@@ -150,6 +150,7 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `AgentAuditActions` (`src/Sections/Humans.Agent/AgentAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `AgentSettingsUpdated`.
 - **Issues** — agent handoff produces a client-side issue proposal (title/category/description) that pre-fills the Issues modal (`POST /Issues`). The agent does not write Issue rows itself.
 - **Feedback** — `IFeedbackService.GetOpenFeedbackIdsForUserAsync` (in Feedback's `Contracts/` folder) is called live by `AgentUserSnapshotProvider` to surface a user's open feedback items in the per-turn context. Additionally, historical `FeedbackReport.Source = AgentUnresolved` rows (from the original server-side handoff flow) remain readable via the Feedback admin queue; Agent no longer creates new `FeedbackReport` rows.
 - **Consent (Legal)** — the Consent section's `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer — a URL-only dependency; Agent injects nothing from Consent for it.

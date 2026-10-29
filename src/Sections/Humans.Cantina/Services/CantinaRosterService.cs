@@ -49,7 +49,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         var roster = await BuildWeeklyRosterAsync(
             burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
         if (exportActorUserId is { } actor)
-            await _audit.LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
+            await _audit.LogAsync(CantinaAuditActions.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
                 $"Weekly Cantina roster exported: {roster.People.Count} people rows, week of {roster.WeekStartDate.ToInvariantDate() ?? "no active event"}",
                 actor).ConfigureAwait(false);
         return roster;
@@ -175,7 +175,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         var matrix = await BuildDailyRosterAsync(
             burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
         if (exportActorUserId is { } actor)
-            await _audit.LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
+            await _audit.LogAsync(CantinaAuditActions.CantinaRosterExported, "EventSettings", burn?.Id ?? Guid.Empty,
                 $"Daily Cantina roster exported: {matrix.People.Count} people rows, day {matrix.CalendarDate.ToInvariantDate() ?? "no active event"}",
                 actor).ConfigureAwait(false);
         return matrix;

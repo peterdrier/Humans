@@ -151,6 +151,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `FeedbackAuditActions` (`src/Sections/Humans.Feedback/FeedbackAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FeedbackGitHubLinked`.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (`memory/architecture/burnername-is-the-display-name.md`).
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
 - **Teams:** `ITeamService.GetTeamsAsync` / `GetTeamAsync` — assigned-team display names.

@@ -10,6 +10,7 @@ using Humans.Base.Models.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Campaigns;
 
@@ -18,6 +19,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CampaignsAuditActions>();
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
         services.AddSingleton<ICampaignRepository, CampaignRepository>();

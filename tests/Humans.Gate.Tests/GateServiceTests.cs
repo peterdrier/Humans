@@ -690,15 +690,15 @@ public class GateServiceTests
         var admin = Guid.NewGuid();
 
         await _svc.SetOwnPinAsync(user, "2580");                 // self-enrol: actor == the staffer
-        await _auditLog.Received(1).LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), user,
+        await _auditLog.Received(1).LogAsync(GateAuditActions.GateStaffPinSet, nameof(GateStaffPin), user,
             Arg.Any<string>(), user);
 
         await _svc.AdminSetPinAsync(user, "1357", admin);        // admin set: actor == the admin
-        await _auditLog.Received(1).LogAsync(AuditAction.GateStaffPinSet, nameof(GateStaffPin), user,
+        await _auditLog.Received(1).LogAsync(GateAuditActions.GateStaffPinSet, nameof(GateStaffPin), user,
             Arg.Any<string>(), admin);
 
         await _svc.ClearPinAsync(user, admin);                   // admin reset: actor == the admin
-        await _auditLog.Received(1).LogAsync(AuditAction.GateStaffPinReset, nameof(GateStaffPin), user,
+        await _auditLog.Received(1).LogAsync(GateAuditActions.GateStaffPinReset, nameof(GateStaffPin), user,
             Arg.Any<string>(), admin);
     }
 

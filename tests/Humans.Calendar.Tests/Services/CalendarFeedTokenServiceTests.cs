@@ -52,7 +52,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         audit[1].Should().Be("User");
         audit[2].Should().Be(_user);
-        audit[0].Should().Be(AuditAction.CalendarFeedTokenCreated);
+        audit[0].Should().Be(CalendarAuditActions.CalendarFeedTokenCreated);
         audit[3].Should().Be("Personal calendar feed token created");
         audit[4].Should().Be(_user);
         audit[3]!.ToString().Should().NotContain(first.ToString());
@@ -87,7 +87,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
         var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         audit[1].Should().Be("User");
         audit[2].Should().Be(_user);
-        audit[0].Should().Be(AuditAction.CalendarFeedTokenRotated);
+        audit[0].Should().Be(CalendarAuditActions.CalendarFeedTokenRotated);
         audit[3].Should().Be("Personal calendar feed token rotated");
         audit[4].Should().Be(_user);
         audit[3]!.ToString().Should().NotContain(original.ToString()).And.NotContain(rotated.ToString());

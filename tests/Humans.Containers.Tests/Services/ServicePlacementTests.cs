@@ -145,7 +145,7 @@ public sealed class ServicePlacementTests
         (await act()).ErrorKey.Should().Be("Containers_Error_InvalidPlacementGeoJson");
         (await GetPlacementAsync(container.Id)).Should().BeEquivalentTo(before);
         await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.ContainerPlacementSaved, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            ContainersAuditActions.ContainerPlacementSaved, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -157,7 +157,7 @@ public sealed class ServicePlacementTests
         await _sut.SavePlacementAsync(container.Id, Year, GeoJson, ActorUserId, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ContainerPlacementSaved,
+            ContainersAuditActions.ContainerPlacementSaved,
             AuditEntityTypes.ContainerPlacement,
             container.Id,
             Arg.Any<string>(),
@@ -199,7 +199,7 @@ public sealed class ServicePlacementTests
 
         (await act()).ErrorKey.Should().Be("Containers_Error_PlacementNotFound");
         await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            ContainersAuditActions.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -248,7 +248,7 @@ public sealed class ServicePlacementTests
         unchanged.PlacementNotes.Should().Be("original notes");
         await _fileStorage.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            ContainersAuditActions.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -273,7 +273,7 @@ public sealed class ServicePlacementTests
             result.PlacementImageFileName.Should().Be("replacement.jpg");
         (await GetPlacementAsync(container.Id)).Should().BeEquivalentTo(result);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), container.Id,
+            ContainersAuditActions.ContainerPlacementNotesUpdated, Arg.Any<string>(), container.Id,
             Arg.Any<string>(), ActorUserId, container.Id, Arg.Any<string?>());
     }
 
@@ -342,7 +342,7 @@ public sealed class ServicePlacementTests
         await act.Should().ThrowAsync<IOException>();
         await _fileStorage.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceive().LogAsync(
-            AuditAction.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+            ContainersAuditActions.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

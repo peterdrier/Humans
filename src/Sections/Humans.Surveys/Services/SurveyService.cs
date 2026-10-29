@@ -227,7 +227,7 @@ internal sealed class SurveyService(
             throw;
         }
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
-        await auditLog.LogAsync(AuditAction.SurveyCreated, AuditEntityTypes.Survey, surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyCreated, AuditEntityTypes.Survey, surveyId,
             $"Created survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'", actorUserId);
         return new(surveyId);
     }
@@ -328,7 +328,7 @@ internal sealed class SurveyService(
             await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
             throw;
         }
-        await auditLog.LogAsync(AuditAction.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
+        await auditLog.LogAsync(SurveysAuditActions.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
         return new(surveyId);
     }
 
@@ -566,7 +566,7 @@ internal sealed class SurveyService(
         }
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Open, clock.GetCurrentInstant(), ct);
-        await auditLog.LogAsync(AuditAction.SurveyOpened, AuditEntityTypes.Survey, surveyId, "Opened survey", actorUserId);
+        await auditLog.LogAsync(SurveysAuditActions.SurveyOpened, AuditEntityTypes.Survey, surveyId, "Opened survey", actorUserId);
         return new();
     }
 
@@ -583,7 +583,7 @@ internal sealed class SurveyService(
             return new(Refusal: "A survey pending approval must be approved or rejected, not closed.");
 
         await repo.SetStatusAsync(surveyId, SurveyStatus.Closed, clock.GetCurrentInstant(), ct);
-        await auditLog.LogAsync(AuditAction.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
+        await auditLog.LogAsync(SurveysAuditActions.SurveyClosed, AuditEntityTypes.Survey, surveyId, "Closed survey", actorUserId);
         return new();
     }
 
@@ -642,7 +642,7 @@ internal sealed class SurveyService(
 
         var now = clock.GetCurrentInstant();
         await repo.SubmitForApprovalAsync(surveyId, now, ct);
-        await auditLog.LogAsync(AuditAction.SurveySubmittedForApproval, AuditEntityTypes.Survey, surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveySubmittedForApproval, AuditEntityTypes.Survey, surveyId,
             $"Submitted survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}' for approval", actorUserId);
         return new SurveySubmitResult(true);
     }
@@ -675,7 +675,7 @@ internal sealed class SurveyService(
 
         var now = clock.GetCurrentInstant();
         await repo.ApproveAsync(surveyId, now, ct);
-        await auditLog.LogAsync(AuditAction.SurveyApproved, AuditEntityTypes.Survey, surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyApproved, AuditEntityTypes.Survey, surveyId,
             $"Approved survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'; sending invitations",
             viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
 
@@ -702,7 +702,7 @@ internal sealed class SurveyService(
         if (trimmedNote.Length > 4000)
             return new(Refusal: "A rejection note must be 4000 characters or fewer.");
         await repo.RejectAsync(surveyId, trimmedNote, now, ct);
-        await auditLog.LogAsync(AuditAction.SurveyRejected, AuditEntityTypes.Survey, surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyRejected, AuditEntityTypes.Survey, surveyId,
             $"Rejected survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}': {trimmedNote}",
             viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
         return new();
@@ -824,7 +824,7 @@ internal sealed class SurveyService(
             }
         }
 
-        await auditLog.LogAsync(AuditAction.SurveyInvitesSent, AuditEntityTypes.Survey, surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyInvitesSent, AuditEntityTypes.Survey, surveyId,
             $"Sent {invitationsCreated} invitation(s)", actorUserId);
 
         return new SendResult(invitationsCreated, emailsQueued, failed);
@@ -1689,7 +1689,7 @@ internal sealed class SurveyService(
             })
             .ToList();
 
-        await auditLog.LogAsync(AuditAction.SurveyResponsesExported, "Survey", surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyResponsesExported, "Survey", surveyId,
             $"Survey responses exported: {rows.Count} rows", actorUserId);
         return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
     }

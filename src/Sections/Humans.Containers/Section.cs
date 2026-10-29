@@ -7,6 +7,7 @@ using Humans.Base.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Containers;
 
@@ -14,6 +15,7 @@ public sealed class Section : ISection
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, ContainersAuditActions>();
         services.AddSectionDbContext<ContainersDbContext>(sentinelTable: "containers");
 
         services.AddSingleton<IContainerRepository, Repository>();

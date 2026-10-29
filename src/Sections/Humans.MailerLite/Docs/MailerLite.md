@@ -104,6 +104,7 @@ The section references the contracts leaves `Humans.Users.Contracts`, `Humans.Em
 `Humans.AuditLog` (contracts in their `Contracts/` folders), plus `Humans.Base`. The
 communication-preference interfaces live in `Humans.Email.Contracts` (Users decomposition commit 14).
 
+- **Audit actions:** declared on `MailerLiteAuditActions` (`src/Sections/Humans.MailerLite/MailerLiteAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `MailerLiteReconciliationCompleted`, `MailerLiteAudienceSyncCompleted`.
 - **Users — people**: `IUserService.GetAllUserInfosAsync` and `GetUserInfoAsync` over the
   cached `UserInfo` set. `MarketingAudience` / `MarketingNoTicketAudience` enumerate it
   and keep the explicit opt-ins; the debug screen reads it for names and addresses.

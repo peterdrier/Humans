@@ -57,7 +57,7 @@ internal sealed partial class GrantService
 
         grant.NotifiedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
-        await AuditGrantAsync(AuditAction.GrantNoticeResent, grant,
+        await AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
             $"Notice for \"{grant.Program.Name}\" ({grant.Program.Year}) sent again.", actorUserId);
         await AnnounceIssuedAsync(grant, grant.Program, CancellationToken.None);
         return GrantMutationResult.Ok;
@@ -90,7 +90,7 @@ internal sealed partial class GrantService
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
         {
-            await AuditGrantAsync(AuditAction.GrantIssued, grant, describe(grant), actorUserId);
+            await AuditGrantAsync(GrantsAuditActions.GrantIssued, grant, describe(grant), actorUserId);
             await AnnounceIssuedAsync(grant, program, CancellationToken.None);
         }
     }
@@ -128,7 +128,7 @@ internal sealed partial class GrantService
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
 
-        await AuditGrantAsync(AuditAction.GrantRevoked, grant,
+        await AuditGrantAsync(GrantsAuditActions.GrantRevoked, grant,
             $"Revoked under \"{grant.Program.Name}\" ({grant.Program.Year}){(reason is null ? "" : $": {reason}")}.",
             actorUserId);
         await AnnounceRevokedAsync(grant, grant.Program, ct);

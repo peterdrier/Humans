@@ -100,6 +100,8 @@ The all-users grid reads `IUserService.GetAllRawUserInfosAsync` and the `UserInf
 
 The widget gallery and the dashboard card read other sections through their contracts: `ITeamService`, `ICampService`, `IShiftService`, `IEventService`, `IUserService`, `ITicketService` (the membership card's ticket bit), `ICommunicationPreferenceService` (Email; its marketing bit and the users debug page's opt-out column), `IShiftView`, and `ISettingsService` (Settings' supplier of the active event). The gallery also references the section assemblies whose public view components it renders as `<vc:>` tag helpers (Camps, Users, Tickets, Shifts, Calendar, AuditLog, Teams, Events); that fan-in is the page's job and is opened in `Views/_ViewImports.cshtml`. `MemberTermStatus` (Governance) and `NotificationBell` (Notifications) get no gallery card at all — they already render on the page through the member-dashboard and header-right chrome-slot demos, and a `WidgetGallery` contribution would only duplicate them.
 
+- **Audit actions:** declared on `DebugAuditActions` (`src/Sections/Humans.Debug/DebugAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `DataMigrationApplied`.
+
 ## Architecture
 
 **Owning services:** `DataMigrationService` (scoped; hosts the data migrations, owns no data). The diagnostics controllers project singleton snapshots into view models. One static calculator (`UserSetMembershipCalculator`) backs the dashboard card.

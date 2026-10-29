@@ -225,12 +225,12 @@ public sealed class FeedbackServiceTests
 
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Acknowledged, actorId, ct);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.FeedbackStatusChanged, "FeedbackReport", report.Id,
+            FeedbackAuditActions.FeedbackStatusChanged, "FeedbackReport", report.Id,
             Arg.Any<string>(), actorId);
 
         await _service.UpdateStatusAsync(report.Id, FeedbackStatus.Open, null, ct);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.FeedbackStatusChanged, "FeedbackReport", report.Id,
+            FeedbackAuditActions.FeedbackStatusChanged, "FeedbackReport", report.Id,
             Arg.Any<string>(), "API");
     }
 
@@ -387,7 +387,7 @@ public sealed class FeedbackServiceTests
         reply.EmailEnqueuePending.Should().BeFalse();
         await _emailService.Received(2).SendAsync(
             Arg.Is<EmailMessage>(m => m.DeliveryId == reply.Id && m.UserId == userId), Arg.Any<CancellationToken>());
-        await _auditLog.Received(1).LogAsync(AuditAction.FeedbackResponseSent, AuditEntityTypes.FeedbackReport,
+        await _auditLog.Received(1).LogAsync(FeedbackAuditActions.FeedbackResponseSent, AuditEntityTypes.FeedbackReport,
             report.Id, Arg.Is<string>(m => m.Contains("Queued", StringComparison.Ordinal)), reply.SenderUserId!.Value);
     }
 
@@ -519,7 +519,7 @@ public sealed class FeedbackServiceTests
         updated.AssignedToUserId.Should().Be(assigneeId);
         updated.AssignedToTeamId.Should().Be(teamId);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.FeedbackAssignmentChanged, "FeedbackReport", report.Id,
+            FeedbackAuditActions.FeedbackAssignmentChanged, "FeedbackReport", report.Id,
             Arg.Is<string>(s => s.Contains("Assignee") && s.Contains("Team")), actorId);
     }
 
@@ -532,9 +532,9 @@ public sealed class FeedbackServiceTests
         await _service.UpdateAssignmentAsync(report.Id, null, null, Guid.NewGuid(), ct);
 
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), default!, default, default!, default(Guid));
+            null!, default!, default, default!, default(Guid));
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), default!, default, default!, default(string)!);
+            null!, default!, default, default!, default(string)!);
     }
 
     [HumansFact]
@@ -548,7 +548,7 @@ public sealed class FeedbackServiceTests
         (await FeedbackDb.FeedbackReports.AsNoTracking().FirstAsync(r => r.Id == report.Id, ct))
             .GitHubIssueNumber.Should().Be(123);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.FeedbackGitHubLinked, "FeedbackReport", report.Id,
+            FeedbackAuditActions.FeedbackGitHubLinked, "FeedbackReport", report.Id,
             Arg.Is<string>(s => s.Contains("123")), actorId);
 
         // The API path (no actor) clears the link and audits as "API".
@@ -556,7 +556,7 @@ public sealed class FeedbackServiceTests
         (await FeedbackDb.FeedbackReports.AsNoTracking().FirstAsync(r => r.Id == report.Id, ct))
             .GitHubIssueNumber.Should().BeNull();
         await _auditLog.Received(1).LogAsync(
-            AuditAction.FeedbackGitHubLinked, "FeedbackReport", report.Id,
+            FeedbackAuditActions.FeedbackGitHubLinked, "FeedbackReport", report.Id,
             Arg.Is<string>(s => s.Contains("cleared")), "API");
     }
 

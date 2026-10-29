@@ -58,7 +58,7 @@ internal sealed class CampaignService(
         };
 
         await repository.AddCampaignAsync(campaign, ct);
-        await audit.LogAsync(AuditAction.CampaignCreated, "Campaign", campaign.Id,
+        await audit.LogAsync(CampaignsAuditActions.CampaignCreated, "Campaign", campaign.Id,
             "Created campaign.", createdByUserId);
 
         logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
@@ -158,7 +158,7 @@ internal sealed class CampaignService(
 
         await repository.UpdateCampaignAsync(campaign, ct);
 
-        await audit.LogAsync(AuditAction.CampaignUpdated, "Campaign", id,
+        await audit.LogAsync(CampaignsAuditActions.CampaignUpdated, "Campaign", id,
             "Updated campaign configuration.", actorUserId);
 
         logger.LogInformation("Campaign {CampaignId} updated", id);
@@ -280,7 +280,7 @@ internal sealed class CampaignService(
         }
 
         await repository.AddCampaignCodesAsync(newCodes, ct);
-        await audit.LogAsync(AuditAction.CampaignCodesImported, "Campaign", campaignId,
+        await audit.LogAsync(CampaignsAuditActions.CampaignCodesImported, "Campaign", campaignId,
             $"Imported {newCodes.Count} codes.", actorUserId);
 
         logger.LogInformation(
@@ -342,7 +342,7 @@ internal sealed class CampaignService(
         campaign.Status = CampaignStatus.Active;
         await repository.UpdateCampaignAsync(campaign, ct);
 
-        await audit.LogAsync(AuditAction.CampaignActivated, "Campaign", campaignId,
+        await audit.LogAsync(CampaignsAuditActions.CampaignActivated, "Campaign", campaignId,
             "Activated campaign.", actorUserId);
 
         logger.LogInformation("Campaign {CampaignId} activated", campaignId);
@@ -361,7 +361,7 @@ internal sealed class CampaignService(
         campaign.Status = CampaignStatus.Completed;
         await repository.UpdateCampaignAsync(campaign, ct);
 
-        await audit.LogAsync(AuditAction.CampaignCompleted, "Campaign", campaignId,
+        await audit.LogAsync(CampaignsAuditActions.CampaignCompleted, "Campaign", campaignId,
             "Completed campaign.", actorUserId);
 
         logger.LogInformation("Campaign {CampaignId} completed", campaignId);
@@ -454,7 +454,7 @@ internal sealed class CampaignService(
                 AssignedAt = now
             };
             await repository.AddGrantAndSaveAsync(grant, ct);
-            await audit.LogAsync(AuditAction.CampaignWaveSent, "Campaign", campaignId,
+            await audit.LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaignId,
                 $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
                 relatedEntityId: userId, relatedEntityType: "User");
             grantedUserIds.Add(userId);
@@ -527,7 +527,7 @@ internal sealed class CampaignService(
         var grant = await repository.GetGrantForResendAsync(grantId, ct)
             ?? throw new InvalidOperationException($"Grant {grantId} not found.");
 
-        await audit.LogAsync(AuditAction.CampaignGrantResent, "CampaignGrant", grantId,
+        await audit.LogAsync(CampaignsAuditActions.CampaignGrantResent, "CampaignGrant", grantId,
             $"Started resend for campaign {grant.CampaignId}.", actorUserId,
             relatedEntityId: grant.UserId, relatedEntityType: "User");
 

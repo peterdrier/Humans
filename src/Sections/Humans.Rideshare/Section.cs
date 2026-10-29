@@ -12,6 +12,7 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Rideshare;
 
@@ -26,6 +27,7 @@ public sealed class Section : ISection, ISectionRoles
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, RideshareAuditActions>();
         services.AddSectionDbContext<RideshareDbContext>(sentinelTable: "rideshare_trips");
 
         services.AddSingleton<IRideshareRepository, RideshareRepository>();

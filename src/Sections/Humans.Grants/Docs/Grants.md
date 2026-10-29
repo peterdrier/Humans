@@ -102,6 +102,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `GrantsAuditActions` (`src/Sections/Humans.Grants/GrantsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GrantProgramCreated`, `GrantProgramEdited`, `GrantProgramManagerAdded`, `GrantProgramManagerRemoved`, `GrantIssued`, `GrantRevoked`, `GrantNoticeResent`.
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, preferred language, burner names), `IUserEmailService.GetNotificationTargetEmailsAsync` (notice address). Implements `IUserMerge`.
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.

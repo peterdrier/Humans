@@ -10,6 +10,7 @@ using Humans.Base.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.CityPlanning;
 
@@ -21,6 +22,7 @@ public sealed class Section : ISection, IIssueQueueOwner
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CityPlanningAuditActions>();
         services.Configure<CityPlanningOptions>(configuration.GetSection(CityPlanningOptions.SectionName));
 
         services.AddSectionDbContext<CityPlanningDbContext>(sentinelTable: "city_planning_settings");
