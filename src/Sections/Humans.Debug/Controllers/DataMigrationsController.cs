@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Debug.Controllers;
 
 /// <summary>The anonymous counts-only twin is <c>/api/data-migrations</c> (<see cref="SectionEndpoints"/>).</summary>
-[Authorize(Policy = PolicyNames.AdminOnly)]
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Debug/DataMigrations")]
 internal sealed class DataMigrationsController(
     IUserService userService,
@@ -19,6 +19,7 @@ internal sealed class DataMigrationsController(
         View(await dataMigrations.GetReportsAsync(ct));
 
     [HttpPost("Apply")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Apply(string key, CancellationToken ct)
     {

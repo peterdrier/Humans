@@ -40,7 +40,7 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Pre-approvals (Programs), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync) |
+| Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Pre-approvals (Programs), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync), Agent (Status, History), Backdoor (API keys), Debug (every item) — the last three read-only: their POSTs are `AdminOnly` |
 | UsersAdmin | Users (Humans, Roles) |
 | TicketsAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster), Scanner, Gate (Terminal) |
 | FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Holded connector), Holded, Pre-approvals (Programs), Store (Catalog, Summary, Payments, Order years) |
