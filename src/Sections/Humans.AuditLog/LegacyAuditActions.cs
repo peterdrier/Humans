@@ -310,6 +310,8 @@ internal sealed class LegacyAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition IbanReveal = new("IbanReveal");
 
+    public static readonly AuditActionDefinition MedicalConditionsRevealed = new("MedicalConditionsRevealed");
+
     public static readonly AuditActionDefinition ExpenseAttachmentUploaded = new("ExpenseAttachmentUploaded");
 
     public static readonly AuditActionDefinition ExpenseAttachmentRemoved = new("ExpenseAttachmentRemoved");
@@ -689,6 +691,8 @@ internal sealed class LegacyAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition CampsExported = new("CampsExported");
 
     public static readonly AuditActionDefinition CantinaRosterExported = new("CantinaRosterExported");
+
+    public static readonly AuditActionDefinition CantinaHealthDetailsRevealed = new("CantinaHealthDetailsRevealed");
 
     public static readonly AuditActionDefinition VolunteerTrackingExported = new("VolunteerTrackingExported");
 
