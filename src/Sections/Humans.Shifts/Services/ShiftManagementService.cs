@@ -1354,26 +1354,9 @@ internal sealed class ShiftManagementService(
         var confirmedCountsRo = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
         var confirmedCounts = confirmedCountsRo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        int ConfirmedOn(Guid shiftId) => confirmedCounts.TryGetValue(shiftId, out var c) ? c : 0;
-        bool IsFilled(Shift s) => ConfirmedOn(s.Id) >= s.MinVolunteers;
-
-        var totalShifts = shifts.Count;
-        var filledShifts = shifts.Count(IsFilled);
-
-        int FilledSlotsOn(Shift s) => Math.Min(ConfirmedOn(s.Id), s.MaxVolunteers);
-        var totalSlots = shifts.Sum(s => s.MaxVolunteers);
-        var filledSlots = shifts.Sum(FilledSlotsOn);
-
-        PeriodBreakdown periodFillRates;
-        {
-            var perPeriod = shifts
-                .GroupBy(s => s.GetShiftPeriod(es))
-                .ToDictionary(g => g.Key, g => (TotalSlots: g.Sum(x => x.MaxVolunteers), FilledSlots: g.Sum(FilledSlotsOn)));
-            periodFillRates = new PeriodBreakdown(
-                Pct(perPeriod, ShiftPeriod.Build),
-                Pct(perPeriod, ShiftPeriod.Event),
-                Pct(perPeriod, ShiftPeriod.Strike));
-        }
+        var aggregate = AggregateShifts(shifts, confirmedCounts, es);
+        var periodFillRates = new PeriodBreakdown(
+            Pct(aggregate.Build), Pct(aggregate.Event), Pct(aggregate.Strike));
 
         var ticketOrders = await TicketQueryService.GetTicketOrdersAsync(ct);
         var ticketHolders = ticketOrders
@@ -1399,14 +1382,12 @@ internal sealed class ShiftManagementService(
         var departments = BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
 
         return new DashboardOverview(
-            totalShifts, filledShifts, totalSlots, filledSlots, periodFillRates,
+            aggregate.Total, aggregate.Filled, aggregate.TotalSlots, aggregate.FilledSlots, periodFillRates,
             ticketHolders.Count, ticketHoldersEngaged, nonTicketSignups, stalePendingCount,
             departments);
 
-        static double Pct(Dictionary<ShiftPeriod, (int TotalSlots, int FilledSlots)> perPeriod, ShiftPeriod p) =>
-            perPeriod.TryGetValue(p, out var v) && v.TotalSlots > 0
-                ? 100.0 * v.FilledSlots / v.TotalSlots
-                : 0d;
+        static double Pct(PeriodStaffing staffing) =>
+            staffing.TotalSlots > 0 ? 100.0 * staffing.FilledSlots / staffing.TotalSlots : 0d;
     }
 
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
@@ -1489,7 +1470,7 @@ internal sealed class ShiftManagementService(
     }
 
     private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
-        AggregateShifts(List<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettingsInfo es)
+        AggregateShifts(IReadOnlyList<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettingsInfo es)
     {
         int total = shifts.Count;
         int filled = 0;
@@ -1511,8 +1492,8 @@ internal sealed class ShiftManagementService(
             var slotsLeft = Math.Max(0, s.MaxVolunteers - confirmed);
 
             if (isFilled) filled++;
-            totalSlots += s.MaxVolunteers;
-            filledSlots += filledSlotsHere;
+            totalSlots = checked(totalSlots + s.MaxVolunteers);
+            filledSlots = checked(filledSlots + filledSlotsHere);
             remaining += slotsLeft;
 
             var p = s.GetShiftPeriod(es);

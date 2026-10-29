@@ -318,6 +318,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - All dashboard endpoints on `ShiftDashboardController` (and its analytics methods on `IShiftManagement`: `GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`, `GetCoverageHeatmapAsync`, `GetDailyDepartmentStaffingAsync`, `GetShiftDurationBreakdownAsync`, `GetPostEventStatsAsync`) sit behind the controller's `ShiftDepartmentManager` policy; `PostEventStats`, `SearchVolunteers` and `Voluntell` narrow to `ShiftDashboardAccess` (Admin/NoInfoAdmin/VolunteerCoordinator). The services themselves are auth-free per design rules.
 - **Coordinator dashboard metric definitions** (authoritative; unit tests pin these):
   - **Shift inclusion filter** — a shift is included iff `!shift.AdminOnly` and `shift.Rota.IsVisibleToVolunteers`. Matches the public browse-surface definition.
+  - Overview totals and department/subgroup rows share `ShiftManagementService.AggregateShifts` for filled-shift counts, capped filled slots and per-period staffing.
   - **Filled shift** — `COUNT(Confirmed signups) >= shift.MinVolunteers`. Pending signups are not counted toward filled.
   - **Ticket holder** — a `User` with at least one `TicketOrder` where `PaymentStatus = Paid` and `MatchedUserId = user.Id`. Multiple paid orders for the same user still count as one ticket holder.
   - **Engaged ticket holder** — a ticket holder with >=1 non-Cancelled `ShiftSignup` in the event (any status except Cancelled).
