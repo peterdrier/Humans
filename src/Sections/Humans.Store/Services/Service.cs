@@ -215,6 +215,12 @@ internal sealed class Service(
             return "VAT rate cannot be negative";
         if (draft.DepositAmountEur is < 0m)
             return "Deposit cannot be negative";
+        if (draft.UnitPriceEur > 9_999_999_999.99m || decimal.Round(draft.UnitPriceEur, 2) != draft.UnitPriceEur)
+            return "Unit price must be at most 9,999,999,999.99 with no more than two decimal places";
+        if (draft.VatRatePercent > 999.99m || decimal.Round(draft.VatRatePercent, 2) != draft.VatRatePercent)
+            return "VAT rate must be at most 999.99 with no more than two decimal places";
+        if (draft.DepositAmountEur is { } deposit && (deposit > 9_999_999_999.99m || decimal.Round(deposit, 2) != deposit))
+            return "Deposit must be at most 9,999,999,999.99 with no more than two decimal places";
         if (draft.HoldedRevenueAccountNum is < 10_000_000 or > 99_999_999)
             return "Holded revenue account must be an 8-digit chart number";
         return null;

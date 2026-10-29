@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Humans.Base.Extensions;
@@ -1138,6 +1139,61 @@ public class ServiceTests
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Be("VAT rate cannot be negative");
         await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, "price", "0.001")]
+    [InlineData(true, "price", "0.001")]
+    [InlineData(false, "vat", "21.005")]
+    [InlineData(true, "vat", "21.005")]
+    [InlineData(false, "deposit", "0.001")]
+    [InlineData(true, "deposit", "0.001")]
+    [InlineData(false, "price", "10000000000")]
+    [InlineData(true, "price", "10000000000")]
+    [InlineData(false, "vat", "1000")]
+    [InlineData(true, "vat", "1000")]
+    [InlineData(false, "deposit", "10000000000")]
+    [InlineData(true, "deposit", "10000000000")]
+    public async Task CatalogMoney_rejects_values_that_cannot_be_stored_exactly(bool editing, string field, string text)
+    {
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var product = MakeProduct();
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        var request = new ProductSaveRequest(editing ? product.Id : null, 2026, "Product", "",
+            field is "price" ? amount : 10m,
+            field is "vat" ? amount : 21m,
+            field is "deposit" ? amount : null,
+            "2026-08-01", true, null);
+
+        var result = await _service.SaveProductWithResultAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("decimal places");
+        await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+        product.UnitPriceEur.Should().Be(10m);
+        product.VatRatePercent.Should().Be(21m);
+        product.DepositAmountEur.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("0", "0", null)]
+    [InlineData("0.0100", "21.0000", "0.0000")]
+    [InlineData("9999999999.99", "999.99", "9999999999.99")]
+    public async Task CatalogMoney_accepts_exact_storage_boundaries(string price, string vat, string? deposit)
+    {
+        var draft = new ProductDto(Guid.Empty, 2026, "Product", "",
+            decimal.Parse(price, CultureInfo.InvariantCulture), decimal.Parse(vat, CultureInfo.InvariantCulture),
+            deposit is null ? null : decimal.Parse(deposit, CultureInfo.InvariantCulture),
+            new LocalDate(2026, 8, 1), true);
+
+        var result = await _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.Received(1).AddProductAsync(Arg.Is<Product>(p =>
+            p.UnitPriceEur == draft.UnitPriceEur && p.VatRatePercent == draft.VatRatePercent
+            && p.DepositAmountEur == draft.DepositAmountEur), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
