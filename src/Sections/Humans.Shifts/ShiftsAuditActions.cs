@@ -19,7 +19,7 @@ internal sealed class ShiftsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition RotaMovedToTeam = new("RotaMovedToTeam");
 
-    // Shift knobs live on a Shifts table since #2192, so the save is audited under a Shifts name.
+    // Rows written before this name existed are stored as EventSettingsUpdated.
     public static readonly AuditActionDefinition ShiftSettingsUpdated = new("ShiftSettingsUpdated");
 
     public static readonly AuditActionDefinition ShiftSignupCreated = new("ShiftSignupCreated", Verb: "created signup for", SelfVerb: "signed up for", DescriptionIsTail: true);
