@@ -77,7 +77,7 @@ internal sealed class ShiftSignupService(
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Signup_BrowsingClosed"]);
 
-        if (shift.AdminOnly && !isPrivileged)
+        if ((!shift.Rota.IsVisibleToVolunteers || shift.AdminOnly) && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Signup_Restricted"]);
 
         if (shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
@@ -545,6 +545,9 @@ internal sealed class ShiftSignupService(
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Signup_BrowsingClosed"]);
+
+        if (!rota.IsVisibleToVolunteers && !isPrivileged)
+            return SignupResult.Fail(localizer["Shifts_Signup_RangeRestricted"]);
 
         if (rota.Period == RotaPeriod.Build
             && calendar.IsEarlyEntryClosed(now)

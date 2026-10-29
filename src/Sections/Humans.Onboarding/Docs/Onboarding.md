@@ -78,6 +78,7 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 
 ## Invariants
 
+- Single and range shift signup delegate visibility enforcement to Shifts: a retained hidden rota/shift ID cannot bypass staged signup rollout; a refusal returns to the shift step.
 - Widget multi-day shift signup requires both day offsets and rejects missing or malformed
   values with 400 before enrollment; omitted bounds cannot silently select day zero.
   Explicit day zero remains valid.

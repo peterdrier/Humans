@@ -525,6 +525,68 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Be("Shifts_Signup_Restricted");
     }
 
+    [HumansTheory]
+    [InlineData("single")]
+    [InlineData("range")]
+    [InlineData("toggle")]
+    public async Task HiddenRota_SelfSignupRefusesWithoutWrites(string path)
+    {
+        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        rota.IsVisibleToVolunteers = false;
+        if (string.Equals(path, "range", StringComparison.Ordinal))
+        {
+            rota.Period = RotaPeriod.Strike;
+            shift = SeedAllDayShift(rota, 1);
+        }
+        var userId = Guid.NewGuid();
+        // Coordinating another department grants no access to this hidden rota.
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { Guid.NewGuid() });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = path switch
+        {
+            "range" => await _service.SignUpRangeAsync(userId, rota.Id, 1, 1),
+            "toggle" => (await _service.ToggleDayAsync(userId, shift.Id, es.Id, privileged: false)).Result,
+            _ => await _service.SignUpAsync(userId, shift.Id)
+        };
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be(string.Equals(path, "range", StringComparison.Ordinal) ? "Shifts_Signup_RangeRestricted" : "Shifts_Signup_Restricted");
+        (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task HiddenRota_ExistingPrivilegedSignupPathsRemainAvailable(bool range, bool departmentCoordinator)
+    {
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        rota.IsVisibleToVolunteers = false;
+        if (range)
+        {
+            rota.Period = RotaPeriod.Strike;
+            shift = SeedAllDayShift(rota, 1);
+        }
+        var userId = Guid.NewGuid();
+        if (departmentCoordinator)
+            _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(new List<Guid> { rota.TeamId });
+        var flags = departmentCoordinator ? ShiftSignupRequestFlags.None : ShiftSignupRequestFlags.Privileged;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = range
+            ? await _service.SignUpRangeAsync(userId, rota.Id, 1, 1, flags: flags)
+            : await _service.SignUpAsync(userId, shift.Id, flags: flags);
+
+        result.Success.Should().BeTrue();
+        (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
     [HumansFact]
     public async Task SignUp_ShiftAtMaxVolunteers_ReturnsError()
     {
@@ -828,10 +890,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         outcome.Result.Success.Should().BeTrue();
     }
 
-    [HumansFact]
-    public async Task ToggleDay_ExistingActiveSignup_Bails()
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ToggleDay_ExistingActiveSignup_Bails(bool visible)
     {
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.IsVisibleToVolunteers = visible;
         var shift = SeedAllDayShift(rota, dayOffset: 1); // qualifies for cantina meal
         var userId = Guid.NewGuid();
         SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
