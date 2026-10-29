@@ -41,7 +41,7 @@ caller needs)` — not the whole event every time.
 
 ### Data migrations
 
-`cantina.profile-dietary` (`SectionDataMigrations`) copies the legacy
+`cantina.profile-dietary` (`ISectionDataMigrations`) copies the legacy
 `profiles` food columns into rows for members without one; Apply is
 idempotent.
 

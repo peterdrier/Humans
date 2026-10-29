@@ -113,7 +113,7 @@ Per-resource and per-human sync audits belong to
 
 `AuditLogController` injects `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
 
-Note: the `/Admin` dashboard's "Recent activity" card is this section's own `AdminActivityCard`, contributed into the Shell's `admin-dashboard` chrome slot (`SectionChrome`) — it renders `AuditLogViewComponent` with `layout="activity", limit=8`. That is a chrome contribution, not route ownership. AuditLog owns no Admin routes.
+Note: the `/Admin` dashboard's "Recent activity" card is this section's own `AdminActivityCard`, contributed into the Shell's `admin-dashboard` chrome slot (`ISectionChrome`) — it renders `AuditLogViewComponent` with `layout="activity", limit=8`. That is a chrome contribution, not route ownership. AuditLog owns no Admin routes.
 
 ## Actors & Roles
 

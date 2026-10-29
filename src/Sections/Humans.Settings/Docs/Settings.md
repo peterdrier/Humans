@@ -48,7 +48,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
   post-redirect-get on both outcomes: validation, parse and activation-conflict failures
   flash the failing rule and redirect back to the tab (by id when the form carried one),
   exactly as every other settings tab's POST does. Reached from the signed-in
-  user menu via the `user-menu` chrome slot (`SectionChrome` → `SettingsUserMenuViewComponent`),
+  user menu via the `user-menu` chrome slot (`ISectionChrome` → `SettingsUserMenuViewComponent`),
   since nothing else links to it. Its member-facing strings live in `SettingsResource`,
   including the empty state (`Settings_NoTabs`); `/Settings/Admin` stays admin-exempt
   (`memory/code/localization-admin-exempt.md`). Settings owns tab

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.GoogleIntegration.ViewComponents;
 
-/// <summary>No role check here: <see cref="SectionSettings"/> contributes the tab as AdminOnly.</summary>
+/// <summary>No role check here: <see cref="Section"/> contributes the tab as AdminOnly.</summary>
 internal sealed class GoogleSyncSettingsTabViewComponent(
     ISyncSettingsService syncSettingsService,
     IUserService userService) : ViewComponent

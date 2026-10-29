@@ -1,20 +1,32 @@
+using Humans.Base.Authorization;
 using Humans.Base.Constants;
+using Humans.Base.Extensions;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
-using Humans.Email.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Issues.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Jobs;
 using Humans.Consent.Services;
-using Humans.Base.Hosting;
+using Humans.Consent.ViewComponents;
+using Humans.Email.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Issues.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Consent;
 
-public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
+public sealed class Section :
+    ISection,
+    IIssueQueueOwner,
+    ISectionRoles,
+    ISectionAdminNav,
+    ISectionDataMigrations,
+    ISectionJobs,
+    ISectionPolicies,
+    IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -101,4 +113,58 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["legal", "consent"];
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentCoordinator];
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Consent", [
+            new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.BoardOrAdmin)
+        ])
+    ];
+
+    internal const string ProfileReviewKey = "consent.profile-review";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(ProfileReviewKey, "Consent",
+            "Copy each Consent Coordinator review (consent check, approval, rejection) from profiles into consent_reviews, and record a legacy rejection as users.State = Rejected where the state never did",
+            "ConsentReviewService's legacy fallback, UserInfo.IsRejected's legacy arm, the review fields on ProfileInfo and LegacyConsentCheckStatus; then a drop PR for the profiles review columns",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Copy row", "Set Rejected state", "Status", "Approved", "Checked", "Rejected"],
+            [.. (await sp.GetRequiredService<ConsentReviewService>().GetUncopiedLegacyReviewsAsync(ct))
+                .Select(p => (IReadOnlyList<string>)[
+                    p.Review.UserId.ToString(),
+                    p.CopyRow ? "yes" : "no",
+                    p.SetRejectedState ? "yes" : "no",
+                    p.Review.Status?.ToString() ?? string.Empty,
+                    p.Review.IsApproved ? "yes" : "no",
+                    p.Review.CheckedAt.ToIso8601() ?? string.Empty,
+                    p.Review.RejectedAt.ToIso8601() ?? string.Empty])]);
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<ConsentReviewService>().CopyLegacyReviewsAsync(ct);
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        // 04:00, 30 minutes before Users' SuspendNonCompliantMembersJob.
+        yield return new RecurringJobDescriptor(
+            "consent-reconsent-reminders", typeof(SendReConsentReminderJob), "0 4 * * *");
+
+        yield return new RecurringJobDescriptor(
+            "consent-legal-document-sync", typeof(SyncLegalDocumentsJob), "0 4 * * *");
+    }
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
+            policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
+    }
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.AdminDetail, typeof(ConsentReviewCardViewComponent)),
+        new(UserPartSlots.AccountStatus, typeof(RejectionReasonViewComponent)),
+    ];
 }

@@ -70,7 +70,7 @@ Services/Service                shapes 1–4: sweep, reconcile, and the read mod
 Services/HoldedCallLog          the in-process meter the client fills and Service drains
 Services/HoldedNightlySync      shape 2's body: this section's sweep (Finance runs its own doc sync)
 Services/IHoldedNightlySync     shape 2 — the nightly body, internal: only the job calls it
-Jobs/HoldedSyncJob              the Hangfire shim over it; SectionJobs names it and the cron
+Jobs/HoldedSyncJob              the Hangfire shim over it; Section (ISectionJobs) names it and the cron
 Data/Repository                 the only code that touches HoldedDbContext
 Domain/                         the mirrored tables; internal, and they stay internal
 Controllers/HoldedController    translation only, no arithmetic

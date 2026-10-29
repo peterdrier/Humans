@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Web/Extensions/RecurringJobExtensions.cs
-  src/Sections/*/SectionJobs.cs
+  src/Sections/*/Section.cs
   src/Sections/*/Jobs/*Job.cs
   src/Humans.Base/Interfaces/ISectionJobs.cs
 -->
@@ -274,7 +274,7 @@ app.UseHumansRecurringJobs();
 There is no central roll-call and no `AddScoped<...Job>()` list in `Program.cs`. Each section implements `ISectionJobs.Jobs(IServiceProvider)`, yielding a `RecurringJobDescriptor(Id, JobType, Cron)` per job it owns — job types are DI-registered by that section's own `Section.cs`, not by Shell. `RecurringJobExtensions.ContributedJobs` discovers every `ISectionJobs` implementation and flattens their descriptors into the one set Shell schedules and sweeps:
 
 ```csharp
-// src/Sections/Humans.Consent/SectionJobs.cs
+// src/Sections/Humans.Consent/Section.cs
 internal sealed class SectionJobs : ISectionJobs
 {
     public IEnumerable<RecurringJobDescriptor> Jobs(IServiceProvider services)
@@ -289,7 +289,7 @@ internal sealed class SectionJobs : ISectionJobs
 
 Job ids are section-first (`consent-legal-document-sync`, `issues-cleanup`, `tickets-vendor-sync`) so the owning section is obvious from the id alone. Ids are stored in Hangfire and must never change — a rename is a new job plus a swept-away old one.
 
-Startup schedules every contributed job and then deletes any stored Hangfire schedule whose id is not in the contributed set (skipped if any job failed to register, since a stale entry might be the only working copy of a schedule that couldn't be rewritten). Renaming or deleting a job therefore needs nothing beyond editing its section's `SectionJobs.Jobs` — the old entry goes away on the next boot, taking its dashboard history with it. An opt-in job (empty `Cron`) keeps its place in the contributed set even when its schedule is switched off, so turning one off never gets it swept away; `RecurringJob.RemoveIfExists` drops any stored schedule left from when it was on.
+Startup schedules every contributed job and then deletes any stored Hangfire schedule whose id is not in the contributed set (skipped if any job failed to register, since a stale entry might be the only working copy of a schedule that couldn't be rewritten). Renaming or deleting a job therefore needs nothing beyond editing its section's `ISectionJobs.Jobs` — the old entry goes away on the next boot, taking its dashboard history with it. An opt-in job (empty `Cron`) keeps its place in the contributed set even when its schedule is switched off, so turning one off never gets it swept away; `RecurringJob.RemoveIfExists` drops any stored schedule left from when it was on.
 
 ### Dashboard
 - URL: `/hangfire`

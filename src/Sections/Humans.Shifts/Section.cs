@@ -1,28 +1,53 @@
+using System.Globalization;
+using System.Security.Claims;
+using Humans.Base;
+using Humans.Base.Authorization;
 using Humans.Base.Constants;
-using Humans.Issues.Contracts;
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Base.Models;
+using Humans.Base.Models.Tables;
 using Humans.Calendar.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Issues.Contracts;
+using Humans.Onboarding.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Base.Hosting;
 using Humans.Shifts.Authorization;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
-using Humans.Base.Models.Tables;
+using Humans.Shifts.ViewComponents;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
+using NodaTime;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Shifts;
 
-public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
+public sealed class Section :
+    ISection,
+    IIssueQueueOwner,
+    ISectionRoles,
+    ISectionAccessMatrix,
+    ISectionAdminNav,
+    ISectionAdminTiles,
+    ISectionChrome,
+    ISectionHelp,
+    ISectionMemberDashboard,
+    ISectionNav,
+    IOnboardingShiftsStep,
+    ISectionPolicies,
+    ISectionSettings,
+    ISectionThingsToDo
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -127,4 +152,169 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionRoles
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["shifts", "vol"];
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ShiftsRoles.ShiftsNoInfo];
+
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "Shifts",
+            SectionName = "Shifts",
+            Order = 10,
+            Roles = ["Volunteer", "Coordinator", "ShiftsNoInfo", "ShiftsAdmin"],
+            Features =
+            [
+                Of("Browse shifts", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Sign up for shifts", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("My Shifts & availability", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Create/edit rotas & shifts", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsNoInfo", Denied), ("ShiftsAdmin", Allowed)),
+                Of("Approve/refuse signups", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Voluntell", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Staffing dashboard", ("Volunteer", Denied), ("Coordinator", Denied), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+            ]
+        }
+    ];
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Shifts", [
+            new("Dashboard",         "ShiftDashboard",      "Index",          null, null, "fa-solid fa-gauge",            PolicyNames.ShiftDepartmentManager),
+            new("Summary by camp",   "Shifts",              "Summary",        null, null, "fa-solid fa-campground",       PolicyNames.ShiftDepartmentManager),
+            new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       PolicyNames.ShiftDashboardAccess),
+            new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", PolicyNames.ShiftDashboardAccess),
+            new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        PolicyNames.ShiftDashboardAccess),
+            new("Orphan signups",    "Shifts",              "OrphanSignups",  null, null, "fa-solid fa-user-secret",      PolicyNames.AdminOnly)
+        ])
+    ];
+
+    IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
+    [
+        new AdminTile("shifts.coverage", "Shifts staffed", "fa-solid fa-calendar-check", CoverageAsync, Weight: 40)
+    ];
+
+    private static async ValueTask<AdminTileValue?> CoverageAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var (filled, total, ratio) = await sp.GetRequiredService<IShiftManagement>().GetOverallCoverageAsync(ct);
+        var percent = total > 0 ? (int)Math.Round(ratio * 100) : 0;
+        return total > 0
+            ? new AdminTileValue(
+                filled.ToString(CultureInfo.CurrentCulture),
+                Detail: $"{percent}% of slots filled",
+                Secondary: $"/ {total}",
+                Summary: $"{percent}% shift coverage")
+            : new AdminTileValue(
+                "",
+                Detail: $"{percent}% of slots filled",
+                Secondary: "—",
+                Summary: $"{percent}% shift coverage");
+    }
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [
+            new(ChromeSlots.AdminDashboard, typeof(StaffingByDepartmentViewComponent), Weight: 10),
+            new(ChromeSlots.WidgetGallery, typeof(ShiftsGalleryViewComponent)),
+        ];
+
+    IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => Entries;
+
+    // Read once per process: the markdown ships inside this assembly and never changes at runtime.
+    private static readonly IReadOnlyList<SectionHelpEntry> Entries =
+    [
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Shifts", 40),
+    ];
+
+    IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
+        [new ChromeComponent(ChromeSlots.MemberDashboard, typeof(DashboardShiftsViewComponent), Weight: 30)];
+
+    IEnumerable<MemberNavItem> ISectionNav.Items() =>
+        [new("Nav_Shifts", Controller: "Shifts", Action: "Index", Policy: PolicyNames.AppAccess, Weight: 60)];
+
+    Type IOnboardingShiftsStep.ShiftsList => typeof(OnboardingShiftsListViewComponent);
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        // Three-role list; ShiftDepartmentManager below additionally admits any team coordinator.
+        options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin));
+
+        options.AddPolicy(PolicyNames.VolunteerTrackingWrite, policy =>
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
+
+        // The role-or-team-coordinator disjunction lives in one handler because policy requirements AND.
+        options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
+            policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
+
+        options.AddPolicy(PolicyNames.PrivilegedSignupApprover, policy =>
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
+
+        options.AddPolicy(PolicyNames.VolunteerManager, policy =>
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
+
+        options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
+    }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("shifts", "Settings_TabShifts", typeof(ShiftsSettingsTabViewComponent), PolicyNames.AdminOnly)
+    ];
+
+    async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            || !await HasSignupsAsync(services, userId, ct))
+        {
+            return [];
+        }
+
+        var needsShiftInfo = await NeedsShiftInfoAsync(services, userId, ct);
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        return
+        [
+            new ThingsToDoEntry("shift-info", localizer["Todo_ShiftInfo_Title"].Value,
+                "fa-solid fa-calendar-check", Controller: "ShiftProfile", Action: "ShiftInfo", Weight: 40)
+            {
+                Description = needsShiftInfo
+                    ? localizer["Todo_ShiftInfo_Pending"].Value
+                    : localizer["Todo_ShiftInfo_Done"].Value,
+                IsDone = !needsShiftInfo,
+                ActionText = localizer["Todo_ShiftInfo_Action"].Value,
+            }
+        ];
+    }
+
+    /// <summary>
+    /// A pending signup, or a confirmed one not yet ended, while browsing is open: the same commitment the
+    /// dashboard's shift cards render.
+    /// </summary>
+    private static async ValueTask<bool> HasSignupsAsync(IServiceProvider services, Guid userId, CancellationToken ct)
+    {
+        var activeEvent = await services.GetRequiredService<IBurnSettingsService>().GetActiveAsync(ct);
+        if (activeEvent is null || !activeEvent.IsShiftBrowsingOpen)
+        {
+            return false;
+        }
+
+        var now = services.GetRequiredService<IClock>().GetCurrentInstant();
+        var signups = (await services.GetRequiredService<IShiftView>().GetUserAsync(userId, ct)).Signups;
+
+        return signups.Any(s => s.Status == SignupStatus.Pending)
+               || signups.Any(s => s.Status == SignupStatus.Confirmed && s.AbsoluteEnd > now);
+    }
+
+    private static async ValueTask<bool> NeedsShiftInfoAsync(IServiceProvider services, Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var profile = await services.GetRequiredService<IShiftVolunteerProfiles>().GetShiftProfileAsync(userId, ct);
+            return profile is null || profile.IsEmpty;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            services.GetRequiredService<ILogger<Section>>()
+                .LogError(ex, "Failed to check shift profile for ThingsToDo component, user {UserId}", userId);
+            return false;
+        }
+    }
 }

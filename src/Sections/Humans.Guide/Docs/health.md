@@ -16,8 +16,8 @@ navigate in-app; everything else opens away from the app.
 |---|---|---|
 | S1 — read a page | "What does the guide say about X, for me?" | `GET /Guide`, `GET /Guide/{name}` — one pipeline; the home page differs only in which stem it fixes and which view wraps it |
 | S2 — re-read from GitHub | "Pick up the guide change that just merged." | `POST /Guide/Refresh`, admin only |
-| S3 — which sections have help | "Does this section have a guide page written for it?" | `SectionAnnotations`, published into `ISectionCatalog` and read by `/Debug/Sections` |
-| S4 — is the upstream reachable | "Can the app still reach GitHub?" | `SectionHealthChecks` registering the `github` check |
+| S3 — which sections have help | "Does this section have a guide page written for it?" | `ISectionAnnotations`, published into `ISectionCatalog` and read by `/Debug/Sections` |
+| S4 — is the upstream reachable | "Can the app still reach GitHub?" | `ISectionHealthChecks` registering the `github` check |
 
 S1 is the section. S2 is S1's cache primed deliberately instead of on demand — the same
 `PopulateAsync`, differing only in what gets logged. S3 and S4 are one-class seams that carry
@@ -39,8 +39,8 @@ render only ever sees content they may read, and no role metadata survives into 
 ```
 Humans.Guide/
   Section.cs                 DI only
-  SectionAnnotations.cs      S3
-  SectionHealthChecks.cs     S4
+  Section.cs      S3
+  Section.cs     S4
   Health/                    the check S4 registers
   Controllers/               S1, S2 — route, resolve stem, pick view
   Services/
@@ -126,7 +126,7 @@ exactly one home.
   `data-guide-*` round trip and the regex over rendered HTML are gone with it — along with the
   class of defect where the shape of a content file defeated the filter.
 - ~~**An anonymous way in.**~~ Settled 2026-09-11: the link was missing, not the branch dead.
-  `SectionNav.cs` contributes a `Guide` item to the member top nav through `ISectionNav`, with
+  `Section.cs` contributes a `Guide` item to the member top nav through `ISectionNav`, with
   no `Visible` predicate, so a signed-out reader can reach the pages the filter's anonymous
   branch was always written to serve.
 

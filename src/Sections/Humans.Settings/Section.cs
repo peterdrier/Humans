@@ -1,14 +1,16 @@
-using Humans.Base.Interfaces;
+using Humans.Base.Authorization;
 using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Services;
+using Humans.Settings.ViewComponents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Settings;
 
-public sealed class Section : ISection
+public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionSettings
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -22,4 +24,19 @@ public sealed class Section : ISection
         services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<ISettingsWriteService>());
         services.AddScoped<IEventSettingsSeeding>(sp => (Service)sp.GetRequiredService<ISettingsWriteService>());
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Settings", [
+            new("Event settings", "Settings", "Index", null, null, "fa-solid fa-calendar-days", PolicyNames.AdminOnly, Weight: 0)
+        ])
+    ];
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.UserMenu, typeof(SettingsUserMenuViewComponent), Weight: 10)];
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("event", "Settings_TabEvent", typeof(EventSettingsTabViewComponent), Weight: int.MinValue)
+    ];
 }
