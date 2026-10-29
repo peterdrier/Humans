@@ -38,6 +38,7 @@ internal sealed class RequestFormViewModel
     [BindRequired]
     public LuggageSize LuggageLoad { get; set; }
 
+    [BindRequired]
     public bool CanContributeToFuel { get; set; } = true;
 
     [StringLength(1000, ErrorMessage = "Validation_MaxLength")]

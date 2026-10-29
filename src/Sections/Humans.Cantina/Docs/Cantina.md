@@ -93,7 +93,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 - View renders on each request; no cache, no background job, no scheduled invalidation. Data is live as of the request.
 - CSV export computes the same in-memory aggregate as the HTML view and streams it as `text/csv; charset=utf-8` with filename `cantina-roster-week-of-<yyyy-MM-dd>.csv`.
-- The dietary things-to-do (`ISectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
+- The dietary things-to-do (`ISectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Its title, descriptions and action use the shared `Todo_DietaryMedical_*` resources translated into all six supported cultures. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
 - Weekly/daily CSV callers pass their actor to the existing roster service, which audits after the personal rows are built. No notifications or outbox events.
 
 ## Cross-Section Dependencies
@@ -116,6 +116,8 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 - Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (of Shifts and Users, Cantina references only their `.Contracts` leaves). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save, the decline and the legacy copy. `ICantinaRosterService` stays in `Services/`, `internal`.
 - **`CantinaDbContext`** registered via `AddSectionDbContext` (sentinel `cantina_dietary_profiles`); `DietaryProfileRepository` is its only reader/writer and only `DietaryProfileService` calls it.
+- **Roster calculations stay section-internal.** `CantinaRosterCalculation` owns day membership, day totals, weekly people rows and dietary rollups. `CantinaRosterService` retains source-data loading, arrival-day orchestration, clock access and export audits; no service contract or DI registration changes.
+
 - **The roster reads no repository.** `CantinaRosterService` calls **only section services** (`IShiftService`, `ISettingsService`, `IUserService`, `ICantinaService`). This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
 - **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The section registers it itself, in `Section.cs` via `ISectionPolicies` (not in the Shell's `AuthorizationPolicyExtensions`). `CantinaRoles.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` stay in `Humans.Base` — they are `string` constants, not references to this project.
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` live in the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).

@@ -229,15 +229,16 @@ internal sealed class CachingEventService(
     public Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.BuildBulkUploadTemplateAsync(campId, campName, ct));
 
-    public Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default) =>
+    public Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.SubmitEventAsync(guideEvent, lifecycleActionUrl, ct));
 
-    public Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
+    public Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
-            // Resubmit never leaves the event Approved.
-            _eventCache.Invalidate(eventId);
+            var result = await WithInnerAsync(inner => inner.UpdateAndResubmitAsync(eventId, edit, ct));
+            // A successful resubmit never leaves the event Approved; a refusal preserves it.
+            if (result.ErrorKey is null) _eventCache.Invalidate(eventId);
+            return result;
         });
 
     public Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default) =>

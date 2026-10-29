@@ -202,10 +202,15 @@ internal sealed class EventService(
             Events: events);
     }
 
-    public async Task<bool> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
+    public async Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default)
     {
-        if (await GetOpenSubmissionSettingsAsync(ct) is not { } settings) return false;
+        if (await GetOpenSubmissionSettingsAsync(ct) is not { } settings) return new("Events_SubmissionWindowClosed");
         await EnsureValidRecurrenceDaysAsync(guideEvent.IsRecurring, guideEvent.RecurrenceDays, ct);
+        if (await repo.GetCategoryAsync(guideEvent.CategoryId, ct) is not { IsActive: true })
+            return new("Events_CategoryUnavailable", nameof(EventEdit.CategoryId));
+        if (guideEvent.CampId is null && (guideEvent.GuideSharedVenueId is not { } venueId
+            || venueId == Guid.Empty || await repo.GetVenueAsync(venueId, ct) is not { IsActive: true }))
+            return new("Events_VenueUnavailable", nameof(EventEdit.VenueId));
         guideEvent.EventSettingsId = settings.EventSettingsId;
         guideEvent.Submit(clock);
         await repo.AddEventAsync(guideEvent, ct);
@@ -213,7 +218,7 @@ internal sealed class EventService(
         // A null actionUrl opts out: bulk import would otherwise send one email per CSV row.
         if (lifecycleActionUrl is not null)
             await SendLifecycleEmailAsync(guideEvent, EventStatus.Pending, reason: null, lifecycleActionUrl);
-        return true;
+        return new();
     }
 
     private async Task SendLifecycleEmailAsync(
@@ -254,13 +259,19 @@ internal sealed class EventService(
         }
     }
 
-    public async Task UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
+    public async Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
     {
         await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct);
+        if (await repo.GetCategoryAsync(edit.CategoryId, ct) is not { IsActive: true })
+            return new("Events_CategoryUnavailable", nameof(EventEdit.CategoryId));
         var guideEvent = await LoadEventAsync(eventId, ct);
+        if (guideEvent.CampId is null && (edit.VenueId is not { } venueId
+            || venueId == Guid.Empty || await repo.GetVenueAsync(venueId, ct) is not { IsActive: true }))
+            return new("Events_VenueUnavailable", nameof(EventEdit.VenueId));
         ApplyEdit(guideEvent, edit);
         guideEvent.Resubmit(clock);
         await repo.SaveEventAsync(guideEvent, ct);
+        return new();
     }
 
     public async Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default)

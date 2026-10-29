@@ -133,4 +133,5 @@
   <data name="Store_UnknownCamp" xml:space="preserve"><value>(campamento desconocido)</value></data>
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(desconocido)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Pedido del campamento</value></data>
+  <data name="Store_PaymentPrecision" xml:space="preserve"><value>Introduce un importe con un máximo de dos decimales.</value></data>
 </root>

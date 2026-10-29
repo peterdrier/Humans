@@ -3,6 +3,6 @@
     ViewData["Title"] = Model.Title;
 }
 
-<h1 class="mb-4">Guide</h1>
+<h1 class="mb-4">@Model.Title</h1>
 
 @await Html.PartialAsync("_GuideLayout", Model)

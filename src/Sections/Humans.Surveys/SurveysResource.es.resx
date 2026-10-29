@@ -417,4 +417,5 @@
   <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Cada pregunta de selección debe tener al menos una opción.</value></data>
   <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Los valores de las opciones de una pregunta de selección no pueden estar vacíos.</value></data>
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Los valores de las opciones de cada pregunta de selección deben ser únicos.</value></data>
+  <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>El mínimo de la valoración no puede superar el máximo.</value></data>
 </root>

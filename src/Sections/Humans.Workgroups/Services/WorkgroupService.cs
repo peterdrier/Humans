@@ -596,8 +596,8 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        if (save.Amount is < 0)
-            return new(Refusal: new(WorkgroupErrorKeys.BudgetNegative));
+        if (ValidateBudgetAmount(save.Amount) is { } budgetRefusal)
+            return new(Refusal: budgetRefusal);
 
         var workgroupResult = await RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
@@ -660,6 +660,14 @@ internal sealed partial class WorkgroupService(
             logger.LogError(ex, "Finance could not resolve a Holded account for workgroup {WorkgroupId}", workgroup.Id);
             return new(Refusal: new(WorkgroupErrorKeys.BudgetAccountFailed));
         }
+    }
+
+    private static WorkgroupRefusal? ValidateBudgetAmount(decimal? amount)
+    {
+        if (amount is < 0) return new(WorkgroupErrorKeys.BudgetNegative);
+        if (amount is { } value && decimal.Round(value, 2) != value)
+            return new("Budget amounts must have no more than two decimal places.") { IsOperatorMessage = true };
+        return null;
     }
 
     // Read in six cultures under the localized "Budget set" badge, so it carries figures only, never English prose.

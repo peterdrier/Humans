@@ -37,7 +37,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/CacheStats/Reset` | POST | Admin | Reset cache statistics |
 | `/Debug/ClientStats` | GET | Admin | Browser/device/status-code telemetry |
 | `/Debug/FormatGallery` | GET | Admin | Date/time formatting reference |
-| `/Debug/Translations` | GET | Admin | Localisation string reference gallery |
+| `/Debug/Translations` | GET | Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total, jump list, and per set its missing-by-language counts and orphan keys |
 | `/Debug/Maintenance` | GET | Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Users` | GET | Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
@@ -73,7 +73,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 - A non-Admin user cannot reach admin-gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (local-only, `Humans.Integration.Tests`).
 - Debug pages cannot change domain state except through a data migration's own Apply, which is admin-only, antiforgery-protected, and audited. Operational writes must stay explicitly named maintenance actions.
 - `/api/data-migrations` never returns row data — no user id, email or legacy value. Pinned by `DataMigrationsTests`.
-- No type in the section may bind `IStringLocalizer<T>` for any `T` but `SharedResource`. Debug carries no resource set of its own - every string is English developer copy - and the one localizer it touches is the shared set read as *data* by `/Debug/Translations`. Enforced by `DebugArchitectureTests`.
+- No type in the section may bind `IStringLocalizer<T>` for any `T` but `SharedResource`. Debug carries no resource set of its own - every string is English developer copy - and the one localizer it binds is the shared set read as *data* by `/Debug/Translations`. That page reads every section's set the same way, through the untyped `IStringLocalizerFactory` and the catalog's `SectionInfo.ResourceType`, never by referencing the section. Enforced by `DebugArchitectureTests`.
 
 ## Triggers
 

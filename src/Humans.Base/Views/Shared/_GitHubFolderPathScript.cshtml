@@ -17,8 +17,13 @@
 
             const [, owner, repo, branch, path] = match;
             const folder = path.replace(/\/+$/, '') + '/';
-            input.value = folder;
-            feedback.innerHTML = '<span class="text-success">Extracted folder: <strong>' + folder + '</strong> from ' + owner + '/' + repo + ' (' + branch + ')</span>';
+            const message = document.createElement('span');
+            message.className = 'text-success';
+            const folderName = document.createElement('strong');
+            folderName.textContent = folder;
+            message.append('Extracted folder: ', folderName, ' from ' + owner + '/' + repo + ' (' + branch + ')');
+            feedback.replaceChildren(message);
+            // Keep the full URL so the server can validate its repository and branch before normalizing it.
         }
 
         input.addEventListener('paste', function () { setTimeout(processInput, 0); });
