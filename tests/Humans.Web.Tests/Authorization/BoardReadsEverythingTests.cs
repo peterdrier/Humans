@@ -25,8 +25,8 @@ public sealed class BoardReadsEverythingTests : IDisposable
     /// <summary>
     /// Writes Board makes by design (Governance, workgroups, legal documents), the onboarding review queue (left as it
     /// stands until it is retired), audited reveals that hand out data and change nothing, and the read-only sync
-    /// preview. Grants, Preapprovals and Surveys check per program and per survey; they move off Board with the
-    /// per-object checks.
+    /// preview. Preapprovals' class gate admits Board to read; its per-program checks deny Board every write (its own
+    /// tests prove that). Grants and Surveys still let Board write until Peter decides who owns those writes.
     /// </summary>
     private static readonly HashSet<string> BoardWritesByDesign = new(StringComparer.Ordinal)
     {

@@ -241,7 +241,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `ExpensesController` | `LineEdit` / `LineProofs` read-only view, `Iban` | Inline submitter check on top of the `Edit` grant (`report.SubmitterUserId == userId`) |
 | `TeamController` | `EditTeam` (POST) `IsSensitive` flag | `authorizationService.AuthorizeAsync(User, PolicyNames.AdminOnly)` — non-Admin posts leave `IsSensitive` unchanged |
 | `StoreController` | Order CRUD/pay/payments | `authService.AuthorizeAsync(User, order, OrderOperationRequirement.*)` (resource-based); `RecordPayment` additionally checks `Refund` when the method is a refund |
-| `PreapprovalsAdminController` | `New`; per-program pages and grant POSTs | `PreapprovalsPolicyHandler.IsManagingRole(User)` (Admin/Board/FinanceAdmin) for `New`; `AuthorizeAsync(User, program, ProgramOperationRequirement.{Manage, Administer})` for the rest (resource-based) |
+| `PreapprovalsAdminController` | `New`; per-program pages and grant POSTs | `FinancePolicies.Manage` on `New`; `AuthorizeAsync(User, program, ProgramOperationRequirement.{View, Manage, Administer})` for the rest (resource-based; Board passes `View` only) |
 | `IssuesController` | All mutating actions | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` (resource-based) |
 | `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)` and lead-of-camp checks; polygon save checks `CampsRoles.IsCampsAdmin(User)`; the container-placement endpoints authorize `ContainerOperationRequirement.Place` |
 | `GovernanceBoardVotingController` | `Detail` | `RoleChecks.IsAdmin(User)` drives the admin view-model flag (Finalize affordance) — the `Finalize` POST itself is attribute-gated `AdminOnly` |
@@ -324,7 +324,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `PreapprovalsAccess` | `PreapprovalsManage` OR anyone with a grant or an open program | Section-local, composite |
 | `ExpenseReportView` | Resource-based (the expense report) | Wraps `ExpenseReportOperationRequirement(View)` — see §6, peterdrier/Humans#1838 |
 
-Grants, Preapprovals and Surveys still let Board act through their per-program and per-survey checks, and the per-object handlers (team admin pages, Google team resources, member email edits, the shift admin page) still admit Board on writes; those move with the per-object checks.
+The per-object handlers (team admin pages, Google team resources, member email edits, the shift admin page, Preapprovals programs) deny Board every write and let it read through the section's Read policy or a `View` operation. Grants and Surveys still let Board act through their per-program and per-survey checks until Peter decides who writes there.
 
 ### Notes on Policy Design
 
@@ -385,7 +385,7 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 | `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs` | 122, 181, 187, 197, 222, 254, 283, 319, 371, 618, 656 | `AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.X))` — `Submit`, `Edit`, `Preview`, `ViewResults` |
 | `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | 448, 451 | `AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.{Administer, Member})` (page permissions) |
 | `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | `ApproveMember`, `DeclineMember`, `AddMember` (`ManageMembersAsync`) | Coordinator-only membership decisions: Board/Admin (`Administer`) or a current coordinator of an Active group, else `Forbid()`; the service re-checks via `RequireCoordinator` (`WorkgroupService.Helpers.cs`) unless `asAdmin` |
-| `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsAdminController.cs` | 174 | `AuthorizeAsync(User, program, ProgramOperationRequirement.{Manage, Administer})` (`AuthorizedAsync` helper — every per-program page and POST) |
+| `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsAdminController.cs` | 174 | `AuthorizeAsync(User, program, ProgramOperationRequirement.{View, Manage, Administer})` (`AuthorizedAsync` helper — every per-program page and POST) |
 | `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsController.cs` | 38 | `AuthorizeAsync(User, PreapprovalsPolicies.Manage)` (the Manage button on the member page) |
 | `src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs` | 184, 222, 273, 315, 352, 372, 428, 503, 527, 565, 591, 761, 787, 831 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (the email-edit endpoints) |
 | `src/Sections/Humans.Tickets/ViewComponents/OnsiteChipViewComponent.cs` | 25 | `AuthorizeAsync(UserClaimsPrincipal, TicketsPolicies.Read)` (onsite-chip visibility gate for a non-self viewer) |

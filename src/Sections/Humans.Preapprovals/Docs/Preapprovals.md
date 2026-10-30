@@ -23,7 +23,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 - A **Grant** is one person pre-approved under a program for one amount (`MaxAmount`). A
   grant in `Applied` is a member's request for one; the row is the same.
 - A **Manager** is a person who issues, approves, declines and revokes grants in one
-  program. Named per program by the Board, a finance admin or an admin.
+  program. Named per program by a finance admin or an admin.
 - The **claim deadline** (`ClaimBy`, Europe/Madrid date) is when expense reports against the
   program's grants must be submitted. Checked at submit; nothing runs when it passes.
 - **Kind** decides sizing: `FixedPerPerson` (every grant is the program's amount) or
@@ -116,7 +116,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 | Member with a grant | See own grants on `/Preapprovals`; file an expense against an Open one before the deadline. |
 | Any member while a program accepts applications | All of the above. Additionally apply for a pre-approval; a second submit edits the pending one. |
 | Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. In Expenses, does the first review (endorse, reject, decline a line) of reports filed against their programs' grants. |
-| Board, FinanceAdmin, Admin | All of the above on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
+| Board | Sees every program and its grants on the admin pages; changes nothing. |
+| FinanceAdmin, Admin | All of the program manager's actions on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
 
 ## Invariants
 

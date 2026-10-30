@@ -27,12 +27,13 @@ internal sealed class TeamResourcesController(
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug)
     {
-        var (error, _, team) = await ResolveManageableTeamAsync(slug, HttpContext.RequestAborted);
+        var (error, _, team) = await ResolveManageableTeamAsync(slug, HttpContext.RequestAborted, allowTeamsReaders: true);
         if (error is not null)
         {
             return error;
         }
 
+        var canManage = (await authorizationService.AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)).Succeeded;
         var resources = await teamResources.GetTeamResourcesAsync(team.Id, HttpContext.RequestAborted);
         var serviceAccountEmail = await teamResources.GetServiceAccountEmailAsync(HttpContext.RequestAborted);
 
@@ -41,6 +42,7 @@ internal sealed class TeamResourcesController(
             TeamId = team.Id,
             TeamName = team.Name,
             TeamSlug = team.Slug,
+            CanManage = canManage,
             ServiceAccountEmail = serviceAccountEmail,
             Resources = resources.OrderBy(r => r.ProvisionedAt).Select(r => new GoogleResourceViewModel
             {
@@ -241,9 +243,12 @@ internal sealed class TeamResourcesController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    /// <summary>Current user, then team by slug (404), then the manage-resources gate (403).</summary>
+    /// <summary>
+    /// Current user, then team by slug (404), then the manage-resources gate (403). With
+    /// <paramref name="allowTeamsReaders"/>, Teams readers (Board) pass the gate to view.
+    /// </summary>
     private async Task<(IActionResult? Error, UserInfo User, TeamInfo Team)> ResolveManageableTeamAsync(
-        string slug, CancellationToken ct = default)
+        string slug, CancellationToken ct = default, bool allowTeamsReaders = false)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync(ct);
         if (currentUserNotFound is not null)
@@ -260,7 +265,8 @@ internal sealed class TeamResourcesController(
             return (NotFound(), user, null!);
         }
 
-        if (!(await authorizationService.AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)).Succeeded)
+        if (!(await authorizationService.AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)).Succeeded
+            && !(allowTeamsReaders && (await authorizationService.AuthorizeAsync(User, TeamsPolicies.Read)).Succeeded))
         {
             return (Forbid(), user, team);
         }

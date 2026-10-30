@@ -9,7 +9,7 @@
 | `ProfileEmailsController.AdminAddVerifiedEmail` (`{id:guid}/Admin/Emails/AddVerified`) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileEmailsController.AdminVerifyEmail` (`{id:guid}/Admin/Emails/Verify`) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `UsersAdminController` | Class | `UsersAdmin, Board, Admin` | `UsersPolicies.Read` (class-level — `AdminList`, `AdminDetail` inherit); `SuspendHuman`, `UnsuspendHuman`, `RejectSignup` carry `UsersPolicies.Manage` (`UsersAdmin, Admin`) |
-| `ProfileEmailsController` email-action runtime guards | In-method | `authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` — every mutating `Me/Emails/*` and `{id}/Admin/Emails/*` action plus `Me/LinkedAccounts/Unlink` and the `{id}/Admin/Emails` GET, except the `AdminOnly` overrides above. The Google column's `/Google/WorkspaceEmail` and `/Google/Admin/{id}/WorkspaceEmail` are GoogleIntegration's `WorkspaceIdentityController` (Users decomposition commit 15; see that section's authorization.md) | Resource-based (see handler below) |
+| `ProfileEmailsController` email-action runtime guards | In-method | `authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` — every mutating `Me/Emails/*` and `{id}/Admin/Emails/*` action plus `Me/LinkedAccounts/Unlink`, except the `AdminOnly` overrides above. The `{id}/Admin/Emails` GET checks `UserEmailOperations.View`, which also admits Board; the view hides every edit control unless the viewer passes `UsersPolicies.Manage`. The Google column's `/Google/WorkspaceEmail` and `/Google/Admin/{id}/WorkspaceEmail` are GoogleIntegration's `WorkspaceIdentityController` (Users decomposition commit 15; see that section's authorization.md) | Resource-based (see handler below) |
 | `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileApiController.Search` | Action | `[Authorize]` inherited (`[HttpGet("search")]`) | — (people search; admin bit never set on this endpoint) |
 | `ProfileApiController.BurnerNameCount` | Action | `[Authorize]` inherited (`[HttpGet("burner-name-count")]`) | — (excludes the authenticated viewer; self-exclusion uses session identity, not a caller-supplied id) |
@@ -23,5 +23,5 @@
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
-| `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`Edit`) | `Guid` (target user id) | `Authorization/UserEmailAuthorizationHandler.cs` (registered in `Section.cs`) |
+| `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`View`: self, UsersAdmin, Admin, Board; `Edit`: self, UsersAdmin, Admin) | `Guid` (target user id) | `Authorization/UserEmailAuthorizationHandler.cs` (registered in `Section.cs`) |
 | `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | none (role check: UsersAdmin but not Admin/Board) | `Authorization/HumanAdminOnlyHandler.cs` (registered in `Section.cs`; backs `UsersPolicies.UsersAdminOnly`, which has no `[Authorize(Policy=...)]` call site yet) |

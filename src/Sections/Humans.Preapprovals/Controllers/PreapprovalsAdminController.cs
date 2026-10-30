@@ -35,32 +35,31 @@ internal sealed class PreapprovalsAdminController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var canAdminister = PreapprovalsPolicyHandler.IsManagingRole(User);
         var programs = await preapprovals.GetProgramsAsync(ct);
-        if (!canAdminister)
+        if (!(await authorization.AuthorizeAsync(User, FinancePolicies.Read)).Succeeded)
             programs = programs.Where(p => p.IsManager(user.Id)).ToList();
         return View(new AdminIndexViewModel
         {
             Today = Today,
             Programs = programs.OrderBy(p => p.Status).ThenBy(p => p.ClaimBy).ToList(),
-            CanAdminister = canAdminister
+            CanAdminister = (await authorization.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
         });
     }
 
     [HttpGet("New")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> New(CancellationToken ct)
     {
-        if (!PreapprovalsPolicyHandler.IsManagingRole(User)) return Forbid();
         return View("Form", await FillAsync(new ProgramFormViewModel { ClaimBy = Today.PlusMonths(6) }, ct));
     }
 
     [HttpPost("New")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> New(ProgramFormViewModel model, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!PreapprovalsPolicyHandler.IsManagingRole(User)) return Forbid();
         if (!ModelState.IsValid) return View("Form", await FillAsync(model, ct));
 
         var result = await preapprovals.CreateProgramAsync(model.ToSave(), user.Id, ct);
@@ -77,7 +76,7 @@ internal sealed class PreapprovalsAdminController(
     [HttpGet("{programId:guid}")]
     public async Task<IActionResult> Program(Guid programId, CancellationToken ct)
     {
-        var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Manage, ct);
+        var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.View, ct);
         if (forbidden is not null) return forbidden;
 
         var ids = program!.Grants.Select(g => g.BeneficiaryUserId)
@@ -87,7 +86,8 @@ internal sealed class PreapprovalsAdminController(
         {
             Program = program,
             Today = Today,
-            CanAdminister = PreapprovalsPolicyHandler.IsManagingRole(User),
+            CanAdminister = (await authorization.AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)).Succeeded,
+            CanManage = (await authorization.AuthorizeAsync(User, program, ProgramOperationRequirement.Manage)).Succeeded,
             People = await UserService.GetUserInfosAsync(ids, ct)
         });
     }

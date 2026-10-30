@@ -952,9 +952,6 @@ internal sealed class TeamService(
         var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
         if (isAdmin) return true;
 
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
-        if (isBoardMember) return true;
-
         var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
         if (isTeamsAdmin) return true;
 

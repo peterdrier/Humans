@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Http;
 namespace Humans.GoogleIntegration.Authorization;
 
 /// <summary>
-/// TeamsAdmin, Board and Admin manage any team; anyone else needs the manage check on the team's department, so
-/// sub-team coordinators do not pass. Handlers get no token, so the read uses the request's cancellation.
+/// TeamsAdmin and Admin manage any team; anyone else needs the manage check on the team's department, so sub-team
+/// coordinators do not pass. Board reads the page through Teams' Read policy and manages nothing. Handlers get no token, so the read uses the request's cancellation.
 /// </summary>
 internal sealed class TeamResourceAuthorizationHandler(
     ITeamResourceService teamResources,
@@ -21,7 +21,7 @@ internal sealed class TeamResourceAuthorizationHandler(
         TeamResourceManageRequirement requirement,
         TeamInfo resource)
     {
-        if (TeamsRoles.IsTeamsAdminBoardOrAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdmin(context.User) || RoleChecks.IsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;

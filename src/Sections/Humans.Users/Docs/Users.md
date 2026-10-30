@@ -598,8 +598,8 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/Me/Emails/ClearPrimary` | POST — self-recovery: drop a single row's `IsPrimary` flag (only surfaced in UI on N>1 violation; auth is self-or-admin). The Google column's Set form posts to GoogleIntegration's `/Google/WorkspaceEmail` |
 | `/Profile/Me/Emails/Link/{provider}`, `/Profile/Me/Emails/Unlink/{id}` | POST — start an OAuth link for the signed-in user / unlink a provider-attached row |
 | `/Profile/Me/LinkedAccounts/Unlink` | POST — unlink by `(provider, providerKey)`; enforces the auth-method invariant server-side |
-| `/Profile/{id}/Admin/Emails` | Per-user email diagnostic (`UserEmailOperations.Edit`) |
-| `/Profile/{id}/Admin/Emails/Add`, `/SetPrimary`, `/SetVisibility`, `/Delete`, `/Unlink/{emailId}` | POST — admin mirrors of the self-service email edits |
+| `/Profile/{id}/Admin/Emails` | Per-user email diagnostic (`UserEmailOperations.View`: self, UsersAdmin, Admin, Board; Board sees it with every edit control hidden) |
+| `/Profile/{id}/Admin/Emails/Add`, `/SetPrimary`, `/SetVisibility`, `/Delete`, `/Unlink/{emailId}` | POST — admin mirrors of the self-service email edits (`UserEmailOperations.Edit`: self, UsersAdmin, Admin) |
 | `/Profile/{id}/Admin/Emails/ClearPrimary` | POST — admin remediation: drop a single row's flag without auto-promoting a successor. The admin Google column posts to GoogleIntegration's `/Google/Admin/{id}/WorkspaceEmail` |
 | `/Profile/{id}/Admin/Emails/AddVerified` | POST (`PolicyNames.AdminOnly`) — add an address already verified |
 | `/Profile/{id}/Admin/Emails/Verify` | POST (`PolicyNames.AdminOnly`) — mark a pending plain UserEmail row verified without consuming a token; creates a merge request when the address is already verified on another account |

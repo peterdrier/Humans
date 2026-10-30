@@ -232,6 +232,10 @@ internal sealed class TeamMembersViewModel
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
     public bool IsSystemTeam { get; set; }
+
+    /// <summary>False for Board, which reads the page and changes nothing.</summary>
+    public bool CanManage { get; set; }
+
     public List<TeamMemberViewModel> Members { get; set; } = [];
 
     /// <summary>
