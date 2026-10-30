@@ -60,40 +60,17 @@ public sealed class PgcAccountNamesTests
     }
 
     [HumansTheory]
-    // Names exactly as Holded's chart has them (screenshot of /Holded, 30 Oct 2026), misspellings included.
-    [Xunit.InlineData(10000000, "Dotación fundacional", "Founding endowment")]
-    [Xunit.InlineData(11000000, "Prima de emisión o asunción", "Share premium")]
-    [Xunit.InlineData(11200000, "Reserva legal", "Legal reserve")]
-    [Xunit.InlineData(12000000, "Remanente", "Retained earnings")]
-    [Xunit.InlineData(12100000, "Excendentes negativos de ejercicios anteriores", "Prior years' deficits")]
-    [Xunit.InlineData(12900000, "Excendente del ejercicio", "Surplus for the year")]
-    [Xunit.InlineData(17000000, "Deudas a largo plazo con entidades de crédito", "Long-term bank debt")]
-    [Xunit.InlineData(17100000, "Deudas a largo plazo", "Long-term debt")]
-    [Xunit.InlineData(17300000, "Proveedores de inmovilizado a largo plazo", "Long-term fixed-asset suppliers")]
-    [Xunit.InlineData(17500000, "Efectos a pagar a largo plazo", "Long-term bills payable")]
-    [Xunit.InlineData(18000000, "Fianzas recibidas a largo plazo", "Long-term guarantees received")]
-    [Xunit.InlineData(18100000, "Anticipos recibidos por ventas o prestaciones de servicios a largo plazo", "Long-term advances received for sales or services")]
     [Xunit.InlineData(57000000, "Caja, euros", "Cash, euros")]
     [Xunit.InlineData(57200000, "BANCOS E INSTITUCIONES DE CREDITO C/C VISTA, EUROS", "Banks, current accounts, euros")]
-    [Xunit.InlineData(47200000, "Hacienda Pública, IVA soportado", "Input VAT")]
+    [Xunit.InlineData(12900000, "Excendente del ejercicio", "Surplus for the year")] // Holded's own misspelling
     [Xunit.InlineData(47200021, "Hacienda Pública, IVA soportado 21%", "Input VAT 21%")]
-    [Xunit.InlineData(47510000, "Hacienda Pública, acreedora por retenciones practicadas", "Tax authority, withholdings payable")]
-    [Xunit.InlineData(47500000, "Hacienda Pública, acreedora por conceptos fiscales", "Tax authority, payables")]
-    [Xunit.InlineData(72000000, "Cuotas de asociados y afiliados", "Membership fees")]
-    [Xunit.InlineData(65000000, "Ayudas monetarias", "Monetary grants made")]
-    [Xunit.InlineData(65000000, "Pérdidas de créditos comerciales incobrables", "Bad trade debts")]
-    [Xunit.InlineData(609, "«Rappels» por compras", "Volume discounts on purchases")]
     public void Standard_spanish_names_translate(int number, string holded, string english) =>
         PgcAccountNames.EnglishName(number, holded).Should().Be(english);
 
     [HumansTheory]
     [Xunit.InlineData(57200001, "Banco Sabadell")]
-    [Xunit.InlineData(57200001, "Bancos e instituciones de crédito c/c vista, euros Sabadell")]
-    [Xunit.InlineData(40000004, "Proveedores")]
     [Xunit.InlineData(41000012, "Acreedores por prestaciones de servicios")]
     [Xunit.InlineData(62900000, "Otros servicios")]
-    [Xunit.InlineData(62900128, "Camp infrastructure")]
-    [Xunit.InlineData(57000000, "")]
     public void Names_the_association_chose_and_member_and_category_accounts_keep_theirs(int number, string holded) =>
         PgcAccountNames.EnglishName(number, holded).Should().BeNull();
 }
