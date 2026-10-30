@@ -32,7 +32,7 @@ public sealed class LowIncomeAdminControllerTests
             _actor, "Admin", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
             null, null, null, [], [], [],
-            UserFixtures.Profile(burnerName: "Admin", membershipTier: LegacyMembershipTier.Volunteer), [])));
+            UserFixtures.Profile(burnerName: "Admin"), [])));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

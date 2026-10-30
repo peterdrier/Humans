@@ -83,7 +83,6 @@ internal static class UserInfoFactory
             BoardNotes: profile.BoardNotes,
             Iban: profile.Iban,
             IsApproved: profile.IsApproved,
-            MembershipTier: profile.MembershipTier,
             ConsentCheckStatus: profile.ConsentCheckStatus,
             ConsentCheckAt: profile.ConsentCheckAt,
             ConsentCheckedByUserId: profile.ConsentCheckedByUserId,

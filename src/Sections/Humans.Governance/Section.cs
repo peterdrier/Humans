@@ -39,7 +39,6 @@ public sealed class Section :
     ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionChrome,
-    ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
     ISectionMemberDashboard,
@@ -191,29 +190,6 @@ public sealed class Section :
             new(ChromeSlots.AdminDashboard, typeof(TierApplicationsCardViewComponent), Weight: 30),
             new(ChromeSlots.WidgetGallery, typeof(GovernanceGalleryViewComponent)),
         ];
-
-    internal const string ProfileTierKey = "governance.profile-tier";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(ProfileTierKey, "Governance",
-            "Copy each Colaborador/Asociado tier from profiles.MembershipTier into governance_membership_tiers",
-            "MembershipTierService's legacy fallback, ProfileInfo.MembershipTier and LegacyMembershipTier; then a drop PR for profiles.MembershipTier",
-            StatusAsync, ApplyAsync),
-    ];
-
-    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Tier", "Granted", "Term ends", "Granting application"],
-            [.. (await sp.GetRequiredService<MembershipTierService>().GetUncopiedLegacyTiersAsync(ct))
-                .Select(r => (IReadOnlyList<string>)[
-                    r.UserId.ToString(),
-                    r.Tier.ToString(),
-                    r.GrantedAt.ToIso8601(),
-                    r.ExpiresAt.ToInvariantDate() ?? string.Empty,
-                    r.GrantedByApplicationId?.ToString() ?? string.Empty])]);
-
-    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<MembershipTierService>().CopyLegacyTiersAsync(ct);
 
     IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => Entries;
 

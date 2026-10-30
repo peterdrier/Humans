@@ -108,7 +108,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
             BoardNotes: null,
             Iban: null,
             IsApproved: false,
-            MembershipTier: LegacyMembershipTier.Volunteer,
             ConsentCheckStatus: null,
             ConsentCheckAt: null,
             ConsentCheckedByUserId: null,

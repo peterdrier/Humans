@@ -396,7 +396,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
 | Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). Carried on `ProfileInfo.Iban` as `[Obsolete]` (`HUM_PROFILE_IBAN`) for Finance's read fallback and the `finance.iban-to-payment-details` copy only; still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
 | IsApproved | bool | false | **Legacy, no longer written.** Moved to Consent's `consent_reviews` (Users decomposition commit 12). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_REVIEW`) for Consent's read fallback and the `consent.profile-review` copy only; still exported and erased here until the column is dropped. |
-| MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** The tier moved to Governance's `governance_membership_tiers` (Users decomposition commit 11). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_TIER`) for Governance's read fallback and the `governance.profile-tier` copy only; still exported here until the column is dropped. |
+| MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** Governance's `governance_membership_tiers` owns the live tier. No longer exposed on `ProfileInfo`; the internal storage enum and legacy GDPR export remain until a separate schema drop. |
 | ConsentCheckStatus | LegacyConsentCheckStatus? | null | Legacy, as `IsApproved`. |
 | ConsentCheckAt | Instant? | null | When consent check was performed. Legacy, as `IsApproved`. |
 | ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check. Legacy, as `IsApproved`. |
@@ -549,7 +549,7 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-Nothing here is written. Except for the retired Cantina fallback, each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 and CENTRAL-91 to CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
+Nothing here is written. Users retains these objects for GDPR export/erase. Owners with a still-registered migration also read them through `[Obsolete]` fields on `UserInfo`/`ProfileInfo` until fallback retirement. Schema drops follow separately. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 and CENTRAL-92 to CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|
@@ -563,11 +563,11 @@ Nothing here is written. Except for the retired Cantina fallback, each row is re
 | `users.LastConsentReminderSentAt` | Consent `consent_reminders` | `consent.reminder-stamps` |
 | `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none |
 
-The `Legacy*` enums (`LegacyMembershipTier`, `LegacyConsentCheckStatus`, `LegacyParticipationStatus`, `LegacyParticipationSource`, `LegacyMessageCategory`, `LegacyGoogleEmailStatus`) die with their retirement PRs.
+The `Legacy*` contract enums (`LegacyConsentCheckStatus`, `LegacyParticipationStatus`, `LegacyParticipationSource`, `LegacyMessageCategory`, `LegacyGoogleEmailStatus`) die with their retirement PRs.
 
 ### LegacyMembershipTier
 
-Frozen copy of Governance's `MembershipTier` (`Volunteer` 0, `Colaborador` 1, `Asociado` 2) typing the legacy `profiles.MembershipTier` column, stored as string via `HasConversion<string>()`. The live enum and its meaning live in Governance.Contracts.
+Internal Users storage enum (`Volunteer` 0, `Colaborador` 1, `Asociado` 2) typing the frozen `profiles.MembershipTier` column, stored as string via `HasConversion<string>()`. It preserves the legacy GDPR export until the column is dropped. The public tier and its meaning live in Governance.Contracts.
 
 ### LegacyParticipationStatus, LegacyParticipationSource
 

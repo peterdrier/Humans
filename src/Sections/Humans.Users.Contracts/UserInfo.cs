@@ -91,8 +91,6 @@ public sealed record ProfileInfo(
     string? Iban,
     [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     bool IsApproved,
-    [property: Obsolete("Moved to Governance's governance_membership_tiers (Users decomposition commit 11). Read IGovernanceService.GetMembershipTierAsync / GetMembershipTiersAsync; the one reader left is Governance's legacy fallback and the governance.profile-tier copy.", DiagnosticId = "HUM_PROFILE_TIER")]
-    LegacyMembershipTier MembershipTier,
     [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
     LegacyConsentCheckStatus? ConsentCheckStatus,
     [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
