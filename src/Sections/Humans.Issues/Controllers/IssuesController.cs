@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +16,7 @@ namespace Humans.Issues.Controllers;
 
 [Authorize]
 [Route("Issues")]
+[AllowBeforeActiveMembership]
 internal sealed class IssuesController(
     IIssuesService issues,
     IAuthorizationService authorization,

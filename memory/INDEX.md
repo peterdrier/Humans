@@ -8,6 +8,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. T
 
 ## architecture/
 
+- [`allow-before-active-membership`](architecture/allow-before-active-membership.md) — When a page or action must work for a signed-in account that is not yet Active (onboarding, status wall, own-profile maintenance), mark it `[AllowBeforeActiveMembership]` in its own section; the Shell's membership gate keeps no list.
 - [`audit-log-as-concurrency-safety-net`](architecture/audit-log-as-concurrency-safety-net.md) — When a reviewer flags a lost-update race on an audited entity, the audit log is the safety net — don't add `IsConcurrencyToken`/row versioning or redesign the repo.
 - [`base-ui-registries-are-section-populated`](architecture/base-ui-registries-are-section-populated.md) — When a Base `Humans.UI` registry (EnumBadgeMap etc.) needs a section's enum, have the section push rows via `Section.Register` — Base never references the section's contracts.
 - [`background-db-work-after-migration-barrier`](architecture/background-db-work-after-migration-barrier.md) — DB-touching background workers (timers/pollers/pre-warmers) must arm in `IHostedService.StartAsync`, never a constructor `Timer` or eager pre-`app.Run()` `GetRequiredService`.

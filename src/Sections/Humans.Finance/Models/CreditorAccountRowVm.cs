@@ -62,8 +62,13 @@ internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorBindingVm> Unresolved,
     string SortBy,
     string SortDir,
-    SepaPayoutSettings Sepa)
+    SepaPayoutSettings Sepa,
+    int? ReconProblems = 0,
+    int ReconWarnings = 0)
 {
+    /// <summary>Null when the expense reconciliation cannot be computed (the document mirror never synced).</summary>
+    public bool ReconUnavailable => ReconProblems is null;
+
     /// <summary>Zero means the check ran and found nothing.</summary>
     public int DuplicateFlaggedAccounts => Accounts.Count(a => a.HasDuplicateDocuments == true);
 

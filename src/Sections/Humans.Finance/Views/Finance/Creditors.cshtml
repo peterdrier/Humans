@@ -22,6 +22,10 @@
            title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
             <i class="fa-solid fa-clone me-1"></i>Duplicate docs
         </a>
+        <a asp-action="ExpenseRecon" class="btn btn-outline-secondary"
+           title="Approved expense lines against the Holded documents and creditor balances.">
+            <i class="fa-solid fa-scale-balanced me-1"></i>Expense recon
+        </a>
         <a href="/Holded" class="btn btn-outline-secondary"
            title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
             <i class="fa-solid fa-rotate me-1"></i>Holded sync
@@ -42,11 +46,37 @@
         <a asp-action="HoldedDuplicates" class="alert-link">Duplicate docs</a>.
     </div>
 }
-else if (Model.DuplicateCheckUnavailable)
+@if (Model.ReconProblems > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-scale-unbalanced me-1"></i>
+        <strong>@Model.ReconProblems expense reconciliation problem@(Model.ReconProblems == 1 ? "" : "s")</strong>:
+        approved expense lines and Holded disagree. Nothing is blocked. See the
+        <a asp-action="ExpenseRecon" class="alert-link">expense reconciliation</a>.
+    </div>
+}
+@if (Model.ReconWarnings > 0)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>@Model.ReconWarnings member balance warning@(Model.ReconWarnings == 1 ? "" : "s")</strong>:
+        a creditor balance differs from what the expense lines and SEPA bookings predict. Advisory only. See the
+        <a asp-action="ExpenseRecon" class="alert-link">expense reconciliation</a>.
+    </div>
+}
+@if (Model.DuplicateFlaggedAccounts == 0 && Model.DuplicateCheckUnavailable)
 {
     <div class="alert alert-warning">
         <i class="fa-solid fa-triangle-exclamation me-1"></i>
         Holded's document list could not be read, so duplicate documents cannot be ruled out; no payout can be generated until it can.
+    </div>
+}
+@if (Model.ReconUnavailable)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        The expense reconciliation cannot be computed: the Holded document mirror has never synced.
+        See the <a asp-action="ExpenseRecon" class="alert-link">expense reconciliation</a>.
     </div>
 }
 

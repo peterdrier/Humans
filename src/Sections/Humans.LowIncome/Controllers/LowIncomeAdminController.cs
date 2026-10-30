@@ -49,7 +49,6 @@ internal sealed class LowIncomeAdminController(
     private static string RefusalMessage(GrantWriteRefusal refusal) => refusal switch
     {
         GrantWriteRefusal.NoOpenProgram => NoProgram,
-        GrantWriteRefusal.SourceReferenceTooLong => "The source reference is too long.",
         GrantWriteRefusal.ReasonTooLong => "The reason is too long.",
         _ => throw new ArgumentOutOfRangeException(nameof(refusal), refusal, "Unknown grant write refusal.")
     };

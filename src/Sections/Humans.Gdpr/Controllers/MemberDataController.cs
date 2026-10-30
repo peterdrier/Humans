@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
@@ -23,6 +24,7 @@ internal sealed class MemberDataController(
 {
     [HttpPost("Gdpr/RequestDeletion")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> RequestDeletion()
     {
         var user = await GetCurrentUserInfoAsync();
@@ -48,6 +50,7 @@ internal sealed class MemberDataController(
 
     [HttpGet("Gdpr/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);

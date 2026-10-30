@@ -1,6 +1,7 @@
 using Humans.Users.Services;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -47,6 +48,7 @@ internal sealed class ProfileEmailsController(
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
     [HttpGet("Me/Emails")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Emails()
     {
         var user = await userManager.GetUserAsync(User);
@@ -59,6 +61,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/Add")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
         var user = await userManager.GetUserAsync(User);
@@ -170,6 +173,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/SetPrimary")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> SetPrimary(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -202,6 +206,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/SetVisibility")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -247,6 +252,7 @@ internal sealed class ProfileEmailsController(
             relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/Delete")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -282,6 +288,7 @@ internal sealed class ProfileEmailsController(
             relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/ClearPrimary")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> ClearPrimary(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -313,6 +320,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/Link/{provider}")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -333,6 +341,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/Unlink/{id:guid}")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Unlink(Guid id, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -379,6 +388,7 @@ internal sealed class ProfileEmailsController(
     // Keyed by (Provider, ProviderKey); the auth-method invariant is enforced server-side.
     [HttpPost("Me/LinkedAccounts/Unlink")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> UnlinkLinkedAccount(string provider, string providerKey, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))

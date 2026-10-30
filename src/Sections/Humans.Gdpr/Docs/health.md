@@ -147,8 +147,8 @@ cancel-deletion actions map the same failure differently (finding-level, see the
   `AddScoped<IUserDataContributor>` registrations each data-owning section makes. The
   architecture working as designed.
 - **`UserController` is named for the routes it took over, not for Users.** It is the
-  membership filter's redirect target by controller name, so a rename moves
-  `MembershipRequiredFilter`'s exemption list with it.
+  membership filter's redirect target by controller name (`RedirectToActionResult("Status", "User")`
+  in the Shell), so a rename changes that redirect too.
 - **`MailerLiteSubscriber` is an erasure-only portion name.** MailerLite owns no
   user-scoped table, so it never exports the key.
 
