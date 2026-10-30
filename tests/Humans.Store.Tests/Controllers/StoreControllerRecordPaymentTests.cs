@@ -220,7 +220,7 @@ public sealed class StoreControllerRecordPaymentTests
         result.Should().BeOfType<ForbidResult>();
         await _repo.DidNotReceive().DeletePaymentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.StorePaymentDeleted, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            StoreAuditActions.StorePaymentDeleted, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -251,7 +251,7 @@ public sealed class StoreControllerRecordPaymentTests
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).DeletePaymentAsync(mistaken.Id, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.StorePaymentDeleted, AuditEntityTypes.Payment, mistaken.Id,
+            StoreAuditActions.StorePaymentDeleted, AuditEntityTypes.Payment, mistaken.Id,
             Arg.Is<string>(d => d.Contains("Refund") && d.Contains("-3.00") && d.Contains("Paid")
                 && d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
                 && d.Contains(recorder.ToString()) && d.Contains("wrong order")),
@@ -294,7 +294,7 @@ public sealed class StoreControllerRecordPaymentTests
         };
         (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
         controller.TempData["ErrorMessage"].Should().BeNull();
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansTheory]

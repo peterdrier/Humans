@@ -80,7 +80,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
             .Select(r => r.RoleName).Should().Equal(RoleNames.Board);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.RoleAssigned, nameof(User), userId,
+            AuthAuditActions.RoleAssigned, nameof(User), userId,
             Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
             assignerId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -103,7 +103,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
         await AuditLog.Received(1).LogAsync(
-            AuditAction.RoleEnded, nameof(User), userId,
+            AuthAuditActions.RoleEnded, nameof(User), userId,
             Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
             enderId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }

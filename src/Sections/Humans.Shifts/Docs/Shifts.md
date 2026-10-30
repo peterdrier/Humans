@@ -181,7 +181,7 @@ Selected routes:
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
 | `POST /Shifts/Mine/Availability` | Save general availability |
 | `POST /Shifts/Preferences/Tags` | Save volunteer tag preferences |
-| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, the four build sub-period starts, each `-365 ≤ start`; audited as `EventSettingsUpdated` with the actor) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
+| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, the four build sub-period starts, each `-365 ≤ start`; audited as `ShiftSettingsUpdated` with the actor) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
 | `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
 | `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftDepartmentManager` policy) |
 | `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |
@@ -417,6 +417,7 @@ section and is not on the leaf.
 
 ### Outbound
 
+- **Audit actions:** declared on `ShiftsAuditActions` (`src/Sections/Humans.Shifts/ShiftsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `ShiftSignupConfirmed`, `ShiftSignupRefused`, `ShiftSignupVoluntold`, `ShiftSignupBailed`, `ShiftSignupNoShow`, `ShiftSignupCancelled`, `RotaMovedToTeam`, `ShiftSignupCreated`, `ShiftSignupReassigned`, `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayOffMarked`, `VolunteerDayOffCleared`, `CoordinatorRotaMessageSent`, `CoordinatorTeamRotasMessageSent`, `VolunteerAvailabilitySet`, `VolunteerAvailabilityCleared`, `VolunteerTrackingExported`, `ShiftSettingsUpdated`, `MedicalConditionsRevealed`.
 - **Search (downstream consumer):** the global `/Search` page renders every rota hit through this section's own public `<vc:shifts-search-result rota-id>`, which reads the rota via `IShiftService.GetRotaAsync` (per-rota cache) and stitches the owning team's name itself. Both display reads receive request cancellation so abandoning search can cancel a cold load. `RotaSearchHit` is `(RotaId, Name, Score)` — Search passes the id and no display fields (nobodies-collective/Humans#1062). `GetRotaAsync` applies no visibility filter: the id came from a filtered search and the destination page enforces access (nobodies-collective/Humans#985). Shifts does not depend on Search.
 - **Teams:** `ITeamService` — rotas belong to a department or sub-team. Used for `GetTeamsAsync`, `GetTeamAsync`, `GetTeamBySlugAsync`, `GetUserCoordinatedTeamIdsAsync`. Coordinator status determines shift management access.
 - **Users:** `IUserService` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.

@@ -45,11 +45,13 @@ internal sealed class CampController(
 
         var user = await GetCurrentUserInfoAsync(ct);
         var settings = await _campService.GetSettingsAsync(ct);
-        var year = settings.PublicYear;
-        var camps = await _campService.GetCampsForYearAsync(year, ct);
+        var activeEventId = settings.ActiveEventSettingsId;
+        var camps = activeEventId is { } eventId
+            ? await _campService.GetCampsForEventAsync(eventId, ct)
+            : [];
 
-        var roleSummaries = filters?.ShowLeadPositions == true
-            ? await campRoleService.GetDirectoryRoleSummariesAsync(year, ct)
+        var roleSummaries = filters?.ShowLeadPositions == true && activeEventId is not null
+            ? await campRoleService.GetDirectoryRoleSummariesAsync(activeEventId.Value, ct)
             : null;
 
         var leadCampIds = user is null
@@ -58,7 +60,7 @@ internal sealed class CampController(
 
         var directoryCards = ApplyDirectoryFilters(
             camps
-                .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
+                .Select(camp => new { Camp = camp, Season = camp.Seasons.FirstOrDefault() })
                 .Where(row => row.Season is { IsPublic: true })
                 .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries)),
             filters);
@@ -73,7 +75,7 @@ internal sealed class CampController(
         {
             myCamps = camps
                 .Where(camp => leadCampIds.Contains(camp.Id))
-                .Select(camp => new { Camp = camp, Season = camp.GetSeasonForYear(year) })
+                .Select(camp => new { Camp = camp, Season = camp.Seasons.FirstOrDefault() })
                 .Where(row => row.Season is { IsPublic: false })
                 .Select(row => MapCampCard(row.Camp, row.Season!, roleSummaries))
                 .Where(card => cards.All(publicCard => publicCard.Id != card.Id))
@@ -82,11 +84,11 @@ internal sealed class CampController(
 
         ViewBag.PendingCount = camps
             .SelectMany(camp => camp.Seasons)
-            .Count(season => season.Year == year && season.Status == CampSeasonStatus.Pending);
+            .Count(season => season.Status == CampSeasonStatus.Pending);
 
         var viewModel = new CampIndexViewModel
         {
-            Year = year,
+            Year = settings.ActiveEvent?.Year ?? settings.PublicYear,
             Camps = cards,
             MyCamps = myCamps,
             Filters = filters ?? new CampFilterViewModel()
@@ -156,10 +158,12 @@ internal sealed class CampController(
             : []
         };
 
-    private async Task PopulateRegisterSeasonYearAsync(CancellationToken ct = default)
+    /// <summary>New camps register for the open event with the latest gate opening; null when none is open.</summary>
+    private async Task<CampEventRegistration?> PopulateRegisterSeasonYearAsync(CancellationToken ct = default)
     {
-        var settings = await _campService.GetSettingsAsync(ct);
-        ViewData["SeasonYear"] = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
+        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
+        ViewData["SeasonYear"] = registrationEvent?.Year ?? 0;
+        return registrationEvent;
     }
 
     private async Task PopulateRegistrationInfoAsync(CancellationToken ct = default)
@@ -176,7 +180,9 @@ internal sealed class CampController(
             return NotFound();
 
         var settings = await _campService.GetSettingsAsync(ct);
-        var season = camp.GetSeasonForYear(settings.PublicYear, fallbackToLatestSeason: true);
+        var season = settings.ActiveEventSettingsId is { } activeEventId
+            ? camp.GetSeasonForEvent(activeEventId, fallbackToLatestSeason: true)
+            : camp.Active;
         if (season is null)
             return NotFound();
 
@@ -188,59 +194,60 @@ internal sealed class CampController(
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
             return NotFound();
 
-        var membership = ResolveCurrentUserMembershipState(camp, currentUser);
+        var membership = ResolveCurrentUserMembershipState(camp, currentUser, settings.ActiveEventSettingsId);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(
-            camp, season, isLead, isCampAdmin, membership, settings.PublicYear,
+            camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
             _clock.GetCurrentInstant().InUtc().Date);
         await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
         return View(vm);
     }
 
     [AllowAnonymous]
-    [HttpGet("{slug}/Season/{year:int}")]
-    public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken ct)
+    [HttpGet("{slug}/Season/{eventSettingsId:guid}")]
+    public async Task<IActionResult> SeasonDetails(string slug, Guid eventSettingsId, CancellationToken ct)
     {
-        var camp = (await _campService.GetCampsForYearAsync(year, ct))
+        var camp = (await _campService.GetCampsForEventAsync(eventSettingsId, ct))
             .FirstOrDefault(c => string.Equals(c.Slug, slug, StringComparison.OrdinalIgnoreCase));
         if (camp is null)
             return NotFound();
 
-        var season = camp.GetSeasonForYear(year);
+        var season = camp.GetSeasonForEvent(eventSettingsId);
         if (season is null)
             return NotFound();
 
         var settings = await _campService.GetSettingsAsync(ct);
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        // Authorize against the slug-loaded camp, not the year projection above: the
-        // projection carries only the requested year's season, and an opted-in renewal
+        // Authorize against the slug-loaded camp, not the event projection above: the
+        // projection carries only the requested event's season, and an opted-in renewal
         // season starts with no lead assignments — the camp's leads are only visible
         // on its earlier seasons.
         var fullCamp = await GetCampBySlugAsync(slug, ct) ?? camp;
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(fullCamp, currentUser);
 
-        // Same non-public-season gate as Details, for arbitrary-year seasons.
+        // Same non-public-season gate as Details, for any event's season.
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
             return NotFound();
-        var membership = ResolveCurrentUserMembershipState(camp, currentUser);
+        var membership = ResolveCurrentUserMembershipState(camp, currentUser, settings.ActiveEventSettingsId);
         await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(
-            camp, season, isLead, isCampAdmin, membership, settings.PublicYear,
+            camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
             _clock.GetCurrentInstant().InUtc().Date);
         await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
 
-    private static CampMembershipStateViewModel ResolveCurrentUserMembershipState(CampInfo camp, UserInfo? currentUser)
+    private static CampMembershipStateViewModel ResolveCurrentUserMembershipState(
+        CampInfo camp, UserInfo? currentUser, Guid? activeEventSettingsId)
     {
-        if (currentUser is null)
+        if (currentUser is null || activeEventSettingsId is null)
         {
             return new CampMembershipStateViewModel { Status = CampMemberStatusSummaryView.NoOpenSeason };
         }
 
-        var state = camp.GetMembershipState(currentUser.Id);
+        var state = camp.GetMembershipState(currentUser.Id, activeEventSettingsId.Value);
         var status = state.Status switch
         {
             CampMemberStatusSummary.Active => CampMemberStatusSummaryView.Active,
@@ -333,8 +340,7 @@ internal sealed class CampController(
     [HttpGet("Register")]
     public async Task<IActionResult> Register()
     {
-        await PopulateRegisterSeasonYearAsync(HttpContext.RequestAborted);
-        if ((int?)ViewData["SeasonYear"] == 0)
+        if (await PopulateRegisterSeasonYearAsync(HttpContext.RequestAborted) is null)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
@@ -364,9 +370,8 @@ internal sealed class CampController(
             return currentUserError;
         }
 
-        var settings = await _campService.GetSettingsAsync();
-        var year = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
-        if (year == 0)
+        var registrationEvent = (await _campService.GetSettingsAsync()).OpenEvents.FirstOrDefault();
+        if (registrationEvent is null)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
@@ -393,11 +398,12 @@ internal sealed class CampController(
                 model.TimesAtNowhere,
                 MapToSeasonData(model),
                 historicalNames,
-                year);
+                registrationEvent.EventSettingsId);
 
             if (camp.ErrorKey is { } key)
             {
-                logger.LogWarning("Camp registration refused for user {UserId}, year {Year}: {ErrorKey}", user.Id, year, key);
+                logger.LogWarning("Camp registration refused for user {UserId}, event {EventSettingsId}: {ErrorKey}",
+                    user.Id, registrationEvent.EventSettingsId, key);
                 ModelState.AddModelError(string.Empty, campsLocalizer[key, model.Name].Value);
                 await PopulateRegisterSeasonYearAsync();
                 await PopulateRegistrationInfoAsync();
@@ -408,7 +414,8 @@ internal sealed class CampController(
         }
         catch (DbUpdateException ex)
         {
-            logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
+            logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in event {EventSettingsId}",
+                user.Id, registrationEvent.EventSettingsId);
             ModelState.AddModelError(string.Empty, campsLocalizer["Camps_Flash_RegistrationFailed"].Value);
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
@@ -418,7 +425,7 @@ internal sealed class CampController(
 
     [Authorize]
     [HttpGet("{slug}/Edit")]
-    public async Task<IActionResult> Edit(string slug, int? year, CancellationToken ct)
+    public async Task<IActionResult> Edit(string slug, Guid? eventSettingsId, CancellationToken ct)
     {
         var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
@@ -426,7 +433,7 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        var editData = await _campService.GetCampEditDataAsync(camp.Id, year, ct);
+        var editData = await _campService.GetCampEditDataAsync(camp.Id, eventSettingsId, ct);
         if (editData is null)
         {
             SetError(campsLocalizer["Camps_Flash_NoSeason"].Value);
@@ -440,7 +447,7 @@ internal sealed class CampController(
 
     [Authorize]
     [HttpGet("{slug}/Edit/Members")]
-    public async Task<IActionResult> Members(string slug, int? year, CancellationToken ct)
+    public async Task<IActionResult> Members(string slug, Guid? eventSettingsId, CancellationToken ct)
     {
         var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
@@ -448,7 +455,7 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        var editData = await _campService.GetCampEditDataAsync(camp.Id, year, ct);
+        var editData = await _campService.GetCampEditDataAsync(camp.Id, eventSettingsId, ct);
         if (editData is null)
         {
             SetError(campsLocalizer["Camps_Flash_NoSeason"].Value);
@@ -610,9 +617,9 @@ internal sealed class CampController(
     }
 
     [Authorize]
-    [HttpPost("{slug}/OptIn/{year:int}")]
+    [HttpPost("{slug}/OptIn/{eventSettingsId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> OptIn(string slug, int year)
+    public async Task<IActionResult> OptIn(string slug, Guid eventSettingsId)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
@@ -620,18 +627,21 @@ internal sealed class CampController(
             return errorResult;
         }
 
-        var result = await _campService.OptInToSeasonAsync(camp.Id, year, actorUserId: user.Id);
+        var eventName = (await _campService.GetSettingsAsync()).Events
+            .FirstOrDefault(e => e.EventSettingsId == eventSettingsId)?.EventName ?? string.Empty;
+        var result = await _campService.OptInToSeasonAsync(camp.Id, eventSettingsId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
-            logger.LogWarning("Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}: {ErrorKey}", camp.Id, slug, year, key);
-            SetError(campsLocalizer[key, year].Value);
+            logger.LogWarning("Camp opt-in failed for camp {CampId}, slug {Slug}, and event {EventSettingsId}: {ErrorKey}",
+                camp.Id, slug, eventSettingsId, key);
+            SetError(campsLocalizer[key, eventName].Value);
         }
         else
         {
-            SetSuccess(campsLocalizer["Camps_Flash_OptedIn", year].Value);
+            SetSuccess(campsLocalizer["Camps_Flash_OptedIn", eventName].Value);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug, year });
+        return RedirectToAction(nameof(Edit), new { slug, eventSettingsId });
     }
 
     [Authorize]
@@ -987,7 +997,7 @@ internal sealed class CampController(
     [Authorize]
     [HttpPost("{slug}/Members/Add")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddMember(string slug, Guid userId, CancellationToken ct, int? year = null)
+    public async Task<IActionResult> AddMember(string slug, Guid userId, CancellationToken ct, Guid? eventSettingsId = null)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
@@ -1000,7 +1010,7 @@ internal sealed class CampController(
 
         try
         {
-            var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct, year);
+            var outcome = await _campService.AddCampMemberToActiveSeasonAsync(camp.Id, userId, user.Id, ct, eventSettingsId);
             if (outcome == AddCampMemberOutcome.InvalidUser)
                 SetError(campsLocalizer["Camps_Flash_HumanRequired"].Value);
             else if (outcome == AddCampMemberOutcome.NoActiveSeason)
@@ -1018,7 +1028,7 @@ internal sealed class CampController(
             SetError(campsLocalizer["Camps_Flash_HumanAddFailed"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug, year });
+        return RedirectToAction(nameof(Members), new { slug, eventSettingsId });
     }
 
     [Authorize]
@@ -1037,14 +1047,14 @@ internal sealed class CampController(
 
         ApplyAssignRoleOutcomeFlash(outcome);
 
-        return RedirectToAction(nameof(Members), new { slug, year = openSeason?.Year });
+        return RedirectToAction(nameof(Members), new { slug, eventSettingsId = openSeason?.EventSettingsId });
     }
 
     /// <summary>Search-driven assign: adds the human as Active if needed (idempotent), then assigns the role.</summary>
     [Authorize]
     [HttpPost("{slug}/Roles/AssignByUser")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AssignRoleByUser(string slug, Guid roleDefinitionId, Guid userId, CancellationToken ct, int? year = null)
+    public async Task<IActionResult> AssignRoleByUser(string slug, Guid roleDefinitionId, Guid userId, CancellationToken ct, Guid? eventSettingsId = null)
     {
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
@@ -1058,14 +1068,14 @@ internal sealed class CampController(
         if (userId == Guid.Empty)
         {
             SetError(campsLocalizer["Camps_Flash_HumanRequired"].Value);
-            return RedirectToAction(nameof(Members), new { slug, year });
+            return RedirectToAction(nameof(Members), new { slug, eventSettingsId });
         }
 
         AssignCampRoleOutcome outcome;
         try
         {
             outcome = await _campService.AddMemberAndAssignRoleInActiveSeasonAsync(
-                camp.Id, roleDefinitionId, userId, user.Id, ct, year);
+                camp.Id, roleDefinitionId, userId, user.Id, ct, eventSettingsId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -1075,12 +1085,12 @@ internal sealed class CampController(
         {
             logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError(campsLocalizer["Camps_Flash_RoleAssignFailed"].Value);
-            return RedirectToAction(nameof(Members), new { slug, year });
+            return RedirectToAction(nameof(Members), new { slug, eventSettingsId });
         }
 
         ApplyAssignRoleOutcomeFlash(outcome);
 
-        return RedirectToAction(nameof(Members), new { slug, year });
+        return RedirectToAction(nameof(Members), new { slug, eventSettingsId });
     }
 
     private void ApplyAssignRoleOutcomeFlash(AssignCampRoleOutcome outcome)
@@ -1175,7 +1185,7 @@ internal sealed class CampController(
 
     private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model, CampInfo camp)
     {
-        var editData = await _campService.GetCampEditDataAsync(model.CampId, model.Year);
+        var editData = await _campService.GetCampEditDataAsync(model.CampId, model.EventSettingsId);
         if (editData is null)
         {
             model.Images = [];
@@ -1201,6 +1211,7 @@ internal sealed class CampController(
             Slug = editData.Slug,
             SeasonId = editData.SeasonId,
             Year = editData.Year,
+            EventSettingsId = editData.EventSettingsId,
             IsNameLocked = editData.IsNameLocked,
             Name = editData.Name,
             ContactEmail = editData.ContactEmail,
@@ -1247,7 +1258,7 @@ internal sealed class CampController(
         bool isLead,
         bool isCampAdmin,
         CampMembershipStateViewModel membership,
-        int publicYear,
+        Guid? activeEventSettingsId,
         LocalDate today) => new()
         {
             Id = camp.Id,
@@ -1267,6 +1278,7 @@ internal sealed class CampController(
             {
                 Id = season.Id,
                 Year = season.Year,
+                EventSettingsId = season.EventSettingsId,
                 Name = season.Name,
                 Status = season.Status,
                 BlurbLong = season.BlurbLong,
@@ -1286,7 +1298,7 @@ internal sealed class CampController(
                 ElectricalGrid = season.ElectricalGrid,
                 IsNameLocked = season.IsNameLocked(today)
             },
-            PublicYear = publicYear,
+            ActiveEventSettingsId = activeEventSettingsId,
             IsCurrentUserLead = isLead,
             IsCurrentUserCampAdmin = isCampAdmin,
             Membership = membership

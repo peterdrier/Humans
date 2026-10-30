@@ -19,14 +19,15 @@ public sealed class CampAuthorizationHandlerTests
     private static readonly Guid LeadCampSeasonId = Guid.NewGuid();
     private static readonly Guid OtherCampSeasonId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
+    private static readonly Guid ActiveEventId = Guid.NewGuid();
     private static readonly Guid WorkshopUserId = Guid.NewGuid();
 
     public CampAuthorizationHandlerTests()
     {
         _handler = new CampAuthorizationHandler(_campService);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, []));
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, []) { ActiveEventSettingsId = ActiveEventId });
+        _campService.GetCampsForEventAsync(ActiveEventId, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
             {
                 CreateCampInfo("lead"),

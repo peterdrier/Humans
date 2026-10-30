@@ -1,4 +1,5 @@
 using Humans.Notifications.Services;
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,7 @@ namespace Humans.Notifications.Controllers;
 
 [Authorize]
 [Route("Notifications")]
+[AllowBeforeActiveMembership]
 internal sealed class NotificationsController(
     INotificationInboxService inboxService,
     IUserService userService,

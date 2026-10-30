@@ -10,6 +10,7 @@ namespace Humans.AuditLog.Tests;
 public class AuditViewerServiceTests
 {
     private static readonly Instant FixedAt = Instant.FromUtc(2026, 4, 30, 17, 0);
+    private static readonly AuditActionRegistry Registry = new([new TestActions()]);
 
     [HumansFact]
     public async Task GetForUserAsync_ResolvesActorAndSubjectDisplayNames()
@@ -17,7 +18,7 @@ public class AuditViewerServiceTests
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
-            action: AuditAction.ShiftSignupVoluntold,
+            action: TestActions.ShiftSignupVoluntold,
             actorId: actor,
             entityType: "ShiftSignup",
             entityId: Guid.NewGuid(),
@@ -30,12 +31,13 @@ public class AuditViewerServiceTests
             .Returns([entry]);
 
         var service = new AuditViewerService(
-            auditLog, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
+            auditLog, Registry, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
 
         var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
         events.Should().HaveCount(1);
         var ev = events[0];
+        ev.Action.Should().BeSameAs(TestActions.ShiftSignupVoluntold);
         ev.ActorDisplayName.Should().Be("Frank");
         ev.SubjectUserId.Should().Be(viewer);
         ev.SubjectDisplayName.Should().Be("Peter");
@@ -49,7 +51,7 @@ public class AuditViewerServiceTests
             .Returns([]);
 
         var contributor = Substitute.For<IEntityNameContributor>();
-        var service = new AuditViewerService(auditLog, [contributor]);
+        var service = new AuditViewerService(auditLog, Registry, [contributor]);
 
         var events = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
 
@@ -65,7 +67,7 @@ public class AuditViewerServiceTests
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
-            action: AuditAction.ShiftSignupVoluntold,
+            action: TestActions.ShiftSignupVoluntold,
             actorId: actor,
             entityType: "ShiftSignup",
             entityId: Guid.NewGuid(),
@@ -78,7 +80,7 @@ public class AuditViewerServiceTests
             .Returns([entry]);
 
         var service = new AuditViewerService(
-            auditLog, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
+            auditLog, Registry, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
 
         var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
         var line = events[0].RenderPlainText(viewerUserId: viewer);
@@ -94,7 +96,7 @@ public class AuditViewerServiceTests
         var viewer = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var entry = MakeEntry(
-            action: AuditAction.RoleAssigned,
+            action: TestActions.RoleAssigned,
             actorId: viewer,
             entityType: "Team",
             entityId: teamId,
@@ -112,7 +114,7 @@ public class AuditViewerServiceTests
             });
 
         var service = new AuditViewerService(
-            auditLog, [StubContributor("User", (viewer, "Peter")), teams]);
+            auditLog, Registry, [StubContributor("User", (viewer, "Peter")), teams]);
 
         var events = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
@@ -126,23 +128,41 @@ public class AuditViewerServiceTests
     {
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
-            action: AuditAction.MemberSuspended,
+            action: TestActions.MemberSuspended,
             actorId: actor,
             entityType: "User",
             entityId: Guid.NewGuid(),
             description: "Suspended");
 
         var auditLog = Substitute.For<IAuditLogReader>();
+        var alerts = new Dictionary<string, int>(StringComparer.Ordinal) { ["AnomalousPermissionDetected"] = 2 };
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
-            .Returns(([entry], 1, 0));
+            .Returns(([entry], 1, alerts));
 
-        var service = new AuditViewerService(auditLog, [StubContributor("User", (actor, "Frank"))]);
+        var service = new AuditViewerService(auditLog, Registry, [StubContributor("User", (actor, "Frank"))]);
 
         var result = await service.GetPageAsync(null, 1, 50, Xunit.TestContext.Current.CancellationToken);
 
         result.TotalCount.Should().Be(1);
+        result.AlertCounts.Should().BeSameAs(alerts);
         result.Items.Should().HaveCount(1);
         result.Items[0].ActorDisplayName.Should().Be("Frank");
+    }
+
+    [HumansFact]
+    public async Task UndeclaredStoredName_StillRendersAsABareAction()
+    {
+        var entry = new AuditLogEntrySnapshot(
+            Guid.NewGuid(), "RetiredLongAgo", "User", Guid.NewGuid(), "kept", FixedAt, null, null, null);
+        var auditLog = Substitute.For<IAuditLogReader>();
+        auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([entry]);
+
+        var service = new AuditViewerService(auditLog, Registry, []);
+
+        var events = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
+
+        events.Single().Action.Should().Be(new AuditActionDefinition("RetiredLongAgo"));
     }
 
     private static IEntityNameContributor StubContributor(
@@ -156,7 +176,7 @@ public class AuditViewerServiceTests
     }
 
     private static AuditLogEntrySnapshot MakeEntry(
-        AuditAction action,
+        AuditActionDefinition action,
         Guid? actorId,
         string entityType,
         Guid entityId,
@@ -165,7 +185,7 @@ public class AuditViewerServiceTests
         string description = "") =>
         new(
             Guid.NewGuid(),
-            action,
+            action.Name,
             entityType,
             entityId,
             description,

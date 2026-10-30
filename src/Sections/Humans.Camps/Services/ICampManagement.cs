@@ -18,21 +18,24 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         int timesAtNowhere,
         CampSeasonData seasonData,
         List<string>? historicalNames,
-        int year,
+        Guid eventSettingsId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>The live active-event year, falling back to the clock year before an event exists.</summary>
-    Task<int> GetActiveYearAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// The live active event's id (null before one exists) and year, the year falling back to the clock's.
+    /// </summary>
+    Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Season, user and status of one membership row; null when the row does not exist.</summary>
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default);
 
+    /// <summary>The season for <paramref name="eventSettingsId"/> (the active event when null), else the latest.</summary>
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
-        int? preferredYear = null,
+        Guid? eventSettingsId = null,
         CancellationToken cancellationToken = default);
 
-    Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(Guid campId, int year, Guid? actorUserId, CancellationToken cancellationToken = default);
+    Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(Guid campId, Guid eventSettingsId, Guid? actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> UpdateSeasonAsync(Guid scopedCampId, Guid seasonId, CampSeasonData data, Guid actorUserId, CancellationToken cancellationToken = default);
     Task<CampAdminMutationResult> ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
@@ -60,9 +63,25 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampUpdateResult> DeleteImageAsync(Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
-    Task OpenSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task CloseSeasonAsync(int year, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task SetNameLockDateAsync(int year, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Every non-deleted Settings event, latest gate opening first, with whether camp registration is open for it.
+    /// An event Camps has no row for falls back to the legacy open-season years until <c>camps.event-ids</c> runs.
+    /// </summary>
+    Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(CancellationToken cancellationToken = default);
+    /// <summary>Audited when it changes the event's registration state.</summary>
+    Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="OpenSeasonAsync"/>
+    Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>What <see cref="AssignSeasonEventIdsAsync"/> still has to do.</summary>
+    Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gives every event open today its own registration row, empties the legacy open-season year list (so later
+    /// events start closed and every opening is an audited admin action), and writes an event id onto every season
+    /// the plan lists. Returns the rows written.
+    /// </summary>
+    Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default);
+    Task SetNameLockDateAsync(Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default);
@@ -86,15 +105,15 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Bypasses the request/approve flow for the selected year's open season (public year by default). Idempotent. Caller authorizes.</summary>
+    /// <summary>Bypasses the request/approve flow for the selected event's open season (the active event by default). Idempotent. Caller authorizes.</summary>
     Task<AddCampMemberOutcome> AddCampMemberToActiveSeasonAsync(
         Guid campId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default, int? year = null);
+        CancellationToken cancellationToken = default, Guid? eventSettingsId = null);
 
     /// <summary>Idempotent add as an active member, then the role assignment, in one operation. Caller authorizes.</summary>
     Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
-        CancellationToken cancellationToken = default, int? year = null);
+        CancellationToken cancellationToken = default, Guid? eventSettingsId = null);
 
     /// <summary>Returns a CampsResource refusal key if the row is missing, belongs to another user, or is not Pending.</summary>
     Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(
@@ -169,6 +188,11 @@ internal sealed record CampUpdateResult(bool Succeeded, string? ErrorKey)
     public static CampUpdateResult Failure(string errorMessage) => new(false, errorMessage);
 }
 
+internal sealed record CampEventIdPlan(
+    IReadOnlyList<int> LegacyOpenYears,
+    IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)> Seasons);
+
+
 internal enum CampMemberRequestOutcome
 {
     /// <summary>A new pending request was created.</summary>
@@ -200,6 +224,7 @@ internal sealed record CampEditData(
     string Slug,
     Guid SeasonId,
     int Year,
+    Guid? EventSettingsId,
     bool IsNameLocked,
     string Name,
     string ContactEmail,

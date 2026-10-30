@@ -56,7 +56,7 @@ public class AgentSettingsServiceTests
         reloaded.Enabled.Should().BeTrue();
         reloaded.DailyMessageCap.Should().Be(60);
         var entry = audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        entry[0].Should().Be(AuditAction.AgentSettingsUpdated);
+        entry[0].Should().Be(AgentAuditActions.AgentSettingsUpdated);
         entry[1].Should().Be("AgentSettings");
         entry[4].Should().Be(actorId);
         entry[2].Should().Be(Guid.Empty);

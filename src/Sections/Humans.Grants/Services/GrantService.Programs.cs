@@ -45,13 +45,13 @@ internal sealed partial class GrantService
             { ProgramId = program.Id, UserId = userId, AddedByUserId = actorUserId, AddedAt = now });
         await repository.AddProgramAsync(program, ct);
 
-        await AuditProgramAsync(AuditAction.GrantProgramCreated, program,
+        await AuditProgramAsync(GrantsAuditActions.GrantProgramCreated, program,
             $"Program \"{program.Name}\" ({evt.EventName}) created: entitles \"{program.Entitles}\", " +
             $"issued by {IssuerText(program.IssuedBy, program.SourceKey)}, " +
             $"expires {program.GrantsExpireOn?.ToInvariantDate() ?? "never"}, {program.Status}.",
             actorUserId);
         foreach (var manager in program.Managers)
-            await AuditProgramAsync(AuditAction.GrantProgramManagerAdded, program,
+            await AuditProgramAsync(GrantsAuditActions.GrantProgramManagerAdded, program,
                 $"Manager added to \"{program.Name}\".", actorUserId, relatedUserId: manager.UserId);
 
         return new(program.Id);
@@ -102,13 +102,13 @@ internal sealed partial class GrantService
                 removed, ct);
 
         if (changes.Count > 0)
-            await AuditProgramAsync(AuditAction.GrantProgramEdited, program,
+            await AuditProgramAsync(GrantsAuditActions.GrantProgramEdited, program,
                 $"Program \"{program.Name}\" edited: {string.Join("; ", changes)}.", actorUserId);
         foreach (var id in added)
-            await AuditProgramAsync(AuditAction.GrantProgramManagerAdded, program,
+            await AuditProgramAsync(GrantsAuditActions.GrantProgramManagerAdded, program,
                 $"Manager added to \"{program.Name}\".", actorUserId, relatedUserId: id);
         foreach (var id in removed)
-            await AuditProgramAsync(AuditAction.GrantProgramManagerRemoved, program,
+            await AuditProgramAsync(GrantsAuditActions.GrantProgramManagerRemoved, program,
                 $"Manager removed from \"{program.Name}\".", actorUserId, relatedUserId: id);
 
         return GrantMutationResult.Ok;

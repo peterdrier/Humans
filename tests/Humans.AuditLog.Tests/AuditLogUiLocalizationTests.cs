@@ -24,13 +24,27 @@ public class AuditLogUiLocalizationTests
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<AuditLogResource>>();
 
-        AuditAction.RoleAssigned.ToLocalizedAuditVerb(false, localizer).Should().Be("assigned role to");
-        AuditAction.RoleAssigned.ToLocalizedAuditVerb(true, localizer).Should().Be("assigned role");
-        AuditAction.ShiftSignupCreated.ToLocalizedAuditVerb(false, localizer).Should().Be("created signup for");
-        AuditAction.ShiftSignupCreated.ToLocalizedAuditVerb(true, localizer).Should().Be("signed up for");
-        AuditAction.CampaignCreated.ToLocalizedAuditVerb(false, localizer).Should().BeNull();
-        AuditAction.CampaignCreated.ToAuditBadgeLabel(localizer).Should().Be("Campaign created");
-        AuditAction.AnomalousPermissionDetected.ToAuditBadgeLabel(localizer).Should().Be("Anomaly");
+        TestActions.RoleAssigned.ToLocalizedAuditVerb(false, localizer).Should().Be("assigned role to");
+        TestActions.RoleAssigned.ToLocalizedAuditVerb(true, localizer).Should().Be("assigned role");
+        TestActions.ShiftSignupCreated.ToLocalizedAuditVerb(false, localizer).Should().Be("created signup for");
+        TestActions.ShiftSignupCreated.ToLocalizedAuditVerb(true, localizer).Should().Be("signed up for");
+        TestActions.CampaignCreated.ToLocalizedAuditVerb(false, localizer).Should().BeNull();
+        TestActions.CampaignCreated.ToAuditBadgeLabel(localizer).Should().Be("Campaign created");
+        TestActions.AnomalousPermissionDetected.ToAuditBadgeLabel(localizer).Should().Be("Anomalous permission detected");
+    }
+
+    [HumansFact]
+    public void ActionWithoutResxEntries_FallsBackToItsEnglishVerbAndHumanizedName()
+    {
+        using var culture = new CultureScope("es");
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var localizer = services.GetRequiredService<IStringLocalizer<AuditLogResource>>();
+        var fresh = new AuditActionDefinition("GrantHandedOver", Verb: "handed a grant to");
+
+        fresh.ToLocalizedAuditVerb(false, localizer).Should().Be("handed a grant to");
+        fresh.ToLocalizedAuditVerb(true, localizer).Should().Be("handed a grant");
+        fresh.ToAuditBadgeLabel(localizer).Should().Be("Grant Handed Over");
+        fresh.ToAuditBadgeLabel().Should().Be("GrantHandedOver");
     }
 
     [HumansTheory]
@@ -47,7 +61,7 @@ public class AuditLogUiLocalizationTests
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<AuditLogResource>>();
         var entry = new AuditEvent(Guid.NewGuid(), Instant.FromUtc(2026, 10, 7, 3, 0),
-            AuditAction.RoleAssigned, null, null, "User", Guid.NewGuid(), null, null,
+            TestActions.RoleAssigned, null, null, "User", Guid.NewGuid(), null, null,
             null, null, null, null, null, "role '<Board>'");
         var item = new RazorCompiledItemLoader().LoadItems(typeof(AuditLogResource).Assembly)
             .Single(i => string.Equals(i.Identifier,
@@ -74,9 +88,11 @@ public class AuditLogUiLocalizationTests
     }
 
     [HumansFact]
-    public void OperatorBadge_WithoutLocalizer_RetainsExistingLabel()
+    public void OperatorBadge_WithoutLocalizer_ShowsTheStoredName()
     {
-        AuditAction.TeamMemberAdded.ToAuditBadgeLabel().Should().Be("TeamMemberAdded");
-        AuditAction.AnomalousPermissionDetected.ToAuditBadgeLabel().Should().Be("Anomaly");
+        TestActions.TeamMemberAdded.ToAuditBadgeLabel().Should().Be("TeamMemberAdded");
+        TestActions.AnomalousPermissionDetected.ToAuditBadgeLabel().Should().Be("AnomalousPermissionDetected");
+        TestActions.AnomalousPermissionDetected.ToAuditBadgeClass().Should().Be("bg-warning text-dark");
+        TestActions.TeamMemberAdded.ToAuditEntryRowClass().Should().BeEmpty();
     }
 }

@@ -174,7 +174,7 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         (await _sut.BackfillParticipationsAsync(2025, entries, actorId, Ct)).Should().Be(1);
 
-        await _audit.Received(1).LogAsync(AuditAction.ParticipationBackfilled, nameof(User), user.Id,
+        await _audit.Received(1).LogAsync(TicketsAuditActions.ParticipationBackfilled, nameof(User), user.Id,
             Arg.Is<string>(d => d.Contains("NoShow", StringComparison.Ordinal) && d.Contains("2025", StringComparison.Ordinal)),
             actorId);
         _audit.ReceivedCalls().Should().HaveCount(1);

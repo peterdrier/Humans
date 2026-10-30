@@ -96,7 +96,7 @@ public sealed class MineViewModelTests
 
         var vm = MineViewModel.Build(snapshot, me);
 
-        vm.Year.Should().Be(2026);
+        vm.EventName.Should().Be("Test Burn");
         vm.Offers.Select(o => o.Trip.Id).Should().Equal(inEarly.Id, inEarlyLater.Id, inLate.Id, outLate.Id);
         vm.Requests.Select(r => r.Request.Id).Should().Equal(reqIn.Id, reqInLater.Id, reqOut.Id);
     }
@@ -105,7 +105,7 @@ public sealed class MineViewModelTests
         IReadOnlyList<TripView>? trips = null,
         IReadOnlyList<RequestView>? requests = null,
         IReadOnlyList<InterestView>? interests = null) =>
-        new(2026, null, trips ?? [], requests ?? [], interests ?? []);
+        new(Guid.NewGuid(), "Test Burn", null, trips ?? [], requests ?? [], interests ?? []);
 
     private static TripView Trip(Guid userId, RideshareDirection direction = RideshareDirection.Inbound, LocalDate? departure = null) =>
         new(Guid.NewGuid(), userId, 2026, direction, "Paris", 48.85, 2.35, [], null,

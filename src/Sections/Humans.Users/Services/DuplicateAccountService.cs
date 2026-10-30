@@ -143,12 +143,12 @@ internal sealed class DuplicateAccountService(
             var high = ids[1];
             var flagged = await auditLogService.GetFilteredEntriesAsync(
                 entityType: nameof(User), entityId: low,
-                actions: [AuditAction.DuplicateAccountFlagged], limit: 100, ct: ct);
+                actions: [UsersAuditActions.DuplicateAccountFlagged], limit: 100, ct: ct);
             if (flagged.Any(e => e.RelatedEntityId == high))
                 continue;
 
             await auditLogService.LogAsync(
-                AuditAction.DuplicateAccountFlagged, nameof(User), low,
+                UsersAuditActions.DuplicateAccountFlagged, nameof(User), low,
                 $"Flagged as a duplicate-account candidate: shares an email address with {high}.",
                 ScanJobName,
                 relatedEntityId: high, relatedEntityType: nameof(User));

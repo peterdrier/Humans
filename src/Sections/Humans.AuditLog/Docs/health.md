@@ -42,8 +42,9 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 ## 3. Structure
 
 - **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the
-  append path (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditAction`,
-  `ILegacyGoogleSyncAuditReader`) and the read surface (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
+  append path (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its
+  contributor contract, the transitional `AuditAction`, `ILegacyGoogleSyncAuditReader`) and the
+  read surface (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
   internal on `AuditViewerService`.
 - **Write and raw reads:** `AuditLogService` (internal; implements `IAuditLogService`,
   `IAuditLogReader`, `IUserDataContributor`, `ILegacyGoogleSyncAuditReader`) over
@@ -51,8 +52,9 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   `IDbContextFactory`. One repository read per question: a per-person read takes the
   merge-resolved id list whatever its length.
 - **Read and name:** `AuditViewerService` (internal) wraps the internal `IAuditLogReader` reads
-  with the `IEntityNameContributor` fan-out and returns `AuditEvent`. Verb tables live once, in
-  `AuditEventTextualizer`, shared by the agent's plain text and the HTML entry partial.
+  with the `IEntityNameContributor` fan-out and `AuditActionRegistry` definition resolution, and
+  returns `AuditEvent`. Verbs live on the definition, shared by the agent's plain text and the
+  HTML entry partial.
 - **UI:** one controller action (`AuditLogController.Index`), one public `<vc:audit-log>`
   component with a view per layout. No admin dashboard card.
 - **Resources:** `AuditLogResource` in all six cultures for the member-facing entry views
@@ -103,7 +105,8 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   Do not "clean them up": the drop waits on a prod verification.
 - **`AuditLogRepository` is a singleton** over a scoped context: it owns context lifetime through
   `IDbContextFactory`, which is why it can be one.
-- **The anomaly count and the Drive-activity check button** sit on `/AuditLog` though the Drive
-  scan is Monitor's: the page is where an admin looks for anomalies.
+- **The alert counts (one per `Alert` action, today `AnomalousPermissionDetected`) and the
+  Drive-activity check button** sit on `/AuditLog` though the Drive scan is Monitor's: the page is
+  where an admin looks for anomalies.
 - **`IAuditLogReader.GetFilteredEntriesAsync` repeats the contract method** so the viewer takes one
   injection; both resolve to the same `AuditLogService` instance.

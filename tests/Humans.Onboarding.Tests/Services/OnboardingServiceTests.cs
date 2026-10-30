@@ -86,12 +86,10 @@ public sealed class OnboardingServiceTests
         var result = await BuildSut().ClearConsentCheckAsync(userId, reviewerId, notes, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        await _auditLogService.Received(1).LogAsync(
-            AuditAction.ConsentCheckCleared,
-            AuditEntityTypes.Profile,
-            userId,
-            "Consent check cleared",
-            reviewerId);
+        await _consentWrite.Received(1).RecordConsentCheckAsync(
+            userId, ConsentCheckStatus.Cleared, reviewerId, notes, Arg.Any<CancellationToken>());
+        // Consent audits the check inside the write; Onboarding adds no row of its own.
+        await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
         await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, Arg.Any<CancellationToken>());
     }
 
@@ -113,7 +111,7 @@ public sealed class OnboardingServiceTests
         result.ErrorKey.Should().Be("AlreadyRejected");
         await _userServiceWrite.DidNotReceiveWithAnyArgs().SetRejectedAsync(default, Arg.Any<CancellationToken>());
         await _auditLogService.Received(0).LogAsync(
-            AuditAction.SignupRejected,
+            OnboardingAuditActions.SignupRejected,
             AuditEntityTypes.Profile,
             userId,
             Arg.Any<string>(),
@@ -157,7 +155,7 @@ public sealed class OnboardingServiceTests
         result.Success.Should().BeTrue();
         await _userServiceWrite.Received(1).SetRejectedAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.SignupRejected,
+            OnboardingAuditActions.SignupRejected,
             AuditEntityTypes.Profile,
             userId,
             "Signup rejected: duplicate account",
@@ -248,7 +246,7 @@ public sealed class OnboardingServiceTests
         body.Should().Be("Tu inscripción no se ha podido aprobar: " + reason);
         await _consentWrite.Received(1).RecordRejectionAsync(userId, reviewerId, reason, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.SignupRejected, AuditEntityTypes.Profile, userId,
+            OnboardingAuditActions.SignupRejected, AuditEntityTypes.Profile, userId,
             "Signup rejected: " + reason, reviewerId);
         _syncJob.ReceivedCalls().Should().HaveCount(3);
     }
@@ -275,7 +273,7 @@ public sealed class OnboardingServiceTests
         await _userServiceWrite.Received(1).SetRejectedAsync(userId, Arg.Any<CancellationToken>());
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.SignupRejected,
+            OnboardingAuditActions.SignupRejected,
             AuditEntityTypes.Profile,
             userId,
             $"Signup rejected: {reason}",

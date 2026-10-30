@@ -20,6 +20,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Finance.Contracts;
 
 namespace Humans.Finance.Tests;
 
@@ -93,11 +94,11 @@ public class PaymentDetailsTests
         (await _sut.RevealIbanAsync(source, admin, Ct)).Should().Be(Iban);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.IbanReveal, nameof(User), survivor,
+            FinanceAuditActions.IbanReveal, nameof(User), survivor,
             Arg.Is<string>(m => m.Contains(survivor.ToString(), StringComparison.Ordinal)),
             admin, Arg.Any<Guid?>(), Arg.Any<string?>());
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.IbanReveal, nameof(User), source,
+            FinanceAuditActions.IbanReveal, nameof(User), source,
             Arg.Any<string>(), admin, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -158,7 +159,7 @@ public class PaymentDetailsTests
         (await _sut.RevealIbanAsync(target, admin, Ct)).Should().Be(Iban);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.IbanReveal, nameof(User), target,
+            FinanceAuditActions.IbanReveal, nameof(User), target,
             Arg.Is<string>(m => m.Contains(target.ToString(), StringComparison.Ordinal)),
             admin, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -172,7 +173,7 @@ public class PaymentDetailsTests
         (await _sut.RevealIbanAsync(target, Guid.NewGuid(), Ct)).Should().BeNull();
 
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(Guid));
+            null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

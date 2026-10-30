@@ -114,7 +114,7 @@ internal sealed class NonCompliantMemberSuspension(
             metrics.RecordMemberSuspended("job");
 
             await auditLogService.LogAsync(
-                AuditAction.MemberSuspended, nameof(User), user.Id,
+                UsersAuditActions.MemberSuspended, nameof(User), user.Id,
                 $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
                 AuditActor);
         }

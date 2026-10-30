@@ -2,7 +2,7 @@ namespace Humans.Camps.Services;
 
 internal sealed record CampRoleDrillDownData(
     CampRoleDefinitionInfo Definition,
-    int Year,
+    CampEventRegistration Event,
     string? GroupEmail,
     IReadOnlyList<CampRoleDrillDownCampRow> Rows);
 

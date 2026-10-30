@@ -331,7 +331,7 @@ public class BackdoorIssuesControllerTests
                 At: Instant.FromUtc(2026, 4, 29, 12, 10),
                 ActorUserId: Guid.NewGuid(),
                 ActorDisplayName: "Admin",
-                Action: AuditAction.IssueStatusChanged,
+                Action: "IssueStatusChanged",
                 Description: "Status: Triage -> Open"),
         ];
         _issues.GetThreadAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(thread));

@@ -315,7 +315,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateCommentsAsync([comment], ct);
 
         // Audited so the Board can review moderation; the row shows only "hidden by the group".
-        await AuditAsync(AuditAction.WorkgroupCommentHidden, workgroup,
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupCommentHidden, workgroup,
             $"Hid a comment on {comment.Document.Title}: {reason.Trim()}", actorUserId,
             AuditEntityTypes.WorkgroupComment, comment.Id);
         return new();

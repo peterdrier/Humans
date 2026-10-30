@@ -36,7 +36,7 @@ section: actor, subject and target-team display names come back from the
 contributor fan-out (nobodies-collective/Humans#1059), so the section no
 longer takes `Humans.Teams.Contracts` or `Humans.GoogleIntegration.Contracts`.
 
-`AuditEvent` and `AuditEventTextualizer` are value types / pure
+`AuditEvent` and `AuditActionDefinition` are value types / pure
 formatters with no DI dependencies.
 
 ---

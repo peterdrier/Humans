@@ -3,14 +3,33 @@ using NodaTime;
 
 namespace Humans.Camps.Contracts;
 
-/// <summary><see cref="PublicYear"/> is Settings' active event year, else the clock year.</summary>
+/// <summary>
+/// <see cref="PublicYear"/> is Settings' active event year, else the clock year. <see cref="PublicYear"/> and
+/// <see cref="OpenSeasons"/> are the year view kept for sections not yet keyed by event.
+/// </summary>
 public sealed record CampSettingsInfo(
     int PublicYear,
     IReadOnlyList<int> OpenSeasons)
 {
-    public IReadOnlyDictionary<int, LocalDate?> NameLockDates { get; init; } =
-        new Dictionary<int, LocalDate?>();
+    /// <summary>Settings' active event; null before one exists.</summary>
+    public Guid? ActiveEventSettingsId { get; init; }
+
+    /// <summary>Every non-deleted Settings event, latest gate opening first.</summary>
+    public IReadOnlyList<CampEventRegistration> Events { get; init; } = [];
+
+    /// <summary>Latest seasons' name lock date per open event.</summary>
+    public IReadOnlyDictionary<Guid, LocalDate?> NameLockDates { get; init; } =
+        new Dictionary<Guid, LocalDate?>();
+
+    public CampEventRegistration? ActiveEvent =>
+        Events.FirstOrDefault(e => e.EventSettingsId == ActiveEventSettingsId);
+
+    /// <summary>Events open for camp registration, latest gate opening first.</summary>
+    public IReadOnlyList<CampEventRegistration> OpenEvents => [.. Events.Where(e => e.RegistrationOpen)];
 }
+
+/// <summary>A Settings event and whether camp registration is open for it.</summary>
+public sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen);
 
 /// <summary>
 /// One per camp in the cached projection; year-keyed reads filter it rather than caching separately.
@@ -51,12 +70,14 @@ public sealed record CampInfo(
         return season ?? (fallbackToLatestSeason ? Active : null);
     }
 
-    public CampMembershipState GetMembershipState(Guid userId)
+    public CampSeasonInfo? GetSeasonForEvent(Guid eventSettingsId, bool fallbackToLatestSeason = false) =>
+        Seasons.FirstOrDefault(s => s.EventSettingsId == eventSettingsId)
+        ?? (fallbackToLatestSeason ? Active : null);
+
+    /// <summary>The user's state in the camp's public season for the event membership requests go to.</summary>
+    public CampMembershipState GetMembershipState(Guid userId, Guid eventSettingsId)
     {
-        var season = Seasons
-            .Where(s => s.IsPublic)
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault();
+        var season = Seasons.FirstOrDefault(s => s.IsPublic && s.EventSettingsId == eventSettingsId);
         if (season is null)
         {
             return new CampMembershipState(null, null, null, CampMemberStatusSummary.NoOpenSeason);
@@ -73,6 +94,12 @@ public sealed record CampInfo(
         Seasons
             .Where(season => season.Year == year && season.IsLead(userId))
             .OrderBy(season => season.Id)
+            .Select(season => (Guid?)season.Id)
+            .FirstOrDefault();
+
+    public Guid? GetLeadSeasonIdForEvent(Guid userId, Guid eventSettingsId) =>
+        Seasons
+            .Where(season => season.EventSettingsId == eventSettingsId && season.IsLead(userId))
             .Select(season => (Guid?)season.Id)
             .FirstOrDefault();
 }
@@ -99,6 +126,12 @@ public sealed record CampSeasonInfo(
     int? EeGrantedCount,
     int? JoinedMemberCount)
 {
+    /// <summary>
+    /// Settings' event this season belongs to. A season not yet assigned by the <c>camps.event-ids</c> data
+    /// migration carries the event that migration would give it; null only when Settings has no event that year.
+    /// </summary>
+    public Guid? EventSettingsId { get; init; }
+
     public string BlurbLong { get; init; } = string.Empty;
 
     public KidsVisitingPolicy KidsVisiting { get; init; }
@@ -161,8 +194,8 @@ public sealed record CampSeasonMemberInfo(
 }
 
 /// <summary>
-/// The active (<c>PublicYear</c>) season only. <see cref="Season"/> is null and <see cref="Roles"/> empty when
-/// the user is not an Active member of any camp this year.
+/// The active event's season only. <see cref="Season"/> is null and <see cref="Roles"/> empty when the user is
+/// not an Active member of any camp for that event.
 /// </summary>
 public sealed record CampUserInfo(
     CampSeasonInfo? Season,
@@ -171,14 +204,19 @@ public sealed record CampUserInfo(
     public static readonly CampUserInfo None = new(null, []);
 
     /// <summary>
-    /// Only the season for <paramref name="activeYear"/> (never a camp's latest) and only Active membership.
-    /// First match wins if the user is somehow active in more than one camp.
+    /// Only the season for <paramref name="activeEventSettingsId"/> (never a camp's latest) and only Active
+    /// membership. First match wins if the user is somehow active in more than one camp.
     /// </summary>
-    public static CampUserInfo Resolve(IEnumerable<CampInfo> camps, int activeYear, Guid userId)
+    public static CampUserInfo Resolve(IEnumerable<CampInfo> camps, Guid? activeEventSettingsId, Guid userId)
     {
+        if (activeEventSettingsId is not { } eventSettingsId)
+        {
+            return None;
+        }
+
         foreach (var camp in camps)
         {
-            var season = camp.Seasons.FirstOrDefault(s => s.Year == activeYear);
+            var season = camp.GetSeasonForEvent(eventSettingsId);
             var member = season?.Members.FirstOrDefault(
                 m => m.UserId == userId && m.Status == CampMemberStatus.Active);
             if (member is not null)

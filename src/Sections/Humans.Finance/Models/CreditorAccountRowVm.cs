@@ -10,6 +10,7 @@ namespace Humans.Finance.Models;
 /// <item><paramref name="PendingPayoutFileName"/>: an unbooked, unwithdrawn transfer to this account; the row is not
 /// payable again until it is booked or withdrawn.</item>
 /// <item><paramref name="HasDuplicateDocuments"/> is null when the check could not run.</item>
+/// <item><paramref name="Match"/> is null on rows that are not a single member's account with ledger lines.</item>
 /// </list>
 /// </remarks>
 internal sealed record CreditorAccountRowVm(
@@ -20,7 +21,8 @@ internal sealed record CreditorAccountRowVm(
     string? IbanMasked = null,
     int? OpenDocs = null,
     string? PendingPayoutFileName = null,
-    bool? HasDuplicateDocuments = false)
+    bool? HasDuplicateDocuments = false,
+    CreditorMatchVm? Match = null)
 {
     public const string DuplicateDocumentsReason = "duplicate documents in Holded";
 
@@ -60,8 +62,13 @@ internal sealed record CreditorsPageVm(
     IReadOnlyList<CreditorBindingVm> Unresolved,
     string SortBy,
     string SortDir,
-    SepaPayoutSettings Sepa)
+    SepaPayoutSettings Sepa,
+    int? ReconProblems = 0,
+    int ReconWarnings = 0)
 {
+    /// <summary>Null when the expense reconciliation cannot be computed (the document mirror never synced).</summary>
+    public bool ReconUnavailable => ReconProblems is null;
+
     /// <summary>Zero means the check ran and found nothing.</summary>
     public int DuplicateFlaggedAccounts => Accounts.Count(a => a.HasDuplicateDocuments == true);
 

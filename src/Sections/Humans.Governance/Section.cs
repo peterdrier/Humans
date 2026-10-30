@@ -5,6 +5,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Hosting;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Models;
 using Humans.Base.Models.Tables;
@@ -47,6 +48,7 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, GovernanceAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GovernanceNotificationSources>();
         services.AddSectionDbContext<GovernanceDbContext>(sentinelTable: "applications");
 

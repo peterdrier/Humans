@@ -112,7 +112,7 @@ public sealed class VolunteerTrackingExportServiceTests
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.VolunteerTrackingExported, "EventSettings", EventId,
+        await _audit.Received(1).LogAsync(ShiftsAuditActions.VolunteerTrackingExported, "EventSettings", EventId,
             Arg.Is<string>(text => text.Contains("0 people rows", StringComparison.Ordinal)), ActorId);
         model.Groups.Should().BeEmpty();
         model.TotalsPerDay.Should().AllBeEquivalentTo(0);
@@ -143,7 +143,7 @@ public sealed class VolunteerTrackingExportServiceTests
 
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.VolunteerTrackingExported, "EventSettings", EventId,
+        await _audit.Received(1).LogAsync(ShiftsAuditActions.VolunteerTrackingExported, "EventSettings", EventId,
             Arg.Is<string>(text => text.Contains("1 people rows", StringComparison.Ordinal)), ActorId);
         model.Groups.Should().HaveCount(1);
         var group = model.Groups[0];

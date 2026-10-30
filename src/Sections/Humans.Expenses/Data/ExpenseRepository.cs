@@ -435,6 +435,19 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, HoldedExpenseOutboxEvent>> GetLatestOutboxByReportAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Create events only, as in GetLatestOutboxForReportAsync. Latest-per-report is picked in memory.
+        var events = await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
+            .Where(e => e.EventType == HoldedExpenseOutboxEventType.CreateIncomingDoc)
+            .ToListAsync(ct);
+        return events
+            .GroupBy(e => e.ExpenseReportId)
+            .ToDictionary(g => g.Key, g => g.MaxBy(e => e.OccurredAt)!);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

@@ -104,7 +104,7 @@ internal sealed class SurveyReminderSender(
             }
         }
 
-        await auditLog.LogAsync(AuditAction.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
             $"Sent {reminded} survey reminder(s)", jobName: AuditEntityTypes.ReminderJob);
 
         return reminded;

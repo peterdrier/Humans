@@ -196,7 +196,7 @@ public class MailerLiteAudienceSyncServiceTests
 
         // Prose, not JSON, and pointed at the sync-state row rather than Guid.Empty.
         await _audit.Received(1).LogAsync(
-            AuditAction.MailerLiteAudienceSyncCompleted,
+            MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,
             "MailerLiteAudience",
             state.Id,
             Arg.Is<string>(d => !d.StartsWith('{')
@@ -247,8 +247,8 @@ public class MailerLiteAudienceSyncServiceTests
         after.Single().LastSyncAt.Should().Be(SyncedAt);
         after.Single().LastSyncSummary.Should().Be("0 created, 1 newly assigned, 0 unassigned, 0 errors.");
         await _audit.DidNotReceive().GetFilteredEntriesAsync(
-            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<IReadOnlyList<AuditActionDefinition>>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

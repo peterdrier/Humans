@@ -166,7 +166,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
             outboxEvent.Id, error, clock.GetCurrentInstant(), ct);
 
         await auditLogService.LogAsync(
-            AuditAction.ExpenseHoldedFailed,
+            ExpensesAuditActions.ExpenseHoldedFailed,
             AuditEntityTypes.Report, outboxEvent.ExpenseReportId,
             $"Holded push failed permanently: {error}",
             OutboxJobName);

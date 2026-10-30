@@ -73,7 +73,7 @@ internal sealed class RotaCoordinatorMessageService(
             ct);
 
         await AuditDispatchAsync(
-            AuditAction.CoordinatorRotaMessageSent,
+            ShiftsAuditActions.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
             $"Requested rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) on '{rota.Name}'"
                 + summary.AuditSuffix,
@@ -129,7 +129,7 @@ internal sealed class RotaCoordinatorMessageService(
             ct);
 
         await AuditDispatchAsync(
-            AuditAction.CoordinatorTeamRotasMessageSent,
+            ShiftsAuditActions.CoordinatorTeamRotasMessageSent,
             // Persisted literal: memory/code/type-name-as-persisted-string.md.
             "Team", teamId,
             $"Requested team-wide rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) "
@@ -144,7 +144,7 @@ internal sealed class RotaCoordinatorMessageService(
     }
 
     private async Task AuditDispatchAsync(
-        AuditAction action, string entityType, Guid entityId, string description, Guid actorUserId, int requested)
+        AuditActionDefinition action, string entityType, Guid entityId, string description, Guid actorUserId, int requested)
     {
         try
         {

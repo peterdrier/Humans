@@ -210,6 +210,7 @@ nobodies-collective/Humans#933.)
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`.
 - **Tickets** — `ITicketService.GetTicketOrdersAsync` (barcode lookup) and
   `ITicketVendorMirror.CreateCheckInAsync` (vendor mirror, via the Gate job).
   **Cache freshness:** the barcode lookup reads the cached Tickets projection, so a ticket bought,

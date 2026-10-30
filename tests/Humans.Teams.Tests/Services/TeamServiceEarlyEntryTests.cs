@@ -178,7 +178,7 @@ public sealed class TeamServiceEarlyEntryTests
                 g.CreatedAt == _clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), Arg.Any<Guid>(),
+            TeamsAuditActions.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), Arg.Any<Guid>(),
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -237,7 +237,7 @@ public sealed class TeamServiceEarlyEntryTests
         grant.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
         await _repo.Received(1).UpdateEarlyEntryGrantAsync(grant, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
+            TeamsAuditActions.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -265,7 +265,7 @@ public sealed class TeamServiceEarlyEntryTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
         await _repo.DidNotReceive().UpdateEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -282,7 +282,7 @@ public sealed class TeamServiceEarlyEntryTests
 
         await _repo.Received(1).RemoveEarlyEntryGrantAsync(grant.Id, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grant.Id,
+            TeamsAuditActions.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grant.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -296,7 +296,7 @@ public sealed class TeamServiceEarlyEntryTests
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -310,7 +310,7 @@ public sealed class TeamServiceEarlyEntryTests
 
         await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

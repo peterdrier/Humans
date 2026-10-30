@@ -6,12 +6,14 @@
     Finance's cross-section surface as its own leaf, because Humans.Holded, Humans.Expenses and
     Humans.Budget consume it: a Contracts/ folder inside Humans.Finance would make each of them
     reference a section project instead of a leaf (memory/architecture/section-project-cycle-fix.md).
-    References Humans.Interfaces only, so anything above may reference it freely — which is also why
-    CreditorLedgerLine lives here rather than reaching for the Holded connector's own DTO.
+    References Humans.Base, plus Humans.AuditLog for the AuditActionDefinition that FinanceAuditActions
+    declares (Expenses exports IbanReveal rows with it), so anything above may reference it freely — which
+    is also why CreditorLedgerLine lives here rather than reaching for the Holded connector's own DTO.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

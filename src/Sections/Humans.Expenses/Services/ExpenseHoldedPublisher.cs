@@ -113,11 +113,17 @@ internal sealed class ExpenseHoldedPublisher(
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 
         await auditLogService.LogAsync(
-            AuditAction.ExpenseHoldedPushed,
+            ExpensesAuditActions.ExpenseHoldedPushed,
             AuditEntityTypes.Report, report.Id,
             pushedSummary,
             ExpenseReportBackgroundProcessor.OutboxJobName);
     }
+
+    /// <summary>What a per-line push writes as the document's description; Finance matches on it.</summary>
+    internal static string DocDescription(string lineDescription) => $"ER: {lineDescription}";
+
+    /// <summary>What a push writes as the document's notes; Finance matches on it.</summary>
+    internal static string DocNotes(Guid reportId) => $"Expense report {reportId}";
 
     /// <summary>
     /// Each step is idempotent: create on the line's <c>HoldedDocId</c>, upload on <c>HoldedUploadedAt</c>, approve on
@@ -178,8 +184,8 @@ internal sealed class ExpenseHoldedPublisher(
                         Date = report.SubmittedAt ?? report.CreatedAt,
                         // The report's Note stays in Humans: the accountant needs the breadcrumb to the report, which
                         // goes in Notes so the Holded-rendered ledger description stays readable.
-                        Description = $"ER: {line.Description}",
-                        Notes = $"Expense report {report.Id}",
+                        Description = DocDescription(line.Description),
+                        Notes = DocNotes(report.Id),
                         Lines = docLines,
                     }, ct);
                 if (!await repo.SetLineHoldedDocIdAsync(line.Id, holdedDocId, now, ct))

@@ -14,10 +14,10 @@ public interface ILegacyGoogleSyncAuditReader : IApplicationService
     Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(CancellationToken ct = default);
 }
 
-/// <summary>Nullable as in the table: the consumer decides what is mappable.</summary>
+/// <summary>Nullable as in the table: the consumer decides what is mappable. <c>Action</c> is the stored name.</summary>
 public sealed record LegacyGoogleSyncAuditRow(
     Guid Id,
-    AuditAction Action,
+    string Action,
     Instant OccurredAt,
     string Description,
     Guid ResourceId,

@@ -85,44 +85,43 @@ internal sealed class CampAdminController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("OpenSeason")]
+    [HttpPost("OpenSeason/{eventSettingsId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> OpenSeason([FromForm, BindRequired] int year)
+    public async Task<IActionResult> OpenSeason(Guid eventSettingsId)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
-        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         try
         {
-            await campService.OpenSeasonAsync(year, user.Id);
-            SetSuccess($"Season {year} opened for registration.");
+            await campService.OpenSeasonAsync(eventSettingsId, user.Id);
+            SetSuccess("Camp registration opened.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to open season {Year}", year);
-            SetError($"Failed to open season: {ex.Message}");
+            logger.LogError(ex, "Failed to open camp registration for event {EventSettingsId}", eventSettingsId);
+            SetError($"Failed to open registration: {ex.Message}");
         }
         // Posted from the /Settings#barrios tab, so post-redirect-get lands back there.
         return Redirect("/Settings#barrios");
     }
 
-    [HttpPost("CloseSeason/{year:int}")]
+    [HttpPost("CloseSeason/{eventSettingsId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CloseSeason(int year)
+    public async Task<IActionResult> CloseSeason(Guid eventSettingsId)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
         try
         {
-            await campService.CloseSeasonAsync(year, user.Id);
-            SetSuccess($"Season {year} closed for registration.");
+            await campService.CloseSeasonAsync(eventSettingsId, user.Id);
+            SetSuccess("Camp registration closed.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to close season {Year}", year);
-            SetError($"Failed to close season: {ex.Message}");
+            logger.LogError(ex, "Failed to close camp registration for event {EventSettingsId}", eventSettingsId);
+            SetError($"Failed to close registration: {ex.Message}");
         }
         // Posted from the /Settings#barrios tab, so post-redirect-get lands back there.
         return Redirect("/Settings#barrios");
@@ -130,7 +129,7 @@ internal sealed class CampAdminController(
 
     [HttpPost("SetNameLockDate")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetNameLockDate([BindRequired] int year, string lockDate)
+    public async Task<IActionResult> SetNameLockDate([BindRequired] Guid eventSettingsId, string lockDate)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
@@ -145,12 +144,12 @@ internal sealed class CampAdminController(
 
         try
         {
-            await campService.SetNameLockDateAsync(year, parseResult.Value, user.Id);
-            SetSuccess($"Name lock date for {year} set to {parseResult.Value}.");
+            await campService.SetNameLockDateAsync(eventSettingsId, parseResult.Value, user.Id);
+            SetSuccess($"Name lock date set to {parseResult.Value}.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to set name lock date for {Year}", year);
+            logger.LogError(ex, "Failed to set name lock date for event {EventSettingsId}", eventSettingsId);
             SetError($"Failed to set name lock date: {ex.Message}");
         }
         return RedirectToAction(nameof(Index));
@@ -270,7 +269,7 @@ internal sealed class CampAdminController(
     }
 
     [HttpGet("Roles/{slug}")]
-    public async Task<IActionResult> RolesDrillDown(string slug, int? year, CancellationToken ct)
+    public async Task<IActionResult> RolesDrillDown(string slug, Guid? eventSettingsId, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(slug)) return NotFound();
 
@@ -281,14 +280,13 @@ internal sealed class CampAdminController(
         if (info is null) return NotFound();
 
         var settings = await campService.GetSettingsAsync(ct);
-        var resolvedYear = year ?? settings.PublicYear;
+        var resolvedEventId = eventSettingsId
+            ?? settings.ActiveEventSettingsId
+            ?? settings.Events.FirstOrDefault()?.EventSettingsId;
+        if (resolvedEventId is null) return NotFound();
 
-        var data = await campRoleService.BuildDrillDownAsync(info.Id, resolvedYear, ct);
+        var data = await campRoleService.BuildDrillDownAsync(info.Id, resolvedEventId.Value, ct);
         if (data is null) return NotFound();
-
-        // Year picker options: union of open seasons, public year, and the resolved year
-        // (so a manually-entered year remains selectable). Sorted descending — most recent first.
-        var yearOptions = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear, resolvedYear };
 
         var vm = new CampRoleDrillDownViewModel
         {
@@ -300,9 +298,9 @@ internal sealed class CampAdminController(
             Description = data.Definition.Description,
             SlotCount = data.Definition.SlotCount,
             MinimumRequired = data.Definition.MinimumRequired,
-            Year = data.Year,
+            Event = data.Event,
             GroupEmail = data.GroupEmail,
-            YearOptions = yearOptions.OrderByDescending(y => y).ToList(),
+            EventOptions = settings.Events,
             Camps = data.Rows
                 .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new CampRoleDrillDownCampRowViewModel(

@@ -4,6 +4,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Hosting;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
@@ -57,6 +58,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, TicketsAuditActions>();
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();

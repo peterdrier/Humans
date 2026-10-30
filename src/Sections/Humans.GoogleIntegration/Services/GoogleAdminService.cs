@@ -195,7 +195,7 @@ internal sealed class GoogleAdminService(
 
             // Audit after Google succeeds: the Workspace call is the business save here.
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountProvisioned,
+                GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", Guid.Empty,
                 $"Provisioned @{NobodiesTeamDomain} account: {fullEmail}",
                 actorUserId);
@@ -223,7 +223,7 @@ internal sealed class GoogleAdminService(
 
             // Audit after Google succeeds: the Workspace call is the business save here.
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountSuspended,
+                GoogleIntegrationAuditActions.WorkspaceAccountSuspended,
                 "WorkspaceAccount", Guid.Empty,
                 omitEmailFromAudit
                     ? $"Suspended @{NobodiesTeamDomain} account under GDPR erasure"
@@ -251,7 +251,7 @@ internal sealed class GoogleAdminService(
 
             // Audit after Google succeeds: the Workspace call is the business save here.
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountReactivated,
+                GoogleIntegrationAuditActions.WorkspaceAccountReactivated,
                 "WorkspaceAccount", Guid.Empty,
                 $"Reactivated @{NobodiesTeamDomain} account: {email}",
                 actorUserId);
@@ -294,7 +294,7 @@ internal sealed class GoogleAdminService(
         {
             var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountPasswordReset,
+                GoogleIntegrationAuditActions.WorkspaceAccountPasswordReset,
                 "WorkspaceAccount", linkedUserId ?? Guid.Empty,
                 email,
                 actorUserId);
@@ -348,7 +348,7 @@ internal sealed class GoogleAdminService(
             // Linked accounts audit under the member's id; unlinked ones under Guid.Empty, shown by email.
             var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountBackupCodesGenerated,
+                GoogleIntegrationAuditActions.WorkspaceAccountBackupCodesGenerated,
                 "WorkspaceAccount", linkedUserId ?? Guid.Empty,
                 $"{codes.Count} code(s), {email}",
                 actorUserId);
@@ -416,7 +416,7 @@ internal sealed class GoogleAdminService(
             try
             {
                 await auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                    GoogleIntegrationAuditActions.WorkspaceAccountResetBlockedFor2Sv,
                     "WorkspaceAccount", Guid.Empty,
                     $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
                     actorUserId);
@@ -496,7 +496,7 @@ internal sealed class GoogleAdminService(
             await teamWrite.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountLinked,
+                GoogleIntegrationAuditActions.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,
                 $"Linked @{NobodiesTeamDomain} account {email}",
                 actorUserId);

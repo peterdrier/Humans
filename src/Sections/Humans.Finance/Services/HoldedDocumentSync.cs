@@ -48,6 +48,8 @@ internal sealed class HoldedDocumentSync(
 
             await checkDocs(allDocs, ct);
 
+            await FetchNotesAsync(docs, ct);
+
             await repo.ReplaceDocsAsync(docs, now, ct);
 
             var matched = docs.Count(d => d.MatchStatus == HoldedMatchStatus.Matched);
@@ -84,6 +86,51 @@ internal sealed class HoldedDocumentSync(
         }
     }
 
+    // The plan allows ~2,000 Holded calls a month: 50 a night is at most ~1,500, leaving the rest for the ledger sync,
+    // the list call and the pushes. A backlog drains over several nights.
+    private const int MaxNotesFetchesPerRun = 50;
+
+    /// <summary>
+    /// One GET per push-written document (description <c>ER: </c>) whose notes the mirror lacks, at most
+    /// <see cref="MaxNotesFetchesPerRun"/> a run; the rest keep theirs through the upsert. Other documents are never
+    /// fetched and keep null notes. A failed GET leaves the notes unknown for the next sync to retry and never fails
+    /// this one; a transient failure ends the run's fetching.
+    /// </summary>
+    private async Task FetchNotesAsync(IReadOnlyList<HoldedExpenseDoc> docs, CancellationToken ct)
+    {
+        var known = (await repo.GetAllDocsAsync(ct))
+            .Where(d => d.Notes is not null)
+            .Select(d => d.HoldedDocId)
+            .ToHashSet(StringComparer.Ordinal);
+        var candidates = docs
+            .Where(d => !known.Contains(d.HoldedDocId)
+                        && d.Description?.StartsWith(ExpenseRecon.DescriptionMarker, StringComparison.Ordinal) == true)
+            .Take(MaxNotesFetchesPerRun);
+        var failed = 0;
+        foreach (var doc in candidates)
+        {
+            try
+            {
+                doc.Notes = (await client.GetPurchaseDocumentAsync(doc.HoldedDocId, ct)).Notes?.Trim() ?? "";
+            }
+            catch (HoldedTransientException ex)
+            {
+                failed++;
+                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.HoldedDocId);
+                break;
+            }
+            catch (Exception ex) when (ex is HoldedPermanentException or JsonException or InvalidOperationException)
+            {
+                failed++;
+                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.HoldedDocId);
+            }
+        }
+        if (failed > 0)
+            logger.LogWarning(
+                "Holded document sync: notes unreadable for {Failed} purchase document(s); the next sync retries them.",
+                failed);
+    }
+
     private static HoldedExpenseDoc MapDoc(
         HoldedPurchaseDocListItemDto doc,
         HoldedMatchEntry[] entries,
@@ -107,6 +154,7 @@ internal sealed class HoldedDocumentSync(
             HoldedDocId = doc.Id,
             DocNumber = doc.DocNumber,
             ContactName = doc.ContactName,
+            ContactId = string.IsNullOrEmpty(doc.ContactId) ? null : doc.ContactId,
             Description = string.IsNullOrWhiteSpace(doc.Description) ? null : doc.Description.Trim(),
             Date = localDate,
             Subtotal = doc.Subtotal,

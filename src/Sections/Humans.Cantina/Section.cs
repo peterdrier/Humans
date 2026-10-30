@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Cantina;
 
@@ -33,6 +34,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CantinaAuditActions>();
         services.AddSectionDbContext<CantinaDbContext>(sentinelTable: "cantina_dietary_profiles");
         services.AddScoped<IDietaryProfileRepository, DietaryProfileRepository>();
         services.AddScoped<DietaryProfileService>();

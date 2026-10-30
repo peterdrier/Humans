@@ -118,7 +118,7 @@ internal sealed class ApplyHarness
     public ApplyHarness()
     {
         _audit.LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.CompletedTask);

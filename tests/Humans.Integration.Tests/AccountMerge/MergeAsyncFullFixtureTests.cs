@@ -110,7 +110,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         // 6: an AccountMergeAccepted audit row on the archived account.
         var auditRow = await auditLogDb.AuditLogEntries.AsNoTracking()
             .FirstOrDefaultAsync(a =>
-                a.Action == AuditAction.AccountMergeAccepted
+                a.Action == nameof(AuditAction.AccountMergeAccepted)
                 && a.EntityType == nameof(User)
                 && a.EntityId == sourceId, TestContext.Current.CancellationToken);
         auditRow.Should().NotBeNull("an AccountMergeAccepted audit row must be written for the archived account");

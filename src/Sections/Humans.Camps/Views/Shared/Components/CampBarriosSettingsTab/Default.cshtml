@@ -2,25 +2,49 @@
 
 @* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve "OpenSeason"/"CloseSeason"
    against the wrong controller. *@
-<h6>Open a Season for Registration</h6>
-<form asp-controller="CampAdmin" asp-action="OpenSeason" method="post" class="d-flex gap-2 mb-3">
-    @Html.AntiForgeryToken()
-    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" placeholder="Year" min="2024" max="2099" required />
-    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
-        <i class="fa-solid fa-door-open me-1"></i>Open
-    </button>
-</form>
-
-@if (Model.OpenSeasons.Count > 0)
+<h6>Camp registration by event</h6>
+@if (Model.Events.Count == 0)
 {
-    <h6>Close a Season</h6>
-    @foreach (var year in Model.OpenSeasons)
-    {
-        <form asp-controller="CampAdmin" asp-action="CloseSeason" asp-route-year="@year" method="post" class="d-inline me-2 mb-2">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-warning btn-sm">
-                <i class="fa-solid fa-door-closed me-1"></i>Close @year
-            </button>
-        </form>
-    }
+    <p class="text-muted">No events yet. Create one on the Events tab.</p>
+}
+else
+{
+    <table class="table table-sm align-middle">
+        <tbody>
+            @foreach (var ev in Model.Events)
+            {
+                <tr>
+                    <td>@ev.EventName</td>
+                    <td>
+                        @if (ev.RegistrationOpen)
+                        {
+                            <span class="badge bg-success">Open</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Closed</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <form asp-controller="CampAdmin" asp-action="@(ev.RegistrationOpen ? "CloseSeason" : "OpenSeason")"
+                              asp-route-eventSettingsId="@ev.EventSettingsId" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            @if (ev.RegistrationOpen)
+                            {
+                                <button type="submit" class="btn btn-outline-warning btn-sm">
+                                    <i class="fa-solid fa-door-closed me-1"></i>Close
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-door-open me-1"></i>Open
+                                </button>
+                            }
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }

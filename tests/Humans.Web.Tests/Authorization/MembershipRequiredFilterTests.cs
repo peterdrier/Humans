@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Security.Claims;
 using Humans.Web.Extensions;
 using Humans.Backdoor.Contracts;
+using Humans.Base.Attributes;
 using Humans.Base.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
@@ -317,6 +318,40 @@ public class MembershipRequiredFilterTests
         Assert.Null(result);
     }
 
+    /// <summary>An action's own allowance wins over its controller's, in both directions.</summary>
+    [HumansTheory]
+    [InlineData(UserState.Bare, typeof(AllowedController), nameof(AllowedController.Plain), true)]
+    [InlineData(UserState.Deleted, typeof(AllowedController), nameof(AllowedController.Plain), false)]
+    [InlineData(UserState.Deleted, typeof(AllowedController), nameof(AllowedController.Wall), true)]
+    [InlineData(UserState.Bare, typeof(GatedController), nameof(GatedController.Plain), false)]
+    [InlineData(UserState.Bare, typeof(GatedController), nameof(GatedController.Allowed), true)]
+    public async Task Attribute_on_the_action_or_its_controller_opens_the_gate(
+        UserState state, Type type, string action, bool expectPass)
+    {
+        var (result, nextCalled) = await RunAsync(
+            "Stub", action, state, controllerType: type, actionMethod: type.GetMethod(action)!);
+
+        Assert.Equal(expectPass, nextCalled);
+        Assert.Equal(expectPass, result is null);
+    }
+
+    [AllowBeforeActiveMembership]
+    private sealed class AllowedController : Controller
+    {
+        public IActionResult Plain() => Ok();
+
+        [AllowBeforeActiveMembership(Terminal = true)]
+        public IActionResult Wall() => Ok();
+    }
+
+    private sealed class GatedController : Controller
+    {
+        public IActionResult Plain() => Ok();
+
+        [AllowBeforeActiveMembership]
+        public IActionResult Allowed() => Ok();
+    }
+
     private static async Task<(IActionResult? Result, bool NextCalled)> RunAsync(
         string controllerName,
         string actionName,
@@ -325,10 +360,11 @@ public class MembershipRequiredFilterTests
         string? role = null,
         string authenticationType = "test",
         MethodInfo? actionMethod = null,
-        bool? nameGateHasNames = null)
+        bool? nameGateHasNames = null,
+        Type? controllerType = null)
     {
         var sut = new MembershipRequiredFilter();
-        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType, actionMethod);
+        var ctx = BuildExecutingContext(controllerName, actionName, authenticated, state, role, authenticationType, actionMethod, controllerType);
         var nextCalled = false;
 
         Task<ActionExecutedContext> ExecuteActionAsync()
@@ -389,7 +425,8 @@ public class MembershipRequiredFilterTests
         UserState? state,
         string? role,
         string authenticationType,
-        MethodInfo? actionMethod)
+        MethodInfo? actionMethod,
+        Type? explicitControllerType = null)
     {
         ClaimsIdentity identity;
         if (authenticated)
@@ -415,18 +452,18 @@ public class MembershipRequiredFilterTests
             User = new ClaimsPrincipal(identity),
         };
 
-        // A real controller type, so the AllowAnonymous reflection check has a ControllerTypeInfo.
-        var controllerType = controllerName switch
+        // The real controller type: the gate reads [AllowAnonymous] and [AllowBeforeActiveMembership] off it.
+        var controllerType = explicitControllerType ?? controllerName switch
         {
-            "OnboardingWidget" => OnboardingWidgetControllerType,
             "Profile" => typeof(ProfileController),
             "ProfileEmails" => typeof(ProfileEmailsController),
             "ProfileView" => typeof(ProfileViewController),
             "Account" => typeof(AccountController),
             "Language" => typeof(LanguageController),
-            "User" => UserControllerType,
-            "MemberData" => MemberDataControllerType,
-            _ => typeof(HomeController),
+            "Home" => typeof(HomeController),
+            _ => SectionDiscoveryExtensions.SectionAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .Single(t => string.Equals(t.Name, controllerName + "Controller", StringComparison.Ordinal)),
         };
         var actionDescriptor = new ControllerActionDescriptor
         {

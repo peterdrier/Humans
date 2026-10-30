@@ -256,7 +256,7 @@ internal sealed class GoogleGroupSyncService(
 
             logger.LogInformation("Auto-provisioned Google Group for {GroupKey}", groupKey);
             await auditLogService.LogAsync(
-                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), Guid.Empty,
+                GoogleIntegrationAuditActions.GoogleResourceProvisioned, nameof(GoogleResource), Guid.Empty,
                 $"Auto-provisioned Google Group '{groupKey}' ({create.GroupNumericId})",
                 nameof(GoogleGroupSyncService));
             await TryApplyProvisionedGroupSettingsAsync(groupKey, ct);
@@ -555,7 +555,7 @@ internal sealed class GoogleGroupSyncService(
         logger.LogError("{Error}", error);
 
         await auditLogService.LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             Guid.Empty,
             error,
@@ -681,7 +681,7 @@ internal sealed class GoogleGroupSyncService(
         syncScheduler.Schedule(groupKey, ScopedRetryDelay, retryAttempt, syncSource);
 
         await auditLogService.LogAsync(
-            AuditAction.GoogleSyncRetryScheduled,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
             nameof(GoogleResource),
             Guid.Empty,
             $"Scheduled retry {retryAttempt}/{MaxScopedRetryAttempts} for {groupKey}: {error}",

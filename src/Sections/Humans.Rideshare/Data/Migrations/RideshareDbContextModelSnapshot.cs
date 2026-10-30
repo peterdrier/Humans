@@ -18,7 +18,7 @@ namespace Humans.Rideshare.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -87,6 +87,9 @@ namespace Humans.Rideshare.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("EventSettingsId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("LuggageLoad")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -126,6 +129,8 @@ namespace Humans.Rideshare.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EventSettingsId");
+
                     b.HasIndex("UserId");
 
                     b.HasIndex("Year");
@@ -150,6 +155,9 @@ namespace Humans.Rideshare.Data.Migrations
                     b.Property<double>("DestinationLongitude")
                         .HasColumnType("double precision");
 
+                    b.Property<Guid?>("EventSettingsId")
+                        .HasColumnType("uuid");
+
                     b.Property<LocalDate>("InboundWindowEnd")
                         .HasColumnType("date");
 
@@ -169,6 +177,8 @@ namespace Humans.Rideshare.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId");
 
                     b.HasIndex("Year");
 
@@ -204,6 +214,9 @@ namespace Humans.Rideshare.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("EventSettingsId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("ExpectedDurationDays")
                         .HasColumnType("integer");
@@ -267,6 +280,8 @@ namespace Humans.Rideshare.Data.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId");
 
                     b.HasIndex("UserId");
 

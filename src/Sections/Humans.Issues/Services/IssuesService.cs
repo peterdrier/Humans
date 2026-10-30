@@ -340,11 +340,11 @@ internal sealed class IssuesService(
             userId: null,
             actions:
             [
-                AuditAction.IssueCreated,
-                AuditAction.IssueStatusChanged,
-                AuditAction.IssueAssigneeChanged,
-                AuditAction.IssueSectionChanged,
-                AuditAction.IssueGitHubLinked
+                IssuesAuditActions.IssueCreated,
+                IssuesAuditActions.IssueStatusChanged,
+                IssuesAuditActions.IssueAssigneeChanged,
+                IssuesAuditActions.IssueSectionChanged,
+                IssuesAuditActions.IssueGitHubLinked
             ],
             limit: int.MaxValue,
             ct: ct);
@@ -437,13 +437,13 @@ internal sealed class IssuesService(
         if (statusChangedToOpen)
         {
             await LogAuditAsync(
-                AuditAction.IssueStatusChanged, issueId, senderUserId,
+                IssuesAuditActions.IssueStatusChanged, issueId, senderUserId,
                 "reopened (reporter comment on terminal)");
         }
 
         if (resolveWithComment)
         {
-            await LogAuditAsync(AuditAction.IssueStatusChanged, issueId, senderUserId,
+            await LogAuditAsync(IssuesAuditActions.IssueStatusChanged, issueId, senderUserId,
                 $"status: {statusBeforeResolution} → {IssueStatus.Resolved}");
         }
 
@@ -481,7 +481,7 @@ internal sealed class IssuesService(
         // In-app the reporter is their own actor, so creation goes unaudited. Here the two can differ, and the audit
         // entry is the only place the filer is written down.
         await LogAuditAsync(
-            AuditAction.IssueCreated, issue.Id, actorUserId,
+            IssuesAuditActions.IssueCreated, issue.Id, actorUserId,
             actorUserId == reporterUserId
                 ? "Issue filed"
                 : $"Issue filed on behalf of {reporterUserId}");
@@ -527,7 +527,7 @@ internal sealed class IssuesService(
             // The mutation is committed; finish its notices independently of the request.
             ct = CancellationToken.None;
             await LogAuditAsync(
-                AuditAction.IssueStatusChanged, issueId, actorUserId,
+                IssuesAuditActions.IssueStatusChanged, issueId, actorUserId,
                 $"status: {oldStatus} → {newStatus}");
             await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
 
@@ -583,7 +583,7 @@ internal sealed class IssuesService(
             ct = CancellationToken.None;
 
             await LogAuditAsync(
-                AuditAction.IssueAssigneeChanged, issueId, actorUserId,
+                IssuesAuditActions.IssueAssigneeChanged, issueId, actorUserId,
                 $"assignee: {oldName} → {newName}");
 
             if (newAssigneeUserId.HasValue)
@@ -629,7 +629,7 @@ internal sealed class IssuesService(
             await repo.SaveTrackedIssueAsync(issue, ct);
 
             await LogAuditAsync(
-                AuditAction.IssueSectionChanged, issueId, actorUserId,
+                IssuesAuditActions.IssueSectionChanged, issueId, actorUserId,
                 $"section: {oldSection} → {nextSection}");
             return IssueMutationResult.Success();
         }, ct);
@@ -654,7 +654,7 @@ internal sealed class IssuesService(
             await repo.SaveTrackedIssueAsync(issue, ct);
 
             await LogAuditAsync(
-                AuditAction.IssueGitHubLinked, issueId, actorUserId,
+                IssuesAuditActions.IssueGitHubLinked, issueId, actorUserId,
                 $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(CultureInfo.InvariantCulture) : "(cleared)")}");
 
             return IssueMutationResult.Success();
@@ -807,7 +807,7 @@ internal sealed class IssuesService(
     }
 
     private async Task LogAuditAsync(
-        AuditAction action, Guid issueId, Guid? actorUserId, string description)
+        AuditActionDefinition action, Guid issueId, Guid? actorUserId, string description)
     {
         if (actorUserId.HasValue)
         {

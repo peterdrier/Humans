@@ -13,4 +13,11 @@ public interface IExpenseHoldedBookingService : IApplicationService
     /// trims a line is already applied, so the caller never re-derives it.
     /// </summary>
     Task<IReadOnlyList<ExpenseHoldedBooking>> GetHoldedBookingsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Every bookable line of every approved report, pushed or not (a line the cap zeroed out gets no document and is
+    /// left out), plus any line of another status that already links a document: Holded holds it either way. Outbox
+    /// states are read in one query.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseHoldedReconLine>> GetHoldedReconLinesAsync(CancellationToken ct = default);
 }

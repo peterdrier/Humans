@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Auth;
 
@@ -28,6 +29,7 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, AuthAuditActions>();
         services.AddSingleton<INotificationSourceContributor, AuthNotificationSources>();
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
 

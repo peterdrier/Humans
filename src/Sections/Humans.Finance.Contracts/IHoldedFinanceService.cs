@@ -8,6 +8,11 @@ public interface IHoldedFinanceService : IApplicationService
     /// <summary>Lazy-creates the state row.</summary>
     Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default);
 
+    /// <summary>Approved expense lines against the Holded document and ledger mirrors. Local data only: no Holded
+    /// call, no write. <paramref name="year"/> narrows lines and orphans to their document year; members stay
+    /// all-time.</summary>
+    Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default);
+
     Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(int calendarYear, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default);
 

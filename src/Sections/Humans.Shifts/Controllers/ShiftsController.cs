@@ -465,7 +465,7 @@ internal sealed class ShiftsController(
         var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await auditLogService.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
-            [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold, AuditAction.ShiftSignupConfirmed],
+            [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
             ct);
 
         var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
@@ -531,7 +531,7 @@ internal sealed class ShiftsController(
 
         // Entity "User" + the subject's id is what the member's own medical page lists.
         await auditLogService.LogAsync(
-            AuditAction.MedicalConditionsRevealed, "User", info.Id,
+            ShiftsAuditActions.MedicalConditionsRevealed, "User", info.Id,
             $"Medical conditions revealed for user {info.Id}", actorUserId);
         return Json(new { text });
     }

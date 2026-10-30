@@ -287,7 +287,7 @@ public sealed partial class ExpenseReportServiceTests
         var endorsed = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         endorsed!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
         endorsed.MaxAmount.Should().Be(150m, "a blank cap keeps the pre-approved amount");
-        await AuditLog.Received(1).LogAsync(AuditAction.ExpenseEndorse, Arg.Any<string>(), reportId,
+        await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseEndorse, Arg.Any<string>(), reportId,
             Arg.Is<string>(d => d.StartsWith("Pre-approval manager endorsed", StringComparison.Ordinal)), manager);
         (await _sut.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
             .Should().BeEmpty("only Submitted reports wait on the first review");

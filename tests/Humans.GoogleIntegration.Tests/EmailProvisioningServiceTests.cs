@@ -12,6 +12,7 @@ using NodaTime;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
+using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.GoogleIntegration.Tests;
 
@@ -230,7 +231,7 @@ public class EmailProvisioningServiceTests
         result.FullEmail.Should().Be("person@nobodies.team");
         result.WarningMessage.Should().Contain("admin");
         await f.UserEmailService.Received(1).AddVerifiedEmailAsync(userId, "person@nobodies.team", Arg.Any<CancellationToken>());
-        await f.Audit.Received(1).LogAsync(AuditAction.WorkspaceAccountProvisioned,
+        await f.Audit.Received(1).LogAsync(GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
             "WorkspaceAccount", userId, Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
         var notice = f.Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments();

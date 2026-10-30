@@ -12,8 +12,10 @@ internal sealed class CampCsvExportBuilder(
     public async Task<CampCsvExport> BuildAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var settings = await campService.GetSettingsAsync(ct);
-        var year = settings.PublicYear;
-        var camps = await campService.GetCampsForYearAsync(year, ct);
+        var year = settings.ActiveEvent?.Year ?? settings.PublicYear;
+        var camps = settings.ActiveEventSettingsId is { } activeEventId
+            ? await campService.GetCampsForEventAsync(activeEventId, ct)
+            : [];
 
         var leadUserIds = camps
             .SelectMany(camp => camp.Seasons.FirstOrDefault()?.LeadUserIds ?? Array.Empty<Guid>())
@@ -69,7 +71,7 @@ internal sealed class CampCsvExportBuilder(
             }
         });
 
-        await audit.LogAsync(AuditAction.CampsExported, "Camps", Guid.Empty,
+        await audit.LogAsync(CampsAuditActions.CampsExported, "Camps", Guid.Empty,
             $"Camp contact and lead list exported for {year}: {rowCount} rows", actorUserId);
         return new CampCsvExport(bytes, "text/csv", $"barrios-{year}.csv");
     }

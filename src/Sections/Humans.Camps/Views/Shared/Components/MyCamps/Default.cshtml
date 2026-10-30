@@ -5,10 +5,10 @@
         <h5 class="mb-0"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camps_MyCamps_Title"]</h5>
     </div>
     <div class="card-body p-0">
-        @foreach (var group in Model.Years)
+        @foreach (var group in Model.Events)
         {
             <div class="px-3 pt-2">
-                <strong class="text-muted small">@group.Year</strong>
+                <strong class="text-muted small">@group.EventName</strong>
             </div>
             <ul class="list-group list-group-flush">
                 @foreach (var membership in group.Memberships)

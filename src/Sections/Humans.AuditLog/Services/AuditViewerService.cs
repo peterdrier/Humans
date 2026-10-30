@@ -5,6 +5,7 @@ namespace Humans.AuditLog.Services;
 
 internal sealed class AuditViewerService(
     IAuditLogReader auditLog,
+    AuditActionRegistry registry,
     IEnumerable<IEntityNameContributor> nameContributors) : IAuditViewerService
 {
     public async Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
@@ -17,7 +18,7 @@ internal sealed class AuditViewerService(
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<AuditAction>? actions,
+        IReadOnlyList<string>? actions,
         int limit,
         CancellationToken ct = default)
     {
@@ -25,12 +26,12 @@ internal sealed class AuditViewerService(
         return await ResolveAsync(entries, ct);
     }
 
-    /// <summary><paramref name="actionFilter"/> is a case-insensitive <see cref="AuditAction"/> name match.</summary>
+    /// <summary><paramref name="actionFilter"/> is a case-insensitive match on a declared action name.</summary>
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
-        var (items, totalCount, anomalyCount) = await auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
+        var (items, totalCount, alertCounts) = await auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
         var events = await ResolveAsync(items, ct);
-        return new AuditEventPage(events, totalCount, anomalyCount);
+        return new AuditEventPage(events, totalCount, alertCounts);
     }
 
     private async Task<IReadOnlyList<AuditEvent>> ResolveAsync(
@@ -63,7 +64,7 @@ internal sealed class AuditViewerService(
         return resolved;
     }
 
-    private static AuditEvent Resolve(
+    private AuditEvent Resolve(
         AuditLogEntrySnapshot entry,
         IReadOnlyDictionary<Guid, EntityName> names)
     {
@@ -73,7 +74,7 @@ internal sealed class AuditViewerService(
         return new AuditEvent(
             Id: entry.Id,
             OccurredAt: entry.OccurredAt,
-            Action: entry.Action,
+            Action: registry.Resolve(entry.Action),
             ActorUserId: entry.ActorUserId,
             ActorDisplayName: NameOf(entry.ActorUserId, names),
             EntityType: entry.EntityType,
@@ -129,7 +130,8 @@ internal sealed class AuditViewerService(
         : null;
 }
 
+/// <summary><c>AlertCounts</c> is rows per <see cref="AuditActionDefinition.Alert"/> action over the whole log, keyed by name.</summary>
 internal sealed record AuditEventPage(
     IReadOnlyList<AuditEvent> Items,
     int TotalCount,
-    int AnomalyCount);
+    IReadOnlyDictionary<string, int> AlertCounts);

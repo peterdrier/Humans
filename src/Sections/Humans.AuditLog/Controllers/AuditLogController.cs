@@ -11,7 +11,8 @@ namespace Humans.AuditLog.Controllers;
 [Route("AuditLog")]
 internal sealed class AuditLogController(
     IUserService userService,
-    AuditViewerService auditViewer) : HumansControllerBase(userService)
+    AuditViewerService auditViewer,
+    AuditActionRegistry actions) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
@@ -24,7 +25,9 @@ internal sealed class AuditLogController(
         {
             Events = result.Items,
             ActionFilter = filter,
-            AnomalyCount = result.AnomalyCount,
+            QuickFilters = actions.QuickFilters,
+            Alerts = actions.Alerts,
+            AlertCounts = result.AlertCounts,
             TotalCount = result.TotalCount,
             PageNumber = page,
             PageSize = pageSize

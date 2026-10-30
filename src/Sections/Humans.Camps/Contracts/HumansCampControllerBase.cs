@@ -20,8 +20,8 @@ public abstract class HumansCampControllerBase(
     protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(CampInfo camp, UserInfo? user)
     {
         // Authorize against the loaded camp, not its id: the id path re-resolves the camp
-        // through the PublicYear projection, which cannot see a camp whose only season is
-        // a future (not-yet-public) year — locking its own lead out.
+        // through the active event's projection, which cannot see a camp whose only season is
+        // for a later event — locking its own lead out.
         var canManage = (await authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
         {

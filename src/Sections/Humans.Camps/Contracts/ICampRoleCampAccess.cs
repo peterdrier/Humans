@@ -11,10 +11,10 @@ internal interface ICampRoleCampAccess
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// One row per camp season participating in <paramref name="year"/>.
+    /// One row per camp season of <paramref name="eventSettingsId"/>.
     /// <c>JoinedMemberCount</c> counts active members.
     /// </summary>
     Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId,
             CampSeasonStatus Status, int TargetMemberCount, int? JoinedMemberCount)>>
-        GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default);
+        GetCampSeasonsForComplianceAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 }

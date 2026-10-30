@@ -174,7 +174,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 |-------|--------------|
 | Author (any Human with an approved profile, `PolicyNames.AppAccess`) | Create/edit a Draft survey they own (may be Identified — not forced anonymous), preview it — the respondent renderings and an invitation email to themselves — submit it for Board/Admin approval, view their own results/export only after that survey closes. Cannot see or act on anyone else's survey; cannot see their own results before closing. |
 | BoardOrAdmin (`PolicyNames.BoardOrAdmin`) | Everything an author can do on every survey, plus: open/close directly, send invitations, the approval queue (approve-and-send or reject-with-note any `PendingApproval` submission), view results + Identified drill-down, export CSV/JSON, for every survey regardless of author. |
-| Invited member | Answer their invited survey via the tokenised link; choose anonymity tier when `AllowAnonymous`; resume an unfinished Identified draft. Reachable even for non-members (`Survey` is in `MembershipRequiredFilter.ExemptControllers`; answer actions are `[AllowAnonymous]`). |
+| Invited member | Answer their invited survey via the tokenised link; choose anonymity tier when `AllowAnonymous`; resume an unfinished Identified draft. Reachable even for non-members (the controller is `[AllowAnonymous]`, which the membership gate passes through). |
 | Public visitor | Logged out: always Anonymous. Logged in: choose Identified, CompletionTracked, or Anonymous. All public-link responses use `InputMethod=Slug`. |
 | API (key auth) | List surveys, get a definition, read responses (`?format=md`/json) and aggregates via `/api/backdoor/surveys` — read-only. The controller lives in `Humans.Backdoor` and reads this section through `ISurveyAnalysisRead` (nobodies-collective/Humans#1128); the key is the caller's personal one, 401 when missing, unknown or revoked. |
 
@@ -289,6 +289,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `SurveysAuditActions` (`src/Sections/Humans.Surveys/SurveysAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `SurveyCreated`, `SurveyUpdated`, `SurveyOpened`, `SurveyClosed`, `SurveyInvitesSent`, `SurveyReminderSent`, `SurveySubmittedForApproval`, `SurveyApproved`, `SurveyRejected`, `SurveyResponsesExported`.
 - **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
 - **Teams:** `ITeamService` — `Team`-audience member ids and team display data.
 - **Consent:** `IConsentService.GetConsentReviewsAsync` — the Consent Coordinator's approval, which gates the approved-members audience (it does not gate Asociado voting).

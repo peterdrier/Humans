@@ -128,7 +128,7 @@ internal sealed class AccountMergeService(
 
         // 4. Audit.
         await auditLogService.LogAsync(
-            AuditAction.AccountMergeAccepted,
+            UsersAuditActions.AccountMergeAccepted,
             nameof(User), archivedUserId,
             $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
             adminUserId,
@@ -218,7 +218,7 @@ internal sealed class AccountMergeService(
             await mergeRepository.UpdateAsync(request, ct);
 
             await auditLogService.LogAsync(
-                AuditAction.AccountMergeRejected,
+                UsersAuditActions.AccountMergeRejected,
                 nameof(AccountMergeRequest), request.Id,
                 $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
                 adminUserId);
@@ -254,7 +254,7 @@ internal sealed class AccountMergeService(
             clock.GetCurrentInstant(), "Reconciled: accounts already merged.", ct);
 
         await auditLogService.LogAsync(
-            AuditAction.AccountMergeAccepted,
+            UsersAuditActions.AccountMergeAccepted,
             nameof(AccountMergeRequest), request.Id,
             $"Reconciled orphan merge request — accounts already merged (source {request.SourceUserId}, target {request.TargetUserId}).",
             adminUserId);

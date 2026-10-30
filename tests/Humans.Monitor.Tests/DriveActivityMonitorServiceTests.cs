@@ -61,7 +61,7 @@ public class DriveActivityMonitorServiceTests
         _client.DidNotReceiveWithAnyArgs().QueryActivityAsync(null!, null!, Arg.Any<CancellationToken>());
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            null!, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -90,7 +90,7 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            null!, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -113,7 +113,7 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d =>
@@ -130,7 +130,7 @@ public class DriveActivityMonitorServiceTests
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>());
             _ = _auditLog.LogAsync(
-                Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<string>(), Arg.Any<string>());
         });
     }
@@ -154,7 +154,7 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d => d.Contains("resolved@example.com", StringComparison.Ordinal)),
@@ -215,7 +215,7 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d =>
@@ -249,7 +249,7 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d => d.Contains("userinfo@example.com", StringComparison.Ordinal)),
@@ -282,7 +282,7 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d => d.Contains("people/42", StringComparison.Ordinal)),
@@ -317,7 +317,7 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d =>
@@ -350,7 +350,7 @@ public class DriveActivityMonitorServiceTests
         // Partial failure → marker not advanced, but the anomaly is still audited.
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             ok.Id,
             Arg.Any<string>(),
@@ -397,7 +397,7 @@ public class DriveActivityMonitorServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _auditLog.Received(1).LogAsync(
-            AuditAction.AnomalousPermissionDetected,
+            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
             nameof(GoogleResource),
             resource.Id,
             Arg.Is<string>(d => d.Contains("added writer", StringComparison.Ordinal)),
@@ -423,7 +423,7 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            null!, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -444,7 +444,7 @@ public class DriveActivityMonitorServiceTests
         count.Should().Be(0);
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, default(string)!);
+            null!, null!, default, null!, default(string)!);
     }
 
     [HumansFact]

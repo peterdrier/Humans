@@ -389,9 +389,9 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.CreateLegalDocumentWithInitialSyncAsync(
             request, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result!.Document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentCreated, "LegalDocument", result!.Document.Id,
             Arg.Is<string>(text => text.Contains("grace period 7 days", StringComparison.Ordinal)), _actorUserId);
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", result.Document.Id,
             Arg.Is<string>(text => text.Contains("sha-1", StringComparison.Ordinal)), _actorUserId,
             Arg.Is<Guid?>(id => id.HasValue && id.Value != Guid.Empty), "DocumentVersion");
         result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
@@ -427,7 +427,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         result!.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Failed);
         (await _repository.GetByIdAsync(result.Document.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().NotBeNull();
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", result.Document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentCreated, "LegalDocument", result.Document.Id,
             Arg.Any<string>(), _actorUserId);
         _audit.ReceivedCalls().Should().ContainSingle();
     }
@@ -445,7 +445,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         updated.Should().NotBeNull();
         updated.Name.Should().Be("Code of Conduct v2");
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentUpdated, "LegalDocument", document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentUpdated, "LegalDocument", document.Id,
             Arg.Is<string>(text => text.Contains("grace period 14 days", StringComparison.Ordinal)), _actorUserId);
         _cache.BulkInvalidations.Should().Be(1);
     }
@@ -473,7 +473,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         archived.Should().NotBeNull();
         archived.IsActive.Should().BeFalse();
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentArchived, "LegalDocument", document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentArchived, "LegalDocument", document.Id,
             Arg.Any<string>(), _actorUserId);
         _cache.BulkInvalidations.Should().Be(1);
     }
@@ -543,7 +543,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             version.Should().NotBeNull();
             version.ChangesSummary.Should().Be(string.IsNullOrWhiteSpace(summary) ? null : summary.Trim());
             var expectedAudit = $"Updated summary of version {versionId} to '{summary?.Trim()}'.";
-            await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", document.Id,
+            await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentVersionSummaryUpdated, "LegalDocument", document.Id,
                 Arg.Is<string>(text => string.Equals(text, expectedAudit, StringComparison.Ordinal)),
                 _actorUserId, versionId, "DocumentVersion");
             _cache.BulkInvalidations.Should().Be(1);
@@ -572,7 +572,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var result = await _service.SyncLegalDocumentAsync(
             document.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
             Arg.Is<string>(text => text.Contains("new-sha", StringComparison.Ordinal)), _actorUserId,
             Arg.Any<Guid?>(), "DocumentVersion");
         result.Should().Contain("v1.0");
@@ -732,7 +732,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         version.CommitSha.Should().Be("sha-1");
         version.Content["es"].Should().Be("es-content");
         version.ChangesSummary.Should().Be("Initial commit");
-        await _audit.Received(1).LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
             Arg.Any<string>(), nameof(LegalDocumentSyncService), version.Id, "DocumentVersion");
         await _gitHub.Received(1).GetFileContentAsync("privacy/doc.md", Arg.Any<CancellationToken>());
 

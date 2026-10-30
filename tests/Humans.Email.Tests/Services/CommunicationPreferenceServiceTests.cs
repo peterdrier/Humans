@@ -112,7 +112,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
             actorUserId: authenticated ? actorId : null, cancellationToken: Ct);
 
         var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        audit[0].Should().Be(AuditAction.CommunicationPreferenceChanged);
+        audit[0].Should().Be(EmailAuditActions.CommunicationPreferenceChanged);
         audit[2].Should().Be(userId);
         audit[4].Should().Be(authenticated ? actorId : nameof(CommunicationPreferenceService));
     }

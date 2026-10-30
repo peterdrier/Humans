@@ -33,9 +33,9 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         var program = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
         program.HoldedAccountId.Should().Be("acc-62900150");
         program.Managers.Should().ContainSingle(m => m.UserId == manager);
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramCreated, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramCreated, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, manager, AuditEntityTypes.User);
     }
 
@@ -94,7 +94,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         result.Refusal.Should().BeNull();
         await using var db = OpenContext();
         (await db.Programs.SingleAsync(p => p.Id == program.Id, Ct)).Kind.Should().Be(after);
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramEdited, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramEdited, AuditEntityTypes.Program, program.Id,
             Arg.Is<string>(description => description.Contains($"kind {before} → {after}")), actor);
     }
 
@@ -125,8 +125,8 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await using var db = OpenContext();
         (await db.Managers.Where(m => m.ProgramId == program.Id).Select(m => m.UserId).ToListAsync(Ct))
             .Should().BeEquivalentTo([kept, added]);
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditEntityTypes.User);
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditEntityTypes.User);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditEntityTypes.User);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -137,7 +137,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
 
         await NewService().UpdateProgramAsync(program.Id, Save(ceiling: 2000m), actor, Ct);
 
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramEdited, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramEdited, AuditEntityTypes.Program, program.Id,
             Arg.Is<string>(s => s.Contains("ceiling 1,000.00 € → 2,000.00 €")), actor);
     }
 
@@ -150,7 +150,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
 
         await NewService().UpdateProgramAsync(program.Id, Save(status: ProgramStatus.Closed), actor, Ct);
 
-        await AuditLog.Received(1).LogAsync(AuditAction.PreapprovalProgramClosed, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramClosed, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor);
         var after = await ReadGrantAsync(grant.Id);
         after.Status.Should().Be(GrantStatus.Open);
         after.MaxAmount.Should().Be(300m);
@@ -169,7 +169,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
 
         using var request = new CancellationTokenSource();
         if (cancelAfterSave)
-            AuditLog.LogAsync(AuditAction.PreapprovalProgramEdited,
+            AuditLog.LogAsync(PreapprovalsAuditActions.PreapprovalProgramEdited,
                     AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor)
                 .Returns(async _ => await request.CancelAsync());
         Email.SendAsync(Arg.Any<Humans.Email.Contracts.EmailMessage>(), Arg.Any<CancellationToken>())

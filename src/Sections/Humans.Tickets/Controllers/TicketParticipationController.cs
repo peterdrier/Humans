@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Services;
@@ -20,6 +21,7 @@ internal sealed class TicketParticipationController(
 {
     [HttpPost("DeclareNotAttending")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> DeclareNotAttending()
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
@@ -47,6 +49,7 @@ internal sealed class TicketParticipationController(
 
     [HttpPost("UndoNotAttending")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> UndoNotAttending()
     {
         var (errorResult, user) = await RequireCurrentUserAsync();

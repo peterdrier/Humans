@@ -1257,7 +1257,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Should().Be(requeued);
 
         await _auditLogService.Received(requeued ? 1 : 0).LogAsync(
-            AuditAction.GoogleSyncRetryScheduled, "GoogleSyncOutboxEvent", id,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled, "GoogleSyncOutboxEvent", id,
             $"Admin manually requeued Google sync outbox event {id}", actor);
     }
 
@@ -1271,7 +1271,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Should().Be(3);
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.GoogleSyncRetryScheduled, "GoogleSyncOutbox", Guid.Empty,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled, "GoogleSyncOutbox", Guid.Empty,
             "Admin requeued all 3 permanently-failed Google sync outbox event(s)", actor);
     }
 
@@ -1287,7 +1287,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Should().Be(0);
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.GoogleSyncRetryScheduled, "User", userId,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled, "User", userId,
             $"Admin enqueued Google sync re-run for user {userId} (0 team event(s))", actor);
     }
 }

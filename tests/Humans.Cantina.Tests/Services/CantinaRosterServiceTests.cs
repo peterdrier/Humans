@@ -86,7 +86,7 @@ public class CantinaRosterServiceTests
         var file = result.Should().BeOfType<FileContentResult>().Which;
         if (populated)
             HumansCsv.Utf8WithBom.GetString(file.FileContents).Should().Contain("Chef").And.Contain("Peanuts");
-        await _audit.Received(1).LogAsync(AuditAction.CantinaRosterExported, "EventSettings", burn.Id,
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaRosterExported, "EventSettings", burn.Id,
             Arg.Is<string>(text => text.StartsWith(daily ? "Daily" : "Weekly", StringComparison.Ordinal)
                 && text.Contains($"{(populated ? 1 : 0)} people rows", StringComparison.Ordinal)), actorId);
         var page = daily ? await controller.Day(0, ct) : await controller.Roster(0, ct);
@@ -114,11 +114,11 @@ public class CantinaRosterServiceTests
 
         var reveal = daily ? await controller.RevealDayHealth(0, ct) : await controller.RevealHealth(0, ct);
         reveal.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(daily ? nameof(CantinaController.Day) : nameof(CantinaController.Roster));
-        await _audit.Received(1).LogAsync(AuditAction.CantinaHealthDetailsRevealed, "EventSettings", burn.Id,
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "EventSettings", burn.Id,
             Arg.Is<string>(text => text.Contains("allergy and intolerance details revealed", StringComparison.Ordinal)
                 && text.Contains("1 people rows", StringComparison.Ordinal)), actorId);
         // The subject sees it on their own dietary page; the description never carries the answers.
-        await _audit.Received(1).LogAsync(AuditAction.CantinaHealthDetailsRevealed, "User", personId,
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", personId,
             Arg.Is<string>(text => !text.Contains("Peanuts", StringComparison.Ordinal)), actorId, burn.Id, "EventSettings");
         _audit.ReceivedCalls().Should().HaveCount(2);
         _audit.ClearReceivedCalls();
@@ -148,13 +148,13 @@ public class CantinaRosterServiceTests
             Human(nothing, "Cy", dietary: "Vegan"));
 
         await _service.GetWeeklyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
-        await _audit.Received(1).LogAsync(AuditAction.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
         await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), "User", chipsOnly, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
         _audit.ClearReceivedCalls();
 
         await _service.GetDailyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
-        await _audit.Received(1).LogAsync(AuditAction.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
-        await _audit.Received(1).LogAsync(AuditAction.CantinaHealthDetailsRevealed, "User", chipsOnly, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", chipsOnly, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
         await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), "User", nothing, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
         _audit.ClearReceivedCalls();
 

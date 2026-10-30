@@ -35,7 +35,7 @@ internal sealed class AgentSettingsService(
     {
         var row = await repo.UpdateSettingsAsync(mutator, clock.GetCurrentInstant(), cancellationToken);
         store.Set(row);
-        await audit.LogAsync(AuditAction.AgentSettingsUpdated, "AgentSettings", Guid.Empty,
+        await audit.LogAsync(AgentAuditActions.AgentSettingsUpdated, "AgentSettings", Guid.Empty,
             $"SettingsId={row.Id}; Enabled={row.Enabled}; Model={row.Model}; PreloadConfig={row.PreloadConfig}; " +
             $"DailyMessageCap={row.DailyMessageCap}; HourlyMessageCap={row.HourlyMessageCap}; " +
             $"DailyTokenCap={row.DailyTokenCap}; RetentionDays={row.RetentionDays}", actorUserId);

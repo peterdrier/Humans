@@ -196,6 +196,8 @@ keep in step by hand. Derive it from the call sites, not from here.
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 
+- **Audit actions:** declared on `SettingsAuditActions` (`src/Sections/Humans.Settings/SettingsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `EventSettingsUpdated`.
+
 ## Architecture
 
 **Owning services:** `Service` (registered as `ISettingsService`,

@@ -60,7 +60,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 | Actor | Capabilities |
 |-------|--------------|
 | Admin, CantinaAdmin | View weekly/daily roster, reveal its allergy / intolerance details (audited), download CSV |
-| Any authenticated member (incl. not-yet-Active; `MembershipRequiredFilter` exempts the form) | Read and save **their own** dietary answers, or decline to answer |
+| Any authenticated member (incl. not-yet-Active; the form carries `[AllowBeforeActiveMembership]`) | Read and save **their own** dietary answers, or decline to answer |
 | All other authenticated humans | Redirected to `/Account/AccessDenied`; Cantina admin sidebar entry is hidden |
 | Anonymous | Standard `[Authorize]` challenge — redirected to sign-in |
 
@@ -101,6 +101,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `CantinaAuditActions` (`src/Sections/Humans.Cantina/CantinaAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CantinaRosterExported`, `CantinaHealthDetailsRevealed`.
 - **AuditLog:** `IAuditLogService` records the weekly/daily CSV disclosures and the allergy / intolerance reveals.
 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.

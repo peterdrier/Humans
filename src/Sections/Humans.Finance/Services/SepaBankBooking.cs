@@ -326,7 +326,7 @@ internal sealed class SepaBankBooking(
             {
                 await repo.MarkSepaTransferReconciledAsync(row.TransferId, at.Value, ct);
                 await audit.LogAsync(
-                    AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
                     $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
                     + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
                     SepaBookingJobName, row.UserId, nameof(User));
@@ -404,7 +404,7 @@ internal sealed class SepaBankBooking(
                     + "for {Runs} consecutive runs; the rest of the feed is booked without it.", id, runs);
                 if (runs == StuckLineSkipAfterRuns)
                     await audit.LogAsync(
-                        AuditAction.SepaBankLineSkipped, SepaBankLineEntityType, Guid.Empty,
+                        FinanceAuditActions.SepaBankLineSkipped, SepaBankLineEntityType, Guid.Empty,
                         $"The SEPA sweep skipped Sabadell line {id}: it has been pending outgoing with no "
                         + $"readable date for {runs} consecutive runs, and blocked every booking until now. "
                         + "The rest of the feed books without it, so it can no longer count as a rival of a "
@@ -592,7 +592,7 @@ internal sealed class SepaBankBooking(
             {
                 await repo.MarkSepaTransferReconciledAsync(row.TransferId, reconciledAt.Value, ct);
                 await audit.LogAsync(
-                    AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
                     $"RECONCILED the Sabadell line {movement.Id} that paid the whole file "
                     + $"{row.FileName}, including this transfer of {Euros(row.Amount)} to "
                     + $"{row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
@@ -881,10 +881,10 @@ internal sealed class SepaBankBooking(
         Task AuditBookingAsync(string text) =>
             actorUserId is { } actor
                 ? audit.LogAsync(
-                    AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
                     text, actor, transfer.UserId, nameof(User))
                 : audit.LogAsync(
-                    AuditAction.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
                     text, SepaBookingJobName, transfer.UserId, nameof(User));
 
         string PostingSummary()

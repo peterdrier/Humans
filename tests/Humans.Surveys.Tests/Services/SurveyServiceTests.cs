@@ -155,7 +155,7 @@ public class SurveyServiceTests
         q1.Options.Select(o => o.Value).Should().ContainInOrder("yes", "no");
         q1.Options.Should().OnlyContain(o => o.QuestionId == q1.Id);
 
-        await _audit.Received(1).LogAsync(AuditAction.SurveyCreated, "Survey", id, Arg.Any<string>(), actor);
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyCreated, "Survey", id, Arg.Any<string>(), actor);
     }
 
     [HumansFact]
@@ -487,7 +487,7 @@ public class SurveyServiceTests
         await _fileStorage.Received(1).DeleteAsync(storedPath!, CancellationToken.None);
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -885,7 +885,7 @@ public class SurveyServiceTests
         await CreateService().UpdateAsync(id, input, Board(actor));
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyUpdated, "Survey", id,
+            SurveysAuditActions.SurveyUpdated, "Survey", id,
             Arg.Is<string>(d =>
                 d.Contains("anonymous responses enabled") &&
                 d.Contains("public slug set") &&
@@ -925,7 +925,7 @@ public class SurveyServiceTests
         await CreateService().UpdateAsync(id, input, Board(Guid.NewGuid()));
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyUpdated, "Survey", id,
+            SurveysAuditActions.SurveyUpdated, "Survey", id,
             Arg.Is<string>(d => d.Contains("1 question(s) edited")), Arg.Any<Guid>());
     }
 
@@ -961,7 +961,7 @@ public class SurveyServiceTests
         await CreateService().UpdateAsync(id, input, Board(Guid.NewGuid()));
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyUpdated, "Survey", id,
+            SurveysAuditActions.SurveyUpdated, "Survey", id,
             Arg.Is<string>(d => d.Contains("1 question(s) edited")), Arg.Any<Guid>());
     }
 
@@ -975,7 +975,7 @@ public class SurveyServiceTests
         await CreateService().UpdateAsync(id, Input(), Board(Guid.NewGuid()));
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyUpdated, "Survey", id, "Updated survey", Arg.Any<Guid>());
+            SurveysAuditActions.SurveyUpdated, "Survey", id, "Updated survey", Arg.Any<Guid>());
     }
 
     [HumansTheory]
@@ -1150,7 +1150,7 @@ public class SurveyServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).SetStatusAsync(id, SurveyStatus.Open, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.SurveyOpened, "Survey", id, Arg.Any<string>(), Arg.Any<Guid>());
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyOpened, "Survey", id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -1533,7 +1533,7 @@ public class SurveyServiceTests
         await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == c), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == a), Arg.Any<CancellationToken>());
         await _emailService.Received(2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -1809,7 +1809,7 @@ public class SurveyServiceTests
         await _repo.Received(1).UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+            SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansTheory]
@@ -1858,7 +1858,7 @@ public class SurveyServiceTests
         result.Failed.Should().Be(0);
         await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "first@example.org"), CancellationToken.None);
         await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "second@example.org"), CancellationToken.None);
-        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -1960,7 +1960,7 @@ public class SurveyServiceTests
             Arg.Any<CancellationToken>());
         await _repo.Received(1).SetReminderSentAsync(inv.Id, now, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyReminderSent, "Survey", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            SurveysAuditActions.SurveyReminderSent, "Survey", Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -2172,7 +2172,7 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().SetReminderSentAsync(invA.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SetReminderSentAsync(invB.Id, now, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyReminderSent, "Survey", Guid.Empty, Arg.Any<string>(), "SurveyService");
+            SurveysAuditActions.SurveyReminderSent, "Survey", Guid.Empty, Arg.Any<string>(), "SurveyService");
     }
 
     [HumansFact]
@@ -4486,7 +4486,7 @@ public class SurveyServiceTests
         var actor = Guid.NewGuid();
         var export = await CreateService().GetResponseExportAsync(surveyId, actor, TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(AuditAction.SurveyResponsesExported, "Survey", surveyId,
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyResponsesExported, "Survey", surveyId,
             "Survey responses exported: 3 rows", actor);
         export.Should().NotBeNull();
         export.Rows.Should().HaveCount(3);   // every tier appears so totals reconcile
@@ -5150,7 +5150,7 @@ public class SurveyServiceTests
         result.SurveyId.Should().Be(survey.Id);
         captured!.Questions.Single().RankedUnavailableOptionValues.Should().Equal("c");
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyUpdated,
+            SurveysAuditActions.SurveyUpdated,
             AuditEntityTypes.Survey,
             survey.Id,
             Arg.Is<string>(value => value.Contains("unavailable (c)", StringComparison.Ordinal)
@@ -5182,7 +5182,7 @@ public class SurveyServiceTests
         result.Error!.DiagnosticMessage.Should().Be(reason);
         await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -5254,7 +5254,7 @@ public class SurveyServiceTests
 
         await _repo.Received(1).SubmitForApprovalAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveySubmittedForApproval, "Survey", survey.Id, Arg.Any<string>(), authorId);
+            SurveysAuditActions.SurveySubmittedForApproval, "Survey", survey.Id, Arg.Any<string>(), authorId);
     }
 
     [HumansFact]
@@ -5333,8 +5333,8 @@ public class SurveyServiceTests
         await _repo.Received(1).AddInvitationAndSaveAsync(
             Arg.Is<SurveyInvitation>(i => i.UserId == recipient), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyApproved, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
-        await _audit.Received(1).LogAsync(AuditAction.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), boardUserId);
+            SurveysAuditActions.SurveyApproved, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), boardUserId);
     }
 
     [HumansFact]
@@ -5421,7 +5421,7 @@ public class SurveyServiceTests
         result.Succeeded.Should().BeTrue();
         await _repo.Received(1).RejectAsync(survey.Id, "Please clarify Q3.", _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SurveyRejected, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
+            SurveysAuditActions.SurveyRejected, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditEntityTypes.User);
     }
 
     [HumansFact]

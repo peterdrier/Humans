@@ -730,7 +730,7 @@ internal sealed class TicketQueryService(
     public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var rows = await ticketRepository.GetAttendeeExportDataAsync(ct);
-        await auditLog.LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
+        await auditLog.LogAsync(TicketsAuditActions.TicketAttendeesExported, "Tickets", Guid.Empty,
             $"Attendee list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
@@ -738,7 +738,7 @@ internal sealed class TicketQueryService(
     public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var rows = await ticketRepository.GetOrderExportDataAsync(ct);
-        await auditLog.LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
+        await auditLog.LogAsync(TicketsAuditActions.TicketOrdersExported, "Tickets", Guid.Empty,
             $"Order list exported: {rows.Count} rows", actorUserId);
         return rows.ToList();
     }
@@ -760,7 +760,7 @@ internal sealed class TicketQueryService(
         }
 
         await auditLog.LogAsync(
-            AuditAction.TicketDonationsExported,
+            TicketsAuditActions.TicketDonationsExported,
             "Tickets", Guid.Empty,
             description: $"Donor list exported: {rows.Count} donation rows, {rows.Sum(r => r.Amount):F2} EUR",
             actorUserId: actorUserId);

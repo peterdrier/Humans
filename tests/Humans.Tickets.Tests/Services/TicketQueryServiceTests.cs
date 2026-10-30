@@ -1173,7 +1173,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         rows.Select(r => r.AttendeeName).Should().BeEquivalentTo("Alice", "Zara");
         rows.Should().OnlyContain(r => string.Equals(r.VendorOrderId, "ord_export", StringComparison.Ordinal));
-        await _auditLog.Received(1).LogAsync(AuditAction.TicketAttendeesExported, "Tickets", Guid.Empty,
+        await _auditLog.Received(1).LogAsync(TicketsAuditActions.TicketAttendeesExported, "Tickets", Guid.Empty,
             "Attendee list exported: 2 rows", actor);
     }
 
@@ -1192,7 +1192,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         rows.Should().HaveCount(2);
         rows.Single(r => string.Equals(r.Date, "2026-03-01", StringComparison.Ordinal)).AttendeeCount.Should().Be(2);
         rows.Single(r => string.Equals(r.Date, "2026-01-01", StringComparison.Ordinal)).AttendeeCount.Should().Be(1);
-        await _auditLog.Received(1).LogAsync(AuditAction.TicketOrdersExported, "Tickets", Guid.Empty,
+        await _auditLog.Received(1).LogAsync(TicketsAuditActions.TicketOrdersExported, "Tickets", Guid.Empty,
             "Order list exported: 2 rows", actor);
     }
 
@@ -1253,7 +1253,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         rows[1].Date.Should().Be("2026-04-01");
         rows[0].BuyerEmail.Should().Be("buyer@example.com");
         await _auditLog.Received(1).LogAsync(
-            AuditAction.TicketDonationsExported, "Tickets", Guid.Empty,
+            TicketsAuditActions.TicketDonationsExported, "Tickets", Guid.Empty,
             Arg.Is<string>(d => d.Contains("4 donation rows", StringComparison.Ordinal) && d.Contains("270.00", StringComparison.Ordinal)),
             actor);
     }

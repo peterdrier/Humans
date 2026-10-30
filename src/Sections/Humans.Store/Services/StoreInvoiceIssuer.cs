@@ -259,7 +259,7 @@ internal sealed class StoreInvoiceIssuer(
         await repo.SaveIssuedInvoiceAsync(invoice, order, ct);
 
         await audit.LogAsync(
-            AuditAction.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
+            StoreAuditActions.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
             auditDetail, actorUserId,
             order.Id, AuditEntityTypes.Order);
         return AdminMutationResult.Success;

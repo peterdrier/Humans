@@ -2,7 +2,10 @@ namespace Humans.Camps.Models;
 
 internal sealed class CampComplianceViewModel
 {
-    public required int Year { get; init; }
+    public required CampEventRegistration Event { get; init; }
+
+    /// <summary>Every non-deleted Settings event, latest gate opening first.</summary>
+    public required IReadOnlyList<CampEventRegistration> EventOptions { get; init; }
 
     /// <summary>Role columns, in display order (one per active role definition).</summary>
     public required IReadOnlyList<CampComplianceRoleColumn> Roles { get; init; }

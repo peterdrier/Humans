@@ -281,7 +281,7 @@ internal sealed class BackdoorIssuesController(
                     at = a.At.ToDateTimeUtc(),
                     actorUserId = a.ActorUserId,
                     actorName = a.ActorDisplayName,
-                    action = a.Action.ToString(),
+                    action = a.Action,
                     description = a.Description
                 },
                 _ => throw new NotSupportedException()

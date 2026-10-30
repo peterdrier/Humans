@@ -100,6 +100,8 @@ The all-users grid reads `IUserService.GetAllRawUserInfosAsync` and the `UserInf
 
 The dashboard card reads other sections through their contracts: `IUserService`, `ITicketService` (the membership card's ticket bit), `ICommunicationPreferenceService` (Email; its marketing bit and the users debug page's opt-out column) and `IShiftView`. The widget gallery reads no section at all: it catalogs Base and Shell widgets itself, and every section-owned widget arrives through the `ChromeSlots.WidgetGallery` chrome slot, contributed by the owning section's `Section` (`ISectionChrome`). `MemberTermStatus` (Governance) and `NotificationBell` (Notifications) get no gallery card at all — they already render on the page through the member-dashboard and header-right chrome-slot demos, and a `WidgetGallery` contribution would only duplicate them.
 
+- **Audit actions:** declared on `DebugAuditActions` (`src/Sections/Humans.Debug/DebugAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `DataMigrationApplied`.
+
 ## Architecture
 
 **Owning services:** `DataMigrationService` (scoped; hosts the data migrations, owns no data). The diagnostics controllers project singleton snapshots into view models. One static calculator (`UserSetMembershipCalculator`) backs the dashboard card.

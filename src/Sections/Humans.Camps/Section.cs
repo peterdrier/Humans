@@ -1,3 +1,5 @@
+using System.Globalization;
+using Humans.Camps.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
@@ -20,6 +22,7 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Camps;
 
@@ -29,6 +32,7 @@ namespace Humans.Camps;
 /// </summary>
 public sealed class Section :
     ISection,
+    ISectionDataMigrations,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -52,6 +56,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CampsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, CampsNotificationSources>();
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
 
@@ -73,6 +78,7 @@ public sealed class Section :
         services.AddSingleton<ICampSeeding>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingCampService>());
 
         // Merge, GDPR erasure and role writes change rows the projection serves, so the
         // decorator carries them and drops the projection itself after the inner write.
@@ -170,4 +176,32 @@ public sealed class Section :
     [
         new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), PolicyNames.CampAdminOrAdmin)
     ];
+
+    internal const string EventIdsKey = "camps.event-ids";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(EventIdsKey, "Camps",
+            "Give every barrio season the event of its year, and turn the open-season years into per-event registration rows",
+            "The open-season year list on camp_settings (emptied by this run), and seasons without an event id",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var plan = await sp.GetRequiredService<ICampManagement>().GetEventIdPlanAsync(ct);
+        return new(["Season", "Name", "Year", "Event"],
+            [
+                .. plan.LegacyOpenYears.Select(year => (IReadOnlyList<string>)[
+                    "(open-season year)", "", year.ToString(CultureInfo.InvariantCulture), "Pinned to its events, then removed"]),
+                .. plan.Seasons.Select(p => (IReadOnlyList<string>)[
+                    p.SeasonId.ToString(),
+                    p.SeasonName,
+                    p.Year.ToString(CultureInfo.InvariantCulture),
+                    p.EventName]),
+            ]);
+    }
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<ICampManagement>().AssignSeasonEventIdsAsync(ct);
 }

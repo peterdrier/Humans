@@ -382,7 +382,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     existingGroup.Id, teamId);
 
                 await auditLogService.LogAsync(
-                    AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
+                    GoogleIntegrationAuditActions.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                     "Deactivated Google Group resource (prefix cleared)",
                     nameof(GoogleWorkspaceSyncService),
                     relatedEntityId: teamId, relatedEntityType: "Team");
@@ -439,7 +439,7 @@ internal sealed class GoogleWorkspaceSyncService(
                 cancellationToken);
 
             await auditLogService.LogAsync(
-                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
+                GoogleIntegrationAuditActions.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
                 "Reactivated Google Group resource for team",
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: "Team");
@@ -452,7 +452,7 @@ internal sealed class GoogleWorkspaceSyncService(
             await resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
 
             await auditLogService.LogAsync(
-                AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
+                GoogleIntegrationAuditActions.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                 $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: "Team");
@@ -484,7 +484,7 @@ internal sealed class GoogleWorkspaceSyncService(
         await resourceRepository.AddAsync(resource, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
+            GoogleIntegrationAuditActions.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Linked Google Group '{team.Name}' ({email}) for team",
             nameof(GoogleWorkspaceSyncService),
             relatedEntityId: teamId, relatedEntityType: "Team");
@@ -621,7 +621,7 @@ internal sealed class GoogleWorkspaceSyncService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
+                GoogleIntegrationAuditActions.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
                 $"Remediated settings for Google Group '{groupEmail}'",
                 nameof(GoogleWorkspaceSyncService));
 
@@ -843,7 +843,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     await SetInheritedPermissionsDisabledAsync(resource.GoogleId, true, cancellationToken);
 
                     await auditLogService.LogAsync(
-                        AuditAction.GoogleResourceInheritanceDriftCorrected,
+                        GoogleIntegrationAuditActions.GoogleResourceInheritanceDriftCorrected,
                         nameof(GoogleResource), resource.Id,
                         $"Corrected inherited access drift for Drive folder '{resource.Name}' — re-disabled inherited permissions",
                         "GoogleResourceReconciliationJob");
@@ -917,7 +917,7 @@ internal sealed class GoogleWorkspaceSyncService(
     // Admin retry audits, shared with StubGoogleSyncService so both modes leave the same trail.
     internal static Task AuditOutboxRequeueAsync(IAuditLogService auditLog, Guid id, Guid actorUserId) =>
         auditLog.LogAsync(
-            AuditAction.GoogleSyncRetryScheduled,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
             "GoogleSyncOutboxEvent",
             id,
             $"Admin manually requeued Google sync outbox event {id}",
@@ -925,7 +925,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
     internal static Task AuditRequeueAllAsync(IAuditLogService auditLog, int count, Guid actorUserId) =>
         auditLog.LogAsync(
-            AuditAction.GoogleSyncRetryScheduled,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
             "GoogleSyncOutbox",
             Guid.Empty,
             $"Admin requeued all {count} permanently-failed Google sync outbox event(s)",
@@ -933,7 +933,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
     internal static Task AuditUserSyncRerunAsync(IAuditLogService auditLog, Guid userId, int count, Guid actorUserId) =>
         auditLog.LogAsync(
-            AuditAction.GoogleSyncRetryScheduled,
+            GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
             "User",
             userId,
             $"Admin enqueued Google sync re-run for user {userId} ({count} team event(s))",
