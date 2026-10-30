@@ -17,7 +17,7 @@ namespace Humans.Debug.Tests;
 public class DebugArchitectureTests
 {
     [HumansFact]
-    public void AdminSurfacesRequireAdminOnly_ExceptTheDeliberateAnonymousOnes()
+    public void AdminSurfacesAreBoardReadable_AndEveryWriteIsAdminOnly_ExceptTheDeliberateAnonymousOnes()
     {
         // Discovered from the assembly, not listed: a controller added later enters this
         // assertion by existing, which is the only way the invariant survives new surfaces.
@@ -38,8 +38,17 @@ public class DebugArchitectureTests
         foreach (var controller in adminControllers)
         {
             var authorize = controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
-            authorize.Should().NotBeNull(because: $"{controller.Name} is admin-only");
-            authorize.Policy.Should().Be(PolicyNames.AdminOnly, because: $"{controller.Name} is admin-only");
+            authorize.Should().NotBeNull(because: $"{controller.Name} is operator tooling");
+            authorize.Policy.Should().Be(PolicyNames.BoardOrAdmin, because: $"Board reads {controller.Name}, Admin acts");
+
+            // Board sees everything and changes nothing: every POST carries its own AdminOnly.
+            foreach (var post in controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                         .Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null))
+            {
+                var postAuthorize = post.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
+                postAuthorize.Should().NotBeNull(because: $"{controller.Name}.{post.Name} changes state");
+                postAuthorize.Policy.Should().Be(PolicyNames.AdminOnly, because: $"{controller.Name}.{post.Name} changes state");
+            }
         }
 
         var anonymousActions = adminControllers

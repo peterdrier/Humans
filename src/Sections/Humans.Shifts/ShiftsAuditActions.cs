@@ -44,4 +44,6 @@ internal sealed class ShiftsAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition VolunteerAvailabilityCleared = new("VolunteerAvailabilityCleared");
 
     public static readonly AuditActionDefinition VolunteerTrackingExported = new("VolunteerTrackingExported");
+
+    public static readonly AuditActionDefinition MedicalConditionsRevealed = new("MedicalConditionsRevealed");
 }

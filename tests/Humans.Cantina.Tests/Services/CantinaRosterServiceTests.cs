@@ -4,6 +4,7 @@ using Humans.Base.Csv;
 using Humans.Cantina.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -78,16 +79,7 @@ public class CantinaRosterServiceTests
         _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct)
             .Returns(populated ? new[] { personId } : Array.Empty<Guid>());
         SetupHumans(Human(personId, "Chef", dietary: "Vegan", allergies: ["Other"], allergyOther: "Peanuts"));
-        var controller = new CantinaController(_service, NullLogger<CantinaController>.Instance, _userRead)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext
-                {
-                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
-                }
-            }
-        };
+        var controller = Controller(actorId);
 
         var result = daily ? await controller.DayCsv(0, ct) : await controller.Csv(0, ct);
 
@@ -100,6 +92,87 @@ public class CantinaRosterServiceTests
         var page = daily ? await controller.Day(0, ct) : await controller.Roster(0, ct);
         page.Should().BeOfType<ViewResult>();
         _audit.ReceivedCalls().Should().ContainSingle("page reads do not disclose a file");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor(bool daily)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var personId = Guid.NewGuid();
+        var burn = ActiveEvent();
+        _burnSettings.GetActiveEventSettingsAsync(ct).Returns(burn);
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { personId });
+        SetupHumans(Human(personId, "Chef", allergies: ["Other"], allergyOther: "Peanuts"));
+        var controller = Controller(actorId);
+
+        var locked = daily ? await controller.Day(0, ct) : await controller.Roster(0, ct);
+        locked.Should().BeOfType<ViewResult>().Which.ViewData[CantinaController.HealthRevealedKey].Should().Be(false);
+        _audit.ReceivedCalls().Should().BeEmpty("the locked page discloses no health data");
+
+        var reveal = daily ? await controller.RevealDayHealth(0, ct) : await controller.RevealHealth(0, ct);
+        reveal.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(daily ? nameof(CantinaController.Day) : nameof(CantinaController.Roster));
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "EventSettings", burn.Id,
+            Arg.Is<string>(text => text.Contains("allergy and intolerance details revealed", StringComparison.Ordinal)
+                && text.Contains("1 people rows", StringComparison.Ordinal)), actorId);
+        // The subject sees it on their own dietary page; the description never carries the answers.
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", personId,
+            Arg.Is<string>(text => !text.Contains("Peanuts", StringComparison.Ordinal)), actorId, burn.Id, "EventSettings");
+        _audit.ReceivedCalls().Should().HaveCount(2);
+        _audit.ClearReceivedCalls();
+
+        var other = daily ? await controller.Day(1, ct) : await controller.Roster(1, ct);
+        other.Should().BeOfType<ViewResult>().Which.ViewData[CantinaController.HealthRevealedKey].Should().Be(false, "a reveal is for one page only");
+
+        var revealed = daily ? await controller.Day(0, ct) : await controller.Roster(0, ct);
+        revealed.Should().BeOfType<ViewResult>().Which.ViewData[CantinaController.HealthRevealedKey].Should().Be(true);
+        _audit.ReceivedCalls().Should().BeEmpty("the render after the reveal is covered by the reveal's own entries");
+    }
+
+    [HumansFact]
+    public async Task HealthReveal_RecordsOnlyTheMembersWhoseAnswersItShows()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var withOther = Guid.NewGuid();
+        var chipsOnly = Guid.NewGuid();
+        var nothing = Guid.NewGuid();
+        var burn = ActiveEvent();
+        _burnSettings.GetActiveEventSettingsAsync(ct).Returns(burn);
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { withOther, chipsOnly, nothing });
+        SetupHumans(
+            Human(withOther, "Ana", intolerances: ["Other"], intoleranceOther: "Nightshades"),
+            Human(chipsOnly, "Bo", allergies: ["Nuts"]),
+            Human(nothing, "Cy", dietary: "Vegan"));
+
+        await _service.GetWeeklyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
+        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), "User", chipsOnly, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        _audit.ClearReceivedCalls();
+
+        await _service.GetDailyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", chipsOnly, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
+        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), "User", nothing, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        _audit.ClearReceivedCalls();
+
+        await _service.GetDailyRosterAsync(0, RosterDisclosure.Export(actorId), ct);
+        _audit.ReceivedCalls().Should().ContainSingle("exports keep their one scope row");
+    }
+
+    private CantinaController Controller(Guid actorId)
+    {
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        return new CantinaController(_service, NullLogger<CantinaController>.Instance, _userRead)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext },
+            TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>()),
+        };
     }
 
     /// <summary>Builds a human: burner name on the profile, dietary as Cantina's own record.</summary>

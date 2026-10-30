@@ -40,6 +40,8 @@ internal interface IEventRepository : IRepository
     Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
     Task AddEventAsync(Event guideEvent, CancellationToken ct = default);
     Task SaveEventAsync(Event guideEvent, CancellationToken ct = default);
+    /// <summary>Only rows still without an event id are written. Returns the rows written.</summary>
+    Task<int> AssignEventSettingsIdsAsync(IReadOnlyDictionary<Guid, Guid> eventSettingsIdByEventId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
@@ -47,12 +49,14 @@ internal interface IEventRepository : IRepository
     Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
 
-    Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default);
+    /// <summary>Scoped like <see cref="Event.IsInEvent"/>.</summary>
+    Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(Guid? eventSettingsId, CancellationToken ct = default);
     Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
     Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     /// <summary>Read-only load with Category, EventVenue and moderation history; never pass the result to a save.</summary>
     Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default);
-    Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default);
+    /// <summary>Scoped like <see cref="Event.IsInEvent"/>.</summary>
+    Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(Guid? eventSettingsId, CancellationToken ct = default);
     /// <summary>Persists the already-transitioned event and appends the action in one transaction.</summary>
     Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default);
 

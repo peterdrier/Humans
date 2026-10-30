@@ -20,6 +20,7 @@ using Humans.Workgroups.Services.Contributors;
 using Humans.Workgroups.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -46,6 +47,7 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, WorkgroupsAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, WorkgroupsNotificationSources>();
         services.AddSectionDbContext<WorkgroupsDbContext>(sentinelTable: "workgroups");
 
         services.AddSingleton<IWorkgroupRepository, WorkgroupRepository>();

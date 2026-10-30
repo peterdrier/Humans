@@ -11,6 +11,7 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
@@ -22,6 +23,7 @@ public sealed class Section : ISection, ISectionAdminNav, IUserPart
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CampaignsAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, CampaignsNotificationSources>();
         services.AddSectionDbContext<CampaignsDbContext>(sentinelTable: "campaigns");
 
         services.AddSingleton<ICampaignRepository, CampaignRepository>();

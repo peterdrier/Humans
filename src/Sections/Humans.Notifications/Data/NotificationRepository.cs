@@ -120,7 +120,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     }
 
     public async Task ResolveBySourceAsync(
-        Guid userId, NotificationSource source, Instant now, CancellationToken ct = default, string? sourceKey = null)
+        Guid userId, string source, Instant now, CancellationToken ct = default, string? sourceKey = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var notifications = await ctx.Notifications
@@ -134,7 +134,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     }
 
     public async Task ResolveBySourceKeyAsync(
-        NotificationSource source, string sourceKey, Instant now,
+        string source, string sourceKey, Instant now,
         Guid? resolvedByUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -163,7 +163,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     }
 
     public async Task<int> DeleteUnresolvedBySourcesAsync(
-        IReadOnlyList<NotificationSource> sources, CancellationToken ct = default)
+        IReadOnlyList<string> sources, CancellationToken ct = default)
     {
         if (sources.Count == 0) return 0;
 
@@ -216,6 +216,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         Guid userId,
         string? search,
         NotificationInboxFilter filter,
+        IReadOnlyList<string> filterSources,
         NotificationInboxTab tab,
         Instant resolvedCutoff,
         CancellationToken ct = default)
@@ -244,20 +245,8 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                 query = query.Where(nr => nr.Notification.Class == NotificationClass.Actionable);
                 break;
             case NotificationInboxFilter.Shifts:
-                query = query.Where(nr =>
-                    nr.Notification.Source == NotificationSource.ShiftCoverageGap ||
-                    nr.Notification.Source == NotificationSource.ShiftSignupChange);
-                break;
             case NotificationInboxFilter.Approvals:
-                query = query.Where(nr =>
-                    // ConsentReviewNeeded and ApplicationSubmitted: retired sources, kept so existing rows still filter; nothing emits them.
-                    nr.Notification.Source == NotificationSource.ConsentReviewNeeded ||
-                    nr.Notification.Source == NotificationSource.ApplicationSubmitted ||
-                    nr.Notification.Source == NotificationSource.ApplicationApproved ||
-                    nr.Notification.Source == NotificationSource.ApplicationRejected ||
-                    nr.Notification.Source == NotificationSource.VolunteerApproved ||
-                    nr.Notification.Source == NotificationSource.TeamJoinRequestSubmitted ||
-                    nr.Notification.Source == NotificationSource.TeamJoinRequestDecided);
+                query = query.Where(nr => filterSources.Contains(nr.Notification.Source));
                 break;
             case NotificationInboxFilter.Resolved:
                 query = query.Where(nr => nr.Notification.ResolvedAt != null);

@@ -18,7 +18,7 @@ Since the per-section DbContext split (nobodies-collective/Humans#858, #866) the
 **The path does not give you the context name — look it up, never synthesize it.** `<Section>DbContext` is a guess that is wrong for real sections: `Humans.Consent.Data.Migrations` is owned by `LegalDbContext`, and `Humans.Events.Data.Migrations` by `EventGuideDbContext`. Reviewing either with the synthesized name makes every command below fail. Resolve the actual class from either:
 
 - the `<Context>ModelSnapshot.cs` sitting in the same folder — its filename is the context class name; or
-- the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`, whose entries are `<Context>:<project path>` and are the same list CI verifies against.
+- the design-time factory `Data/<Context>Factory.cs` in the owning project — its filename is the context class name, and CI derives the list it verifies from these files.
 
 Any `dotnet ef` command run during review must pass `--context <C>` with that resolved name, plus `--project` per the table above — see `memory/process/ef-multi-context-commands.md` for exact flag forms. Never run a bare `dotnet ef migrations ...`.
 

@@ -155,7 +155,7 @@ internal sealed class EmailProvisioningService(
             {
                 var culture = CultureInfo.GetCultureInfo(language);
                 await notificationService.SendAsync(
-                    NotificationSource.WorkspaceCredentialsReady,
+                    GoogleIntegrationNotificationSources.WorkspaceCredentialsReady,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
                     NoticeResources.GetString("GoogleIntegration_Email_WorkspaceCredentials_Subject", culture)!,

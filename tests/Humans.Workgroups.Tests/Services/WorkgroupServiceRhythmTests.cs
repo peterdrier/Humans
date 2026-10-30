@@ -38,7 +38,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         await NewService().RunDailyRhythmAsync(Ct);
 
         await Notifications.Received(1).SendAsync(
-            NotificationSource.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            WorkgroupsNotificationSources.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             "Actualización mensual pendiente: " + workgroup.Name,
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == survivorId),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -55,7 +55,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         var second = SeedUser("Segundo", language: "es");
         if (hasAnotherLanguage)
             await AddMemberAsync(group.Id, second, WorkgroupMemberRole.Coordinator);
-        Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+        Notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(),
                 Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(first)),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -64,7 +64,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
 
         await NewService().RunDailyRhythmAsync(Ct);
 
-        await Notifications.Received(hasAnotherLanguage ? 1 : 0).SendAsync(NotificationSource.WorkgroupReportingDue,
+        await Notifications.Received(hasAnotherLanguage ? 1 : 0).SendAsync(WorkgroupsNotificationSources.WorkgroupReportingDue,
             Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(), Arg.Any<string>(),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == second),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -94,7 +94,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
             WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
         await Notifications.Received(1).SendAsync(
-            NotificationSource.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            WorkgroupsNotificationSources.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(workgroup.Members.Single().UserId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());

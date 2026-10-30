@@ -13,8 +13,9 @@ namespace Humans.Backdoor.Controllers;
 /// <summary>
 /// A freshly issued plaintext rides one redirect in TempData and is shown once. It is never stored, so a lost key is
 /// rotated, not recovered.
+/// Board reads the key list (who holds a key, never the key itself); only Admin issues, rotates or revokes.
 /// </summary>
-[Authorize(Policy = PolicyNames.AdminOnly)]
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Backdoor")]
 internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
@@ -30,6 +31,7 @@ internal sealed class BackdoorController(
     }
 
     [HttpPost("Issue")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Issue(Guid ownerUserId, string label, CancellationToken ct)
     {
@@ -41,6 +43,7 @@ internal sealed class BackdoorController(
     }
 
     [HttpPost("{id:guid}/Rotate")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Rotate(Guid id, CancellationToken ct)
     {
@@ -52,6 +55,7 @@ internal sealed class BackdoorController(
     }
 
     [HttpPost("{id:guid}/Revoke")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Revoke(Guid id, CancellationToken ct)
     {

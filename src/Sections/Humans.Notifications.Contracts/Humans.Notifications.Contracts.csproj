@@ -11,17 +11,19 @@
     whole section (memory/architecture/section-project-cycle-fix.md).
 
     It holds exactly what lives outside the section: the dispatch, auto-resolve and retention
-    interfaces, and the enums those signatures name — NotificationSource,
-    NotificationClass and NotificationPriority cannot follow the entities into the section's
-    internal Domain/ because every emit call site outside the section names them
-    (Budget's rule). The inbox read models, the meter surface and the
+    interfaces, the NotificationSourceDefinition each section declares its own sources with, and
+    the enums those signatures name — NotificationClass and NotificationPriority cannot follow
+    the entities into the section's internal Domain/ because every emit call site outside the
+    section names them (Budget's rule). The inbox read models, the meter surface and the
     repository have no consumer outside the section and stay internal.
 
-    References Humans.Base only — the bottom of the graph.
+    References Humans.Base and Humans.Email.Contracts: a source definition carries the
+    MessageCategory its preference check uses.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
