@@ -203,7 +203,7 @@ public class AuthorizationPolicyTests : IDisposable
 
         { PolicyNames.MedicalDataViewer, RoleNames.Admin, true },
         { PolicyNames.MedicalDataViewer, ShiftsRoles.ShiftsNoInfo, true },
-        { PolicyNames.MedicalDataViewer, RoleNames.Board, false },
+        { PolicyNames.MedicalDataViewer, RoleNames.Board, true },
         { PolicyNames.MedicalDataViewer, ShiftsRoles.ShiftsAdmin, false },
 
         // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.

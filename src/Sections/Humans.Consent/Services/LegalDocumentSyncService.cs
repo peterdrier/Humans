@@ -613,7 +613,7 @@ internal sealed partial class LegalDocumentSyncService(
         {
             await TryFanoutAsync(
                 document,
-                NotificationSource.LegalDocumentPublished,
+                ConsentNotificationSources.LegalDocumentPublished,
                 "Consent_Notification_Published",
                 "Consent_Notification_PublishedBody",
                 cancellationToken);
@@ -623,7 +623,7 @@ internal sealed partial class LegalDocumentSyncService(
         {
             await TryFanoutAsync(
                 document,
-                NotificationSource.ReConsentRequired,
+                ConsentNotificationSources.ReConsentRequired,
                 "Consent_Notification_ReConsentRequired",
                 "Consent_Notification_ReConsentRequiredBody",
                 cancellationToken);
@@ -634,7 +634,7 @@ internal sealed partial class LegalDocumentSyncService(
 
     private async Task TryFanoutAsync(
         LegalDocument document,
-        NotificationSource source,
+        NotificationSourceDefinition source,
         string titleKey,
         string bodyKey,
         CancellationToken cancellationToken)

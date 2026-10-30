@@ -235,7 +235,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.AccessSuspended,
+            UsersNotificationSources.AccessSuspended,
             NotificationClass.Actionable,
             NotificationPriority.Critical,
             Arg.Any<string>(),

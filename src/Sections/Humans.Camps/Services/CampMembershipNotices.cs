@@ -43,7 +43,7 @@ internal sealed class CampMembershipNotices(
                     var campName = name ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
                     var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_SeasonClosed", culture)!, year, campName);
                     await notificationEmitter.SendAsync(
-                        NotificationSource.CampMembershipSeasonClosed,
+                        CampsNotificationSources.CampMembershipSeasonClosed,
                         NotificationClass.Informational,
                         NotificationPriority.Normal,
                         title,
@@ -77,7 +77,7 @@ internal sealed class CampMembershipNotices(
                 ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
             var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipApproved", culture)!, campName);
             await notificationEmitter.SendAsync(
-                NotificationSource.CampMembershipApproved,
+                CampsNotificationSources.CampMembershipApproved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
@@ -104,7 +104,7 @@ internal sealed class CampMembershipNotices(
                 ?? NoticeResources.GetString("Camps_Notification_GenericCamp", culture)!;
             var title = string.Format(culture, NoticeResources.GetString("Camps_Notification_MembershipRejected", culture)!, campName);
             await notificationEmitter.SendAsync(
-                NotificationSource.CampMembershipRejected,
+                CampsNotificationSources.CampMembershipRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,

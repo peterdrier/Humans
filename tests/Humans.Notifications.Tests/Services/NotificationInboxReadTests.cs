@@ -78,7 +78,7 @@ public sealed class NotificationInboxReadTests : IDisposable
                         Title = "Consent review pending: Alice",
                         ActionUrl = "/OnboardingReview",
                         Priority = NotificationPriority.High,
-                        Source = NotificationSource.ConsentReviewNeeded,
+                        Source = TestSources.Plain.Name,
                         Class = NotificationClass.Actionable,
                         CreatedAt = older,
                     },
@@ -89,7 +89,7 @@ public sealed class NotificationInboxReadTests : IDisposable
                     {
                         Title = "Welcome to Ice Crew",
                         Priority = NotificationPriority.Normal,
-                        Source = NotificationSource.TeamMemberAdded,
+                        Source = TestSources.TeamUpdate.Name,
                         Class = NotificationClass.Informational,
                         CreatedAt = newer,
                         IsRead = true,
@@ -103,7 +103,7 @@ public sealed class NotificationInboxReadTests : IDisposable
             first =>
             {
                 first.CreatedAt.Should().Be(newer);
-                first.Source.Should().Be(NotificationSource.TeamMemberAdded);
+                first.Source.Should().Be(TestSources.TeamUpdate.Name);
                 first.ActionUrl.Should().BeNull();
                 first.Class.Should().Be(NotificationClass.Informational);
                 first.IsUnread.Should().BeFalse();

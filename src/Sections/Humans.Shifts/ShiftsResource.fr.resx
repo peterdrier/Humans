@@ -1275,4 +1275,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Le motif ne peut pas dépasser 1 000 caractères.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Cette inscription n’est plus active et ne peut plus être annulée.</value></data>
+  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Afficher les informations médicales (chaque consultation est enregistrée dans le journal d'audit)</value></data>
+  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Impossible de charger les informations médicales.</value></data>
 </root>

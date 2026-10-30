@@ -12,6 +12,7 @@ using Humans.Issues.Services;
 using Humans.Issues.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
@@ -25,6 +26,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, IssuesAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, IssuesNotificationSources>();
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");
 
         services.AddSingleton<IIssuesRepository, IssuesRepository>();

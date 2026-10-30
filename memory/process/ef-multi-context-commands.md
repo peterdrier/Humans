@@ -50,7 +50,8 @@ dotnet ef migrations has-pending-model-changes --context <C> \
 - Section baselines are never edited or removed; rollback of a peel is a PR revert
   ([[no-hand-edited-migrations]] still applies in full — the one-time hand-emptied peel
   removal migrations were a Peter-authorized exception scoped to the #858 stack).
-- When a new section context lands, add its `context:project` pair to the `SECTION_DB_CONTEXTS`
-  workflow-level `env` var in `.github/workflows/build.yml` — one list, consumed by all three
-  loops (Layer 1, Layer 2 per-section apply, post-apply). Nowhere else in that file names a
-  context.
+- A new section context needs no CI edit: `.github/workflows/build.yml`'s detect job derives every
+  `context:project` pair from the design-time factory beside each context
+  (`src/Sections/*/Data/*DbContextFactory.cs`, plus `src/Humans.Web/Data/`), and the three loops
+  (Layer 1, Layer 2 per-section apply, post-apply) iterate the affected pairs. So the factory file
+  must sit in `Data/` and be named `<Context>Factory.cs`, or CI never checks that context.

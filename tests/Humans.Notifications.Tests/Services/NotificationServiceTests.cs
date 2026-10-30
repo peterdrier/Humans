@@ -67,7 +67,7 @@ public class NotificationServiceTests : IDisposable
         var user = Guid.NewGuid();
 
         await _service.SendAsync(
-            NotificationSource.TeamMemberAdded,
+            TestSources.TeamUpdate,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Added to team",
@@ -91,11 +91,11 @@ public class NotificationServiceTests : IDisposable
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
-        await _service.SendAsync(NotificationSource.TeamMemberAdded, NotificationClass.Informational,
+        await _service.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
             NotificationPriority.Normal, "Source notice", [source], cancellationToken: ct);
-        await _service.SendAsync(NotificationSource.TeamMemberAdded, NotificationClass.Informational,
+        await _service.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
             NotificationPriority.Normal, "Target notice", [target], cancellationToken: ct);
-        var inbox = new NotificationInboxService(_repo, Substitute.For<IUserService>(), _clock);
+        var inbox = new NotificationInboxService(_repo, Substitute.For<IUserService>(), TestSources.Registry, _clock);
         (await inbox.GetUnreadBadgeCountsAsync(source, ct)).Should().Be((0, 1));
         (await inbox.GetUnreadBadgeCountsAsync(target, ct)).Should().Be((0, 1));
 
@@ -133,7 +133,7 @@ public class NotificationServiceTests : IDisposable
             .Returns([user1, user2]);
 
         await _service.SendToRoleAsync(
-            NotificationSource.ApplicationSubmitted,
+            TestSources.Approval,
             NotificationClass.Actionable,
             NotificationPriority.Normal,
             "New tier application submitted",
@@ -159,7 +159,7 @@ public class NotificationServiceTests : IDisposable
         var title = "Working group applied: " + new string('x', 200);
         var detail = string.Concat(Enumerable.Repeat("🚀", 2000));
 
-        await _service.SendToRoleAsync(NotificationSource.WorkgroupRegistrationPending,
+        await _service.SendToRoleAsync(TestSources.Approval,
             NotificationClass.Actionable, NotificationPriority.Normal, title, "Board", detail,
             cancellationToken: TestContext.Current.CancellationToken);
 
@@ -181,12 +181,12 @@ public class NotificationServiceTests : IDisposable
         _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = suppressed,
-            Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
+            Category = TestSources.TeamUpdate.Category,
             InboxEnabled = false,
         });
 
         await _service.SendToRoleAsync(
-            NotificationSource.TeamMemberAdded,
+            TestSources.TeamUpdate,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Heads up",
@@ -209,7 +209,7 @@ public class NotificationServiceTests : IDisposable
         _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = holder,
-            Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
+            Category = TestSources.TeamUpdate.Category,
             InboxEnabled = false,
         });
 
@@ -219,7 +219,7 @@ public class NotificationServiceTests : IDisposable
                 .Returns(Task.FromException<IReadOnlySet<Guid>>(new InvalidOperationException("Preferences unavailable")));
 
         await _service.SendToRoleAsync(
-            NotificationSource.TeamMemberAdded,
+            TestSources.TeamUpdate,
             NotificationClass.Actionable,
             NotificationPriority.Normal,
             "Act on this",
@@ -240,12 +240,12 @@ public class NotificationServiceTests : IDisposable
         _dbContext.CommunicationPreferences.Add(new()
         {
             UserId = holder,
-            Category = NotificationSource.TeamMemberAdded.ToMessageCategory(),
+            Category = TestSources.TeamUpdate.Category,
             InboxEnabled = false,
         });
 
         await _service.SendToRoleAsync(
-            NotificationSource.TeamMemberAdded,
+            TestSources.TeamUpdate,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Heads up",

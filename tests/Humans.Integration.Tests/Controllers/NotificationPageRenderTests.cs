@@ -4,6 +4,8 @@ using Humans.Integration.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
+using Humans.Shifts;
+using Humans.Teams;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -32,8 +34,8 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
 
         foreach (var (title, cls, source) in new[]
                  {
-                     (ActionableTitle, NotificationClass.Actionable, NotificationSource.ShiftCoverageGap),
-                     (InformationalTitle, NotificationClass.Informational, NotificationSource.TeamMemberAdded),
+                     (ActionableTitle, NotificationClass.Actionable, ShiftsNotificationSources.ShiftCoverageGap.Name),
+                     (InformationalTitle, NotificationClass.Informational, TeamsNotificationSources.TeamMemberAdded.Name),
                  })
         {
             var id = Guid.NewGuid();

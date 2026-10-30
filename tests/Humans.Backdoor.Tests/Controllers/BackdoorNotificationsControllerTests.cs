@@ -35,7 +35,7 @@ public class BackdoorNotificationsControllerTests
         _inbox.GetUnreadInboxAsync(principal, Arg.Any<CancellationToken>()).Returns(new NotificationInboxSnapshot(
             [
                 new UnreadNotificationDto(
-                    createdAt, NotificationSource.ConsentReviewNeeded, "Consent review pending: Alice",
+                    createdAt, "ConsentReviewNeeded", "Consent review pending: Alice",
                     "/OnboardingReview", NotificationPriority.High, NotificationClass.Actionable, true),
             ],
             [new NotificationMeterDto("Ticket sync error", 1, "/Tickets")]));

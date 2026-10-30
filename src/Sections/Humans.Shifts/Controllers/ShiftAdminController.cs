@@ -694,8 +694,7 @@ internal sealed class ShiftAdminController(
         {
             var result = await volunteerSearchBuilder.BuildForShiftAsync(
                 await GetShiftForTeamAsync(shiftId, team.Id, ct),
-                query,
-                ShiftsRoles.CanViewMedical(User), ct);
+                query, ct);
             return result.Status switch
             {
                 VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),

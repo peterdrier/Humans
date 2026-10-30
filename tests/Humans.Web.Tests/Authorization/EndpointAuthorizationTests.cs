@@ -47,10 +47,10 @@ public class EndpointAuthorizationTests
     public static TheoryData<Type, string?, string> CriticalEndpointPolicies => new()
     {
         { typeof(UsersAdminController), "PurgeHuman", "AdminOnly" },
-        { SectionType("Humans.Debug.Controllers.DebugController"), "Logs", "AdminOnly" },
-        { SectionType("Humans.Debug.Controllers.DebugController"), "Configuration", "AdminOnly" },
-        { SectionType("Humans.Debug.Controllers.DebugController"), "DbStats", "AdminOnly" },
-        { SectionType("Humans.Debug.Controllers.DebugController"), "CacheStats", "AdminOnly" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "Logs", "BoardOrAdmin" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "Configuration", "BoardOrAdmin" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "DbStats", "BoardOrAdmin" },
+        { SectionType("Humans.Debug.Controllers.DebugController"), "CacheStats", "BoardOrAdmin" },
         { typeof(UsersAdminController), "Audience", "AdminOnly" },
         { typeof(UsersAdminAccountMergesController), null, "AdminOnly" },
         { SectionType("Humans.Email.Controllers.EmailController"), null, "AdminOnly" },

@@ -34,7 +34,7 @@ There is no shared context — `HumansDbContext` doesn't exist. Every section ow
 **Do not synthesize the context name from the folder.** A section's project name and its context often differ: `src/Sections/Humans.Consent` is `LegalDbContext`, `src/Sections/Humans.Events` is `EventGuideDbContext`. Resolve the real class from either:
 
 - the snapshot file already in the folder — it is named `<Context>ModelSnapshot.cs`; or
-- the `SECTION_DB_CONTEXTS` map in `.github/workflows/build.yml`, whose entries are `<Context>:<project path>`.
+- the design-time factory in the same folder's parent, `Data/<Context>Factory.cs` — its filename is the context class name, and CI derives its context list from these files.
 
 Everything below refers to "the touched context" and "the migrations folder" — resolve them from the branch's in-flight migration files (step 1) before proceeding. If the branch touches more than one context, run steps 2–9 once per context; each context gets its own consolidated migration and its own commit.
 
@@ -180,7 +180,7 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/Humans.Web
 ```
 
-`<Area>` / `<Section>` and `<Context>` per the table above — `<Context>` resolved from the snapshot filename or `SECTION_DB_CONTEXTS`, never guessed from the folder name. Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations. See `memory/process/ef-multi-context-commands.md` for the canonical flag forms.
+`<Area>` / `<Section>` and `<Context>` per the table above — `<Context>` resolved from the snapshot filename or the `Data/<Context>Factory.cs` filename, never guessed from the folder name. Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations. See `memory/process/ef-multi-context-commands.md` for the canonical flag forms.
 
 ### 7. Inspect the generated migration
 

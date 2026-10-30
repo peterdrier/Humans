@@ -96,7 +96,7 @@ internal sealed class CampContactService(
                     var title = string.Format(culture,
                         NoticeResources.GetString("Camps_Notification_MessageReceived", culture)!, campDisplayName);
                     await notificationEmitter.SendAsync(
-                        NotificationSource.FacilitatedMessageReceived,
+                        CampsNotificationSources.FacilitatedMessageReceived,
                         NotificationClass.Informational,
                         NotificationPriority.Normal,
                         title,

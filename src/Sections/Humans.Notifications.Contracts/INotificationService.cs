@@ -7,7 +7,7 @@ public interface INotificationService : IApplicationService, INotificationEmitte
 {
     /// <summary>One shared notification: when any recipient resolves it, it resolves for all.</summary>
     Task SendToRoleAsync(
-        NotificationSource source,
+        NotificationSourceDefinition source,
         NotificationClass notificationClass,
         NotificationPriority priority,
         string title,

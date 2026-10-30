@@ -170,6 +170,8 @@ internal sealed class LegacyAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition CantinaRosterExported = new("CantinaRosterExported");
 
+    public static readonly AuditActionDefinition CantinaHealthDetailsRevealed = new("CantinaHealthDetailsRevealed");
+
     public static readonly AuditActionDefinition DataMigrationApplied = new("DataMigrationApplied");
 
     public static readonly AuditActionDefinition GrantProgramCreated = new("GrantProgramCreated");
