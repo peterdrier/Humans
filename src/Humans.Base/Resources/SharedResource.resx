@@ -673,7 +673,7 @@
   <data name="Medical_Badge" xml:space="preserve"><value>Medical</value></data>
   <data name="Privacy_Lead" xml:space="preserve"><value>Humans manages membership for Nobodies Collective and processes personal data in accordance with GDPR and Spanish data protection law (LOPDGDD).</value></data>
   <data name="Privacy_DataControllerTitle" xml:space="preserve"><value>Data Controller</value></data>
-  <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association registered in Andalucia.</value></data>
+  <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association based in Madrid (NIF G26726299).</value></data>
   <data name="Privacy_DataControllerDPO" xml:space="preserve"><value>For data protection inquiries, contact our Data Protection Officer at:</value></data>
   <data name="Privacy_DataWeCollectTitle" xml:space="preserve"><value>Data We Collect</value></data>
   <data name="Privacy_DataWeCollectIntro" xml:space="preserve"><value>We collect and process the following categories of personal data:</value></data>
