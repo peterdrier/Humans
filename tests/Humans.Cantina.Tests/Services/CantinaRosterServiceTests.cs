@@ -117,10 +117,7 @@ public class CantinaRosterServiceTests
         await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "EventSettings", burn.Id,
             Arg.Is<string>(text => text.Contains("allergy and intolerance details revealed", StringComparison.Ordinal)
                 && text.Contains("1 people rows", StringComparison.Ordinal)), actorId);
-        // The subject sees it on their own dietary page; the description never carries the answers.
-        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", personId,
-            Arg.Is<string>(text => !text.Contains("Peanuts", StringComparison.Ordinal)), actorId, burn.Id, "EventSettings");
-        _audit.ReceivedCalls().Should().HaveCount(2);
+        _audit.ReceivedCalls().Should().ContainSingle("a reveal is one row for the page, not one per member it shows");
         _audit.ClearReceivedCalls();
 
         var other = daily ? await controller.Day(1, ct) : await controller.Roster(1, ct);
@@ -132,30 +129,25 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task HealthReveal_RecordsOnlyTheMembersWhoseAnswersItShows()
+    public async Task HealthReveal_WritesOneRow_HoweverManyMembersItShows()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
-        var withOther = Guid.NewGuid();
-        var chipsOnly = Guid.NewGuid();
-        var nothing = Guid.NewGuid();
+        var people = Enumerable.Range(0, 200).Select(_ => Guid.NewGuid()).ToArray();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(ct).Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { withOther, chipsOnly, nothing });
-        SetupHumans(
-            Human(withOther, "Ana", intolerances: ["Other"], intoleranceOther: "Nightshades"),
-            Human(chipsOnly, "Bo", allergies: ["Nuts"]),
-            Human(nothing, "Cy", dietary: "Vegan"));
+        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(people);
+        SetupHumans(people.Select((id, i) => Human(id, $"Cook {i}", allergies: ["Other"], allergyOther: "Peanuts")).ToArray());
 
         await _service.GetWeeklyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
-        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
-        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), "User", chipsOnly, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        _audit.ReceivedCalls().Should().ContainSingle();
         _audit.ClearReceivedCalls();
 
         await _service.GetDailyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
-        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
-        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", chipsOnly, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
-        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), "User", nothing, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "EventSettings", burn.Id,
+            Arg.Is<string>(text => text.Contains("200 people rows", StringComparison.Ordinal)
+                && !text.Contains("Peanuts", StringComparison.Ordinal)), actorId);
+        _audit.ReceivedCalls().Should().ContainSingle();
         _audit.ClearReceivedCalls();
 
         await _service.GetDailyRosterAsync(0, RosterDisclosure.Export(actorId), ct);
