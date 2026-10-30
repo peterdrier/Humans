@@ -144,6 +144,8 @@
   <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Ressources liées</value></data>
   <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Dernière synchronisation</value></data>
   <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Aucune ressource liée à cette équipe pour le moment. Utilisez les formulaires ci-dessous pour lier un dossier Google Drive ou un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Restreint</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Hérité</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Veuillez saisir une URL valide de dossier Google Drive.</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Veuillez saisir une adresse e-mail valide de Google Group.</value></data>
   <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group « {0} » lié avec succès.</value><comment>{0} = group name</comment></data>

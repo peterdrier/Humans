@@ -114,7 +114,7 @@
                                 @if (resource.IsDriveFolder && !Model.CanManage)
                                 {
                                     <span class="badge @(resource.RestrictInheritedAccess ? "bg-warning text-dark" : "bg-secondary")">
-                                        @(resource.RestrictInheritedAccess ? "Restricted" : "Inherited")
+                                        @(resource.RestrictInheritedAccess ? Localizer["GoogleIntegration_TeamResources_Restricted"] : Localizer["GoogleIntegration_TeamResources_Inherited"])
                                     </span>
                                 }
                                 else if (resource.IsDriveFolder)
