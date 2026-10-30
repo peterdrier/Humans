@@ -43,7 +43,9 @@ From `src/Sections/Humans.<Section>` and its `.Contracts` project:
    - **Services**: every class holding business logic, jobs included (a job is a service with a
      clock icon and its cron). Static helpers, option providers, mappers and CSV writers are not
      services: mention them in a box's text or the tables, never as boxes. Edges between services
-     show how they call each other, including cycles.
+     show how they call each other, including cycles. A caching decorator gets its own box above the
+     services it wraps, with "inner" edges down to them; a call that resolves back to the decorator
+     (a `Lazy` dependency, a port it also implements) is a dashed edge back up.
    - **Data**: the repository, with its method count and its tables' real names in the box. No
      separate table boxes.
    - **Plugs into the app**: one dashed blue box listing what the section hands the shell and other
@@ -57,7 +59,9 @@ From `src/Sections/Humans.<Section>` and its `.Contracts` project:
      what this section reads or writes there and, after "←", what that section reads back. Group
      minor neighbours in one box. Outside systems (Google Workspace, SMTP, Holded, Stripe) appear as
      "→" lines inside the neighbour that owns the client, or as their own box when this section calls
-     them directly. A "Calling in" box at the top names who uses each public interface.
+     them directly. A "Calling in" box at the top names who uses each public interface. When a
+     controller reads another section itself, say so in the controller box and the neighbour's box
+     rather than running a long edge across the services.
    - Edges are labelled with the calls they carry. Orange marks only a broken rule: a controller
      writing to another section, a service calling an outside API another section owns, another
      section's table touched. Reads of other sections' contracts are plain.
