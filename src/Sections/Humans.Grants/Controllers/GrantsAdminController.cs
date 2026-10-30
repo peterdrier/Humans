@@ -33,7 +33,7 @@ internal sealed class GrantsAdminController(
         var canAdminister = GrantsPolicyHandler.IsAdministering(User);
         var programs = await grants.GetProgramsAsync(ct);
         if (!canAdminister)
-            programs = programs.Where(p => p.IsManager(user.Id)).ToList();
+            programs = programs.Where(p => user.AllUserIds.Any(p.IsManager)).ToList();
         return View(new AdminIndexViewModel
         {
             Today = grants.Today,
