@@ -283,6 +283,21 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Should().BeFalse();
     }
 
+    [HumansTheory]
+    [InlineData("member@localhost")]
+    [InlineData("member@ticketstub.local")]
+    [InlineData("member@TICKETSTUB.LOCAL")]
+    public async Task SendAsync_DoNotPersist_TestAddressNeverReachesTransport(string address)
+    {
+        await _service.SendAsync(
+            Message(template: "account_deleted", doNotPersist: true) with { RecipientEmail = address },
+            TestContext.Current.CancellationToken);
+
+        _transport.ReceivedCalls().Should().BeEmpty();
+        _metrics.DidNotReceive().RecordEmailQueued(Arg.Any<string>());
+        (await _emailDb.EmailOutboxMessages.AnyAsync(TestContext.Current.CancellationToken)).Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task SendAsync_WithoutDoNotPersist_DoesNotCallTransportDirectly()
     {
