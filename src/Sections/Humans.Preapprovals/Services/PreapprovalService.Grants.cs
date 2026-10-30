@@ -73,7 +73,7 @@ internal sealed partial class PreapprovalService
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
         {
-            await AuditGrantAsync(AuditAction.PreapprovalGrantIssued, grant, describe(grant), actorUserId);
+            await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, grant, describe(grant), actorUserId);
             await AnnounceIssuedAsync(ToInfo(grant, program), CancellationToken.None);
         }
     }
@@ -119,7 +119,7 @@ internal sealed partial class PreapprovalService
             await repository.UpdateGrantAsync(pending, ct);
             // The grant committed; finish its audit and notices after the browser disconnects.
             ct = CancellationToken.None;
-            await AuditGrantAsync(AuditAction.PreapprovalGrantApplied, pending,
+            await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, pending,
                 $"Application to \"{program.Name}\" edited: {Euros(amount)}.", applicantUserId);
             await ResolveRequestAsync(pending.Id, applicantUserId, ct);
             await AnnounceApplicationAsync(info, ToInfo(pending, program), ct);
@@ -132,7 +132,7 @@ internal sealed partial class PreapprovalService
         await repository.AddGrantsAsync([grant], ct);
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
-        await AuditGrantAsync(AuditAction.PreapprovalGrantApplied, grant,
+        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, grant,
             $"Applied to \"{program.Name}\": {Euros(amount)}.", applicantUserId);
         await AnnounceApplicationAsync(info, ToInfo(grant, program), ct);
         return new(grant.Id);
@@ -162,7 +162,7 @@ internal sealed partial class PreapprovalService
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
 
-        await AuditGrantAsync(AuditAction.PreapprovalGrantApproved, grant,
+        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantApproved, grant,
             $"Application to \"{program.Name}\" approved: {Euros(grant.MaxAmount)}" +
             $"{(grant.RequestedAmount is { } r && r != grant.MaxAmount ? $" (requested {Euros(r)})" : "")}; claim by {program.ClaimBy.ToInvariantDate()}.",
             actorUserId);
@@ -189,7 +189,7 @@ internal sealed partial class PreapprovalService
         ct = CancellationToken.None;
 
         var reason = Trimmed(note);
-        await AuditGrantAsync(AuditAction.PreapprovalGrantDeclined, grant,
+        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantDeclined, grant,
             $"Application to \"{grant.Program.Name}\" declined{(reason is null ? "" : $": {reason}")}.", actorUserId);
         await ResolveRequestAsync(grant.Id, actorUserId, ct);
         var info = ToInfo(grant);
@@ -215,7 +215,7 @@ internal sealed partial class PreapprovalService
         ct = CancellationToken.None;
 
         var why = Trimmed(reason);
-        await AuditGrantAsync(AuditAction.PreapprovalGrantRevoked, grant,
+        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, grant,
             $"Revoked {Euros(grant.MaxAmount)} under \"{grant.Program.Name}\"{LabelSuffix(grant)}" +
             $"{(grant.ExpenseReportId is { } r ? $" while held by expense report {r}" : "")}{(why is null ? "" : $": {why}")}.",
             actorUserId);
@@ -247,7 +247,7 @@ internal sealed partial class PreapprovalService
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
 
-        await AuditGrantAsync(AuditAction.PreapprovalGrantAmountChanged, grant,
+        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantAmountChanged, grant,
             $"Amount under \"{program.Name}\"{LabelSuffix(grant)} changed {Euros(old)} → {Euros(amount)}" +
             $"{(grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
             actorUserId);

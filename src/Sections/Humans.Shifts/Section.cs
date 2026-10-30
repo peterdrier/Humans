@@ -4,6 +4,7 @@ using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
@@ -65,6 +66,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, ShiftsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ShiftsNotificationSources>();
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.Base.Hosting;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models.Tables;
@@ -45,6 +46,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, WorkgroupsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, WorkgroupsNotificationSources>();
         services.AddSectionDbContext<WorkgroupsDbContext>(sentinelTable: "workgroups");
 

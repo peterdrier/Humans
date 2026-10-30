@@ -42,14 +42,14 @@ internal sealed partial class PreapprovalService
             { ProgramId = program.Id, UserId = userId, AddedByUserId = actorUserId, AddedAt = now });
         await repository.AddProgramAsync(program, ct);
 
-        await AuditProgramAsync(AuditAction.PreapprovalProgramCreated, program,
+        await AuditProgramAsync(PreapprovalsAuditActions.PreapprovalProgramCreated, program,
             $"Program \"{program.Name}\" created: {program.Kind}, " +
             $"{(program.PerPersonAmount is { } per ? $"{Euros(per)} per person, " : "")}" +
             $"ceiling {(program.TotalCeiling is { } c ? Euros(c) : "none")}, account {program.HoldedAccountNumber}, " +
             $"claim by {program.ClaimBy.ToInvariantDate()}, {program.Status}.",
             actorUserId);
         foreach (var manager in program.Managers)
-            await AuditProgramAsync(AuditAction.PreapprovalProgramManagerAdded, program,
+            await AuditProgramAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, program,
                 $"Manager added to \"{program.Name}\".", actorUserId, relatedUserId: manager.UserId);
 
         return new(program.Id);
@@ -103,14 +103,14 @@ internal sealed partial class PreapprovalService
         if (changes.Count > 0)
             await AuditProgramAsync(
                 wasOpen && program.Status == ProgramStatus.Closed
-                    ? AuditAction.PreapprovalProgramClosed
-                    : AuditAction.PreapprovalProgramEdited,
+                    ? PreapprovalsAuditActions.PreapprovalProgramClosed
+                    : PreapprovalsAuditActions.PreapprovalProgramEdited,
                 program, $"Program \"{program.Name}\" edited: {string.Join("; ", changes)}.", actorUserId);
         foreach (var id in added)
-            await AuditProgramAsync(AuditAction.PreapprovalProgramManagerAdded, program,
+            await AuditProgramAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, program,
                 $"Manager added to \"{program.Name}\".", actorUserId, relatedUserId: id);
         foreach (var id in removed)
-            await AuditProgramAsync(AuditAction.PreapprovalProgramManagerRemoved, program,
+            await AuditProgramAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, program,
                 $"Manager removed from \"{program.Name}\".", actorUserId, relatedUserId: id);
 
         if (program.ClaimBy != oldClaimBy)

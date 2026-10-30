@@ -109,7 +109,7 @@ internal sealed class EventParticipationService(
         var changed = await repo.BackfillAsync(year, entries, legacyByUser, ct);
         foreach (var (userId, status) in changed)
         {
-            await audit.LogAsync(AuditAction.ParticipationBackfilled, nameof(User), userId,
+            await audit.LogAsync(TicketsAuditActions.ParticipationBackfilled, nameof(User), userId,
                 $"Recorded {status} participation for {year} from admin backfill.", actorUserId);
         }
 

@@ -54,7 +54,7 @@ public class CalendarServiceAuditTests
 
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await _audit.Received(1).LogAsync(
-            AuditAction.CalendarEventCreated, AuditEntityTypes.CalendarEvent, result.Event!.Id,
+            CalendarAuditActions.CalendarEventCreated, AuditEntityTypes.CalendarEvent, result.Event!.Id,
             Arg.Any<string>(), actor,
             teamId, AuditEntityTypes.Team);
     }
@@ -89,7 +89,7 @@ public class CalendarServiceAuditTests
 
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await _audit.Received(1).LogAsync(
-            AuditAction.CalendarEventUpdated, AuditEntityTypes.CalendarEvent, id,
+            CalendarAuditActions.CalendarEventUpdated, AuditEntityTypes.CalendarEvent, id,
             Arg.Any<string>(), actor,
             newTeamId, AuditEntityTypes.Team);
     }
@@ -106,7 +106,7 @@ public class CalendarServiceAuditTests
         await CreateSut().DeleteEventAsync(id, actor, TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.CalendarEventDeleted, AuditEntityTypes.CalendarEvent, id,
+            CalendarAuditActions.CalendarEventDeleted, AuditEntityTypes.CalendarEvent, id,
             Arg.Any<string>(), actor,
             teamId, AuditEntityTypes.Team);
     }
@@ -121,7 +121,7 @@ public class CalendarServiceAuditTests
             Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -142,7 +142,7 @@ public class CalendarServiceAuditTests
             eventId, Instant.FromUtc(2026, 6, 8, 10, 0), actor, TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.CalendarOccurrenceCancelled, AuditEntityTypes.CalendarEvent, eventId,
+            CalendarAuditActions.CalendarOccurrenceCancelled, AuditEntityTypes.CalendarEvent, eventId,
             Arg.Any<string>(), actor,
             null);
     }
@@ -168,7 +168,7 @@ public class CalendarServiceAuditTests
             actor, TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.CalendarOccurrenceOverridden, AuditEntityTypes.CalendarEvent, eventId,
+            CalendarAuditActions.CalendarOccurrenceOverridden, AuditEntityTypes.CalendarEvent, eventId,
             Arg.Any<string>(), actor,
             null);
     }

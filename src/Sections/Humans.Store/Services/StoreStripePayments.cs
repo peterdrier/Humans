@@ -65,7 +65,7 @@ internal sealed class StoreStripePayments(
             _ => "Recorded Stripe payment",
         };
         await audit.LogAsync(
-            AuditAction.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
+            StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
             $"{settlement} of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
             "StripeWebhook",
             orderId, AuditEntityTypes.Order);
@@ -206,7 +206,7 @@ internal sealed class StoreStripePayments(
         }
 
         await repo.UpdatePaymentStatusAsync(existing.Id, target, ct);
-        var action = target == PaymentStatus.Paid ? AuditAction.StorePaymentSettled : AuditAction.StorePaymentFailed;
+        var action = target == PaymentStatus.Paid ? StoreAuditActions.StorePaymentSettled : StoreAuditActions.StorePaymentFailed;
         var verb = target == PaymentStatus.Paid ? "settled" : "failed";
         await audit.LogAsync(
             action, AuditEntityTypes.Payment, existing.Id,
@@ -233,7 +233,7 @@ internal sealed class StoreStripePayments(
 
         await repo.DeletePaymentAsync(existing.Id, ct);
         await audit.LogAsync(
-            AuditAction.StorePaymentExpired, AuditEntityTypes.Payment, existing.Id,
+            StoreAuditActions.StorePaymentExpired, AuditEntityTypes.Payment, existing.Id,
             $"Removed orphan pending Stripe payment of EUR {existing.AmountEur:0.00} on order {existing.OrderId} after session expiry (PI {paymentIntentId})",
             "StripeWebhook",
             existing.OrderId, AuditEntityTypes.Order);

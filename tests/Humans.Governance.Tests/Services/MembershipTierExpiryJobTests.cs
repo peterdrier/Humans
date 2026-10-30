@@ -16,7 +16,7 @@ namespace Humans.Governance.Tests.Services;
 /// <summary>
 /// The daily tier term expiry: both tiers expire against today's UTC date, and every downgrade
 /// Governance returns (including the fall-back to a still-in-term other tier) gets its
-/// <see cref="AuditAction.TierDowngraded"/> entry. The downgrade rule itself is covered by
+/// <see cref="GovernanceAuditActions.TierDowngraded"/> entry. The downgrade rule itself is covered by
 /// <c>MembershipTierServiceTests</c>.
 /// </summary>
 public sealed class MembershipTierExpiryJobTests
@@ -59,13 +59,13 @@ public sealed class MembershipTierExpiryJobTests
 
         await _governance.Received(1).ExpireMembershipTiersAsync(MembershipTier.Asociado, Today, Arg.Any<CancellationToken>());
         await _governance.Received(1).ExpireMembershipTiersAsync(MembershipTier.Colaborador, Today, Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.TierDowngraded, "Profile", lapsed,
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", lapsed,
             "Membership tier changed to Volunteer for Ana due to Asociado term expiry",
             nameof(MembershipTierExpiryJob), lapsed, nameof(User));
-        await _audit.Received(1).LogAsync(AuditAction.TierDowngraded, "Profile", fallsBack,
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", fallsBack,
             "Membership tier changed to Colaborador for Bea due to Asociado term expiry",
             nameof(MembershipTierExpiryJob), fallsBack, nameof(User));
-        await _audit.Received(1).LogAsync(AuditAction.TierDowngraded, "Profile", unknown,
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", unknown,
             "Membership tier changed to Volunteer for Unknown due to Colaborador term expiry",
             nameof(MembershipTierExpiryJob), unknown, nameof(User));
     }

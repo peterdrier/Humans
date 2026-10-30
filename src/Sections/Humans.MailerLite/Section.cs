@@ -12,6 +12,7 @@ using Humans.MailerLite.Services.MailerLite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.MailerLite;
 
@@ -23,6 +24,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, MailerLiteAuditActions>();
         // The section's only table, so its presence proves the baseline ran.
         services.AddSectionDbContext<MailerLiteDbContext>(sentinelTable: "mailerlite_sync_states");
         services.AddScoped<IMailerLiteRepository, Repository>();

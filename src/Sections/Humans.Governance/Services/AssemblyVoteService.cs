@@ -221,7 +221,7 @@ internal sealed class AssemblyVoteService(
         // ballots can both read none. Neither entry records the choice, and the entity is the vote,
         // never the ballot — audit rows outlive erasure, so a ballot id would re-link the person.
         await audit.LogAsync(
-            ballot.Revision == 1 ? AuditAction.AssemblyBallotCast : AuditAction.AssemblyBallotChanged,
+            ballot.Revision == 1 ? GovernanceAuditActions.AssemblyBallotCast : GovernanceAuditActions.AssemblyBallotChanged,
             AuditEntityTypes.AssemblyVote,
             voteId,
             ballot.Revision == 1
@@ -303,7 +303,7 @@ internal sealed class AssemblyVoteService(
             return vote;
         }
 
-        if (await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
+        if (await CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
                 $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
         {
             return vote;
@@ -338,7 +338,7 @@ internal sealed class AssemblyVoteService(
         await FinishCloseAsync(
             vote,
             vote.ClosedByUserId,
-            vote.ClosedByUserId is null ? AuditAction.AssemblyVoteClosed : AuditAction.AssemblyVoteStopped,
+            vote.ClosedByUserId is null ? GovernanceAuditActions.AssemblyVoteClosed : GovernanceAuditActions.AssemblyVoteStopped,
             vote.ClosedByUserId is null
                 ? $"Assembly vote {vote.Id} closed automatically at its announced time."
                 : $"Stopped assembly vote {vote.Id} before its announced closing time.",
@@ -366,7 +366,7 @@ internal sealed class AssemblyVoteService(
     private async Task<bool> CloseAsync(
         AssemblyVote vote,
         Guid? closedByUserId,
-        AuditAction action,
+        AuditActionDefinition action,
         string description,
         CancellationToken ct)
     {
@@ -396,7 +396,7 @@ internal sealed class AssemblyVoteService(
     private async Task FinishCloseAsync(
         AssemblyVote vote,
         Guid? closedByUserId,
-        AuditAction action,
+        AuditActionDefinition action,
         string description,
         CancellationToken ct)
     {
@@ -536,7 +536,7 @@ internal sealed class AssemblyVoteService(
         if (viewerIsBoardOrAdmin)
         {
             await audit.LogAsync(
-                AuditAction.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
+                GovernanceAuditActions.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
                 $"Viewed the individual ballots of assembly vote {voteId} on the results page.",
                 userId);
         }
@@ -984,7 +984,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "auditing the vote opening", vote.Id,
             _ => audit.LogAsync(
-                AuditAction.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+                GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
                 $"Opened assembly vote {vote.Id}: {officialCount} official and "
                 + $"{roster.Count - officialCount} indicative roster members.",
                 adminUserId));
@@ -1083,7 +1083,7 @@ internal sealed class AssemblyVoteService(
 
         // Refused means the vote reached a terminal state first — its own lapse, or another
         // admin's stop. The vote is closed either way, but not by this request.
-        if (!await CloseAsync(vote, adminUserId, AuditAction.AssemblyVoteStopped,
+        if (!await CloseAsync(vote, adminUserId, GovernanceAuditActions.AssemblyVoteStopped,
                 $"Stopped assembly vote {vote.Id} before its announced closing time.", ct))
         {
             return AssemblyVoteActionResult.WrongState;
@@ -1120,7 +1120,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "auditing the extension", vote.Id,
             _ => audit.LogAsync(
-                AuditAction.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
+                GovernanceAuditActions.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
                 $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
                 adminUserId));
 
@@ -1166,7 +1166,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "auditing the vote cancellation", vote.Id,
             _ => audit.LogAsync(
-                AuditAction.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
+                GovernanceAuditActions.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
                 $"Cancelled assembly vote {vote.Id}: {reason}",
                 adminUserId));
 
@@ -1215,7 +1215,7 @@ internal sealed class AssemblyVoteService(
         }
 
         await audit.LogAsync(
-            AuditAction.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
+            GovernanceAuditActions.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Peeked at the live tally of open assembly vote {vote.Id}.", adminUserId);
 
         return (await ComputeResultAsync(vote, ct), true);
@@ -1232,7 +1232,7 @@ internal sealed class AssemblyVoteService(
         if (vote.Status != AssemblyVoteStatus.Closed) return null;
 
         await audit.LogAsync(
-            AuditAction.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
+            GovernanceAuditActions.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
             $"Listed the individual ballots of assembly vote {voteId}.", actorUserId);
 
         return await DisclosureRowsAsync(voteId, ct);
@@ -1491,7 +1491,7 @@ internal sealed class AssemblyVoteService(
             // Counted only when the close landed. A vote an Extend rescued between the query
             // and the write is still open, and a job that reports it as closed is wrong in
             // the one place anybody looks to see what the automation did.
-            if (await CloseAsync(vote, closedByUserId: null, AuditAction.AssemblyVoteClosed,
+            if (await CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
                     $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
             {
                 closed++;
@@ -1540,7 +1540,7 @@ internal sealed class AssemblyVoteService(
         // Automation that emails the electorate says so under the job actor: the Admin's
         // AssemblyVoteOpened entry cannot show the job reached members hours later.
         await audit.LogAsync(
-            AuditAction.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+            GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Re-sent the opening email for assembly vote {vote.Id} to {sent} roster member(s) "
             + "the first send never reached.",
             LapseJobName);
@@ -1626,7 +1626,7 @@ internal sealed class AssemblyVoteService(
             {
                 // The count actually delivered: a send that threw is unstamped and retried.
                 await audit.LogAsync(
-                    AuditAction.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
+                    GovernanceAuditActions.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
                     $"Sent the closing reminder for assembly vote {vote.Id} to {reminded.Count} roster member(s).",
                     LapseJobName);
             }
@@ -1784,7 +1784,7 @@ internal sealed class AssemblyVoteService(
         foreach (var voteId in rosteredVoteIds)
         {
             await audit.LogAsync(
-                AuditAction.AssemblyVoteRosterMerged, AuditEntityTypes.AssemblyVote, voteId,
+                GovernanceAuditActions.AssemblyVoteRosterMerged, AuditEntityTypes.AssemblyVote, voteId,
                 $"Account merge: the merged-away account {mergedFromUserId} was on this "
                 + "vote's roster, and its roster row and any ballot were left as cast. The "
                 + "roster and the ballot record what happened at the vote, so if both "

@@ -355,7 +355,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Rota is already in this team.");
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.RotaMovedToTeam, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            ShiftsAuditActions.RotaMovedToTeam, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -427,11 +427,11 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
         (await _views.IsUserCachedAsync(alice.Id)).Should().BeFalse();
         (await _views.IsUserCachedAsync(bob.Id)).Should().BeFalse();
-        await AuditLog.Received(1).LogAsync(AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), pending.Id,
+        await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), pending.Id,
             Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
                 && text.Contains("deleted", StringComparison.Ordinal)),
             actorUserId, alice.Id, "User");
-        AuditLog.ReceivedCalls().Where(call => Equals(call.GetArguments()[0], AuditAction.ShiftSignupCancelled))
+        AuditLog.ReceivedCalls().Where(call => Equals(call.GetArguments()[0], ShiftsAuditActions.ShiftSignupCancelled))
             .Should().ContainSingle();
     }
 

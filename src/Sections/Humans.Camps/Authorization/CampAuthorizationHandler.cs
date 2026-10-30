@@ -37,7 +37,7 @@ internal sealed class CampAuthorizationHandler(ICampService campService) : Autho
             return;
         }
 
-        var camp = resourceCamp ?? await GetPublicYearCampAsync(campId.Value);
+        var camp = resourceCamp ?? await GetActiveEventCampAsync(campId.Value);
         var allowed = requirement.OperationName switch
         {
             nameof(CampOperationRequirement.Manage) =>
@@ -53,10 +53,11 @@ internal sealed class CampAuthorizationHandler(ICampService campService) : Autho
         }
     }
 
-    private async Task<CampInfo?> GetPublicYearCampAsync(Guid campId)
+    private async Task<CampInfo?> GetActiveEventCampAsync(Guid campId)
     {
-        var settings = await campService.GetSettingsAsync();
-        return (await campService.GetCampsForYearAsync(settings.PublicYear))
-            .FirstOrDefault(c => c.Id == campId);
+        var activeEventId = (await campService.GetSettingsAsync()).ActiveEventSettingsId;
+        return activeEventId is { } eventId
+            ? (await campService.GetCampsForEventAsync(eventId)).FirstOrDefault(c => c.Id == campId)
+            : null;
     }
 }

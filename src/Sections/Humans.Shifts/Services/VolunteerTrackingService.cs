@@ -30,7 +30,7 @@ internal sealed class VolunteerTrackingService(
         var now = clock.GetCurrentInstant();
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, dayOffsets, now);
         await audit.LogAsync(
-            dayOffsets.Count == 0 ? AuditAction.VolunteerAvailabilityCleared : AuditAction.VolunteerAvailabilitySet,
+            dayOffsets.Count == 0 ? ShiftsAuditActions.VolunteerAvailabilityCleared : ShiftsAuditActions.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={eventSettingsId}; AvailableDays={dayOffsets.Count}; self-service update", userId,
             relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
@@ -81,10 +81,10 @@ internal sealed class VolunteerTrackingService(
         await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
         await (available
             ? audit.LogAsync(
-                AuditAction.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
+                ShiftsAuditActions.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
                 $"DayOffset={dayOffset}; marked available by coordinator", coordinatorUserId)
             : audit.LogAsync(
-                AuditAction.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
+                ShiftsAuditActions.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
                 $"DayOffset={dayOffset}; availability cleared by coordinator", coordinatorUserId)).ConfigureAwait(false);
         viewInvalidator.InvalidateUser(userId);
         return true;
@@ -362,7 +362,7 @@ internal sealed class VolunteerTrackingService(
             ct).ConfigureAwait(false);
 
         await audit.LogAsync(
-            AuditAction.VolunteerCampSetupSet,
+            ShiftsAuditActions.VolunteerCampSetupSet,
             nameof(VolunteerBuildStatus),
             targetUserId,
             $"BarrioSetupStartDate set to {LocalDatePattern.Iso.Format(barrioSetupStartDate)}; notes={notes ?? "—"}",
@@ -373,7 +373,7 @@ internal sealed class VolunteerTrackingService(
             // Audit writes through a fresh context per call, so the fan-out is safe.
             await Task.WhenAll(trimmed.Select(dayOffset =>
                 audit.LogAsync(
-                    AuditAction.VolunteerDayOffCleared,
+                    ShiftsAuditActions.VolunteerDayOffCleared,
                     nameof(VolunteerBuildStatus),
                     targetUserId,
                     $"DayOffset={dayOffset}; auto-cleared by camp-setup change",
@@ -398,7 +398,7 @@ internal sealed class VolunteerTrackingService(
             setupOffsetThreshold: null,
             ct).ConfigureAwait(false);
         await audit.LogAsync(
-            AuditAction.VolunteerCampSetupCleared,
+            ShiftsAuditActions.VolunteerCampSetupCleared,
             nameof(VolunteerBuildStatus),
             targetUserId,
             "BarrioSetupStartDate cleared",
@@ -439,7 +439,7 @@ internal sealed class VolunteerTrackingService(
 
         await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
         await audit.LogAsync(
-            AuditAction.VolunteerDayOffMarked,
+            ShiftsAuditActions.VolunteerDayOffMarked,
             nameof(VolunteerBuildStatus),
             targetUserId,
             $"DayOffset={dayOffset}; reason={(string.IsNullOrWhiteSpace(reason) ? "—" : reason)}",
@@ -459,7 +459,7 @@ internal sealed class VolunteerTrackingService(
         if (removed)
         {
             await audit.LogAsync(
-                AuditAction.VolunteerDayOffCleared,
+                ShiftsAuditActions.VolunteerDayOffCleared,
                 nameof(VolunteerBuildStatus),
                 targetUserId,
                 $"DayOffset={dayOffset}; cleared by coordinator",

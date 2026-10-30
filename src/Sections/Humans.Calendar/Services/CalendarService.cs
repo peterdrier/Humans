@@ -135,7 +135,7 @@ internal sealed class CalendarService(
         await repo.AddAsync(ev, ct);
 
         await LogCommittedMutationAsync(
-            AuditAction.CalendarEventCreated, ev.Id,
+            CalendarAuditActions.CalendarEventCreated, ev.Id,
             $"Created calendar event '{ev.Title}'", createdByUserId, ev.OwningTeamId);
 
         return CalendarEventMutationResult.Success(ev);
@@ -437,7 +437,7 @@ internal sealed class CalendarService(
         }
 
         await LogCommittedMutationAsync(
-            AuditAction.CalendarEventUpdated, mutated.Id,
+            CalendarAuditActions.CalendarEventUpdated, mutated.Id,
             $"Updated calendar event '{mutated.Title}'", updatedByUserId, mutated.OwningTeamId);
 
         return CalendarEventMutationResult.Success(mutated);
@@ -471,7 +471,7 @@ internal sealed class CalendarService(
         if (result is null) return;
 
         await LogCommittedMutationAsync(
-            AuditAction.CalendarEventDeleted, id,
+            CalendarAuditActions.CalendarEventDeleted, id,
             $"Deleted calendar event '{result.Value.Title}'", deletedByUserId, result.Value.OwningTeamId);
     }
 
@@ -479,7 +479,7 @@ internal sealed class CalendarService(
     {
         return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
             apply: x => x.IsCancelled = true,
-            auditAction: AuditAction.CalendarOccurrenceCancelled,
+            auditAction: CalendarAuditActions.CalendarOccurrenceCancelled,
             auditDescription: $"Cancelled occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
             ct, originalDate);
     }
@@ -499,7 +499,7 @@ internal sealed class CalendarService(
                 x.OverrideLocation = dto.OverrideLocation;
                 x.OverrideLocationUrl = dto.OverrideLocationUrl;
             },
-            auditAction: AuditAction.CalendarOccurrenceOverridden,
+            auditAction: CalendarAuditActions.CalendarOccurrenceOverridden,
             auditDescription: $"Overrode occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
             ct, originalDate, dto);
     }
@@ -507,7 +507,7 @@ internal sealed class CalendarService(
     private async Task<bool> UpsertExceptionAsync(
         Guid eventId, Instant? originalUtc, Guid userId,
         Action<CalendarEventException> apply,
-        AuditAction auditAction, string auditDescription,
+        AuditActionDefinition auditAction, string auditDescription,
         CancellationToken ct, LocalDate? originalDate, OverrideOccurrenceDto? overrideDto = null)
     {
         var now = clock.GetCurrentInstant();
@@ -555,7 +555,7 @@ internal sealed class CalendarService(
     }
 
     private async Task LogCommittedMutationAsync(
-        AuditAction action, Guid eventId, string description, Guid actorUserId, Guid? owningTeamId = null)
+        AuditActionDefinition action, Guid eventId, string description, Guid actorUserId, Guid? owningTeamId = null)
     {
         // The mutation is committed; an audit failure must not prevent the cache refresh.
         try

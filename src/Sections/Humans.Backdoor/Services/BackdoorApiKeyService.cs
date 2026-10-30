@@ -68,7 +68,7 @@ internal sealed class BackdoorApiKeyService(
 
         var revoked = await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct);
         if (revoked)
-            await AuditAsync(AuditAction.BackdoorApiKeyRevoked, key, actorUserId, "revoked");
+            await AuditAsync(BackdoorAuditActions.BackdoorApiKeyRevoked, key, actorUserId, "revoked");
 
         return revoked;
     }
@@ -94,8 +94,8 @@ internal sealed class BackdoorApiKeyService(
         if (!await repository.RotateAsync(keyId, actorUserId, clock.GetCurrentInstant(), replacement, ct))
             return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
 
-        await AuditAsync(AuditAction.BackdoorApiKeyRevoked, key, actorUserId, "rotated out");
-        await AuditAsync(AuditAction.BackdoorApiKeyIssued, replacement, actorUserId, "issued");
+        await AuditAsync(BackdoorAuditActions.BackdoorApiKeyRevoked, key, actorUserId, "rotated out");
+        await AuditAsync(BackdoorAuditActions.BackdoorApiKeyIssued, replacement, actorUserId, "issued");
         return BackdoorKeyIssueResult.Success(plaintext);
     }
 
@@ -160,7 +160,7 @@ internal sealed class BackdoorApiKeyService(
         var key = NewKey(ownerUserId, label, actorUserId, plaintext);
 
         await repository.AddAsync(key, ct);
-        await AuditAsync(AuditAction.BackdoorApiKeyIssued, key, actorUserId, "issued");
+        await AuditAsync(BackdoorAuditActions.BackdoorApiKeyIssued, key, actorUserId, "issued");
         return plaintext;
     }
 
@@ -175,7 +175,7 @@ internal sealed class BackdoorApiKeyService(
         CreatedByUserId = actorUserId,
     };
 
-    private Task AuditAsync(AuditAction action, BackdoorApiKey key, Guid actorUserId, string verb) =>
+    private Task AuditAsync(AuditActionDefinition action, BackdoorApiKey key, Guid actorUserId, string verb) =>
         audit.LogAsync(
             action,
             AuditEntityTypes.BackdoorApiKey,

@@ -344,7 +344,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         info.PendingMembers().Should().BeEmpty();
         (await OpenContext().LogEntries.SingleAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Kind
             .Should().Be(WorkgroupLogKind.MemberJoined);
-        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipApproved, Arg.Any<string>(), workgroup.Id,
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupMembershipApproved, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), actor, requester, "User");
         await Notifications.Received(1).SendAsync(
             Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipDecided,
@@ -395,7 +395,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         row.LeftAt.Should().NotBeNull();
         (await NewService().GetByIdAsync(workgroup.Id, Ct))!.PendingMembers().Should().BeEmpty();
         (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
-        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMembershipDeclined, Arg.Any<string>(), workgroup.Id,
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), coordinator, requester, "User");
         await Notifications.Received(1).SendAsync(
             Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipDecided,
@@ -455,7 +455,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var member = await ctx.Members.SingleAsync(m => m.UserId == survivor, Ct);
         member.IsPending.Should().NotBe(true);
         (await ctx.Members.CountAsync(m => m.UserId == source, Ct)).Should().Be(0);
-        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMemberAdded, Arg.Any<string>(), group.Id,
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupMemberAdded, Arg.Any<string>(), group.Id,
             Arg.Any<string>(), coordinator, survivor, "User");
     }
 
@@ -473,7 +473,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         info.IsMember(newcomer).Should().BeTrue();
         (await OpenContext().LogEntries.SingleAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Kind
             .Should().Be(WorkgroupLogKind.MemberJoined);
-        await AuditLog.Received(1).LogAsync(AuditAction.WorkgroupMemberAdded, Arg.Any<string>(), workgroup.Id,
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupMemberAdded, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), coordinator, newcomer, "User");
         await GoogleSync.Received(1).RequestSyncAsync(workgroup.DriveFolderId!, CancellationToken.None);
     }
@@ -659,7 +659,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         // The row is overwritten in place, so the audit entry is the only trace that the
         // members read something else before.
         await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupLogEntryUpdated, AuditEntityTypes.WorkgroupLogEntry, entryId,
+            WorkgroupsAuditActions.WorkgroupLogEntryUpdated, AuditEntityTypes.WorkgroupLogEntry, entryId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -679,7 +679,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
                 now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false, null), Ct);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -696,7 +696,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -718,7 +718,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await replay()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -742,7 +742,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await edit()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

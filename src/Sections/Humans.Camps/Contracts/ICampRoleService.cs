@@ -17,11 +17,11 @@ internal interface ICampRoleService : IApplicationService
     string BuildGroupKey(int year, string slug);
 
     /// <summary>
-    /// Builds the cross-camp roster for one role definition in a given year. One row per
-    /// camp-season participating in <paramref name="year"/>, with assignees (name + Google email)
-    /// or an empty state. Read-only; caller authorizes.
+    /// Builds the cross-camp roster for one role definition in an event. One row per camp season of
+    /// <paramref name="eventSettingsId"/>, with assignees (name + Google email) or an empty state. Null when the
+    /// definition or event does not exist. Read-only; caller authorizes.
     /// </summary>
-    Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, int year, CancellationToken ct = default);
+    Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, Guid eventSettingsId, CancellationToken ct = default);
 
     Task<CampAdminMutationResult> CreateDefinitionAsync(CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
@@ -45,13 +45,13 @@ internal interface ICampRoleService : IApplicationService
 
     /// <summary>Per-season fill summary across all active role definitions, keyed by <c>CampSeasonId</c>.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
-        GetDirectoryRoleSummariesAsync(int year, CancellationToken ct = default);
+        GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Assignees join by <see cref="CampRoleAssignment.CampRoleDefinitionId"/>, never by role name, which breaks
-    /// silently on rename. Read-only; caller authorizes.
+    /// silently on rename. Null when the event does not exist. Read-only; caller authorizes.
     /// </summary>
-    Task<CampComplianceMatrixData> BuildComplianceMatrixAsync(int year, CancellationToken ct = default);
+    Task<CampComplianceMatrixData?> BuildComplianceMatrixAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Idempotent: ensures every non-<see cref="CampSpecialRole.None"/> special role has a system role definition.

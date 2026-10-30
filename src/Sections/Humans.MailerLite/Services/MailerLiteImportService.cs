@@ -306,7 +306,7 @@ internal sealed class MailerLiteImportService(
         }, ct);
 
         await audit.LogAsync(
-            AuditAction.MailerLiteReconciliationCompleted,
+            MailerLiteAuditActions.MailerLiteReconciliationCompleted,
             entityType: "MailerLite", entityId: state.Id,
             description: result.FormatSummary(),
             actorUserId: actorUserId);

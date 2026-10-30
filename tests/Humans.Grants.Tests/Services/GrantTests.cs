@@ -38,7 +38,7 @@ public sealed class GrantTests : GrantsTestHarness
         grant.UserId.Should().Be(fresh);
         grant.ExpiresOn.Should().Be(new LocalDate(2027, 9, 1));
         grant.NotifiedAt.Should().Be(Clock.GetCurrentInstant());
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantIssued, AuditEntityTypes.Grant, created,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantIssued, AuditEntityTypes.Grant, created,
             Arg.Any<string>(), actor, fresh, AuditEntityTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, fresh);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{fresh}@example.org"), Arg.Any<CancellationToken>());
@@ -86,7 +86,7 @@ public sealed class GrantTests : GrantsTestHarness
         saved.RevokedAt.Should().Be(Clock.GetCurrentInstant());
         saved.RevokedByUserId.Should().Be(actor);
         saved.RevokeReason.Should().Be("Left the crew");
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
             Arg.Any<string>(), actor, person, AuditEntityTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -107,7 +107,7 @@ public sealed class GrantTests : GrantsTestHarness
         (await service.ResendNoticeAsync(revoked.Id, actor, Ct)).Refusal.Should().NotBeNull();
 
         (await ReadGrantAsync(live.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
-        await AuditLog.Received(1).LogAsync(AuditAction.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
             Arg.Any<string>(), actor, person, AuditEntityTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }

@@ -180,7 +180,7 @@ internal sealed class ApplicationDecisionService(
         var approved = application.Status == ApplicationStatus.Approved;
         var decision = approved ? "approved" : "rejected";
         await auditLogService.LogAsync(
-            approved ? AuditAction.TierApplicationApproved : AuditAction.TierApplicationRejected,
+            approved ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
             AuditEntityTypes.Application,
             application.Id,
             $"{application.MembershipTier} application {decision}",
@@ -417,7 +417,7 @@ internal sealed class ApplicationDecisionService(
             await membershipTiers.SyncExpiryAsync(application.Id, row.ExpectedExpiry, ct);
 
             await auditLogService.LogAsync(
-                AuditAction.TierTermExpiryCorrected,
+                GovernanceAuditActions.TierTermExpiryCorrected,
                 AuditEntityTypes.Application,
                 application.Id,
                 $"{application.MembershipTier} term expiry {row.StoredExpiry.ToInvariantDate() ?? "null"} -> {row.ExpectedExpiry.ToInvariantDate()}",

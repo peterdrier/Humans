@@ -127,7 +127,7 @@ internal sealed class AttendeeContactImportService(
             Elapsed: clock.GetCurrentInstant() - start);
 
         await audit.LogAsync(
-            AuditAction.TicketContactsImported,
+            TicketsAuditActions.TicketContactsImported,
             "Tickets", Guid.Empty,
             description: result.FormatSummary(),
             actorUserId: actorUserId);

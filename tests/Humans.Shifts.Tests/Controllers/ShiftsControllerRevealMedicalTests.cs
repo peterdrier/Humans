@@ -53,7 +53,7 @@ public sealed class ShiftsControllerRevealMedicalTests
 
         result.Should().BeOfType<JsonResult>().Which.Value.Should().BeEquivalentTo(new { text = "Epilepsy" });
         await _audit.Received(1).LogAsync(
-            AuditAction.MedicalConditionsRevealed, "User", _subjectId,
+            ShiftsAuditActions.MedicalConditionsRevealed, "User", _subjectId,
             Arg.Is<string>(d => !d.Contains("Epilepsy", StringComparison.Ordinal)), _actorId);
     }
 

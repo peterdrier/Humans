@@ -1144,7 +1144,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         // ...but the audit entry is still written.
         await AuditLog.Received().LogAsync(
-            AuditAction.ShiftSignupVoluntold, Arg.Any<string>(), Arg.Any<Guid>(),
+            ShiftsAuditActions.ShiftSignupVoluntold, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), enrollerId,
             Arg.Any<Guid?>(), Arg.Any<string>());
     }
@@ -2002,7 +2002,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
+            ShiftsAuditActions.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(confirmed)")),
             userId,
             userId, nameof(User));
@@ -2020,7 +2020,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Pending);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
+            ShiftsAuditActions.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(pending)")),
             userId,
             userId, nameof(User));
@@ -2039,7 +2039,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
+            ShiftsAuditActions.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("on Thu Jul 2 (confirmed)")),
             userId,
             userId, nameof(User));
@@ -2059,7 +2059,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         await AuditLog.Received(3).LogAsync(
-            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Arg.Any<Guid>(),
+            ShiftsAuditActions.ShiftSignupCreated, nameof(ShiftSignup), Arg.Any<Guid>(),
             Arg.Is<string>(s => s.Contains("(range, pending)")),
             userId,
             userId, nameof(User));
@@ -2301,7 +2301,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,
+            ShiftsAuditActions.ShiftSignupReassigned, nameof(User), targetUserId,
             Arg.Is<string>(s => s.Contains("Reassigned 1")),
             actorUserId,
             targetUserId, nameof(User));
@@ -2319,7 +2319,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, TestContext.Current.CancellationToken);
 
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),
+            ShiftsAuditActions.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

@@ -24,14 +24,14 @@ internal interface ICantinaRosterService : IApplicationService
 }
 
 /// <summary>
-/// Who is taking personal rows off the page and how: a CSV download (<see cref="AuditAction.CantinaRosterExported"/>)
-/// or the allergy and intolerance reveal (<see cref="AuditAction.CantinaHealthDetailsRevealed"/>). Plain page reads
+/// Who is taking personal rows off the page and how: a CSV download (<see cref="CantinaAuditActions.CantinaRosterExported"/>)
+/// or the allergy and intolerance reveal (<see cref="CantinaAuditActions.CantinaHealthDetailsRevealed"/>). Plain page reads
 /// pass none and are not audited.
 /// </summary>
-internal sealed record RosterDisclosure(Guid ActorUserId, AuditAction Action)
+internal sealed record RosterDisclosure(Guid ActorUserId, AuditActionDefinition Action)
 {
-    public static RosterDisclosure Export(Guid actorUserId) => new(actorUserId, AuditAction.CantinaRosterExported);
-    public static RosterDisclosure HealthReveal(Guid actorUserId) => new(actorUserId, AuditAction.CantinaHealthDetailsRevealed);
+    public static RosterDisclosure Export(Guid actorUserId) => new(actorUserId, CantinaAuditActions.CantinaRosterExported);
+    public static RosterDisclosure HealthReveal(Guid actorUserId) => new(actorUserId, CantinaAuditActions.CantinaHealthDetailsRevealed);
 
-    internal string Verb => Action == AuditAction.CantinaRosterExported ? "exported" : "allergy and intolerance details revealed";
+    internal string Verb => Action == CantinaAuditActions.CantinaRosterExported ? "exported" : "allergy and intolerance details revealed";
 }

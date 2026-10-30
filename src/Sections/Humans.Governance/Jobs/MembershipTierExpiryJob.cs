@@ -54,7 +54,7 @@ internal sealed class MembershipTierExpiryJob(
         {
             var displayName = usersById.TryGetValue(userId, out var u) ? u.BurnerName : "Unknown";
             await auditLogService.LogAsync(
-                AuditAction.TierDowngraded, "Profile", userId,
+                GovernanceAuditActions.TierDowngraded, "Profile", userId,
                 $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                 nameof(MembershipTierExpiryJob),
                 relatedEntityId: userId, relatedEntityType: nameof(User));

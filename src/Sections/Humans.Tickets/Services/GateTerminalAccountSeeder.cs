@@ -66,7 +66,7 @@ internal sealed class GateTerminalAccountSeeder(
         await credentialManager.SetLockoutEnabledAsync(user, false);
 
         await auditLogService.LogAsync(
-            AuditAction.GateTerminalPasswordSet,
+            TicketsAuditActions.GateTerminalPasswordSet,
             nameof(User),
             SystemUserIds.GateTerminal,
             "Gate terminal password set",

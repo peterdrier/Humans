@@ -212,7 +212,7 @@ public sealed class EventServiceTests
         csv.Should().NotContain("Pending event");
         if (expectedRows > 0)
             csv.Should().Contain("Flame").And.Contain("Ember").And.Contain("Main Stage").And.Contain("2026-07-01");
-        await _audit.Received(1).LogAsync(AuditAction.EventGuideExported, "EventGuide", _repo.Settings.Id,
+        await _audit.Received(1).LogAsync(EventsAuditActions.EventGuideExported, "EventGuide", _repo.Settings.Id,
             $"Approved event guide CSV exported: {expectedRows} rows", actorId);
 
         var print = (await controller.PrintGuide(ct)).Should().BeOfType<ViewResult>().Which;

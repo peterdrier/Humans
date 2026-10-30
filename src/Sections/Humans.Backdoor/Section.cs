@@ -8,6 +8,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Backdoor;
 
@@ -15,6 +16,7 @@ public sealed class Section : ISection, ISectionAdminNav
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, BackdoorAuditActions>();
         services.AddSectionDbContext<BackdoorDbContext>(sentinelTable: "backdoor_api_keys");
 
         services.AddSingleton<IBackdoorApiKeyRepository, BackdoorApiKeyRepository>();

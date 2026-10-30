@@ -177,6 +177,7 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `IssuesAuditActions` (`src/Sections/Humans.Issues/IssuesAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `IssueStatusChanged`, `IssueAssigneeChanged`, `IssueSectionChanged`, `IssueGitHubLinked`, `IssueCreated`.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — reporter / assignee / resolver / comment-sender display names (cross-domain navs are stripped per `design-rules.md §6c`).
 - **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for the reporter when a handler comments, and for the assignee on status/assignment changes.
 - **Auth:** `IRoleAssignmentService` — used by the section-routing logic to fan out notifications to the set of users who currently hold a role mapped to the issue's `Section`.

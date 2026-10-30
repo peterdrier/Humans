@@ -88,7 +88,7 @@ internal sealed class Service(
         }
 
         await auditLog.LogAsync(
-            AuditAction.ContainerCreated, AuditEntityTypes.Container, created.Id,
+            ContainersAuditActions.ContainerCreated, AuditEntityTypes.Container, created.Id,
             $"Created container '{created.Name}'",
             actorUserId,
             relatedEntityId: created.CampId, relatedEntityType: AuditEntityTypes.Camp);
@@ -145,7 +145,7 @@ internal sealed class Service(
             throw;
         }
         await auditLog.LogAsync(
-            AuditAction.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
+            ContainersAuditActions.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
             $"Updated container '{updated.Name}'",
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
@@ -168,7 +168,7 @@ internal sealed class Service(
         await repo.DeleteAsync(id, ct);
 
         await auditLog.LogAsync(
-            AuditAction.ContainerDeleted, AuditEntityTypes.Container, container.Id,
+            ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
             $"Deleted container '{container.Name}'",
             actorUserId,
             relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
@@ -224,7 +224,7 @@ internal sealed class Service(
         var placement = await repo.SavePlacementGeometryAsync(
             containerId, year, geoJson, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(
-            AuditAction.ContainerPlacementSaved, AuditEntityTypes.ContainerPlacement, containerId,
+            ContainersAuditActions.ContainerPlacementSaved, AuditEntityTypes.ContainerPlacement, containerId,
             $"Placed container on map for {year}",
             actorUserId,
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
@@ -292,7 +292,7 @@ internal sealed class Service(
         }
 
         await auditLog.LogAsync(
-            AuditAction.ContainerPlacementCleared, AuditEntityTypes.ContainerPlacement, containerId,
+            ContainersAuditActions.ContainerPlacementCleared, AuditEntityTypes.ContainerPlacement, containerId,
             $"Cleared container placement for {year}",
             actorUserId,
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
@@ -359,7 +359,7 @@ internal sealed class Service(
         }
 
         await auditLog.LogAsync(
-            AuditAction.ContainerPlacementNotesUpdated, AuditEntityTypes.ContainerPlacement, containerId,
+            ContainersAuditActions.ContainerPlacementNotesUpdated, AuditEntityTypes.ContainerPlacement, containerId,
             $"Updated placement notes for {year}",
             actorUserId,
             relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);

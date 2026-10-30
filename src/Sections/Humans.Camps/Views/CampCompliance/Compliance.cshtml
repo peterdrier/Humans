@@ -1,6 +1,6 @@
 @model CampComplianceViewModel
 @{
-    ViewData["Title"] = $"Barrio role compliance — {Model.Year}";
+    ViewData["Title"] = $"Barrio role compliance — {Model.Event.EventName}";
 }
 
 <nav aria-label="breadcrumb">
@@ -12,10 +12,22 @@
 </nav>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Barrio role compliance &mdash; @Model.Year</h1>
+    <h1 class="mb-0">Barrio role compliance &mdash; @Model.Event.EventName</h1>
     <form asp-controller="CampCompliance" asp-action="Compliance" method="get" class="d-flex gap-2 align-items-center">
-        <label for="year" class="form-label mb-0 text-nowrap">Year</label>
-        <input type="number" id="year" name="year" class="form-control form-control-sm" style="max-width: 120px;" value="@Model.Year" min="2024" max="2099" required />
+        <label for="eventSettingsId" class="form-label mb-0 text-nowrap">Event</label>
+        <select id="eventSettingsId" name="eventSettingsId" class="form-select form-select-sm" style="max-width: 220px;">
+            @foreach (var option in Model.EventOptions)
+            {
+                if (option.EventSettingsId == Model.Event.EventSettingsId)
+                {
+                    <option value="@option.EventSettingsId" selected>@option.EventName</option>
+                }
+                else
+                {
+                    <option value="@option.EventSettingsId">@option.EventName</option>
+                }
+            }
+        </select>
         <button type="submit" class="btn btn-outline-primary btn-sm">
             <i class="fa-solid fa-arrows-rotate me-1"></i>Show
         </button>
@@ -27,7 +39,7 @@
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-1"></i>
-        No active barrios for @Model.Year.
+        No active barrios for @Model.Event.EventName.
     </div>
 }
 else

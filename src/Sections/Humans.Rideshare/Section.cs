@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Rideshare;
 
@@ -38,6 +39,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, RideshareAuditActions>();
         services.AddSingleton<INotificationSourceContributor, RideshareNotificationSources>();
         services.AddSectionDbContext<RideshareDbContext>(sentinelTable: "rideshare_trips");
 

@@ -10,11 +10,15 @@ namespace Humans.Camps.Tests;
 public sealed class CampBarriosSettingsTabViewComponentTests
 {
     [HumansFact]
-    public async Task InvokeAsync_ReturnsTheOpenSeasons()
+    public async Task InvokeAsync_ReturnsTheRegistrationStateOfEveryEvent()
     {
         var campService = Substitute.For<ICampManagement>();
-        campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2025, 2026]));
+        IReadOnlyList<CampEventRegistration> events =
+        [
+            new(Guid.NewGuid(), "Nowhere 2026", 2026, RegistrationOpen: true),
+            new(Guid.NewGuid(), "Nowhere 2025", 2025, RegistrationOpen: false),
+        ];
+        campService.GetRegistrationByEventAsync(Arg.Any<CancellationToken>()).Returns(events);
 
         var sut = new CampBarriosSettingsTabViewComponent(campService)
         {
@@ -26,6 +30,6 @@ public sealed class CampBarriosSettingsTabViewComponentTests
         var result = await sut.InvokeAsync();
         var model = (CampBarriosSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        model.OpenSeasons.Should().Equal(2025, 2026);
+        model.Events.Should().Equal(events);
     }
 }

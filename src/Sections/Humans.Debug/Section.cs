@@ -6,6 +6,7 @@ using Humans.Debug.ViewComponents;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Debug;
 
@@ -13,6 +14,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, DebugAuditActions>();
         // Scoped: the migrations' delegates resolve the request's services.
         services.AddScoped<DataMigrationService>();
     }

@@ -197,7 +197,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
     /// </summary>
     private async Task AuditSubjectsAsync(RosterDisclosure disclosure, EventSettingsInfo? burn, IEnumerable<Guid> subjectIds, string scope)
     {
-        if (disclosure.Action != AuditAction.CantinaHealthDetailsRevealed) return;
+        if (disclosure.Action != CantinaAuditActions.CantinaHealthDetailsRevealed) return;
         foreach (var userId in subjectIds.Distinct())
             await _audit.LogAsync(disclosure.Action, "User", userId,
                 $"Allergy and intolerance details revealed on the Cantina {scope}",

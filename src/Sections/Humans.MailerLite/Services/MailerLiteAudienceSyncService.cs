@@ -197,7 +197,7 @@ internal sealed class MailerLiteAudienceSyncService(
         if (actorUserId is Guid actor)
         {
             await audit.LogAsync(
-                AuditAction.MailerLiteAudienceSyncCompleted,
+                MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,
                 entityType: "MailerLiteAudience", entityId: state.Id,
                 description: description,
                 actorUserId: actor);
@@ -205,7 +205,7 @@ internal sealed class MailerLiteAudienceSyncService(
         else
         {
             await audit.LogAsync(
-                AuditAction.MailerLiteAudienceSyncCompleted,
+                MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,
                 entityType: "MailerLiteAudience", entityId: state.Id,
                 description: description,
                 jobName: JobName);

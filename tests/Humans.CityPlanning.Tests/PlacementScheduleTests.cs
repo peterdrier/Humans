@@ -178,7 +178,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
         settings.PlacementOverride.Should().BeNull();
         settings.PlacementState.Should().Be(BarrioPlacementState.Open);
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementOverrideCleared,
+            CityPlanningAuditActions.CityPlanningPlacementOverrideCleared,
             nameof(CityPlanningSettings),
             Arg.Any<Guid>(),
             Arg.Any<string>(),
@@ -254,7 +254,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
         row.PlacementChangeableUntilOffset.Should().Be(ChangeableUntilOffset);
         row.PlacementOverride.Should().BeNull("editing the schedule leaves the override alone");
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CityPlanningPlacementDatesUpdated,
+            CityPlanningAuditActions.CityPlanningPlacementDatesUpdated,
             nameof(CityPlanningSettings),
             row.Id,
             Arg.Is<string>(d => d.Contains("opens -30", StringComparison.Ordinal)

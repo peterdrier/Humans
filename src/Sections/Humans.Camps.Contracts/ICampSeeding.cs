@@ -11,10 +11,10 @@ public interface ICampSeeding
         bool isSwissCamp,
         int timesAtNowhere,
         CampSeasonData seasonData,
-        int year,
+        Guid eventSettingsId,
         CancellationToken cancellationToken = default);
 
-    Task OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);
+    Task OptInToSeasonAsync(Guid campId, Guid eventSettingsId, CancellationToken cancellationToken = default);
 
     Task ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
 

@@ -297,6 +297,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `StoreAuditActions` (`src/Sections/Humans.Store/StoreAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `StoreOrderCreated`, `StoreOrderDeleted`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StoreProductCreated`, `StoreProductUpdated`, `StoreProductPriceChanged`, `StoreProductDeactivated`, `StoreInvoiceIssued`, `StorePaymentRecorded`, `StorePaymentSettled`, `StorePaymentFailed`, `StorePaymentExpired`, `StorePaymentDeleted`, `StorePaymentsReconciled`, `StoreOrderYearBackfilled`, `StorePaymentMethodBackfilled`.
 - **Camps:** `ICampService` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
 - **Teams:** `ITeamService` for department lookups (team name, department check via `ParentTeamId is null`, coordinator check via `ManagementRoleHolderUserIds`). Existing methods only.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog`, (b) populate `Year` on new team orders, and (c) compute "today in event time zone" for the `OrderableUntil` deadline gate.

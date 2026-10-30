@@ -482,7 +482,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         await NewService().HideCommentAsync(comment.Id, member, "Off-topic", Ct);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.WorkgroupCommentHidden, AuditEntityTypes.WorkgroupComment, comment.Id,
+            WorkgroupsAuditActions.WorkgroupCommentHidden, AuditEntityTypes.WorkgroupComment, comment.Id,
             Arg.Is<string>(text => text.Contains("Off-topic", StringComparison.Ordinal)),
             member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }

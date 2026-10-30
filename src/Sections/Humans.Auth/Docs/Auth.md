@@ -168,6 +168,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `AuthAuditActions` (`src/Sections/Humans.Auth/AuthAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `RoleAssigned`, `RoleEnded`.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — display names for assignee/creator stitched in memory (design-rules §6b). `IUserEmailService.FindByAddressAsync` — verified email → owning user for magic-link login.
 - **Email:** Auth owns its two sign-in templates — `AuthEmails` (internal) builds each `EmailMessage` from Auth's own `Auth_Email_*` keys in `AuthResource`, rendered in the recipient's culture via `CultureScope`; `AuthEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists both at `/Email/EmailPreview`. Both set `EmailMessage.Urgent` (template names `magic_link_login`, `magic_link_signup` unchanged) so the outbox drains a sign-in link immediately. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Teams:** `ISystemTeamSync.SyncBoardTeamAsync` — Board system team's membership mirrors current `Board` role assignments.

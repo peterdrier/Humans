@@ -90,8 +90,8 @@ public sealed class IssuesServiceTests
         _emailMessages = TestIssuesEmails.Create(culture => _renderedEmailCultures.Add(culture));
         AuditLog
             .GetFilteredEntriesAsync(
-                Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<AuditActionDefinition>>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]));
 
 
@@ -295,7 +295,7 @@ public sealed class IssuesServiceTests
 
         // The issue row records only the reporter, so the audit entry is the filer's one record.
         await AuditLog.Received().LogAsync(
-            AuditAction.IssueCreated,
+            IssuesAuditActions.IssueCreated,
             nameof(Issue),
             issueId,
             Arg.Is<string>(d => d.Contains(reporterId.ToString(), StringComparison.Ordinal)),
@@ -306,8 +306,8 @@ public sealed class IssuesServiceTests
         await _service.GetThreadAsync(issueId, Admin, TestContext.Current.CancellationToken);
 
         await AuditLog.Received().GetFilteredEntriesAsync(
+            Arg.Is<IReadOnlyList<AuditActionDefinition>>(a => a.Contains(IssuesAuditActions.IssueCreated)),
             Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
-            Arg.Is<IReadOnlyList<AuditAction>?>(a => a != null && a.Contains(AuditAction.IssueCreated)),
             Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
@@ -321,10 +321,10 @@ public sealed class IssuesServiceTests
 
         var auditAt = Clock.GetCurrentInstant() + Duration.FromMinutes(1);
         AuditLog.GetFilteredEntriesAsync(
-                Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
-                Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlyList<AuditActionDefinition>>(), Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
-            [new(Guid.NewGuid(), nameof(AuditAction.IssueGitHubLinked), nameof(Issue), issueId,
+            [new(Guid.NewGuid(), IssuesAuditActions.IssueGitHubLinked.Name, nameof(Issue), issueId,
                 "GitHub link: 123", auditAt, null, null, null)]));
 
         await _service.PostCommentAsync(
@@ -337,7 +337,7 @@ public sealed class IssuesServiceTests
         thread[0].Should().BeOfType<IssueCommentEvent>()
             .Which.ActorDisplayName.Should().Be("Commenter");
         thread[1].Should().BeOfType<IssueAuditEvent>()
-            .Which.Action.Should().Be(nameof(AuditAction.IssueGitHubLinked));
+            .Which.Action.Should().Be(IssuesAuditActions.IssueGitHubLinked.Name);
         thread[1].ActorUserId.Should().BeNull();
     }
 
@@ -631,7 +631,7 @@ public sealed class IssuesServiceTests
         await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.IssueStatusChanged,
+            IssuesAuditActions.IssueStatusChanged,
             nameof(Issue),
             issueId,
             Arg.Any<string>(),
@@ -1075,7 +1075,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Open, actorId, TestContext.Current.CancellationToken);
 
         await AuditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1090,7 +1090,7 @@ public sealed class IssuesServiceTests
             ct: TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.IssueStatusChanged, nameof(Issue), issueId,
+            IssuesAuditActions.IssueStatusChanged, nameof(Issue), issueId,
             Arg.Any<string>(), "API", Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1410,7 +1410,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateAssigneeAsync(issueId, Admin, newAssignee.Id, actorId, TestContext.Current.CancellationToken);
 
         await AuditLog.Received().LogAsync(
-            AuditAction.IssueAssigneeChanged,
+            IssuesAuditActions.IssueAssigneeChanged,
             nameof(Issue),
             issueId,
             Arg.Is<string>(s => s.Contains("Old Person", StringComparison.Ordinal)
@@ -1508,7 +1508,7 @@ public sealed class IssuesServiceTests
         (await _service.GetActionableCountForViewerAsync(teamsViewer, TestContext.Current.CancellationToken)).Should().Be(1);
 
         await AuditLog.Received().LogAsync(
-            AuditAction.IssueSectionChanged,
+            IssuesAuditActions.IssueSectionChanged,
             nameof(Issue),
             issueId,
             Arg.Is<string>(s => s.Contains("Tickets", StringComparison.Ordinal)
@@ -1691,7 +1691,7 @@ public sealed class IssuesServiceTests
         stored.GitHubIssueNumber.Should().Be(1234);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.IssueGitHubLinked, nameof(Issue), issueId,
+            IssuesAuditActions.IssueGitHubLinked, nameof(Issue), issueId,
             Arg.Is<string>(s => s.Contains("1234", StringComparison.Ordinal)), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -2642,7 +2642,7 @@ public sealed class IssuesServiceTests
         result.Rejected.Should().BeTrue();
         var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.AssigneeUserId.Should().BeNull();
-        AuditLog.ReceivedCalls().Should().NotContain(call => call.GetArguments().Contains(AuditAction.IssueAssigneeChanged));
+        AuditLog.ReceivedCalls().Should().NotContain(call => call.GetArguments().Contains(IssuesAuditActions.IssueAssigneeChanged));
     }
 
     [HumansFact]

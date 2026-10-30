@@ -1163,7 +1163,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         row.EventSettingsId.Should().Be(EventId);
         row.DestinationLabel.Should().Be("Elsewhere");
         await AuditLog.Received(1).LogAsync(
-            AuditAction.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, row.Id,
+            RideshareAuditActions.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, row.Id,
             Arg.Is<string>(d => d.Contains("Elsewhere")), admin, Arg.Any<Guid?>(), Arg.Any<string?>());
 
         await service.SaveSettingsAsync(EventId, save with { DestinationLabel = "Somewhere else" }, admin, Ct);
@@ -1173,7 +1173,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         updated.Id.Should().Be(row.Id);
         updated.DestinationLabel.Should().Be("Somewhere else");
         await AuditLog.Received(2).LogAsync(
-            AuditAction.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, row.Id,
+            RideshareAuditActions.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, row.Id,
             Arg.Any<string>(), admin, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1276,7 +1276,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             SeedUser(), Ct);
 
         (await act()).Refusal!.Key.Should().Be("Rideshare_Error_WindowOrder");
-        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
+        await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

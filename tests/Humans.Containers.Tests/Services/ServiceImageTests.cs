@@ -270,7 +270,7 @@ public sealed class ServiceImageTests
         await _fileStorage.Received(failedUpload - 1).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
         foreach (var key in attemptedKeys.Take(failedUpload - 1))
             await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
-        await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
+        await _auditLog.DidNotReceive().LogAsync(ContainersAuditActions.ContainerUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -301,7 +301,7 @@ public sealed class ServiceImageTests
         foreach (var key in attemptedKeys.Take(failedUpload - 1))
             await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
         (await _sut.GetAllAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
-        await _auditLog.DidNotReceive().LogAsync(AuditAction.ContainerCreated, Arg.Any<string>(), Arg.Any<Guid>(),
+        await _auditLog.DidNotReceive().LogAsync(ContainersAuditActions.ContainerCreated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -411,7 +411,7 @@ public sealed class ServiceImageTests
         (await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken)).Should().BeEquivalentTo(updated);
         foreach (var path in paths)
             await _fileStorage.Received(1).DeleteAsync(path, CancellationToken.None);
-        await _auditLog.Received(1).LogAsync(AuditAction.ContainerUpdated, Arg.Any<string>(), container.Id,
+        await _auditLog.Received(1).LogAsync(ContainersAuditActions.ContainerUpdated, Arg.Any<string>(), container.Id,
             Arg.Any<string>(), Arg.Any<Guid>(), container.CampId, Arg.Any<string?>());
     }
 
@@ -501,7 +501,7 @@ public sealed class ServiceImageTests
                 await using var db = new ContainersDbContext(_containersOptions);
                 metadataDeletedBeforeCleanup = await db.Containers.CountAsync(ct) == 0;
                 auditedBeforeCleanup = _auditLog.ReceivedCalls().Any(call =>
-                    call.GetArguments()[0] is AuditAction action && action == AuditAction.ContainerDeleted);
+                    call.GetArguments()[0] is AuditActionDefinition action && action == ContainersAuditActions.ContainerDeleted);
                 await Task.FromException(cleanupFailure);
             });
 
@@ -513,7 +513,7 @@ public sealed class ServiceImageTests
         (await ctx.ContainerImages.CountAsync(ct)).Should().Be(0);
         metadataDeletedBeforeCleanup.Should().BeTrue();
         auditedBeforeCleanup.Should().BeTrue();
-        await _auditLog.Received(1).LogAsync(AuditAction.ContainerDeleted, AuditEntityTypes.Container, container.Id,
+        await _auditLog.Received(1).LogAsync(ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
             Arg.Any<string>(), actorId, CampId, AuditEntityTypes.Camp);
         _logger.ReceivedCalls().Where(call =>
             call.GetArguments()[0] is Microsoft.Extensions.Logging.LogLevel level && level == Microsoft.Extensions.Logging.LogLevel.Error

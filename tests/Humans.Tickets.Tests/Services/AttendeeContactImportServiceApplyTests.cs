@@ -66,7 +66,7 @@ public class AttendeeContactImportServiceApplyTests
             scanned ? scan : null, Arg.Any<CancellationToken>());
 
         await harness.Audit.Received(1).LogAsync(
-            AuditAction.TicketContactsImported,
+            TicketsAuditActions.TicketContactsImported,
             "Tickets", Guid.Empty,
             Arg.Is<string>(s => s.Contains("attached=1")),
             actorId);

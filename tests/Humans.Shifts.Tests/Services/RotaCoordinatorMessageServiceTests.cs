@@ -81,7 +81,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
         StubUsers(sender, recipient);
         var failure = new InvalidOperationException("Audit unavailable");
-        _auditLog.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        _auditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(failure));
         var logger = Substitute.For<ILogger<RotaCoordinatorMessageService>>();
@@ -121,7 +121,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.Error.Should().Contain("required", "blank body must surface a clear error");
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(null!);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default(AuditAction), null!, Guid.Empty, null!, Guid.Empty);
+            null!, null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]
@@ -289,7 +289,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.RotaName.Should().Be(rota.Name);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CoordinatorRotaMessageSent,
+            ShiftsAuditActions.CoordinatorRotaMessageSent,
             nameof(Rota),
             rota.Id,
             Arg.Is<string>(d => d.StartsWith("Requested rota message", StringComparison.Ordinal) && d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains(rota.Name)),
@@ -371,7 +371,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "b@example.com"), Arg.Any<CancellationToken>());
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CoordinatorRotaMessageSent,
+            ShiftsAuditActions.CoordinatorRotaMessageSent,
             nameof(Rota),
             rota.Id,
             Arg.Is<string>(d => d.Contains("1 failed") && d.Contains("schedule change")),
@@ -411,7 +411,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         // Audit row still written so the failures are forensically visible.
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CoordinatorRotaMessageSent,
+            ShiftsAuditActions.CoordinatorRotaMessageSent,
             nameof(Rota),
             rota.Id,
             Arg.Is<string>(d => d.Contains("2 failed")),
@@ -645,7 +645,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         await CreateSut().SendTeamRotasMessageAsync(teamId, sender, message, includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            AuditAction.CoordinatorTeamRotasMessageSent,
+            ShiftsAuditActions.CoordinatorTeamRotasMessageSent,
             nameof(Team),
             teamId,
             Arg.Is<string>(d => d.StartsWith("Requested team-wide rota message", StringComparison.Ordinal) && d.Contains($"'{expectedSnippet}'", StringComparison.Ordinal) && d.Contains("Test Team")),

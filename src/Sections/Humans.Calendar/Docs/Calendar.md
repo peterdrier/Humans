@@ -193,6 +193,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `CalendarAuditActions` (`src/Sections/Humans.Calendar/CalendarAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`, `CalendarFeedTokenCreated`, `CalendarFeedTokenRotated`.
 - **Teams:** `ITeamService.GetTeamsAsync` / `GetTeamAsync` — owning-team display names are stitched in memory (§6b), never joined in SQL, and populate the team picker on the Create/Edit forms. Event-level audit entries reference the owning team as `relatedEntityId` for team-scoped audit filtering.
 - **Users/Identity:** `CreatedByUserId` is persisted on the entity; every subsequent mutation logs the actor via the audit log (no `UpdatedByUserId` column).
 - **Audit Log:** `IAuditLogService` — every mutation writes an entry. The `Event` view embeds the `AuditLog` view component scoped to `entityType = AuditEntityTypes.CalendarEvent` (a literal, not `nameof` — the string is persisted), `entityId = event.Id`.

@@ -6,6 +6,7 @@ using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
@@ -284,7 +285,29 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var seeding = scope.ServiceProvider.GetRequiredService<ICampSeeding>();
         var roleSeeding = scope.ServiceProvider.GetRequiredService<ICampRoleSeeding>();
 
-        var year = (await camps.GetSettingsAsync(ct)).PublicYear;
+        // A season belongs to an event, so make sure one is active.
+        if ((await camps.GetSettingsAsync(ct)).ActiveEventSettingsId is null)
+        {
+            await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
+                new EventSettingsInfo(
+                    Id: Guid.NewGuid(),
+                    EventName: "Users Render Test Burn",
+                    Year: 2026,
+                    TimeZoneId: "Europe/Madrid",
+                    GateOpeningDate: new LocalDate(2026, 7, 1),
+                    BuildStartOffset: -14,
+                    EventEndOffset: 6,
+                    StrikeEndOffset: 9,
+                    FirstCrewStartOffset: -25,
+                    SetupWeekStartOffset: -16,
+                    PreEventWeekStartOffset: -9,
+                    FinishingWeekendStartOffset: -4,
+                    EarlyEntryCapacity: new Dictionary<int, int>(),
+                    BarriosEarlyEntryAllocation: null,
+                    EarlyEntryClose: null));
+        }
+
+        var eventSettingsId = (await camps.GetSettingsAsync(ct)).ActiveEventSettingsId!.Value;
 
         var campId = await seeding.CreateCampForSeedAsync(
             userId,
@@ -309,11 +332,11 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
                 SpaceRequirement: null,
                 SoundZone: null,
                 ElectricalGrid: null),
-            year,
+            eventSettingsId,
             ct);
 
-        var camp = (await camps.GetCampsForYearAsync(year, ct)).Single(c => c.Id == campId);
-        var season = camp.Seasons.Single(s => s.Year == year);
+        var camp = (await camps.GetCampsForEventAsync(eventSettingsId, ct)).Single(c => c.Id == campId);
+        var season = camp.Seasons.Single();
         await seeding.ApproveSeasonAsync(season.Id, userId, "Integration seed", ct);
 
         // The Camp Lead definition exists only after the system roles are seeded.

@@ -306,6 +306,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Cross-Section Dependencies
 
+- **Audit actions:** declared on `RideshareAuditActions` (`src/Sections/Humans.Rideshare/RideshareAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `RideshareSettingsUpdated`.
 - **Users**: `IUserService` — display name/picture for driver and rider cards, board
   properties, and notification "from" names. `IUserMerge` — on account merge,
   `ReassignAsync` re-points the archived user's trips, requests and interests at the survivor,

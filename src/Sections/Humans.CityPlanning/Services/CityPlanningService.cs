@@ -48,7 +48,7 @@ internal sealed class CityPlanningService(
     /// </remarks>
     private async Task MutateSettingsAndAuditAsync(
         Action<CityPlanningSettings, Instant> mutate,
-        AuditAction action,
+        AuditActionDefinition action,
         string description,
         Guid userId,
         CancellationToken cancellationToken)
@@ -424,7 +424,7 @@ internal sealed class CityPlanningService(
                 s.PlacementOverride = true;
                 s.OpenedAt = now;
             },
-            AuditAction.CityPlanningPlacementOpened,
+            CityPlanningAuditActions.CityPlanningPlacementOpened,
             "Forced barrio placement open (manual override of the schedule)",
             userId,
             cancellationToken);
@@ -436,7 +436,7 @@ internal sealed class CityPlanningService(
                 s.PlacementOverride = false;
                 s.ClosedAt = now;
             },
-            AuditAction.CityPlanningPlacementClosed,
+            CityPlanningAuditActions.CityPlanningPlacementClosed,
             "Forced barrio placement closed (manual override of the schedule)",
             userId,
             cancellationToken);
@@ -444,7 +444,7 @@ internal sealed class CityPlanningService(
     public Task ClearPlacementOverrideAsync(Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, _) => s.PlacementOverride = null,
-            AuditAction.CityPlanningPlacementOverrideCleared,
+            CityPlanningAuditActions.CityPlanningPlacementOverrideCleared,
             "Cleared the barrio placement override — placement follows the schedule",
             userId,
             cancellationToken);
@@ -456,7 +456,7 @@ internal sealed class CityPlanningService(
                 s.IsContainerPlacementOpen = true;
                 s.ContainerPlacementOpenedAt = now;
             },
-            AuditAction.CityPlanningContainerPlacementOpened,
+            CityPlanningAuditActions.CityPlanningContainerPlacementOpened,
             "Opened container placement",
             userId,
             cancellationToken);
@@ -468,7 +468,7 @@ internal sealed class CityPlanningService(
                 s.IsContainerPlacementOpen = false;
                 s.ContainerPlacementClosedAt = now;
             },
-            AuditAction.CityPlanningContainerPlacementClosed,
+            CityPlanningAuditActions.CityPlanningContainerPlacementClosed,
             "Closed container placement",
             userId,
             cancellationToken);
@@ -477,7 +477,7 @@ internal sealed class CityPlanningService(
         string geoJson, Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, _) => s.LimitZoneGeoJson = geoJson,
-            AuditAction.CityPlanningLimitZoneUpdated,
+            CityPlanningAuditActions.CityPlanningLimitZoneUpdated,
             "Uploaded the site boundary",
             userId,
             cancellationToken);
@@ -513,7 +513,7 @@ internal sealed class CityPlanningService(
     public Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, _) => s.LimitZoneGeoJson = null,
-            AuditAction.CityPlanningLimitZoneDeleted,
+            CityPlanningAuditActions.CityPlanningLimitZoneDeleted,
             "Deleted the site boundary",
             userId,
             cancellationToken);
@@ -522,7 +522,7 @@ internal sealed class CityPlanningService(
         string geoJson, Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, _) => s.OfficialZonesGeoJson = geoJson,
-            AuditAction.CityPlanningOfficialZonesUpdated,
+            CityPlanningAuditActions.CityPlanningOfficialZonesUpdated,
             "Uploaded the official zones",
             userId,
             cancellationToken);
@@ -541,7 +541,7 @@ internal sealed class CityPlanningService(
     public Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
             (s, _) => s.OfficialZonesGeoJson = null,
-            AuditAction.CityPlanningOfficialZonesDeleted,
+            CityPlanningAuditActions.CityPlanningOfficialZonesDeleted,
             "Deleted the official zones",
             userId,
             cancellationToken);
@@ -577,7 +577,7 @@ internal sealed class CityPlanningService(
                 s.PlacementClosesOffset = closesOffset;
                 s.PlacementChangeableUntilOffset = changeableUntilOffset;
             },
-            AuditAction.CityPlanningPlacementDatesUpdated,
+            CityPlanningAuditActions.CityPlanningPlacementDatesUpdated,
             $"Set the barrio placement schedule (days from gate opening): opens {FormatOffset(opensOffset)}, " +
             $"closes {FormatOffset(closesOffset)}, changeable until {FormatOffset(changeableUntilOffset)}",
             userId,
@@ -608,7 +608,7 @@ internal sealed class CityPlanningService(
         await repo.MutateSettingsAsync(
             targetYear, s => s.RegistrationInfo = trimmed, now, CancellationToken.None);
         await auditLog.LogAsync(
-            AuditAction.CityPlanningRegistrationInfoUpdated, nameof(CityPlanningSettings), settings.Id,
+            CityPlanningAuditActions.CityPlanningRegistrationInfoUpdated, nameof(CityPlanningSettings), settings.Id,
             trimmed is null ? $"Cleared the {targetYear} registration info" : $"Updated the {targetYear} registration info",
             userId);
     }

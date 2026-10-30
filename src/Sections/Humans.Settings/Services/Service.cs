@@ -46,7 +46,7 @@ internal sealed class Service(
         var previous = await GetTimeZoneIdAsync(cancellationToken);
         await repository.SetValueAsync(SettingKeys.EventTimeZoneId, timeZoneId, cancellationToken);
         await auditLog.LogAsync(
-            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
             $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
 
         // Every event's derived dates move with the timezone.
@@ -99,7 +99,7 @@ internal sealed class Service(
             + $"build starts day {settings.BuildStartOffset}, event ends day {settings.EventEndOffset}, "
             + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}.";
         await auditLog.LogAsync(
-            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
+            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
 
         // Consuming sections cache dates derived from this row; tell them.
         NotifyChangeListeners(settings.Id);
@@ -136,7 +136,7 @@ internal sealed class Service(
             ? $"Event '{target.EventName}' made active; no event was active before."
             : $"Event '{target.EventName}' made active; {string.Join(", ", previous)} set inactive.";
         await auditLog.LogAsync(
-            AuditAction.EventSettingsUpdated, AuditEntityTypes.EventSettings, target.Id, description, actorUserId);
+            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, target.Id, description, actorUserId);
 
         foreach (var row in changed)
             NotifyChangeListeners(row.Id);

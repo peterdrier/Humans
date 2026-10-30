@@ -68,7 +68,7 @@ internal sealed partial class PreapprovalService
             ClaimBy = fresh.Program.ClaimBy,
             SentAt = clock.GetCurrentInstant()
         }, ct);
-        await auditLog.LogAsync(AuditAction.PreapprovalReminderSent, AuditEntityTypes.Grant, fresh.Id,
+        await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, fresh.Id,
             $"{(kind == ReminderKind.D3 ? LastReminderDays : FirstReminderDays)}-day reminder sent: " +
             $"{Euros(fresh.MaxAmount)} under \"{fresh.Program.Name}\", claim by {fresh.Program.ClaimBy.ToInvariantDate()} ({info.DaysLeft(today)} days left).",
             ReminderJobName, relatedEntityId: fresh.ProgramId, relatedEntityType: AuditEntityTypes.Program);

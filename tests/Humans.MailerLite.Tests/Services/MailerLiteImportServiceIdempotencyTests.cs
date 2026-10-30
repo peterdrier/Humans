@@ -46,7 +46,7 @@ public class MailerLiteImportServiceIdempotencyTests
         result2.PrefsFlippedToOptOut.Should().Be(0);
         harness.Audit.SummaryCount.Should().Be(2);
         await harness.Audit.Mock.Received(2).LogAsync(
-            AuditAction.MailerLiteReconciliationCompleted, "MailerLite", Arg.Any<Guid>(),
+            MailerLiteAuditActions.MailerLiteReconciliationCompleted, "MailerLite", Arg.Any<Guid>(),
             Arg.Any<string>(), actorUserId: actorUserId);
     }
 }
@@ -157,7 +157,7 @@ internal sealed class IdempotencyHarness
 ///
 /// The current <see cref="MailerLiteImportService"/> only calls <c>LogAsync</c> once per
 /// <c>ApplyAsync</c> invocation (the summary line with
-/// <see cref="AuditAction.MailerLiteReconciliationCompleted"/>). Any future per-row
+/// <see cref="MailerLiteAuditActions.MailerLiteReconciliationCompleted"/>). Any future per-row
 /// audit calls will increment <see cref="PerRowCount"/>.
 /// </summary>
 internal sealed class AuditCounter
@@ -171,8 +171,8 @@ internal sealed class AuditCounter
     public int SummaryCount =>
         Mock.ReceivedCalls()
             .Count(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)
-                     && c.GetArguments() is [AuditAction action, ..]
-                     && action == AuditAction.MailerLiteReconciliationCompleted);
+                     && c.GetArguments() is [AuditActionDefinition action, ..]
+                     && action == MailerLiteAuditActions.MailerLiteReconciliationCompleted);
 
     /// <summary>
     /// Total LogAsync calls that are NOT the summary entry.
@@ -181,7 +181,7 @@ internal sealed class AuditCounter
     public int PerRowCount =>
         Mock.ReceivedCalls()
             .Count(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)
-                     && c.GetArguments() is [AuditAction action, ..]
-                     && action != AuditAction.MailerLiteReconciliationCompleted);
+                     && c.GetArguments() is [AuditActionDefinition action, ..]
+                     && action != MailerLiteAuditActions.MailerLiteReconciliationCompleted);
 }
 

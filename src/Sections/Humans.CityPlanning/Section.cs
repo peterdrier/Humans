@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.CityPlanning;
 
@@ -39,6 +40,7 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CityPlanningAuditActions>();
         services.Configure<CityPlanningOptions>(configuration.GetSection(CityPlanningOptions.SectionName));
 
         services.AddSectionDbContext<CityPlanningDbContext>(sentinelTable: "city_planning_settings");

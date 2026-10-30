@@ -7,7 +7,7 @@ internal sealed record DataMigrationReport(DataMigration Migration, DataMigratio
 
 /// <summary>
 /// The copy runs in the owning section's delegate; this only calls it with the request's services and writes the
-/// <see cref="AuditAction.DataMigrationApplied"/> entry.
+/// <see cref="DebugAuditActions.DataMigrationApplied"/> entry.
 /// </summary>
 internal sealed class DataMigrationService(
     IEnumerable<ISectionDataMigrations> contributions,
@@ -42,7 +42,7 @@ internal sealed class DataMigrationService(
         var rows = await migration.Apply(services, actorUserId, ct);
 
         await audit.LogAsync(
-            AuditAction.DataMigrationApplied, "DataMigration", Guid.Empty,
+            DebugAuditActions.DataMigrationApplied, "DataMigration", Guid.Empty,
             $"Data migration {migration.Key} ({migration.Section}) applied: {rows} row(s) written",
             actorUserId);
         logger.LogInformation(

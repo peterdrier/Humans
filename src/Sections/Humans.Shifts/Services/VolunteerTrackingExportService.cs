@@ -273,7 +273,7 @@ internal sealed class VolunteerTrackingExportService(
             Groups: groups,
             TotalsPerDay: totals,
             SuggestedFileName: $"{filePrefix}{request.StartDate.ToInvariantDate()}-to-{request.EndDate.ToInvariantDate()}.xlsx");
-        await _audit.LogAsync(AuditAction.VolunteerTrackingExported, "EventSettings", request.EventSettingsId,
+        await _audit.LogAsync(ShiftsAuditActions.VolunteerTrackingExported, "EventSettings", request.EventSettingsId,
             $"Volunteer tracking XLSX exported: {groups.Sum(group => group.Humans.Count)} people rows, " +
             $"range {request.StartDate.ToInvariantDate()} to {request.EndDate.ToInvariantDate()}, " +
             $"department {request.DepartmentId?.ToString() ?? "all"}", request.ActorUserId);

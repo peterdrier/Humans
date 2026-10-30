@@ -59,10 +59,10 @@
         <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
                 <h1 class="mb-1">@Model.Name</h1>
-                @if (Model.CurrentSeason != null)
+                @if (Model.CurrentSeason?.EventSettingsId is { } seasonEventId)
                 {
                     <p class="mb-1">
-                        <a asp-action="SeasonDetails" asp-route-slug="@Model.Slug" asp-route-year="@Model.CurrentSeason.Year" class="link-secondary">
+                        <a asp-action="SeasonDetails" asp-route-slug="@Model.Slug" asp-route-eventSettingsId="@seasonEventId" class="link-secondary">
                             @Localizer["Camps_Details_SeasonLink", Model.CurrentSeason.Year]
                         </a>
                     </p>
@@ -296,12 +296,12 @@
                         <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camps_ContactLoginHint"]
                     </a>
                     @* Gate on the camp, not the viewer: Model.Membership is always NoOpenSeason on this anonymous
-                       branch. An Active or Full season *for the public year* is what renders the membership card
-                       and what RequestCampMembership accepts; dropping the year would promise a join the mutation
+                       branch. An Active or Full season *for the active event* is what renders the membership card
+                       and what RequestCampMembership accepts; dropping the event would promise a join the mutation
                        rejects. The events half is hedged rather than gated, to avoid a cross-section read. *@
                     var loginShowsMore =
                         Model.CurrentSeason is { Status: CampSeasonStatus.Active or CampSeasonStatus.Full }
-                        && Model.CurrentSeason.Year == Model.PublicYear;
+                        && Model.IsActiveEventSeason;
                     <p class="small text-muted text-center mt-2 mb-0">
                         @(loginShowsMore
                             ? Localizer["Camps_ContactLoginDetailOpenSeason"]
@@ -350,7 +350,7 @@
                                 @* Full is informational only — it tells visitors the camp looks full, it
                                    does not block a request. Humans doesn't yet know everyone actually in
                                    the camp, so people still need to be able to request/join. *@
-                                @if (Model.CurrentSeason is { Status: CampSeasonStatus.Full } && Model.CurrentSeason.Year == Model.PublicYear)
+                                @if (Model.CurrentSeason is { Status: CampSeasonStatus.Full } && Model.IsActiveEventSeason)
                                 {
                                     <div class="alert alert-secondary py-2 mb-2">
                                         <i class="fa-solid fa-circle-info me-1"></i>

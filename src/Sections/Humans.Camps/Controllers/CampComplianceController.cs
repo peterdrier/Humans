@@ -19,14 +19,21 @@ internal sealed class CampComplianceController(
     IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("Compliance")]
-    public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
+    public async Task<IActionResult> Compliance(Guid? eventSettingsId, CancellationToken ct)
     {
         var settings = await campService.GetSettingsAsync(ct);
-        var matrix = await campRoleService.BuildComplianceMatrixAsync(year ?? settings.PublicYear, ct);
+        var resolvedEventId = eventSettingsId
+            ?? settings.ActiveEventSettingsId
+            ?? settings.Events.FirstOrDefault()?.EventSettingsId;
+        var matrix = resolvedEventId is { } id
+            ? await campRoleService.BuildComplianceMatrixAsync(id, ct)
+            : null;
+        if (matrix is null) return NotFound();
 
         return View(new CampComplianceViewModel
         {
-            Year = matrix.Year,
+            Event = matrix.Event,
+            EventOptions = settings.Events,
             Roles = matrix.Roles
                 .Select(r => new CampComplianceRoleColumn(r.Id, r.Name, r.MinimumRequired))
                 .ToList(),
