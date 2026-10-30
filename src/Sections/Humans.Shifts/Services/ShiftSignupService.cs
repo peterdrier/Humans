@@ -131,7 +131,7 @@ internal sealed class ShiftSignupService(
         await auditLogService.LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), signup.Id,
             $"shift '{shift.Rota.Name}' on {shiftDate} ({statusSuffix})",
-            userId,
+            actorUserId ?? userId,
             userId, nameof(User));
 
         if (autoConfirm)
@@ -610,7 +610,7 @@ internal sealed class ShiftSignupService(
         await repo.SaveChangesAsync();
         enrollment.Dispose();
         InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
-        await AuditRangeSignupsAsync(userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
+        await AuditRangeSignupsAsync(userId, actorUserId ?? userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
 
         if (autoConfirm)
         {
@@ -714,6 +714,7 @@ internal sealed class ShiftSignupService(
 
     private async Task AuditRangeSignupsAsync(
         Guid userId,
+        Guid actorUserId,
         Rota rota,
         EventSettingsInfo eventSettings,
         IEnumerable<(ShiftSignup Signup, int DayOffset)> rangeSignupsForAudit,
@@ -726,7 +727,7 @@ internal sealed class ShiftSignupService(
                 AuditAction.ShiftSignupCreated,
                 nameof(ShiftSignup), auditedSignup.Id,
                 $"'{rota.Name}' on {FormatAuditDay(eventSettings, dayOffset)} (range, {statusSuffix})",
-                userId,
+                actorUserId,
                 userId, nameof(User));
         }
     }

@@ -1991,38 +1991,44 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await AssertShiftAssignedSentAsync(Notifier, 1);
     }
 
-    [HumansFact]
-    public async Task SignUp_PublicPolicy_WritesShiftSignupCreatedAudit()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUp_PublicPolicy_WritesShiftSignupCreatedAudit(bool suppliedActor)
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
+        var actorId = suppliedActor ? Guid.NewGuid() : (Guid?)null;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.SignUpAsync(userId, shift.Id);
+        var result = await _service.SignUpAsync(userId, shift.Id, actorId);
 
         result.Success.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(confirmed)")),
-            userId,
+            actorId ?? userId,
             userId, nameof(User));
     }
 
-    [HumansFact]
-    public async Task SignUp_RequireApprovalPolicy_WritesShiftSignupCreatedAudit()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUp_RequireApprovalPolicy_WritesShiftSignupCreatedAudit(bool suppliedActor)
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var userId = Guid.NewGuid();
+        var actorId = suppliedActor ? Guid.NewGuid() : (Guid?)null;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.SignUpAsync(userId, shift.Id);
+        var result = await _service.SignUpAsync(userId, shift.Id, actorId);
 
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Pending);
         await AuditLog.Received(1).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
             Arg.Is<string>(s => s.Contains("(pending)")),
-            userId,
+            actorId ?? userId,
             userId, nameof(User));
     }
 
@@ -2045,23 +2051,26 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             userId, nameof(User));
     }
 
-    [HumansFact]
-    public async Task SignUpRange_RequireApproval_WritesShiftSignupCreatedPerSignup()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUpRange_RequireApproval_WritesShiftSignupCreatedPerSignup(bool suppliedActor)
     {
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
+        var actorId = suppliedActor ? Guid.NewGuid() : (Guid?)null;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, actorId);
 
         result.Success.Should().BeTrue();
         await AuditLog.Received(3).LogAsync(
             AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Arg.Any<Guid>(),
             Arg.Is<string>(s => s.Contains("(range, pending)")),
-            userId,
+            actorId ?? userId,
             userId, nameof(User));
     }
 
