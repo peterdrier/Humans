@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
-using Humans.Finance.Models;
+using Humans.Finance.Services;
 using NodaTime;
 using Xunit;
 
@@ -50,7 +50,7 @@ public class CreditorMatchTests
             ("payment", 3, 50m, 0m),
         };
 
-        var m = CreditorMatchVm.Build(reports, ledger);
+        var m = CreditorMatchService.Match(reports, ledger);
 
         m.ExpenseDocCount.Should().Be(2);
         m.ExpenseAmount.Should().Be(50m);
@@ -71,7 +71,7 @@ public class CreditorMatchTests
         };
         var ledger = new (string?, int, decimal, decimal)[] { ("purchase", 1, 0m, 15m), ("journal", 2, 0m, 5m) };
 
-        var m = CreditorMatchVm.Build(reports, ledger);
+        var m = CreditorMatchService.Match(reports, ledger);
 
         m.CountsMatch.Should().BeFalse();
         m.AmountsMatch.Should().BeFalse();

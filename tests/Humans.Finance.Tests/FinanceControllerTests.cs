@@ -45,8 +45,9 @@ public class FinanceControllerTests
             .Returns(Array.Empty<ExpenseReportDto>());
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, _expenses, _holdedLedger,
-            new CashFlowService(_budget, Substitute.For<ITicketService>()), NullLogger<FinanceController>.Instance)
+        new(_users, _finance, _connector, _expenses,
+            new CashFlowService(_budget, Substitute.For<ITicketService>()),
+            new CreditorMatchService(_holdedLedger, _expenses), NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
             {

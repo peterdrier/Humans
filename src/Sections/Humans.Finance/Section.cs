@@ -82,6 +82,7 @@ public sealed class Section :
         services.AddScoped<IEmailPreviewContributor, FinanceEmailPreviews>();
 
         services.AddScoped<CashFlowService>();
+        services.AddScoped<CreditorMatchService>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
