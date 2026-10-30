@@ -30,16 +30,10 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         string emptyText = "No audit history.",
         bool showCard = true)
     {
-        IReadOnlyList<AuditAction>? actionList = null;
-        if (!string.IsNullOrWhiteSpace(actions))
-        {
-            actionList = actions
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(a => Enum.TryParse<AuditAction>(a, ignoreCase: true, out var parsed) ? (AuditAction?)parsed : null)
-                .Where(a => a.HasValue)
-                .Select(a => a!.Value)
-                .ToList();
-        }
+        // Names pass through as stored: an unknown name matches no row rather than widening the query.
+        IReadOnlyList<string>? actionList = string.IsNullOrWhiteSpace(actions)
+            ? null
+            : actions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var model = new AuditLogComponentViewModel
         {
@@ -78,7 +72,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         Guid? entityId,
         IReadOnlyList<Guid>? entityIds,
         Guid? userId,
-        IReadOnlyList<AuditAction>? actionList,
+        IReadOnlyList<string>? actionList,
         int limit,
         CancellationToken ct)
     {
@@ -104,7 +98,6 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
     private static string ViewNameFor(string layout) => layout switch
     {
         "table" => "Table",
-        "activity" => "Activity",
         _ => "Default"
     };
 
@@ -133,7 +126,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         return labels;
     }
 
-    /// <summary>Parsed like <c>actions</c>: split on comma, trim, ignore unknown. Empty ⇒ all.</summary>
+    /// <summary>Split on comma, trim, ignore unknown. Empty ⇒ all.</summary>
     private static IReadOnlyList<string> SelectColumns(string? columns)
     {
         if (string.IsNullOrWhiteSpace(columns))

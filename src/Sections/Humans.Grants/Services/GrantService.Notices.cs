@@ -14,13 +14,13 @@ internal sealed partial class GrantService
     internal const string ProfileUrl = "/Profile/Me";
 
     private Task AnnounceIssuedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>
-        AnnounceAsync(grant, program, GrantNoticeKind.Issued, NotificationSource.GrantReceived, ct);
+        AnnounceAsync(grant, program, GrantNoticeKind.Issued, GrantsNotificationSources.GrantReceived, ct);
 
     private Task AnnounceRevokedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>
-        AnnounceAsync(grant, program, GrantNoticeKind.Revoked, NotificationSource.GrantRevoked, ct);
+        AnnounceAsync(grant, program, GrantNoticeKind.Revoked, GrantsNotificationSources.GrantRevoked, ct);
 
     private async Task AnnounceAsync(
-        Grant grant, GrantProgram program, GrantNoticeKind kind, NotificationSource source, CancellationToken ct)
+        Grant grant, GrantProgram program, GrantNoticeKind kind, NotificationSourceDefinition source, CancellationToken ct)
     {
         // Each step is best-effort on its own: one channel's outage never suppresses the other.
         UserInfo? person = null;
@@ -65,7 +65,7 @@ internal sealed partial class GrantService
     }
 
     private async Task NotifyAsync(
-        Guid recipientId, string cultureName, GrantNoticeKind kind, NotificationSource source, GrantProgram program,
+        Guid recipientId, string cultureName, GrantNoticeKind kind, NotificationSourceDefinition source, GrantProgram program,
         NodaTime.LocalDate? expiresOn, string? reason, CancellationToken ct)
     {
         var culture = CultureInfo.GetCultureInfo(cultureName);

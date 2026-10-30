@@ -120,7 +120,7 @@ internal sealed class EmailProvisioningService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountProvisioned,
+                GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
                 provisionedByUserId);
@@ -155,7 +155,7 @@ internal sealed class EmailProvisioningService(
             {
                 var culture = CultureInfo.GetCultureInfo(language);
                 await notificationService.SendAsync(
-                    NotificationSource.WorkspaceCredentialsReady,
+                    GoogleIntegrationNotificationSources.WorkspaceCredentialsReady,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
                     NoticeResources.GetString("GoogleIntegration_Email_WorkspaceCredentials_Subject", culture)!,

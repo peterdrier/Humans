@@ -58,7 +58,7 @@ internal sealed class CampContactService(
         try
         {
             await auditLogService.LogAsync(
-                AuditAction.FacilitatedMessageSent,
+                EmailAuditActions.FacilitatedMessageSent,
                 nameof(Camp), campId,
                 $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
                 senderUserId);
@@ -96,7 +96,7 @@ internal sealed class CampContactService(
                     var title = string.Format(culture,
                         NoticeResources.GetString("Camps_Notification_MessageReceived", culture)!, campDisplayName);
                     await notificationEmitter.SendAsync(
-                        NotificationSource.FacilitatedMessageReceived,
+                        CampsNotificationSources.FacilitatedMessageReceived,
                         NotificationClass.Informational,
                         NotificationPriority.Normal,
                         title,

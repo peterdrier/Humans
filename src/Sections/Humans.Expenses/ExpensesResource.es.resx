@@ -305,4 +305,5 @@
   <data name="Expenses_LegalName" xml:space="preserve"><value>Nombre legal</value></data>
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatorio. Indica el nombre del proyecto al que corresponde este gasto, p. ej. el de tu proyecto artístico.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Añade un asunto (el nombre del proyecto) antes de enviar.</value></data>
+  <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Introduce un importe con un máximo de dos decimales.</value></data>
 </root>

@@ -17,7 +17,9 @@ using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.GoogleIntegration;
 
@@ -34,6 +36,8 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, GoogleIntegrationAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, GoogleIntegrationNotificationSources>();
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
 
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);

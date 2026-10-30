@@ -294,7 +294,7 @@ public sealed class StoreControllerRecordPaymentTests
         };
         (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
         controller.TempData["ErrorMessage"].Should().BeNull();
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansTheory]

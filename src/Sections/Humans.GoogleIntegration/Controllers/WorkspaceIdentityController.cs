@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.GoogleIntegration.Services;
@@ -22,6 +23,7 @@ internal sealed class WorkspaceIdentityController(
 {
     [HttpPost("WorkspaceEmail")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Set(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);

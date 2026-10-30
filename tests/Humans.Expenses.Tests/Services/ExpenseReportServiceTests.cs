@@ -497,7 +497,7 @@ public sealed partial class ExpenseReportServiceTests
 
         // No audit on mere draft creation
         await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, Guid.Empty, null!, Guid.Empty);
+            null!, null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]
@@ -831,7 +831,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<CancellationToken>());
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseAttachmentUploaded,
+            ExpensesAuditActions.ExpenseAttachmentUploaded,
             "ExpenseReport", id,
             Arg.Any<string>(),
             submitter,
@@ -1123,7 +1123,7 @@ public sealed partial class ExpenseReportServiceTests
         Received.InOrder(() =>
         {
             _ = AuditLog.LogAsync(
-                AuditAction.ExpenseAttachmentRemoved,
+                ExpensesAuditActions.ExpenseAttachmentRemoved,
                 "ExpenseReport", id,
                 Arg.Any<string>(),
                 submitter,
@@ -1163,7 +1163,7 @@ public sealed partial class ExpenseReportServiceTests
         await using var db = await factory.CreateDbContextAsync(ct);
         (await db.ExpenseLines.AsNoTracking().SingleAsync(l => l.Id == lineId, ct)).AttachmentId.Should().BeNull();
         (await db.ExpenseAttachments.AsNoTracking().AnyAsync(a => a.Id == attachment.Id, ct)).Should().BeFalse();
-        await AuditLog.Received(1).LogAsync(AuditAction.ExpenseAttachmentRemoved,
+        await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseAttachmentRemoved,
             "ExpenseReport", id, Arg.Any<string>(), actor, actor, AuditEntityTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
             ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
@@ -1244,7 +1244,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded!.Lines.Single().AttachmentId.Should().NotBeNull();
         loaded.Lines.Single().Attachment!.OriginalFileName.Should().Be("receipt.pdf");
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             AuditEntityTypes.Report, id,
             Arg.Is<string>(description => description.StartsWith("Added line")),
             admin,
@@ -1275,7 +1275,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded!.Lines.Should().BeEmpty();
         loaded.Total.Should().Be(0m);
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1306,7 +1306,7 @@ public sealed partial class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, ct);
         loaded!.Lines.Should().BeEmpty();
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1337,7 +1337,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.Total.Should().Be(40m);
         loaded.Lines.Single().AttachmentId.HasValue.Should().Be(withFile);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
+            ExpensesAuditActions.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
             Arg.Is<string>(description => description.Contains(member.ToString())),
             admin, member, AuditEntityTypes.User);
     }
@@ -1363,7 +1363,7 @@ public sealed partial class ExpenseReportServiceTests
         result.Succeeded.Should().BeTrue();
         (await _sut.GetAsync(id, ct))!.Lines.Should().BeEmpty();
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
+            ExpensesAuditActions.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
             Arg.Is<string>(description => description.Contains(member.ToString())),
             admin, member, AuditEntityTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
@@ -1385,7 +1385,7 @@ public sealed partial class ExpenseReportServiceTests
                 return Task.CompletedTask;
             });
         AuditLog.LogAsync(
-                AuditAction.ExpenseAttachmentUploaded,
+                ExpensesAuditActions.ExpenseAttachmentUploaded,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .ThrowsAsync(new IOException("audit unavailable"));
@@ -1402,7 +1402,7 @@ public sealed partial class ExpenseReportServiceTests
         await _fileStorage.Received(1).DeleteAsync(
             storedKey!, CancellationToken.None);
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1424,7 +1424,7 @@ public sealed partial class ExpenseReportServiceTests
         {
             await using var db = new ExpensesDbContext(_expensesOptions);
             (await db.ExpenseAttachments.AnyAsync(a => a.Id == previous.Id, ct)).Should().BeFalse();
-            await AuditLog.Received(1).LogAsync(AuditAction.ExpenseAttachmentUploaded,
+            await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
                 "ExpenseReport", id, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User);
             if (cleanupFails) throw new IOException("file cleanup unavailable");
         });
@@ -1496,7 +1496,7 @@ public sealed partial class ExpenseReportServiceTests
                 return Task.CompletedTask;
             });
         AuditLog.LogAsync(
-                AuditAction.ExpenseAttachmentUploaded,
+                ExpensesAuditActions.ExpenseAttachmentUploaded,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .ThrowsAsync(new IOException("audit unavailable"));
@@ -1580,7 +1580,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<CancellationToken>()).Returns(async call =>
         {
             auditBeforeCleanup = AuditLog.ReceivedCalls().Any(c =>
-                Equals(c.GetArguments()[0], AuditAction.ExpenseEditedOnBehalf));
+                Equals(c.GetArguments()[0], ExpensesAuditActions.ExpenseEditedOnBehalf));
             if (!cancelAtAudit) await cancellation.CancelAsync();
             call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
             fileDeleted = true;
@@ -1681,7 +1681,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.PayeeIban.Should().BeEmpty();
         loaded.SubmittedAt.Should().BeNull();
         AuditLog.ReceivedCalls().Should().NotContain(call =>
-            Equals(call.GetArguments()[0], AuditAction.ExpenseSubmit));
+            Equals(call.GetArguments()[0], ExpensesAuditActions.ExpenseSubmit));
     }
 
     [HumansTheory]
@@ -1774,7 +1774,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSubmit,
+            ExpensesAuditActions.ExpenseSubmit,
             "ExpenseReport", id,
             Arg.Any<string>(),
             submitter,
@@ -2036,7 +2036,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status
             .Should().Be(ExpenseReportStatus.Approved);
         await AuditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, Guid.Empty, null!, Guid.Empty);
+            null!, null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]
@@ -2051,7 +2051,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.WithdrawWithResultAsync(reportId, submitter, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseWithdraw,
+            ExpensesAuditActions.ExpenseWithdraw,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
             submitter);
@@ -2106,7 +2106,7 @@ public sealed partial class ExpenseReportServiceTests
         result.Succeeded.Should().BeTrue();
         result.MessageKey.Should().Be("Expenses_Iban_Saved");
         await AuditLog.Received(1).LogAsync(
-            AuditAction.IbanSet,
+            ExpensesAuditActions.IbanSet,
             AuditEntityTypes.Profile,
             submitter,
             "IBAN set",
@@ -2152,7 +2152,7 @@ public sealed partial class ExpenseReportServiceTests
         // relatedEntityId is what carries the entry into the *member's* GDPR export — the entity is
         // the report and the actor is the admin, so without it the row never reaches its subject.
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseCreatedOnBehalf,
+            ExpensesAuditActions.ExpenseCreatedOnBehalf,
             AuditEntityTypes.Report, id,
             Arg.Is<string>(d => d.Contains("Dani Member")),
             admin,
@@ -2259,7 +2259,7 @@ public sealed partial class ExpenseReportServiceTests
         await _sut.RemoveLineWithResultAsync(id, admin, true, lineId, TestContext.Current.CancellationToken);
 
         await AuditLog.Received(4).LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             AuditEntityTypes.Report, id,
             Arg.Is<string>(d => d.Contains("Dani Member")),
             admin,
@@ -2286,7 +2286,7 @@ public sealed partial class ExpenseReportServiceTests
         await _sut.RemoveLineWithResultAsync(id, admin, true, lineId, TestContext.Current.CancellationToken);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             AuditEntityTypes.Report, id,
             Arg.Is<string>(d => d.StartsWith(expectedOpener)),
             admin,
@@ -2307,7 +2307,7 @@ public sealed partial class ExpenseReportServiceTests
         await _sut.RemoveLineWithResultAsync(id, submitter, false, lineId, TestContext.Current.CancellationToken);
 
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -2366,7 +2366,7 @@ public sealed partial class ExpenseReportServiceTests
         // Entity is the report and the actor is the admin, so the related id is the only thing
         // carrying the submission into Dani's own GDPR slice.
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseSubmit,
+            ExpensesAuditActions.ExpenseSubmit,
             "ExpenseReport", id,
             Arg.Any<string>(),
             admin,
@@ -2396,7 +2396,7 @@ public sealed partial class ExpenseReportServiceTests
         // The entry's entity type is Profile and its actor is the admin, so relatedEntityId is the
         // only thing tying the row carrying Dani's raw IBAN to Dani's own GDPR export.
         await AuditLog.Received(1).LogAsync(
-            AuditAction.IbanSet,
+            ExpensesAuditActions.IbanSet,
             AuditEntityTypes.Profile,
             member,
             "IBAN set for Dani Member to ES9121000418450200051332",
@@ -2421,7 +2421,7 @@ public sealed partial class ExpenseReportServiceTests
         // Entity is the report and the actor is the admin, so without the related id the upload
         // never reaches the member's own GDPR slice.
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseAttachmentUploaded,
+            ExpensesAuditActions.ExpenseAttachmentUploaded,
             "ExpenseReport", id,
             Arg.Any<string>(),
             admin,
@@ -2450,7 +2450,7 @@ public sealed partial class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         loaded!.PayeeIban.Should().Be("ES9121000418450200051332");
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpensePayeeIbanUpdated,
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
             "ExpenseReport", reportId,
             "Payee IBAN updated for Dani Member to ES9121000418450200051332.",
             admin,
@@ -2477,7 +2477,7 @@ public sealed partial class ExpenseReportServiceTests
         // Submit takes the snapshot; a draft has none to correct.
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.PayeeIban.Should().BeEmpty();
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpensePayeeIbanUpdated,
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -2625,7 +2625,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!
             .Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseEndorse, "ExpenseReport", reportId,
+            ExpensesAuditActions.ExpenseEndorse, "ExpenseReport", reportId,
             Arg.Is<string>(d => d.StartsWith("Finance admin endorsed")), financeAdmin);
     }
 
@@ -2660,7 +2660,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseEndorse,
+            ExpensesAuditActions.ExpenseEndorse,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
             coordinator);
@@ -2720,7 +2720,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.LastRejectionReason.Should().Be("Missing invoice");
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseCoordinatorReject,
+            ExpensesAuditActions.ExpenseCoordinatorReject,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
             coordinator);
@@ -2830,7 +2830,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.ApprovedAt.Should().Be(FakeNow);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseApprove,
+            ExpensesAuditActions.ExpenseApprove,
             "ExpenseReport", reportId,
             Arg.Any<string>(),
             actor);
@@ -2954,11 +2954,11 @@ public sealed partial class ExpenseReportServiceTests
         loaded.BudgetYearId.Should().BeNull();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseApprove,
+            ExpensesAuditActions.ExpenseApprove,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseCategoryOverride,
+            ExpensesAuditActions.ExpenseCategoryOverride,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
     }
@@ -2981,7 +2981,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
         loaded.BudgetYearId.Should().Be(oldYearId);
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseCategoryOverride, Arg.Any<string>(), reportId, Arg.Any<string>(), Arg.Any<Guid>());
+            ExpensesAuditActions.ExpenseCategoryOverride, Arg.Any<string>(), reportId, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -3003,7 +3003,7 @@ public sealed partial class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         loaded!.BudgetCategoryId.Should().Be(category.Id);
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseCategoryOverride, Arg.Any<string>(), reportId, Arg.Any<string>(), Arg.Any<Guid>());
+            ExpensesAuditActions.ExpenseCategoryOverride, Arg.Any<string>(), reportId, Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -3069,7 +3069,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.LastRejectionReason.Should().Be("Wrong category");
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseReject,
+            ExpensesAuditActions.ExpenseReject,
             "ExpenseReport", reportId,
             Arg.Any<string>(), actor);
     }
@@ -3493,7 +3493,7 @@ public sealed partial class ExpenseReportServiceTests
         declined.DeclinedByUserId.Should().Be(DeclineFinanceAdmin);
         declined.DeclinedAt.Should().Be(FakeNow);
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseLineDeclined, "ExpenseReport", reportId,
+            ExpensesAuditActions.ExpenseLineDeclined, "ExpenseReport", reportId,
             Arg.Is<string>(d => d.Contains("Line 1") && d.Contains("Alcohol is not reimbursable")),
             DeclineFinanceAdmin);
     }
@@ -3548,7 +3548,7 @@ public sealed partial class ExpenseReportServiceTests
         line.DeclinedByUserId.Should().BeNull();
         line.DeclinedAt.Should().BeNull();
         await AuditLog.Received(1).LogAsync(
-            AuditAction.ExpenseLineDeclineUndone, "ExpenseReport", reportId,
+            ExpensesAuditActions.ExpenseLineDeclineUndone, "ExpenseReport", reportId,
             Arg.Is<string>(d => d.Contains("Line 0")), DeclineFinanceAdmin);
     }
 
@@ -3602,7 +3602,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.Total.Should().Be(150m);
         loaded.Lines.Should().OnlyContain(l => !l.Declined);
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.ExpenseLineDeclined, Arg.Any<string>(), Arg.Any<Guid>(),
+            ExpensesAuditActions.ExpenseLineDeclined, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>());
     }
 
@@ -3716,7 +3716,7 @@ public sealed partial class ExpenseReportServiceTests
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Draft, submitter, null, 1, 50m, 100m);
         AuditLog.LogAsync(
-                AuditAction.ExpenseAttachmentUploaded,
+                ExpensesAuditActions.ExpenseAttachmentUploaded,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .ThrowsAsync(new IOException("audit unavailable"));
@@ -4203,4 +4203,67 @@ public sealed partial class ExpenseReportServiceTests
             return result;
         }
     }
+    [HumansTheory]
+    [InlineData(false, ExpenseLineType.Receipt, "1.005")]
+    [InlineData(false, ExpenseLineType.Invoice, "9.999")]
+    [InlineData(true, ExpenseLineType.Receipt, "1.005")]
+    [InlineData(true, ExpenseLineType.Invoice, "9.999")]
+    public async Task LineAmounts_RefuseFractionalCents_WithoutChangingTheReport(
+        bool edit, ExpenseLineType type, string rawAmount)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var owner = Guid.NewGuid();
+        var id = (await _sut.CreateDraftAsync(owner, owner, CategoryAccountNumber, "Claim", ct: ct)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(id, owner, false, "Original", 10m, type, ct: ct)).LineId!.Value;
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        AuditLog.ClearReceivedCalls();
+
+        var error = edit
+            ? (await _sut.UpdateLineWithResultAsync(id, owner, false, lineId, "Changed", amount, ct)).Error
+            : (await _sut.AddLineWithResultAsync(id, owner, false, "Extra", amount, type, ct: ct)).Error;
+
+        error.Should().NotBeNull();
+        error!.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
+        var loaded = (await _sut.GetAsync(id, ct))!;
+        loaded.Total.Should().Be(10m);
+        loaded.Lines.Should().ContainSingle().Which.Description.Should().Be("Original");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _fileStorage.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, "1.005", false)]
+    [InlineData(true, "9.999", false)]
+    [InlineData(false, "1.2300", true)]
+    [InlineData(true, "1.2300", true)]
+    public async Task ReviewCaps_RequireWholeCents_BeforeDecidingTheReport(
+        bool approve, string rawAmount, bool expectedSuccess)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var id = Guid.NewGuid();
+        await SeedReportWithStatusAsync(id, Guid.NewGuid(), category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        AuditLog.ClearReceivedCalls();
+
+        var result = approve
+            ? await _sut.ApproveWithResultAsync(id, Guid.NewGuid(), null, amount, ct)
+            : await _sut.CoordinatorEndorseWithResultAsync(id, Guid.NewGuid(), true, amount, ct);
+
+        result.Succeeded.Should().Be(expectedSuccess);
+        var loaded = (await _sut.GetAsync(id, ct))!;
+        if (expectedSuccess)
+            loaded.MaxAmount.Should().Be(amount);
+        else
+        {
+            result.Error!.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
+            loaded.Status.Should().Be(ExpenseReportStatus.Submitted);
+            loaded.MaxAmount.Should().BeNull();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            _emailService.ReceivedCalls().Should().BeEmpty();
+            (await _expenseRepo.GetLatestOutboxForReportAsync(id, ct)).Should().BeNull();
+        }
+    }
+
 }

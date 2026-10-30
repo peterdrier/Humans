@@ -26,6 +26,11 @@ public abstract class RideshareTestHarness : IDisposable
 {
     public const int Year = 2026;
 
+    /// <summary>The active event, of <see cref="Year"/>. Seeded rows carry no event id, so they reach it through the year fallback.</summary>
+    private protected static readonly EventSettingsInfo Burn = BurnFixtures.Burn(eventName: "Test Burn", year: Year);
+
+    private protected static Guid EventId => Burn.Id;
+
     /// <summary>What the route provider geocodes every label to unless a test says otherwise.</summary>
     private protected static readonly GeoPoint DefaultPoint = new(48.8566, 2.3522);
 
@@ -59,7 +64,9 @@ public abstract class RideshareTestHarness : IDisposable
 
         BurnSettings = Substitute.For<ISettingsService>();
         BurnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(BurnFixtures.Burn(year: Year));
+            .Returns(Burn);
+        BurnSettings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns([Burn]);
 
         Notifications = Substitute.For<INotificationEmitter>();
         AuditLog = Substitute.For<IAuditLogService>();

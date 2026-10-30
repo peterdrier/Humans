@@ -140,7 +140,7 @@ public enum AuditAction
     CampEarlyEntryGranted,
     CampEarlyEntryRevoked,
     CampSeasonEeSlotCountChanged,
-    // No writer since the EE start date moved to Settings.
+    // No writer; stored rows may hold it.
     CampSettingsEeStartDateChanged,
     ExpenseSubmit,
     ExpenseEndorse,
@@ -155,11 +155,13 @@ public enum AuditAction
     IbanSet,
     IbanRemove,
     IbanReveal,
+    // A MedicalDataViewer opened one member's medical conditions (Shifts' audited reveal).
+    MedicalConditionsRevealed,
     ExpenseAttachmentUploaded,
     ExpenseAttachmentRemoved,
     VolunteerCampSetupSet,
     VolunteerCampSetupCleared,
-    // No writer since the day-off redesign; stored rows may hold it.
+    // No writer; stored rows may hold it.
     VolunteerDayBlocked,
     VolunteerDayUnblocked,
     VolunteerOwnBlockedDaysSaved,
@@ -379,6 +381,8 @@ public enum AuditAction
     EventGuideExported,
     CampsExported,
     CantinaRosterExported,
+    // A Cantina admin showed the allergy and intolerance details on a roster page.
+    CantinaHealthDetailsRevealed,
     VolunteerTrackingExported,
     ExpenseLineDeclined,
     ExpenseLineDeclineUndone,

@@ -21,7 +21,7 @@ public sealed record NotificationInboxSnapshot(
 /// <summary><paramref name="IsUnread"/> is always true today; kept so a consumer need not infer it.</summary>
 public sealed record UnreadNotificationDto(
     DateTime CreatedAt,
-    NotificationSource Source,
+    string Source,
     string Title,
     string? ActionUrl,
     NotificationPriority Priority,

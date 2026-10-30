@@ -11,7 +11,7 @@ public interface INotificationEmitter
     /// id) lets the sender clear them later with <c>ResolveBySourceKeyAsync</c>.
     /// </summary>
     Task SendAsync(
-        NotificationSource source,
+        NotificationSourceDefinition source,
         NotificationClass notificationClass,
         NotificationPriority priority,
         string title,

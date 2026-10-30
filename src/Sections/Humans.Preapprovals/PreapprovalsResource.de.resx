@@ -110,4 +110,6 @@
   <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Frist der Vorabgenehmigung geändert: bis {1} einreichen für {0}</value></data>
   <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Die Einreichfrist deiner Vorabgenehmigung im Programm &lt;strong&gt;{1}&lt;/strong&gt; wurde verschoben.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Bis zu:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Neue Frist:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Deine Vorabgenehmigungen ansehen&lt;/a&gt;.&lt;/p&gt;</value></data>
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
+  <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Beträge dürfen höchstens zwei Nachkommastellen haben.</value></data>
+  <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>Der Betrag ist zu hoch.</value></data>
 </root>

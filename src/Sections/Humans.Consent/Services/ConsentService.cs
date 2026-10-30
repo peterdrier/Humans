@@ -5,7 +5,6 @@ using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
-using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Consent.Data;
@@ -18,7 +17,6 @@ internal sealed class ConsentService(
     IConsentRepository repo,
     CachingConsentService consentCache,
     ILegalDocumentSyncManagement legalDocumentSyncService,
-    INotificationAutoResolve notificationAutoResolve,
     IHumanLifecycleService humanLifecycleService,
     IUserService userService,
     IServiceProvider serviceProvider,
@@ -189,7 +187,6 @@ internal sealed class ConsentService(
             var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
             if (await membershipCalc.HasAllRequiredConsentsAsync(userId, CancellationToken.None))
             {
-                await notificationAutoResolve.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
                 await humanLifecycleService.RestoreConsentSuspensionAsync(userId, CancellationToken.None);
             }
         }

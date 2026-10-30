@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +16,7 @@ namespace Humans.Issues.Controllers;
 
 [Authorize]
 [Route("Issues")]
+[AllowBeforeActiveMembership]
 internal sealed class IssuesController(
     IIssuesService issues,
     IAuthorizationService authorization,
@@ -209,7 +211,7 @@ internal sealed class IssuesController(
         }
 
         var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
-        var isReporter = issue.ReporterUserId == user.Id;
+        var isReporter = user.AllUserIds.Contains(issue.ReporterUserId);
 
         var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
         var displayUsers = await GetIssueDisplayUsersAsync(issue, HttpContext.RequestAborted);

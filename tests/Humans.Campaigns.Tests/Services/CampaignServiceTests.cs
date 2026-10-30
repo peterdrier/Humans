@@ -831,7 +831,7 @@ public sealed class CampaignServiceTests
         arguments[3].Should().Be(fullTitle);
         arguments[5].Should().Be("Your campaign code is available under My Codes in your profile.");
         ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(user.Id);
-        arguments[0].Should().Be(NotificationSource.CampaignReceived);
+        arguments[0].Should().Be(CampaignsNotificationSources.CampaignReceived);
     }
 
     [HumansFact]
@@ -855,7 +855,7 @@ public sealed class CampaignServiceTests
             SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(ct);
         var attempts = 0;
-        _notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+        _notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => ++attempts == 1 ? Task.FromException(new InvalidOperationException("notification failure")) : Task.CompletedTask);

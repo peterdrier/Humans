@@ -24,7 +24,8 @@ namespace Humans.Debug.Controllers;
 /// Internal and still routed: Shell's <c>SectionControllerFeatureProvider</c> relaxes MVC's <c>IsPublic</c> check. Do
 /// not "fix" a 404 by making this public.
 /// </summary>
-[Authorize(Policy = PolicyNames.AdminOnly)]
+// Board reads everything here; the three POSTs below stay Admin.
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Debug")]
 internal sealed class DebugController(
     IUserService userService,
@@ -88,6 +89,7 @@ internal sealed class DebugController(
     public IActionResult Maintenance() => View();
 
     [HttpPost("Maintenance/ClearHangfireLocks")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearHangfireLocks(CancellationToken ct)
     {
@@ -182,6 +184,7 @@ internal sealed class DebugController(
     }
 
     [HttpPost("DbStats/Reset")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public IActionResult ResetDbStats()
     {
@@ -236,6 +239,7 @@ internal sealed class DebugController(
     }
 
     [HttpPost("CacheStats/Reset")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public IActionResult ResetCacheStats()
     {
@@ -320,8 +324,10 @@ internal sealed class DebugController(
     public IActionResult FormatGallery() => View(FormatGalleryModelBuilder.Build());
 
     [HttpGet("Translations")]
-    public IActionResult Translations([FromServices] IStringLocalizer<SharedResource> localizer) =>
-        View(TranslationsGalleryModelBuilder.Build(localizer));
+    public IActionResult Translations(
+        [FromServices] IStringLocalizer<SharedResource> shared,
+        [FromServices] IStringLocalizerFactory localizerFactory) =>
+        View(TranslationsPageModelBuilder.Build(shared, localizerFactory, sectionCatalog));
 
     private static string StatusCategory(int statusCode) => statusCode switch
     {

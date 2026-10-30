@@ -70,7 +70,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         foreach (var args in calls)
             args[2]!.ToString().Should().NotContain(email).And.NotContain(name).And.NotContain("private body");
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.AccountAnonymized, nameof(User), userId, "Account anonymized", nameof(ProcessAccountDeletionsJob));
+            UsersAuditActions.AccountAnonymized, nameof(User), userId, "Account anonymized", nameof(ProcessAccountDeletionsJob));
     }
 
     [HumansFact]
@@ -115,7 +115,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         // The audit log is retained through erasure, so its description must NOT
         // quote the name the cascade just removed — that would re-seed the identity.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.AccountAnonymized, nameof(User), userId,
+            UsersAuditActions.AccountAnonymized, nameof(User), userId,
             Arg.Is<string>(s => !s.Contains("Test User")),
             nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -171,7 +171,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.AccountAnonymized, nameof(User), userId,
+            UsersAuditActions.AccountAnonymized, nameof(User), userId,
             Arg.Any<string>(), nameof(ProcessAccountDeletionsJob),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

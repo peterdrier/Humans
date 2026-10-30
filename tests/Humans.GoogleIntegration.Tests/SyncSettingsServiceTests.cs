@@ -91,7 +91,7 @@ public class SyncSettingsServiceTests : IDisposable
         updated.UpdatedByUserId.Should().Be(actorId);
         updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
         var audit = _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        audit[0].Should().Be(AuditAction.SyncModeChanged);
+        audit[0].Should().Be(GoogleIntegrationAuditActions.SyncModeChanged);
         audit[1].Should().Be("SyncServiceSettings");
         audit[2].Should().Be(updated.Id);
         audit[3].Should().Be("GoogleGroups sync mode set to AddAndRemove");

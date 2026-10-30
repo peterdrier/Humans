@@ -25,6 +25,7 @@ using Humans.Shifts.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -35,6 +36,7 @@ namespace Humans.Shifts;
 
 public sealed class Section :
     ISection,
+    ISectionDataMigrations,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -63,6 +65,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, ShiftsNotificationSources>();
         services.AddSectionDbContext<ShiftsDbContext>(sentinelTable: "shifts");
 
         services.AddScoped<ShiftRepository>();
@@ -249,8 +252,9 @@ public sealed class Section :
         options.AddPolicy(PolicyNames.VolunteerManager, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
 
+        // Every reveal is audited (ShiftsController.RevealMedical), which is what lets Board in.
         options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
@@ -317,4 +321,28 @@ public sealed class Section :
             return false;
         }
     }
+
+    internal const string BuildSubPeriodsKey = "shifts.build-sub-periods";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(BuildSubPeriodsKey, "Shifts",
+            "Copy each event's build sub-period starts (first crew, set-up week, pre-event week, finishing weekend) from Settings into Shifts' event_settings",
+            "EventCalendarResolver's fallback to Settings' sub-period values; then Settings stops carrying the four offsets",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["Event", "Name", "First crew", "Set-up week", "Pre-event week", "Finishing weekend"],
+            [.. (await sp.GetRequiredService<IShiftManagement>().GetUncopiedBuildSubPeriodsAsync(ct))
+                .Select(p => (IReadOnlyList<string>)[
+                    p.EventSettingsId.ToString(),
+                    p.EventName,
+                    p.Starts.FirstCrew.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    p.Starts.SetupWeek.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    p.Starts.PreEventWeek.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    p.Starts.FinishingWeekend.ToString(System.Globalization.CultureInfo.InvariantCulture)])]);
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<IShiftManagement>().CopyBuildSubPeriodsAsync(ct);
 }

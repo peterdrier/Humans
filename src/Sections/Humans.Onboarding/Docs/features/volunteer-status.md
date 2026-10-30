@@ -126,21 +126,11 @@ Non-Active users are restricted from most of the application. A global action fi
 
 There is no role bypass. Roles authorize protected features only after `UserState == Active`; non-Active users are routed by state before role-gated controllers run. A Backdoor-API-key-authenticated request is a different kind of exemption: it carries no `UserState` claim at all and passes through the filter untouched (`src/Sections/Humans.Backdoor/Docs/Backdoor.md`).
 
-### Exempt Controllers
+### What a non-Active user still reaches
 
-Only controllers a non-Active user must still reach are exempt wholesale:
-- **Account** — login/logout/OAuth
-- **OnboardingWidget** — name entry (the Bare landing)
-- **Consent** — legal document consent
-- **User** — account-status wall + cancel-deletion (the redirect targets)
-- **Language** — language switching
-- **Guest** — profileless account dashboard
-- **GovernanceApplications**, **Issues**, **Notifications** — any logged-in user. `Issues` inherited the exemption from `Feedback` when Issues replaced it (nobodies-collective/Humans#977): the Help widget renders for any authenticated user, so someone stuck mid-onboarding or on the status wall must still be able to report that they are stuck
-- **Survey** — tokenised survey answering; invited non-Active users must reach it (`[AllowAnonymous]`)
+A controller or action a non-Active user must still reach carries `[AllowBeforeActiveMembership]` (`Humans.Base.Attributes`), declared in its own section and listed in that section's docs; the Shell keeps no list. Onboarding's own are `OnboardingWidgetController` (name entry, the Bare landing) and `GuestController` (the profileless dashboard). Public pages and sign-in use `[AllowAnonymous]` instead. Everything else waits for `UserState == Active`.
 
-**Profile** and **ProfileEmails** are not exempt wholesale — only specific own-profile actions are (view, edit, medical, and email management), plus the own-data actions other sections serve: My Data, data download and deletion request (Consent, Gdpr), Cantina's own-dietary form, communication preferences and own outbox (Email), Workspace identity set (GoogleIntegration), and the ticket not-attending declaration (Tickets). Other Profile/ProfileEmails actions still require `UserState == Active`.
-
-`Deleted`/`Merged` accounts are walled off before any of the above: only `Account`, `Language`, and `Gdpr/Status` reach them — none of the other exemptions apply, so a lingering cookie can't be used to edit an anonymized profile.
+`Deleted`/`Merged` accounts are walled off before any of that: only `[AllowAnonymous]` endpoints and an action marked `Terminal = true` (Gdpr's status wall) reach them, so a lingering cookie can't be used to edit an anonymized profile.
 
 Role-gated app controllers are reached only after the `UserState == Active` gate passes; `[AllowAnonymous]`/API-key controllers use anonymous pass-through.
 

@@ -338,7 +338,7 @@ public sealed class FeedbackServiceTests
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.FeedbackResponse,
+            FeedbackNotificationSources.FeedbackResponse,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             $"Feedback_Notification_ResponseReceived_Title#{expectedCulture}",
@@ -486,7 +486,7 @@ public sealed class FeedbackServiceTests
         var report = await SeedReportAsync(userId, "Test", "/test");
 
         _notificationService.SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(),
                 Arg.Any<IReadOnlyList<Guid>>(),
                 body: Arg.Any<string?>(), actionUrl: Arg.Any<string?>(),
@@ -532,9 +532,9 @@ public sealed class FeedbackServiceTests
         await _service.UpdateAssignmentAsync(report.Id, null, null, Guid.NewGuid(), ct);
 
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(Guid));
+            default(AuditAction), default!, default, default!, default(Guid));
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(string)!);
+            default(AuditAction), default!, default, default!, default(string)!);
     }
 
     [HumansFact]

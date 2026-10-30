@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.Security.Claims;
 using Humans.Consent;
@@ -17,6 +18,7 @@ namespace Humans.Onboarding.Controllers;
 
 /// <summary>Index is the dispatcher: everything links there without knowing which step a user is on.</summary>
 [Authorize]
+[AllowBeforeActiveMembership]
 internal sealed class OnboardingWidgetController(
     IUserService userService,
     IOnboardingWidgetState state,

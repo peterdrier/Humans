@@ -111,7 +111,7 @@ internal sealed class DriveActivityMonitorService(
         foreach (var (resourceId, description) in anomalies)
         {
             await auditLogService.LogAsync(
-                AuditAction.AnomalousPermissionDetected,
+                GoogleIntegrationAuditActions.AnomalousPermissionDetected,
                 nameof(GoogleResource),
                 resourceId,
                 description,

@@ -33,7 +33,7 @@ internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IC
             throw new InvalidOperationException($"No sync setting found for {serviceType}");
         }
 
-        await audit.LogAsync(AuditAction.SyncModeChanged, "SyncServiceSettings", updated.Id,
+        await audit.LogAsync(GoogleIntegrationAuditActions.SyncModeChanged, "SyncServiceSettings", updated.Id,
             $"{serviceType} sync mode set to {mode}", actorUserId);
     }
 

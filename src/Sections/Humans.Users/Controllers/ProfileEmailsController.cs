@@ -1,6 +1,7 @@
 using Humans.Users.Services;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -47,6 +48,7 @@ internal sealed class ProfileEmailsController(
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
     [HttpGet("Me/Emails")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Emails()
     {
         var user = await userManager.GetUserAsync(User);
@@ -59,6 +61,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/Add")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
         var user = await userManager.GetUserAsync(User);
@@ -170,6 +173,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/SetPrimary")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> SetPrimary(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -190,7 +194,7 @@ internal sealed class ProfileEmailsController(
         }
         // SetPrimaryAsync takes no actor, so the controller audits.
         await auditLogService.LogAsync(
-            AuditAction.UserEmailPrimarySet,
+            UsersAuditActions.UserEmailPrimarySet,
             nameof(User), user.Id,
             $"Set primary email row {emailId}",
             user.Id,
@@ -202,6 +206,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/SetVisibility")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -239,7 +244,7 @@ internal sealed class ProfileEmailsController(
         Guid emailId,
         ContactFieldVisibility? visibility) =>
         auditLogService.LogAsync(
-            AuditAction.UserEmailVisibilityChanged,
+            UsersAuditActions.UserEmailVisibilityChanged,
             nameof(User), userId,
             $"Changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
             userId,
@@ -247,6 +252,7 @@ internal sealed class ProfileEmailsController(
             relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/Delete")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -274,7 +280,7 @@ internal sealed class ProfileEmailsController(
 
     private Task LogSelfEmailDeletedAsync(Guid userId, Guid emailId) =>
         auditLogService.LogAsync(
-            AuditAction.UserEmailDeleted,
+            UsersAuditActions.UserEmailDeleted,
             nameof(User), userId,
             $"Deleted email row {emailId}",
             userId,
@@ -282,6 +288,7 @@ internal sealed class ProfileEmailsController(
             relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/ClearPrimary")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> ClearPrimary(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -313,6 +320,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/Link/{provider}")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -333,6 +341,7 @@ internal sealed class ProfileEmailsController(
 
     [HttpPost("Me/Emails/Unlink/{id:guid}")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Unlink(Guid id, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -379,6 +388,7 @@ internal sealed class ProfileEmailsController(
     // Keyed by (Provider, ProviderKey); the auth-method invariant is enforced server-side.
     [HttpPost("Me/LinkedAccounts/Unlink")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> UnlinkLinkedAccount(string provider, string providerKey, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
@@ -432,7 +442,7 @@ internal sealed class ProfileEmailsController(
             if (removeLogin.Succeeded)
             {
                 await auditLogService.LogAsync(
-                    AuditAction.UserEmailUnlinked,
+                    UsersAuditActions.UserEmailUnlinked,
                     nameof(User), user.Id,
                     $"Unlinked orphan {provider} login (no matching UserEmail row)",
                     user.Id);
@@ -495,7 +505,7 @@ internal sealed class ProfileEmailsController(
         }
         // SetPrimaryAsync takes no actor, so the controller audits.
         await auditLogService.LogAsync(
-            AuditAction.UserEmailPrimarySet,
+            UsersAuditActions.UserEmailPrimarySet,
             nameof(User), id,
             $"Admin set primary email row {emailId}",
             actor.Id,
@@ -569,7 +579,7 @@ internal sealed class ProfileEmailsController(
     {
         var trimmedEmail = email.Trim();
         await auditLogService.LogAsync(
-            AuditAction.UserEmailAdded,
+            UsersAuditActions.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pending email {trimmedEmail} for user {userId} (conflict: {result.IsConflict})",
             actorId);
@@ -640,7 +650,7 @@ internal sealed class ProfileEmailsController(
         }
 
         await auditLogService.LogAsync(
-            AuditAction.UserEmailAdded,
+            UsersAuditActions.UserEmailAdded,
             nameof(User), userId,
             $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
             actorUserId);
@@ -731,7 +741,7 @@ internal sealed class ProfileEmailsController(
         }
 
         await auditLogService.LogAsync(
-            AuditAction.UserEmailDeleted,
+            UsersAuditActions.UserEmailDeleted,
             nameof(User), userId,
             $"Admin deleted email row {emailId}",
             actorId,
@@ -772,7 +782,7 @@ internal sealed class ProfileEmailsController(
         ContactFieldVisibility? visibility)
     {
         await auditLogService.LogAsync(
-            AuditAction.UserEmailVisibilityChanged,
+            UsersAuditActions.UserEmailVisibilityChanged,
             nameof(User), userId,
             $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
             actorId,

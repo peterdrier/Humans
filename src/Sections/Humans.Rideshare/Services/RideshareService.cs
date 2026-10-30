@@ -29,6 +29,8 @@ internal sealed class RideshareService(
     internal const string RideshareRequests = "RideshareRequests";
     internal const string RideshareInterests = "RideshareInterests";
 
+    private readonly RideshareRouting _routing = new(routeProvider, logger);
+
     private const string MineUrl = "/Rideshare/Mine";
     private static readonly ResourceManager NoticeResources = new(typeof(RideshareResource));
     private static readonly TrackedLock InterestMutationLock = new("Rideshare.Interest");
@@ -36,15 +38,17 @@ internal sealed class RideshareService(
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<int> GetActiveYearAsync(CancellationToken ct = default)
-    {
-        var burn = await settingsService.GetActiveEventSettingsAsync(ct);
-        return burn?.Year ?? clock.GetCurrentInstant().InUtc().Year;
-    }
+    public async Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default) =>
+        (await settingsService.GetActiveEventSettingsAsync(ct))?.Id;
 
-    public async Task<RideshareSnapshot> GetSnapshotAsync(int year, CancellationToken ct = default)
+    public async Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default)
     {
-        var graph = await repository.GetYearGraphAsync(year, ct);
+        var scope = eventSettingsId is { } id ? await FindEventAsync(id, ct) : null;
+        if (scope is null)
+            return new RideshareSnapshot(
+                null, clock.GetCurrentInstant().InUtc().Year.ToString(CultureInfo.InvariantCulture), null, [], [], []);
+
+        var graph = await repository.GetEventGraphAsync(scope.Event.Id, scope.UnassignedYear, ct);
 
         var interests = graph.Trips
             .SelectMany(t => t.Interests)
@@ -59,43 +63,47 @@ internal sealed class RideshareService(
             .ToList();
 
         return new RideshareSnapshot(
-            year,
+            scope.Event.Id,
+            scope.Event.EventName,
             graph.Settings is null ? null : ToView(graph.Settings),
             trips,
             requests,
             interests);
     }
 
-    public async Task<RideshareMutationResult> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default)
+    public async Task<RideshareMutationResult> CreateOfferAsync(
+        Guid userId, Guid? eventSettingsId, TripSave save, CancellationToken ct = default)
     {
         if (ValidateTrip(save) is { } tripRefusal) return new(Refusal: tripRefusal);
-        var settings = await repository.GetSettingsAsync(year, ct);
-        if (settings is null) return new(Refusal: new("Rideshare_Error_NotSetUp", year));
+        var scope = eventSettingsId is { } id ? await FindEventAsync(id, ct) : null;
+        if (scope is null) return new(Refusal: NotSetUp());
+        var settings = await repository.GetSettingsAsync(scope.Event.Id, scope.UnassignedYear, ct);
+        if (settings is null) return new(Refusal: new("Rideshare_Error_NotSetUp", scope.Event.EventName));
         var inverseDirection = Flip(save.Direction);
         var inverseDeparture = save.Direction == RideshareDirection.Inbound
             ? settings.OutboundWindowStart
             : settings.InboundWindowStart;
         if (ValidateTrip(save, inverseDeparture) is { } inverseRefusal) return new(Refusal: inverseRefusal);
-        var (member, pointRefusal) = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
+        var (member, pointRefusal) = await _routing.ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
-        var (waypoints, waypointRefusal) = await GeocodeWaypointsAsync(save.WaypointLabels, [], ct);
+        var (waypoints, waypointRefusal) = await _routing.GeocodeWaypointsAsync(save.WaypointLabels, [], ct);
         if (waypointRefusal is not null) return new(Refusal: waypointRefusal);
         var reversedWaypoints = waypoints.AsEnumerable().Reverse().ToList();
         var destination = new GeoPoint(settings.DestinationLatitude, settings.DestinationLongitude);
         var now = clock.GetCurrentInstant();
 
-        var original = NewTrip(userId, year, save.Direction, save.DepartureDate, now);
+        var original = NewTrip(userId, scope.Event, save.Direction, save.DepartureDate, now);
         Apply(original, save, member, waypoints);
 
         // The inverse leg: same car, same people, opposite way, first day of the other window.
-        var inverse = NewTrip(userId, year, inverseDirection, inverseDeparture, now);
+        var inverse = NewTrip(userId, scope.Event, inverseDirection, inverseDeparture, now);
         Apply(inverse, save, member, reversedWaypoints);
 
         original.LinkedTripId = inverse.Id;
         inverse.LinkedTripId = original.Id;
 
-        original.RouteGeoJson = await RouteAsync(original.Direction, member, waypoints, destination, ct);
-        inverse.RouteGeoJson = await RouteAsync(inverse.Direction, member, reversedWaypoints, destination, ct);
+        original.RouteGeoJson = await _routing.RouteAsync(original.Direction, member, waypoints, destination, ct);
+        inverse.RouteGeoJson = await _routing.RouteAsync(inverse.Direction, member, reversedWaypoints, destination, ct);
 
         await repository.AddTripsAsync([original, inverse], ct);
         return new(original.Id);
@@ -116,10 +124,10 @@ internal sealed class RideshareService(
         if (save.SeatsOffered < accepted)
             return new(Refusal: new("Rideshare_Error_SeatsBelowAccepted", accepted));
 
-        var (member, pointRefusal) = await ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
+        var (member, pointRefusal) = await _routing.ResolvePointAsync(save.MemberPlaceLabel, save.MemberLatitude, save.MemberLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
         var existingWaypoints = ParseWaypoints(trip.WaypointsJson);
-        var (waypoints, waypointRefusal) = await GeocodeWaypointsAsync(save.WaypointLabels, existingWaypoints, ct);
+        var (waypoints, waypointRefusal) = await _routing.GeocodeWaypointsAsync(save.WaypointLabels, existingWaypoints, ct);
         if (waypointRefusal is not null) return new(Refusal: waypointRefusal);
 
         var routeChanged = trip.Direction != save.Direction
@@ -134,10 +142,14 @@ internal sealed class RideshareService(
         // Recompute on a geometry change, and retry when the provider was down at save time.
         if (routeChanged || trip.RouteGeoJson is null)
         {
-            var settings = await repository.GetSettingsAsync(trip.Year, ct);
-            if (settings is null) return new(Refusal: new("Rideshare_Error_NotSetUp", trip.Year));
+            var scope = await FindEventOfRowAsync(trip.EventSettingsId, trip.Year, ct);
+            var settings = scope is null
+                ? null
+                : await repository.GetSettingsAsync(scope.Event.Id, scope.UnassignedYear, ct);
+            if (settings is null)
+                return new(Refusal: scope is null ? NotSetUp(trip.Year) : new("Rideshare_Error_NotSetUp", scope.Event.EventName));
             var destination = new GeoPoint(settings.DestinationLatitude, settings.DestinationLongitude);
-            trip.RouteGeoJson = await RouteAsync(trip.Direction, member, waypoints, destination, ct);
+            trip.RouteGeoJson = await _routing.RouteAsync(trip.Direction, member, waypoints, destination, ct);
         }
 
         trip.UpdatedAt = clock.GetCurrentInstant();
@@ -161,10 +173,13 @@ internal sealed class RideshareService(
         return new();
     }
 
-    public async Task<RideshareMutationResult> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default)
+    public async Task<RideshareMutationResult> CreateRequestAsync(
+        Guid userId, Guid? eventSettingsId, RequestSave save, CancellationToken ct = default)
     {
         if (ValidateRequest(save) is { } requestRefusal) return new(Refusal: requestRefusal);
-        var (pickup, pointRefusal) = await ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
+        var scope = eventSettingsId is { } id ? await FindEventAsync(id, ct) : null;
+        if (scope is null) return new(Refusal: NotSetUp());
+        var (pickup, pointRefusal) = await _routing.ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
         var now = clock.GetCurrentInstant();
 
@@ -172,7 +187,8 @@ internal sealed class RideshareService(
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Year = year,
+            Year = scope.Event.Year,
+            EventSettingsId = scope.Event.Id,
             Status = RequestStatus.Active,
             CreatedAt = now,
             UpdatedAt = now,
@@ -194,7 +210,7 @@ internal sealed class RideshareService(
             return new(Refusal: new("Rideshare_Error_CancelledRequestEdit"));
 
         if (ValidateRequest(save) is { } requestRefusal) return new(Refusal: requestRefusal);
-        var (pickup, pointRefusal) = await ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
+        var (pickup, pointRefusal) = await _routing.ResolvePointAsync(save.PickupPlaceLabel, save.PickupLatitude, save.PickupLongitude, ct);
         if (pointRefusal is not null) return new(Refusal: pointRefusal);
 
         Apply(request, save, pickup);
@@ -277,7 +293,7 @@ internal sealed class RideshareService(
             ? ("Rideshare_NoticeInterestRide", trip.MemberPlaceLabel, trip.DepartureDate)
             : ("Rideshare_NoticeCanTakeYou", request.PickupPlaceLabel, request.DesiredDate);
 
-        await NotifyAsync(NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, recipient, fromUserId, (culture, name) =>
+        await NotifyAsync(RideshareNotificationSources.RideshareInterestReceived, NotificationClass.Actionable, recipient, fromUserId, (culture, name) =>
         {
             var body = Notice(culture, "Rideshare_NoticeTripDetails", place, date.ToWeekdayDayMonth(), SeatsText(seats, culture));
             if (interest.Message is not null)
@@ -306,7 +322,7 @@ internal sealed class RideshareService(
         mutation.Dispose();
 
         await NotifyAsync(
-            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
+            RideshareNotificationSources.RideshareInterestAccepted, NotificationClass.Informational, interest.FromUserId, actorUserId,
             // The rider accepting a driver's answer to their pin tells the driver, not a rider.
             (culture, name) => (Notice(culture, interest.RequestId is null ? "Rideshare_NoticeAccepted" : "Rideshare_NoticeOfferAccepted", name),
                 Notice(culture, "Rideshare_NoticeTripDetails", interest.Trip.MemberPlaceLabel,
@@ -329,7 +345,7 @@ internal sealed class RideshareService(
         // Declines are private: neutral wording, no reason captured or shown.
         // A rider declining a driver's answer to their pin reads differently from a driver declining a rider.
         await NotifyAsync(
-            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId, actorUserId,
+            RideshareNotificationSources.RideshareInterestDeclined, NotificationClass.Informational, interest.FromUserId, actorUserId,
             (culture, name) => (Notice(culture, "Rideshare_NoticeUpdate"),
                 Notice(culture, interest.RequestId is null
                     ? "Rideshare_NoticeDeclinedOffer"
@@ -353,15 +369,19 @@ internal sealed class RideshareService(
         return new();
     }
 
-    public async Task<RideshareMutationResult> SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default)
+    public async Task<RideshareMutationResult> SaveSettingsAsync(
+        Guid? eventSettingsId, SettingsSave save, Guid actorUserId, CancellationToken ct = default)
     {
+        var scope = eventSettingsId is { } id ? await FindEventAsync(id, ct) : null;
+        if (scope is null) return new(Refusal: NotSetUp());
         if (string.IsNullOrWhiteSpace(save.DestinationLabel))
             return new(Refusal: new("Rideshare_Error_DestinationRequired"));
         if (save.InboundWindowEnd < save.InboundWindowStart || save.OutboundWindowEnd < save.OutboundWindowStart)
             return new(Refusal: new("Rideshare_Error_WindowOrder"));
 
-        var settings = await repository.GetSettingsAsync(year, ct)
-            ?? new RideshareSettings { Id = Guid.NewGuid(), Year = year };
+        var settings = await repository.GetSettingsAsync(scope.Event.Id, scope.UnassignedYear, ct)
+            ?? new RideshareSettings { Id = Guid.NewGuid(), Year = scope.Event.Year };
+        settings.EventSettingsId = scope.Event.Id;
         settings.DestinationLabel = save.DestinationLabel.Trim();
         settings.DestinationLatitude = save.DestinationLatitude;
         settings.DestinationLongitude = save.DestinationLongitude;
@@ -374,7 +394,7 @@ internal sealed class RideshareService(
 
         var description = string.Create(
             CultureInfo.InvariantCulture,
-            $"Rideshare {year}: destination '{settings.DestinationLabel}' ({settings.DestinationLatitude}, {settings.DestinationLongitude}); " +
+            $"Rideshare {scope.Event.EventName}: destination '{settings.DestinationLabel}' ({settings.DestinationLatitude}, {settings.DestinationLongitude}); " +
             $"inbound {settings.InboundWindowStart.ToInvariantDate()} to {settings.InboundWindowEnd.ToInvariantDate()}; " +
             $"outbound {settings.OutboundWindowStart.ToInvariantDate()} to {settings.OutboundWindowEnd.ToInvariantDate()}");
         await auditLog.LogAsync(
@@ -399,6 +419,7 @@ internal sealed class RideshareService(
                 {
                     t.Id,
                     t.Year,
+                    t.EventSettingsId,
                     Direction = t.Direction.ToString(),
                     t.MemberPlaceLabel,
                     t.MemberLatitude,
@@ -426,6 +447,7 @@ internal sealed class RideshareService(
                 {
                     r.Id,
                     r.Year,
+                    r.EventSettingsId,
                     Direction = r.Direction.ToString(),
                     r.PickupPlaceLabel,
                     r.PickupLatitude,
@@ -455,73 +477,63 @@ internal sealed class RideshareService(
         ];
     }
 
+    public async Task<IReadOnlyList<RideshareEventIdPlanRow>> GetEventIdPlanAsync(CancellationToken ct = default)
+    {
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        return [.. (await repository.GetUnassignedRowsAsync(ct))
+            .Select(row => new RideshareEventIdPlanRow(row.Table, row.Id, row.Year, PickEventForYear(events, row.Year)))];
+    }
+
+    public async Task<int> AssignEventIdsAsync(CancellationToken ct = default)
+    {
+        var eventByYear = (await GetEventIdPlanAsync(ct))
+            .Where(p => p.Event is not null)
+            .Select(p => (p.Year, p.Event!.Id))
+            .Distinct()
+            .ToDictionary(p => p.Year, p => p.Id);
+        return await repository.AssignEventIdsAsync(eventByYear, ct);
+    }
+
+    /// <summary>
+    /// The event a legacy row of <paramref name="year"/> belongs to: the earliest of that year by gate opening,
+    /// Deleted ones aside. Null when the year has no event; such rows stay unstamped.
+    /// </summary>
+    internal static EventSettingsInfo? PickEventForYear(IReadOnlyList<EventSettingsInfo> events, int year) =>
+        events
+            .Where(e => e.Year == year && e.Status != EventSettingsStatus.Deleted)
+            .OrderBy(e => e.GateOpeningDate)
+            .FirstOrDefault();
+
+    private async Task<EventScope?> FindEventAsync(Guid eventSettingsId, CancellationToken ct)
+    {
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        return events.FirstOrDefault(e => e.Id == eventSettingsId) is { } evt ? Scope(events, evt) : null;
+    }
+
+    private async Task<EventScope?> FindEventOfRowAsync(Guid? eventSettingsId, int year, CancellationToken ct)
+    {
+        var events = await settingsService.GetAllEventSettingsAsync(ct);
+        var evt = eventSettingsId is { } id
+            ? events.FirstOrDefault(e => e.Id == id)
+            : PickEventForYear(events, year);
+        return evt is null ? null : Scope(events, evt);
+    }
+
+    private static EventScope Scope(IReadOnlyList<EventSettingsInfo> events, EventSettingsInfo evt) =>
+        new(evt, PickEventForYear(events, evt.Year)?.Id == evt.Id ? evt.Year : null);
+
+    private RideshareRefusal NotSetUp(int? year = null) =>
+        new("Rideshare_Error_NotSetUp", year ?? clock.GetCurrentInstant().InUtc().Year);
+
+    /// <summary>An event, and the year whose unstamped rows belong to it (null when they belong elsewhere).</summary>
+    private sealed record EventScope(EventSettingsInfo Event, int? UnassignedYear);
+
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.DeleteUserRowsAsync(userId, ct);
 
     /// <summary>Must stay idempotent.</summary>
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
-
-    private async Task<(GeoPoint Point, RideshareRefusal? Refusal)> ResolvePointAsync(
-        string label, double? latitude, double? longitude, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(label))
-            return (default, new("Rideshare_Error_PlaceRequired"));
-        if (latitude is { } lat && longitude is { } lng)
-            return (new GeoPoint(lat, lng), null);
-
-        var point = await routeProvider.GeocodeAsync(label.Trim(), ct);
-        return point is { } resolved
-            ? (resolved, null)
-            : (default, new("Rideshare_Error_PlaceNotFound", label.Trim()));
-    }
-
-    /// <summary>Geocodes each label; a label already on the trip keeps its point (no provider call).</summary>
-    private async Task<(IReadOnlyList<Waypoint> Waypoints, RideshareRefusal? Refusal)> GeocodeWaypointsAsync(
-        IReadOnlyList<string> labels, IReadOnlyList<Waypoint> existing, CancellationToken ct)
-    {
-        var result = new List<Waypoint>();
-        foreach (var raw in labels)
-        {
-            var label = Clean(raw);
-            if (label is null) continue;
-
-            var known = existing.FirstOrDefault(w => string.Equals(w.Label, label, StringComparison.OrdinalIgnoreCase));
-            if (known is not null)
-            {
-                result.Add(known);
-                continue;
-            }
-
-            var point = await routeProvider.GeocodeAsync(label, ct);
-            if (point is null) return ([], new("Rideshare_Error_StopNotFound", label));
-            result.Add(new Waypoint(label, point.Value.Latitude, point.Value.Longitude));
-        }
-        return (result, null);
-    }
-
-    /// <summary>
-    /// Inbound: member → waypoints → destination. Outbound: destination → waypoints → member.
-    /// Waypoints are stored in travel order, so they read the same way in both directions.
-    /// A null route is stored as null and never blocks the save.
-    /// </summary>
-    private async Task<string?> RouteAsync(
-        RideshareDirection direction, GeoPoint member, IReadOnlyList<Waypoint> waypoints, GeoPoint destination, CancellationToken ct)
-    {
-        var points = new List<GeoPoint>(waypoints.Count + 2);
-        points.Add(direction == RideshareDirection.Inbound ? member : destination);
-        points.AddRange(waypoints.Select(w => new GeoPoint(w.Latitude, w.Longitude)));
-        points.Add(direction == RideshareDirection.Inbound ? destination : member);
-
-        var route = await routeProvider.GetRouteGeoJsonAsync(points, ct);
-        if (route is null)
-        {
-            logger.LogWarning(
-                "No route for {Direction} trip from {Label}; saving without geometry",
-                direction, direction == RideshareDirection.Inbound ? "member point" : "destination");
-        }
-        return route;
-    }
 
     /// <summary>Entity twin of <see cref="TripView.CoversDate"/>: departure through departure + duration - 1.</summary>
     private static bool TravelsOn(RideshareTrip trip, LocalDate date) =>
@@ -559,12 +571,14 @@ internal sealed class RideshareService(
         return null;
     }
 
-    private static RideshareTrip NewTrip(Guid userId, int year, RideshareDirection direction, LocalDate departureDate, Instant now) =>
+    private static RideshareTrip NewTrip(
+        Guid userId, EventSettingsInfo evt, RideshareDirection direction, LocalDate departureDate, Instant now) =>
         new()
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Year = year,
+            Year = evt.Year,
+            EventSettingsId = evt.Id,
             Direction = direction,
             DepartureDate = departureDate,
             Status = TripStatus.Active,
@@ -666,7 +680,7 @@ internal sealed class RideshareService(
 
     // The interest write is committed: browser cancellation must not interrupt its notification.
     private async Task NotifyAsync(
-        NotificationSource source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
+        NotificationSourceDefinition source, NotificationClass notificationClass, Guid recipientUserId, Guid actorUserId,
         Func<CultureInfo, string, (string Title, string Body)> content)
     {
         try

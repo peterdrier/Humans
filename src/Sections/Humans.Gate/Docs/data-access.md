@@ -22,7 +22,10 @@ the cached cross-section read surfaces.
 
 ### GateService (Scoped)
 
-Repository: `IGateRepository`.
+Repository: `IGateRepository`. The service builds the vendor backfill snapshot, including
+pending/sent-awaiting-sync rows and mirror configuration. `EnqueueVendorCheckInBackfillAsync`
+recomputes that diff and claims each selected id in `GateVendorMirrorLedger` before enqueueing
+its original admit timestamp; the admin controller holds no ledger or job-client dependency.
 
 | Table | R/W |
 |-------|-----|

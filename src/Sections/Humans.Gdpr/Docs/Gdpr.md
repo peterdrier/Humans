@@ -64,9 +64,9 @@ email links `/Gdpr/Deletion`.
 The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record. Users keeps its own copies of the suspension keys its notification text reads.
 
 The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to the two
-`MemberData` actions. The `User` controller and the two `MemberData` actions are exempt from
-`MembershipRequiredFilter` — they are its redirect targets and the recovery actions a non-Active
-account keeps (terminal states are denied everything but `Status`).
+`MemberData` actions. The `User` controller and the two `MemberData` actions carry
+`[AllowBeforeActiveMembership]` — they are the membership gate's redirect targets and the recovery actions
+a non-Active account keeps (`Status` alone carries `Terminal = true`: terminal states are denied everything else).
 
 The export actions resolve `IGdprService` from the `Contracts/` folder and use its shared
 `GdprExportSerializer` for the file download. The serializer writes the envelope

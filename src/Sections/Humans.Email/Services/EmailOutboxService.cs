@@ -9,6 +9,7 @@ using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Humans.Users.Contracts;
 using NodaTime;
+using Humans.Email.Contracts;
 
 namespace Humans.Email.Services;
 
@@ -36,7 +37,7 @@ internal sealed class EmailOutboxService(
     {
         var recipient = await repo.RetryAsync(id, cancellationToken);
         if (recipient is not null)
-            await audit.LogAsync(AuditAction.EmailOutboxRetried, nameof(EmailOutboxMessage), id,
+            await audit.LogAsync(EmailAuditActions.EmailOutboxRetried, nameof(EmailOutboxMessage), id,
                 "Queued outbox message for retry.", actorUserId);
         return recipient;
     }
@@ -45,7 +46,7 @@ internal sealed class EmailOutboxService(
     {
         var recipient = await repo.DiscardAsync(id, cancellationToken);
         if (recipient is not null)
-            await audit.LogAsync(AuditAction.EmailOutboxDiscarded, nameof(EmailOutboxMessage), id,
+            await audit.LogAsync(EmailAuditActions.EmailOutboxDiscarded, nameof(EmailOutboxMessage), id,
                 "Discarded outbox message.", actorUserId);
         return recipient;
     }
@@ -95,7 +96,7 @@ internal sealed class EmailOutboxService(
     {
         await settingsStore.SetValueAsync(SettingKeys.IsEmailSendingPaused,
             paused ? "true" : "false", cancellationToken);
-        await audit.LogAsync(paused ? AuditAction.EmailSendingPaused : AuditAction.EmailSendingResumed,
+        await audit.LogAsync(paused ? EmailAuditActions.EmailSendingPaused : EmailAuditActions.EmailSendingResumed,
             "EmailSending", Guid.Empty, paused ? "Paused email sending." : "Resumed email sending.", actorUserId);
     }
 
@@ -140,7 +141,7 @@ internal sealed class EmailOutboxService(
         if (rows.Count > 0)
             await repo.AddDailySendCountsAsync(rows, cancellationToken);
 
-        await audit.LogAsync(AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount), Guid.Empty,
+        await audit.LogAsync(EmailAuditActions.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount), Guid.Empty,
             $"Backfilled {rows.Count} daily send count row(s) from outbox history", actorUserId);
         return rows.Count;
     }

@@ -339,7 +339,7 @@ public sealed class MergeFixtureBuilder
         _pendingAuditLog.Add(db => db.AuditLogEntries.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
-            Action = action,
+            Action = action.ToString(),
             EntityType = "User",
             EntityId = SourceUserId,
             Description = description,
@@ -440,7 +440,7 @@ public sealed class MergeFixtureBuilder
             Id = notificationId,
             Title = title,
             Priority = NotificationPriority.Normal,
-            Source = NotificationSource.SyncError,
+            Source = "SyncError",
             Class = NotificationClass.Informational,
             CreatedAt = _now,
         };

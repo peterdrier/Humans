@@ -46,8 +46,10 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
 | `/Cantina/Roster?weekStartOffset=<int>` | GET | `[Authorize(Policy = CantinaAdminOrAdmin)]` | HTML weekly roster page |
+| `/Cantina/Roster/RevealHealth` | POST | same as above | Audited reveal; the next render of that week shows the free-text allergy / intolerance entries |
 | `/Cantina/Roster/Csv?weekStartOffset=<int>` | GET | same as above | CSV download of the same aggregate |
 | `/Cantina/Roster/Day?dayOffset=<int>` | GET | same as above | Per-day drill-down matrix |
+| `/Cantina/Roster/Day/RevealHealth` | POST | same as above | Audited reveal; the next render of that day shows the allergy and intolerance columns |
 | `/Cantina/Roster/Day/Csv?dayOffset=<int>` | GET | same as above | CSV of the per-day matrix |
 | `/Cantina/Dietary` | GET/POST | `[Authorize]`, own answers only | The member's dietary form. POST saves answers, or with `DeclineToAnswer=true` (the form's and the `/Shifts` banner's "I don't want to answer" button) records the opt-out without validating answers. `returnAction=shifts` lands on `/Shifts`, otherwise Home. |
 
@@ -57,8 +59,8 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 | Actor | Capabilities |
 |-------|--------------|
-| Admin, CantinaAdmin | View weekly/daily roster and download CSV |
-| Any authenticated member (incl. not-yet-Active; `MembershipRequiredFilter` exempts the form) | Read and save **their own** dietary answers, or decline to answer |
+| Admin, CantinaAdmin | View weekly/daily roster, reveal its allergy / intolerance details (audited), download CSV |
+| Any authenticated member (incl. not-yet-Active; the form carries `[AllowBeforeActiveMembership]`) | Read and save **their own** dietary answers, or decline to answer |
 | All other authenticated humans | Redirected to `/Account/AccessDenied`; Cantina admin sidebar entry is hidden |
 | Anonymous | Standard `[Authorize]` challenge — redirected to sign-in |
 
@@ -74,6 +76,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 - "On site" is strictly defined as a Confirmed `ShiftSignup` on a Shift with matching `DayOffset`, **plus the arrival day** (`arrivalDay = firstConfirmedShiftDay − 1`). Refused, Bailed, Cancelled, NoShow, and Pending signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once. Empty weeks use the same aggregation path, retaining every dietary/allergy/intolerance bucket with a zero count.
 - The roster stays read-only: no membership, schedule or dietary writes, and no notifications. Weekly and daily CSV downloads append `CantinaRosterExported` through AuditLog with the authenticated actor, event/date scope and emitted person-row count, including empty/repeated downloads. No dietary values are logged; HTML reads do not add export audits.
+- Allergy and intolerance details (health data) are hidden on the roster pages until an audited reveal: the reveal POST records `CantinaHealthDetailsRevealed` through the same roster service path (one scope row on the event, plus one row against every member whose allergy or intolerance answers the page shows, listed to them on `/Cantina/Dietary`), hands a token for that one week or day through TempData, and the following render shows the details once. Preference roll-ups and allergy / intolerance **counts** always show. Pinned by `CantinaRosterServiceTests.HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor`.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has a confirmed shift no later than the day after the week, so its arrival day always exists and `ArrivesOn` is non-nullable.
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. Member self-saves and declines are not audited.
@@ -87,18 +90,18 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 - Any human (including Cantina-team members and Cantina coordinators) **cannot** see another human's `MedicalConditions` through this section — the field is not in the DTO and not in the view. The only surface for medical data remains `_VolunteerProfileBadges` with `ShowMedical=true` (ShiftsNoInfo / Admin only).
 - Authenticated humans who fail the access gate **cannot** read the roster or download the CSV — every route answers `302 → /Account/AccessDenied` (cookie authentication's `AccessDeniedPath`, set app-wide in `Program.cs`). Pinned by `CantinaPageRenderTests.A_volunteer_cannot_reach_the_roster_or_the_export`.
 - Team coordinators and Cantina-team members **cannot** see the roster on that basis alone — access requires the `Admin` or `CantinaAdmin` role. Team membership grants nothing here.
-- No actor **can** change membership or schedule data from this section, and no one **can** edit another member's dietary answers — the only POST is the member's own form. Export audit entries are the roster's only writes.
+- No actor **can** change membership or schedule data from this section, and no one **can** edit another member's dietary answers — the roster's only POSTs are the two reveals, which write nothing but their audit entry. Export and reveal audit entries are the roster's only writes.
 
 ## Triggers
 
 - View renders on each request; no cache, no background job, no scheduled invalidation. Data is live as of the request.
 - CSV export computes the same in-memory aggregate as the HTML view and streams it as `text/csv; charset=utf-8` with filename `cantina-roster-week-of-<yyyy-MM-dd>.csv`.
-- The dietary things-to-do (`ISectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
-- Weekly/daily CSV callers pass their actor to the existing roster service, which audits after the personal rows are built. No notifications or outbox events.
+- The dietary things-to-do (`ISectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Its title, descriptions and action use the shared `Todo_DietaryMedical_*` resources translated into all six supported cultures. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
+- Weekly/daily CSV callers and the health reveals pass a `RosterDisclosure` (actor + audit action) to the roster service, which audits after the personal rows are built. No notifications or outbox events.
 
 ## Cross-Section Dependencies
 
-- **AuditLog:** `IAuditLogService` records existing weekly/daily personal-data CSV disclosures.
+- **AuditLog:** `IAuditLogService` records the weekly/daily CSV disclosures and the allergy / intolerance reveals.
 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync` (active event/burn).
@@ -116,6 +119,8 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 - Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (of Shifts and Users, Cantina references only their `.Contracts` leaves). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save, the decline and the legacy copy. `ICantinaRosterService` stays in `Services/`, `internal`.
 - **`CantinaDbContext`** registered via `AddSectionDbContext` (sentinel `cantina_dietary_profiles`); `DietaryProfileRepository` is its only reader/writer and only `DietaryProfileService` calls it.
+- **Roster calculations stay section-internal.** `CantinaRosterCalculation` owns day membership, day totals, weekly people rows and dietary rollups. `CantinaRosterService` retains source-data loading, arrival-day orchestration, clock access and export audits; no service contract or DI registration changes.
+
 - **The roster reads no repository.** `CantinaRosterService` calls **only section services** (`IShiftService`, `ISettingsService`, `IUserService`, `ICantinaService`). This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
 - **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The section registers it itself, in `Section.cs` via `ISectionPolicies` (not in the Shell's `AuthorizationPolicyExtensions`). `CantinaRoles.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` stay in `Humans.Base` — they are `string` constants, not references to this project.
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` live in the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).

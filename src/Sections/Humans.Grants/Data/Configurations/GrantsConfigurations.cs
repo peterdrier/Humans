@@ -15,6 +15,7 @@ internal sealed class GrantProgramConfiguration : IEntityTypeConfiguration<Grant
         b.Property(p => p.Entitles).IsRequired().HasMaxLength(500);
         b.Property(p => p.Description).HasMaxLength(2000);
         b.Property(p => p.Year).IsRequired();
+        b.HasIndex(p => p.EventSettingsId);
         b.Property(p => p.IssuedBy).IsRequired().HasConversion<string>().HasMaxLength(32);
         b.Property(p => p.SourceKey).HasMaxLength(32);
         b.Property(p => p.Status).IsRequired().HasConversion<string>().HasMaxLength(32);

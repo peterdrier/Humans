@@ -53,6 +53,7 @@ internal sealed class Service(
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
     private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
+    private readonly SepaPayoutEmails payoutEmails = new(users, userEmails, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
@@ -157,7 +158,7 @@ internal sealed class Service(
                 var accountName = $"{row.GroupName} / {row.CategoryName}";
                 var id = await client.CreateExpenseAccountAsync(row.ProposedAccountNum!.Value, accountName, ct);
                 // Audited as soon as Holded holds the account: a failed map save below must not hide it.
-                await audit.LogAsync(AuditAction.HoldedCategoryAccountProvisioned, HoldedExpenseAccount,
+                await audit.LogAsync(FinanceAuditActions.HoldedCategoryAccountProvisioned, HoldedExpenseAccount,
                     row.BudgetCategoryId,
                     $"Provisioned Holded expense account {row.ProposedAccountNum.Value} '{accountName}'",
                     actorUserId);
@@ -225,7 +226,7 @@ internal sealed class Service(
             var isCategoryAccount = map.Any(m => m.HoldedAccountNumber == found.AccountNum);
             if (!isCategoryAccount)
                 await RegisterManagedAsync(found.AccountNum, found.Id, found.Name, managed, now, ct);
-            await audit.LogAsync(AuditAction.HoldedExpenseAccountLinked, HoldedExpenseAccount, Guid.Empty,
+            await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountLinked, HoldedExpenseAccount, Guid.Empty,
                 $"Linked Holded expense account {found.AccountNum} '{found.Name}' for '{name}'", "Finance");
             return new HoldedExpenseAccountRef(found.AccountNum, found.Id, found.Name, Created: false);
         }
@@ -249,7 +250,7 @@ internal sealed class Service(
         }
 
         await RegisterManagedAsync(next, id, name, managed, now, ct);
-        await audit.LogAsync(AuditAction.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
+        await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
         return new HoldedExpenseAccountRef(next, id, name, Created: true);
     }
@@ -280,7 +281,7 @@ internal sealed class Service(
         row.IsActive = isActive;
         row.UpdatedAt = clock.GetCurrentInstant();
         await repo.UpsertManagedAccountAsync(row, ct);
-        await audit.LogAsync(AuditAction.HoldedExpenseAccountActiveChanged, HoldedExpenseAccount, Guid.Empty,
+        await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountActiveChanged, HoldedExpenseAccount, Guid.Empty,
             $"{(isActive ? "Restored" : "Retired")} Holded expense account {accountNum} '{row.Label}'", "Finance");
     }
 
@@ -324,6 +325,28 @@ internal sealed class Service(
         var bindings = await repo.GetCreditorContactsAsync(ct);
         return new HoldedDocSyncInfo(
             state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount, bindings.Count);
+    }
+
+    /// <summary>Local mirrors only: the expense lines, the document mirror, the ledger mirror and SEPA rows.</summary>
+    public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
+    {
+        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
+        if (state.LastSyncAt is not { } syncedAt)
+            return ExpenseRecon.Unavailable(year, "The Holded document mirror has never synced.");
+
+        var expected = await expenses.GetHoldedReconLinesAsync(ct);
+        var docs = await repo.GetAllDocsAsync(ct);
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        var balances = await holded.GetAccountBalancesAsync(ct);
+        // IHoldedService exposes no sync state; an empty ledger mirror beside synced documents is the never-synced case,
+        // and would show every member Off.
+        if (balances.Count == 0)
+            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
+        var transfers = await repo.GetSepaPayoutTransferRowsAsync(ct);
+        var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
+        return ExpenseRecon.Build(
+            year, syncedAt, expected, docs, bindings, balances, transfers,
+            id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
     }
 
     public async Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(
@@ -770,7 +793,7 @@ internal sealed class Service(
             return CreditorBindResult.Failure(
                 "This member was bound by a concurrent action while you were binding. Reload and check " +
                 "/Finance/Creditors.");
-        await audit.LogAsync(AuditAction.HoldedCreditorBound, HoldedCreditorAccount, userId,
+        await audit.LogAsync(FinanceAuditActions.HoldedCreditorBound, HoldedCreditorAccount, userId,
             $"Bound creditor account {supplierAccountNum} (Holded contact {contact.Id})",
             actorUserId, userId, nameof(User));
         return CreditorBindResult.Success;
@@ -948,7 +971,7 @@ internal sealed class Service(
         try
         {
             await client.DeleteContactAsync(contactId, ct);
-            await audit.LogAsync(AuditAction.HoldedDuplicateRemoved, nameof(User), userId,
+            await audit.LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, nameof(User), userId,
                 $"DELETED duplicate Holded contact {contactId} that a concurrent push created; kept "
                 + $"{bound.HoldedContactId}.",
                 jobName);
@@ -1002,7 +1025,7 @@ internal sealed class Service(
         // so every change is audited, a first resolution included.
         if (!written || binding.SupplierAccountNum == supplierAccountNum) return;
         var previous = binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)";
-        await audit.LogAsync(AuditAction.HoldedCreditorAccountNumChanged, HoldedCreditorAccount, userId,
+        await audit.LogAsync(FinanceAuditActions.HoldedCreditorAccountNumChanged, HoldedCreditorAccount, userId,
             $"Creditor account changed from {previous} to {supplierAccountNum} (Holded contact "
             + $"{binding.HoldedContactId}), as Holded reported after the push",
             jobName, userId, nameof(User));
@@ -1013,7 +1036,7 @@ internal sealed class Service(
         // The audit names the row the delete removed, not an earlier read a push could have overtaken.
         if (await DeleteCreditorBindingAsync(userId, ct) is not { } binding) return false;
 
-        await audit.LogAsync(AuditAction.HoldedCreditorUnbound, HoldedCreditorAccount, userId,
+        await audit.LogAsync(FinanceAuditActions.HoldedCreditorUnbound, HoldedCreditorAccount, userId,
             $"Unbound creditor account {binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"} "
             + $"(Holded contact {binding.HoldedContactId})",
             actorUserId, userId, nameof(User));
@@ -1154,62 +1177,15 @@ internal sealed class Service(
         // After the save: a rolled-back write must not leave a ghost audit row.
         foreach (var t in transfers)
             await audit.LogAsync(
-                AuditAction.SepaPayoutTransfer, SepaTransferEntityType, t.Id,
+                FinanceAuditActions.SepaPayoutTransfer, SepaTransferEntityType, t.Id,
                 $"SEPA payout {Euros(t.Amount)} to {t.IbanMasked} on creditor account "
                 + $"{t.SupplierAccountNum} (file {fileName}).",
                 actorUserId, t.UserId, nameof(User));
 
         // The payout is committed: abandoning the download must not suppress its notifications.
-        await SendPayoutEmailsAsync(transfers);
+        await payoutEmails.SendPayoutEmailsAsync(transfers);
 
         return new SepaPayoutResult(fileName, xml, null);
-    }
-
-    /// <summary>
-    /// After the save: an outbox row is a promise of money. Sent at generation, when the treasurer hands the file to
-    /// the bank, not at booking. A failure here must not block the download of the saved file.
-    /// </summary>
-    private async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers)
-    {
-        var ct = CancellationToken.None;
-        var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
-        IReadOnlyDictionary<Guid, UserInfo> infos;
-        IReadOnlyDictionary<Guid, string> targets;
-        try
-        {
-            infos = await users.GetUserInfosAsync(userIds, ct);
-            targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to resolve recipients for saved SEPA payout {FileId}", transfers[0].FileId);
-            return;
-        }
-
-        foreach (var t in transfers)
-        {
-            if (!infos.TryGetValue(t.UserId, out var member)
-                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
-            {
-                logger.LogWarning(
-                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
-                    t.Id, t.UserId);
-                continue;
-            }
-
-            try
-            {
-                var language = member.PreferredLanguage;
-                await emailService.SendAsync(emails.SepaPayoutGenerated(
-                    member.Id,
-                    recipient, member.BurnerName, t.Amount, t.IbanMasked,
-                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to queue email for saved SEPA payout transfer {TransferId}", t.Id);
-            }
-        }
     }
 
     /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
@@ -1228,12 +1204,12 @@ internal sealed class Service(
         await repo.SaveSepaTransferWithdrawnAsync(transferId, now, actorUserId, ct);
 
         await audit.LogAsync(
-            AuditAction.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
+            FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
             $"WITHDRAWN the SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
             + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
             actorUserId, transfer.UserId, nameof(User));
 
-        await SendWithdrawnEmailAsync(transfer, booking.FileDate(row));
+        await payoutEmails.SendWithdrawnEmailAsync(transfer, booking.FileDate(row));
 
         return new SepaBookingResult(true,
             $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
@@ -1257,36 +1233,6 @@ internal sealed class Service(
         if (paymentRefs is { Length: > 0 })
             return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — settle it in Holded instead.";
         return null;
-    }
-
-    /// <summary>The member was told a transfer was coming, so they are told it was cancelled. After the save, with no
-    /// request token.</summary>
-    private async Task SendWithdrawnEmailAsync(SepaPayoutTransfer t, LocalDate announcedOn)
-    {
-        var ct = CancellationToken.None;
-        try
-        {
-            var infos = await users.GetUserInfosAsync([t.UserId], ct);
-            var targets = await userEmails.GetNotificationTargetEmailsAsync([t.UserId], ct);
-            if (!infos.TryGetValue(t.UserId, out var member)
-                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
-            {
-                logger.LogWarning(
-                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} has no notification email",
-                    t.Id, t.UserId);
-                return;
-            }
-
-            var language = member.PreferredLanguage;
-            await emailService.SendAsync(emails.SepaPayoutWithdrawn(
-                member.Id,
-                recipient, member.BurnerName, t.Amount, t.IbanMasked, announcedOn,
-                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to queue email for withdrawn SEPA payout transfer {TransferId}", t.Id);
-        }
     }
 
     public Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
@@ -1366,29 +1312,40 @@ internal sealed class Service(
     /// nobody else: the race created a second contact for some members.</summary>
     private static Dictionary<Guid, IReadOnlySet<string>> MemberContacts(
         IReadOnlyList<ExpenseHoldedBooking> bookings, IReadOnlyList<HoldedCreditorContact> bindings,
-        IReadOnlyDictionary<string, HoldedContactDto> contactById)
+        IReadOnlyDictionary<string, HoldedContactDto> contactById) =>
+        MemberContacts(
+            bookings.Select(b => (b.CreditorUserId, b.HoldedContactId)), bindings,
+            id => contactById.GetValueOrDefault(id)?.Name,
+            contactById.Values
+                .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+                            && !string.IsNullOrWhiteSpace(c.Name))
+                .ToLookup(c => c.Name!.Trim(), c => c.Id, StringComparer.OrdinalIgnoreCase));
+
+    /// <summary><paramref name="twinsByName"/> holds the contacts a same-named twin may be, keyed by trimmed name
+    /// (case-insensitive); <paramref name="nameOf"/> names any contact.</summary>
+    internal static Dictionary<Guid, IReadOnlySet<string>> MemberContacts(
+        IEnumerable<(Guid CreditorUserId, string? HoldedContactId)> named,
+        IReadOnlyList<HoldedCreditorContact> bindings,
+        Func<string, string?> nameOf,
+        ILookup<string, string> twinsByName)
     {
         var boundUserByContact = bindings
             .Where(b => !string.IsNullOrEmpty(b.HoldedContactId))
             .GroupBy(b => b.HoldedContactId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First().UserId, StringComparer.Ordinal);
         var bindingByUser = bindings.ToDictionary(b => b.UserId);
-        var byName = contactById.Values
-            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
-                        && !string.IsNullOrWhiteSpace(c.Name))
-            .ToLookup(c => c.Name!.Trim(), StringComparer.OrdinalIgnoreCase);
 
         var result = new Dictionary<Guid, IReadOnlySet<string>>();
-        foreach (var group in bookings.GroupBy(b => b.CreditorUserId))
+        foreach (var group in named.GroupBy(b => b.CreditorUserId))
         {
             var set = new HashSet<string>(StringComparer.Ordinal);
             if (bindingByUser.GetValueOrDefault(group.Key)?.HoldedContactId is { Length: > 0 } bound) set.Add(bound);
             set.UnionWith(group.Where(b => !string.IsNullOrEmpty(b.HoldedContactId)).Select(b => b.HoldedContactId!));
             foreach (var id in set.ToList())
-                if (contactById.TryGetValue(id, out var c) && !string.IsNullOrWhiteSpace(c.Name))
-                    foreach (var twin in byName[c.Name.Trim()])
-                        if (!boundUserByContact.TryGetValue(twin.Id, out var other) || other == group.Key)
-                            set.Add(twin.Id);
+                if (nameOf(id) is { } name && !string.IsNullOrWhiteSpace(name))
+                    foreach (var twin in twinsByName[name.Trim()])
+                        if (!boundUserByContact.TryGetValue(twin, out var other) || other == group.Key)
+                            set.Add(twin);
             result[group.Key] = set;
         }
         return result;
@@ -1539,7 +1496,7 @@ internal sealed class Service(
                         await client.DeletePurchaseDocumentAsync(docId, ct);
                         deletedDocs.Add(docId);
                         await audit.LogAsync(
-                            AuditAction.HoldedDuplicateRemoved, ExpenseLineEntityType, line.LineId,
+                            FinanceAuditActions.HoldedDuplicateRemoved, ExpenseLineEntityType, line.LineId,
                             $"DELETED duplicate Holded purchase document {docId} ({Euros(line.Amount)}, "
                             + $"'{line.Description}') of {member.ContactName} on creditor account {account}; "
                             + $"kept {line.KeptDocId}.",
@@ -1561,7 +1518,7 @@ internal sealed class Service(
                         await client.DeleteContactAsync(contactId, ct);
                         deletedContacts.Add(contactId);
                         await audit.LogAsync(
-                            AuditAction.HoldedDuplicateRemoved, nameof(User), member.UserId,
+                            FinanceAuditActions.HoldedDuplicateRemoved, nameof(User), member.UserId,
                             $"DELETED duplicate Holded contact {contactId} of {member.ContactName}; kept "
                             + $"{member.BoundContactId ?? "the bound contact"}.",
                             actorUserId);

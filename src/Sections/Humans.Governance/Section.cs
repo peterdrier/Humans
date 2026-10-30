@@ -20,6 +20,7 @@ using Humans.Governance.ViewComponents;
 using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
@@ -47,6 +48,7 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, GovernanceNotificationSources>();
         services.AddSectionDbContext<GovernanceDbContext>(sentinelTable: "applications");
 
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();

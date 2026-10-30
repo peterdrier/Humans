@@ -11,9 +11,11 @@ using Humans.Onboarding.ViewComponents;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Onboarding;
 
@@ -27,6 +29,8 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, OnboardingAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, OnboardingNotificationSources>();
         services.AddScoped<OnboardingService>();
         services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingService>());
         services.AddScoped<IOnboardingIntake>(sp => sp.GetRequiredService<OnboardingService>());

@@ -121,6 +121,7 @@
             <div class="form-check mb-3">
                 <input asp-for="WillingToDetour" class="form-check-input" />
                 <label asp-for="WillingToDetour" class="form-check-label">@Localizer["Rideshare_Field_WillingToDetour"]</label>
+                <span asp-validation-for="WillingToDetour" class="text-danger"></span>
             </div>
 
             <div class="d-flex gap-2">

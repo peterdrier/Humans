@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
@@ -22,6 +23,7 @@ internal sealed class CantinaProfileController(
     ILogger<CantinaProfileController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Dietary")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Dietary(string? returnAction = null)
     {
         var ct = HttpContext.RequestAborted;
@@ -33,6 +35,7 @@ internal sealed class CantinaProfileController(
 
             var vm = DietaryViewModel.FromProfile(await dietary.GetDietaryProfileAsync(user.Id, ct));
             vm.ReturnAction = returnAction;
+            vm.UserId = user.Id;
             return View(vm);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
@@ -45,10 +48,13 @@ internal sealed class CantinaProfileController(
 
     [HttpPost("Dietary")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Dietary(DietaryViewModel model)
     {
         if (model.DeclineToAnswer)
             return await DeclineAsync(model.ReturnAction);
+
+        model.UserId = GetCurrentUserId() ?? Guid.Empty;
 
         if (!ModelState.IsValid)
             return View(model);

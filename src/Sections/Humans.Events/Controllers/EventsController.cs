@@ -151,6 +151,9 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate,
+            model.IsAllDay ? TimeOnly.MinValue : model.StartTime,
+            model.IsAllDay ? Event.AllDayDurationMinutes : model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -160,7 +163,7 @@ internal sealed class EventsController(
 
         var tz = GetTimeZone(eventSettings);
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
-            model.IsAllDay, model.StartTime, model.DurationMinutes);
+            model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
         var guideEvent = new Event
         {
@@ -173,18 +176,26 @@ internal sealed class EventsController(
             Description = model.Description,
             LocationNote = model.LocationNote,
             Host = model.Host,
-            StartAt = ToInstant(model.StartDate.Add(startTime), tz),
+            StartAt = ToInstant(model.StartDate.ToDateTime(TimeOnly.FromTimeSpan(startTime)), tz),
             DurationMinutes = durationMinutes,
             IsRecurring = model.IsRecurring,
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
         };
 
-        // SubmitEventAsync owns the submission window, recurrence-day rule and the Submit transition.
+        // The service validates the window, recurrence and selections before the Submit transition.
         var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-        if (!await guide.SubmitEventAsync(guideEvent, viewUrl))
+        var result = await guide.SubmitEventAsync(guideEvent, viewUrl);
+        if (result.ErrorKey is { } errorKey)
         {
-            SetError(localizer["Events_SubmissionWindowClosed"].Value);
-            return RedirectToAction(nameof(MySubmissions));
+            logger.LogWarning("Event submission refused for category {CategoryId}: {ErrorKey}", model.CategoryId, errorKey);
+            if (string.Equals(errorKey, "Events_SubmissionWindowClosed", StringComparison.Ordinal))
+            {
+                SetError(localizer[errorKey].Value);
+                return RedirectToAction(nameof(MySubmissions));
+            }
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
+            await PopulateDropdownsAsync(model, eventSettings);
+            return View("IndividualEventForm", model);
         }
 
         logger.LogInformation("User {UserId} submitted individual event '{Title}'", user.Id, model.Title);
@@ -222,8 +233,8 @@ internal sealed class EventsController(
         model.Description = guideEvent.Description;
         model.CategoryId = guideEvent.CategoryId;
         model.VenueId = guideEvent.GuideSharedVenueId ?? Guid.Empty;
-        model.StartDate = localStart.Date;
-        model.StartTime = localStart.TimeOfDay;
+        model.StartDate = DateOnly.FromDateTime(localStart);
+        model.StartTime = TimeOnly.FromDateTime(localStart);
         model.IsAllDay = guideEvent.IsAllDay;
         model.DurationMinutes = guideEvent.DurationMinutes;
         model.LocationNote = guideEvent.LocationNote;
@@ -256,6 +267,9 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate,
+            model.IsAllDay ? TimeOnly.MinValue : model.StartTime,
+            model.IsAllDay ? Event.AllDayDurationMinutes : model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -266,12 +280,20 @@ internal sealed class EventsController(
 
         var tz = GetTimeZone(eventSettings);
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
-            model.IsAllDay, model.StartTime, model.DurationMinutes);
+            model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
-        await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
+        var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
             model.CategoryId, model.VenueId, model.Title, model.Description,
-            ToInstant(model.StartDate.Add(startTime), tz), durationMinutes,
+            ToInstant(model.StartDate.ToDateTime(TimeOnly.FromTimeSpan(startTime)), tz), durationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, PriorityRank: null));
+        if (result.ErrorKey is { } errorKey)
+        {
+            logger.LogWarning("Event resubmission refused for event {EventId}, category {CategoryId}: {ErrorKey}", eventId, model.CategoryId, errorKey);
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
+            model.Id = eventId;
+            await PopulateDropdownsAsync(model, eventSettings);
+            return View("IndividualEventForm", model);
+        }
 
         logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
@@ -491,6 +513,15 @@ internal sealed class EventsController(
     private bool IsSubmissionOpen(EventGuideSettingsView? settings) =>
         settings?.IsSubmissionOpenAt(clock.GetCurrentInstant()) ?? false;
 
+    private void ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes, EventSettingsInfo settings)
+    {
+        if (!ModelState.IsValid || CanDisplaySchedule(
+            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, GetTimeZone(settings))) return;
+        logger.LogWarning("Event form rejected: schedule is outside the supported calendar range");
+        ModelState.AddModelError(nameof(IndividualEventFormViewModel.StartDate),
+            localizer["Events_Upload_DateRange"].Value);
+    }
+
     private void ValidateRecurrenceDays(bool isRecurring, string? days, EventSettingsInfo settings)
     {
         if (!isRecurring || EventRecurrenceDays.HasOnlyEventOffsets(days, settings.EventEndOffset)) return;
@@ -559,6 +590,7 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate, model.StartTime, model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -580,19 +612,30 @@ internal sealed class EventsController(
             Description = model.Description,
             LocationNote = model.LocationNote,
             Host = model.Host,
-            StartAt = ToInstant(model.StartDate.Add(model.StartTime), tz),
+            StartAt = ToInstant(model.StartDate.ToDateTime(model.StartTime), tz),
             DurationMinutes = model.DurationMinutes,
             IsRecurring = model.IsRecurring,
             RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null,
             PriorityRank = model.PriorityRank
         };
 
-        // SubmitEventAsync owns the submission window, recurrence-day rule and the Submit transition.
+        // The service validates the window, recurrence and selections before the Submit transition.
         var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-        if (!await guide.SubmitEventAsync(guideEvent, viewUrl))
+        var result = await guide.SubmitEventAsync(guideEvent, viewUrl);
+        if (result.ErrorKey is { } errorKey)
         {
-            SetError(localizer["Events_SubmissionWindowClosed"].Value);
-            return RedirectToAction(nameof(MySubmissions));
+            logger.LogWarning("Event submission refused for category {CategoryId}: {ErrorKey}", model.CategoryId, errorKey);
+            if (string.Equals(errorKey, "Events_SubmissionWindowClosed", StringComparison.Ordinal))
+            {
+                SetError(localizer[errorKey].Value);
+                return RedirectToAction(nameof(MySubmissions));
+            }
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
+            model.CampId = camp.Id;
+            model.CampName = ResolveCampDisplayName(camp);
+            model.CampSlug = slug;
+            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            return View("BarrioEventForm", model);
         }
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
 
@@ -628,8 +671,8 @@ internal sealed class EventsController(
         model.Title = guideEvent.Title;
         model.Description = guideEvent.Description;
         model.CategoryId = guideEvent.CategoryId;
-        model.StartDate = localStart.Date;
-        model.StartTime = localStart.TimeOfDay;
+        model.StartDate = DateOnly.FromDateTime(localStart);
+        model.StartTime = TimeOnly.FromDateTime(localStart);
         model.DurationMinutes = guideEvent.DurationMinutes;
         model.LocationNote = guideEvent.LocationNote;
         model.Host = guideEvent.Host;
@@ -663,6 +706,7 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
+        ValidateSchedule(model.StartDate, model.StartTime, model.DurationMinutes, eventSettings);
 
         if (!ModelState.IsValid)
         {
@@ -675,10 +719,21 @@ internal sealed class EventsController(
         }
 
         var tz = GetTimeZone(eventSettings);
-        await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
+        var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
             model.CategoryId, VenueId: null, model.Title, model.Description,
-            ToInstant(model.StartDate.Add(model.StartTime), tz), model.DurationMinutes,
+            ToInstant(model.StartDate.ToDateTime(model.StartTime), tz), model.DurationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, model.PriorityRank));
+        if (result.ErrorKey is { } errorKey)
+        {
+            logger.LogWarning("Event resubmission refused for event {EventId}, category {CategoryId}: {ErrorKey}", eventId, model.CategoryId, errorKey);
+            ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
+            model.Id = eventId;
+            model.CampId = camp.Id;
+            model.CampName = ResolveCampDisplayName(camp);
+            model.CampSlug = slug;
+            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            return View("BarrioEventForm", model);
+        }
 
         logger.LogInformation("User {UserId} updated barrio event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 

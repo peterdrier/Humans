@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Humans.Base.Extensions;
@@ -542,7 +543,7 @@ public class ServiceTests
         result.ErrorKey.Should().Be("Store_CampSeasonMissing");
         result.CreatedId.Should().BeNull();
         await _repo.DidNotReceive().AddOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansTheory]
@@ -610,7 +611,7 @@ public class ServiceTests
         result.Succeeded.Should().BeFalse();
         result.ErrorKey.Should().Be(expectedKey);
         await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
         logger.ReceivedCalls().Should().ContainSingle(call => call.GetMethodInfo().Name == "Log"
             && (LogLevel)call.GetArguments()[0]! == LogLevel.Warning && call.GetArguments()[3] == null);
     }
@@ -761,7 +762,7 @@ public class ServiceTests
         result.ErrorKey.Should().Be("Store_ProductYearMismatch");
         await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansTheory]
@@ -1138,6 +1139,61 @@ public class ServiceTests
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Be("VAT rate cannot be negative");
         await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false, "price", "0.001")]
+    [InlineData(true, "price", "0.001")]
+    [InlineData(false, "vat", "21.005")]
+    [InlineData(true, "vat", "21.005")]
+    [InlineData(false, "deposit", "0.001")]
+    [InlineData(true, "deposit", "0.001")]
+    [InlineData(false, "price", "10000000000")]
+    [InlineData(true, "price", "10000000000")]
+    [InlineData(false, "vat", "1000")]
+    [InlineData(true, "vat", "1000")]
+    [InlineData(false, "deposit", "10000000000")]
+    [InlineData(true, "deposit", "10000000000")]
+    public async Task CatalogMoney_rejects_values_that_cannot_be_stored_exactly(bool editing, string field, string text)
+    {
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var product = MakeProduct();
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        var request = new ProductSaveRequest(editing ? product.Id : null, 2026, "Product", "",
+            field is "price" ? amount : 10m,
+            field is "vat" ? amount : 21m,
+            field is "deposit" ? amount : null,
+            "2026-08-01", true, null);
+
+        var result = await _service.SaveProductWithResultAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("decimal places");
+        await _repo.DidNotReceive().AddProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+        product.UnitPriceEur.Should().Be(10m);
+        product.VatRatePercent.Should().Be(21m);
+        product.DepositAmountEur.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("0", "0", null)]
+    [InlineData("0.0100", "21.0000", "0.0000")]
+    [InlineData("9999999999.99", "999.99", "9999999999.99")]
+    public async Task CatalogMoney_accepts_exact_storage_boundaries(string price, string vat, string? deposit)
+    {
+        var draft = new ProductDto(Guid.Empty, 2026, "Product", "",
+            decimal.Parse(price, CultureInfo.InvariantCulture), decimal.Parse(vat, CultureInfo.InvariantCulture),
+            deposit is null ? null : decimal.Parse(deposit, CultureInfo.InvariantCulture),
+            new LocalDate(2026, 8, 1), true);
+
+        var result = await _service.CreateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.Received(1).AddProductAsync(Arg.Is<Product>(p =>
+            p.UnitPriceEur == draft.UnitPriceEur && p.VatRatePercent == draft.VatRatePercent
+            && p.DepositAmountEur == draft.DepositAmountEur), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1570,6 +1626,44 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData("0.001")]
+    [InlineData("1.005")]
+    [InlineData("9.999")]
+    public async Task CheckoutMoney_rejects_fractional_cents_before_calling_Stripe(string text)
+    {
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        var result = await _service.CreateStripeCheckoutSessionAsync(MakeOrderDto(balanceEur: 10m),
+            decimal.Parse(text, CultureInfo.InvariantCulture), "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Store_PaymentPrecision");
+        result.SessionUrl.Should().BeNull();
+        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
+            default!, default!, default, default!);
+    }
+
+    [HumansTheory]
+    [InlineData("0.50")]
+    [InlineData("1.2300")]
+    [InlineData("10.00")]
+    public async Task CheckoutMoney_passes_exact_cent_amounts_to_Stripe(string text)
+    {
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var order = MakeOrderDto(balanceEur: 10m);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        _stripeService.CreateCheckoutSessionAsync(order.Id, amount, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("https://stripe.test/session");
+
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, amount,
+            "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().BeNull();
+        result.SessionUrl.Should().Be("https://stripe.test/session");
+        await _stripeService.Received(1).CreateCheckoutSessionAsync(order.Id, amount,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(0)]
     [InlineData(-1)]
     public async Task Checkout_refuses_non_positive_amount_without_calling_Stripe(int amount)
@@ -1700,7 +1794,7 @@ public class ServiceTests
             };
         };
         (await Assert.ThrowsAsync<InvalidOperationException>(action)).Should().BeSameAs(failure);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansTheory]
@@ -1771,6 +1865,49 @@ public class ServiceTests
         await _audit.Received(1).LogAsync(
             AuditAction.StorePaymentRecorded, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             actor, orderId, Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "0.001")]
+    [InlineData(nameof(PaymentMethod.Refund), "0.001")]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "10000000000")]
+    [InlineData(nameof(PaymentMethod.Refund), "10000000000")]
+    public async Task ManualPaymentMoney_rejects_values_that_cannot_be_stored_exactly(string methodName, string text)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var order = MakeDepositOrder(Guid.NewGuid(), 9_999_999_999.99m);
+        order.Lines.Single().Qty = 2;
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _service.RecordAdminPaymentAsync(order.Id, method,
+            decimal.Parse(text, CultureInfo.InvariantCulture), "re_test", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain("decimal places");
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "0.01")]
+    [InlineData(nameof(PaymentMethod.Refund), "0.01")]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "0.0100")]
+    [InlineData(nameof(PaymentMethod.Refund), "0.0100")]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "9999999999.99")]
+    [InlineData(nameof(PaymentMethod.Refund), "9999999999.99")]
+    public async Task ManualPaymentMoney_preserves_exact_amounts_and_signs(string methodName, string text)
+    {
+        var method = Enum.Parse<PaymentMethod>(methodName);
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var order = MakeDepositOrder(Guid.NewGuid(), 9_999_999_999.99m);
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _service.RecordAdminPaymentAsync(order.Id, method,
+            amount, "re_test", null, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var expected = method == PaymentMethod.Refund ? -amount : amount;
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == expected), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

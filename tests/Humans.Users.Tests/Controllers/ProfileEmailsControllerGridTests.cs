@@ -457,7 +457,7 @@ public class ProfileEmailsControllerGridTests
         // actor is the signed-in admin (_userId), entity is the target user.
         // AddEmailAsync doesn't return the new row's Id, so no relatedEntityId.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailAdded,
+            UsersAuditActions.UserEmailAdded,
             nameof(User), targetUserId,
             Arg.Any<string>(),
             _userId,
@@ -551,7 +551,7 @@ public class ProfileEmailsControllerGridTests
         else (await act()).Should().BeOfType<RedirectToActionResult>();
 
         auditRecordedAtQueue.Should().BeTrue();
-        await _auditLogService.Received(1).LogAsync(AuditAction.UserEmailAdded, nameof(User), targetId,
+        await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), targetId,
             Arg.Any<string>(), _userId, relatedEntityId: null, relatedEntityType: null);
         if (queueFails) _controller.TempData.Should().NotContainKey("SuccessMessage");
     }
@@ -734,7 +734,7 @@ public class ProfileEmailsControllerGridTests
         var result = await _controller.SetPrimary(emailId, TestContext.Current.CancellationToken);
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailPrimarySet,
+            UsersAuditActions.UserEmailPrimarySet,
             nameof(User), _userId,
             Arg.Any<string>(),
             _userId,
@@ -835,7 +835,7 @@ public class ProfileEmailsControllerGridTests
         var result = await _controller.DeleteEmail(emailId);
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailDeleted,
+            UsersAuditActions.UserEmailDeleted,
             nameof(User), _userId,
             Arg.Any<string>(),
             _userId,
@@ -873,7 +873,7 @@ public class ProfileEmailsControllerGridTests
         var result = await _controller.SetEmailVisibility(emailId, "BoardOnly");
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailVisibilityChanged,
+            UsersAuditActions.UserEmailVisibilityChanged,
             nameof(User), _userId,
             Arg.Any<string>(),
             _userId,

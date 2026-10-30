@@ -62,6 +62,18 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<int> AssignEventIdsAsync(
+        IReadOnlyDictionary<Guid, Guid> eventByProgram, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = eventByProgram.Keys.ToList();
+        var programs = await ctx.Programs.Where(p => p.EventSettingsId == null && ids.Contains(p.Id)).ToListAsync(ct);
+        foreach (var program in programs)
+            program.EventSettingsId = eventByProgram[program.Id];
+        await ctx.SaveChangesAsync(ct);
+        return programs.Count;
+    }
+
     public async Task SetManagersAsync(
         Guid programId, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
         CancellationToken ct = default)

@@ -15,7 +15,7 @@ namespace Humans.Grants.Tests.Services;
 /// <summary>Issue, revoke, resend by managers; the source write; expiry; notices and audit.</summary>
 public sealed class GrantTests : GrantsTestHarness
 {
-    private Task ReceivedNoticeAsync(NotificationSource source, Guid recipient, int times = 1) =>
+    private Task ReceivedNoticeAsync(NotificationSourceDefinition source, Guid recipient, int times = 1) =>
         Notifications.Received(times).SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.SequenceEqual(new[] { recipient })),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -40,7 +40,7 @@ public sealed class GrantTests : GrantsTestHarness
         grant.NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(AuditAction.GrantIssued, AuditEntityTypes.Grant, created,
             Arg.Any<string>(), actor, fresh, AuditEntityTypes.User);
-        await ReceivedNoticeAsync(NotificationSource.GrantReceived, fresh);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, fresh);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{fresh}@example.org"), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
@@ -88,7 +88,7 @@ public sealed class GrantTests : GrantsTestHarness
         saved.RevokeReason.Should().Be("Left the crew");
         await AuditLog.Received(1).LogAsync(AuditAction.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
             Arg.Any<string>(), actor, person, AuditEntityTypes.User);
-        await ReceivedNoticeAsync(NotificationSource.GrantRevoked, person);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
@@ -109,7 +109,7 @@ public sealed class GrantTests : GrantsTestHarness
         (await ReadGrantAsync(live.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(AuditAction.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
             Arg.Any<string>(), actor, person, AuditEntityTypes.User);
-        await ReceivedNoticeAsync(NotificationSource.GrantReceived, person);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }
 
     [HumansFact]
@@ -124,7 +124,7 @@ public sealed class GrantTests : GrantsTestHarness
         result.Refusal.Should().BeNull();
         (await ReadGrantsAsync()).Should().ContainSingle();
         Logger.Entries.Should().Contain(e => e.Exception is InvalidOperationException);
-        await ReceivedNoticeAsync(NotificationSource.GrantReceived, person);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }
 
     [HumansFact]
@@ -132,7 +132,7 @@ public sealed class GrantTests : GrantsTestHarness
     {
         var person = SeedUser();
         var program = await SeedProgramAsync();
-        Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+        Notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("inbox down"));
@@ -238,7 +238,7 @@ public sealed class GrantTests : GrantsTestHarness
         (await service.RevokeAsync("low-income", person, "Withdrew", SeedUser(), Ct)).Should().Be(new GrantRevokeResult(true));
 
         (await ReadGrantAsync(grant.Id)).RevokeReason.Should().Be("Withdrew");
-        await ReceivedNoticeAsync(NotificationSource.GrantRevoked, person);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
     }
 
     [HumansFact]

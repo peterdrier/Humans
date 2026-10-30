@@ -150,6 +150,7 @@ internal class CampRegisterViewModel
     public List<string> Links { get; set; } = [];
     public bool IsSwissCamp { get; set; }
     public bool HideHistoricalNames { get; set; }
+    [Range(0, int.MaxValue, ErrorMessage = "Validation_Range")]
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
     [Required(ErrorMessage = "Validation_Required")]
@@ -176,6 +177,7 @@ internal class CampRegisterViewModel
     public List<CampVibe> Vibes { get; set; } = [];
     [BindRequired]
     public AdultPlayspacePolicy AdultPlayspace { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "Validation_Range")]
     public int MemberCount { get; set; }
     [BindRequired]
     public SpaceSize? SpaceRequirement { get; set; }

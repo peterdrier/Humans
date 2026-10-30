@@ -49,13 +49,13 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task DeleteGroupAsync(Guid groupId, Guid actorUserId);
 
     Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
-    Task<BudgetCategoryDetail> CreateCategoryAsync(Guid budgetGroupId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
-    Task UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetCategoryDetail>> CreateCategoryAsync(Guid budgetGroupId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetCategoryDetail>> UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
     Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
     Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id);
-    Task<BudgetLineItemSnapshot> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);

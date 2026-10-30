@@ -187,3 +187,17 @@ src/Sections/Humans.Users/Data/Migrations/20261020222225_DropUserMagicLinkSentAt
 # "1924 drop it". Down() recreates the table as the Store baseline defined it; it comes back
 # empty, which is also how it always was.
 src/Sections/Humans.Store/Data/Migrations/20261021133426_DropStoreTreasurySyncState.cs:DropTable(name=store_treasury_sync_state)#1
+
+# Camps: the unique index IX_camp_seasons_CampId_Year on camp_seasons (CampId, Year), which enforced
+# one season per camp per year. Seasons are now keyed by event, so a year can hold several events,
+# each with its own season; the unique key moves to IX_camp_seasons_CampId_EventSettingsId.
+# Evidence: an index holds no data of its own, and nothing is lost. The same migration recreates
+# IX_camp_seasons_CampId_Year on the same columns as a plain (non-unique) index, so year lookups keep
+# it; only the uniqueness moves to (CampId, EventSettingsId). No code relies on the database rejecting
+# a second season per camp per year: the service guards check per event.
+# Down() drops the new index and recreates IX_camp_seasons_CampId_Year as unique, so the rollback runs
+# while no camp has two seasons in one year.
+# Approval: Peter, 2026-10-30, approved the index drop on peterdrier/Humans#2201 (decision card in the
+# project thread, "Approve the index drop"): camp + event replaces camp + year by design.
+# Step 4 deviation: ships inside peterdrier/Humans#2201 with the event-id change, which needs it.
+src/Sections/Humans.Camps/Data/Migrations/20261029213715_AddCampEventIds.cs:DropIndex(name=IX_camp_seasons_CampId_Year,table=camp_seasons)#1

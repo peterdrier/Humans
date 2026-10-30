@@ -12,6 +12,7 @@ using Humans.Preapprovals.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Preapprovals;
@@ -28,6 +29,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<INotificationSourceContributor, PreapprovalsNotificationSources>();
         services.AddSectionDbContext<PreapprovalsDbContext>(sentinelTable: "pre_programs");
 
         services.AddSingleton<IPreapprovalRepository, PreapprovalRepository>();

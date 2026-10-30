@@ -2,7 +2,6 @@ using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
@@ -29,7 +28,6 @@ internal sealed class DevPersonaSeeder(
     ISystemTeamSync systemTeamSync,
     IUserService userService,
     IConsentWrite consentWrite,
-    IAuditLogService auditLogService,
     ICampService campService,
     ICampSeeding campSeeding,
     ICampRoleSeeding campRoleSeeding,
@@ -122,15 +120,6 @@ internal sealed class DevPersonaSeeder(
             logger.LogWarning(
                 "DEV: consent-check approval failed for persona {UserId}: {ErrorKey}",
                 id, consentCheckResult.ErrorKey);
-        }
-        else
-        {
-            await auditLogService.LogAsync(
-                AuditAction.ConsentCheckCleared,
-                AuditEntityTypes.Profile,
-                id,
-                "Consent check cleared",
-                id);
         }
 
         await contactFieldService.SaveContactFieldsAsync(

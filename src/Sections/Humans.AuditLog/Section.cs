@@ -9,14 +9,23 @@ using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Humans.AuditLog;
 
 public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, ISectionChrome
 {
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(AuditLogGalleryViewComponent))];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
+
+        services.AddSingleton<IAuditActionContributor, LegacyAuditActions>();
+        services.AddSingleton<AuditActionRegistry>();
+        // Constructed at startup so a duplicate or over-long action name fails the boot, not the first audit page.
+        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<AuditActionRegistry>());
 
         services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<AuditLogService>();
@@ -26,7 +35,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
         // Temporary: goes with the six Google columns.
         services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
 
-        services.AddScoped<IAuditViewerService, AuditViewerService>();
+        services.AddScoped<AuditViewerService>();
+        services.AddScoped<IAuditViewerService>(sp => sp.GetRequiredService<AuditViewerService>());
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -44,10 +54,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
     // Page size 1, no filter: TotalCount is the tile.
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var total = (await sp.GetRequiredService<IAuditViewerService>().GetPageAsync(null, 1, 1, ct)).TotalCount;
+        var total = (await sp.GetRequiredService<AuditViewerService>().GetPageAsync(null, 1, 1, ct)).TotalCount;
         return new AdminTileValue(total.ToString("N0", CultureInfo.CurrentCulture), Detail: "every automated action, logged");
     }
-
-    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
-        [new(ChromeSlots.AdminDashboard, typeof(AdminActivityCardViewComponent), Weight: 20)];
 }

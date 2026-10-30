@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Domain;
 
 namespace Humans.AuditLog.Data.Configurations;
@@ -14,8 +15,7 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Action)
-            .HasConversion<string>()
-            .HasMaxLength(100)
+            .HasMaxLength(AuditActionDefinition.NameMaxLength)
             .IsRequired();
 
         builder.Property(e => e.EntityType)

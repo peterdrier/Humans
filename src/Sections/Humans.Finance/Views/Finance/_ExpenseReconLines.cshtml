@@ -1,0 +1,63 @@
+@model IReadOnlyList<Humans.Finance.Contracts.ExpenseReconLine>
+
+@functions {
+    private static (string Css, string Label) LineBadge(ExpenseReconLineStatus status) => status switch
+    {
+        ExpenseReconLineStatus.Booked => ("bg-success", "Booked"),
+        ExpenseReconLineStatus.Pending => ("bg-secondary", "Pending"),
+        ExpenseReconLineStatus.Missing => ("bg-danger", "Missing"),
+        ExpenseReconLineStatus.Duplicated => ("bg-danger", "Duplicated"),
+        ExpenseReconLineStatus.AmountMismatch => ("bg-warning text-dark", "Amount mismatch"),
+        _ => ("bg-warning text-dark", "Wrong contact"),
+    };
+}
+
+<div class="table-responsive mb-4">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Date</th><th>Member</th><th>Report</th><th>Line</th><th class="text-end">Expected</th>
+                <th>Holded doc</th><th class="text-end">Holded total</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model)
+            {
+                var (css, label) = LineBadge(l.Status);
+                <tr>
+                    <td class="text-nowrap">@l.DocumentDate.ToString("yyyy-MM-dd", null)</td>
+                    <td>@l.MemberName</td>
+                    <td><a href="/Expenses/@l.ExpenseReportId">@l.ExpenseReportId.ToString()[..8]</a></td>
+                    <td>@(l.LineId is null ? "(whole report, legacy)" : l.Description)</td>
+                    <td class="text-end text-nowrap">@l.ExpectedAmount.ToEuro()</td>
+                    <td>
+                        @if (l.HoldedDocId is not null)
+                        {
+                            <span title="@l.HoldedDocId">@(l.HoldedDocNumber ?? l.HoldedDocId)</span>
+                            @if (l.HoldedContactName is { } contact)
+                            {
+                                <div class="small text-muted">@contact</div>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-end text-nowrap">@(l.HoldedTotal is { } total ? total.ToEuro() : "—")</td>
+                    <td>
+                        <span class="badge @css">@label</span>
+                        @if (l.Status is ExpenseReconLineStatus.Missing or ExpenseReconLineStatus.Pending)
+                        {
+                            <div class="small text-muted">push: @l.PushState</div>
+                        }
+                        @if (l.DuplicateDocIds.Count > 0)
+                        {
+                            <div class="small">@l.DuplicateDocIds.Count extra · @l.ExcessAmount.ToEuro()</div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

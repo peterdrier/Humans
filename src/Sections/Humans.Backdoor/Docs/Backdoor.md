@@ -66,6 +66,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/creditor-accounts/{num}/ledger` | read | One account's balance and cached journal lines, contact header included, via `GetCreditorLedgerAsync` |
 | `/api/backdoor/finance/category-map` | read | Every live `holded_category_map` row, via `GetCategoryMapAsync` |
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
+| `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IHoldedFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field |
 | `/api/backdoor/finance/holded-sync` | read | The purchase-doc sync's state plus the docs it could not match, via `GetDocSyncInfoAsync` + `GetUnmatchedAsync` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
 | `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
@@ -77,8 +78,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 | Actor | Capabilities |
 |-------|--------------|
 | Holder of an active key | Everything the APIs expose to that person, acting as themselves and scoped to their own roles |
-| Board member | May be issued a key |
-| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` |
+| Board member | May be issued a key. Reads the key list at `/Backdoor` (owner, label, prefix, dates); never a key value |
+| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` (the three POSTs are `AdminOnly`, their forms hidden from Board) |
 
 ## Invariants
 
@@ -113,6 +114,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A former Admin or Board member **cannot** keep using a key issued while they held the role — 401 from the next request on.
 - A suspended Admin or Board member **cannot** use their key: the machine surface is exempt from the onboarding gates the account-status wall runs through, so eligibility is the only thing standing between a suspended account and the API.
 - A plain member or volunteer **cannot** be issued a key, however the request is made.
+- A Board member **cannot** issue, rotate or revoke a key: `/Backdoor` is `BoardOrAdmin` to read, and each POST is `AdminOnly`.
 - Backdoor **cannot** read another section's tables. Anything it serves comes from that section's published contracts interface.
 
 ## Triggers
@@ -132,7 +134,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Surveys**: reads definitions, exports and aggregates via `ISurveyAnalysisRead` (`Humans.Surveys.Contracts`).
 - **Store**: reads the accounting export — order lines and settled payments per year — via `IStoreAccountingRead` (`Humans.Store.Contracts`). Any active key may read; there is no role scoping.
 - **Expenses**: reads reports, lines, attachments and the review queue via `IExpenseReportService` (`Humans.Expenses/Contracts`, not the contracts leaf: a section reference, since `IExpenseReportService` itself lives there, not in a separate `.Contracts` project). Gated per route (see Invariants) — peterdrier/Humans#1838.
-- **Finance**: reads creditor accounts, ledgers, the category map and SEPA transfers via `IHoldedFinanceService` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
+- **Finance**: reads creditor accounts, ledgers, the category map, SEPA transfers and the expense reconciliation via `IHoldedFinanceService` (`Humans.Finance.Contracts`). `FinanceAdminOrAdmin`-gated — peterdrier/Humans#1838.
 - **Budget**: `IBudgetService.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (the `Humans.Notifications.Contracts` leaf, so Backdoor never references the Notifications section project). Rows are the owner's own; meters follow the owner's roles.
 - **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse. Each listed key's usable/refused badge reads `BackdoorKeyRow.IsOwnerEligible`, which `ListAsync` computes with the same eligibility test as authentication.

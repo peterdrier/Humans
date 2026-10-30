@@ -187,7 +187,7 @@ internal sealed partial class LegalDocumentSyncService(
         }
 
         var document = await CreateLegalDocumentAsync(request, cancellationToken);
-        await audit.LogAsync(AuditAction.LegalDocumentCreated, "LegalDocument", document.Id,
+        await audit.LogAsync(ConsentAuditActions.LegalDocumentCreated, "LegalDocument", document.Id,
             $"Created '{document.Name}': team {document.TeamId}, required {document.IsRequired}, " +
             $"active {document.IsActive}, grace period {document.GracePeriodDays} days, folder '{document.GitHubFolderPath}'.",
             actorUserId);
@@ -245,7 +245,7 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
 
         cache.InvalidateAll();
-        await audit.LogAsync(AuditAction.LegalDocumentUpdated, "LegalDocument", documentId,
+        await audit.LogAsync(ConsentAuditActions.LegalDocumentUpdated, "LegalDocument", documentId,
             $"Updated '{request.Name}': team {request.TeamId}, required {request.IsRequired}, " +
             $"active {request.IsActive}, grace period {request.GracePeriodDays} days, folder '{request.GitHubFolderPath}'.",
             actorUserId);
@@ -261,7 +261,7 @@ internal sealed partial class LegalDocumentSyncService(
         if (archived is not null)
         {
             cache.InvalidateAll();
-            await audit.LogAsync(AuditAction.LegalDocumentArchived, "LegalDocument", documentId,
+            await audit.LogAsync(ConsentAuditActions.LegalDocumentArchived, "LegalDocument", documentId,
                 $"Archived '{archived.Name}'.", actorUserId);
         }
         return archived;
@@ -292,7 +292,7 @@ internal sealed partial class LegalDocumentSyncService(
         if (updated)
         {
             cache.InvalidateAll();
-            await audit.LogAsync(AuditAction.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
+            await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
                 $"Updated summary of version {versionId} to '{summary}'.", actorUserId,
                 relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
         }
@@ -598,10 +598,10 @@ internal sealed partial class LegalDocumentSyncService(
         var description = $"Published '{document.Name}' {versionNumber}: commit {commitSha}, " +
             $"requires re-consent {newVersion.RequiresReConsent}, languages {languages}.";
         if (actorUserId is { } actor)
-            await audit.LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+            await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
                 description, actor, relatedEntityId: newVersion.Id, relatedEntityType: "DocumentVersion");
         else
-            await audit.LogAsync(AuditAction.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+            await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
                 description, nameof(LegalDocumentSyncService),
                 relatedEntityId: newVersion.Id, relatedEntityType: "DocumentVersion");
 
@@ -613,7 +613,7 @@ internal sealed partial class LegalDocumentSyncService(
         {
             await TryFanoutAsync(
                 document,
-                NotificationSource.LegalDocumentPublished,
+                ConsentNotificationSources.LegalDocumentPublished,
                 "Consent_Notification_Published",
                 "Consent_Notification_PublishedBody",
                 cancellationToken);
@@ -623,7 +623,7 @@ internal sealed partial class LegalDocumentSyncService(
         {
             await TryFanoutAsync(
                 document,
-                NotificationSource.ReConsentRequired,
+                ConsentNotificationSources.ReConsentRequired,
                 "Consent_Notification_ReConsentRequired",
                 "Consent_Notification_ReConsentRequiredBody",
                 cancellationToken);
@@ -634,7 +634,7 @@ internal sealed partial class LegalDocumentSyncService(
 
     private async Task TryFanoutAsync(
         LegalDocument document,
-        NotificationSource source,
+        NotificationSourceDefinition source,
         string titleKey,
         string bodyKey,
         CancellationToken cancellationToken)

@@ -26,7 +26,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     private readonly CachingConsentService _cache;
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
-    private readonly INotificationAutoResolve _notificationInboxService = Substitute.For<INotificationAutoResolve>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -107,7 +106,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             consentRepository,
             _cache,
             _legalDocumentSyncService,
-            _notificationInboxService,
             _humanLifecycleService,
             _userService,
             serviceProvider,
@@ -165,8 +163,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .Should().Contain(versionId);
         await _membershipCalculator.Received(1).HasAllRequiredConsentsAsync(userId, CancellationToken.None);
         await _humanLifecycleService.Received(1).RestoreConsentSuspensionAsync(userId, CancellationToken.None);
-        await _notificationInboxService.Received(1)
-            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
     }
 
     [HumansTheory]
@@ -196,8 +192,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         record.UserAgent.Should().Be("TestAgent");
         record.ExplicitConsent.Should().BeTrue();
         record.ConsentedAt.Should().Be(Clock.GetCurrentInstant());
-        await _notificationInboxService.Received(1)
-            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
         await _humanLifecycleService.Received(1)
             .RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
@@ -249,7 +243,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             result.Success.Should().BeFalse();
             result.ErrorKey.Should().Be("ContentUnavailable");
             _metrics.DidNotReceive().RecordConsentGiven();
-            await _notificationInboxService.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default);
         }
         (await LegalDb.ConsentRecords.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
@@ -406,8 +399,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         LegalDb.ConsentRecords.Should().Contain(record => record.UserId == userId && record.DocumentVersionId == versionId);
         await _membershipCalculator.Received(1)
             .HasAllRequiredConsentsAsync(userId, CancellationToken.None);
-        await _notificationInboxService.Received(1)
-            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, CancellationToken.None);
         await _humanLifecycleService.Received(1)
             .RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
@@ -423,8 +414,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", TestContext.Current.CancellationToken);
 
-        await _notificationInboxService.DidNotReceiveWithAnyArgs()
-            .ResolveBySourceAsync(Guid.Empty, default, Arg.Any<CancellationToken>());
         await _humanLifecycleService.DidNotReceiveWithAnyArgs()
             .RestoreConsentSuspensionAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }

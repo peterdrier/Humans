@@ -1,6 +1,5 @@
 using Humans.AuditLog.Domain;
 using Microsoft.EntityFrameworkCore;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;
 
@@ -13,18 +12,15 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
-        AuditAction? actionFilter, int page, int pageSize, CancellationToken ct = default)
+    public async Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, IReadOnlyDictionary<string, int> AlertCounts)> GetFilteredAsync(
+        string? actionFilter, IReadOnlyList<string> alertActions, int page, int pageSize, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var query = ctx.AuditLogEntries.AsNoTracking().AsQueryable();
 
-        if (actionFilter.HasValue)
-        {
-            var action = actionFilter.Value;
-            query = query.Where(e => e.Action == action);
-        }
+        if (!string.IsNullOrEmpty(actionFilter))
+            query = query.Where(e => e.Action == actionFilter);
 
         var totalCount = await query.CountAsync(ct);
 
@@ -35,25 +31,11 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             .Take(pageSize)
             .ToListAsync(ct);
 
-        var anomalyCount = await ctx.AuditLogEntries
-            .AsNoTracking()
-            .CountAsync(e => e.Action == AuditAction.AnomalousPermissionDetected, ct);
+        var alertCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var alertAction in alertActions)
+            alertCounts[alertAction] = await ctx.AuditLogEntries.AsNoTracking().CountAsync(e => e.Action == alertAction, ct);
 
-        return (items, totalCount, anomalyCount);
-    }
-
-    public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e =>
-                (e.EntityType == "User" && e.EntityId == userId) ||
-                (e.RelatedEntityId == userId))
-            // arch:db-sort-ok top-N audit selector
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(count)
-            .ToListAsync(ct);
+        return (items, totalCount, alertCounts);
     }
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetByUserIdsAsync(
@@ -78,7 +60,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         string? entityType,
         Guid? entityId,
         IReadOnlyCollection<Guid>? userIds,
-        IReadOnlyList<AuditAction>? actions,
+        IReadOnlyList<string>? actions,
         int limit,
         CancellationToken ct = default)
     {
@@ -108,17 +90,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<AuditLogEntry>> GetAllForUserContributorAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
-            // arch:db-sort-ok GDPR export stable chronology
-            .OrderByDescending(a => a.OccurredAt)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<AuditLogEntry>> GetAllForUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
@@ -139,7 +110,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
 
     public async Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType,
-        IReadOnlyList<AuditAction> actions,
+        IReadOnlyList<string> actions,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

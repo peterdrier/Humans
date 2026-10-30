@@ -78,6 +78,7 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 
 ## Invariants
 
+- Single and range shift signup delegate visibility enforcement to Shifts: a retained hidden rota/shift ID cannot bypass staged signup rollout; a refusal returns to the shift step.
 - Widget multi-day shift signup requires both day offsets and rejects missing or malformed
   values with 400 before enrollment; omitted bounds cannot silently select day zero.
   Explicit day zero remains valid.
@@ -123,6 +124,8 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only con
 
 After the nobodies-collective#584 narrowing, `OnboardingService` injects only what its onboarding-proper methods need:
 
+- **Audit actions:** declared on `OnboardingAuditActions` (`src/Sections/Humans.Onboarding/OnboardingAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `VolunteerApproved`, `SignupRejected`.
+- **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `OnboardingNotificationSources` (`src/Sections/Humans.Onboarding/OnboardingNotificationSources.cs`), one `NotificationSourceDefinition` each: `ProfileRejected` (informational, to the user: admin rejects signup); `VolunteerApproved` (retired: nothing emits it since admission became automatic, declared so stored rows still filter and purge).
 - **Users:** `IUserService` — user and review-queue reads, rejection email recipient. `IUserWrite.SetRejectedAsync` — the `UserState.Rejected` write on reject. Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
 - **Governance:** `IGovernanceService` — pending-application lookup and membership tiers for the review queue. Board-voting methods are consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados de-provisioning on reject (`DeprovisionApprovalGatedSystemTeamsAsync`). Clear/flag do not sync.

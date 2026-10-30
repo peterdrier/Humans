@@ -54,7 +54,7 @@ public sealed class BoardAndDayViewModelTests
         IReadOnlyList<TripView>? trips = null,
         IReadOnlyList<RequestView>? requests = null,
         IReadOnlyList<InterestView>? interests = null) =>
-        new(2026, null, trips ?? [], requests ?? [], interests ?? []);
+        new(Guid.NewGuid(), "Test Burn", null, trips ?? [], requests ?? [], interests ?? []);
 
     private static TripView Trip(
         Guid userId,

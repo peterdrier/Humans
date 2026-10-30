@@ -1,0 +1,49 @@
+@* The wg-* classes are the gallery page's (Debug's /Debug/WidgetGallery); this renders inside its
+   ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here. *@
+
+@functions {
+    private static Microsoft.AspNetCore.Html.IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        if (entries.Length == 0)
+        {
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
+        }
+        html.Append("</dl>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+
+    private static Microsoft.AspNetCore.Html.IHtmlContent AuthLine(string text)
+    {
+        return new Microsoft.AspNetCore.Html.HtmlString($"<div class=\"wg-auth-line\">{text}</div>");
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:help-widget&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Agent/ViewComponents/HelpWidgetViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Floating "Help" launcher with a popover menu — replaces the previous separate Issues and Agent FABs.
+        Menu items: "Talk with the Assistant" (when <code>AgentSettings.Enabled</code>) and "Create issue".
+        Already injected through the <code>body-end</code> chrome slot on every page (including this one), so look for
+        the floating button in the page chrome rather than rendering a duplicate here.
+    </div>
+    @ParamsBlock()
+    @AuthLine("Authenticated only. The Assistant panel includes an &quot;AI Terms&quot; link (<code>/Legal/agent-chat</code>) below the composer; no consent gate.")
+    <div class="wg-card-example is-empty">
+        Rendered in page chrome — see the floating launcher at the bottom-right of this page.
+    </div>
+</div>

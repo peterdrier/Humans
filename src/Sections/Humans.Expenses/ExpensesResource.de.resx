@@ -305,4 +305,5 @@
   <data name="Expenses_LegalName" xml:space="preserve"><value>Rechtlicher Name</value></data>
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Pflichtfeld. Gib den Namen des Projekts an, für das die Ausgabe anfällt, z. B. deines Kunstprojekts.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Bitte gib vor dem Absenden einen Betreff (den Projektnamen) an.</value></data>
+  <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Gib einen Betrag mit höchstens zwei Nachkommastellen ein.</value></data>
 </root>

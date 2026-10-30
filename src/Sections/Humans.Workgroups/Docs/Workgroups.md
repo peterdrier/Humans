@@ -350,7 +350,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Comment/log/document responses stay possible after the comment window closes but not
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
-- Budget: amount ≥ 0 or null; Refused/Withdrawn rejected; Finance is called before
+- Budget: amount ≥ 0 or null and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
   account of that normalized name; clearing keeps the binding; rebinding never touches
@@ -440,6 +440,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Cross-Section Dependencies
 
+- **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `WorkgroupsNotificationSources` (`src/Sections/Humans.Workgroups/WorkgroupsNotificationSources.cs`), one `NotificationSourceDefinition` each: `WorkgroupRegistrationPending` (actionable, to board role: a working group applies, or its application goes overdue); `WorkgroupRegistrationDecided` (informational, to the group's coordinators: registration decided (registered, refused, withdrawn, ended, reactivated)); `WorkgroupReportingDue` (informational, to the group's coordinators: thirty days without an update or meeting); `WorkgroupDocumentActivity` (informational (actionable to board when a document is delivered for disposition), to group members, comment authors, or Board role: document published, comment opened/answered, or delivered for disposition); `WorkgroupDispositionRecorded` (informational, to the group's current members: board records its written disposition on a delivered document); `WorkgroupMembershipRequested` (informational, to the group's coordinators: someone asks to join a working group); `WorkgroupMembershipDecided` (informational, to the requester or added person: join request approved or declined, or a coordinator adds the person directly).
 - **Users**: `IUserService` — names, approved-profile check;
   `IUserEmailService` — notification target addresses for lifecycle emails.
 - **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.

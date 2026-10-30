@@ -110,4 +110,6 @@
   <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Scadenza della preapprovazione modificata: presenta entro il {1} per {0}</value></data>
   <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;La scadenza della tua preapprovazione nel programma &lt;strong&gt;{1}&lt;/strong&gt; è stata spostata.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Fino a:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nuova scadenza:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Vedi le tue preapprovazioni&lt;/a&gt;.&lt;/p&gt;</value></data>
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
+  <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Gli importi possono avere al massimo due cifre decimali.</value></data>
+  <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>L’importo è troppo elevato.</value></data>
 </root>

@@ -1,0 +1,96 @@
+@* The wg-* classes are the gallery page's (Debug's /Debug/WidgetGallery); this renders inside its
+   ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here. *@
+
+@functions {
+    private static Microsoft.AspNetCore.Html.IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    {
+        var html = new System.Text.StringBuilder();
+        html.Append("<dl class=\"wg-params\">");
+        if (entries.Length == 0)
+        {
+            html.Append("<dd class=\"wg-params-none\">(no parameters — uses ambient request context)</dd>");
+        }
+        else
+        {
+            foreach (var (name, desc) in entries)
+            {
+                html.Append($"<dt>{System.Net.WebUtility.HtmlEncode(name)}</dt><dd>{desc}</dd>");
+            }
+        }
+        html.Append("</dl>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+}
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:ticket-stub&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Tickets/Contracts/TicketStubViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">Renders one held ticket as a physical admission stub. Shared by the transfer wizard, the <code>/Profile/Me</code> ticket card, and the homepage. A pending outgoing transfer shows a diagonal "Transfer pending" stamp; voided tickets render muted with a struck name. The event label is currently a constant (open item to source from the active event).</div>
+    @ParamsBlock(
+        ("stub", "<code>TicketStubInfo</code> — projection (attendee name + email, status, <code>HasPendingTransfer</code>, <code>PendingTransferRequestId</code>, <code>EarlyEntryDate</code>) from <code>ITicketService</code>")
+    )
+    <div class="wg-card-example" style="display:flex; gap:16px; flex-wrap:wrap;">
+        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, false, null, new NodaTime.LocalDate(2026, 8, 24)))" />
+        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Valid, true, Guid.NewGuid(), null))" />
+        <vc:ticket-stub stub="@(new TicketStubInfo("Sample Human", "sample@example.com", TicketAttendeeStatus.Void, false, null, null))" />
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:member-ticket-status&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/MemberTicketStatusViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        The member dashboard's ticket card for the signed-in viewer: confirmed, not attending, or
+        missing, plus the buy/declare actions that go with each. Shows a "not configured" note
+        instead of hiding when no ticket vendor is set up.
+    </div>
+    @ParamsBlock()
+    <div class="wg-card-example">
+        <vc:member-ticket-status />
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:guest-ticket-orders&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/GuestTicketOrdersViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        The profileless-account page's ticket card: the orders the signed-in viewer bought.
+        Renders nothing for an account with no ticket and no order — so it's empty here unless
+        your account has one.
+    </div>
+    @ParamsBlock()
+    <div class="wg-card-example">
+        <vc:guest-ticket-orders />
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">&lt;vc:my-ticket-stubs&gt;</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Not rendered here: it fetches the viewer's owned-ticket holdings plus their cross-source Early Entry date and
+        renders nothing without them. The stub it draws is the <code>&lt;vc:ticket-stub&gt;</code> card above. See the
+        homepage <a href="/">dashboard</a>.
+    </div>
+    @ParamsBlock()
+</div>

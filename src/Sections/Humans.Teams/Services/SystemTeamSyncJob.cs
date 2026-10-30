@@ -481,7 +481,7 @@ internal sealed class SystemTeamSyncJob(
         {
             await auditLogService.LogAsync(
                 // A persisted audit discriminator: stays a literal.
-                AuditAction.TeamMemberAdded, "Team", team.Id,
+                TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
                 relatedEntityId: auditUserId, relatedEntityType: nameof(User));
@@ -490,7 +490,7 @@ internal sealed class SystemTeamSyncJob(
         foreach (var (auditUserId, userName) in removedAudits)
         {
             await auditLogService.LogAsync(
-                AuditAction.TeamMemberRemoved, "Team", team.Id,
+                TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
                 $"{userName} removed from {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
                 relatedEntityId: auditUserId, relatedEntityType: nameof(User));

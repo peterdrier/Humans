@@ -132,7 +132,7 @@ public sealed class EventRepositoryTests : IDisposable
         SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Withdrawn, _clock.GetCurrentInstant());
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetModerationStatusCountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetModerationStatusCountsAsync(null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(2);
         result.Should().ContainKey(EventStatus.Approved).WhoseValue.Should().Be(1);
@@ -275,10 +275,46 @@ public sealed class EventRepositoryTests : IDisposable
         SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _repo.GetActiveCampEventsAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetActiveCampEventsAsync(null, Xunit.TestContext.Current.CancellationToken);
 
         result.Select(e => e.Id).Should().BeEquivalentTo([pendingCamp.Id, approvedCamp.Id]);
         result.Should().OnlyContain(e => e.CampId.HasValue);
+    }
+
+    [HumansFact]
+    public async Task GetModerationStatusCountsAsync_ScopesToEvent_KeepingUnassignedRows()
+    {
+        var category = SeedCategory("Workshop", "workshop", 1);
+        var thisEvent = Guid.NewGuid();
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant()).EventSettingsId = thisEvent;
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant()).EventSettingsId = Guid.NewGuid();
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repo.GetModerationStatusCountsAsync(thisEvent, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task AssignEventSettingsIdsAsync_WritesOnlyUnassignedRows()
+    {
+        var category = SeedCategory("Workshop", "workshop", 1);
+        var unassigned = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant());
+        var assigned = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant());
+        var keptEvent = Guid.NewGuid();
+        assigned.EventSettingsId = keptEvent;
+        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var target = Guid.NewGuid();
+
+        var written = await _repo.AssignEventSettingsIdsAsync(
+            new Dictionary<Guid, Guid> { [unassigned.Id] = target, [assigned.Id] = target },
+            Xunit.TestContext.Current.CancellationToken);
+
+        written.Should().Be(1);
+        _db.ChangeTracker.Clear();
+        (await _db.Events.FindAsync([unassigned.Id], Xunit.TestContext.Current.CancellationToken))!.EventSettingsId.Should().Be(target);
+        (await _db.Events.FindAsync([assigned.Id], Xunit.TestContext.Current.CancellationToken))!.EventSettingsId.Should().Be(keptEvent);
     }
 
     [HumansFact]

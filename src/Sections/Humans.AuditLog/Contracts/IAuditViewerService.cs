@@ -3,8 +3,8 @@ using Humans.Base.Interfaces;
 namespace Humans.AuditLog.Contracts;
 
 /// <summary>
-/// The viewer's GUID never appears in rendered text ("You" instead), and actions with no verb mapping render as
-/// null so callers can filter them.
+/// The viewer's GUID never appears in rendered text ("You" instead), and actions with no verb render as null so
+/// callers can filter them.
 /// </summary>
 public interface IAuditViewerService : IApplicationService
 {
@@ -14,19 +14,12 @@ public interface IAuditViewerService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
 
-    /// <summary><paramref name="actionFilter"/> is a case-insensitive <see cref="AuditAction"/> name match.</summary>
-    Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default);
-
+    /// <summary><paramref name="actions"/> are stored names, matched exactly; null or empty means every action.</summary>
     Task<IReadOnlyList<AuditEvent>> GetFilteredAsync(
         string? entityType,
         Guid? entityId,
         Guid? userId,
-        IReadOnlyList<AuditAction>? actions,
+        IReadOnlyList<string>? actions,
         int limit,
         CancellationToken ct = default);
 }
-
-public sealed record AuditEventPage(
-    IReadOnlyList<AuditEvent> Items,
-    int TotalCount,
-    int AnomalyCount);

@@ -35,6 +35,7 @@ public sealed class RideshareControllerTests
     private readonly IRideshareService _rideshare = Substitute.For<IRideshareService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IStringLocalizer<RideshareResource> _localizer = Substitute.For<IStringLocalizer<RideshareResource>>();
+    private static readonly Guid EventId = Guid.NewGuid();
     private readonly Guid _me = Guid.NewGuid();
     private readonly ILogger<RideshareController> _logger = Substitute.For<ILogger<RideshareController>>();
 
@@ -43,7 +44,7 @@ public sealed class RideshareControllerTests
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "L:" + ci.Arg<string>()));
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "L:" + ci.Arg<string>()));
         _users.GetUserInfoAsync(_me, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(User(_me)));
-        _rideshare.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(2026);
+        _rideshare.GetActiveEventIdAsync(Arg.Any<CancellationToken>()).Returns(EventId);
     }
 
     [HumansFact]
@@ -120,6 +121,7 @@ public sealed class RideshareControllerTests
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
+            ["EventSettingsId"] = EventId.ToString(),
             ["DestinationLabel"] = "Burn",
             ["DestinationLatitude"] = "0",
             ["DestinationLongitude"] = "0",
@@ -143,8 +145,8 @@ public sealed class RideshareControllerTests
         await binder.BindModelAsync(context);
         var model = (RideshareSettingsViewModel)context.Result.Model!;
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
-        _rideshare.GetSnapshotAsync(2026, Ct).Returns(new RideshareSnapshot(2026, null, [], [], []));
-        _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Ct).Returns(new RideshareMutationResult());
+        _rideshare.GetSnapshotAsync(EventId, Ct).Returns(new RideshareSnapshot(EventId, "Test Burn", null, [], [], []));
+        _rideshare.SaveSettingsAsync(EventId, Arg.Any<SettingsSave>(), _me, Ct).Returns(new RideshareMutationResult());
 
         var result = await controller.Index(model, Ct);
 
@@ -153,32 +155,36 @@ public sealed class RideshareControllerTests
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             controller.ModelState[omitted]!.Errors.Should().ContainSingle();
             await _rideshare.DidNotReceive().SaveSettingsAsync(
-                Arg.Any<int>(), Arg.Any<SettingsSave>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+                Arg.Any<Guid?>(), Arg.Any<SettingsSave>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
             controller.TempData.Should().BeEmpty();
         }
         else
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            await _rideshare.Received(1).SaveSettingsAsync(2026, Arg.Is<SettingsSave>(
+            await _rideshare.Received(1).SaveSettingsAsync(EventId, Arg.Is<SettingsSave>(
                 save => save.DestinationLatitude == 0 && save.DestinationLongitude == 0), _me, Ct);
         }
     }
 
     [HumansTheory]
-    [InlineData(true, "Direction", true)]
-    [InlineData(true, "VehicleType", true)]
-    [InlineData(true, "LuggageCapacity", true)]
-    [InlineData(true, "CostSharing", true)]
-    [InlineData(true, "ExpectedDurationDays", true)]
-    [InlineData(true, "SeatsOffered", true)]
-    [InlineData(false, "Direction", true)]
-    [InlineData(false, "LuggageLoad", true)]
-    [InlineData(false, "PartySize", true)]
-    [InlineData(true, null, true)]
-    [InlineData(false, null, true)]
-    [InlineData(true, "CostSharing", false)]
-    [InlineData(false, "LuggageLoad", false)]
-    public async Task PostingForms_require_explicit_choices_and_counts_before_saving(bool offer, string? omitted, bool signedIn)
+    [InlineData(true, "Direction", true, false)]
+    [InlineData(true, "VehicleType", true, false)]
+    [InlineData(true, "LuggageCapacity", true, false)]
+    [InlineData(true, "CostSharing", true, false)]
+    [InlineData(true, "ExpectedDurationDays", true, false)]
+    [InlineData(true, "SeatsOffered", true, false)]
+    [InlineData(false, "Direction", true, false)]
+    [InlineData(false, "LuggageLoad", true, false)]
+    [InlineData(false, "PartySize", true, false)]
+    [InlineData(true, null, true, false)]
+    [InlineData(false, null, true, false)]
+    [InlineData(true, "CostSharing", false, false)]
+    [InlineData(false, "LuggageLoad", false, false)]
+    [InlineData(true, "WillingToDetour", true, false)]
+    [InlineData(false, "CanContributeToFuel", true, false)]
+    [InlineData(true, null, true, true)]
+    [InlineData(false, null, true, true)]
+    public async Task PostingForms_require_explicit_choices_and_counts_before_saving(bool offer, string? omitted, bool signedIn, bool choice)
     {
         var controller = BuildController(signedIn);
         var registrations = new ServiceCollection().AddLogging();
@@ -199,7 +205,9 @@ public sealed class RideshareControllerTests
             ["VehicleType"] = "0",
             ["LuggageCapacity"] = "0",
             ["LuggageLoad"] = "0",
-            ["CostSharing"] = "0"
+            ["CostSharing"] = "0",
+            ["WillingToDetour"] = choice ? "true" : "false",
+            ["CanContributeToFuel"] = choice ? "true" : "false"
         };
         if (omitted is not null) fields.Remove(omitted);
         var formType = offer ? typeof(OfferFormViewModel) : typeof(RequestFormViewModel);
@@ -244,10 +252,10 @@ public sealed class RideshareControllerTests
                 await _rideshare.Received(1).UpdateOfferAsync(Arg.Any<Guid>(), _me,
                     Arg.Is<TripSave>(save => (int)save.Direction == 0 && (int)save.VehicleType == 0
                         && (int)save.LuggageCapacity == 0 && (int)save.CostSharing == 0
-                        && save.ExpectedDurationDays == 1 && save.SeatsOffered == 1), Ct);
+                        && save.ExpectedDurationDays == 1 && save.SeatsOffered == 1 && save.WillingToDetour == choice), Ct);
             else
                 await _rideshare.Received(1).UpdateRequestAsync(Arg.Any<Guid>(), _me,
-                    Arg.Is<RequestSave>(save => (int)save.Direction == 0 && (int)save.LuggageLoad == 0 && save.PartySize == 1), Ct);
+                    Arg.Is<RequestSave>(save => (int)save.Direction == 0 && (int)save.LuggageLoad == 0 && save.PartySize == 1 && save.CanContributeToFuel == choice), Ct);
         }
     }
 
@@ -346,7 +354,7 @@ public sealed class RideshareControllerTests
         _localizer[key, Arg.Any<object[]>()].Returns(call => new LocalizedString(key,
             string.Format(CultureInfo.CurrentUICulture,
                 resources.GetString(key, CultureInfo.CurrentUICulture)!, call.Arg<object[]>())));
-        _rideshare.CreateOfferAsync(_me, 2026, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
+        _rideshare.CreateOfferAsync(_me, EventId, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
             .Returns(new RideshareMutationResult(Refusal: new("Rideshare_Error_PlaceNotFound", "Atlantis")));
         var model = new OfferFormViewModel { MemberPlaceLabel = "Atlantis", DepartureDate = "2026-07-03" };
         var controller = BuildController();
@@ -383,13 +391,13 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task AdminSettings_RuleRerendersForm_AndLogsYearAndKeyWithoutStack()
+    public async Task AdminSettings_RuleRerendersForm_AndLogsEventAndKeyWithoutStack()
     {
         const string key = "Rideshare_Error_WindowOrder";
-        _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>())
+        _rideshare.SaveSettingsAsync(EventId, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>())
             .Returns(new RideshareMutationResult(Refusal: new(key)));
-        _rideshare.GetSnapshotAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new RideshareSnapshot(2026, null, [], [], []));
+        _rideshare.GetSnapshotAsync(EventId, Arg.Any<CancellationToken>())
+            .Returns(new RideshareSnapshot(EventId, "Test Burn", null, [], [], []));
         var logger = Substitute.For<ILogger<RideshareAdminController>>();
         var memberController = BuildController();
         var controller = new RideshareAdminController(_rideshare, _users, _localizer, Substitute.For<IClock>(), logger)
@@ -399,6 +407,7 @@ public sealed class RideshareControllerTests
         };
         var model = new RideshareSettingsViewModel
         {
+            EventSettingsId = EventId,
             DestinationLabel = "Burn",
             InboundWindowStart = "2026-07-03",
             InboundWindowEnd = "2026-07-01",
@@ -411,7 +420,7 @@ public sealed class RideshareControllerTests
         var args = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         args[0].Should().Be(LogLevel.Warning);
         args[3].Should().BeNull();
-        args[2]!.ToString().Should().Contain(key).And.Contain("2026");
+        args[2]!.ToString().Should().Contain(key).And.Contain(EventId.ToString());
     }
 
     private void AssertExpectedWarnings(int count)
@@ -453,8 +462,8 @@ public sealed class RideshareControllerTests
     {
         var fault = new InvalidOperationException("database diagnostic");
         _rideshare.AcceptInterestAsync(Arg.Any<Guid>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
-        _rideshare.CreateOfferAsync(_me, 2026, Arg.Any<TripSave>(), Arg.Any<CancellationToken>()).ThrowsAsync(fault);
-        _rideshare.SaveSettingsAsync(2026, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
+        _rideshare.CreateOfferAsync(_me, EventId, Arg.Any<TripSave>(), Arg.Any<CancellationToken>()).ThrowsAsync(fault);
+        _rideshare.SaveSettingsAsync(EventId, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
         var member = BuildController();
         var admin = new RideshareAdminController(_rideshare, _users, _localizer, Substitute.For<IClock>(),
             Substitute.For<ILogger<RideshareAdminController>>())
@@ -469,6 +478,7 @@ public sealed class RideshareControllerTests
             { MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" }, Ct),
             "admin" => () => admin.Index(new RideshareSettingsViewModel
             {
+                EventSettingsId = EventId,
                 DestinationLabel = "Burn",
                 InboundWindowStart = "2026-07-01",
                 InboundWindowEnd = "2026-07-03",

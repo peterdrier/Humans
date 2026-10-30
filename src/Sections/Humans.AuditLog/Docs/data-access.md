@@ -4,8 +4,8 @@
 
 Project: `src/Sections/Humans.AuditLog` — services under `Services/`,
 repository under `Data/`, plus a `src/Sections/Humans.AuditLog/Contracts`
-folder carrying `IAuditLogService` and `AuditLogEntrySnapshot` (~130 consumer
-files). `AuditLog` is a **horizontal section**.
+folder carrying `IAuditLogService` and `AuditLogEntrySnapshot` (read by most
+sections). `AuditLog` is a **horizontal section**.
 **DbContext:** `AuditLogDbContext`.
 `AuditLogRepository` injects
 `IDbContextFactory<AuditLogDbContext>` directly. Owns
@@ -29,13 +29,14 @@ No `IMemoryCache`.
 
 No repository. Read-only view assembler over the section-internal
 `IAuditLogReader` plus `IEnumerable<IEntityNameContributor>` (`Humans.Base`).
-No DB access, no cache. `internal sealed`; its interface, `AuditEvent` and
-`AuditEventPage` sit in the project's `Contracts/` folder. It names no other
+No DB access, no cache. `internal sealed`; its interface and `AuditEvent` sit in the project's
+`Contracts/` folder; the `/AuditLog` page read (`GetPageAsync`, `AuditEventPage`)
+stays internal. It names no other
 section: actor, subject and target-team display names come back from the
 contributor fan-out (nobodies-collective/Humans#1059), so the section no
 longer takes `Humans.Teams.Contracts` or `Humans.GoogleIntegration.Contracts`.
 
-`AuditEvent` and `AuditEventTextualizer` are value types / pure
+`AuditEvent` and `AuditActionDefinition` are value types / pure
 formatters with no DI dependencies.
 
 ---

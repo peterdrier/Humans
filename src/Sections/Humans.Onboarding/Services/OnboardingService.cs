@@ -178,7 +178,7 @@ internal sealed class OnboardingService(
             return result;
 
         await auditLogService.LogAsync(
-            AuditAction.SignupRejected,
+            OnboardingAuditActions.SignupRejected,
             AuditEntityTypes.Profile,
             userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
@@ -217,7 +217,7 @@ internal sealed class OnboardingService(
                 : string.Format(culture,
                     NoticeResources.GetString("Onboarding_Notification_ProfileRejectedWithReason", culture)!, reason);
             await notificationService.SendAsync(
-                NotificationSource.ProfileRejected,
+                OnboardingNotificationSources.ProfileRejected,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 NoticeResources.GetString("Onboarding_Notification_ProfileRejectedTitle", culture)!,
@@ -319,21 +319,14 @@ internal sealed class OnboardingService(
         string? notes,
         CancellationToken ct)
     {
+        // Consent audits the check itself, inside the write.
         var result = await consentWrite.RecordConsentCheckAsync(userId, status, reviewerId, notes, ct);
         if (!result.Success)
             return result;
 
-        var cleared = status == ConsentCheckStatus.Cleared;
-        await auditLogService.LogAsync(
-            cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
-            AuditEntityTypes.Profile,
-            userId,
-            cleared ? "Consent check cleared" : $"Consent check flagged: {notes}",
-            reviewerId);
-
         logger.LogInformation(
             "Consent check {Status} for user {UserId} by {ReviewerId}",
-            cleared ? "cleared" : "flagged",
+            status == ConsentCheckStatus.Cleared ? "cleared" : "flagged",
             userId,
             reviewerId);
 

@@ -305,4 +305,5 @@
   <data name="Expenses_LegalName" xml:space="preserve"><value>Nom legal</value></data>
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatori. Indica el nom del projecte al qual correspon aquesta despesa, p. ex. el del teu projecte artístic.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Afegeix un assumpte (el nom del projecte) abans d'enviar.</value></data>
+  <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Introdueix un import amb un màxim de dos decimals.</value></data>
 </root>

@@ -324,7 +324,7 @@ public sealed class IssuesServiceTests
                 Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
-            [new(Guid.NewGuid(), AuditAction.IssueGitHubLinked, nameof(Issue), issueId,
+            [new(Guid.NewGuid(), nameof(AuditAction.IssueGitHubLinked), nameof(Issue), issueId,
                 "GitHub link: 123", auditAt, null, null, null)]));
 
         await _service.PostCommentAsync(
@@ -337,7 +337,7 @@ public sealed class IssuesServiceTests
         thread[0].Should().BeOfType<IssueCommentEvent>()
             .Which.ActorDisplayName.Should().Be("Commenter");
         thread[1].Should().BeOfType<IssueAuditEvent>()
-            .Which.Action.Should().Be(AuditAction.IssueGitHubLinked);
+            .Which.Action.Should().Be(nameof(AuditAction.IssueGitHubLinked));
         thread[1].ActorUserId.Should().BeNull();
     }
 
@@ -391,7 +391,7 @@ public sealed class IssuesServiceTests
         IReadOnlyList<Guid>? capturedRecipients = null;
         await _notificationService
             .SendAsync(
-                NotificationSource.IssueSubmitted,
+                IssuesNotificationSources.IssueSubmitted,
                 Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(),
@@ -680,11 +680,20 @@ public sealed class IssuesServiceTests
         ((IReadOnlyList<Guid>)notice[4]!).Should().Equal(handler.Id);
     }
 
+    public static TheoryData<NotificationSourceDefinition> FanoutNoticeSources => new(
+        IssuesNotificationSources.IssueSubmitted,
+        IssuesNotificationSources.IssueComment,
+        IssuesNotificationSources.IssueStatusChanged);
+
+    public static TheoryData<NotificationSourceDefinition> AllNoticeSources => new(
+        IssuesNotificationSources.IssueSubmitted,
+        IssuesNotificationSources.IssueComment,
+        IssuesNotificationSources.IssueStatusChanged,
+        IssuesNotificationSources.IssueAssigned);
+
     [HumansTheory]
-    [InlineData(NotificationSource.IssueSubmitted)]
-    [InlineData(NotificationSource.IssueComment)]
-    [InlineData(NotificationSource.IssueStatusChanged)]
-    public async Task IssueNotices_FailedLanguageGroup_DoesNotBlockOtherRecipients(NotificationSource source)
+    [MemberData(nameof(FanoutNoticeSources))]
+    public async Task IssueNotices_FailedLanguageGroup_DoesNotBlockOtherRecipients(NotificationSourceDefinition source)
     {
         var reporter = SeedUser(Guid.NewGuid(), "Reporter");
         reporter.Email = "reporter@test.com";
@@ -692,20 +701,20 @@ public sealed class IssuesServiceTests
         var second = SeedUser(Guid.NewGuid(), "Assignee");
         second.Email = "assignee@test.com";
         second.PreferredLanguage = "fr";
-        var failedRecipient = source == NotificationSource.IssueSubmitted
+        var failedRecipient = source == IssuesNotificationSources.IssueSubmitted
             ? SeedUser(Guid.NewGuid(), "First handler") : reporter;
         failedRecipient.PreferredLanguage = "es";
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
             .Returns([failedRecipient.Id, second.Id]);
         _notificationService.SendAsync(
-            Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<IReadOnlyList<Guid>>(4).Contains(failedRecipient.Id)
                 ? Task.FromException(new IOException("first language delivery failed")) : Task.CompletedTask);
 
         Guid issueId;
-        if (source == NotificationSource.IssueSubmitted)
+        if (source == IssuesNotificationSources.IssueSubmitted)
         {
             issueId = (await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Detail",
                 null, null, null, null, null, ct: TestContext.Current.CancellationToken)).Issue!.Id;
@@ -716,7 +725,7 @@ public sealed class IssuesServiceTests
             var row = await _issuesDb.Issues.FindAsync([issueId], TestContext.Current.CancellationToken);
             row!.AssigneeUserId = second.Id;
             await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-            if (source == NotificationSource.IssueComment)
+            if (source == IssuesNotificationSources.IssueComment)
                 await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Reply",
                     ct: TestContext.Current.CancellationToken);
             else
@@ -734,15 +743,12 @@ public sealed class IssuesServiceTests
     }
 
     [HumansTheory]
-    [InlineData(NotificationSource.IssueSubmitted)]
-    [InlineData(NotificationSource.IssueComment)]
-    [InlineData(NotificationSource.IssueStatusChanged)]
-    [InlineData(NotificationSource.IssueAssigned)]
-    public async Task IssueNotices_LongTitleAndDetail_DispatchFullCopyAndLinkToFullContent(NotificationSource source)
+    [MemberData(nameof(AllNoticeSources))]
+    public async Task IssueNotices_LongTitleAndDetail_DispatchFullCopyAndLinkToFullContent(NotificationSourceDefinition source)
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
-        var recipientId = source == NotificationSource.IssueSubmitted || source == NotificationSource.IssueAssigned
+        var recipientId = source == IssuesNotificationSources.IssueSubmitted || source == IssuesNotificationSources.IssueAssigned
             ? Guid.NewGuid() : reporterId;
         if (recipientId != reporterId)
             SeedUser(recipientId, "Recipient").Email = "recipient@test.com";
@@ -752,7 +758,7 @@ public sealed class IssuesServiceTests
         var title = string.Concat(Enumerable.Repeat("🚀", 200));
         var detail = string.Concat(Enumerable.Repeat("📚", 5000));
         Guid issueId;
-        if (source == NotificationSource.IssueSubmitted)
+        if (source == IssuesNotificationSources.IssueSubmitted)
         {
             issueId = (await _service.SubmitIssueAsync(reporterId, IssueCategory.Bug, title, detail,
                 null, null, null, null, null, ct: TestContext.Current.CancellationToken)).Issue!.Id;
@@ -763,36 +769,30 @@ public sealed class IssuesServiceTests
             var row = await _issuesDb.Issues.FindAsync([issueId], TestContext.Current.CancellationToken);
             row!.Description = detail;
             await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-            switch (source)
-            {
-                case NotificationSource.IssueComment:
-                    await _service.PostCommentAsync(issueId, Admin, Admin.UserId, detail,
-                        ct: TestContext.Current.CancellationToken);
-                    break;
-                case NotificationSource.IssueStatusChanged:
-                    await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Admin.UserId,
-                        TestContext.Current.CancellationToken);
-                    break;
-                case NotificationSource.IssueAssigned:
-                    await _service.UpdateAssigneeAsync(issueId, Admin, recipientId, Admin.UserId,
-                        TestContext.Current.CancellationToken);
-                    break;
-            }
+            if (source == IssuesNotificationSources.IssueComment)
+                await _service.PostCommentAsync(issueId, Admin, Admin.UserId, detail,
+                    ct: TestContext.Current.CancellationToken);
+            else if (source == IssuesNotificationSources.IssueStatusChanged)
+                await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Admin.UserId,
+                    TestContext.Current.CancellationToken);
+            else if (source == IssuesNotificationSources.IssueAssigned)
+                await _service.UpdateAssigneeAsync(issueId, Admin, recipientId, Admin.UserId,
+                    TestContext.Current.CancellationToken);
         }
 
         var args = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        var titlePrefix = source switch
+        var titlePrefix = source.Name switch
         {
-            NotificationSource.IssueSubmitted => "Se presentó un asunto nuevo: ",
-            NotificationSource.IssueComment => "Nuevo comentario sobre el asunto: ",
-            NotificationSource.IssueStatusChanged => "El estado del asunto cambió: ",
-            NotificationSource.IssueAssigned => "Se te asignó un asunto: ",
+            nameof(IssuesNotificationSources.IssueSubmitted) => "Se presentó un asunto nuevo: ",
+            nameof(IssuesNotificationSources.IssueComment) => "Nuevo comentario sobre el asunto: ",
+            nameof(IssuesNotificationSources.IssueStatusChanged) => "El estado del asunto cambió: ",
+            nameof(IssuesNotificationSources.IssueAssigned) => "Se te asignó un asunto: ",
             _ => throw new ArgumentOutOfRangeException(nameof(source))
         };
         args[3].Should().Be(titlePrefix + title);
         var resources = new System.Resources.ResourceManager(typeof(IssuesResource));
         var culture = System.Globalization.CultureInfo.GetCultureInfo("es");
-        args[5].Should().Be(source == NotificationSource.IssueStatusChanged
+        args[5].Should().Be(source == IssuesNotificationSources.IssueStatusChanged
             ? string.Format(culture, resources.GetString("Issue_Notice_StatusChangedBody", culture)!,
                 resources.GetString("Enum_IssueStatus_Open", culture),
                 resources.GetString("Enum_IssueStatus_InProgress", culture))
@@ -841,7 +841,7 @@ public sealed class IssuesServiceTests
             Arg.Any<CancellationToken>());
 
         await _notificationService.Received().SendAsync(
-            NotificationSource.IssueComment,
+            IssuesNotificationSources.IssueComment,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             Arg.Any<string>(),
@@ -873,7 +873,7 @@ public sealed class IssuesServiceTests
         IReadOnlyList<Guid>? capturedRecipients = null;
         await _notificationService
             .SendAsync(
-                NotificationSource.IssueComment,
+                IssuesNotificationSources.IssueComment,
                 Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(),
@@ -953,7 +953,7 @@ public sealed class IssuesServiceTests
         (await _issuesDb.IssueComments.CountAsync(c => c.IssueId == issueId,
             TestContext.Current.CancellationToken)).Should().Be(1);
         await _notificationService.Received().SendAsync(
-            NotificationSource.IssueComment, NotificationClass.Informational, NotificationPriority.Normal,
+            IssuesNotificationSources.IssueComment, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(reporterId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -1034,7 +1034,7 @@ public sealed class IssuesServiceTests
         // The "New issue filed" alerts that fanned out on submission clear once the
         // issue is terminal, attributed to the actor who closed it.
         await _notificationInbox.Received(1).ResolveBySourceKeyAsync(
-            NotificationSource.IssueSubmitted,
+            IssuesNotificationSources.IssueSubmitted,
             issueId.ToString(),
             actorId,
             Arg.Any<CancellationToken>());
@@ -1048,7 +1048,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _notificationInbox.DidNotReceive().ResolveBySourceKeyAsync(
-            Arg.Any<NotificationSource>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+            Arg.Any<NotificationSourceDefinition>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1112,7 +1112,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, assigneeId, TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.IssueStatusChanged,
+            IssuesNotificationSources.IssueStatusChanged,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             Arg.Any<string>(),
@@ -1136,7 +1136,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, reporterId, TestContext.Current.CancellationToken);
 
         await _notificationService.DidNotReceive().SendAsync(
-            NotificationSource.IssueStatusChanged,
+            IssuesNotificationSources.IssueStatusChanged,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -1302,13 +1302,13 @@ public sealed class IssuesServiceTests
         {
             var source = operation switch
             {
-                "Submit" => NotificationSource.IssueSubmitted,
-                "Comment" => NotificationSource.IssueComment,
-                "Status" => NotificationSource.IssueStatusChanged,
-                _ => NotificationSource.IssueAssigned,
+                "Submit" => IssuesNotificationSources.IssueSubmitted,
+                "Comment" => IssuesNotificationSources.IssueComment,
+                "Status" => IssuesNotificationSources.IssueStatusChanged,
+                _ => IssuesNotificationSources.IssueAssigned,
             };
             _notificationService.ReceivedCalls().Should().Contain(call =>
-                (NotificationSource)call.GetArguments()[0]! == source
+                (NotificationSourceDefinition)call.GetArguments()[0]! == source
                 && (CancellationToken)call.GetArguments()[10]! == CancellationToken.None);
         }
         switch (operation)
@@ -1319,7 +1319,7 @@ public sealed class IssuesServiceTests
                 goto case "Status";
             case "Status":
                 stored.Status.Should().Be(IssueStatus.Resolved);
-                await _notificationInbox.Received(1).ResolveBySourceKeyAsync(NotificationSource.IssueSubmitted,
+                await _notificationInbox.Received(1).ResolveBySourceKeyAsync(IssuesNotificationSources.IssueSubmitted,
                     issue.Id.ToString(), Admin.UserId, CancellationToken.None);
                 break;
             case "Assignee": stored.AssigneeUserId.Should().Be(assignee.Id); break;
@@ -1433,7 +1433,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateAssigneeAsync(issueId, Admin, newAssigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _notificationService.Received().SendAsync(
-            NotificationSource.IssueAssigned,
+            IssuesNotificationSources.IssueAssigned,
             NotificationClass.Actionable,
             NotificationPriority.Normal,
             Arg.Is<string>(title => title == "Se te asignó un asunto: Title"),
@@ -1457,7 +1457,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateAssigneeAsync(issueId, Admin, actorId, actorId, TestContext.Current.CancellationToken);
 
         await _notificationService.DidNotReceive().SendAsync(
-            NotificationSource.IssueAssigned,
+            IssuesNotificationSources.IssueAssigned,
             Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(),
             Arg.Any<string>(),
@@ -2491,6 +2491,113 @@ public sealed class IssuesServiceTests
         (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
+    [HumansTheory]
+    [InlineData("detail")]
+    [InlineData("screenshot")]
+    [InlineData("list")]
+    [InlineData("mine")]
+    [InlineData("count")]
+    [InlineData("thread")]
+    public async Task Merged_reporter_keeps_own_issue_reads(string route)
+    {
+        var archived = SeedUser();
+        var survivor = SeedUser();
+        var stranger = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived.Id] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var own = await SeedIssueWithScreenshotAsync(archived.Id, "Tickets", "image/png", [1, 2]);
+        var other = await SeedIssueWithScreenshotAsync(stranger.Id, "Tickets", "image/png", [3]);
+        _issuesDb.IssueComments.Add(new IssueComment
+        {
+            Id = Guid.NewGuid(),
+            IssueId = own,
+            SenderUserId = survivor.Id,
+            Content = "My follow-up",
+            CreatedAt = Clock.GetCurrentInstant()
+        });
+        await _issuesDb.SaveChangesAsync(Ct);
+        var viewer = new IssueViewer(survivor.Id, []);
+        switch (route)
+        {
+            case "detail":
+                (await _service.GetIssueByIdAsync(own, viewer, Ct)).Should().NotBeNull();
+                (await _service.GetIssueByIdAsync(other, viewer, Ct)).Should().BeNull();
+                break;
+            case "screenshot":
+                (await _service.GetScreenshotAsync(own, viewer, Ct))!.Content.Should().Equal(1, 2);
+                (await _service.GetScreenshotAsync(other, viewer, Ct)).Should().BeNull();
+                break;
+            case "list":
+            case "mine":
+                var filter = new IssueListFilter(ReporterUserId: string.Equals(route, "mine", StringComparison.Ordinal) ? survivor.Id : null);
+                (await _service.GetIssueListAsync(filter, viewer, Ct)).Should().ContainSingle().Which.Id.Should().Be(own);
+                break;
+            case "count":
+                (await _service.GetActionableCountForViewerAsync(viewer, Ct)).Should().Be(1);
+                break;
+            default:
+                (await _service.GetThreadAsync(own, viewer, Ct)).OfType<IssueCommentEvent>()
+                    .Should().ContainSingle().Which.ActorIsReporter.Should().BeTrue();
+                break;
+        }
+    }
+
+    [HumansFact]
+    public async Task Merged_reporter_comment_reopens_without_handler_privileges_or_self_email()
+    {
+        var (archived, own) = await SeedIssueAsync(IssueStatus.Resolved, withResolvedFields: true, section: "Tickets");
+        var survivor = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var viewer = new IssueViewer(survivor.Id, []);
+        var other = await SeedIssueRowAsync(Guid.NewGuid(), IssueStatus.Resolved, "Other", "Tickets", withResolvedFields: true);
+
+        var result = await _service.PostCommentAsync(own, viewer, survivor.Id, "Still broken", resolveOnPost: true, ct: Ct);
+
+        result.Comment.Should().NotBeNull();
+        var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == own, Ct);
+        stored.ReporterUserId.Should().Be(archived);
+        stored.Status.Should().Be(IssueStatus.Open);
+        stored.ResolvedAt.Should().BeNull();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        (await _service.PostCommentAsync(other, viewer, survivor.Id, "Not mine", ct: Ct)).NotFound.Should().BeTrue();
+        (await _service.GetThreadAsync(own, viewer, Ct)).OfType<IssueCommentEvent>()
+            .Should().ContainSingle().Which.ActorIsReporter.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Merged_assignee_filter_finds_both_accounts_without_granting_queue_access(bool filterByArchived)
+    {
+        var archived = SeedUser();
+        var survivor = SeedUser();
+        var stranger = SeedUser();
+        var identity = Info(survivor.Id)! with { MergedUserIds = [archived.Id] };
+        foreach (var id in identity.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(identity));
+        var expected = new List<Guid>();
+        foreach (var assignee in new[] { archived.Id, survivor.Id, stranger.Id })
+        {
+            var id = await SeedIssueRowAsync(Guid.NewGuid(), IssueStatus.Open, "Assigned", "Tickets");
+            var row = await _issuesDb.Issues.SingleAsync(i => i.Id == id, Ct);
+            row.AssigneeUserId = assignee;
+            if (assignee != stranger.Id) expected.Add(id);
+        }
+        await _issuesDb.SaveChangesAsync(Ct);
+        var filter = new IssueListFilter(AssigneeUserId: filterByArchived ? archived.Id : survivor.Id);
+
+        (await _service.GetIssueListAsync(filter, Admin, Ct)).Select(i => i.Id).Should().BeEquivalentTo(expected);
+        (await _service.GetIssueListAsync(filter, new IssueViewer(survivor.Id, []), Ct)).Should().BeEmpty();
+        (await _service.GetIssueListAsync(new IssueListFilter(AssigneeUserId: stranger.Id), Admin, Ct))
+            .Should().ContainSingle().Which.AssigneeUserId.Should().Be(stranger.Id);
+    }
+
     // Merged-away ids: in-app notifications reach the survivor, and the assignee is stored as the live id.
 
     [HumansFact]
@@ -2505,7 +2612,7 @@ public sealed class IssuesServiceTests
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _notificationService.Received(1).SendAsync(
-            NotificationSource.IssueStatusChanged,
+            IssuesNotificationSources.IssueStatusChanged,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             Arg.Any<string>(),

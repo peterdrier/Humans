@@ -272,7 +272,7 @@ internal sealed class UserService(
         // legal names and stay Bare. The repository derives User.State.
         await repo.AddAsync(profile, ct);
         if (actorUserId.HasValue)
-            await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
                 "Created missing profile through admin backfill.", actorUserId.Value);
         return true;
     }
@@ -523,7 +523,7 @@ internal sealed class UserService(
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
 
-        if (!new EmailAddressAttribute().IsValid(email))
+        if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email))
             return Refuse("Validation_EmailAddress");
 
         using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);

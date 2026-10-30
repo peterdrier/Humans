@@ -136,7 +136,7 @@ internal sealed class TeamMessageController(
         try
         {
             await auditLogService.LogAsync(
-                AuditAction.FacilitatedMessageSent,
+                EmailAuditActions.FacilitatedMessageSent,
                 "User", targetUser.Id,
                 $"Message sent to {targetUser.BurnerName} from team {team.TeamName} (contact info shared: {contactInfo})",
                 currentUser.Id,

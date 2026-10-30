@@ -80,7 +80,7 @@ public class AuthorizationPillFilterTests : IDisposable
 
     [HumansFact]
     public async Task Admin_alone_shows_admin_only() =>
-        (await PillTextAsync("Humans.Debug.Controllers.DebugController", "Logs")).Should().Be("Admin only");
+        (await PillTextAsync("Humans.Debug.Controllers.DebugController", "ClearHangfireLocks")).Should().Be("Admin only");
 
     [HumansFact]
     public async Task A_member_wide_policy_shows_no_pill() =>

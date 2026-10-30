@@ -9,7 +9,7 @@ using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Helpers;
 
-// MedicalConditions are redacted in the projection so the shared cached view is never mutated.
+// Medical conditions never enter the search projection: the shift admin page reveals them per person, audited.
 
 internal enum VolunteerSearchBuildStatus
 {
@@ -43,7 +43,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
     public async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
         ShiftWithRota? shift,
         string? query,
-        bool canViewMedical,
         CancellationToken ct = default)
     {
         if (!query.HasSearchTerm())
@@ -67,7 +66,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
             query.Trim(),
             eventSettings,
             activeEvent,
-            canViewMedical,
             ct);
 
         return VolunteerSearchBuildResult.Success(results);
@@ -78,7 +76,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
         string query,
         BurnSettingsInfo eventSettings,
         BurnSettingsInfo? activeEvent,
-        bool canViewMedical,
         CancellationToken ct)
     {
         var shiftStart = shift.Shift.GetAbsoluteStart(eventSettings);
@@ -96,8 +93,7 @@ internal sealed class ShiftVolunteerSearchBuilder(
         var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds, ct);
 
-        // Medical from the user's Profile, dietary from Cantina; skills, quirks and languages from the shift view.
-        var userInfos = await userService.GetUserInfosAsync(userIds, ct);
+        // Dietary from Cantina; skills, quirks and languages from the shift view.
         var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
 
         // The cached signups cover only the active event; for another event's shift, query that event's signups so
@@ -116,8 +112,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
         {
             var view = views[user.UserId];
             var profile = view.Profile;
-            userInfos.TryGetValue(user.UserId, out var info);
-            var personProfile = info?.Profile;
             diets.TryGetValue(user.UserId, out var diet);
             var signupsForEvent = targetIsActive
                 ? view.ToSummary().Signups
@@ -141,8 +135,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
                 IsInPool = poolUserIds.Contains(user.UserId),
-                // Without the MedicalDataViewer policy the field is never surfaced.
-                MedicalConditions = canViewMedical ? personProfile?.MedicalConditions : null
             });
         }
 

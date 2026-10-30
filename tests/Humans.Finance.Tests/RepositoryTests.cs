@@ -68,6 +68,25 @@ public class RepositoryTests
         ctx.HoldedExpenseDocs.Select(d => d.HoldedDocId).Should().BeEquivalentTo(["h-1", "h-2"]);
     }
 
+    [HumansFact]
+    public async Task ReplaceDocs_UnfetchedNotes_KeepTheStoredOnes_ContactIdFollowsHolded()
+    {
+        var (repo, factory) = Make();
+        var first = Doc("h-1");
+        first.Notes = "Expense report 1";
+        first.ContactId = "c-old";
+        await repo.ReplaceDocsAsync([first], Created, Ct);
+
+        var resync = Doc("h-1");
+        resync.ContactId = "c-new";
+        await repo.ReplaceDocsAsync([resync], Now, Ct);
+
+        await using var ctx = await factory.CreateDbContextAsync(Ct);
+        var stored = await ctx.HoldedExpenseDocs.SingleAsync(Ct);
+        stored.Notes.Should().Be("Expense report 1");
+        stored.ContactId.Should().Be("c-new");
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
