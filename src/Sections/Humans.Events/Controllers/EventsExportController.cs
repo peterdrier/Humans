@@ -1,3 +1,4 @@
+using Humans.Events.Contracts;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;
@@ -13,7 +14,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 
-[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
+[Authorize(Policy = EventsPolicies.Read)]
 [Route("Events/Export")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 internal sealed class EventsExportController(
@@ -25,6 +26,7 @@ internal sealed class EventsExportController(
     public IActionResult Index() => View();
 
     [HttpGet("Csv")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     public async Task<IActionResult> DownloadCsv(CancellationToken ct)
     {
         var actorUserId = GetCurrentUserId();

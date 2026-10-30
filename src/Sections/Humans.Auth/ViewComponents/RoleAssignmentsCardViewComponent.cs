@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Models;
 using Humans.Base.Authorization;
@@ -10,7 +11,7 @@ namespace Humans.Auth.ViewComponents;
 
 /// <summary>
 /// Renders only in Admin view mode for a viewer passing the host page's
-/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/> policy; then always, even when the member holds no role.
+/// <see cref="UsersPolicies.Read"/> policy; then always, even when the member holds no role.
 /// </summary>
 public sealed class RoleAssignmentsCardViewComponent(
     IRoleAssignmentService roleAssignments,
@@ -20,7 +21,7 @@ public sealed class RoleAssignmentsCardViewComponent(
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Admin
-            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded)
+            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)).Succeeded)
             return Content(string.Empty);
 
         var now = clock.GetCurrentInstant();

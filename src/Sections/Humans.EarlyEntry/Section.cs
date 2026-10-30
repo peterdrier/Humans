@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.EarlyEntry.Contracts;
@@ -27,7 +28,7 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Early Entry", [
-            new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open", PolicyNames.ShiftDashboardAccess)
+            new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open", ShiftsPolicies.Read)
         ])
     ];
 }

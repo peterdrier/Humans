@@ -43,15 +43,15 @@ Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching t
 
 ### Audit action definitions
 
-Each writing section declares its actions as `AuditActionDefinition` fields on its `<Section>AuditActions` contributor (name, English verb and self-verb, description-tail, alert and quick-filter flags); `AuditActionRegistry` collects them at startup. The `AuditAction` enum is transitional: `LegacyAuditActions` declares its values until each section moves its own. A new action needs no migration.
+Each writing section declares its actions as `AuditActionDefinition` fields on its `<Section>AuditActions` contributor (name, English verb and self-verb, description-tail, alert and quick-filter flags); `AuditActionRegistry` collects them at startup.
 
-The full value catalog lives in [`src/Sections/Humans.AuditLog/Docs/AuditLog.md`](../AuditLog.md) and is regenerated from `src/Sections/Humans.AuditLog/Contracts/AuditAction.cs` by `/freshness-sweep`. It is not duplicated here — one source of truth.
+Each section lists the actions it declares in its own `Docs/<Section>.md`; this section lists none of them.
 
 ## Service Design
 
 The section splits into a write side and a read+render side:
 
-**`IAuditLogService` (write)** provides two `LogAsync` overloads, each taking an `AuditActionDefinition` (with a transitional `AuditAction` twin), plus two narrow cross-section reads, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`:
+**`IAuditLogService` (write)** provides two `LogAsync` overloads, each taking an `AuditActionDefinition`, plus two narrow cross-section reads, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`:
 
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID
@@ -74,8 +74,8 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 ### Admin Actions
 
-| Action | AuditAction | Writer |
-|--------|-------------|--------|
+| Action | Audit action | Writer |
+|--------|--------------|--------|
 | Suspend member | MemberSuspended | `HumanLifecycleService`, `NonCompliantMemberSuspension` |
 | Unsuspend member | MemberUnsuspended | `HumanLifecycleService` |
 | Add role | RoleAssigned | `RoleAssignmentService` |
@@ -87,7 +87,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 ### TeamService
 
-| Action | AuditAction | Actor |
+| Action | Audit action | Actor |
 |--------|-------------|-------|
 | User joins open team | TeamJoinedDirectly | User |
 | User leaves team | TeamLeft | User |
@@ -98,7 +98,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 ### GoogleWorkspaceSyncService
 
-| Action | AuditAction | Actor |
+| Action | Audit action | Actor |
 |--------|-------------|-------|
 | Google Group linked or reactivated for a team | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
 | Google Group provisioned | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
@@ -107,7 +107,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 ### DriveActivityMonitorJob
 
-| Action | AuditAction | Actor |
+| Action | Audit action | Actor |
 |--------|-------------|-------|
 | Anomalous permission change detected | AnomalousPermissionDetected | DriveActivityMonitorJob |
 

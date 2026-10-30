@@ -71,7 +71,7 @@ public class AuthorizationPillFilterTests : IDisposable
     [HumansFact]
     public async Task A_role_policy_shows_its_role_titles_without_admin() =>
         (await PillTextAsync("Humans.Rideshare.Controllers.RideshareAdminController", "Index"))
-            .Should().Be("Rideshare Admin");
+            .Should().Be("Board · Rideshare Admin");
 
     [HumansFact]
     public async Task A_described_requirement_shows_what_it_admits() =>

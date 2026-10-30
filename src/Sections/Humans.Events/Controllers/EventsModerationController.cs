@@ -17,7 +17,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 
-[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
+[Authorize(Policy = EventsPolicies.Read)]
 [Route("Events/Moderate")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 internal sealed class EventsModerationController(
@@ -86,16 +86,19 @@ internal sealed class EventsModerationController(
     }
 
     [HttpPost("Approve")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(ModerationActionFormModel model)
         => await ProcessActionAsync(model.EventId, EventModerationActionType.Approved, null);
 
     [HttpPost("Reject")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(ModerationActionFormModel model)
         => await ProcessActionAsync(model.EventId, EventModerationActionType.Rejected, model.Reason);
 
     [HttpPost("Withdraw")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(ModerationActionFormModel model)
     {
@@ -124,11 +127,13 @@ internal sealed class EventsModerationController(
     }
 
     [HttpPost("RequestEdit")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestEdit(ModerationActionFormModel model)
         => await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
 
     [HttpGet("{eventId:guid}/Edit")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     public async Task<IActionResult> Edit(Guid eventId, CancellationToken ct = default)
     {
         var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
@@ -170,6 +175,7 @@ internal sealed class EventsModerationController(
     }
 
     [HttpPost("{eventId:guid}/Edit")]
+    [Authorize(Policy = EventsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(Guid eventId, AdminEventFormViewModel model)
     {

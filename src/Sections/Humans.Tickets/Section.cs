@@ -156,10 +156,10 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Tickets", [
-            new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin, Weight: 0),
-            new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin, Weight: 10,
+            new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      TicketsPolicies.Read, Weight: 0),
+            new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  TicketsPolicies.Read, Weight: 10,
                  PillCount: PillCounts.TransferQueueAsync),
-            new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", PolicyNames.TicketAdminOrAdmin, Weight: 20),
+            new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", TicketsPolicies.Read, Weight: 20),
             new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30)
         ])
     ];
@@ -228,10 +228,10 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.TicketAdminBoardOrAdmin, policy =>
-            policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin, RoleNames.Board));
+        options.AddPolicy(TicketsPolicies.Read, policy =>
+            policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Board, RoleNames.Admin));
 
-        options.AddPolicy(PolicyNames.TicketAdminOrAdmin, policy =>
+        options.AddPolicy(TicketsPolicies.Manage, policy =>
             policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin));
     }
 

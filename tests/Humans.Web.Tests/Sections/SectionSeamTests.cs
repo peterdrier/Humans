@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using System.Linq.Expressions;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -125,8 +126,8 @@ public class SectionSeamTests
     [HumansFact]
     public void A_Page_Gated_By_An_Admin_Policy_On_A_Nav_Controller_Or_The_Dashboard_Gets_The_Shell()
     {
-        IsAdminPage("CampAdmin", "Roles", Policy(PolicyNames.CampAdminOrAdmin)).Should().BeTrue();
-        IsAdminPage("CampAdmin", "Detail", Policy(PolicyNames.AppAccess), Policy(PolicyNames.CampAdminOrAdmin)).Should().BeTrue();
+        IsAdminPage("CampAdmin", "Roles", Policy(CampsPolicies.Manage)).Should().BeTrue();
+        IsAdminPage("CampAdmin", "Detail", Policy(PolicyNames.AppAccess), Policy(CampsPolicies.Manage)).Should().BeTrue();
         IsAdminPage("Admin", "Index", Policy(PolicyNames.AnyAdminRole)).Should().BeTrue();
     }
 
@@ -136,7 +137,7 @@ public class SectionSeamTests
     {
         IsAdminPage("CampAdmin", "MemberFacingPage", Policy(PolicyNames.AppAccess)).Should().BeFalse();
         IsAdminPage("CampAdmin", "MemberFacingPage", new AuthorizeAttribute()).Should().BeFalse();
-        IsAdminPage("CampAdmin", "Roles", Policy(PolicyNames.CampAdminOrAdmin), new AllowAnonymousAttribute()).Should().BeFalse();
+        IsAdminPage("CampAdmin", "Roles", Policy(CampsPolicies.Manage), new AllowAnonymousAttribute()).Should().BeFalse();
         IsAdminPage("Profile", "Index", Policy(PolicyNames.AdminOnly)).Should().BeFalse();
     }
 

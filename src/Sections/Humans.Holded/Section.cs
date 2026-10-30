@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
@@ -60,7 +61,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Holded", [
-            new("Holded", "Holded", "Index", null, null, "fa-solid fa-book", PolicyNames.FinanceAdminOrAdmin)
+            new("Holded", "Holded", "Index", null, null, "fa-solid fa-book", FinancePolicies.Read)
         ])
     ];
 

@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -10,7 +11,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
-[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+[Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets/Admin/Transfers")]
 internal sealed class TicketTransferAdminController(
     ITicketTransferService service,
@@ -59,6 +60,7 @@ internal sealed class TicketTransferAdminController(
     }
 
     [HttpPost("Decide")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decide(
         Guid id, string action, string? adminNotes, CancellationToken ct)

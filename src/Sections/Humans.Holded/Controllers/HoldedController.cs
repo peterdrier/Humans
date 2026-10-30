@@ -10,7 +10,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Holded.Controllers;
 
-[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+[Authorize(Policy = FinancePolicies.Read)]
 [Route("Holded")]
 internal sealed class HoldedController(
     IUserService userService,
@@ -47,6 +47,7 @@ internal sealed class HoldedController(
     }
 
     [HttpPost("SyncNow")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncNow(CancellationToken ct)
     {
@@ -71,6 +72,7 @@ internal sealed class HoldedController(
     }
 
     [HttpPost("FullSync")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> FullSync()
     {

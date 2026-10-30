@@ -25,7 +25,7 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
     [InlineData(RoleNames.Admin, true)]
     [InlineData(ShiftsRoles.ShiftsNoInfo, true)]
     [InlineData(ShiftsRoles.ShiftsAdmin, true)]
-    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.Board, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
     public async Task ChecksCorrectRoles(string role, bool expected)
     {

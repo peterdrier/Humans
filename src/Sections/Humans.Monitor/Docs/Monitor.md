@@ -18,7 +18,7 @@ pages and data.
 
 - **Anomalous permission change** — a grant or revocation on a managed Drive folder made by
   someone other than the service account. Each is written through `IAuditLogService` as
-  `AuditAction.AnomalousPermissionDetected`.
+  `GoogleIntegrationAuditActions.AnomalousPermissionDetected`.
 - **Time-window dedup** — a successful configured scan advances
   `DriveActivityMonitor:LastRunAt` through `ISettingsService`; an incomplete or stubbed scan
   does not.
@@ -27,7 +27,7 @@ pages and data.
 
 | Route | Policy |
 |---|---|
-| `POST /Monitor/CheckDriveActivity` | `BoardOrAdmin` |
+| `POST /Monitor/CheckDriveActivity` | `AdminOnly` |
 
 ## Invariants
 

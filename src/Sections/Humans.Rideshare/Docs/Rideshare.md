@@ -4,7 +4,6 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Notifications.Contracts/RideshareNotificationSources.cs
-  src/Sections/Humans.AuditLog/Contracts/AuditAction.cs
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
@@ -222,8 +221,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | `/Rideshare/Mine` | GET | `AppAccess` | Own offers, requests, and interests received/sent |
 | `/Rideshare/Interest` | POST | `AppAccess` | Express interest in a trip, optionally answering a request's pin |
 | `/Rideshare/Interest/{id}/Accept`, `/Decline`, `/Withdraw` | POST | `AppAccess` | Interest lifecycle transitions |
-| `/Rideshare/Admin` | GET/POST | `RideshareAdminOrAdmin` | Set the active event's destination + travel windows; season statistics |
-| `/Rideshare/Admin/Day?date=` | GET | `RideshareAdminOrAdmin` | Operational day roster: every trip happening that day, any status, with its accepted riders |
+| `/Rideshare/Admin` | GET/POST | `RidesharePolicies.Manage` | Set the active event's destination + travel windows; season statistics |
+| `/Rideshare/Admin/Day?date=` | GET | `RidesharePolicies.Manage` | Operational day roster: every trip happening that day, any status, with its accepted riders |
 | `/api/rideshare/board?date=&direction=` | GET | `AppAccess` | GeoJSON FeatureCollection of joinable trips, active requests, and the destination |
 
 ## Actors & Roles
@@ -232,6 +231,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 |-------|--------------|
 | Any active human | Browse the board; post/edit/cancel own offers and requests; express interest in a trip (optionally answering a request's pin); accept/decline/withdraw interests on own postings; view own offers/requests/interests on `Mine` |
 | RideshareAdmin | Set the active event's destination and travel windows; view season statistics; view the operational day roster (every trip happening on a date, including full and cancelled, with its accepted rider roster). Board-grantable; confers nothing outside Rideshare |
+| Board | Read the settings, season statistics and day roster; save nothing (`RidesharePolicies.Read`) |
 | Admin | Everything RideshareAdmin can do (Admin is always a superset) |
 
 ## Invariants
@@ -243,7 +243,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
 - **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or event) and the reason or rule key, never the exception.
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
-- **Members-only board.** Every route requires `AppAccess` or `RideshareAdminOrAdmin`; there is no anonymous or public access.
+- **Members-only board.** Every route requires `AppAccess` or `RidesharePolicies.Manage`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request.
@@ -298,7 +298,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   remaining recomputes on next read.
 - When an interest is declined: the interest's author gets a neutral `Informational`
   notification with no reason.
-- When settings are saved: `IAuditLogService.LogAsync(AuditAction.RideshareSettingsUpdated, ...)`
+- When settings are saved: `IAuditLogService.LogAsync(RideshareAuditActions.RideshareSettingsUpdated, ...)`
   records the change.
 - After every write, `CachingRideshareService` clears its snapshot cache so the next read
   rebuilds it. A read begun before that clear cannot repopulate the cache with its old snapshot.

@@ -109,12 +109,12 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public void Class_RequiresShiftDashboardAccess_Policy()
+    public void Class_RequiresShiftsRead_Policy()
     {
         var attr = typeof(VolunteerTrackingController)
             .GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull("class-level [Authorize] gates anonymous reads");
-        attr.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
+        attr.Policy.Should().Be(ShiftsPolicies.Read);
     }
 
     [HumansTheory]
@@ -129,7 +129,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, actionName, StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull($"{actionName} must require VolunteerTrackingWrite");
-        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(ShiftsPolicies.ManageVolunteers);
     }
 
     [HumansTheory]
@@ -485,7 +485,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, nameof(VolunteerTrackingController.SetAvailabilityDay), StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull("SetAvailabilityDay must require VolunteerTrackingWrite");
-        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(ShiftsPolicies.ManageVolunteers);
     }
 
     [HumansFact]
@@ -496,7 +496,7 @@ public class VolunteerTrackingControllerTests
             .First(m => string.Equals(m.Name, nameof(VolunteerTrackingController.ClearAvailabilityDay), StringComparison.Ordinal));
         var attr = method.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         attr.Should().NotBeNull("ClearAvailabilityDay must require VolunteerTrackingWrite");
-        attr.Policy.Should().Be(PolicyNames.VolunteerTrackingWrite);
+        attr.Policy.Should().Be(ShiftsPolicies.ManageVolunteers);
     }
 
     [HumansTheory]

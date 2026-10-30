@@ -90,7 +90,7 @@
                     </button>
                 </form>
             }
-            <a asp-action="Csv" asp-route-weekStartOffset="@Model.WeekStartOffset"
+            <a authorize-policy="@Humans.Cantina.Contracts.CantinaPolicies.Manage" asp-action="Csv" asp-route-weekStartOffset="@Model.WeekStartOffset"
                class="btn btn-sm btn-primary btn-download-csv">
                 <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Roster_DownloadCsv"]
             </a>

@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
 using Humans.Base.Authorization;
@@ -9,7 +10,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
-[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+[Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets/Admin/Contacts")]
 internal sealed class TicketsContactsAdminController(
     IAttendeeContactImportService import,
@@ -43,6 +44,7 @@ internal sealed class TicketsContactsAdminController(
     }
 
     [HttpPost("Apply")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Apply(
         [FromForm(Name = "selected")] Guid[]? selected,

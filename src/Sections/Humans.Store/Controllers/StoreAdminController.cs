@@ -1,3 +1,4 @@
+using Humans.Store.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Humans.Store.Models;
@@ -11,7 +12,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Store.Controllers;
 
-[Authorize(Policy = PolicyNames.StoreCatalogAdmin)]
+[Authorize(Policy = StorePolicies.Read)]
 [Route("Store/Admin")]
 internal sealed class StoreAdminController(
     Service storeService,
@@ -60,6 +61,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpPost("OrderYears/Repair")]
+    [Authorize(Policy = StorePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RepairOrderYears(CancellationToken ct)
     {
@@ -82,6 +84,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpPost("PaymentMethods/Repair")]
+    [Authorize(Policy = StorePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RepairPaymentMethods(CancellationToken ct)
     {
@@ -97,6 +100,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpPost("Payments/RecordMissing")]
+    [Authorize(Policy = StorePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordMissingPayments(CancellationToken ct)
     {
@@ -112,6 +116,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpGet("Catalog/Edit")]
+    [Authorize(Policy = StorePolicies.Manage)]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
         var year = await storeService.GetCurrentEventYearAsync(ct);
@@ -126,6 +131,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpGet("Catalog/Edit/{id:guid}")]
+    [Authorize(Policy = StorePolicies.Manage)]
     public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
     {
         var p = await storeService.GetProductAsync(id, ct);
@@ -148,6 +154,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpPost("Catalog/Save")]
+    [Authorize(Policy = StorePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(ProductInputModel input, CancellationToken ct)
     {
@@ -183,6 +190,7 @@ internal sealed class StoreAdminController(
     }
 
     [HttpPost("Catalog/Deactivate/{id:guid}")]
+    [Authorize(Policy = StorePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
     {

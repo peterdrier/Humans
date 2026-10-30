@@ -41,7 +41,7 @@ internal sealed class GoogleController(
     }
 
     [HttpGet("Human/{id:guid}")]
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
+    [Authorize(Policy = UsersPolicies.Read)]
     public async Task<IActionResult> Human(Guid id)
     {
         var user = await FindUserInfoByIdAsync(id, HttpContext.RequestAborted);
@@ -280,7 +280,7 @@ internal sealed class GoogleController(
     }
 
     [HttpGet("Sync")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Read)]
     public IActionResult Sync()
     {
         return View();
@@ -289,7 +289,7 @@ internal sealed class GoogleController(
     // POST (HUM0038): a preview writes the resource's error column when a Google lookup fails.
     // CancellationToken.None, as on the execute paths.
     [HttpPost("Sync/Preview/{resourceType}")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Read)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
@@ -363,7 +363,7 @@ internal sealed class GoogleController(
     }
 
     [HttpPost("Human/{id:guid}/ProvisionEmail")]
-    [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
+    [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionEmail(Guid id, string emailPrefix)
     {

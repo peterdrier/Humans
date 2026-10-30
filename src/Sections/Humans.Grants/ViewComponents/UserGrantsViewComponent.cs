@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Grants.Authorization;
@@ -9,7 +10,7 @@ namespace Humans.Grants.ViewComponents;
 
 /// <summary>
 /// Renders only for <see cref="ProfileCardViewMode.Admin"/> to a viewer passing the host page's
-/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/>. A program name links only when the viewer passes that page's own
+/// <see cref="UsersPolicies.Read"/>. A program name links only when the viewer passes that page's own
 /// checks; otherwise it is plain text.
 /// </summary>
 internal sealed class UserGrantsViewComponent(
@@ -19,7 +20,7 @@ internal sealed class UserGrantsViewComponent(
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Admin
-            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded)
+            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)).Succeeded)
             return Content(string.Empty);
 
         var all = await grants.GetGrantsForUserAsync(userId, HttpContext.RequestAborted);

@@ -116,7 +116,7 @@ Stated so a violation is recognisable; paths are relative to `src/Sections/Human
 - An issue is read, commented on and patched as its holder — id and roles — through the viewer
   Issues scopes by (`Controllers/BackdoorIssuesController.cs:42`); the notification inbox is read
   for the installed principal (`Controllers/BackdoorNotificationsController.cs:28`).
-- Finance-wide routes pass `FinanceAdminOrAdmin` and report routes pass Expenses' own
+- Finance-wide routes pass `FinancePolicies.Manage` and report routes pass Expenses' own
   `ExpenseReportView` policy, both through `IAuthorizationService`
   (`Controllers/BackdoorFinanceController.cs:284`, `Controllers/BackdoorFinanceController.cs:287`);
   a refusal is a 403.

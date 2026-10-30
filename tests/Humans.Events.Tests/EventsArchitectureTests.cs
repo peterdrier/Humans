@@ -36,7 +36,7 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void EventsAdminSurfaces_RequireEventsAdminOrAdminPolicy()
+    public void EventsAdminSurfaces_RequireEventsReadPolicy()
     {
         var controllers = new[]
         {
@@ -51,8 +51,8 @@ public class EventsArchitectureTests
             var authorize = controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             authorize.Should().NotBeNull(
                 because: $"{controller.Name} is an Events administration surface");
-            authorize.Policy.Should().Be(PolicyNames.EventsAdminOrAdmin,
-                because: $"{controller.Name} is an Events administration surface");
+            authorize.Policy.Should().Be(EventsPolicies.Read,
+                because: $"{controller.Name} is an Events administration surface Board may read");
         }
     }
 

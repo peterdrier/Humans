@@ -88,12 +88,4 @@ public class AuditActionRegistryTests
         act.Should().Throw<InvalidOperationException>().WithMessage($"*{AuditActionDefinition.NameMaxLength}*");
     }
 
-    [HumansFact]
-    public void TheLegacyCatalogDeclaresOnlyEnumValues_EachOnce()
-    {
-        var names = new LegacyAuditActions().Actions.Select(a => a.Name).ToList();
-
-        names.Should().BeSubsetOf(Enum.GetNames<AuditAction>());
-        names.Should().OnlyHaveUniqueItems();
-    }
 }

@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Hosting;
@@ -60,14 +61,14 @@ public sealed class Section :
         new("Expenses", [
             // The finance-admin door to the review queue, so it keeps the admin policy. Members reach the same page
             // from /Expenses.
-            new("Review", "Expenses", "Review", null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin)
+            new("Review", "Expenses", "Review", null, null, "fa-solid fa-magnifying-glass-dollar", FinancePolicies.Manage)
         ])
     ];
 
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
         new AdminTile("expenses.reports", "Expense reports", "fa-solid fa-receipt", ReportsAsync,
-            Policy: PolicyNames.FinanceAdminOrAdmin, Weight: 130)
+            Policy: FinancePolicies.Read, Weight: 130)
     ];
 
     private static async ValueTask<AdminTileValue?> ReportsAsync(IServiceProvider sp, CancellationToken ct)

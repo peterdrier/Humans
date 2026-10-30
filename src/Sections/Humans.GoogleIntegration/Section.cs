@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
@@ -142,7 +143,7 @@ public sealed class Section :
     [
         new("Google", [
             new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),
-            new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     PolicyNames.TeamsAdminBoardOrAdmin),
+            new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     TeamsPolicies.Read),
             new("All domain groups",     "Google", "AllGroups",    null, null, "fa-solid fa-globe",             PolicyNames.AdminOnly),
             new("Workspace accounts",    "Google", "Accounts",     null, null, "fa-solid fa-at",                PolicyNames.AdminOnly),
             new("Sync outbox",           "Google", "SyncOutbox",   null, null, "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),

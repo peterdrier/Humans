@@ -1,3 +1,4 @@
+using Humans.Cantina.Contracts;
 using Humans.Base.Extensions;
 using Humans.Cantina.Services;
 using Humans.Base.Authorization;
@@ -14,7 +15,7 @@ namespace Humans.Cantina.Controllers;
 /// Allergy and intolerance details (health data) render only for the one page load that follows an audited reveal
 /// POST, handed over through TempData the way the IBAN reveal does; the aggregates and dietary columns always show.
 /// </summary>
-[Authorize(Policy = PolicyNames.CantinaAdminOrAdmin)]
+[Authorize(Policy = CantinaPolicies.Read)]
 [Route("Cantina")]
 internal sealed class CantinaController : HumansControllerBase
 {
@@ -56,6 +57,7 @@ internal sealed class CantinaController : HumansControllerBase
     }
 
     [HttpGet("Roster/Csv")]
+    [Authorize(Policy = CantinaPolicies.Manage)]
     public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
         var actorUserId = GetCurrentUserId();
@@ -95,6 +97,7 @@ internal sealed class CantinaController : HumansControllerBase
     }
 
     [HttpGet("Roster/Day/Csv")]
+    [Authorize(Policy = CantinaPolicies.Manage)]
     public async Task<IActionResult> DayCsv(int? dayOffset = null, CancellationToken ct = default)
     {
         var actorUserId = GetCurrentUserId();

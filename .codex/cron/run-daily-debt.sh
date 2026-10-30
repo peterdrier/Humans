@@ -195,7 +195,7 @@ main() {
 
   local log_file="$LOG_DIR/debt-$run_date.log"
   LOG_FILE="$log_file" # used by log()/die() below
-  local run_report=""
+  local run_report="" worker_reason=""
 
   mkdir -p "$LOG_DIR"
 
@@ -478,8 +478,17 @@ main() {
   log "starting one Codex session, work deadline $work_deadline, dangerous mode $CODEX_DANGEROUS"
   export WORK_DIR CODEX_MODEL CODEX_EFFORT CODEX_DANGEROUS
   local codex_exit=0
+  : >"$last_message_file"
+  printf '{"reason":"Goal client stopped without diagnostic details"}\n' >"$last_message_file.status.json"
   python3 "$script_dir/run-goal.py" "$prompt_file" "$last_message_file" "$work_deadline" \
     >>"$log_file" 2>&1 || codex_exit=$?
+  if [[ -f "$last_message_file.status.json" ]]; then
+    worker_reason="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["reason"])' "$last_message_file.status.json")"
+    log "Worker outcome: $worker_reason"
+  else
+    worker_reason="Goal client exited with status $codex_exit without diagnostic details; see $log_file"
+    log "Worker outcome: $worker_reason"
+  fi
   commits_made="$(git rev-list --count "$head_before..HEAD")"
   local goal_blocked=false
   if (( codex_exit == 2 )); then
@@ -539,11 +548,15 @@ main() {
   # ---- capture codex's run report -----------------------------------------
   # Saved by the goal client outside WORK_DIR, not part of the tested tree.
   if [[ "$goal_blocked" == true ]]; then
+    local worker_report
+    worker_report="$(cat "$last_message_file")"
     {
       printf '## Automated goal warning\n\n'
-      printf 'The Codex goal stopped blocked. This draft preserves committed work for review; the goal did not complete and no cumulative agent report was produced.\n\n'
+      printf 'The Codex goal stopped blocked. This draft preserves committed work for review; the goal did not complete.\n\n'
+      printf 'Reason: %s\n\n' "$worker_reason"
       printf 'Committed changes (from Git):\n\n'
       git log --reverse --format='- %h %s' "$head_before..$head_after"
+      printf '\n%s\n' "$worker_report"
     } >"$last_message_file"
   fi
   run_report="$(cat "$last_message_file")"
@@ -789,7 +802,7 @@ write_summary() {
   # Assigns main()'s local through dynamic scoping, so the EXIT trap there
   # knows a summary already went out and does not print a second one.
   summary_written=1
-  log "SUMMARY date=$run_date exit_reason=$reason commits=$commits build=$build test=$test pr=$pr"
+  log "SUMMARY date=$run_date exit_reason=$reason commits=$commits build=$build test=$test pr=$pr worker_reason=${worker_reason:-not-started}"
 }
 
 prune_old_logs() {

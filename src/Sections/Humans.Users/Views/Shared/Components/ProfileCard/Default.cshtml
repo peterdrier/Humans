@@ -24,7 +24,7 @@
                 {
                     <span class="text-muted me-2">@Model.Pronouns</span>
                 }
-                @if ((await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded
+                @if ((await AuthService.AuthorizeAsync(User, UsersPolicies.Read)).Succeeded
                     && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
                 {
                     <span class="@Model.PreferredLanguage.ToFlagClass()" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>

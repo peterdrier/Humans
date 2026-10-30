@@ -253,7 +253,7 @@ public async Task SuspendAsync(Guid userId, Guid actorId, string reason, Cancell
     _store.Upsert(userId);
 
     await _auditLog.LogAsync(               // then audit (self-persisting)
-        AuditAction.ProfileSuspended, nameof(User), userId,
+        UsersAuditActions.MemberSuspended, nameof(User), userId,
         $"Suspended (was={previousState}): {reason}",   // the reason lives here, not on the row
         actorId);
 }
@@ -394,7 +394,7 @@ Most of these compositions are Shell chrome — nav, dashboard tiles, jobs, poli
 | `ISectionDataMigrations` | Operator-run legacy → new data copies (`DataMigration`: key, title, status with every pending row, apply) | Debug's `DataMigrationService` — `/Debug/DataMigrations` (review → apply, audited) and the anonymous counts-only `/api/data-migrations` |
 | `ISectionEndpoints` | Endpoint mapping (SignalR hubs, etc.) | endpoint-mapping time, against `IEndpointRouteBuilder` — necessarily later than `ISection.Register`, which has neither an `IHostEnvironment` nor a route builder to hand a section |
 | `ISectionRoles` | Grantable roles (`RoleDefinition`: name `<Section><Role>`, title, blurb, icon, `OpensAdminShell`, `FormerNames`) | Auth's `RoleCatalog` singleton — role assignment, the Staff page, Guide heading titles, dev personas, and the Shell's `AnyAdminRole` policy (every role with `OpensAdminShell`) |
-| `ISectionPolicies` | Authorization policy registration | `Configure<AuthorizationOptions>` (additive — policy *names* stay shared vocabulary in `PolicyNames`; only registration moves) |
+| `ISectionPolicies` | Authorization policy registration | `Configure<AuthorizationOptions>` (additive — a section's own policy names live on its `<Section>Policies` Contracts class; `PolicyNames` keeps the cross-section ones) |
 | `ISectionAnnotations` | Per-section facts for the published catalog (guide page, agent doc key, issue queue) | `SectionCatalogBuilder` → `ISectionCatalog`, rendered at `/Debug/Sections` |
 | `ISectionSettings` | `/Settings` tabs (key, label, view component, policy) | Settings' own `SettingsTabComposition.ComposeAsync` (filters each tab by its `Policy` for the current user; rendered by `SettingsTabsViewComponent`) |
 | `ISectionAccessMatrix` | Help-widget access-matrix rows for the section's pages | `AccessMatrixViewComponent` and the agent's preloaded access-matrix corpus; entries carry an explicit `AccessMatrixData.Order` |

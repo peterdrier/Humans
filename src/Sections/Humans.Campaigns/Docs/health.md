@@ -75,7 +75,7 @@ leaf folded in and the notice copy gained a resx set.
 - Every admin mutation writes an audit entry attributed to the acting admin after its save
   (`CampaignService.cs:61`, `:161`, `:283`, `:345`, `:364`, `:457`, `:530`).
 - Admin holds every page and mutation except Detail and vendor generation, which are
-  `TicketAdminOrAdmin` (`CampaignController.cs:126`, `:179`).
+  `TicketsPolicies.Manage` (`CampaignController.cs:126`, `:179`).
 - Grants are exported per user and hard-deleted on erasure (`CampaignService.cs:644`, `:670`).
 
 ## Seams

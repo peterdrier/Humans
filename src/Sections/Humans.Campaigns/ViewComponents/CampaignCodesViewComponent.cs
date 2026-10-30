@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Campaigns.Contracts;
@@ -8,7 +9,7 @@ namespace Humans.Campaigns.ViewComponents;
 
 /// <summary>
 /// Renders only for <see cref="ProfileCardViewMode.Admin"/> to a viewer passing the host page's
-/// <see cref="PolicyNames.HumanAdminBoardOrAdmin"/>. Every grant, whatever the campaign's status.
+/// <see cref="UsersPolicies.Read"/>. Every grant, whatever the campaign's status.
 /// </summary>
 public sealed class CampaignCodesViewComponent(
     ICampaignService campaigns,
@@ -17,7 +18,7 @@ public sealed class CampaignCodesViewComponent(
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Admin
-            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded)
+            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)).Succeeded)
             return Content(string.Empty);
 
         var grants = await campaigns.GetAllGrantsForUserAsync(userId, HttpContext.RequestAborted);

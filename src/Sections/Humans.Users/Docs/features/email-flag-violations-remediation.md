@@ -88,7 +88,7 @@ New service surface (`IUserEmailService`):
 | `ClearPrimaryAsync(userId, userEmailId, actorUserId, ct)` | Drop `IsPrimary` from a single row. Returns false if row not found or not flagged. **Intentionally bypasses `EnsurePrimaryInvariantAsync`** — leaves the user with zero primary so the operator picks the new one explicitly. |
 | `GetEmailFlagViolationsAsync(ct)` | Returns the list of users whose verified-primary count != 1 among verified emails, sorted by burner name. |
 
-New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleared`.
+New audit action: `UsersAuditActions.UserEmailPrimaryCleared` (`UserEmailGoogleCleared` never got a writer and is no longer declared).
 
 ## Routes
 

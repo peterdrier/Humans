@@ -119,7 +119,7 @@ public sealed class Section :
     [
         new("City Planning", [
             // The page also admits city-planning team members; they reach it from the member-side City page.
-            new("Barrio map", "CityPlanning", "Admin", null, null, "fa-solid fa-map", PolicyNames.CampAdminOrAdmin)
+            new("Barrio map", "CityPlanning", "Admin", null, null, "fa-solid fa-map", CampsPolicies.Manage)
         ])
     ];
 

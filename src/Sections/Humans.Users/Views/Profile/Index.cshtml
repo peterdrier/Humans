@@ -11,7 +11,7 @@
             <h1>@(Model.IsOwnProfile ? Localizer["Users_Profile_Title"] : Model.DisplayName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
-                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
+                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
                     <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </a>
             </div>
@@ -51,7 +51,7 @@
         @{
             var cardViewMode = Model.IsOwnProfile
                 ? ProfileCardViewMode.Self
-                : (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded
+                : (await AuthService.AuthorizeAsync(User, Humans.Teams.Contracts.TeamsPolicies.Read)).Succeeded
                     ? ProfileCardViewMode.Admin
                     : ProfileCardViewMode.Public;
         }

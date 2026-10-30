@@ -18,7 +18,7 @@ namespace Humans.Budget.Controllers;
 /// <summary>
 /// Shares the <c>/Finance</c> route prefix with Finance's <c>FinanceController</c>; the action templates are disjoint.
 /// </summary>
-[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+[Authorize(Policy = FinancePolicies.Read)]
 [Route("Finance")]
 internal sealed class BudgetAdminController(
     IBudgetManagement budgetService,
@@ -142,6 +142,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Years/{id:guid}/SyncDepartments")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncDepartments(Guid id)
     {
@@ -166,6 +167,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Years/Create")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateYear(string year, string name)
     {
@@ -193,6 +195,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Years/{id:guid}/UpdateStatus")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateYearStatus(Guid id, [BindRequired] BudgetYearStatus status)
     {
@@ -217,6 +220,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Years/{id:guid}/Update")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateYear(Guid id, string year, string name, string? vendorEventId)
     {
@@ -235,6 +239,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Years/{id:guid}/Delete")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteYear(Guid id)
     {
@@ -253,6 +258,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Groups/Create")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, [BindRequired] bool isRestricted)
     {
@@ -280,6 +286,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Groups/{id:guid}/Update")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, [BindRequired] bool isRestricted)
     {
@@ -307,6 +314,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Groups/{id:guid}/Delete")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteGroup(Guid id)
     {
@@ -328,6 +336,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Categories/Create")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, [BindRequired] decimal allocatedAmount,
         [BindRequired] ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
@@ -362,6 +371,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Categories/{id:guid}/Update")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateCategory(Guid id, string name, [BindRequired] decimal allocatedAmount,
         [BindRequired] ExpenditureType expenditureType)
@@ -396,6 +406,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Categories/{id:guid}/Delete")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteCategory(Guid id, Guid budgetYearId)
     {
@@ -417,6 +428,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("LineItems/Create")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate)
@@ -453,6 +465,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("LineItems/{id:guid}/Update")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLineItem(Guid id, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate, Guid budgetCategoryId)
@@ -489,6 +502,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("LineItems/{id:guid}/Delete")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteLineItem(Guid id, Guid budgetCategoryId)
     {
@@ -510,6 +524,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("Years/{id:guid}/EnsureTicketingGroup")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EnsureTicketingGroup(Guid id)
     {
@@ -534,6 +549,7 @@ internal sealed class BudgetAdminController(
     }
 
     [HttpPost("TicketingProjection/{groupId:guid}/Update")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, TicketingProjectionUpdateForm form)
     {
@@ -573,6 +589,7 @@ internal sealed class BudgetAdminController(
         return RedirectToAction(nameof(YearDetail), new { id = form.BudgetYearId });
     }
     [HttpPost("TicketingBudget/{yearId:guid}/Sync")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncTicketingBudget(Guid yearId)
     {

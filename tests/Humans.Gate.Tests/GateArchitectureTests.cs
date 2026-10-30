@@ -51,7 +51,7 @@ public class GateArchitectureTests
             .Policy.Should().Be(PolicyNames.ScannerAccess);
 
         // …and every POST must carry its own stricter policy: GateAdmit for the
-        // terminal writes, TicketAdminOrAdmin for the admin pages. A new action
+        // terminal writes, TicketsPolicies.Manage for the admin pages. A new action
         // that forgets its policy would silently ride on the read-only gate.
         var posts = typeof(GateController)
             .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
@@ -63,7 +63,7 @@ public class GateArchitectureTests
         {
             var expected = post.Name is nameof(GateController.Admin)
                     or nameof(GateController.SetStaffPin) or nameof(GateController.ResetStaffPin)
-                ? PolicyNames.TicketAdminOrAdmin
+                ? TicketsPolicies.Manage
                 : PolicyNames.GateAdmit;
             var attribute = post.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
             attribute.Should().NotBeNull(

@@ -23,7 +23,7 @@
                 <i class="fa-solid fa-file-csv fa-3x text-success mb-3"></i>
                 <h5>CSV Export</h5>
                 <p class="text-muted">All approved events in CSV format. One row per occurrence for recurring events. UTF-8 with BOM for Excel compatibility.</p>
-                <a asp-action="DownloadCsv" class="btn btn-outline-success">
+                <a authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" asp-action="DownloadCsv" class="btn btn-outline-success">
                     <i class="fa-solid fa-download me-1"></i>Download CSV
                 </a>
             </div>

@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Holded Unmatched Documents</h1>
     <div class="d-flex gap-2">
-        <form asp-action="RunHoldedSync" method="post" class="d-inline">
+        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="RunHoldedSync" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-primary">
                 <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Now

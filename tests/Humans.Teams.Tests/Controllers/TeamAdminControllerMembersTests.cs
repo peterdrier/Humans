@@ -506,7 +506,7 @@ public class TeamAdminControllerMembersTests
 
     // The role-management toggle asks the TeamsAdminOrAdmin policy; answer it from the principal's role claims.
     private static void StubTeamsAdminOrAdminPolicy(IAuthorizationService authorization) =>
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.TeamsAdminOrAdmin)
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Manage)
             .Returns(call =>
             {
                 var user = call.Arg<ClaimsPrincipal>();

@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
@@ -38,12 +39,12 @@ public class EarlyEntryArchitectureTests
     }
 
     [HumansFact]
-    public void RosterRequiresShiftDashboardAccess()
+    public void RosterRequiresShiftsRead()
     {
         var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
 
         authorize.Should().NotBeNull();
-        authorize.Policy.Should().Be(PolicyNames.ShiftDashboardAccess);
+        authorize.Policy.Should().Be(ShiftsPolicies.Read);
     }
 }
 

@@ -56,7 +56,7 @@ longer needs a redeploy.
 2. The checkboxes, amount boxes and the per-transfer cap field belong to a standalone `#sepaForm`
    via the HTML5 `form` attribute — each row already carries an Unbind form and forms cannot nest.
    The cap field is prefilled from `Sepa:MaxPayoutPerTransfer` but is editable per batch.
-3. `POST /Finance/Sepa/Generate` (`FinanceAdminOrAdmin`, antiforgery) parses the amounts and the cap
+3. `POST /Finance/Sepa/Generate` (`FinancePolicies.Manage`, antiforgery) parses the amounts and the cap
    **invariantly** rather than through model binding, which would use the request culture and read
    `12.34` as `1234` under a comma-decimal locale. An unparseable or non-positive cap refuses the
    whole batch before any selection is looked at.
@@ -72,7 +72,7 @@ longer needs a redeploy.
 5. `SepaPaymentFileBuilder.Build` enforces the file-level rules, serializes, and validates against
    the embedded official XSD. It is pure — no IO, no clock, no configuration.
 6. The file, its SHA-256 checksum, the timestamp and the generating admin are persisted with the
-   transfer rows in one save; one `AuditAction.SepaPayoutTransfer` entry per transfer follows, then
+   transfer rows in one save; one `FinanceAuditActions.SepaPayoutTransfer` entry per transfer follows, then
    one `sepa_payout_generated` email per transfer to the bound member — amount and masked IBAN, in
    their preferred language, `MessageCategory.System` (peterdrier/Humans#1820). Both come after the
    save so a rolled-back file leaves neither a ghost audit row nor a promise of money in the outbox.
@@ -154,7 +154,7 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    reconcile in Holded.
    If the save itself fails after Holded accepted the postings, the money that moved is audited
    (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
-9. One `AuditAction.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
+9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
    resumed, and whether the reconcile landed.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
@@ -205,14 +205,14 @@ ledger, so paying one would post against a document that does not exist for acco
 ### Withdrawing a transfer
 
 When the bank cancels a transfer by hand before execution (the 2026-10-18 file paid three inflated
-balances), **Withdraw** on the row (`POST /Finance/Sepa/Withdraw`, `FinanceAdminOrAdmin`,
+balances), **Withdraw** on the row (`POST /Finance/Sepa/Withdraw`, `FinancePolicies.Manage`,
 antiforgery, confirm dialog naming member, amount and file) stamps `WithdrawnAt` and the acting admin.
 Nothing is deleted. It is allowed only while the row is unbooked: no `BookedAt`, no
 `HoldedBankMovementId`, no `HoldedPaymentRefs` — a booked row shows the reason in place of the
 button. A withdrawn row drops out of the sweep, Book, Book file, Process and the "needs a human"
 panel, no longer counts toward the file's "every transfer paired" gate, and no longer blocks the
 account's payability on `/Finance/Creditors`. The file card counts it separately. One
-`AuditAction.SepaPayoutTransferWithdrawn` entry, one `sepa_payout_withdrawn` email to the member in
+`FinanceAuditActions.SepaPayoutTransferWithdrawn` entry, one `sepa_payout_withdrawn` email to the member in
 their language saying the transfer announced on the file's date was cancelled before execution,
 and the Article 15 slice shows `WithdrawnAt`.
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |

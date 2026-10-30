@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
@@ -59,7 +60,7 @@ public sealed class OutboxCardViewComponentTests
     private OutboxCardViewComponent Build(bool authorized)
     {
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.HumanAdminBoardOrAdmin)
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), UsersPolicies.Read)
             .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var http = new DefaultHttpContext
         {

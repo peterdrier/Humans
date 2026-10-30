@@ -25,7 +25,7 @@
         return;
     }
 
-    <partial name="_ExportCard" model="Model.ExportForm" />
+    <div authorize-policy="@Humans.Shifts.Contracts.ShiftsPolicies.Manage"><partial name="_ExportCard" model="Model.ExportForm" /></div>
 
     <div class="card mb-4">
         <div class="card-body">

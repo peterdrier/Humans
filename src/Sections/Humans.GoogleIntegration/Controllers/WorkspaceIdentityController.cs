@@ -35,7 +35,7 @@ internal sealed class WorkspaceIdentityController(
     }
 
     [HttpPost("Admin/{id:guid}/WorkspaceEmail")]
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
+    [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSet(Guid id, Guid emailId, CancellationToken ct)
     {

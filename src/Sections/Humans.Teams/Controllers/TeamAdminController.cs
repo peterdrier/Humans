@@ -404,7 +404,7 @@ internal sealed class TeamAdminController(
         var memberUserIds = members.Select(m => m.UserId).ToList();
         var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
 
-        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
+        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
 
         var teamMembers = members.Select(m => new TeamMemberViewModel
         {
@@ -508,7 +508,7 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded;
+        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
         var priorities = ParseRolePriorities(model.Priorities);
         var result = priorities is null
             ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
@@ -571,7 +571,7 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        if (!(await AuthorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminOrAdmin)).Succeeded)
+        if (!(await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded)
         {
             return Forbid();
         }

@@ -61,7 +61,7 @@
         <div class="card">
             <div class="card-header">@(Model.HasPassword ? "Rotate password" : "Set password")</div>
             <div class="card-body">
-                <form asp-controller="TicketsGateAdmin" asp-action="SetPassword" method="post"
+                <form authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Manage" asp-controller="TicketsGateAdmin" asp-action="SetPassword" method="post"
                       class="d-flex gap-2">
                     <input type="password" name="password" class="form-control" style="max-width: 280px;"
                            placeholder="New password" autocomplete="new-password" required />

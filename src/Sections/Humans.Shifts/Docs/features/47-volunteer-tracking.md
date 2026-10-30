@@ -90,7 +90,7 @@ Summary:
 
 **Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
-`AuditAction` values: `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (Three additional values — `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved` — exist as positional reservations from the removed day-off feature.)
+Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (`VolunteerDayBlocked`, `VolunteerDayUnblocked` and `VolunteerOwnBlockedDaysSaved` from the removed day-off feature are no longer declared.)
 
 ## Workflows
 
@@ -119,7 +119,7 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 ### Write paths
 
-- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` / `SetAvailabilityDay` / `ClearAvailabilityDay` — all gated by the `VolunteerTrackingWrite` policy (Admin or ShiftsAdmin).
+- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` / `SetAvailabilityDay` / `ClearAvailabilityDay` — all gated by the `ShiftsPolicies.ManageVolunteers` policy (Admin or ShiftsAdmin).
 
 All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrackingRepository`; the service, not the controller, writes the audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
 
@@ -136,20 +136,20 @@ An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator d
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/Shifts/Dashboard/VolunteerTracking` | GET | `ShiftDashboardAccess` | Heatmap page |
-| `/Shifts/Dashboard/VolunteerTracking/ExportXlsx` | GET | `ShiftDashboardAccess` | Export the tracking data (department/period/date-range filters) as an .xlsx file |
-| `/Shifts/Dashboard/VolunteerTracking/SetCampSetup` | POST | `VolunteerTrackingWrite` | Set `BarrioSetupStartDate` for a volunteer |
-| `/Shifts/Dashboard/VolunteerTracking/ClearCampSetup` | POST | `VolunteerTrackingWrite` | Null `BarrioSetupStartDate` |
-| `/Shifts/Dashboard/VolunteerTracking/SetDayOff` | POST | `VolunteerTrackingWrite` | Mark a single day off for a volunteer (with optional reason) |
-| `/Shifts/Dashboard/VolunteerTracking/ClearDayOff` | POST | `VolunteerTrackingWrite` | Clear a previously-marked day off |
-| `/Shifts/Dashboard/VolunteerTracking/SetAvailabilityDay` | POST | `VolunteerTrackingWrite` | Coordinator marks a build-day offset available for a volunteer |
-| `/Shifts/Dashboard/VolunteerTracking/ClearAvailabilityDay` | POST | `VolunteerTrackingWrite` | Coordinator clears a declared-available build-day offset |
+| `/Shifts/Dashboard/VolunteerTracking` | GET | `ShiftsPolicies.Manage` | Heatmap page |
+| `/Shifts/Dashboard/VolunteerTracking/ExportXlsx` | GET | `ShiftsPolicies.Manage` | Export the tracking data (department/period/date-range filters) as an .xlsx file |
+| `/Shifts/Dashboard/VolunteerTracking/SetCampSetup` | POST | `ShiftsPolicies.ManageVolunteers` | Set `BarrioSetupStartDate` for a volunteer |
+| `/Shifts/Dashboard/VolunteerTracking/ClearCampSetup` | POST | `ShiftsPolicies.ManageVolunteers` | Null `BarrioSetupStartDate` |
+| `/Shifts/Dashboard/VolunteerTracking/SetDayOff` | POST | `ShiftsPolicies.ManageVolunteers` | Mark a single day off for a volunteer (with optional reason) |
+| `/Shifts/Dashboard/VolunteerTracking/ClearDayOff` | POST | `ShiftsPolicies.ManageVolunteers` | Clear a previously-marked day off |
+| `/Shifts/Dashboard/VolunteerTracking/SetAvailabilityDay` | POST | `ShiftsPolicies.ManageVolunteers` | Coordinator marks a build-day offset available for a volunteer |
+| `/Shifts/Dashboard/VolunteerTracking/ClearAvailabilityDay` | POST | `ShiftsPolicies.ManageVolunteers` | Coordinator clears a declared-available build-day offset |
 
 ## Related
 
 - [`src/Sections/Humans.Shifts/Docs/Shifts.md`](../Shifts.md) — section invariant doc; the `VolunteerBuildStatus` sub-section under § Data Model is the canonical entity reference.
 - [`src/Sections/Humans.Shifts/Docs/features/shift-management.md`](shift-management.md) — base rotas / shifts / signups model; the gap algorithm reads `ShiftSignup` rows it produces.
-- [`src/Sections/Humans.Shifts/Docs/features/shift-signup-visibility.md`](shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `VolunteerTrackingWrite` gate, not the public-signup-list gate).
+- [`src/Sections/Humans.Shifts/Docs/features/shift-signup-visibility.md`](shift-signup-visibility.md) — site-wide signup-visibility policy; the tracking page does not reuse that policy (its access is the new `ShiftsPolicies.ManageVolunteers` gate, not the public-signup-list gate).
 - [`src/Sections/Humans.Tickets/Docs/features/event-participation.md`](../../../Humans.Tickets/Docs/features/event-participation.md) — `EventParticipation.Status` of `Ticketed` / `Attended` is the pre-filter for the declared-but-unbooked cohort; `NotAttending` also drops a user from Cohort A.
 - [`memory/architecture/display-sort-in-controllers.md`](../../../../../memory/architecture/display-sort-in-controllers.md) — why the row sort lives in `VolunteerTrackingController`, not the service or repo.
 - [`memory/architecture/no-cross-section-ef-joins.md`](../../../../../memory/architecture/no-cross-section-ef-joins.md) — why `VolunteerBuildStatus.UserId` is a bare `Guid` with no nav.

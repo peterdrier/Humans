@@ -16,7 +16,7 @@
             <a asp-action="Birthdays" class="btn btn-outline-secondary">@Localizer["Teams_Birthdays_Title"]</a>
             <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Teams_Map_Title"]</a>
             <a asp-action="Tree" class="btn btn-outline-secondary">@Localizer["Teams_Tree_Title"]</a>
-            @if ((await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded)
+            @if ((await AuthService.AuthorizeAsync(User, TeamsPolicies.Read)).Succeeded)
             {
                 <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["Teams_Summary"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
                 <a asp-controller="Google" asp-action="Sync" class="btn btn-outline-info">@Localizer["Teams_SyncStatus"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>

@@ -118,7 +118,7 @@
         </div>
     </div>
 
-    <form asp-action="Decide" method="post" class="mt-3">
+    <form authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Manage" asp-action="Decide" method="post" class="mt-3">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@row.Id" />
         <div class="mb-3">
@@ -159,7 +159,7 @@ else if (row.Status == TicketTransferStatus.Pending)
         </div>
     }
 
-    <form asp-action="Decide" method="post" class="mt-3">
+    <form authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Manage" asp-action="Decide" method="post" class="mt-3">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@row.Id" />
         <div class="mb-3">

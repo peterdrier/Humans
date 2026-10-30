@@ -24,7 +24,7 @@ public sealed class CampComplianceAccessHandlerTests
     [HumansTheory]
     [InlineData(CampsRoles.CampsAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.Board, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
     [InlineData(ShiftsRoles.ShiftsAdmin, false)]
     public async Task ChecksCorrectRoles(string role, bool expected)

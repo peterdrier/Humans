@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,10 +7,10 @@ using Humans.Users.Contracts;
 namespace Humans.Camps.Controllers;
 
 /// <summary>
-/// Split from <see cref="CampAdminController"/> so the broader <see cref="PolicyNames.CampComplianceAccess"/> can
+/// Split from <see cref="CampAdminController"/> so the broader <see cref="CampsPolicies.Compliance"/> can
 /// gate it while camp management stays CampAdmin-only.
 /// </summary>
-[Authorize(Policy = PolicyNames.CampComplianceAccess)]
+[Authorize(Policy = CampsPolicies.Compliance)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
 internal sealed class CampComplianceController(
