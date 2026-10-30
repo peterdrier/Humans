@@ -46,8 +46,14 @@ public sealed class HoldedWriteTests
         ]);
         _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocumentDto
         {
-            Id = "d1", DocNumber = "C-1", Subtotal = 50m, Tax = 0m, Total = 50m,
-            PaymentsTotal = paid, PaymentsPending = 50m - paid, Notes = notes,
+            Id = "d1",
+            DocNumber = "C-1",
+            Subtotal = 50m,
+            Tax = 0m,
+            Total = 50m,
+            PaymentsTotal = paid,
+            PaymentsPending = 50m - paid,
+            Notes = notes,
             ApprovedAt = approved ? Now : null,
         });
     }
@@ -77,7 +83,13 @@ public sealed class HoldedWriteTests
             .Returns("d1");
         _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocumentDto
         {
-            Id = "d1", DocNumber = "C-1", Subtotal = 50m, Tax = 0m, Total = 50m, PaymentsTotal = 0m, PaymentsPending = 50m,
+            Id = "d1",
+            DocNumber = "C-1",
+            Subtotal = 50m,
+            Tax = 0m,
+            Total = 50m,
+            PaymentsTotal = 0m,
+            PaymentsPending = 50m,
         });
         var attachment = new HoldedAttachmentInput { FileName = "r.pdf", ContentType = "application/pdf", Content = Stream.Null };
 
