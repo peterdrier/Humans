@@ -15,14 +15,16 @@ internal sealed class HoldedWrite(
     ILogger<HoldedWrite> logger) : IHoldedWrite
 {
     private const string CreditorType = "creditor";
+    private const int CreditorRangeFrom = 40000000;
+    private const int CreditorRangeTo = 41999999;
 
     public async Task<HoldedCreditorContactOutcome> EnsureCreditorContactAsync(
-        string legalName, string? tradeName, string? iban, string customId, CancellationToken ct = default)
+        string legalName, string? tradeName, string? iban, CancellationToken ct = default)
     {
-        var contacts = await client.ListContactsAsync(ct);
-        var existing = contacts.FirstOrDefault(c => string.Equals(c.CustomId, customId, StringComparison.Ordinal))
-            ?? contacts.FirstOrDefault(c => string.Equals(c.Type, CreditorType, StringComparison.Ordinal)
-                && string.Equals(c.Name, legalName, StringComparison.Ordinal));
+        // Any type: contacts made by hand in Holded's UI are often "supplier", and a twin is the failure to avoid.
+        var existing = (await client.ListContactsAsync(ct)).FirstOrDefault(c =>
+            c.SupplierAccountNum is >= CreditorRangeFrom and <= CreditorRangeTo
+            && string.Equals(c.Name, legalName, StringComparison.Ordinal));
         if (existing is not null)
             return new HoldedCreditorContactOutcome(RequireAccountNum(existing), Created: false);
 
@@ -30,7 +32,6 @@ internal sealed class HoldedWrite(
         {
             Name = legalName,
             TradeName = tradeName,
-            CustomId = customId,
             Type = CreditorType,
             Iban = iban,
         }, ct);
@@ -94,11 +95,14 @@ internal sealed class HoldedWrite(
         if ((await repo.GetAccountsAsync(ct)).Any(a => a.Number == number))
             return false;
 
-        await client.CreateExpenseAccountAsync(number, name, ct);
+        // The mirror is as old as the last sync; an account made in Holded's UI since then must not get a twin.
+        var exists = (await client.ListExpenseAccountsAsync(ct)).Any(a => a.AccountNum == number);
+        if (!exists)
+            await client.CreateExpenseAccountAsync(number, name, ct);
         var now = clock.GetCurrentInstant();
         var chart = await client.ListAccountingAccountsAsync(ct);
         await repo.UpsertAccountsAsync(chart.Select(a => Service.ToAccountEntity(a, now)).ToList(), now, ct);
-        return true;
+        return !exists;
     }
 
     public async Task<HoldedDeleteOutcome> DeletePurchaseDocumentAsync(

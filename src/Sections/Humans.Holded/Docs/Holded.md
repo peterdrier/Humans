@@ -127,18 +127,22 @@ Ensure-style writes for other sections, each `[ExternalWrite]`: the caller passe
 (account numbers, names, the text it wrote), the call finds the Holded ids it needs inside itself,
 is safe to repeat, and returns an outcome, never a Holded id.
 
-- `EnsureCreditorContactAsync` — contact by `custom_id`, else exact legal name among `creditor`
-  contacts, else POST; returns `supplier_record.num`. Never PUTs a contact.
+- `EnsureCreditorContactAsync` — contact by exact legal name among contacts with an account in
+  40000000–41999999, whatever their type (hand-made contacts are `supplier`), else POST; returns
+  `supplier_record.num`. Never PUTs a contact. No `custom_id` lookup until a live write confirms
+  v2's create stores it.
 - `EnsurePurchaseDocumentAsync` — contact by account number (live contacts list); document by
-  contact + description + total + notes (list, then GET for notes); else created with
-  `items[].account` = the chart mirror's Holded id for the expense account number. Attaches on create,
-  or when the caller says its earlier attachment did not go up: Holded's v2 purchase GET does not
-  report attachments (unverified against the live API; the caller-supplied flag covers the gap).
+  contact + description + total + notes (list, then GET for notes); else created with the line's
+  `account` = the chart mirror's Holded id for the expense account number (the same id
+  `expenses-accounts` uses). Notes are the document's Humans key and must name one expense line, or
+  identical lines collapse into one document. Attaches on create, or when the caller says its earlier
+  attachment did not go up: Holded's v2 purchase GET has no attachment field, so the caller remembers.
   Approves a draft.
-- `EnsureExpenseAccountAsync` — chart mirror by number, else POST `expenses-accounts` and refresh the
-  chart mirror.
+- `EnsureExpenseAccountAsync` — chart mirror by number, else Holded's live `expenses-accounts` list,
+  else POST; the chart mirror is refreshed whenever it lacked the number.
 - `DeletePurchaseDocumentAsync` — finds the document live (contact, description, total, date);
-  refuses when its notes differ or it carries a payment; deletes, then runs the trailing ledger sync.
+  refuses when its notes differ or it carries a payment; deletes, then runs the trailing ledger sync
+  (an older document's lines leave the mirror at the nightly balance check's re-pull).
 - `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
   outcome says whether Holded confirmed it.
 

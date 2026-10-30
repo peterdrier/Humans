@@ -29,7 +29,7 @@ public sealed class HoldedWriteTests
         _write = new HoldedWrite(_client, _repo, _holded, new FakeClock(Now), NullLogger<HoldedWrite>.Instance);
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
         [
-            new HoldedContactDto { Id = "c1", Name = "Ana García", Type = "creditor", SupplierAccountNum = 41000012 },
+            new HoldedContactDto { Id = "c1", Name = "Ana García", SupplierAccountNum = 41000012 },
         ]);
     }
 
@@ -59,17 +59,17 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_reuses_a_creditor_by_name_and_creates_otherwise()
+    public async Task EnsureCreditorContact_reuses_a_creditor_range_contact_by_name_and_creates_otherwise()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
-        (await _write.EnsureCreditorContactAsync("Ana García", null, null, "user-1", ct))
+        (await _write.EnsureCreditorContactAsync("Ana García", null, null, ct))
             .Should().Be(new HoldedCreditorContactOutcome(41000012, Created: false));
 
         _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c2");
         _client.GetContactAsync("c2", Arg.Any<CancellationToken>())
             .Returns(new HoldedContactDto { Id = "c2", SupplierAccountNum = 41000013 });
-        (await _write.EnsureCreditorContactAsync("Bo Lind", "Bo", "ES00", "user-2", ct))
+        (await _write.EnsureCreditorContactAsync("Bo Lind", "Bo", "ES00", ct))
             .Should().Be(new HoldedCreditorContactOutcome(41000013, Created: true));
     }
 
@@ -117,21 +117,25 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task EnsureExpenseAccount_creates_only_a_number_missing_from_the_chart_and_refreshes_it()
+    public async Task EnsureExpenseAccount_creates_only_a_number_missing_from_the_mirror_and_from_Holded()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([new HoldedAccount { Number = 62900128, HoldedId = "a", Name = "Camp" }], Now, ct);
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
-        [
-            new HoldedAccountDto { Id = "a", Number = 62900128, Name = "Camp", Debit = 0, Credit = 0, Balance = 0 },
-            new HoldedAccountDto { Id = "b", Number = 62900129, Name = "Art", Debit = 0, Credit = 0, Balance = 0 },
-        ]);
+        var camp = new HoldedAccountDto { Id = "a", Number = 62900128, Name = "Camp", Debit = 0, Credit = 0, Balance = 0 };
+        var sound = new HoldedAccountDto { Id = "c", Number = 62900130, Name = "Sound", Debit = 0, Credit = 0, Balance = 0 };
+        var art = new HoldedAccountDto { Id = "b", Number = 62900129, Name = "Art", Debit = 0, Credit = 0, Balance = 0 };
+        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns([camp, sound], [camp, sound, art]);
+        // Made in Holded's UI since the last sync: in the live list, not in the mirror.
+        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedExpenseAccountDto { Id = "c", AccountNum = 62900130, Name = "Sound" }]);
 
         (await _write.EnsureExpenseAccountAsync(62900128, "Camp", ct)).Should().BeFalse();
+        (await _write.EnsureExpenseAccountAsync(62900130, "Sound", ct)).Should().BeFalse();
         (await _write.EnsureExpenseAccountAsync(62900129, "Art", ct)).Should().BeTrue();
 
+        await _client.Received(1).CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _client.Received(1).CreateExpenseAccountAsync(62900129, "Art", Arg.Any<CancellationToken>());
-        (await _repo.GetAccountsAsync(ct)).Select(a => a.Number).Should().Contain(62900129);
+        (await _repo.GetAccountsAsync(ct)).Select(a => a.Number).Should().Contain([62900129, 62900130]);
     }
 
     [HumansTheory]
