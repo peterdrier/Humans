@@ -144,6 +144,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   submit edits it.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
   for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction.
+- Withdrawal retains the historical expense-report id. Revocation notices link to a report and require action only when the grant was Claimed at revocation; revocation and amount-change audits describe a report as holding the grant only while Claimed.
 - Grant-level admin routes 404 for a grant of another program, so a manager of A never acts
   on B's grants (`PreapprovalsAdminController.ManageAsync`, `ControllerTests`).
 - Grant admin actions reject invalid form binding with 400 after identity, program permission
@@ -205,7 +206,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   display); `IUserEmailService.GetNotificationTargetEmailsAsync`; implements `IUserMerge`.
 - **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
-- **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`. Its sources are declared in `PreapprovalsNotificationSources` (`src/Sections/Humans.Preapprovals/PreapprovalsNotificationSources.cs`), one `NotificationSourceDefinition` each: `PreapprovalFileBy` (actionable, to the beneficiary: pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open); `PreapprovalApplicationReceived` (actionable, to the program's managers: someone applies to a pre-approval program; resolved on approve or decline); `PreapprovalGrantDecided` (informational (actionable when a revoked grant already has an expense report), to the beneficiary: pre-approval declined, revoked, or its amount changed).
+- **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`. Its sources are declared in `PreapprovalsNotificationSources` (`src/Sections/Humans.Preapprovals/PreapprovalsNotificationSources.cs`), one `NotificationSourceDefinition` each: `PreapprovalFileBy` (actionable, to the beneficiary: pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open); `PreapprovalApplicationReceived` (actionable, to the program's managers: someone applies to a pre-approval program; resolved on approve or decline); `PreapprovalGrantDecided` (informational (actionable when a grant is revoked while Claimed by an expense report), to the beneficiary: pre-approval declined, revoked, or its amount changed).
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
 - **AuditLog**: `IAuditLogService.LogAsync` (actor and job overloads).
 - **Gdpr**: implements `IUserDataContributor`.
