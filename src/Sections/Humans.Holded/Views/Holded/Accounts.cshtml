@@ -43,7 +43,15 @@
 
 @foreach (var g in Model.Groups)
 {
-    <details class="card mb-2" open="@(f.Mismatched ? "open" : null)">
+    @* A boolean attribute acts on presence, so it is emitted only inside the conditional. *@
+    if (f.Mismatched)
+    {
+        @:<details class="card mb-2" open>
+    }
+    else
+    {
+        @:<details class="card mb-2">
+    }
         <summary class="card-header d-flex flex-wrap gap-3 align-items-center" style="cursor: pointer;">
             <span class="fw-semibold me-auto">@g.Digit · @g.Name</span>
             <span class="small text-muted">@N(g.Accounts.Count) accounts</span>
@@ -93,7 +101,7 @@
                 </tbody>
             </table>
         </div>
-    </details>
+    @:</details>
 }
 
 <p class="text-muted small mt-3">

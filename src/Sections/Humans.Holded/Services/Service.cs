@@ -521,5 +521,5 @@ internal sealed class Service(
 
     private static HoldedLedgerLineInfo ToInfo(HoldedLedgerLine l) => new(
         l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit,
-        l.EntryId, l.Checked ?? false);
+        l.EntryId, l.Checked);
 }

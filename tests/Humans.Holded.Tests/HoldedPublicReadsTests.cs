@@ -98,7 +98,7 @@ public sealed class HoldedPublicReadsTests
         entry.Select(l => l.Line).Should().Equal(1, 2);
         entry.Should().OnlyContain(l => l.EntryId == "e7");
         entry[1].Checked.Should().BeTrue();
-        entry[0].Checked.Should().BeFalse("a null tick reads as unticked across the contract");
+        entry[0].Checked.Should().BeNull("a line not re-synced since the column arrived has no tick to report");
         (await _service.GetEntryAsync(99, ct)).Should().BeEmpty();
     }
 
