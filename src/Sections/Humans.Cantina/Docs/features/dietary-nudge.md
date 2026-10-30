@@ -88,7 +88,7 @@ A shift qualifies when `Shift.IsAllDay` (08:00â€“18:00) **or** `Shift.Duration â
 | `IntoleranceOtherText` | `varchar(500)?` | Only with `Other` |
 | `UpdatedAt` | `timestamptz` | |
 
-The legacy `profiles` food columns are read only by Cantina's fallback and the `cantina.profile-dietary` copy; a later retirement PR drops them. `MedicalConditions` (`varchar(4000)?`) stays on `profiles`.
+Dietary answers are read only from `cantina_dietary_profiles`. Users still exports and erases its frozen legacy food columns until a separate schema change drops them. `MedicalConditions` (`varchar(4000)?`) stays on `profiles`.
 
 ## Triggers
 

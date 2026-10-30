@@ -1,8 +1,4 @@
 # Section debt ledger for Humans.AuditLog. Shape: memory/process/debt-ledger-additions.md.
 version: 1
 next_id: 3
-inbox:
-  - added: 2026-10-29
-    id: AUDITLOG-2
-    what: "No test pins the audit_log UPDATE/DELETE rejection triggers created by Data/Migrations/20260810193154_BaselineAuditLog.cs; the in-memory section tests cannot reach them, so only a Postgres-backed test could. Found by the section-doctor Tests thread."
-    review: panel
+inbox: []

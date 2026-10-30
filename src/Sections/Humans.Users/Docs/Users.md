@@ -386,7 +386,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | EmergencyContactName | string? (256) | null | Private — self + Board. |
 | EmergencyContactPhone | string? (50) | null | Private — self + Board. |
 | EmergencyContactRelationship | string? (100) | null | Private — self + Board. |
-| DietaryPreference | string? (200) | null | **Legacy, no longer written.** Food answers moved to Cantina's `cantina_dietary_profiles` (Users decomposition commit 10). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_DIETARY`) for Cantina's read fallback and the `cantina.profile-dietary` copy only; still exported and erased here until the column is dropped. |
+| DietaryPreference | string? (200) | null | **Legacy, no longer written.** Food answers belong to Cantina's `cantina_dietary_profiles` and are no longer exposed on `ProfileInfo`. These legacy columns are still exported and erased here until a separate schema change drops them. |
 | Allergies / Intolerances | List&lt;string&gt; (jsonb) | [] | Food allergies / intolerances (+ `AllergyOtherText` / `IntoleranceOtherText` for free-text "Other"). **Legacy, no longer written** — same as `DietaryPreference`. |
 | MedicalConditions | string? (4000) | null | **GDPR Art. 9** health data. On the cached `UserInfo`; shown to others only through Shifts' audited reveal (`MedicalDataViewer`: Admin, Board, ShiftsNoInfo), which records `MedicalConditionsRevealed` against the member. Owner edits their own on `/Profile/Me/Medical` and sees the reveal history there. |
 | ProfilePictureContentType | string? (100) | null | MIME type of the stored picture. Doubles as the "has custom picture?" predicate (`HasCustomProfilePicture`) and supplies the file extension — the picture bytes themselves live on the filesystem. |
@@ -549,7 +549,7 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-Nothing here is written. Each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 to CENTRAL-95; CENTRAL-97 retired 2026-10-22), schema drops are separate feature work under policy D9, outside the debt ledger.
+Nothing here is written. Except for the retired Cantina fallback, each row is read only by its new owner's fallback and data-migration copy (through an `[Obsolete]` field on `UserInfo`/`ProfileInfo`) and by Users' GDPR export/erase, until the owner's retirement PR and then a drop PR remove it. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 and CENTRAL-91 to CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|

@@ -167,10 +167,6 @@ inbox:
     what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
   - added: 2026-10-21
-    id: CENTRAL-90
-    what: "Retirement PR for data migration cantina.profile-dietary (Users decomposition, Cantina): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: DietaryProfileService's legacy fallback and the five ProfileInfo food fields (DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText; HUM_PROFILE_DIETARY). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
     id: CENTRAL-91
     what: "Retirement PR for data migration governance.profile-tier (Users decomposition, Governance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: MembershipTierService's legacy fallback, ProfileInfo.MembershipTier and LegacyMembershipTier (HUM_PROFILE_TIER). Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel

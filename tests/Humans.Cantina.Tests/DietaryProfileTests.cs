@@ -17,11 +17,7 @@ using NSubstitute;
 
 namespace Humans.Cantina.Tests;
 
-/// <summary>
-/// cantina_dietary_profiles: the read with its legacy fallback,
-/// the member's save and "I don't want to answer" opt-out, the prompt rule, the
-/// cantina.profile-dietary copy, merge, export and erasure, and the dashboard nudge.
-/// </summary>
+/// <summary>Dietary reads, saves, opt-out, merge, export, erasure and the dashboard nudge.</summary>
 public class DietaryProfileTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 10, 21, 12, 0);
@@ -37,7 +33,6 @@ public class DietaryProfileTests
             .Options;
         _repo = new DietaryProfileRepository(new Factory(options));
         _sut = new DietaryProfileService(_repo, _users, new FakeClock(Now));
-        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
@@ -49,24 +44,12 @@ public class DietaryProfileTests
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
-    private readonly List<UserInfo> _all = [];
-
-    /// <summary>A member whose legacy profiles columns hold the given food answers.</summary>
-    private UserInfo SeedUser(Guid id, string? legacyPreference = null, IReadOnlyList<string>? legacyAllergies = null,
-        string? legacyMedical = null, Guid? resolvesTo = null)
+    private UserInfo SeedUser(Guid id, string? medical = null, Guid? resolvesTo = null)
     {
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
-            [], [], [],
-            UserFixtures.Profile(dietaryPreference: legacyPreference, allergies: legacyAllergies, medicalConditions: legacyMedical),
-            []);
+            [], [], [], UserFixtures.Profile(medicalConditions: medical), []);
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
-        _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
-        if (resolvesTo is null)
-        {
-            _all.Add(info);
-            _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_all.ToList());
-        }
         return info;
     }
 
@@ -76,14 +59,12 @@ public class DietaryProfileTests
         new(id, preference, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther);
 
     [HumansFact]
-    public async Task Read_FallsBackToTheLegacyProfile_UntilARowExists()
+    public async Task Read_ReturnsNullUntilAnswersAreSaved()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyPreference: "Omnivore", legacyAllergies: ["Egg"]);
+        SeedUser(id);
 
-        var legacy = await _sut.GetDietaryProfileAsync(id, Ct);
-        legacy!.DietaryPreference.Should().Be("Omnivore");
-        legacy.Allergies.Should().Equal("Egg");
+        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull();
 
         (await _sut.SaveAsync(id, Answers(id), Ct)).Should().BeNull();
         var saved = await _sut.GetDietaryProfileAsync(id, Ct);
@@ -92,19 +73,19 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Read_NoRowAndNoLegacyAnswers_IsNull()
+    public async Task Read_NoRow_IsNull()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyMedical: "Epilepsy");
+        SeedUser(id, medical: "Epilepsy");
 
         (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull("medical conditions are not a food answer");
     }
 
     [HumansFact]
-    public async Task Save_ClearingThePreference_RecordsIt_SoTheLegacyValueDoesNotComeBack()
+    public async Task Save_ClearingThePreference_RecordsAnUnansweredProfile()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyPreference: "Omnivore");
+        SeedUser(id);
 
         await _sut.SaveAsync(id, Answers(id, preference: "  "), Ct);
 
@@ -159,26 +140,26 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task BulkRead_IsKeyedByTheRequestedId_RowsThenLegacy_MembersWithNothingAbsent()
+    public async Task BulkRead_ResolvesMergedIds_AndOmitsMembersWithoutRows()
     {
         var withRow = Guid.NewGuid();
-        var legacyOnly = Guid.NewGuid();
+        var archived = Guid.NewGuid();
         var nothing = Guid.NewGuid();
         var infos = new Dictionary<Guid, UserInfo>
         {
-            [withRow] = SeedUser(withRow, legacyPreference: "Omnivore"),
-            [legacyOnly] = SeedUser(legacyOnly, legacyPreference: "Vegetarian"),
+            [withRow] = SeedUser(withRow),
+            [archived] = SeedUser(archived, resolvesTo: withRow),
             [nothing] = SeedUser(nothing),
         };
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(infos));
         await _sut.SaveAsync(withRow, Answers(withRow), Ct);
 
-        var read = await _sut.GetDietaryProfilesAsync([withRow, legacyOnly, nothing], Ct);
+        var read = await _sut.GetDietaryProfilesAsync([withRow, archived, nothing], Ct);
 
-        read.Keys.Should().BeEquivalentTo([withRow, legacyOnly]);
+        read.Keys.Should().BeEquivalentTo([withRow, archived]);
         read[withRow].DietaryPreference.Should().Be("Vegan");
-        read[legacyOnly].DietaryPreference.Should().Be("Vegetarian");
+        read[archived].DietaryPreference.Should().Be("Vegan");
     }
 
     [HumansFact]
@@ -193,17 +174,6 @@ public class DietaryProfileTests
         var read = await _sut.GetDietaryProfileAsync(id, Ct);
         read!.DeclinedToAnswer.Should().BeTrue();
         read.HasPreference.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task LegacyOnlyPreference_ReadsAsAPreference_NotAnOptOut()
-    {
-        var id = Guid.NewGuid();
-        SeedUser(id, legacyPreference: "Omnivore");
-
-        var read = await _sut.GetDietaryProfileAsync(id, Ct);
-        read!.HasPreference.Should().BeTrue();
-        read.DeclinedToAnswer.Should().BeFalse();
     }
 
     [HumansFact]
@@ -230,30 +200,6 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Migration_ListsMembersWithLegacyAnswersAndNoRow_CopiesThem_AndIsIdempotent()
-    {
-        var pending = Guid.NewGuid();
-        var alreadyCopied = Guid.NewGuid();
-        SeedUser(pending, legacyPreference: "Vegan", legacyAllergies: ["Soy"]);
-        SeedUser(alreadyCopied, legacyPreference: "Omnivore");
-        SeedUser(Guid.NewGuid(), legacyMedical: "Diabetes");
-        await _sut.SaveAsync(alreadyCopied, Answers(alreadyCopied, preference: "Pescatarian"), Ct);
-        var migration = ((ISectionDataMigrations)new Section()).Migrations().Single();
-        var sp = new ServiceCollection().AddSingleton<IDietaryProfileManagement>(_sut).BuildServiceProvider();
-
-        migration.Key.Should().Be("cantina.profile-dietary");
-        var status = await migration.Status(sp, Ct);
-        status.PendingRows.Should().ContainSingle().Which[0].Should().Be(pending.ToString());
-        status.Columns.Should().NotContain(c => c.Contains("Medical", StringComparison.OrdinalIgnoreCase));
-
-        (await migration.Apply(sp, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await _repo.GetAsync(pending, Ct))!.Allergies.Should().Equal("Soy");
-        (await _repo.GetAsync(alreadyCopied, Ct))!.DietaryPreference.Should().Be("Pescatarian", "a saved row is never overwritten");
-        (await migration.Status(sp, Ct)).Done.Should().BeTrue();
-        (await migration.Apply(sp, Guid.NewGuid(), Ct)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task Merge_MovesTheSourceRow_WhenTheSurvivorHasNoAnswers()
     {
         var from = Guid.NewGuid();
@@ -269,42 +215,37 @@ public class DietaryProfileTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false, false, false)]
-    [Xunit.InlineData(true, false, false)]
-    [Xunit.InlineData(false, true, false)]
-    [Xunit.InlineData(true, false, true)]
-    [Xunit.InlineData(false, true, true)]
-    public async Task Merge_PreservesLegacySourceAnswers_WithoutRevivingClearedOrDeclinedAnswers(
-        bool sourceHasRow, bool survivorHasRow, bool declined)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task Merge_PreservesClearedOrDeclinedAnswers_AndIsIdempotent(bool survivorHasRow, bool declined)
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
-        SeedUser(source, legacyPreference: "Vegan", legacyAllergies: ["Soy"]);
+        SeedUser(source);
         SeedUser(target);
-        if (sourceHasRow || survivorHasRow)
-        {
-            var answeredId = sourceHasRow ? source : target;
-            if (declined) await _sut.DeclineAsync(answeredId, Ct);
-            else await _sut.SaveAsync(answeredId, Answers(answeredId, preference: null), Ct);
-        }
+        await _sut.SaveAsync(source, Answers(source), Ct);
+        var answeredId = survivorHasRow ? target : source;
+        if (declined) await _sut.DeclineAsync(answeredId, Ct);
+        else await _sut.SaveAsync(answeredId, Answers(answeredId, preference: null), Ct);
 
         await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
         await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
 
-        var expected = sourceHasRow || survivorHasRow
-            ? Answers(target, preference: null) with { DeclinedToAnswer = declined }
-            : Answers(target, preference: "Vegan", allergies: ["Soy"]);
+        var expected = Answers(target, preference: null) with { DeclinedToAnswer = declined };
         (await _sut.GetDietaryProfileAsync(target, Ct)).Should().BeEquivalentTo(expected);
         (await _repo.GetAsync(source, Ct)).Should().BeNull();
     }
 
     [HumansFact]
-    public async Task Merge_TheSurvivorWins_IncludingAnswersStillOnItsLegacyProfile()
+    public async Task Merge_TheSurvivorsSavedAnswersWin()
     {
         var from = Guid.NewGuid();
         var to = Guid.NewGuid();
         SeedUser(from);
-        SeedUser(to, legacyPreference: "Omnivore");
+        SeedUser(to);
+        await _sut.SaveAsync(to, Answers(to, preference: "Omnivore"), Ct);
         await _sut.SaveAsync(from, Answers(from, preference: "Vegetarian"), Ct);
 
         await _sut.ReassignAsync(from, to, Guid.NewGuid(), Now, Ct);
@@ -317,7 +258,7 @@ public class DietaryProfileTests
     public async Task Export_CarriesTheFoodAnswers_NeverMedical_AndEraseDeletesTheRow()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyMedical: "Asthma");
+        SeedUser(id, medical: "Asthma");
         await _sut.SaveAsync(id, Answers(id, allergies: ["Egg"]), Ct);
 
         var slice = (await _sut.ContributeForUserAsync(id, Ct)).Single();

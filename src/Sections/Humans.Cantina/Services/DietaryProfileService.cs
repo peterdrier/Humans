@@ -7,10 +7,7 @@ using NodaTime;
 
 namespace Humans.Cantina.Services;
 
-/// <summary>
-/// Until <c>cantina.profile-dietary</c> has run, a member without a row reads their legacy <c>profiles</c> food columns
-/// through <see cref="UserInfo"/>. Never reads medical conditions.
-/// </summary>
+/// <summary>Owns dietary answers, merge handling, export and erasure. Never reads medical conditions.</summary>
 internal sealed class DietaryProfileService(
     IDietaryProfileRepository repo,
     IUserService users,
@@ -23,7 +20,7 @@ internal sealed class DietaryProfileService(
         var info = await users.GetUserInfoAsync(userId, ct);
         var resolvedId = info?.Id ?? userId;
         var row = await repo.GetAsync(resolvedId, ct);
-        return row is not null ? ToInfo(row) : LegacyProfile(info);
+        return row is not null ? ToInfo(row) : null;
     }
 
     public async Task<IReadOnlyDictionary<Guid, DietaryProfileInfo>> GetDietaryProfilesAsync(
@@ -39,8 +36,7 @@ internal sealed class DietaryProfileService(
         foreach (var id in userIds.Distinct())
         {
             infos.TryGetValue(id, out var info);
-            var profile = rows.TryGetValue(info?.Id ?? id, out var row) ? ToInfo(row) : LegacyProfile(info);
-            if (profile is not null) result[id] = profile;
+            if (rows.TryGetValue(info?.Id ?? id, out var row)) result[id] = ToInfo(row);
         }
         return result;
     }
@@ -81,77 +77,14 @@ internal sealed class DietaryProfileService(
             UpdatedAt = clock.GetCurrentInstant(),
         }, ct);
 
-    public async Task<IReadOnlyList<DietaryProfileInfo>> GetUncopiedLegacyProfilesAsync(CancellationToken ct = default)
-    {
-        var copied = (await repo.GetAllAsync(ct)).Select(r => r.UserId).ToHashSet();
-        return [.. (await users.GetAllUserInfosAsync(ct))
-            .Where(u => !copied.Contains(u.Id))
-            .OrderBy(u => u.CreatedAt)
-            .Select(LegacyProfile)
-            .OfType<DietaryProfileInfo>()];
-    }
-
-    public async Task<int> CopyLegacyProfilesAsync(CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var written = 0;
-        foreach (var legacy in await GetUncopiedLegacyProfilesAsync(ct))
-        {
-            if (await repo.TryInsertAsync(ToEntity(legacy, now), ct))
-                written++;
-        }
-        return written;
-    }
-
-    /// <summary>The one reader of the obsolete legacy fields. Deleted with the migration once production reports it
-    /// done. Null when the member has no food answer on their profile.</summary>
-    private static DietaryProfileInfo? LegacyProfile(UserInfo? info)
-    {
-        if (info?.Profile is not { } p) return null;
-#pragma warning disable HUM_PROFILE_DIETARY // the legacy fallback, until CENTRAL-90 retires the columns
-        var legacy = new DietaryProfileInfo(
-            info.Id,
-            string.IsNullOrWhiteSpace(p.DietaryPreference) ? null : p.DietaryPreference,
-            p.Allergies,
-            string.IsNullOrWhiteSpace(p.AllergyOtherText) ? null : p.AllergyOtherText,
-            p.Intolerances,
-            string.IsNullOrWhiteSpace(p.IntoleranceOtherText) ? null : p.IntoleranceOtherText);
-#pragma warning restore HUM_PROFILE_DIETARY
-        var empty = legacy.DietaryPreference is null && legacy.Allergies.Count == 0 && legacy.AllergyOtherText is null
-                    && legacy.Intolerances.Count == 0 && legacy.IntoleranceOtherText is null;
-        return empty ? null : legacy;
-    }
-
     private static DietaryProfileInfo ToInfo(DietaryProfile row) => new(
         row.UserId, row.DietaryPreference, row.Allergies, row.AllergyOtherText, row.Intolerances, row.IntoleranceOtherText,
         row.DeclinedToAnswer == true);
-
-    private static DietaryProfile ToEntity(DietaryProfileInfo info, Instant now) => new()
-    {
-        UserId = info.UserId,
-        DietaryPreference = info.DietaryPreference,
-        Allergies = [.. info.Allergies],
-        AllergyOtherText = info.AllergyOtherText,
-        Intolerances = [.. info.Intolerances],
-        IntoleranceOtherText = info.IntoleranceOtherText,
-        DeclinedToAnswer = info.DeclinedToAnswer,
-        UpdatedAt = now,
-    };
 
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // The survivor's legacy answers beat the source's row; a saved empty or declined
-        // row on either account suppresses that account's legacy answers.
-        if (await repo.GetAsync(mergedToUserId, ct) is null)
-        {
-            var legacy = LegacyProfile(await users.GetRawUserInfoAsync(mergedToUserId, ct));
-            if (legacy is null && await repo.GetAsync(mergedFromUserId, ct) is null)
-                legacy = LegacyProfile(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
-            if (legacy is not null)
-                await repo.TryInsertAsync(ToEntity(legacy with { UserId = mergedToUserId }, now), ct);
-        }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }
 
