@@ -188,16 +188,18 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         row.TotalHours.Should().Be(19m);
     }
 
-    [HumansFact]
-    public async Task ByPerson_RoleOnlyHolder_AppearsWithNoSignups()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ByPerson_RoleOnlyHolder_AppearsWithNoSignups(bool hasShifts)
     {
-        // The event has a shift (someone else, or none) so the report renders.
-        // Bob holds only a year-round role and has zero shift signups — he must
-        // still appear, with his role hours.
         var es = await SeedEventAsync();
         var team = await SeedWorkloadTeamAsync("Board");
-        var rota = await SeedRotaAsync(team, es);
-        await SeedShiftAsync(rota, dayOffset: 1, hours: 5); // un-signed shift, just to render the report
+        if (hasShifts)
+        {
+            var rota = await SeedRotaAsync(team, es);
+            await SeedShiftAsync(rota, dayOffset: 1, hours: 5);
+        }
 
         var bob = await SeedUserWithProfileAsync("Bob");
         StubTeams(TeamWithRoles(team.Id, "Board", "board",
@@ -254,15 +256,18 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         dept.PlannedSlots.Should().Be(3); // slots remain shift-only
     }
 
-    [HumansFact]
-    public async Task ByDepartment_RoleOnlyTeam_AppearsWithZeroShiftColumns()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ByDepartment_RoleOnlyTeam_AppearsWithZeroShiftColumns(bool hasShifts)
     {
-        // Gate has shifts (renders the report). Board owns a role but no rotas —
-        // it must still appear as a department row, with shift columns at zero.
         var es = await SeedEventAsync();
-        var gate = await SeedWorkloadTeamAsync("Gate");
-        var gateRota = await SeedRotaAsync(gate, es);
-        await SeedShiftAsync(gateRota, dayOffset: 1, hours: 4);
+        if (hasShifts)
+        {
+            var gate = await SeedWorkloadTeamAsync("Gate");
+            var gateRota = await SeedRotaAsync(gate, es);
+            await SeedShiftAsync(gateRota, dayOffset: 1, hours: 4);
+        }
 
         var board = await SeedWorkloadTeamAsync("Board");
         var bob = await SeedUserWithProfileAsync("Bob");

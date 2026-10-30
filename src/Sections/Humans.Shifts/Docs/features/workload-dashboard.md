@@ -29,7 +29,7 @@ Asked by Peter for the 2026 cycle. Combines **shift-based** workload (Confirmed 
 **So that** I can identify volunteers nearing burnout and volunteers who have queued work but no approved work
 
 **Acceptance Criteria:**
-- Row per user with `≥ 1` Pending/Confirmed signup **or** a role assignment carrying estimated hours, for the active event
+- Row per user with `≥ 1` Pending/Confirmed signup **or** a role assignment carrying estimated hours, for the active event; role rows also appear before any shifts exist
 - Columns: Display name, Confirmed signup count, Pending signup count, Year-round / Build / Event / Strike hours, Total
 - Confirmed shift hours land in their shift period's column; a held role's `EstimatedHours` (full annual estimate, per holder) lands in the column matching the role's `RolePeriod`
 - Pending signups do **not** contribute to hours (no burnout inflation from queued work)
@@ -113,8 +113,6 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 ## Deferred — Year filter
 
 - **Year filter** — there is no multi-year surface on `IShiftManagement` today. The view uses the active event. Easy follow-up once a year-based lookup lands.
-
-Role hours only surface when the active event has at least one shift (the report short-circuits to empty for a shift-less event); revisit if year-round role workload needs to show before any shifts exist.
 
 ## Related Features
 
