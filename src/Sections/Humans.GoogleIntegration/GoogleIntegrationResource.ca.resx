@@ -144,6 +144,8 @@
   <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Recursos vinculats</value></data>
   <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Última sincronització</value></data>
   <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Encara no hi ha recursos vinculats a aquest equip. Fes servir els formularis de sota per vincular una carpeta de Google Drive o un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Restringida</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Heretada</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Si us plau, introdueix una URL vàlida de carpeta de Google Drive.</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Si us plau, introdueix una adreça de correu vàlida de Google Group.</value></data>
   <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" vinculat correctament.</value><comment>{0} = group name</comment></data>

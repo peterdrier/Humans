@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Users.Authorization;
 
-/// <summary>Self, or Admin / HumanAdmin / Board. Service signatures stay auth-free.</summary>
+/// <summary>Self, or Users Admin / Admin; Board for View only. Service signatures stay auth-free.</summary>
 internal sealed class UserEmailAuthorizationHandler
     : AuthorizationHandler<UserEmailOperationRequirement, Guid>
 {
@@ -20,7 +20,9 @@ internal sealed class UserEmailAuthorizationHandler
             return Task.CompletedTask;
         }
 
-        if (UsersRoleChecks.IsUsersAdminBoardOrAdmin(context.User))
+        if (UsersRoleChecks.IsUsersAdmin(context.User)
+            || RoleChecks.IsAdmin(context.User)
+            || (requirement == UserEmailOperations.View && RoleChecks.IsBoard(context.User)))
         {
             context.Succeed(requirement);
         }

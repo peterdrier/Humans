@@ -8,6 +8,7 @@
 | `ShiftsController.Settings` (POST; the read side is the `/Settings#shifts` tab) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ShiftsController.OrphanSignups` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ShiftAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
+| `ShiftAdminController.Index` | In-method | Department managers and approvers, or `ShiftsPolicies.Read` (Board) read-only | `ShiftsPolicies.Read` as a read-only fallback |
 | `ShiftAdminController.MoveRota` | Action | `Admin, ShiftsAdmin` | `ShiftsPolicies.ManageVolunteers` |
 | `ShiftDashboardController` | Class | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` OR any team manager/coordinator (custom handler) | `ShiftsPolicies.DepartmentRead` |
 | `ShiftDashboardController.PostEventStats` | Action | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` | `ShiftsPolicies.Read` |

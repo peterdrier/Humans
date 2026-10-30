@@ -41,13 +41,15 @@ else
                             <td>@item.CreatedByName</td>
                             <td class="small text-muted">@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</td>
                             <td class="text-end">
-                                <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
-                                </form>
-                                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
-                                    @Localizer["Surveys_Admin_Queue_Reject"]
-                                </button>
+                                <div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
+                                    <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
+                                    </form>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
+                                        @Localizer["Surveys_Admin_Queue_Reject"]
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -60,7 +62,7 @@ else
        relocates it before the <table> anyway. *@
     @foreach (var item in Model.Items)
     {
-        <div class="modal fade" id="rejectModal-@item.Id" tabindex="-1" aria-hidden="true">
+        <div authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage" class="modal fade" id="rejectModal-@item.Id" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <form asp-controller="SurveyAdmin" asp-action="Reject" asp-route-id="@item.Id" method="post">

@@ -106,8 +106,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Admin | Reset password + issue one backup 2FA code |
 | `/Google/Accounts/Link` | POST | Admin | Link existing Workspace account to a human |
 | `/Google/WorkspaceEmail` | POST | Signed-in member (self) | `WorkspaceIdentityController.Set`: designate one of the member's own verified addresses as their Google identity (antiforgery; carries `[AllowBeforeActiveMembership]` like the rest of the Emails grid) |
-| `/Google/Teams/{slug}/Resources` | GET | TeamsAdmin, Board, Admin, or a resource manager of the team's department | `TeamResourcesController.Index`: linked resources + link form |
-| `/Google/Teams/{slug}/Resources/LinkDrive` | POST | same | Link a Drive folder or file by URL |
+| `/Google/Teams/{slug}/Resources` | GET | TeamsAdmin, Admin, or a resource manager of the team's department; Board reads it (`TeamsPolicies.Read`) with every form hidden | `TeamResourcesController.Index`: linked resources + link form |
+| `/Google/Teams/{slug}/Resources/LinkDrive` | POST | TeamsAdmin, Admin, or a resource manager of the team's department | Link a Drive folder or file by URL |
 | `/Google/Teams/{slug}/Resources/LinkGroup` | POST | same | Link a Google Group by email |
 | `/Google/Teams/{slug}/Resources/{resourceId}/PermissionLevel` | POST | same; resource must belong to the team (else 404) | Change a Drive resource's permission level |
 | `/Google/Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | POST | same; resource must belong to the team | Toggle inherited-access restriction on a Drive folder |
@@ -120,7 +120,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, link, reset password, combined Reset + 2FA recovery for locked-out humans). Provision per-human @nobodies.team email. Requeue permanently-failed outbox events (individually or all at once). Re-enqueue Google sync for a specific user across all their current teams. |
-| TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamResourcesController`. View resource status. Trigger per-resource sync |
+| TeamsAdmin, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamResourcesController`. View resource status. Trigger per-resource sync |
+| Board | View the resource sync status dashboard and every team's linked resources; link, unlink and sync nothing |
 | Coordinator | Link and unlink Google resources for their own department (via `TeamResourcesController`). Trigger per-resource sync for their own department |
 | Board, Admin | View Drive activity anomaly check results (running the check is Admin only). View sync audit logs |
 | UsersAdmin, Board, Admin | View per-human Google sync audit |

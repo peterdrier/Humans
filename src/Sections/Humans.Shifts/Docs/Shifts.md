@@ -164,7 +164,7 @@ These controllers serve this section, each with distinct URL scope and authoriza
 | Controller | Base route | Auth |
 |---|---|---|
 | `ShiftsController` | `/Shifts` | `[Authorize]` (per-action for admin/settings) |
-| `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + runtime department checks (`CanManageDepartmentAsync` / `CanApproveDepartmentAsync`, private to the controller, over `ShiftsRoles` + `IsDeptCoordinatorAsync`) |
+| `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + runtime department checks (`CanManageDepartmentAsync` / `CanApproveDepartmentAsync`, private to the controller, over `ShiftsRoles` + `IsDeptCoordinatorAsync`); the index also admits `ShiftsPolicies.Read` (Board) with both flags off, so Board reads every department's rotas and changes nothing |
 | `ShiftDashboardController` | `/Shifts/Dashboard` | `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]` |
 | `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = ShiftsPolicies.Manage)]` (per-action `ShiftsPolicies.ManageVolunteers` for mutating POSTs — Admin / ShiftsAdmin) |
 | `ShiftWorkloadAdminController` | `/Shifts/Admin/Workload` | `[Authorize(Policy = ShiftsPolicies.Manage)]` |

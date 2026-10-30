@@ -14,7 +14,7 @@ using Xunit;
 namespace Humans.GoogleIntegration.Tests.Authorization;
 
 /// <summary>
-/// The team-resources gate: TeamsAdmin/Board/Admin manage any team; everyone else needs the
+/// The team-resources gate: TeamsAdmin/Admin manage any team; everyone else, Board included, needs the
 /// resource-manager check on the team's department; a sub-team never checks itself.
 /// </summary>
 public sealed class TeamResourceAuthorizationHandlerTests
@@ -24,15 +24,22 @@ public sealed class TeamResourceAuthorizationHandlerTests
 
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
-    [InlineData(RoleNames.Board)]
     [InlineData(TeamsRoles.TeamsAdmin)]
-    public async Task TeamsAdminBoardOrAdmin_Succeeds_WithoutTheResourceManagerCheck(string role)
+    public async Task TeamsAdminOrAdmin_Succeeds_WithoutTheResourceManagerCheck(string role)
     {
         var allowed = await EvaluateAsync(Principal(_userId, role), Team(Guid.NewGuid(), parentTeamId: null));
 
         allowed.Should().BeTrue();
         await _resources.DidNotReceive().CanManageTeamResourcesAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Board_ManagesNoTeam()
+    {
+        var allowed = await EvaluateAsync(Principal(_userId, RoleNames.Board), Team(Guid.NewGuid(), parentTeamId: null));
+
+        allowed.Should().BeFalse();
     }
 
     [HumansTheory]

@@ -14,7 +14,7 @@ The association hands individual people entitlements: a cheaper ticket, early en
 
 ## User Stories
 
-**As Board or Admin, I create a program** (name, what it entitles, event, optional default expiry, issuer) and name its managers.
+**As Grants Admin or Admin, I create a program** (name, what it entitles, event, optional default expiry, issuer) and name its managers.
 - The issuer is either its managers by hand, or a source section by source key.
 - At most one open program per source key; a second is refused.
 - A closed program takes no new grants; its existing grants stay.
@@ -44,7 +44,7 @@ The association hands individual people entitlements: a cheaper ticket, early en
 
 ```
 Active → Expired   (computed: the day after ExpiresOn ?? program.GrantsExpireOn, Europe/Madrid)
-Active → Revoked   (manager, Board, Admin, or the source section)
+Active → Revoked   (manager, Grants Admin, Admin, or the source section)
 ```
 
 Nothing stores or flips the state; it is read against today. Revoked wins over expired.

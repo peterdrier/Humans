@@ -296,13 +296,14 @@ internal sealed class TeamPageService(
         var isAdmin = await roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
         var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
         var canSeeHiddenTeams = isBoardMember || isAdmin || isTeamsAdmin;
-        var canManage = isCurrentUserCoordinator || canSeeHiddenTeams;
+        // Board reads every team's admin pages and changes nothing.
+        var canManage = isCurrentUserCoordinator || isAdmin || isTeamsAdmin;
 
         if (team.IsHidden && !canSeeHiddenTeams)
             return null;
 
         var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
-        var pendingRequestCount = canManage
+        var pendingRequestCount = canManage || isBoardMember
             ? (await teamService.GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
             : 0;
 

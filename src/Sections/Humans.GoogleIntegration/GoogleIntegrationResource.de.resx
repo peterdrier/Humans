@@ -144,6 +144,8 @@
   <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Verknüpfte Ressourcen</value></data>
   <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Letzte Synchronisierung</value></data>
   <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Noch keine Ressourcen mit diesem Team verknüpft. Verwenden Sie die folgenden Formulare, um einen Google Drive-Ordner oder eine Google Group zu verknüpfen.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Eingeschränkt</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Vererbt</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Bitte geben Sie eine gültige Google Drive-Ordner-URL ein.</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Bitte geben Sie eine gültige Google Group-E-Mail-Adresse ein.</value></data>
   <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group „{0}" erfolgreich verknüpft.</value><comment>{0} = group name</comment></data>

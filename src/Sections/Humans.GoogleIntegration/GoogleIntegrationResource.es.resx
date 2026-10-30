@@ -144,6 +144,8 @@
   <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Recursos vinculados</value></data>
   <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Última sincronización</value></data>
   <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Aún no hay recursos vinculados a este equipo. Utilice los formularios a continuación para vincular una carpeta de Google Drive o un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Restringida</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Heredada</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Por favor, introduzca una URL válida de carpeta de Google Drive.</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Por favor, introduzca una dirección de correo válida de Google Group.</value></data>
   <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group “{0}” vinculado correctamente.</value><comment>{0} = group name</comment></data>

@@ -87,7 +87,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Inherited Shared Drive permissions are excluded from drift detection
 
 ### US-7.5: Link Existing Shared Drive Folder
-**As a** Board member or authorized Coordinator
+**As a** TeamsAdmin or authorized Coordinator
 **I want to** link an existing Shared Drive folder to a team
 **So that** team members automatically get access to the shared folder
 
@@ -101,7 +101,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - All API calls use `SupportsAllDrives = true`
 
 ### US-7.5b: Link Existing Drive File
-**As a** Board member or authorized Coordinator
+**As a** TeamsAdmin or authorized Coordinator
 **I want to** link an individual Drive file (Sheet, Doc, Slides, etc.) to a team
 **So that** team members automatically get access to specific shared files
 
@@ -116,7 +116,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Permission sync works the same as for folders (team members get the resource's `DrivePermissionLevel`)
 
 ### US-7.6: Link Existing Google Group
-**As a** Board member or authorized Coordinator
+**As a** TeamsAdmin or authorized Coordinator
 **I want to** link an existing Google Group to a team
 **So that** team membership automatically syncs with group membership
 
@@ -128,7 +128,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Duplicate links prevented (same group + team)
 
 ### US-7.7: Unlink Resource
-**As a** Board member or authorized Coordinator
+**As a** TeamsAdmin or authorized Coordinator
 **I want to** unlink a Google resource from a team
 **So that** the association is removed without deleting the resource
 
@@ -144,7 +144,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 
 **Acceptance Criteria:**
 - Controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` config setting
-- Default: false (only Board members and TeamsAdmins can manage)
+- Default: false (only TeamsAdmins and Admins can manage)
 - When enabled, Coordinators can link/unlink/sync resources for their teams
 
 ## Google Group Membership Sync Architecture
@@ -468,11 +468,12 @@ Supports multiple Google Drive/Docs URL formats:
 - Direct file ID
 
 ### Authorization
-- Board members and TeamsAdmins: can manage resources for any team
+- TeamsAdmins and Admins: can manage resources for any team
+- Board: reads every team's resources page; manages nothing
 - Coordinators: controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` (default: false)
 
 ### Route: `/Google/Teams/{slug}/Resources`
-Actions (on `TeamResourcesController`, `src/Sections/Humans.GoogleIntegration/Controllers/`). Every action 404s an unknown slug and 403s a caller who is neither TeamsAdmin/Board/Admin nor a resource manager of the team's department (sub-teams are gated at their department); every `{resourceId}` action 404s a resource that belongs to another team:
+Actions (on `TeamResourcesController`, `src/Sections/Humans.GoogleIntegration/Controllers/`). Every action 404s an unknown slug and 403s a caller who is neither TeamsAdmin/Admin nor a resource manager of the team's department (the index also admits Board, read-only) (sub-teams are gated at their department); every `{resourceId}` action 404s a resource that belongs to another team:
 | Route | Method | Action |
 |-------|--------|--------|
 | `` (index) | GET | View linked resources + link forms |

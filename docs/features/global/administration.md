@@ -358,6 +358,8 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 | **StoreAdmin** | Store catalog, summary, and payments. |
 | **CantinaAdmin** | Cantina weekly roster. |
 | **RideshareAdmin** | Rideshare settings (year's destination, travel windows), season statistics, and the day roster. |
+| **GrantsAdmin** | Grant programs: create and edit them, name their managers, issue, revoke and resend grants. |
+| **SurveysAdmin** | Surveys: approve or reject submissions, edit any survey, open, close, send invitations and download results. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
 | **ShiftsAdmin** | Read-only access to onboarding review queue. |
 | **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |

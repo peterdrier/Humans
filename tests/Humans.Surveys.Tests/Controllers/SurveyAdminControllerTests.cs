@@ -232,7 +232,7 @@ public sealed class SurveyAdminControllerTests
         else
             surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), "note", Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<SurveyReviewResult>(failure));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var act = async () => approve
             ? await sut.Approve(id, Xunit.TestContext.Current.CancellationToken)
@@ -253,7 +253,7 @@ public sealed class SurveyAdminControllerTests
         const string reason = "A closed Asociado vote cannot be reopened.";
         surveys.OpenAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(succeeded ? new SurveyReviewResult() : new SurveyReviewResult(Refusal: reason));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var result = await sut.Open(id, continueToSend: true, Xunit.TestContext.Current.CancellationToken);
 
@@ -283,7 +283,7 @@ public sealed class SurveyAdminControllerTests
         else
             surveys.CloseAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<SurveyReviewResult>(failure));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var act = () => open
             ? sut.Open(id, continueToSend: true, Xunit.TestContext.Current.CancellationToken)
@@ -303,7 +303,7 @@ public sealed class SurveyAdminControllerTests
         const string reason = "Invitations can only be sent for an Open survey.";
         surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(refused ? new SendResult(0, 0, 0, reason) : new SendResult(3, 2, 1));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var result = await sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
 
@@ -330,7 +330,7 @@ public sealed class SurveyAdminControllerTests
         var failure = new InvalidOperationException("Unexpected invitation persistence failure.");
         surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<SendResult>(failure));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var act = () => sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
 
@@ -346,7 +346,7 @@ public sealed class SurveyAdminControllerTests
         const string reason = "This survey's audience resolves to nobody to invite.";
         surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(Refusal: reason));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
 
@@ -365,7 +365,7 @@ public sealed class SurveyAdminControllerTests
             .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
         surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));
-        var sut = CreateController(surveys, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
 
@@ -498,13 +498,7 @@ public sealed class SurveyAdminControllerTests
                 IsPromotedToDirectory: false,
                 Instant.FromUtc(2026, 1, 1, 0, 0),
                 []));
-        var sut = new SurveyAdminController(
-            surveys,
-            teams,
-            Substitute.For<IUserService>(),
-            Substitute.For<IAuthorizationService>(),
-            Substitute.For<IStringLocalizer<SurveysResource>>(),
-            NullLogger<SurveyAdminController>.Instance);
+        var sut = CreateController(surveys, teams, role: RoleNames.Board);
 
         var result = await sut.Send(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -651,11 +645,11 @@ public sealed class SurveyAdminControllerTests
         ITeamService? teams = null,
         IAuthorizationService? authorizationService = null,
         Guid? userId = null,
-        bool isBoardOrAdmin = false,
+        string? role = null,
         IStringLocalizer<SurveysResource>? localizer = null)
     {
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, (userId ?? Guid.NewGuid()).ToString()) };
-        if (isBoardOrAdmin) claims.Add(new Claim(ClaimTypes.Role, RoleNames.Board));
+        if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
         return new(
             surveys,
@@ -725,15 +719,16 @@ public sealed class SurveyAdminControllerTests
             {
                 new(Guid.NewGuid(), "Mine", SurveyStatus.Draft, 0, 0, authorId, null, null),
             });
-        var sut = CreateController(surveys, userId: authorId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, userId: authorId);
 
         var result = await sut.Index(Xunit.TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<SurveyAdminIndexViewModel>().Subject;
-        model.IsBoardOrAdmin.Should().BeFalse();
+        model.SeesEverySurvey.Should().BeFalse();
         await surveys.Received(1).GetAdminSummariesAsync(
-            Arg.Is<SurveyViewer>(v => v.UserId == authorId && !v.IsBoardOrAdmin), Arg.Any<CancellationToken>());
+            Arg.Is<SurveyViewer>(v => v.UserId == authorId && !v.SeesEverySurvey && !v.ManagesEverySurvey),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -745,7 +740,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId);
 
         var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -760,7 +755,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -775,20 +770,20 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model
             .Should().BeOfType<SurveyBuilderViewModel>().Which;
-        model.IsBoardOrAdmin.Should().BeFalse("Open, Close, preview and recipient review are BoardOrAdmin");
+        model.ManagesEverySurvey.Should().BeFalse("Open, Close and recipient review are Surveys Admin actions");
     }
 
     [HumansTheory]
     [Xunit.InlineData(true, false, true)]
     [Xunit.InlineData(true, true, true)]
     [Xunit.InlineData(false, true, false)]
-    public async Task Builder_submit_control_matches_author_ownership(bool ownsSurvey, bool board, bool canSubmit)
+    public async Task Builder_submit_control_matches_author_ownership(bool ownsSurvey, bool manager, bool canSubmit)
     {
         var viewerId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -796,7 +791,7 @@ public sealed class SurveyAdminControllerTests
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Survey"),
                 ownsSurvey ? viewerId : Guid.NewGuid()));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, isBoardOrAdmin: board);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, role: manager ? SurveysRoles.SurveysAdmin : null);
 
         var result = await sut.Edit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -812,7 +807,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Survey"), Guid.NewGuid()));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, isBoardOrAdmin: true);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: viewerId, role: SurveysRoles.SurveysAdmin);
         sut.ModelState.AddModelError("Title", "Required");
 
         var result = await sut.Save(new SurveyBuilderViewModel { Id = surveyId, CanSubmit = true }, null,
@@ -831,7 +826,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId);
 
         var result = await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -849,7 +844,7 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Mine"), authorId));
         surveys.SubmitForApprovalAsync(surveyId, authorId, Arg.Any<CancellationToken>())
             .Returns(new SurveySubmitResult(true));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.Submit(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -918,7 +913,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Someone else's survey"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId);
 
         var previewEmails = Substitute.For<ISurveyPreviewEmailService>();
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -944,7 +939,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Closed, Editable("Someone else's survey"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: strangerId);
 
         var result = await sut.Results(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -959,7 +954,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Open, Editable("Mine"), authorId));
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.Results(surveyId, Xunit.TestContext.Current.CancellationToken);
 
@@ -976,12 +971,64 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Closed, Editable("Mine"), authorId));
         surveys.GetScopedResultsAsync(surveyId, Arg.Any<SurveyResultsScope>(), Arg.Any<CancellationToken>())
             .Returns((SurveyScopedResults?)null);
-        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId, isBoardOrAdmin: false);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: authorId);
 
         var result = await sut.Results(surveyId, scope: SurveyResultsScope.Combined, ct: Xunit.TestContext.Current.CancellationToken);
 
         // Not a Forbid: it proceeds to the (stubbed-null) results lookup and 404s instead.
         result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task Board_sees_every_survey_and_the_recipients_but_runs_nothing()
+    {
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns([]);
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Open, Editable("Survey"), Guid.NewGuid()));
+        surveys.GetInviteStatusesAsync(surveyId, Arg.Any<CancellationToken>()).Returns([]);
+        var sut = CreateController(surveys, role: RoleNames.Board);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var index = (SurveyAdminIndexViewModel)((ViewResult)await sut.Index(ct)).Model!;
+        var send = (SurveySendViewModel)((ViewResult)await sut.Send(surveyId, ct)).Model!;
+
+        index.SeesEverySurvey.Should().BeTrue();
+        index.ManagesEverySurvey.Should().BeFalse();
+        send.CanManage.Should().BeFalse();
+        await surveys.Received(1).GetAdminSummariesAsync(
+            Arg.Is<SurveyViewer>(v => v.SeesEverySurvey && !v.ManagesEverySurvey), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(nameof(SurveyAdminController.Approve))]
+    [Xunit.InlineData(nameof(SurveyAdminController.Reject))]
+    [Xunit.InlineData(nameof(SurveyAdminController.Open))]
+    [Xunit.InlineData(nameof(SurveyAdminController.Close))]
+    [Xunit.InlineData(nameof(SurveyAdminController.SendInvites))]
+    [Xunit.InlineData(nameof(SurveyAdminController.RankedAvailability))]
+    public void Survey_runs_are_Surveys_Manage_only(string action)
+    {
+        typeof(SurveyAdminController).GetMethod(action)!.GetCustomAttribute<AuthorizeAttribute>()!.Policy
+            .Should().Be(SurveysPolicies.Manage);
+    }
+
+    [HumansFact]
+    public async Task Board_reads_results_but_downloads_nothing()
+    {
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Closed, Editable("Survey"), Guid.NewGuid()));
+        surveys.GetScopedResultsAsync(surveyId, Arg.Any<SurveyResultsScope>(), Arg.Any<CancellationToken>())
+            .Returns((SurveyScopedResults?)null);
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), role: RoleNames.Board);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        (await sut.Results(surveyId, ct)).Should().BeOfType<NotFoundResult>("Board passes the results gate");
+        (await sut.ExportCsv(surveyId, ct)).Should().BeOfType<ForbidResult>();
+        (await sut.ExportJson(surveyId, ct)).Should().BeOfType<ForbidResult>();
     }
 
     /// <summary>

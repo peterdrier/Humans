@@ -472,11 +472,6 @@ internal sealed partial class TeamResourceService(
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        if (await RoleAssignmentService.IsUserBoardMemberAsync(userId, ct))
-        {
-            return true;
-        }
-
         if (await RoleAssignmentService.IsUserTeamsAdminAsync(userId, ct))
         {
             return true;

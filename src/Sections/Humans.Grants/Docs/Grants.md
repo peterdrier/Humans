@@ -26,7 +26,7 @@ A grant entitles a human to a thing (a cheaper ticket, early entry for build, st
 | Id | Guid | PK |
 | Name | string(200) | |
 | Entitles | string(500) | What the person gets, in their notice and on their profile |
-| Description | string(2000)? | Managers and Board only |
+| Description | string(2000)? | Managers, Grants Admin and Board only |
 | Year | int | the event's year, for display and sorting |
 | EventSettingsId | Guid? | index; the event. Null on programs from before events were tracked: they read as the earliest non-deleted event of their year (by gate opening) until the `grants.event-ids` data migration (on `/Debug/DataMigrations`) stamps that event |
 | IssuedBy | GrantIssuer (string) | `Managers` or `Source` |
@@ -68,7 +68,8 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 |-------|--------------|
 | Grant holder | Sees their own grants on their profile; gets an email and in-app notice on issue, resend and revoke |
 | Program manager | Sees the programs they manage; issues (managers' programs only), revokes, resends notices on them |
-| Board, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
+| Grants Admin, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
+| Board | Reads every program and its grants; changes nothing |
 | UsersAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
 | A source section (LowIncome) | Issues and revokes under the open program whose source key it passes, through `IGrantWrite` |
 
@@ -90,9 +91,10 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 - A program manager **cannot** create programs, edit a program, or change its managers.
 - A manager of one program **cannot** see or act on another program's grants (per-grant routes 404 when the grant is not in the routed program).
-- Managers, Board and Admin **cannot** issue by hand under a source program. Another section **cannot** issue under a managers' program or under a source key it does not own.
+- Managers, Grants Admin and Admin **cannot** issue by hand under a source program. Another section **cannot** issue under a managers' program or under a source key it does not own.
 - A grant holder **cannot** reach the admin pages, and **cannot** see anyone else's grants.
-- FinanceAdmin, TicketsAdmin and other roles **cannot** manage grants unless they are Board, Admin, or a named manager.
+- Board **cannot** create, edit, issue, revoke or resend; it reads only.
+- FinanceAdmin, TicketsAdmin and other roles **cannot** manage grants unless they are Grants Admin, Admin, or a named manager.
 
 ## Triggers
 

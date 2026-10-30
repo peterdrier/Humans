@@ -89,7 +89,8 @@
                                         @{
                                             var currentLevel = resource.DrivePermissionLevel.ToString();
                                         }
-                                        <select name="level" class="form-select form-select-sm d-inline-block permission-select" style="width: auto; min-width: 140px;" data-original="@currentLevel">
+                                        <select name="level" class="form-select form-select-sm d-inline-block permission-select" style="width: auto; min-width: 140px;" data-original="@currentLevel"
+                                                disabled="@(Model.CanManage ? null : "disabled")">
                                             @foreach (var opt in new[] { ("Viewer", "Viewer"), ("Commenter", "Commenter"), ("Contributor", "Contributor (add/modify)"), ("ContentManager", "Content Manager (move/delete)"), ("Manager", "Manager") })
                                             {
                                                 if (opt.Item1 == currentLevel)
@@ -110,7 +111,13 @@
                                 }
                             </td>
                             <td>
-                                @if (resource.IsDriveFolder)
+                                @if (resource.IsDriveFolder && !Model.CanManage)
+                                {
+                                    <span class="badge @(resource.RestrictInheritedAccess ? "bg-warning text-dark" : "bg-secondary")">
+                                        @(resource.RestrictInheritedAccess ? Localizer["GoogleIntegration_TeamResources_Restricted"] : Localizer["GoogleIntegration_TeamResources_Inherited"])
+                                    </span>
+                                }
+                                else if (resource.IsDriveFolder)
                                 {
                                     @if (resource.RestrictInheritedAccess)
                                     {
@@ -159,12 +166,15 @@
                                 }
                             </td>
                             <td>
-                                <div class="d-flex gap-1" role="group">
-                                    <form asp-action="UnlinkResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to deactivate this resource?">Deactivate</button>
-                                    </form>
-                                </div>
+                                @if (Model.CanManage)
+                                {
+                                    <div class="d-flex gap-1" role="group">
+                                        <form asp-action="UnlinkResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to deactivate this resource?">Deactivate</button>
+                                        </form>
+                                    </div>
+                                }
                             </td>
                         </tr>
                     }
@@ -180,32 +190,35 @@ else
     </div>
 }
 
-<div class="card mb-4">
-    <div class="card-header">Link Google Drive Resource</div>
-    <div class="card-body">
-        <form asp-action="LinkDriveResource" asp-route-slug="@Model.TeamSlug" method="post">
-            @Html.AntiForgeryToken()
-            <div class="mb-3">
-                <label for="resourceUrl" class="form-label">Drive URL</label>
-                <input type="url" class="form-control" id="resourceUrl" name="ResourceUrl"
-                       placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/d/..." required>
-                <div class="form-text">Paste a Google Drive folder, Sheets, Docs, Slides, or other file URL.</div>
-            </div>
-            <div class="mb-3">
-                <label for="permissionLevel" class="form-label">Permission Level</label>
-                <select class="form-select" id="permissionLevel" name="PermissionLevel" style="max-width: 300px;">
-                    <option value="Viewer">Viewer (read-only)</option>
-                    <option value="Commenter">Commenter</option>
-                    <option value="Contributor" selected>Contributor (add/modify)</option>
-                    <option value="ContentManager">Content Manager (move/delete)</option>
-                    <option value="Manager">Manager</option>
-                </select>
-                <div class="form-text">Permission level granted to team humans for this resource.</div>
-            </div>
-            <button type="submit" class="btn btn-primary">Link Resource</button>
-        </form>
+@if (Model.CanManage)
+{
+    <div class="card mb-4">
+        <div class="card-header">Link Google Drive Resource</div>
+        <div class="card-body">
+            <form asp-action="LinkDriveResource" asp-route-slug="@Model.TeamSlug" method="post">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label for="resourceUrl" class="form-label">Drive URL</label>
+                    <input type="url" class="form-control" id="resourceUrl" name="ResourceUrl"
+                           placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/d/..." required>
+                    <div class="form-text">Paste a Google Drive folder, Sheets, Docs, Slides, or other file URL.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="permissionLevel" class="form-label">Permission Level</label>
+                    <select class="form-select" id="permissionLevel" name="PermissionLevel" style="max-width: 300px;">
+                        <option value="Viewer">Viewer (read-only)</option>
+                        <option value="Commenter">Commenter</option>
+                        <option value="Contributor" selected>Contributor (add/modify)</option>
+                        <option value="ContentManager">Content Manager (move/delete)</option>
+                        <option value="Manager">Manager</option>
+                    </select>
+                    <div class="form-text">Permission level granted to team humans for this resource.</div>
+                </div>
+                <button type="submit" class="btn btn-primary">Link Resource</button>
+            </form>
+        </div>
     </div>
-</div>
+}
 
 <div class="mt-3">
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["GoogleIntegration_TeamResources_BackToTeam"]</a>

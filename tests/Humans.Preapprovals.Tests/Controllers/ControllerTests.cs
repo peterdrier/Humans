@@ -60,7 +60,6 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Issue(b.Id, SeedUser(), null, null, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.Approve(b.Id, applicationOnB.Id, null, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.Edit(a.Id, Ct)).Should().BeOfType<ForbidResult>("managers never edit the program itself");
-        (await controller.New(Ct)).Should().BeOfType<ForbidResult>();
         (await ReadGrantAsync(applicationOnB.Id)).Status.Should().Be(GrantStatus.Applied);
 
         var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
@@ -134,8 +133,37 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         Email.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansFact]
+    public void Creating_a_program_is_Finance_Manage_only()
+    {
+        typeof(PreapprovalsAdminController).GetMethods()
+            .Where(m => string.Equals(m.Name, nameof(PreapprovalsAdminController.New), StringComparison.Ordinal))
+            .Should().HaveCount(2)
+            .And.OnlyContain(m => m.GetCustomAttributes(typeof(AuthorizeAttribute), false)
+                .Cast<AuthorizeAttribute>().Any(a => string.Equals(a.Policy, FinancePolicies.Manage, StringComparison.Ordinal)));
+    }
+
+    [HumansFact]
+    public async Task Board_reads_every_program_and_changes_nothing()
+    {
+        var program = await SeedProgramAsync(name: "A");
+        var application = await SeedGrantAsync(program, status: GrantStatus.Applied);
+        var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
+
+        var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
+        var page = (await controller.Program(program.Id, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminProgramViewModel>().Subject;
+
+        index.Programs.Select(p => p.Id).Should().Equal(program.Id);
+        index.CanAdminister.Should().BeFalse();
+        page.CanManage.Should().BeFalse();
+        page.CanAdminister.Should().BeFalse();
+        (await controller.Approve(program.Id, application.Id, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await controller.Issue(program.Id, SeedUser(), null, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await controller.Edit(program.Id, Ct)).Should().BeOfType<ForbidResult>();
+        (await ReadGrantAsync(application.Id)).Status.Should().Be(GrantStatus.Applied);
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
     [Xunit.InlineData(RoleNames.Admin)]
     public async Task ManagingRole_CreatesAProgram(string role)
@@ -172,7 +200,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     public async Task Program_forms_require_explicit_kind_status_and_application_choice(bool editing, string omitted, bool zeroChoices)
     {
         var existing = editing ? await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, status: ProgramStatus.Closed) : null;
-        var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
+        var controller = BuildAdmin(SeedUser("Finance admin"), FinanceRoles.FinanceAdmin);
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -318,7 +346,14 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAuthorization(((ISectionPolicies)new Section()).AddPolicies);
+        services.AddAuthorization(options =>
+        {
+            ((ISectionPolicies)new Section()).AddPolicies(options);
+            options.AddPolicy(FinancePolicies.Read,
+                policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Board, RoleNames.Admin));
+            options.AddPolicy(FinancePolicies.Manage,
+                policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
+        });
         services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService()));
         var provider = services.BuildServiceProvider();

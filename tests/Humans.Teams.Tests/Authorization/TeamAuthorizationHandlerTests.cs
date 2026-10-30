@@ -33,7 +33,7 @@ public sealed class TeamAuthorizationHandlerTests
     {
         { "admin", "other", true },
         { "teams-admin", "other", true },
-        { "board", "other", true },
+        { "board", "other", false },
         { "coordinator", "coordinator", true },
         { "coordinator", "other", false },
         { "regular", "coordinator", false },

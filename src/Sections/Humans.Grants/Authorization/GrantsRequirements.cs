@@ -1,6 +1,7 @@
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Base.Constants;
+using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace Humans.Grants.Authorization;
 
 internal sealed class ManagesGrantsRequirement : IAuthorizationRequirement, IDescribedRequirement
 {
-    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, "Grant program managers"];
+    public IReadOnlyList<string> Admits => [RoleNames.Admin, GrantsRoles.GrantsAdmin, RoleNames.Board, "Grant program managers"];
 }
 
 /// <summary>
@@ -20,15 +21,12 @@ internal sealed class GrantsPolicyHandler(IGrantManagement grants, IUserService 
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ManagesGrantsRequirement requirement)
     {
-        if (IsAdministering(context.User)
+        if (GrantsRoles.ReadsGrants(context.User)
             || (await ViewerAsync(users, context.User) is { } viewer && await grants.ManagesAnyProgramAsync(viewer.Id)))
         {
             context.Succeed(requirement);
         }
     }
-
-    internal static bool IsAdministering(ClaimsPrincipal user) =>
-        user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board);
 
     /// <summary>
     /// A cookie issued before an account merge still carries the archived id; this returns the surviving account. The
