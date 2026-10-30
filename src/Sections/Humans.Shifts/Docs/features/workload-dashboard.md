@@ -94,7 +94,7 @@ The admin workload view includes every shift on every rota in the active event â
 
 | Route | Purpose | Auth |
 |---|---|---|
-| `GET /Shifts/Admin/Workload` | Workload dashboard (three tabs) | `ShiftsPolicies.Read` (Admin / Board / ShiftsNoInfo / ShiftsAdmin) |
+| `GET /Shifts/Admin/Workload` | Workload dashboard (tabbed) | `ShiftsPolicies.Read` (Admin / Board / ShiftsNoInfo / ShiftsAdmin) |
 
 Lives under `/Shifts/Admin/*` per `memory/architecture/no-admin-url-section.md`. Surfaced in the admin sidebar under the "Shifts" group.
 

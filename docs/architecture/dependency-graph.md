@@ -757,7 +757,7 @@ graph LR
     Metrics -. "lazy" .-> User
 
     %% ── Edge styling ──
-    %% 395 eager edges (indices 0-394) come first, then the 20 lazy edges (395-414); linkStyle indexes the lazy block by position.
+    %% Eager edges come first, then the lazy block; linkStyle indexes the lazy block by position.
     %% Recompute the indices whenever edges change.
     linkStyle 395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414 stroke:#f97316,stroke-width:2.5px
 ```

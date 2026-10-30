@@ -4,14 +4,13 @@
 **Previous anchor:** `cb3d8b37`
 **New anchor:** `f71de1eb` (upstream/main)
 **Worktree base:** `origin/main` @ `f71de1eb` (frozen at start; same commit as upstream/main)
-**Diff window:** 4,260 changed files, 125 non-merge commits. The nine "Comments earn their place"
-commits, the resharper cleanups and the dependency bumps touched nearly every file. Docs were matched
-against the 2,595 files changed by the other commits. Even so, every one of the 161 marked editorial
-docs and every mechanical entry was dirty.
+**Diff window:** the "Comments earn their place" commits, resharper cleanups and dependency bumps
+touched nearly every file, so docs were matched only against files changed by the other commits.
+Every marked editorial doc and every mechanical entry was still dirty.
 
-**Result:** every dirty editorial doc was reviewed and 76 were edited. `run-all.sh` passes 8/9; the one failure,
-`dev-stats`, comes from the container (see Skipped). `diff-mode.sh` passes 17/17 and `verify-triggers.sh --check`
-finds no dead triggers.
+**Result:** every dirty editorial doc was reviewed and edited where it had drifted. Every verifier in
+`run-all.sh` passes except `dev-stats` (environmental, see Skipped); `diff-mode.sh` passes and
+`verify-triggers.sh --check` finds no dead triggers.
 
 Most of the drift came from the window's access changes. Board now reads every section's admin pages
 read-only (pages moved from `*Policies.Manage` to `*Policies.Read`; writes stay on Manage). Roles are
@@ -23,16 +22,16 @@ grants).
 
 ## Updated automatically
 
-- `dependency-graph`: 6 nodes added (CampImageGallery, CampMembershipNotices, ConsentReminderService,
+- `dependency-graph`: nodes added (CampImageGallery, CampMembershipNotices, ConsentReminderService,
   CreditorMatchService, FeedbackReplyDelivery, StoreStripePayments), and new edges added
   (CityPlan→Settings, ConsentReview→Audit, ExpenseBookings→Holded, LowIncome→User,
   ShiftMgmt⇢Settings). Stale edges removed: Merge→Team/Notif, DupAcct→Consent, Feedback→Email/NotifEmitter/UEmail,
   Consent→NotifInbox, Team⇢Email, Cal⇢Team. UserNameSyncService and TicketingPreferenceLock removed.
-  `linkStyle` now covers 395 eager edges and 20 lazy ones.
+  `linkStyle` re-indexed.
 - `service-data-access-map`: Camps (CampEventSettings table; CampImageGallery, CampMembershipNotices),
   Finance (CreditorMatchService), Store (StoreStripePayments), Cantina (IDietaryProfileRepository),
   Rideshare (real table names). Rollup unchanged.
-- `authorization-inventory`: 18 section maps and the global file. Agent/Backdoor/Debug are now
+- `authorization-inventory`: the touched section maps and the global file. Agent/Backdoor/Debug are now
   BoardOrAdmin with AdminOnly POSTs. Also covered: the key-authed Backdoor API `[AllowAnonymous]`,
   the `[AllowBeforeActiveMembership]` markers, Shifts RevealMedical, CityPlanning placement schedule,
   Dev login, `AuthorizeAsync` line numbers, and the Team view rows.
@@ -94,7 +93,7 @@ None.
 
 ## Pruned
 
-- `docs/superpowers/plans/2026-09-25-workgroup-budget.md` (2,031 lines, 4.5% of doc lines). The
+- `docs/superpowers/plans/2026-09-25-workgroup-budget.md` (under the 5% target). The
   feature has shipped. The plan's global constraints and review-focus rules are already in
   `docs/features/global/workgroup-budget.md` and the Workgroups.md budget invariant
   (`WorkgroupService.SetBudgetAsync`). The rest is task lists and code samples. No inbound refs.

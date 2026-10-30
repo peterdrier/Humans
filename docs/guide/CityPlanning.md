@@ -17,7 +17,7 @@
 
 City Planning is an interactive aerial map where [camps](Glossary.md#barrio) stake out their physical footprint before the event. Camp leads draw their own [barrio](Glossary.md#barrio)'s placement during the placement phase; everyone else sees the evolving layout live, color-coded by [sound zone](Glossary.md#sound-zone). Map admins manage the placement lifecycle, upload overlays (site boundary, official zones), and export placements as GeoJSON.
 
-Three entities back this section: `CityPlanningSettings` (per-year singleton, controls the barrio placement schedule and override, whether container placement is open, and holds overlay GeoJSON), `CampPolygon` (one polygon per camp season), and `CampPolygonHistory` (append-only audit trail of every save and restore).
+These entities back this section: `CityPlanningSettings` (per-year singleton, controls the barrio placement schedule and override, whether container placement is open, and holds overlay GeoJSON), `CampPolygon` (one polygon per camp season), and `CampPolygonHistory` (append-only audit trail of every save and restore).
 
 ![TODO: screenshot — barrio map full-screen view]
 
@@ -61,7 +61,7 @@ Map admin access is held by **Camps Admin**, **[Admin](Glossary.md#admin)**, and
 - **Restore a prior version.** From a placement's history, choose a past version and restore. It becomes the new current version, noted "Restored from {timestamp}". History is append-only — the version it replaces was already recorded there, so nothing is lost.
 - **Override barrio placement.** From [/Settings#city-planning](/Settings), **Force open** or **Force closed** overrides the schedule until you choose **Follow schedule**. Each change is audited and timestamped. Forcing closed blocks camp leads from editing but not you.
 - **Toggle container placement.** A separate phase with its own open/close buttons, on the container admin page (`/CityPlanning/BarrioMap/Admin/Containers/{year}`). While it is closed, camp leads can neither reach the container map nor place their containers; you can, either way.
-- **Set the placement schedule.** On `/Settings#city-planning`, set three day offsets from the active event's gate opening — when placement opens, when it closes, and the last day leads may still adjust an existing barrio. The schedule drives the phase automatically; the tab shows each date and the current state.
+- **Set the placement schedule.** On `/Settings#city-planning`, set day offsets from the active event's gate opening — when placement opens, when it closes, and the last day leads may still adjust an existing barrio. The schedule drives the phase automatically; the tab shows each date and the current state.
 - **Upload a limit zone.** A GeoJSON FeatureCollection defining the site boundary. Renders as a dashed outline coloured by each feature's `SoundZone` property (white dashes when the property is absent); placements drawn outside it are flagged. Download and delete are supported.
 - **Upload official zones.** A GeoJSON FeatureCollection of named read-only overlay zones (dark gray, labeled). Each Feature needs a `name` property. Download and delete supported.
 - **Export all placements.** Download every placement for a year as a single GeoJSON FeatureCollection for logistics, signage, and public materials.
