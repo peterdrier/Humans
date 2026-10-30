@@ -29,7 +29,7 @@
 <form asp-controller="TicketsContactsAdmin" asp-action="Apply" method="post" id="contacts-apply">
     @Html.AntiForgeryToken()
 
-    <div class="mb-2">
+    <div class="mb-2" authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Manage">
         <button type="button" class="btn btn-outline-secondary btn-sm" id="select-all">Select all</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" id="select-first">Select first 1</button>
         <button type="submit" class="btn btn-primary btn-sm" id="apply-btn">

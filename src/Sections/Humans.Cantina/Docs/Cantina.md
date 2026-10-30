@@ -45,7 +45,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/Cantina/Roster?weekStartOffset=<int>` | GET | `[Authorize(Policy = CantinaAdminOrAdmin)]` | HTML weekly roster page |
+| `/Cantina/Roster?weekStartOffset=<int>` | GET | `[Authorize(Policy = CantinaPolicies.Read)]` | HTML weekly roster page |
 | `/Cantina/Roster/RevealHealth` | POST | same as above | Audited reveal; the next render of that week shows the free-text allergy / intolerance entries |
 | `/Cantina/Roster/Csv?weekStartOffset=<int>` | GET | same as above | CSV download of the same aggregate |
 | `/Cantina/Roster/Day?dayOffset=<int>` | GET | same as above | Per-day drill-down matrix |
@@ -60,6 +60,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 | Actor | Capabilities |
 |-------|--------------|
 | Admin, CantinaAdmin | View weekly/daily roster, reveal its allergy / intolerance details (audited), download CSV |
+| Board | View the weekly/daily roster and reveal its allergy / intolerance details (audited); no CSV download (`CantinaPolicies.Read`) |
 | Any authenticated member (incl. not-yet-Active; the form carries `[AllowBeforeActiveMembership]`) | Read and save **their own** dietary answers, or decline to answer |
 | All other authenticated humans | Redirected to `/Account/AccessDenied`; Cantina admin sidebar entry is hidden |
 | Anonymous | Standard `[Authorize]` challenge — redirected to sign-in |
@@ -86,7 +87,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 ## Negative Access Rules
 
-- Pre-volunteer humans (Guest dashboard, profile not yet active) **cannot** see the Cantina admin sidebar entry — it lives under the `Cantina` group in `AdminNavTree` and is gated by the same `CantinaAdminOrAdmin` policy used by the controller. The entry is reachable only via the Admin shell (`/Admin/*`); there is no member-shell top-nav link.
+- Pre-volunteer humans (Guest dashboard, profile not yet active) **cannot** see the Cantina admin sidebar entry — it lives under the `Cantina` group in `AdminNavTree` and is gated by the same `CantinaPolicies.Read` policy used by the controller. The entry is reachable only via the Admin shell (`/Admin/*`); there is no member-shell top-nav link.
 - Any human (including Cantina-team members and Cantina coordinators) **cannot** see another human's `MedicalConditions` through this section — the field is not in the DTO and not in the view. The only surface for medical data remains `_VolunteerProfileBadges` with `ShowMedical=true` (ShiftsNoInfo / Admin only).
 - Authenticated humans who fail the access gate **cannot** read the roster or download the CSV — every route answers `302 → /Account/AccessDenied` (cookie authentication's `AccessDeniedPath`, set app-wide in `Program.cs`). Pinned by `CantinaPageRenderTests.A_volunteer_cannot_reach_the_roster_or_the_export`.
 - Team coordinators and Cantina-team members **cannot** see the roster on that basis alone — access requires the `Admin` or `CantinaAdmin` role. Team membership grants nothing here.
@@ -123,7 +124,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 - **Roster calculations stay section-internal.** `CantinaRosterCalculation` owns day membership, day totals, weekly people rows and dietary rollups. `CantinaRosterService` retains source-data loading, arrival-day orchestration, clock access and export audits; no service contract or DI registration changes.
 
 - **The roster reads no repository.** `CantinaRosterService` calls **only section services** (`IShiftService`, `ISettingsService`, `IUserService`, `ICantinaService`). This keeps the reads cacheable via the owning sections' decorators and avoids cross-section repository coupling.
-- **Access is a policy, not a service.** `CantinaAdminOrAdmin` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The section registers it itself, in `Section.cs` via `ISectionPolicies` (not in the Shell's `AuthorizationPolicyExtensions`). `CantinaRoles.CantinaAdmin` / `PolicyNames.CantinaAdminOrAdmin` stay in `Humans.Base` — they are `string` constants, not references to this project.
+- **Access is a policy, not a service.** `CantinaPolicies.Read` (Admin or the grantable `CantinaAdmin` role) gates the controller and the nav link; there is no `ICantinaAccessService`. The section registers it itself, in `Section.cs` via `ISectionPolicies` (not in the Shell's `AuthorizationPolicyExtensions`). `CantinaRoles.CantinaAdmin` / `CantinaPolicies.Read` stay in `Humans.Base` — they are `string` constants, not references to this project.
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` live in the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).
 - **Decorator decision — no caching decorators.** Roster aggregation is live per request; dietary reads are one keyed row (or one batched query) on a handful of pages — a `TrackedCache` decorator buys nothing at this scale.
 - **Cross-domain navs** — none declared; `DietaryProfile` keys on `UserId` only. All cross-section linkage is via service interfaces, by id.

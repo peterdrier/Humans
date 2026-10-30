@@ -15,7 +15,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
 
-[Authorize(Policy = PolicyNames.EventsAdminOrAdmin)]
+[Authorize(Policy = EventsPolicies.Read)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventsFeatureFilter))]
 internal sealed class EventsDashboardController(IEventManagement guide, ICampService camps, IUserService userService)

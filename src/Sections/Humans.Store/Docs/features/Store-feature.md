@@ -105,7 +105,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a `StoreAdmin`, `FinanceAdmin`, or `Admin`, **I want** a single page that aggregates a year's store activity across all camps, **so that** I can read top-line totals, spot under-paid camps, and audit per-product demand without opening order pages one by one.
 
 **Acceptance Criteria:**
-- `/Store/Admin/Summary` is gated by `PolicyNames.StoreCatalogAdmin` (the same policy as `/Store/Admin/Catalog`); volunteers receive 403/redirect.
+- `/Store/Admin/Summary` is gated by `StorePolicies.Manage` (the same policy as `/Store/Admin/Catalog`); volunteers receive 403/redirect.
 - Year selector at the top defaults to the active event year via `ISettingsService.GetActiveEventSettingsAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
 - Three projections render in this order, each as its own card:
   - **By-camp** — one row per order with Camp / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid. A footer summary row totals Total due / Paid / Balance across **camp counterparties only** (team orders are excluded so the totals reconcile: teams never pay, so their due would break `Total due = Paid + Balance`). **Totals use effective pricing** — Open orders use the live catalog price (same as the order page); InvoiceIssued orders use frozen snapshots.

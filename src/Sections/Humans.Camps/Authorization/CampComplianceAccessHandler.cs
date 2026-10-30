@@ -15,7 +15,7 @@ internal sealed class CampComplianceAccessHandler(IShiftService shiftManagement)
     {
         var user = context.User;
 
-        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(CampsRoles.CampsAdmin))
+        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) || user.IsInRole(CampsRoles.CampsAdmin))
         {
             context.Succeed(requirement);
             return;

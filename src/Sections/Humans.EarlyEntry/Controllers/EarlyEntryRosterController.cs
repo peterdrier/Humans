@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Models;
 using Humans.Base.Authorization;
@@ -9,7 +10,7 @@ using Humans.Users.Contracts;
 namespace Humans.EarlyEntry.Controllers;
 
 [Route("Shifts/Admin/EarlyEntry")]
-[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+[Authorize(Policy = ShiftsPolicies.Read)]
 internal sealed class EarlyEntryRosterController(
     IEarlyEntryService earlyEntryService,
     IUserService userService) : HumansControllerBase(userService)

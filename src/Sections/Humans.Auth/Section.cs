@@ -76,7 +76,7 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Users", [
-            new("Roles", "RoleAssignments", "Roles", null, null, "fa-solid fa-id-badge", PolicyNames.HumanAdminBoardOrAdmin, Weight: 10)
+            new("Roles", "RoleAssignments", "Roles", null, null, "fa-solid fa-id-badge", UsersPolicies.Read, Weight: 10)
         ])
     ];
 

@@ -23,7 +23,7 @@ The two views split by the job in hand. The weekly view is **overview-only** —
 
 View access to `/Cantina/Roster*`:
 
-- **Access:** `Admin` or the grantable `CantinaAdmin` role, via the `CantinaAdminOrAdmin` authorization policy — aligned with every other per-area `<Area>AdminOrAdmin` policy. `CantinaAdmin` is granted on the permissions page like any other admin role (no team-name heuristic).
+- **Access:** `Admin` or the grantable `CantinaAdmin` role, via the `CantinaPolicies.Read` authorization policy — aligned with every other per-area `<Area>AdminOrAdmin` policy. `CantinaAdmin` is granted on the permissions page like any other admin role (no team-name heuristic).
 - **Other authenticated users:** redirected to `/Account/AccessDenied` (cookie authentication's `AccessDeniedPath`) — not a bare 403.
 - **Unauthenticated:** redirected to login per the global `[Authorize]` policy.
 
@@ -120,7 +120,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 **So that** other volunteers' dietary data isn't broadcast to anyone who guesses the URL
 
 **Acceptance Criteria:**
-- Authenticated user without `Admin` or `CantinaAdmin` is redirected to `/Account/AccessDenied` on the `/Cantina/Roster*` routes (the `CantinaAdminOrAdmin` policy fails; cookie authentication's `AccessDeniedPath`, not a bare 403).
+- Authenticated user without `Admin` or `CantinaAdmin` is redirected to `/Account/AccessDenied` on the `/Cantina/Roster*` routes (the `CantinaPolicies.Read` policy fails; cookie authentication's `AccessDeniedPath`, not a bare 403).
 - Unauthenticated user is redirected to the login page (global `[Authorize]` policy).
 - The access-denied redirect must **not** leak any data (no headcount, no week label) — only the standard redirect.
 
@@ -237,7 +237,7 @@ This feature lives in the `Cantina/` section and reads **only through section se
 - **Cantina (read, dietary):** `ICantinaService.GetDietaryProfilesAsync` — batched; the DTO has no medical field, so `CantinaRosterService` never sees `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
-- **Authorization:** the `CantinaAdminOrAdmin` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
+- **Authorization:** the `CantinaPolicies.Read` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
 - **No roster-specific entity or migration** (the dietary table belongs to the [Dietary Nudge](dietary-nudge.md)).
 
 New / updated components:
@@ -246,8 +246,8 @@ New / updated components:
 |---|---|---|
 | Application | `CantinaRosterService` | Build weekly aggregates + per-day mini-summary + unique-humans table; reads via `IShiftService`, `ISettingsService`, `IUserService` + `ICantinaService` |
 | Application | `WeeklyRosterDto`, `DailyMatrixDto`, `DayRosterSummaryDto`, `RosterPersonDto`, `DailyPersonRowDto`, `RollupItemDto` | Payload contracts; no `MedicalConditions` field |
-| Cantina.Contracts | `CantinaRoles.CantinaAdmin` | Grantable admin role, declared through `ISectionRoles` (so it joins `AnyAdminRole`) and gated by the `CantinaAdminOrAdmin` policy |
-| Section | `CantinaController` | `[Authorize(Policy = CantinaAdminOrAdmin)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
+| Cantina.Contracts | `CantinaRoles.CantinaAdmin` | Grantable admin role, declared through `ISectionRoles` (so it joins `AnyAdminRole`) and gated by the `CantinaPolicies.Read` policy |
+| Section | `CantinaController` | `[Authorize(Policy = CantinaPolicies.Read)]`; `GET /Cantina/Roster(/Csv)` + `/Roster/Day(/Csv)` |
 | Section | `Roster.cshtml`, `Day.cshtml` | Weekly overview (aggregates + per-day mini-table) and the per-day matrix |
 
 ## Negative access rules

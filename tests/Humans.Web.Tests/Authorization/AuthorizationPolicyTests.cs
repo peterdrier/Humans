@@ -114,38 +114,38 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.BoardOrAdmin, UsersRoles.UsersAdmin, false },
         { PolicyNames.BoardOrAdmin, ShiftsRoles.ShiftsAdmin, false },
 
-        { PolicyNames.HumanAdminBoardOrAdmin, UsersRoles.UsersAdmin, true },
-        { PolicyNames.HumanAdminBoardOrAdmin, RoleNames.Board, true },
-        { PolicyNames.HumanAdminBoardOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.HumanAdminBoardOrAdmin, TeamsRoles.TeamsAdmin, false },
-        { PolicyNames.HumanAdminBoardOrAdmin, FinanceRoles.FinanceAdmin, false },
+        { UsersPolicies.Read, UsersRoles.UsersAdmin, true },
+        { UsersPolicies.Read, RoleNames.Board, true },
+        { UsersPolicies.Read, RoleNames.Admin, true },
+        { UsersPolicies.Read, TeamsRoles.TeamsAdmin, false },
+        { UsersPolicies.Read, FinanceRoles.FinanceAdmin, false },
 
-        { PolicyNames.HumanAdminOrAdmin, UsersRoles.UsersAdmin, true },
-        { PolicyNames.HumanAdminOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.HumanAdminOrAdmin, RoleNames.Board, false },
-        { PolicyNames.HumanAdminOrAdmin, TeamsRoles.TeamsAdmin, false },
+        { UsersPolicies.Manage, UsersRoles.UsersAdmin, true },
+        { UsersPolicies.Manage, RoleNames.Admin, true },
+        { UsersPolicies.Manage, RoleNames.Board, false },
+        { UsersPolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
-        { PolicyNames.TeamsAdminBoardOrAdmin, TeamsRoles.TeamsAdmin, true },
-        { PolicyNames.TeamsAdminBoardOrAdmin, RoleNames.Board, true },
-        { PolicyNames.TeamsAdminBoardOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.TeamsAdminBoardOrAdmin, UsersRoles.UsersAdmin, false },
-        { PolicyNames.TeamsAdminBoardOrAdmin, CampsRoles.CampsAdmin, false },
+        { TeamsPolicies.Read, TeamsRoles.TeamsAdmin, true },
+        { TeamsPolicies.Read, RoleNames.Board, true },
+        { TeamsPolicies.Read, RoleNames.Admin, true },
+        { TeamsPolicies.Read, UsersRoles.UsersAdmin, false },
+        { TeamsPolicies.Read, CampsRoles.CampsAdmin, false },
 
-        { PolicyNames.CampAdminOrAdmin, CampsRoles.CampsAdmin, true },
-        { PolicyNames.CampAdminOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.CampAdminOrAdmin, RoleNames.Board, false },
-        { PolicyNames.CampAdminOrAdmin, TeamsRoles.TeamsAdmin, false },
+        { CampsPolicies.Manage, CampsRoles.CampsAdmin, true },
+        { CampsPolicies.Manage, RoleNames.Admin, true },
+        { CampsPolicies.Manage, RoleNames.Board, false },
+        { CampsPolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
-        { PolicyNames.TicketAdminBoardOrAdmin, TicketsRoles.TicketsAdmin, true },
-        { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.TicketAdminBoardOrAdmin, RoleNames.Board, true },
-        { PolicyNames.TicketAdminBoardOrAdmin, TeamsRoles.TeamsAdmin, false },
-        { PolicyNames.TicketAdminBoardOrAdmin, UsersRoles.UsersAdmin, false },
+        { TicketsPolicies.Read, TicketsRoles.TicketsAdmin, true },
+        { TicketsPolicies.Read, RoleNames.Admin, true },
+        { TicketsPolicies.Read, RoleNames.Board, true },
+        { TicketsPolicies.Read, TeamsRoles.TeamsAdmin, false },
+        { TicketsPolicies.Read, UsersRoles.UsersAdmin, false },
 
-        { PolicyNames.TicketAdminOrAdmin, TicketsRoles.TicketsAdmin, true },
-        { PolicyNames.TicketAdminOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.TicketAdminOrAdmin, RoleNames.Board, false },
-        { PolicyNames.TicketAdminOrAdmin, TeamsRoles.TeamsAdmin, false },
+        { TicketsPolicies.Manage, TicketsRoles.TicketsAdmin, true },
+        { TicketsPolicies.Manage, RoleNames.Admin, true },
+        { TicketsPolicies.Manage, RoleNames.Board, false },
+        { TicketsPolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
         { PolicyNames.ScannerAccess, TicketsRoles.TicketsAdmin, true },
         { PolicyNames.ScannerAccess, RoleNames.Board, true },
@@ -155,16 +155,16 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.ScannerAccess, "SomeNonAdminRole", false },
 
         { PolicyNames.GateAdmit, TicketsRoles.TicketsAdmin, true },
-        { PolicyNames.GateAdmit, RoleNames.Board, true },
+        { PolicyNames.GateAdmit, RoleNames.Board, false },
         { PolicyNames.GateAdmit, RoleNames.Admin, true },
         { PolicyNames.GateAdmit, TeamsRoles.TeamsAdmin, false },
         { PolicyNames.GateAdmit, UsersRoles.UsersAdmin, false },
         { PolicyNames.GateAdmit, "SomeNonAdminRole", false },
 
-        { PolicyNames.FinanceAdminOrAdmin, FinanceRoles.FinanceAdmin, true },
-        { PolicyNames.FinanceAdminOrAdmin, RoleNames.Admin, true },
-        { PolicyNames.FinanceAdminOrAdmin, RoleNames.Board, false },
-        { PolicyNames.FinanceAdminOrAdmin, TeamsRoles.TeamsAdmin, false },
+        { FinancePolicies.Manage, FinanceRoles.FinanceAdmin, true },
+        { FinancePolicies.Manage, RoleNames.Admin, true },
+        { FinancePolicies.Manage, RoleNames.Board, false },
+        { FinancePolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
         { PolicyNames.ReviewQueueAccess, ConsentRoles.ConsentCoordinator, true },
         { PolicyNames.ReviewQueueAccess, ShiftsRoles.ShiftsAdmin, true },
@@ -179,32 +179,32 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.ConsentCoordinatorBoardOrAdmin, ShiftsRoles.ShiftsAdmin, false },
         { PolicyNames.ConsentCoordinatorBoardOrAdmin, TeamsRoles.TeamsAdmin, false },
 
-        { PolicyNames.ShiftDashboardAccess, RoleNames.Admin, true },
-        { PolicyNames.ShiftDashboardAccess, ShiftsRoles.ShiftsNoInfo, true },
-        { PolicyNames.ShiftDashboardAccess, ShiftsRoles.ShiftsAdmin, true },
-        { PolicyNames.ShiftDashboardAccess, RoleNames.Board, false },
-        { PolicyNames.ShiftDashboardAccess, TeamsRoles.TeamsAdmin, false },
+        { ShiftsPolicies.Manage, RoleNames.Admin, true },
+        { ShiftsPolicies.Manage, ShiftsRoles.ShiftsNoInfo, true },
+        { ShiftsPolicies.Manage, ShiftsRoles.ShiftsAdmin, true },
+        { ShiftsPolicies.Manage, RoleNames.Board, false },
+        { ShiftsPolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
-        { PolicyNames.ShiftDepartmentManager, RoleNames.Admin, true },
-        { PolicyNames.ShiftDepartmentManager, ShiftsRoles.ShiftsNoInfo, true },
-        { PolicyNames.ShiftDepartmentManager, ShiftsRoles.ShiftsAdmin, true },
-        { PolicyNames.ShiftDepartmentManager, RoleNames.Board, false },
-        { PolicyNames.ShiftDepartmentManager, TeamsRoles.TeamsAdmin, false },
+        { ShiftsPolicies.DepartmentRead, RoleNames.Admin, true },
+        { ShiftsPolicies.DepartmentRead, ShiftsRoles.ShiftsNoInfo, true },
+        { ShiftsPolicies.DepartmentRead, ShiftsRoles.ShiftsAdmin, true },
+        { ShiftsPolicies.DepartmentRead, RoleNames.Board, true },
+        { ShiftsPolicies.DepartmentRead, TeamsRoles.TeamsAdmin, false },
 
-        { PolicyNames.PrivilegedSignupApprover, RoleNames.Admin, true },
-        { PolicyNames.PrivilegedSignupApprover, ShiftsRoles.ShiftsNoInfo, true },
-        { PolicyNames.PrivilegedSignupApprover, ShiftsRoles.ShiftsAdmin, false },
-        { PolicyNames.PrivilegedSignupApprover, RoleNames.Board, false },
+        { ShiftsPolicies.PrivilegedSignupApprover, RoleNames.Admin, true },
+        { ShiftsPolicies.PrivilegedSignupApprover, ShiftsRoles.ShiftsNoInfo, true },
+        { ShiftsPolicies.PrivilegedSignupApprover, ShiftsRoles.ShiftsAdmin, false },
+        { ShiftsPolicies.PrivilegedSignupApprover, RoleNames.Board, false },
 
-        { PolicyNames.VolunteerManager, RoleNames.Admin, true },
-        { PolicyNames.VolunteerManager, ShiftsRoles.ShiftsAdmin, true },
-        { PolicyNames.VolunteerManager, ShiftsRoles.ShiftsNoInfo, false },
-        { PolicyNames.VolunteerManager, RoleNames.Board, false },
+        { ShiftsPolicies.ManageVolunteers, RoleNames.Admin, true },
+        { ShiftsPolicies.ManageVolunteers, ShiftsRoles.ShiftsAdmin, true },
+        { ShiftsPolicies.ManageVolunteers, ShiftsRoles.ShiftsNoInfo, false },
+        { ShiftsPolicies.ManageVolunteers, RoleNames.Board, false },
 
-        { PolicyNames.MedicalDataViewer, RoleNames.Admin, true },
-        { PolicyNames.MedicalDataViewer, ShiftsRoles.ShiftsNoInfo, true },
-        { PolicyNames.MedicalDataViewer, RoleNames.Board, true },
-        { PolicyNames.MedicalDataViewer, ShiftsRoles.ShiftsAdmin, false },
+        { ShiftsPolicies.MedicalDataViewer, RoleNames.Admin, true },
+        { ShiftsPolicies.MedicalDataViewer, ShiftsRoles.ShiftsNoInfo, true },
+        { ShiftsPolicies.MedicalDataViewer, RoleNames.Board, true },
+        { ShiftsPolicies.MedicalDataViewer, ShiftsRoles.ShiftsAdmin, false },
 
         // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.
         { PolicyNames.AppAccess, RoleNames.Admin, false },
@@ -223,7 +223,7 @@ public class AuthorizationPolicyTests : IDisposable
         PolicyNames.GateAdmit
     ];
 
-    public static TheoryData<string[], bool> HumanAdminOnlyCases => new()
+    public static TheoryData<string[], bool> UsersAdminOnlyCases => new()
     {
         { [UsersRoles.UsersAdmin], true },
         { [UsersRoles.UsersAdmin, RoleNames.Admin], false },
@@ -316,9 +316,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
     [InlineData(FinanceRoles.FinanceAdmin, false)]
-    public async Task HumanAdminBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task UsersRead_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.HumanAdminBoardOrAdmin, role);
+        var result = await AuthorizeAsync(UsersPolicies.Read, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -327,9 +327,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task HumanAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task UsersManage_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.HumanAdminOrAdmin, role);
+        var result = await AuthorizeAsync(UsersPolicies.Manage, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -339,9 +339,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(UsersRoles.UsersAdmin, false)]
     [InlineData(CampsRoles.CampsAdmin, false)]
-    public async Task TeamsAdminBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task TeamsRead_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.TeamsAdminBoardOrAdmin, role);
+        var result = await AuthorizeAsync(TeamsPolicies.Read, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -350,9 +350,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task CampAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task CampsManage_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.CampAdminOrAdmin, role);
+        var result = await AuthorizeAsync(CampsPolicies.Manage, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -362,9 +362,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Board, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
     [InlineData(UsersRoles.UsersAdmin, false)]
-    public async Task TicketAdminBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task TicketsRead_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.TicketAdminBoardOrAdmin, role);
+        var result = await AuthorizeAsync(TicketsPolicies.Read, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -373,9 +373,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task TicketAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task TicketsManage_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.TicketAdminOrAdmin, role);
+        var result = await AuthorizeAsync(TicketsPolicies.Manage, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -466,9 +466,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task FinanceAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task FinanceManage_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.FinanceAdminOrAdmin, role);
+        var result = await AuthorizeAsync(FinancePolicies.Manage, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -477,9 +477,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task EventsAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    public async Task EventsManage_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.EventsAdminOrAdmin, role);
+        var result = await AuthorizeAsync(EventsPolicies.Manage, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -514,9 +514,9 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(ShiftsRoles.ShiftsAdmin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task ShiftDashboardAccess_ChecksCorrectRoles(string role, bool expected)
+    public async Task ShiftsManage_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.ShiftDashboardAccess, role);
+        var result = await AuthorizeAsync(ShiftsPolicies.Manage, role);
         result.Succeeded.Should().Be(expected);
     }
 
@@ -524,44 +524,44 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.Admin, true)]
     [InlineData(ShiftsRoles.ShiftsNoInfo, true)]
     [InlineData(ShiftsRoles.ShiftsAdmin, true)]
-    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.Board, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task ShiftDepartmentManager_ChecksCorrectRoles(string role, bool expected)
+    public async Task ShiftsDepartmentRead_ChecksCorrectRoles(string role, bool expected)
     {
-        var result = await AuthorizeAsync(PolicyNames.ShiftDepartmentManager, role);
+        var result = await AuthorizeAsync(ShiftsPolicies.DepartmentRead, role);
         result.Succeeded.Should().Be(expected);
     }
 
     [HumansFact]
-    public async Task ShiftDepartmentManager_AllowsUserWithCoordinatedTeams()
+    public async Task ShiftsDepartmentRead_AllowsUserWithCoordinatedTeams()
     {
         var userId = Guid.NewGuid();
         _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
 
         var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
+        var result = await _authorizationService.AuthorizeAsync(user, ShiftsPolicies.DepartmentRead);
 
         result.Succeeded.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task ShiftDepartmentManager_DeniesUserWithNoRoleAndNoCoordinatedTeams()
+    public async Task ShiftsDepartmentRead_DeniesUserWithNoRoleAndNoCoordinatedTeams()
     {
         var userId = Guid.NewGuid();
         _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
 
         var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
+        var result = await _authorizationService.AuthorizeAsync(user, ShiftsPolicies.DepartmentRead);
 
         result.Succeeded.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task ShiftDepartmentManager_PrivilegedRole_ShortCircuitsWithoutCallingShiftService()
+    public async Task ShiftsDepartmentRead_PrivilegedRole_ShortCircuitsWithoutCallingShiftService()
     {
         _shiftManagement.ClearReceivedCalls();
 
-        var result = await AuthorizeAsync(PolicyNames.ShiftDepartmentManager, RoleNames.Admin);
+        var result = await AuthorizeAsync(ShiftsPolicies.DepartmentRead, RoleNames.Admin);
 
         result.Succeeded.Should().BeTrue();
         await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
@@ -640,13 +640,13 @@ public class AuthorizationPolicyTests : IDisposable
     }
 
     [HumansTheory]
-    [MemberData(nameof(HumanAdminOnlyCases))]
-    public async Task HumanAdminOnly_matches_expected_role_combinations(string[] roles, bool expected)
+    [MemberData(nameof(UsersAdminOnlyCases))]
+    public async Task UsersAdminOnly_matches_expected_role_combinations(string[] roles, bool expected)
     {
         var user = roles.Length == 0
             ? CreateAuthenticatedUser()
             : CreateUserWithRoles(roles);
-        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.HumanAdminOnly);
+        var result = await _authorizationService.AuthorizeAsync(user, UsersPolicies.UsersAdminOnly);
 
         result.Succeeded.Should().Be(expected);
     }

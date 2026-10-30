@@ -91,7 +91,7 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">@SharedLocalizer["Common_Save"]</button>
+                        <button type="submit" class="btn btn-primary" authorize-policy="@Humans.Teams.Contracts.TeamsPolicies.Manage">@SharedLocalizer["Common_Save"]</button>
                         <a asp-action="Summary" class="btn btn-outline-secondary">@SharedLocalizer["Common_Cancel"]</a>
                     </div>
                 </form>

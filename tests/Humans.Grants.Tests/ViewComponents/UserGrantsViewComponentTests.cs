@@ -73,7 +73,7 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
             .AddAuthorization(options =>
             {
                 ((ISectionPolicies)new Section()).AddPolicies(options);
-                options.AddPolicy(PolicyNames.HumanAdminBoardOrAdmin, policy =>
+                options.AddPolicy(UsersPolicies.Read, policy =>
                     policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Board, RoleNames.Admin));
             })
             .AddSingleton<IAuthorizationHandler>(new GrantsPolicyHandler(service, Users))

@@ -80,7 +80,7 @@ The shapes imply one register with one cache and one write funnel:
   `(Provider, ProviderKey)`.
 - `event_participations` is frozen: nothing in Users writes it, and the merge leaves its rows where they are.
 - Birthday carries month and day only.
-- `MedicalConditions` is Art. 9 data and is gated at every render by `MedicalDataViewer`.
+- `MedicalConditions` is Art. 9 data and is gated at every render by `ShiftsPolicies.MedicalDataViewer`.
 - A merge is ordered, not transactional; every `IUserMerge.ReassignAsync` is idempotent; the
   source row becomes a tombstone (`MergedToUserId`, `MergedAt`, far-future lockout) and is never
   deleted; tombstones cannot sign in.
@@ -102,7 +102,7 @@ The shapes imply one register with one cache and one write funnel:
 - Users' remaining data migrations (`ISectionDataMigrations`) retire on the same signal, each by its own key. `users.names-onto-user`, `users.legacy-gdpr-tombstones`, `users.profile-pictures-to-filesystem` and `users.stub-profiles` retired after production reported done on 2026-10-22.
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is
   generalised.
-- `PolicyNames.HumanAdminOnly` is registered with no call site.
+- `UsersPolicies.UsersAdminOnly` is registered with no call site.
 - The partial unique index on `user_emails.Email` (verified rows) is a unique index on an
   editable string, which [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md)
   forbids; the service check above is the contract and the drop is schema work (`Docs/debt.yml`).

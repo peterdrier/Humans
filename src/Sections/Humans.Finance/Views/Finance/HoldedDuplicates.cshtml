@@ -51,7 +51,7 @@ else
             </div>
             @if (Model.HasWork)
             {
-                <form asp-action="ApplyHoldedDuplicates" method="post"
+                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ApplyHoldedDuplicates" method="post"
                       data-confirm="Delete @Model.DocumentCount duplicate purchase documents (@Model.Total.ToEuro()) and @Model.ContactCount empty contacts from Holded? Documents that carry a payment are skipped. This cannot be undone.">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-danger text-nowrap">

@@ -20,7 +20,7 @@
         <div class="card text-center h-100">
             <div class="card-body">
                 <h5 class="card-title">@Model.TotalCamps</h5>
-                <p class="card-text text-muted">Total @SharedLocalizer["Camp_Plural"] (@Model.PublicYear)</p>
+                <p class="card-text text-muted">Total @SharedLocalizer["Camp_Plural"] (@Model.ActiveEventName)</p>
             </div>
         </div>
     </div>
@@ -51,7 +51,7 @@
     <div class="col">
         <div class="card text-center h-100">
             <div class="card-body">
-                <h5 class="card-title">@(Model.OpenSeasons.Count > 0 ? string.Join(", ", Model.OpenSeasons) : "None")</h5>
+                <h5 class="card-title">@(Model.OpenEventNames.Count > 0 ? string.Join(", ", Model.OpenEventNames) : "None")</h5>
                 <p class="card-text text-muted">Open Seasons</p>
             </div>
         </div>
@@ -72,7 +72,7 @@
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-clipboard-check me-2"></i>Compliance report</h5>
-                <p class="card-text">See which barrios are missing required roles for the current public year.</p>
+                <p class="card-text">See which barrios are missing required roles for the active event.</p>
                 <a asp-controller="CampCompliance" asp-action="Compliance" class="btn btn-outline-primary">Open report</a>
             </div>
         </div>
@@ -88,7 +88,7 @@
                         definitions (<strong>Camp Lead</strong>, <strong>Workshop Lead</strong>).
                         The card hides automatically once every special role exists.
                     </p>
-                    <form asp-action="SeedSystemRoles" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" asp-action="SeedSystemRoles" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-primary" data-confirm="Seed missing system roles?">
                             Run seed
@@ -136,7 +136,7 @@
                                 <input type="text" class="form-control form-control-sm" form="approve-@camp.SeasonId" name="notes" maxlength="2000" placeholder="Optional notes" />
                             </td>
                             <td class="text-end">
-                                <form id="approve-@camp.SeasonId" asp-controller="CampAdmin" asp-action="Approve" asp-route-seasonId="@camp.SeasonId" method="post" class="d-inline">
+                                <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" id="approve-@camp.SeasonId" asp-controller="CampAdmin" asp-action="Approve" asp-route-seasonId="@camp.SeasonId" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-success btn-sm" title="Approve">
                                         <i class="fa-solid fa-check me-1"></i>Approve
@@ -149,7 +149,7 @@
                         </tr>
                         <tr class="collapse" id="reject-@camp.SeasonId">
                             <td colspan="4">
-                                <form asp-controller="CampAdmin" asp-action="Reject" asp-route-seasonId="@camp.SeasonId" method="post" class="d-flex gap-2 p-2">
+                                <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" asp-controller="CampAdmin" asp-action="Reject" asp-route-seasonId="@camp.SeasonId" method="post" class="d-flex gap-2 p-2">
                                     @Html.AntiForgeryToken()
                                     <input type="text" name="notes" maxlength="2000" class="form-control form-control-sm" placeholder="Rejection reason (required)" required />
                                     <button type="submit" class="btn btn-danger btn-sm text-nowrap">Confirm Reject</button>
@@ -173,7 +173,7 @@
         </text>;
     Func<CampCardViewModel, IHtmlContent> withdrawnReactivateCell =
         @<text>
-            <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@item.SeasonId" method="post" class="d-inline">
+            <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@item.SeasonId" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-warning btn-sm" title="Move back to pending approval">
                     <i class="fa-solid fa-rotate-left me-1"></i>Move to Pending
@@ -216,10 +216,11 @@
                 @if (Model.NameLockDates.Count > 0)
                 {
                     <div class="mb-3">
-                        @foreach (var (year, lockDate) in Model.NameLockDates.OrderBy(x => x.Key))
+                        @foreach (var lockEvent in Model.Events.Where(e => Model.NameLockDates.ContainsKey(e.EventSettingsId)))
                         {
+                            var lockDate = Model.NameLockDates[lockEvent.EventSettingsId];
                             <p class="mb-1">
-                                <strong>@year:</strong>
+                                <strong>@lockEvent.EventName:</strong>
                                 @if (lockDate.HasValue)
                                 {
                                     @lockDate.Value.ToDate()
@@ -233,9 +234,14 @@
                     </div>
                 }
                 <p class="text-muted">After this date, camps can no longer change their name for a season.</p>
-                <form asp-controller="CampAdmin" asp-action="SetNameLockDate" method="post" class="d-flex gap-2">
+                <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" asp-controller="CampAdmin" asp-action="SetNameLockDate" method="post" class="d-flex gap-2">
                     @Html.AntiForgeryToken()
-                    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" placeholder="Year" min="2024" max="2099" required />
+                    <select name="eventSettingsId" class="form-select form-select-sm" style="max-width: 220px;" required>
+                        @foreach (var lockEvent in Model.Events)
+                        {
+                            <option value="@lockEvent.EventSettingsId">@lockEvent.EventName</option>
+                        }
+                    </select>
                     <input type="date" name="lockDate" class="form-control form-control-sm" style="max-width: 180px;" required />
                     <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
                         <i class="fa-solid fa-lock me-1"></i>Set
@@ -248,7 +254,7 @@
 
 <div class="card mb-4">
     <div class="card-header">
-        <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.PublicYear)
+        <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.ActiveEventName)
     </div>
     <div class="card-body">
         @{
@@ -270,7 +276,7 @@
 {
     <div class="card mb-4">
         <div class="card-header">
-            <i class="fa-solid fa-table me-2"></i>Camp Summary (@Model.PublicYear)
+            <i class="fa-solid fa-table me-2"></i>Camp Summary (@Model.ActiveEventName)
         </div>
         <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
@@ -303,7 +309,7 @@
                             <td>
                                 @if (camp.SeasonId.HasValue)
                                 {
-                                    <form method="post" asp-controller="CampAdmin" asp-action="SetCampSeasonEeSlotCount"
+                                    <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" method="post" asp-controller="CampAdmin" asp-action="SetCampSeasonEeSlotCount"
                                           asp-route-seasonId="@camp.SeasonId" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <input type="number" name="slotCount" min="0"
@@ -361,9 +367,9 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-campground me-2"></i>All @SharedLocalizer["Camp_Plural"] (@Model.PublicYear)</span>
+        <span><i class="fa-solid fa-campground me-2"></i>All @SharedLocalizer["Camp_Plural"] (@Model.ActiveEventName)</span>
         <div class="d-flex gap-2">
-            <a asp-action="ExportCamps" class="btn btn-outline-secondary btn-sm">
+            <a authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" asp-action="ExportCamps" class="btn btn-outline-secondary btn-sm">
                 <i class="fa-solid fa-download me-1"></i>Export CSV
             </a>
             <a asp-controller="Camp" asp-action="Index" class="btn btn-outline-secondary btn-sm">

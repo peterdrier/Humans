@@ -188,7 +188,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" authorize-policy="@UsersPolicies.Manage">
             <div class="card-header">@SharedLocalizer["TeamDetail_Actions"]</div>
             <div class="card-body">
                 @if (Model.State is UserState.Suspended or UserState.AdminSuspended)

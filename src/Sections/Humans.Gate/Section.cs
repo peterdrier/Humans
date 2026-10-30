@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -45,7 +46,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Gate", [
-            new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     PolicyNames.TicketAdminOrAdmin),
+            new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     TicketsPolicies.Read),
             new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
         ])
     ];
@@ -58,6 +59,6 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [
-        new SettingsTab("gate", "Settings_TabGate", typeof(GateSettingsTabViewComponent), PolicyNames.TicketAdminOrAdmin)
+        new SettingsTab("gate", "Settings_TabGate", typeof(GateSettingsTabViewComponent), TicketsPolicies.Manage)
     ];
 }

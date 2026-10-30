@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
@@ -25,15 +26,15 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void Detail_Action_HasTicketAdminOrAdmin_Policy()
+    public void Detail_Action_HasTicketsRead_Policy()
     {
-        AssertActionPolicy(nameof(CampaignController.Detail), PolicyNames.TicketAdminOrAdmin, typeof(HttpGetAttribute));
+        AssertActionPolicy(nameof(CampaignController.Detail), TicketsPolicies.Read, typeof(HttpGetAttribute));
     }
 
     [HumansFact]
-    public void GenerateCodes_Action_HasTicketAdminOrAdmin_Policy()
+    public void GenerateCodes_Action_HasTicketsManage_Policy()
     {
-        AssertActionPolicy(nameof(CampaignController.GenerateCodes), PolicyNames.TicketAdminOrAdmin, typeof(HttpPostAttribute));
+        AssertActionPolicy(nameof(CampaignController.GenerateCodes), TicketsPolicies.Manage, typeof(HttpPostAttribute));
     }
 
     [HumansFact]

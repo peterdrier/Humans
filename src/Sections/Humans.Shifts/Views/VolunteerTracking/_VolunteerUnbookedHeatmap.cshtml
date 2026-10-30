@@ -2,7 +2,7 @@
 @inject IAuthorizationService AuthService
 
 @{
-    var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
+    var canWrite = (await AuthService.AuthorizeAsync(User, ShiftsPolicies.ManageVolunteers)).Succeeded;
 
     if (Model.Rows.Count == 0)
     {

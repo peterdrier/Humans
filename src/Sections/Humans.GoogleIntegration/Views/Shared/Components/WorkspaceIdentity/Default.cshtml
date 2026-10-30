@@ -1,7 +1,11 @@
 @model WorkspaceIdentityCellViewModel
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthService
 @{
     var action = Model.AdminContext ? "AdminSet" : "Set";
     Guid? routeId = Model.AdminContext ? Model.UserId : null;
+    // Board reads another member's grid but sets nothing on it.
+    var canSet = !Model.AdminContext || (await AuthService.AuthorizeAsync(User, UsersPolicies.Manage)).Succeeded;
 }
 @if (Model.IsIdentity)
 {
@@ -11,15 +15,18 @@
         {
             <span class="badge bg-danger me-1" title="@Localizer["GoogleIntegration_Identity_Problem"].Value">@Localizer["GoogleIntegration_Identity_Problem"]</span>
             @* The rejected identity has no other retry surface: re-asserting it resets Rejected to Unknown, so the next reconcile retries. *@
-            <form asp-controller="WorkspaceIdentity" asp-action="@action" asp-route-id="@routeId"
-                  method="post" class="d-inline me-1">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="emailId" value="@Model.EmailId" />
-                <button type="submit" class="btn btn-outline-danger btn-sm py-0"
-                        title="@Localizer["GoogleIntegration_Identity_Retry"].Value">
-                    <i class="fa-solid fa-rotate-right me-1"></i>@Localizer["GoogleIntegration_Identity_Retry"]
-                </button>
-            </form>
+            @if (canSet)
+            {
+                <form asp-controller="WorkspaceIdentity" asp-action="@action" asp-route-id="@routeId"
+                      method="post" class="d-inline me-1">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="emailId" value="@Model.EmailId" />
+                    <button type="submit" class="btn btn-outline-danger btn-sm py-0"
+                            title="@Localizer["GoogleIntegration_Identity_Retry"].Value">
+                        <i class="fa-solid fa-rotate-right me-1"></i>@Localizer["GoogleIntegration_Identity_Retry"]
+                    </button>
+                </form>
+            }
         }
         else if (Model.Status == GoogleEmailStatus.Valid)
         {
@@ -35,7 +42,7 @@ else if (Model.IsLocked)
 {
     <span class="text-muted small" title="@Localizer["GoogleIntegration_Identity_Locked"].Value">—</span>
 }
-else
+else if (canSet)
 {
     <form asp-controller="WorkspaceIdentity" asp-action="@action" asp-route-id="@routeId"
           method="post" class="d-inline">

@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +12,7 @@ internal sealed class CommunicationPreferencesCardViewComponent(IAuthorizationSe
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Admin
-            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded)
+            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)).Succeeded)
             return Content(string.Empty);
 
         return View(userId);

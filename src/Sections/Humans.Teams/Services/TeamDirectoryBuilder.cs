@@ -75,8 +75,8 @@ internal static class TeamDirectoryBuilder
         var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
         var isAdmin = await roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
         var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
-        var canCreateTeam = isBoardMember || isAdmin || isTeamsAdmin;
-        var canSeeHiddenTeams = canCreateTeam;
+        var canCreateTeam = isAdmin || isTeamsAdmin;
+        var canSeeHiddenTeams = canCreateTeam || isBoardMember;
 
         var visibleTeams = canSeeHiddenTeams
             ? teamsById.Values

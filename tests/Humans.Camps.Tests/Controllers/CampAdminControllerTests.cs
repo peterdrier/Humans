@@ -24,6 +24,8 @@ namespace Humans.Camps.Tests.Controllers;
 
 public class CampAdminControllerTests
 {
+    private static readonly Guid ActiveEventId = Guid.NewGuid();
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -45,8 +47,9 @@ public class CampAdminControllerTests
         var noSeason = camp with { Id = Guid.NewGuid(), Slug = "no-season", Seasons = [] };
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId, audit: audit);
         var ct = controller.HttpContext.RequestAborted;
-        camps.GetSettingsAsync(ct).Returns(new CampSettingsInfo(2026, []));
-        camps.GetCampsForYearAsync(2026, ct).Returns(new List<CampInfo> { camp, noSeason });
+        var eventId = Guid.NewGuid();
+        camps.GetSettingsAsync(ct).Returns(new CampSettingsInfo(2026, []) { ActiveEventSettingsId = eventId });
+        camps.GetCampsForEventAsync(eventId, ct).Returns(new List<CampInfo> { camp, noSeason });
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
@@ -135,12 +138,10 @@ public class CampAdminControllerTests
     }
 
     [HumansTheory]
-    [InlineData(nameof(CampAdminController.OpenSeason), "year", null)]
-    [InlineData(nameof(CampAdminController.OpenSeason), "year", "invalid")]
-    [InlineData(nameof(CampAdminController.SetNameLockDate), "year", null)]
-    [InlineData(nameof(CampAdminController.SetNameLockDate), "year", "invalid")]
+    [InlineData(nameof(CampAdminController.SetNameLockDate), "eventSettingsId", null)]
+    [InlineData(nameof(CampAdminController.SetNameLockDate), "eventSettingsId", "invalid")]
     [InlineData(nameof(CampAdminController.SetCampSeasonEeSlotCount), "slotCount", null)]
-    public async Task NumericAdminForms_RejectMissingOrMalformedNumbersBeforeMutation(
+    public async Task RequiredAdminForms_RejectMissingOrMalformedValuesBeforeMutation(
         string action, string field, string? submitted)
     {
         var camps = Substitute.For<ICampManagement>();
@@ -176,8 +177,7 @@ public class CampAdminControllerTests
 
         var result = action switch
         {
-            nameof(CampAdminController.OpenSeason) => await controller.OpenSeason(0),
-            nameof(CampAdminController.SetNameLockDate) => await controller.SetNameLockDate(0, "2027-05-01"),
+            nameof(CampAdminController.SetNameLockDate) => await controller.SetNameLockDate(Guid.Empty, "2027-05-01"),
             nameof(CampAdminController.SetCampSeasonEeSlotCount) =>
                 await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 0, TestContext.Current.CancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(action))
@@ -211,12 +211,13 @@ public class CampAdminControllerTests
         camps.DeleteCampAsync(targetId, actorId).Returns(new CampAdminMutationResult(true));
         var controller = CreateController(camps, Substitute.For<ICampRoleService>(), users, actorId);
         var lockDate = new LocalDate(2026, 3, 1);
+        var eventId = Guid.NewGuid();
 
         var result = action switch
         {
-            "Open" => await controller.OpenSeason(2027),
-            "Close" => await controller.CloseSeason(2026),
-            "LockDate" => await controller.SetNameLockDate(2026, "2026-03-01"),
+            "Open" => await controller.OpenSeason(eventId),
+            "Close" => await controller.CloseSeason(eventId),
+            "LockDate" => await controller.SetNameLockDate(eventId, "2026-03-01"),
             "Reactivate" => await controller.Reactivate(targetId, null),
             "Delete" => await controller.Delete(targetId),
             _ => throw new ArgumentOutOfRangeException(nameof(action))
@@ -231,9 +232,9 @@ public class CampAdminControllerTests
 
         switch (action)
         {
-            case "Open": await camps.Received(1).OpenSeasonAsync(2027, actorId); break;
-            case "Close": await camps.Received(1).CloseSeasonAsync(2026, actorId); break;
-            case "LockDate": await camps.Received(1).SetNameLockDateAsync(2026, lockDate, actorId); break;
+            case "Open": await camps.Received(1).OpenSeasonAsync(eventId, actorId); break;
+            case "Close": await camps.Received(1).CloseSeasonAsync(eventId, actorId); break;
+            case "LockDate": await camps.Received(1).SetNameLockDateAsync(eventId, lockDate, actorId); break;
             case "Reactivate": await camps.Received(1).ReactivateSeasonAsync(targetId, actorId); break;
             case "Delete": await camps.Received(1).DeleteCampAsync(targetId, actorId); break;
         }
@@ -257,9 +258,9 @@ public class CampAdminControllerTests
         {
             if (string.Equals(boundary, "settings", StringComparison.Ordinal))
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new CampSettingsInfo(2026, []);
+            return new CampSettingsInfo(2026, []) { ActiveEventSettingsId = ActiveEventId };
         });
-        camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
+        camps.GetCampsForEventAsync(ActiveEventId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (string.Equals(boundary, "camps", StringComparison.Ordinal))
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();

@@ -8,7 +8,7 @@
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
 -->
 <!-- freshness:flag-on-change
-  FinanceController routes or auth policy (FinanceAdminOrAdmin) — review when FinanceController or the section's cross-section contracts (IBudgetService, IHoldedService, IUserService) change. Holded attribution logic (Account → Tag → Managed → Unmatched) and the provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, HoldedCategoryMap, or the managed-account registry (HoldedManagedAccount) change.
+  FinanceController routes or auth policy (FinancePolicies.Manage) — review when FinanceController or the section's cross-section contracts (IBudgetService, IHoldedService, IUserService) change. Holded attribution logic (Account → Tag → Managed → Unmatched) and the provisioning model reviewed when HoldedMatcher, IHoldedFinanceService, HoldedCategoryMap, or the managed-account registry (HoldedManagedAccount) change.
 -->
 
 # Finance — Section Invariants
@@ -205,7 +205,7 @@ Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
-Every `/Finance/*` route except the one below is gated on `PolicyNames.FinanceAdminOrAdmin`, declared separately on each of the two controllers serving the prefix — this section's `FinanceController` and Budget's `BudgetAdminController`.
+Every `/Finance/*` route except the one below is gated on `FinancePolicies.Manage`, declared separately on each of the two controllers serving the prefix — this section's `FinanceController` and Budget's `BudgetAdminController`.
 
 ### Member payment details
 
@@ -255,8 +255,9 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 | Actor | Capabilities |
 |-------|--------------|
 | FinanceAdmin, Admin | Every `/Finance/*` route: provision Holded accounts, run the sync, work the unmatched queue, bind and unbind creditors, generate and book SEPA payouts, view cash flow. |
+| Board | Read every `/Finance/*` page (cash flow, Holded accounts, unmatched queue, creditors, SEPA payouts); change nothing (`FinancePolicies.Read`) |
 | Admin | Additionally: the Payment Details card on `/Users/Admin/{id}` and the audited IBAN reveal. |
-| Department coordinator | None — Finance routes are FinanceAdmin-only. |
+| Department coordinator | None — Finance routes are FinanceAdmin, Board and Admin only. |
 | Any other authenticated human | None |
 
 ## Invariants
@@ -270,7 +271,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`HoldedDocumentSync.MapDoc`).
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`BudgetAdminController` → `GetActualsForYearAsync` → `IHoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
-- Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
+- Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = FinancePolicies.Manage)]` on `FinanceController`).
 - `FinanceController` performs no budget mutations at all — its actions are the Holded, creditor, SEPA-payout and cash-flow surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.
 - `/Finance/Holded` issues **no** Holded HTTP call. Every figure comes from `holded_doc_sync_state`, `holded_category_map`, `holded_expense_docs` and `holded_creditor_contacts`; the mirror's own health (API budget, ledger sweeps, chart of accounts) is `/Holded`'s and is linked, not restated. Pinned by `GetConnectorOverview_MakesNoHoldedApiCall`.
 - The doc sync counts as **stale** at 36 h — the nightly job's 24 h cadence plus half a day of grace — and never having run counts as stale too: budget actuals and the unmatched queue are equally wrong either way, so both raise the same alarm.

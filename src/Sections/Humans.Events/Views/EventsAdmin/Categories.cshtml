@@ -5,7 +5,7 @@
 }
 
 <page-header title="Event Categories">
-    <a asp-controller="EventsAdmin" asp-action="CreateCategory" class="btn btn-primary">
+    <a authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" asp-controller="EventsAdmin" asp-action="CreateCategory" class="btn btn-primary">
         <i class="fa-solid fa-plus me-1"></i>Add Category
     </a>
 </page-header>
@@ -25,7 +25,7 @@ else
             @{ var catIdx = catList.IndexOf(item); }
             @if (catIdx > 0)
             {
-                <form method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryUp" asp-route-id="@item.Id" class="d-inline">
+                <form authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryUp" asp-route-id="@item.Id" class="d-inline">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move up">
                         <i class="fa-solid fa-arrow-up"></i>
@@ -34,7 +34,7 @@ else
             }
             @if (catIdx < catList.Count - 1)
             {
-                <form method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryDown" asp-route-id="@item.Id" class="d-inline">
+                <form authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" method="post" asp-controller="EventsAdmin" asp-action="MoveCategoryDown" asp-route-id="@item.Id" class="d-inline">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move down">
                         <i class="fa-solid fa-arrow-down"></i>
@@ -62,10 +62,10 @@ else
         }
     </text>;
     Func<EventCategoryRowViewModel, IHtmlContent> catActionsCell = @<text>
-        <a asp-controller="EventsAdmin" asp-action="EditCategory" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary me-1">
+        <a authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" asp-controller="EventsAdmin" asp-action="EditCategory" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary me-1">
             <i class="fa-solid fa-pen me-1"></i>Edit
         </a>
-        <form method="post" asp-controller="EventsAdmin" asp-action="DeleteCategory" asp-route-id="@item.Id" class="d-inline" data-confirm="Delete this category?">
+        <form authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" method="post" asp-controller="EventsAdmin" asp-action="DeleteCategory" asp-route-id="@item.Id" class="d-inline" data-confirm="Delete this category?">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="fa-solid fa-trash me-1"></i>Delete

@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.ViewComponents;
 
-/// <summary>Only for the member on their own profile or a viewer passing <see cref="PolicyNames.TicketAdminBoardOrAdmin"/>.</summary>
+/// <summary>Only for the member on their own profile or a viewer passing <see cref="TicketsPolicies.Read"/>.</summary>
 public sealed class OnsiteChipViewComponent(
     ITicketService tickets,
     ISettingsService settingsService,
@@ -16,7 +16,7 @@ public sealed class OnsiteChipViewComponent(
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Self
-            && !(await authorization.AuthorizeAsync(UserClaimsPrincipal, PolicyNames.TicketAdminBoardOrAdmin)).Succeeded)
+            && !(await authorization.AuthorizeAsync(UserClaimsPrincipal, TicketsPolicies.Read)).Succeeded)
             return Content(string.Empty);
 
         var ct = HttpContext.RequestAborted;

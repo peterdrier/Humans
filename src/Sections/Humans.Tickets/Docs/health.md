@@ -65,7 +65,7 @@ The layout these shapes imply:
   both hold, checked in the row flag (`Services/TicketTransferService.cs:60`), the confirm step
   (`Services/TicketTransferService.cs:73`) and request creation.
 - Only the Sender may cancel, only while Pending and not mid-processing
-  (`Services/TicketTransferService.cs:171`); only `TicketAdminOrAdmin` reaches the decision
+  (`Services/TicketTransferService.cs:171`); only `TicketsPolicies.Manage` reaches the decision
   endpoint (`Controllers/TicketTransferAdminController.cs:13`); a `VoidSucceededIssueFailed`
   request accepts only retry or mark-successful (`Services/TicketTransferService.cs:347`).
 - Every transfer transition audits: requested (`Services/TicketTransferService.cs:153`),

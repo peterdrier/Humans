@@ -48,8 +48,8 @@ internal sealed class GateService(
     /// <summary>How far either side of now a gate shift may start to count as current.</summary>
     private static readonly Duration RosterWindow = Duration.FromHours(2);
 
-    /// <summary>Server-verified, never client-asserted.</summary>
-    private static readonly string[] SupervisorRoles = [RoleNames.Admin, RoleNames.Board, TicketsRoles.TicketsAdmin];
+    /// <summary>Server-verified, never client-asserted. Board reads the gate and authorizes no override.</summary>
+    private static readonly string[] SupervisorRoles = [RoleNames.Admin, TicketsRoles.TicketsAdmin];
 
     public async Task<GateScanResult> EvaluateAsync(string barcode, CancellationToken ct = default)
     {

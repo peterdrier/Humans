@@ -53,7 +53,7 @@ Asked for in nobodies-collective/Humans#161 (partial scope — CSV exports are d
 **I cannot** access the post-event stats dashboard
 
 **Acceptance Criteria:**
-- Route `GET /Shifts/Dashboard/PostEventStats` requires the `ShiftDashboardAccess` policy (Admin, ShiftsNoInfo, ShiftsAdmin)
+- Route `GET /Shifts/Dashboard/PostEventStats` requires the `ShiftsPolicies.Manage` policy (Admin, ShiftsNoInfo, ShiftsAdmin)
 - Unauthenticated or unauthorized users are redirected to the login page / access-denied page per the standard middleware
 
 ## Data Model
@@ -87,7 +87,7 @@ Nav entry appears under Shifts in the admin sidebar, next to the existing shift 
 
 ## Authorization
 
-`ShiftDashboardAccess` policy: Admin, ShiftsNoInfo, ShiftsAdmin.
+`ShiftsPolicies.Manage` policy: Admin, ShiftsNoInfo, ShiftsAdmin.
 
 ## DTOs
 

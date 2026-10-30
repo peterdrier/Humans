@@ -86,8 +86,8 @@ None directly — since nobodies-collective/Humans#1091, the shell names no sect
 - **Workgroups:** `workgroups.queue` tile, `BoardOrAdmin`.
 - **Audit Log:** `auditlog.total` tile and the "Recent activity" card (`IAuditViewerService`).
 - **Email:** `email.outbox` tile (`IEmailOutboxManagement`, section-internal).
-- **Store:** `store.orders` tile, gated to `StoreCatalogAdmin` (Store's internal `Service`).
-- **Expenses:** `expenses.reports` tile, gated to `FinanceAdminOrAdmin` (the section's own `IExpenseReportService`).
+- **Store:** `store.orders` tile, gated to `StorePolicies.Read` (Store's internal `Service`).
+- **Expenses:** `expenses.reports` tile, gated to `FinancePolicies.Read` (the section's own `IExpenseReportService`).
 - **Governance:** the "Tier applications" card (`IGovernanceService`); also contributes the Voting tab pill's unvoted-application count.
 - **Debug:** the "User set membership" (Venn/UpSet) card.
 

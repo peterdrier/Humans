@@ -69,7 +69,7 @@
         </div>
     </div>
 
-    <div class="card mb-4 border-info" authorize-policy="ShiftDashboardAccess">
+    <div class="card mb-4 border-info" authorize-policy="@Humans.Shifts.Contracts.ShiftsPolicies.Read">
         <div class="card-body d-flex align-items-center gap-3 py-3">
             <i class="fa-solid fa-people-group text-info fs-3"></i>
             <div class="flex-grow-1">
@@ -205,7 +205,7 @@
     }
     <div class="row">
         @* Subteam managers don't see this column. *@
-        <div class="col-lg-6 d-flex flex-column" authorize-policy="ShiftDashboardAccess">
+        <div class="col-lg-6 d-flex flex-column" authorize-policy="@Humans.Shifts.Contracts.ShiftsPolicies.Read">
             @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
         </div>
         <div class="col-lg-6 d-flex flex-column">
@@ -285,7 +285,7 @@
                                         <span class="@(rowUnderstaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                         <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                     </td>
-                                    <td class="text-end pe-3" authorize-policy="ShiftDashboardAccess">
+                                    <td class="text-end pe-3" authorize-policy="@Humans.Shifts.Contracts.ShiftsPolicies.Manage">
                                         <button class="btn btn-sm btn-outline-primary"
                                                 type="button"
                                                 data-bs-toggle="collapse"
@@ -295,7 +295,7 @@
                                         </button>
                                     </td>
                                 </tr>
-                                <tr class="collapse" id="@collapseId" authorize-policy="ShiftDashboardAccess">
+                                <tr class="collapse" id="@collapseId" authorize-policy="@Humans.Shifts.Contracts.ShiftsPolicies.Manage">
                                     <td colspan="3">
                                         <div class="p-3 bg-light rounded border">
                                             <label class="form-label fw-semibold">@string.Format(Localizer["Shifts_ShiftDash_SearchHumans"].Value, item.Rota.Name)</label>

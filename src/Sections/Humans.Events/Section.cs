@@ -91,11 +91,11 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Events", [
-            new("Dashboard",  "EventsDashboard",  "Index",      null, null, "fa-solid fa-chart-line",    PolicyNames.EventsAdminOrAdmin),
-            new("Moderation", "EventsModeration", "Index",      null, null, "fa-solid fa-gavel",         PolicyNames.EventsAdminOrAdmin),
-            new("Categories", "EventsAdmin",      "Categories", null, null, "fa-solid fa-tags",          PolicyNames.EventsAdminOrAdmin),
-            new("Venues",     "EventsAdmin",      "Venues",     null, null, "fa-solid fa-location-dot",  PolicyNames.EventsAdminOrAdmin),
-            new("Export",     "EventsExport",     "Index",      null, null, "fa-solid fa-file-export",   PolicyNames.EventsAdminOrAdmin)
+            new("Dashboard",  "EventsDashboard",  "Index",      null, null, "fa-solid fa-chart-line",    EventsPolicies.Read),
+            new("Moderation", "EventsModeration", "Index",      null, null, "fa-solid fa-gavel",         EventsPolicies.Read),
+            new("Categories", "EventsAdmin",      "Categories", null, null, "fa-solid fa-tags",          EventsPolicies.Read),
+            new("Venues",     "EventsAdmin",      "Venues",     null, null, "fa-solid fa-location-dot",  EventsPolicies.Read),
+            new("Export",     "EventsExport",     "Index",      null, null, "fa-solid fa-file-export",   EventsPolicies.Read)
         ])
     ];
 
@@ -111,26 +111,29 @@ public sealed class Section :
                 new("Browse Events", Controller: "Events", Action: "Browse"),
                 new("My Submissions", Controller: "Events", Action: "MySubmissions"),
                 new("My Schedule", Controller: "Events", Action: "Schedule"),
-                new("", Divider: true, Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Guide Dashboard", Controller: "EventsDashboard", Action: "Index", Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Moderate Events", Controller: "EventsModeration", Action: "Index", Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Export Guide", Controller: "EventsExport", Action: "Index", Policy: PolicyNames.EventsAdminOrAdmin),
-                new("", Divider: true, Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Guide Settings", RawHref: "/Settings#event-guide", Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Guide Categories", Controller: "EventsAdmin", Action: "Categories", Policy: PolicyNames.EventsAdminOrAdmin),
-                new("Guide Venues", Controller: "EventsAdmin", Action: "Venues", Policy: PolicyNames.EventsAdminOrAdmin)
+                new("", Divider: true, Policy: EventsPolicies.Read),
+                new("Guide Dashboard", Controller: "EventsDashboard", Action: "Index", Policy: EventsPolicies.Read),
+                new("Moderate Events", Controller: "EventsModeration", Action: "Index", Policy: EventsPolicies.Read),
+                new("Export Guide", Controller: "EventsExport", Action: "Index", Policy: EventsPolicies.Read),
+                new("", Divider: true, Policy: EventsPolicies.Read),
+                new("Guide Settings", RawHref: "/Settings#event-guide", Policy: EventsPolicies.Manage),
+                new("Guide Categories", Controller: "EventsAdmin", Action: "Categories", Policy: EventsPolicies.Read),
+                new("Guide Venues", Controller: "EventsAdmin", Action: "Venues", Policy: EventsPolicies.Read)
             ])
     ];
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.EventsAdminOrAdmin, policy =>
+        options.AddPolicy(EventsPolicies.Read, policy =>
+            policy.RequireRole(EventsRoles.EventsAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(EventsPolicies.Manage, policy =>
             policy.RequireRole(EventsRoles.EventsAdmin, RoleNames.Admin));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [
-        new SettingsTab("event-guide", "Settings_TabEventGuide", typeof(EventGuideSettingsTabViewComponent), PolicyNames.EventsAdminOrAdmin)
+        new SettingsTab("event-guide", "Settings_TabEventGuide", typeof(EventGuideSettingsTabViewComponent), EventsPolicies.Manage)
     ];
 
     internal const string EventIdsKey = "events.event-ids";

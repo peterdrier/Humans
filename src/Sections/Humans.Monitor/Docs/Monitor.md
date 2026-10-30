@@ -27,7 +27,7 @@ pages and data.
 
 | Route | Policy |
 |---|---|
-| `POST /Monitor/CheckDriveActivity` | `BoardOrAdmin` |
+| `POST /Monitor/CheckDriveActivity` | `AdminOnly` |
 
 ## Invariants
 

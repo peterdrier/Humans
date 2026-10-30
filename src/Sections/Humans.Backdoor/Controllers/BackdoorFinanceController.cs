@@ -340,7 +340,7 @@ internal sealed class BackdoorFinanceController(
     }
 
     private async Task<bool> IsFinanceAdminAsync() =>
-        (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+        (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
 
     private async Task<bool> CanViewAsync(ExpenseReportDto report) =>
         (await authService.AuthorizeAsync(User, report, PolicyNames.ExpenseReportView)).Succeeded;

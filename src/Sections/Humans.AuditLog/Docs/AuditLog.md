@@ -65,7 +65,7 @@ Per-resource and per-human sync audits belong to
 |---|---|
 | `POST /Monitor/CheckDriveActivity` | `MonitorController.CheckDriveActivity`, `BoardOrAdmin` |
 | `GET /Google/Resource/{id}` | `GoogleController.Resource`, `BoardOrAdmin` |
-| `GET /Google/Human/{id}` | `GoogleController.Human`, `HumanAdminBoardOrAdmin` |
+| `GET /Google/Human/{id}` | `GoogleController.Human`, `UsersPolicies.Read` |
 
 `AuditLogController` injects the internal `AuditViewerService` — no controller touches `IAuditLogService` or any repository directly. AuditLog owns no Admin routes and contributes no admin dashboard card; its only `/Admin` presence is the "Audit events" tile.
 

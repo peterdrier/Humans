@@ -256,7 +256,7 @@ public class TicketControllerTests
     public void Class_admits_TicketAdmin_Board_and_Admin()
     {
         typeof(TicketController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(PolicyNames.TicketAdminBoardOrAdmin);
+            .Should().Be(TicketsPolicies.Read);
     }
 
     [HumansFact]
@@ -271,10 +271,10 @@ public class TicketControllerTests
     }
 
     [HumansTheory]
-    [InlineData(nameof(TicketController.Sync), PolicyNames.TicketAdminOrAdmin)]
-    [InlineData(nameof(TicketController.ExportAttendees), PolicyNames.TicketAdminOrAdmin)]
-    [InlineData(nameof(TicketController.ExportOrders), PolicyNames.TicketAdminOrAdmin)]
-    [InlineData(nameof(TicketController.ExportAccountantReport), PolicyNames.TicketAdminOrAdmin)]
+    [InlineData(nameof(TicketController.Sync), TicketsPolicies.Manage)]
+    [InlineData(nameof(TicketController.ExportAttendees), TicketsPolicies.Manage)]
+    [InlineData(nameof(TicketController.ExportOrders), TicketsPolicies.Manage)]
+    [InlineData(nameof(TicketController.ExportAccountantReport), TicketsPolicies.Manage)]
     [InlineData(nameof(TicketController.FullResync), PolicyNames.AdminOnly)]
     [InlineData(nameof(TicketController.ParticipationBackfill), PolicyNames.AdminOnly)]
     public void Action_narrows_the_class_policy_so_Board_is_denied(string actionName, string policy)
@@ -288,9 +288,12 @@ public class TicketControllerTests
     }
 
     [HumansFact]
-    public void TransferAdmin_class_admits_TicketAdmin_and_Admin_only()
+    public void TransferAdmin_class_reads_and_decisions_manage()
     {
         typeof(TicketTransferAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(PolicyNames.TicketAdminOrAdmin);
+            .Should().Be(TicketsPolicies.Read);
+        typeof(TicketTransferAdminController).GetMethod(nameof(TicketTransferAdminController.Decide))!
+            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
+            .Should().Be(TicketsPolicies.Manage);
     }
 }

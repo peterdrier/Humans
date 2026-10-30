@@ -4,7 +4,7 @@
 @inject IAuthorizationService AuthService
 @{
     ViewData["Title"] = Localizer["Rideshare_MineTitle"];
-    var canAdminister = (await AuthService.AuthorizeAsync(User, PolicyNames.RideshareAdminOrAdmin)).Succeeded;
+    var canAdminister = (await AuthService.AuthorizeAsync(User, Humans.Rideshare.Contracts.RidesharePolicies.Manage)).Succeeded;
 }
 
 <nav aria-label="@Localizer["Rideshare_BreadcrumbNavigation"]">

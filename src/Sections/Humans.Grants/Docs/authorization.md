@@ -16,7 +16,7 @@ Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests
 | Component | Slot | Who sees it |
 |---|---|---|
 | `MyGrantsViewComponent` | `UserPartSlots.Profile` | Only the signed-in person, on their own profile (`ProfileCardViewMode.Self` and viewer id = target id) |
-| `UserGrantsViewComponent` | `UserPartSlots.AdminDetail` | `PolicyNames.HumanAdminBoardOrAdmin`, admin view mode only |
+| `UserGrantsViewComponent` | `UserPartSlots.AdminDetail` | `UsersPolicies.Read`, admin view mode only |
 
 ## Policy Handler
 

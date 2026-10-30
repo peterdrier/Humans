@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Email.Services;
@@ -16,7 +17,7 @@ internal sealed class OutboxCardViewComponent(
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Admin
-            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded)
+            || !(await authorization.AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)).Succeeded)
             return Content(string.Empty);
 
         var count = await outbox.GetMessageCountForUserAsync(userId, HttpContext.RequestAborted);

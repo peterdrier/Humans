@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Html
 @model CampRoleDrillDownViewModel
 @{
-    ViewData["Title"] = $"{Model.RoleName} — {Model.Year}";
+    ViewData["Title"] = $"{Model.RoleName} — {Model.Event.EventName}";
 }
 
 <nav aria-label="breadcrumb">
@@ -16,24 +16,24 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="mb-1">@Model.RoleName <small class="text-muted">— @Model.Year</small></h1>
+        <h1 class="mb-1">@Model.RoleName <small class="text-muted">— @Model.Event.EventName</small></h1>
         @if (!string.IsNullOrWhiteSpace(Model.Description))
         {
             <p class="text-muted mb-0">@Html.SanitizedMarkdown(Model.Description)</p>
         }
     </div>
     <form asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@Model.RouteKey" method="get" class="d-flex gap-2 align-items-center">
-        <label for="year" class="form-label mb-0 text-nowrap">Year</label>
-        <select id="year" name="year" class="form-select form-select-sm js-autosubmit" style="max-width: 120px;">
-            @foreach (var y in Model.YearOptions)
+        <label for="eventSettingsId" class="form-label mb-0 text-nowrap">Event</label>
+        <select id="eventSettingsId" name="eventSettingsId" class="form-select form-select-sm js-autosubmit" style="max-width: 220px;">
+            @foreach (var option in Model.EventOptions)
             {
-                if (y == Model.Year)
+                if (option.EventSettingsId == Model.Event.EventSettingsId)
                 {
-                    <option value="@y" selected>@y</option>
+                    <option value="@option.EventSettingsId" selected>@option.EventName</option>
                 }
                 else
                 {
-                    <option value="@y">@y</option>
+                    <option value="@option.EventSettingsId">@option.EventName</option>
                 }
             }
         </select>
@@ -75,12 +75,12 @@
 
 <div class="card">
     <div class="card-header">
-        <i class="fa-solid fa-table-list me-2"></i>Roster (@Model.Camps.Count camp(s) for @Model.Year)
+        <i class="fa-solid fa-table-list me-2"></i>Roster (@Model.Camps.Count camp(s) for @Model.Event.EventName)
     </div>
     @if (Model.Camps.Count == 0)
     {
         <div class="card-body">
-            <p class="text-muted mb-0">No camps participate in @Model.Year.</p>
+            <p class="text-muted mb-0">No camps participate in @Model.Event.EventName.</p>
         </div>
     }
     else

@@ -9,13 +9,13 @@
 |---|---|---|---|
 | `StoreController` | Class | `[Authorize]` (authenticated) | — |
 | `StoreController` runtime guards | In-method | `authService.AuthorizeAsync(User, order/resource, OrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay, Delete, IssueInvoice, RecordPayment, Refund, DeletePayment})` for existing orders (`AddLine`/`RemoveLine` authorize against an `OrderLineContext` carrying the product's order deadline when known, else the plain order) and `OrderCreateContext` for `Create` (camp orders) / `CreateTeamOrder` (team orders). `Index` also seeds `isPrivilegedReader = StoreRoles.CanAdministerStore(User) \|\| TeamsRoles.IsTeamsAdmin(User)`. | Resource-based (see handler below) |
-| `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Admin` | `PolicyNames.StoreCatalogAdmin` |
-| `StoreAdminController.Payments` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpGet("Payments")]`) | `PolicyNames.StoreCatalogAdmin` (Stripe ↔ Store ledger reconciliation report) |
-| `StoreAdminController.RecordMissingPayments` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpPost("Payments/RecordMissing")]`) | `PolicyNames.StoreCatalogAdmin` (records missing Stripe payments) |
-| `StoreAdminController.OrderYears` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpGet("OrderYears")]`) | `PolicyNames.StoreCatalogAdmin` (reviews legacy order-year repairs) |
-| `StoreAdminController.RepairOrderYears` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpPost("OrderYears/Repair")]`) | `PolicyNames.StoreCatalogAdmin` (repairs reviewed legacy order years) |
-| `StoreAdminController.PaymentMethods` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpGet("PaymentMethods")]`) | `PolicyNames.StoreCatalogAdmin` (reviews payments missing a method name) |
-| `StoreAdminController.RepairPaymentMethods` | Action | `StoreAdmin, FinanceAdmin, Admin` inherited (`[HttpPost("PaymentMethods/Repair")]`) | `PolicyNames.StoreCatalogAdmin` (backfills `Payment.MethodName`) |
+| `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Board, Admin` | `StorePolicies.Read`; every POST and the catalog edit forms carry `StorePolicies.Manage` (`StoreAdmin, FinanceAdmin, Admin`) |
+| `StoreAdminController.Payments` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("Payments")]`) | `StorePolicies.Read` (Stripe ↔ Store ledger reconciliation report) |
+| `StoreAdminController.RecordMissingPayments` | Action | `StoreAdmin, FinanceAdmin, Admin` (`[HttpPost("Payments/RecordMissing")]`) | `StorePolicies.Manage` (records missing Stripe payments) |
+| `StoreAdminController.OrderYears` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("OrderYears")]`) | `StorePolicies.Read` (reviews legacy order-year repairs) |
+| `StoreAdminController.RepairOrderYears` | Action | `StoreAdmin, FinanceAdmin, Admin` (`[HttpPost("OrderYears/Repair")]`) | `StorePolicies.Manage` (repairs reviewed legacy order years) |
+| `StoreAdminController.PaymentMethods` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("PaymentMethods")]`) | `StorePolicies.Read` (reviews payments missing a method name) |
+| `StoreAdminController.RepairPaymentMethods` | Action | `StoreAdmin, FinanceAdmin, Admin` (`[HttpPost("PaymentMethods/Repair")]`) | `StorePolicies.Manage` (backfills `Payment.MethodName`) |
 | `StoreStripeWebhookController` | Class | `AllowAnonymous` (Stripe signature-verified) | — |
 
 `IssueInvoice` is Store-admin-only on every order — no camp lead, department coordinator or

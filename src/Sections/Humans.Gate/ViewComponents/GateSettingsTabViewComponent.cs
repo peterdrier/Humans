@@ -5,7 +5,7 @@ using NodaTime.Text;
 
 namespace Humans.Gate.ViewComponents;
 
-/// <summary><see cref="Section"/> gates the tab on TicketAdminOrAdmin, so every viewer who reaches it may edit.</summary>
+/// <summary><see cref="Section"/> gates the tab on TicketsPolicies.Manage, so every viewer who reaches it may edit.</summary>
 internal sealed class GateSettingsTabViewComponent(IGateService gate) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

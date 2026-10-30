@@ -97,7 +97,7 @@ Stated so a violation is recognisable, each with where the code enforces it:
 
 - Every route requires a signed-in member. `AppAccess` on the board, forms and API
   (`Controllers/RideshareController.cs:20`, `Controllers/RideshareApiController.cs:16`);
-  `RideshareAdminOrAdmin` on admin (`Controllers/RideshareAdminController.cs:15`,
+  `RidesharePolicies.Manage` on admin (`Controllers/RideshareAdminController.cs:15`,
   `Section.cs:16`).
 - Only the owner edits or cancels a posting, and a cancelled posting is never edited
   (`Services/RideshareService.cs:114`, `:116`, `:153`, `:190`, `:192`, `:207`).

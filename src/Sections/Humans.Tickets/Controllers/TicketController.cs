@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using Humans.Finance.Contracts;
 using CsvHelper;
 using Hangfire;
@@ -14,7 +15,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Tickets.Controllers;
 
-[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
+[Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets")]
 internal sealed class TicketController(
     ITicketManagement ticketQueryService,
@@ -164,7 +165,7 @@ internal sealed class TicketController(
 
     [HttpPost("Sync")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public IActionResult Sync()
     {
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
@@ -241,7 +242,7 @@ internal sealed class TicketController(
     }
 
     [HttpGet("Export/Attendees")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ExportAttendees()
     {
         var actorId = GetCurrentUserId();
@@ -262,7 +263,7 @@ internal sealed class TicketController(
     }
 
     [HttpGet("Export/Orders")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ExportOrders()
     {
         var actorId = GetCurrentUserId();
@@ -300,7 +301,7 @@ internal sealed class TicketController(
     }
 
     [HttpGet("Export/AccountantReport")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ExportAccountantReport()
     {
         var months = (await ticketQueryService.GetSalesAggregatesAsync(HttpContext.RequestAborted)).MonthlySales;

@@ -9,9 +9,10 @@ internal sealed class CampRoleDrillDownViewModel
     public string? Description { get; init; }
     public int SlotCount { get; init; }
     public int MinimumRequired { get; init; }
-    public int Year { get; init; }
+    public required CampEventRegistration Event { get; init; }
     public string? GroupEmail { get; init; }
-    public required IReadOnlyList<int> YearOptions { get; init; }
+    /// <summary>Every non-deleted Settings event, latest gate opening first.</summary>
+    public required IReadOnlyList<CampEventRegistration> EventOptions { get; init; }
     public required IReadOnlyList<CampRoleDrillDownCampRowViewModel> Camps { get; init; }
 }
 

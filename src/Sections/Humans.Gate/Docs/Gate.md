@@ -139,9 +139,9 @@ after the retention window.
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
 | `/Gate/Leaderboard` | GET | `ScannerAccess` | Service tally DTOs rendered directly, ordered by admitted then total scans (descending); names resolved by the Human component |
-| `/Gate/Admin` | GET/POST | `TicketAdminOrAdmin` | GET = Staff PINs page; POST = saves the cutoff + minor-age settings submitted from `/Settings#gate` (peterdrier/Humans#1634) |
-| `/Gate/Admin/SetPin` | POST | `TicketAdminOrAdmin` | Admin enrol/change any staffer's PIN (incl. supervisors) |
-| `/Gate/Admin/ResetPin` | POST | `TicketAdminOrAdmin` | Admin clear a staffer's PIN (they re-enrol on next claim) |
+| `/Gate/Admin` | GET/POST | `TicketsPolicies.Manage` | GET = Staff PINs page; POST = saves the cutoff + minor-age settings submitted from `/Settings#gate` (peterdrier/Humans#1634) |
+| `/Gate/Admin/SetPin` | POST | `TicketsPolicies.Manage` | Admin enrol/change any staffer's PIN (incl. supervisors) |
+| `/Gate/Admin/ResetPin` | POST | `TicketsPolicies.Manage` | Admin clear a staffer's PIN (they re-enrol on next claim) |
 | `/Gate/Admin/VendorCheckInBackfill` | GET | `AdminOnly` | One-off vendor check-in backfill page (temp — remove after use) |
 | `/Gate/Admin/VendorCheckInBackfill/RunOne`, `…/Run` | POST | `AdminOnly` | Send one test / all pending backfill check-ins (see Vendor check-in mirror) |
 

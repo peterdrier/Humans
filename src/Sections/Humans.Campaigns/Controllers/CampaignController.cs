@@ -1,3 +1,4 @@
+using Humans.Tickets.Contracts;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Campaigns.Domain;
@@ -127,7 +128,7 @@ internal sealed class CampaignController(
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Read)]
     public async Task<IActionResult> Detail(Guid id)
     {
         var page = await campaignService.GetDetailPageAsync(id, HttpContext.RequestAborted);
@@ -220,7 +221,7 @@ internal sealed class CampaignController(
 
     [HttpPost("{id:guid}/GenerateCodes")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
+    [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, [BindRequired] decimal discountValue)
     {
         var currentUser = await GetCurrentUserInfoAsync();

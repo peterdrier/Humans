@@ -27,8 +27,8 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 
 - **Dietary form** (`/Cantina/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
 - **Medical form** (`/Profile/Me/Medical`, Users' `ProfileController`): any authenticated user, own conditions only.
-- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
-- **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaAdminOrAdmin` roster, all through `ICantinaService`.
+- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`ShiftsPolicies.MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
+- **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaPolicies.Read` roster, all through `ICantinaService`.
 
 Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can still answer them.
 
@@ -107,7 +107,7 @@ The legacy `profiles` food columns are read only by Cantina's fallback and the `
 
 ## Negative access rules
 
-- No one sees another member's `MedicalConditions` unless `MedicalDataViewer`; Cantina's DTOs carry no medical field.
+- No one sees another member's `MedicalConditions` unless `ShiftsPolicies.MedicalDataViewer`; Cantina's DTOs carry no medical field.
 - Neither form takes a user id from the request; there is no admin edit of another member's answers.
 
 ## Out of scope

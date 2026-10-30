@@ -16,4 +16,4 @@ Each lives in its section's `<Section>Roles` class (`CampsRoles.CampsAdmin`), ne
 
 **How to apply:**
 
-When adding `[Authorize(Roles = "...")]` or role checks, always include `Admin`. Within a domain area, also include the relevant `*Admin` role. When reviewing existing authorization, flag any place where Admin or a domain admin is excluded from capabilities in their area. Use the section's role predicates (`CampsRoles.IsCampsAdmin`, `TeamsRoles.IsTeamsAdminBoardOrAdmin`) or a `PolicyNames` policy instead of hand-maintained role-name lists.
+When adding `[Authorize(Roles = "...")]` or role checks, always include `Admin`. Within a domain area, also include the relevant `*Admin` role. When reviewing existing authorization, flag any place where Admin or a domain admin is excluded from capabilities in their area. Use the section's role predicates (`CampsRoles.IsCampsAdmin`) or its `<Section>Policies.Read`/`.Manage` instead of hand-maintained role-name lists.

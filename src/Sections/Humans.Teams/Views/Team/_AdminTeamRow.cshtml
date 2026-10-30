@@ -91,14 +91,14 @@
         }
     </td>
     <td>@Model.CreatedAt.ToDate()</td>
-    <td authorize-policy="TeamsAdminBoardOrAdmin">
+    <td authorize-policy="@Humans.Teams.Contracts.TeamsPolicies.Read">
         @if (!Model.IsSystemTeam)
         {
             <div class="d-flex gap-1" role="group">
                 <a asp-action="EditTeam" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">@SharedLocalizer["Common_Edit"]</a>
                 @if (Model.IsActive)
                 {
-                    <form asp-action="DeleteTeam" asp-route-id="@Model.Id" method="post" class="d-inline" authorize-policy="BoardOrAdmin">
+                    <form asp-action="DeleteTeam" asp-route-id="@Model.Id" method="post" class="d-inline" authorize-policy="AdminOnly">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_AdminTeams_DeactivateConfirm"].Value">@Localizer["Teams_AdminTeams_Deactivate"]</button>
                     </form>

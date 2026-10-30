@@ -50,7 +50,7 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Cantina", [
-            new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", PolicyNames.CantinaAdminOrAdmin)
+            new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", CantinaPolicies.Read)
         ])
     ];
 
@@ -81,7 +81,10 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.CantinaAdminOrAdmin, policy =>
+        options.AddPolicy(CantinaPolicies.Read, policy =>
+            policy.RequireRole(CantinaRoles.CantinaAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(CantinaPolicies.Manage, policy =>
             policy.RequireRole(CantinaRoles.CantinaAdmin, RoleNames.Admin));
     }
 

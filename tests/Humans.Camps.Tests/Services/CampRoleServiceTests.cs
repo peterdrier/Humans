@@ -18,12 +18,15 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly Guid _actorUserId = Guid.NewGuid();
+    private static readonly CampEventRegistration Event2026 = new(Guid.NewGuid(), "Nowhere 2026", 2026, true);
 
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
         _googleIdentities = Substitute.For<IGoogleIntegrationService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
+        _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2026]) { Events = [Event2026] });
 
         var repo = new CampRepository(CampsDbFactory);
 
@@ -542,10 +545,10 @@ public sealed class CampRoleServiceTests : CampsTestHarness
             new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+        _campAccess.GetCampSeasonsForComplianceAsync(Event2026.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, null)]);
 
-        var summaries = await _service.GetDirectoryRoleSummariesAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var summaries = await _service.GetDirectoryRoleSummariesAsync(Event2026.EventSettingsId, Xunit.TestContext.Current.CancellationToken);
 
         summaries.Should().ContainKey(season.Id);
         var rows = summaries[season.Id];
@@ -560,10 +563,10 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
-        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+        _campAccess.GetCampSeasonsForComplianceAsync(Event2026.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, season.MemberCount, null)]);
 
-        var summaries = await _service.GetDirectoryRoleSummariesAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var summaries = await _service.GetDirectoryRoleSummariesAsync(Event2026.EventSettingsId, Xunit.TestContext.Current.CancellationToken);
 
         summaries[season.Id].Single().Should().BeEquivalentTo(new CampDirectoryRoleSummary("LNT", 0, 1));
     }
@@ -590,12 +593,12 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+        _campAccess.GetCampSeasonsForComplianceAsync(Event2026.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 25, 7)]);
 
-        var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var matrix = await _service.BuildComplianceMatrixAsync(Event2026.EventSettingsId, Xunit.TestContext.Current.CancellationToken);
 
-        matrix.Year.Should().Be(2026);
+        matrix!.Event.Should().Be(Event2026);
         matrix.Roles.Select(r => r.Name).Should().Equal("LNT", "Consent Lead");
 
         var row = matrix.Rows.Single();
@@ -614,16 +617,16 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync();
 
-        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+        _campAccess.GetCampSeasonsForComplianceAsync(Event2026.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns([
                 (camp.Id, "Active Camp", camp.Slug, season.Id, CampSeasonStatus.Active, 10, null),
                 (camp.Id, "Full Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Full, 10, null),
                 (camp.Id, "Pending Camp", camp.Slug, Guid.NewGuid(), CampSeasonStatus.Pending, 10, null),
             ]);
 
-        var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var matrix = await _service.BuildComplianceMatrixAsync(Event2026.EventSettingsId, Xunit.TestContext.Current.CancellationToken);
 
-        matrix.Rows.Select(r => r.CampName).Should().BeEquivalentTo(["Active Camp", "Full Camp"]);
+        matrix!.Rows.Select(r => r.CampName).Should().BeEquivalentTo(["Active Camp", "Full Camp"]);
     }
 
     [HumansFact]
@@ -653,12 +656,12 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _campAccess.GetCampSeasonsForComplianceAsync(2026, Arg.Any<CancellationToken>())
+        _campAccess.GetCampSeasonsForComplianceAsync(Event2026.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns([(camp.Id, season.Name, camp.Slug, season.Id, season.Status, 10, null)]);
 
-        var matrix = await _service.BuildComplianceMatrixAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var matrix = await _service.BuildComplianceMatrixAsync(Event2026.EventSettingsId, Xunit.TestContext.Current.CancellationToken);
 
-        matrix.Rows.Single().AssigneeUserIdsByRole.Single().Should().BeEmpty();
+        matrix!.Rows.Single().AssigneeUserIdsByRole.Single().Should().BeEmpty();
     }
 
     [HumansFact]

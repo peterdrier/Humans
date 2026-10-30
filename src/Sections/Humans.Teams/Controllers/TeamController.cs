@@ -577,7 +577,7 @@ internal sealed class TeamController(
     }
 
     [HttpGet("Summary")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Read)]
     public async Task<IActionResult> Summary(CancellationToken ct)
     {
         var result = await teamService.GetAdminTeamListAsync(1, 500, ct);
@@ -621,7 +621,7 @@ internal sealed class TeamController(
     }
 
     [HttpGet("Create")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Manage)]
     public async Task<IActionResult> CreateTeam(CancellationToken cancellationToken)
     {
         var model = new CreateTeamViewModel
@@ -632,7 +632,7 @@ internal sealed class TeamController(
     }
 
     [HttpPost("Create")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTeam(CreateTeamViewModel model)
     {
@@ -677,7 +677,7 @@ internal sealed class TeamController(
     }
 
     [HttpGet("{id:guid}/Edit")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Read)]
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
         var team = await teamService.GetTeamAsync(id, cancellationToken);
@@ -711,7 +711,7 @@ internal sealed class TeamController(
     }
 
     [HttpPost("{id:guid}/Edit")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditTeam(Guid id, EditTeamViewModel model)
     {
@@ -758,7 +758,7 @@ internal sealed class TeamController(
     }
 
     [HttpPost("{id:guid}/Delete")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
@@ -784,7 +784,7 @@ internal sealed class TeamController(
     }
 
     [HttpGet("{teamId:guid}/GoogleResources")]
-    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = TeamsPolicies.Read)]
     public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
     {
         var resources = await teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);

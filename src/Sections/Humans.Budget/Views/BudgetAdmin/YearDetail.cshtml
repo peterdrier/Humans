@@ -37,7 +37,7 @@
         <a asp-controller="Finance" asp-action="CashFlow" class="btn btn-outline-secondary">
             <i class="fa-solid fa-money-bill-transfer me-1"></i>Cash Flow
         </a>
-        <form asp-action="SyncDepartments" asp-route-id="@year.Id" method="post" class="d-inline">
+        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="SyncDepartments" asp-route-id="@year.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Departments
@@ -45,7 +45,7 @@
         </form>
         @if (!year.Groups.Any(g => g.IsTicketingGroup))
         {
-            <form asp-action="EnsureTicketingGroup" asp-route-id="@year.Id" method="post" class="d-inline">
+            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="EnsureTicketingGroup" asp-route-id="@year.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-warning">
                     <i class="fa-solid fa-ticket me-1"></i>Add Ticketing Group
@@ -204,7 +204,7 @@
                             </strong>
                             @if (year.Status == BudgetYearStatus.Active)
                             {
-                                <form asp-action="SyncTicketingBudget" asp-route-yearId="@year.Id" method="post" class="d-inline">
+                                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="SyncTicketingBudget" asp-route-yearId="@year.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">
                                         <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Actuals
@@ -279,7 +279,7 @@
                                         <input type="number" name="ticketTailorFeePercent" class="form-control form-control-sm"
                                                step="0.01" value="@proj.TicketTailorFeePercent" />
                                     </div>
-                                    <div class="col-md-1 d-flex align-items-end">
+                                    <div class="col-md-1 d-flex align-items-end" authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage">
                                         <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
                                     </div>
                                 </div>
@@ -530,7 +530,7 @@
                 @if (!group.IsTicketingGroup)
                 {
                     <div class="p-3 border-top bg-light">
-                        <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
+                        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="budgetGroupId" value="@group.Id" />
                             <input type="hidden" name="budgetYearId" value="@year.Id" />

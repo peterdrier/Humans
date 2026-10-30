@@ -48,7 +48,10 @@ internal sealed class CampSeasonConfiguration : IEntityTypeConfiguration<CampSea
 
         builder.Property(s => s.ReviewNotes).HasMaxLength(2000);
 
-        builder.HasIndex(s => new { s.CampId, s.Year }).IsUnique();
+        // One season per camp per event; a year can hold several events. Seasons not yet given an event id share
+        // the null key, which a unique index never treats as equal.
+        builder.HasIndex(s => new { s.CampId, s.EventSettingsId }).IsUnique();
+        builder.HasIndex(s => new { s.CampId, s.Year });
         builder.HasIndex(s => s.Status);
     }
 }

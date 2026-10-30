@@ -320,7 +320,7 @@ internal sealed class ShiftAdminController(
 
     [HttpPost("Rotas/{rotaId}/Move")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.VolunteerManager)]
+    [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     public async Task<IActionResult> MoveRota(string slug, Guid rotaId, MoveRotaModel model)
     {
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);

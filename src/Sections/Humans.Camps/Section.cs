@@ -1,3 +1,5 @@
+using System.Globalization;
+using Humans.Camps.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
@@ -30,6 +32,7 @@ namespace Humans.Camps;
 /// </summary>
 public sealed class Section :
     ISection,
+    ISectionDataMigrations,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -75,6 +78,7 @@ public sealed class Section :
         services.AddSingleton<ICampSeeding>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<ICampRoleCampAccess>(sp => sp.GetRequiredService<CachingCampService>());
         services.AddSingleton<IEarlyEntryProvider>(sp => sp.GetRequiredService<CachingCampService>());
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingCampService>());
 
         // Merge, GDPR erasure and role writes change rows the projection serves, so the
         // decorator carries them and drops the projection itself after the inner write.
@@ -139,9 +143,9 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Barrios", [
-            new("Overview",   "CampAdmin",      "Index",      null, null, "fa-solid fa-tents",           PolicyNames.CampAdminOrAdmin, Weight: 0),
-            new("Roles",      "CampAdmin",      "Roles",      null, null, "fa-solid fa-user-tag",        PolicyNames.CampAdminOrAdmin, Weight: 10),
-            new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", PolicyNames.CampComplianceAccess, Weight: 20)
+            new("Overview",   "CampAdmin",      "Index",      null, null, "fa-solid fa-tents",           CampsPolicies.Read, Weight: 0),
+            new("Roles",      "CampAdmin",      "Roles",      null, null, "fa-solid fa-user-tag",        CampsPolicies.Read, Weight: 10),
+            new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", CampsPolicies.Compliance, Weight: 20)
         ])
     ];
 
@@ -158,18 +162,49 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.CampAdminOrAdmin, policy =>
+        options.AddPolicy(CampsPolicies.Read, policy =>
+            policy.RequireRole(CampsRoles.CampsAdmin, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(CampsPolicies.Manage, policy =>
             policy.RequireRole(CampsRoles.CampsAdmin, RoleNames.Admin));
 
-        // CampAdmin/Admin OR any team coordinator — the OR lives in
+        // CampsAdmin, Board, Admin OR any team coordinator — the OR lives in
         // CampComplianceAccessHandler so the policy is a single requirement
         // (policy requirements AND together).
-        options.AddPolicy(PolicyNames.CampComplianceAccess, policy =>
+        options.AddPolicy(CampsPolicies.Compliance, policy =>
             policy.AddRequirements(new CampComplianceAccessRequirement()));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [
-        new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), PolicyNames.CampAdminOrAdmin)
+        new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), CampsPolicies.Manage)
     ];
+
+    internal const string EventIdsKey = "camps.event-ids";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(EventIdsKey, "Camps",
+            "Give every barrio season the event of its year, and turn the open-season years into per-event registration rows",
+            "The open-season year list on camp_settings (emptied by this run), and seasons without an event id",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var plan = await sp.GetRequiredService<ICampManagement>().GetEventIdPlanAsync(ct);
+        return new(["Season", "Name", "Year", "Event"],
+            [
+                .. plan.LegacyOpenYears.Select(year => (IReadOnlyList<string>)[
+                    "(open-season year)", "", year.ToString(CultureInfo.InvariantCulture), "Pinned to its events, then removed"]),
+                .. plan.Seasons.Select(p => (IReadOnlyList<string>)[
+                    p.SeasonId.ToString(),
+                    p.SeasonName,
+                    p.Year.ToString(CultureInfo.InvariantCulture),
+                    p.EventName]),
+            ]);
+    }
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<ICampManagement>().AssignSeasonEventIdsAsync(ct);
 }

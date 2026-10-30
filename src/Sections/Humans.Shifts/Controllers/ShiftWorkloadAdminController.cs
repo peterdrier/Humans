@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -7,7 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
-[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+[Authorize(Policy = ShiftsPolicies.Read)]
 [Route("Shifts/Admin/Workload")]
 internal sealed class ShiftWorkloadAdminController(IUserService userService, IWorkloadService workloadService)
     : HumansControllerBase(userService)

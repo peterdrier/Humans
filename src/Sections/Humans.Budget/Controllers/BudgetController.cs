@@ -1,3 +1,4 @@
+using Humans.Finance.Contracts;
 using Humans.Budget.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -30,7 +31,7 @@ internal sealed class BudgetController(
             var (errorResult, user) = await RequireCurrentUserAsync(ct);
             if (errorResult is not null) return errorResult;
 
-            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
             var data = await budgetService.GetCoordinatorBudgetViewDataAsync(user.Id, isFinanceAdmin, ct);
 
             if (data.ShouldRedirectToSummary)
@@ -88,7 +89,7 @@ internal sealed class BudgetController(
                 TotalLineItems = summary.TotalLineItems,
                 IncomeSlices = summary.IncomeSlices,
                 ExpenseSlices = summary.ExpenseSlices,
-                IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded
+                IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
             };
             return View(model);
         }
@@ -109,7 +110,7 @@ internal sealed class BudgetController(
             var (errorResult, user) = await RequireCurrentUserAsync(ct);
             if (errorResult is not null) return errorResult;
 
-            var isFinanceAdmin = (await authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
+            var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
             var detail = await budgetService.GetCoordinatorCategoryDetailViewDataAsync(id, user.Id, isFinanceAdmin, ct);
             if (detail.Category is null) return NotFound();
             if (detail.ShouldForbid)

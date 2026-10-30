@@ -50,7 +50,7 @@ public class CantinaArchitectureTests
         // gate, and its role set is also what makes these pages localization-exempt.
         typeof(CantinaController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
             .Cast<AuthorizeAttribute>()
-            .Should().ContainSingle(a => string.Equals(a.Policy, PolicyNames.CantinaAdminOrAdmin, StringComparison.Ordinal));
+            .Should().ContainSingle(a => string.Equals(a.Policy, CantinaPolicies.Read, StringComparison.Ordinal));
         typeof(CantinaController).GetMethods()
             .Where(m => m.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Length > 0)
             .Should().BeEmpty();

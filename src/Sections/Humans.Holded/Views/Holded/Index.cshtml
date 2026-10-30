@@ -93,13 +93,13 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-rotate me-1"></i>Sync state</span>
         <div class="d-flex gap-2">
-            <form asp-action="SyncNow" method="post" class="d-inline js-sync-form">
+            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="SyncNow" method="post" class="d-inline js-sync-form">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="fa-solid fa-arrows-rotate me-1"></i>Sync now
                 </button>
             </form>
-            <form asp-action="FullSync" method="post" class="d-inline js-sync-form">
+            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="FullSync" method="post" class="d-inline js-sync-form">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-primary btn-sm"
                         title="Rebuilds the whole mirror from 2020 — more API calls than the nightly sweep.">

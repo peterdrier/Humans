@@ -188,7 +188,7 @@ touching these callers are shaped by them.
   Placement is a planning concern; the entity is not. Both directions of that split are
   intentional.
 - **The admin nav item is narrower than the pages it links.** "Barrio map" in the admin sidebar
-  is `CampAdminOrAdmin`; the pages and the settings tab admit city-planning team members too,
+  is `CampsPolicies.Manage`; the pages and the settings tab admit city-planning team members too,
   who reach them from the member-side City page.
 
 ## History

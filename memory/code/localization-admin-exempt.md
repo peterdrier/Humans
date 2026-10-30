@@ -9,7 +9,7 @@ description: Admin/operator-only pages (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Das
 
 - `/Admin/*` and `/TeamAdmin/*`
 - `/Shifts/Dashboard` — coordinator-facing, an admin function
-- `/Monitor/*` — `BoardOrAdmin` and `HumanAdminBoardOrAdmin` operator pages
+- `/Monitor/*` — `BoardOrAdmin` and `UsersPolicies.Read` operator pages
 - City Planning's map-admin surfaces (`CityPlanningMapAdmin`: Admin, CampsAdmin, or the city-planning team) — a section's managing team are that section's admins (Peter, 2026-09-25)
 
 The access pill (`_AuthorizationPill`, its role titles and `IDescribedRequirement.Admits` labels) is admin content and stays English on every page it appears on (Peter, 2026-10-29, peterdrier/Humans#2187).

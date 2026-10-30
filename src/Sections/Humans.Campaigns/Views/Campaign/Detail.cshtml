@@ -11,7 +11,7 @@
     var redemptionPct = totalGrants > 0 ? (int)Math.Round(100.0 * codesRedeemed / totalGrants) : 0;
     var statusClass = EnumBadgeMap.For(Model.Campaign.Status);
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
-    var canGenerateCodes = (await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded;
+    var canGenerateCodes = (await AuthService.AuthorizeAsync(User, Humans.Tickets.Contracts.TicketsPolicies.Manage)).Succeeded;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">

@@ -1,3 +1,6 @@
+using Humans.Finance.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Camps.Contracts;
 using Humans.Base.Configuration;
 using Humans.Budget.Contracts;
 using Humans.Development.Services;
@@ -35,7 +38,7 @@ internal sealed class DevSeedController(
         return View();
     }
 
-    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [HttpPost("budget")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedBudget(CancellationToken cancellationToken)
@@ -65,7 +68,7 @@ internal sealed class DevSeedController(
         return RedirectToAction("Index", "Admin");
     }
 
-    [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
+    [Authorize(Policy = CampsPolicies.Manage)]
     [HttpPost("camp-roles")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedCampRoles(CancellationToken cancellationToken)
@@ -107,7 +110,7 @@ internal sealed class DevSeedController(
             configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
-    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+    [Authorize(Policy = ShiftsPolicies.Manage)]
     [HttpPost("dashboard")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedDashboard(CancellationToken cancellationToken)

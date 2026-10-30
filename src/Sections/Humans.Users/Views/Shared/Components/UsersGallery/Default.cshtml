@@ -63,7 +63,7 @@
     @ParamsBlock(
         ("@@model", "<code>ProfileSummaryViewModel</code> — same shape as <code>_ProfileCard</code>")
     )
-    <div class="wg-auth-line">Preferred-language flag is gated on <code>HumanAdminBoardOrAdmin</code> via <code>IAuthorizationService</code> evaluated in the partial.</div>
+    <div class="wg-auth-line">Preferred-language flag is gated on <code>UsersPolicies.Read</code> via <code>IAuthorizationService</code> evaluated in the partial.</div>
     <div class="wg-card-example">
         @await Html.PartialAsync("_HumanPopover", Model.Sample)
     </div>
@@ -107,7 +107,7 @@
     @ParamsBlock(
         ("user-id", "<code>Guid</code> — required")
     )
-    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsAdminBoardOrAdmin</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
+    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsPolicies.Read</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
     <div class="wg-variants">
         <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
         <div class="wg-variant-render" style="display:block;">

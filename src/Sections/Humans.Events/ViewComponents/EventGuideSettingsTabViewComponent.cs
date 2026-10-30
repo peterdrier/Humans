@@ -5,7 +5,7 @@ using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.ViewComponents;
 
-/// <summary>Every viewer who reaches this tab may edit: it is gated on <c>EventsAdminOrAdmin</c>.</summary>
+/// <summary>Every viewer who reaches this tab may edit: it is gated on <c>EventsPolicies.Manage</c>.</summary>
 internal sealed class EventGuideSettingsTabViewComponent(IEventManagement guide) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

@@ -17,11 +17,12 @@ public sealed class StoreAdminControllerTests
     [HumansTheory]
     [InlineData(null, false)]
     [InlineData("", false)]
-    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.Board, true)]
     [InlineData(StoreRoles.StoreAdmin, true)]
     [InlineData(FinanceRoles.FinanceAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
-    public async Task Admin_controller_admits_only_store_admin_roles(string? role, bool allowed)
+    [InlineData(StoreRoles.StoreAdmin + "x", false)]
+    public async Task Admin_controller_reads_for_store_admin_roles_and_Board(string? role, bool allowed)
     {
         var services = new ServiceCollection();
         services.AddLogging();

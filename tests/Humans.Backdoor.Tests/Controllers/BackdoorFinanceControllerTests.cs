@@ -99,7 +99,7 @@ public class BackdoorFinanceControllerTests
             new ActionContext(_sut.HttpContext, new RouteData(), new ActionDescriptor()), [], result, _sut));
 
     private void SetFinanceAdmin(bool isFinanceAdmin) =>
-        _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.FinanceAdminOrAdmin)
+        _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(isFinanceAdmin ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
     /// <summary>Stubs the exact call <c>CanViewAsync</c> makes — the named policy, against this

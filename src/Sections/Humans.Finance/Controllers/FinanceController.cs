@@ -14,7 +14,7 @@ using Humans.Users.Contracts;
 namespace Humans.Finance.Controllers;
 
 /// <summary>Budget's <c>BudgetAdminController</c> shares the <c>Finance</c> route prefix.</summary>
-[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+[Authorize(Policy = FinancePolicies.Read)]
 [Route("Finance")]
 internal sealed class FinanceController(
     IUserService userService,
@@ -56,6 +56,7 @@ internal sealed class FinanceController(
     }
 
     [HttpPost("HoldedAccounts/Provision")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionHoldedAccounts([BindRequired] int blockStart, [BindRequired] bool addAll)
     {
@@ -138,6 +139,7 @@ internal sealed class FinanceController(
     /// <summary>Streams a pain.001.001.09 file. All-or-nothing: one bad amount refuses the batch, so the treasurer
     /// never uploads half of one.</summary>
     [HttpPost("Sepa/Generate")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateSepa(
         int[] selected, Dictionary<int, string> amounts, string maxPerTransfer, CancellationToken ct)
@@ -220,6 +222,7 @@ internal sealed class FinanceController(
     /// <summary>No <c>CancellationToken</c> reaches the service: a booking that has posted a payment must finish
     /// even if the admin closes the tab.</summary>
     [HttpPost("Sepa/Book")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaTransfer(
         Guid transferId, string bankMovementId,
@@ -235,6 +238,7 @@ internal sealed class FinanceController(
 
     /// <summary>For a transfer the bank cancelled by hand before execution.</summary>
     [HttpPost("Sepa/Withdraw")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawSepaTransfer(
         Guid transferId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
@@ -258,6 +262,7 @@ internal sealed class FinanceController(
 
     /// <summary>No <c>CancellationToken</c>: a run that has deleted one document finishes the rest.</summary>
     [HttpPost("HoldedDuplicates/Apply")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApplyHoldedDuplicates()
     {
@@ -281,6 +286,7 @@ internal sealed class FinanceController(
     /// <summary>Books a whole file against the one Sabadell line the bank debited it as. No
     /// <c>CancellationToken</c>, as for a single booking.</summary>
     [HttpPost("Sepa/BookFile")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFile(
         Guid fileId, string bankMovementId,
@@ -297,6 +303,7 @@ internal sealed class FinanceController(
     /// <summary>For a file whose every unbooked transfer is matched to its own Sabadell line. No
     /// <c>CancellationToken</c>, as for a single booking.</summary>
     [HttpPost("Sepa/BookMatches")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFileMatches(
         Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
@@ -365,6 +372,7 @@ internal sealed class FinanceController(
     }
 
     [HttpPost("Creditors/Bind")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
     {
@@ -389,6 +397,7 @@ internal sealed class FinanceController(
     }
 
     [HttpPost("Creditors/Unbind")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
     {
@@ -412,6 +421,7 @@ internal sealed class FinanceController(
     }
 
     [HttpPost("HoldedSync/Run")]
+    [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RunHoldedSync()
     {

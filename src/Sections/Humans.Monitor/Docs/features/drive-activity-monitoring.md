@@ -34,7 +34,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - Logs each anomalous change to the audit log with `AnomalousPermissionDetected` action
 - Includes actor identity, affected resource, and specific permission changes in the log entry
 
-### US-13.2: Manual Activity Check
+**As an** Admin (Board sees the Audit Log but not the button)
 **As a** Board member or Admin
 **I want to** manually trigger a Drive activity check
 **So that** I can verify the current state on demand

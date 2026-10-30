@@ -119,7 +119,7 @@
                         <td>@b.MemberName</td>
                         <td class="text-muted small">@b.Source</td>
                         <td>
-                            <form asp-action="BindCreditor" method="post" class="d-flex gap-2 align-items-center">
+                            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BindCreditor" method="post" class="d-flex gap-2 align-items-center">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="userId" value="@b.UserId" />
                                 <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
@@ -149,7 +149,7 @@ else
 {
     @* Standalone, not wrapped around the table: each row already carries an Unbind form, and HTML
        forbids nesting one form in another. The payout inputs join this one by id instead. *@
-    <form id="sepaForm" asp-action="GenerateSepa" method="post"
+    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" id="sepaForm" asp-action="GenerateSepa" method="post"
           class="d-flex justify-content-end align-items-center gap-2 mb-3">
         @Html.AntiForgeryToken()
         @if (Model.Sepa.IsAvailable)
@@ -315,7 +315,7 @@ else
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <span><i class="fa-solid fa-link me-1 text-success"></i>@b.MemberName</span>
                                     <span class="text-muted small">(@b.Source)</span>
-                                    <form asp-action="UnbindCreditor" method="post" class="d-inline"
+                                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UnbindCreditor" method="post" class="d-inline"
                                           data-confirm="Clear @b.MemberName's creditor account binding? Their next expense push will resolve it again from Holded.">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="userId" value="@b.UserId" />

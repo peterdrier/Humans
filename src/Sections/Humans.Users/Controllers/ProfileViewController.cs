@@ -157,7 +157,7 @@ internal sealed class ProfileViewController(
             return false;
 
         var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId, ct)).Count > 0;
-        var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, PolicyNames.PrivilegedSignupApprover)).Succeeded;
+        var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)).Succeeded;
         return viewerIsCoordinator || isPrivilegedApprover;
     }
 

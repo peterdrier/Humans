@@ -82,7 +82,7 @@
                 <a asp-controller="EventsExport" asp-action="PrintGuide" class="btn btn-outline-danger" target="_blank">
                     <i class="fa-solid fa-print me-1"></i>Print Guide
                 </a>
-                <a asp-controller="EventsExport" asp-action="DownloadCsv" class="btn btn-outline-success">
+                <a authorize-policy="@Humans.Events.Contracts.EventsPolicies.Manage" asp-controller="EventsExport" asp-action="DownloadCsv" class="btn btn-outline-success">
                     <i class="fa-solid fa-download me-1"></i>Download CSV
                 </a>
             </div>

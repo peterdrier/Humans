@@ -2,7 +2,7 @@ namespace Humans.Camps.Services;
 
 /// <summary>Assignees join by <c>CampRoleDefinitionId</c>, never by role name.</summary>
 internal sealed record CampComplianceMatrixData(
-    int Year,
+    CampEventRegistration Event,
     IReadOnlyList<CampRoleDefinitionInfo> Roles,
     IReadOnlyList<CampComplianceMatrixRow> Rows);
 
