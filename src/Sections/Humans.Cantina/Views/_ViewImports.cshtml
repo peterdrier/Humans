@@ -16,8 +16,6 @@
 @inject IStringLocalizer<CantinaResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@* A Shell-resident component would render as inert markup: a section can only addTagHelper against Humans.Base and
-   the sections it references. *@
+@* No <vc:…> here, but a Shell-resident component would render as inert markup: a section can only addTagHelper
+   against Humans.Base. *@
 @addTagHelper *, Humans.Base
-@* <vc:audit-log> on the member's dietary page. *@
-@addTagHelper *, Humans.AuditLog
