@@ -14,18 +14,24 @@
            class="btn btn-outline-primary" title="This account's ledger in Holded itself.">
             <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>See in Holded
         </a>
-        <a asp-action="Index" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Holded
-        </a>
     </div>
 </div>
+<partial name="_HoldedNav" />
 
 <p class="text-muted">
     Every figure below reads in the association's own point of view: + means its money went up,
     − means it went down. Read straight from the mirror — this page makes no Holded calls.
+    @if (!string.IsNullOrWhiteSpace(a.EnglishName))
+    {
+        <text>In English: <strong>@a.EnglishName</strong>.</text>
+    }
     @if (!string.IsNullOrWhiteSpace(a.Group))
     {
         <text>Group: <strong>@a.Group</strong>.</text>
+    }
+    @if (a.Archived)
+    {
+        <span class="badge bg-secondary">archived in Holded</span>
     }
 </p>
 
@@ -38,7 +44,7 @@
     </div>
     <div class="col-md-3">
         <div class="card text-center h-100"><div class="card-body">
-            <h6 class="card-subtitle mb-2 text-muted">Local balance</h6>
+            <h6 class="card-subtitle mb-2 text-muted">Mirror balance</h6>
             <span class="fs-4">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</span>
         </div></div>
     </div>
@@ -77,6 +83,7 @@
                     <tr>
                         <th>Date</th><th>Entry</th><th>Counterparty</th><th>Type</th><th>Description</th>
                         <th class="text-end">Amount</th>
+                        <th class="text-center" title="Holded's manual tick in its ledger view. Not bank reconciliation.">Checked</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,6 +93,10 @@
                         <td class="text-nowrap">@l.Date.ToDate(madrid)</td>
                         <td class="text-nowrap text-muted small">
                             <a asp-action="Entry" asp-route-number="@l.EntryNumber">@l.EntryNumber/@l.Line</a>
+                            @if (!string.IsNullOrEmpty(l.EntryId))
+                            {
+                                <div class="font-monospace" style="font-size: .7em;" title="Holded's entry id">@l.EntryId</div>
+                            }
                         </td>
                         <td class="text-nowrap">
                             @if (l.Counterparty is { } cp)
@@ -109,6 +120,16 @@
                         <td class="text-muted small">@l.Type</td>
                         <td>@l.Description</td>
                         <td class="text-end">@l.Amount.ToSignedEuro()</td>
+                        <td class="text-center">
+                            @if (l.Checked == true)
+                            {
+                                <i class="fa-solid fa-check text-success"></i>
+                            }
+                            else if (l.Checked is null)
+                            {
+                                <span class="text-muted" title="Not re-synced since Humans began reading the tick">?</span>
+                            }
+                        </td>
                     </tr>
                 }
                 </tbody>

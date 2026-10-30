@@ -29,7 +29,7 @@ Repository: `IHoldedMirrorRepository`.
 
 | Table | R/W |
 |-------|-----|
-| HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; read for balances/statement/ledger lookups) |
+| HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; read by account (optional window and type), by entry numbers, and as per-account / per-account-and-type / windowed sums grouped in SQL — never the whole table) |
 | HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts) |
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
@@ -41,9 +41,11 @@ are its only outbound
 dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
 call-budget display. Implements `IHoldedService` (the ledger-read
 surface consumed cross-section by Finance's `Service` —
-`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) and `IHoldedAdminService`
-(the `/Holded` admin-overview surface — usage, monthly call counts,
-per-account reconciliation status, account statements). No
+`GetLedgerLinesAsync`, `GetAccountBalancesAsync`; also `IsConfigured`,
+`GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenAmountsAsync`,
+`GetSumsByAccountAsync`, `GetChartAsync` for the callers that will move off
+`IHoldedClient`) and `IHoldedAdminService` (the `/Holded` pages — summary,
+accounts, calls by month, account statements, entries). No
 `IMemoryCache`. A single in-process `SemaphoreSlim` gate serializes
 `SyncLedgerAsync` runs (the nightly Hangfire job and an admin-triggered
 sync can otherwise race the replace-window).

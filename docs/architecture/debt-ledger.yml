@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 105
+next_id: 106
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -162,6 +162,10 @@ themes:
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
+  - added: 2026-10-30
+    id: CENTRAL-105
+    what: "IHoldedClient is still public because four sections call the Holded connector directly instead of through IHoldedService / IHoldedWrite (the single-mirror refactor, phase 1 built that face). Remaining callers: Finance (Service, HoldedDocumentSync, SepaBankBooking), Expenses (ExpenseHoldedPublisher, ExpenseReportBackgroundProcessor, ExpenseHoldedBookingService, ExpenseReportService for IsConfigured), Store (Service, StoreInvoiceIssuer), Workgroups (WorkgroupService). Each later phase moves one section's callers onto IHoldedService/IHoldedWrite and deletes its own Holded copies; when none remain, IHoldedClient goes internal. Design: the single-mirror section-flow records (holded-, pleo-, expenses-, finance-section.html, 2026-10-30)."
+    review: panel
   - added: 2026-10-21
     id: CENTRAL-89
     what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."

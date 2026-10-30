@@ -16,17 +16,20 @@ internal sealed class HoldedController(
     IUserService userService,
     IHoldedAdminService admin,
     IHoldedService holded,
-    IHoldedFinanceService holdedFinance,
     ILogger<HoldedController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken ct)
-    {
-        var overview = await admin.GetOverviewAsync(ct);
-        var docSync = await holdedFinance.GetDocSyncInfoAsync(ct);
+    public async Task<IActionResult> Index(CancellationToken ct) =>
+        View(await admin.GetSummaryAsync(ct));
 
-        return View(new HoldedOverviewVm(overview, docSync));
-    }
+    [HttpGet("Accounts")]
+    public async Task<IActionResult> Accounts(
+        bool archived = false, bool empty = false, bool mismatched = false, CancellationToken ct = default) =>
+        View(await admin.GetAccountsPageAsync(new HoldedAccountsFilter(archived, empty, mismatched), ct));
+
+    [HttpGet("Calls")]
+    public async Task<IActionResult> Calls(CancellationToken ct) =>
+        View(await admin.GetCallsByMonthAsync(ct));
 
     /// <summary>Any account in the chart. Figures are in the association's point of view (+ money in, − money
     /// out), not Holded's raw debit/credit sign.</summary>
@@ -41,7 +44,7 @@ internal sealed class HoldedController(
     [HttpGet("Entries/{number:int}")]
     public async Task<IActionResult> Entry(int number, CancellationToken ct)
     {
-        var entry = await admin.GetEntryAsync(number, ct);
+        var entry = await admin.GetEntryViewAsync(number, ct);
         if (entry is null) return NotFound();
         return View(entry);
     }

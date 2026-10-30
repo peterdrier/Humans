@@ -68,6 +68,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. An absent `payments_pending` reads as 0, the safe direction (refuses a booking rather than over-paying).
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
+- A `ledger-entries` item is exactly `id, entry_number, line, date, type, description,
+  doc_description, account, debit, credit, tags[], checked`. `id` is the journal entry's id
+  (shared by all its lines) and is read as `EntryId`; `checked` (Holded's manual ledger tick)
+  as `Checked`, false when absent. `doc_description` and `tags` are not read.
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
 - The live `ledger-entries` API's `end_date` is **exclusive** — an entry dated `end_date` itself
@@ -114,7 +118,8 @@ one `HoldedTransport`. Operation clients own their wire payloads, parsing and en
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
 options. They add no interfaces or DI registrations, and the public contract stays unchanged.
 
-**Consumers outside the section:** Expenses (`ExpenseHoldedPublisher` and
+**Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
+`CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
 `ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
 `IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
 (`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.

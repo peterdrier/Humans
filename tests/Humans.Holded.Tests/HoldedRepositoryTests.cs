@@ -44,6 +44,103 @@ public sealed class HoldedRepositoryTests
             Instant.FromUtc(2000, 1, 1, 0, 0), Instant.FromUtc(2100, 1, 1, 0, 0),
             null, lines, Now, Xunit.TestContext.Current.CancellationToken);
 
+    private async Task<IReadOnlyList<HoldedLedgerLine>> AllLinesAsync(CancellationToken ct)
+    {
+        var accounts = (await _repo.GetAccountTotalsAsync(ct)).Select(t => t.AccountNum);
+        var lines = new List<HoldedLedgerLine>();
+        foreach (var a in accounts) lines.AddRange(await _repo.GetLedgerLinesByAccountNumAsync(a, ct: ct));
+        return lines;
+    }
+
+    [HumansFact]
+    public async Task Account_totals_are_grouped_per_account()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedAsync(
+            Line(1, 1, 40000004, Now, credit: 100m),
+            Line(2, 1, 40000004, Now, debit: 30m),
+            Line(2, 2, 57200001, Now, credit: 30m));
+
+        var totals = (await _repo.GetAccountTotalsAsync(ct)).ToDictionary(t => t.AccountNum);
+
+        totals[40000004].Should().Be(new HoldedAccountTotals(40000004, 30m, 100m, 2));
+        totals[40000004].Balance.Should().Be(-70m);
+        totals[57200001].LineCount.Should().Be(1);
+        (await _repo.GetMirrorCountsAsync(ct)).Should().Be((3, 2));
+    }
+
+    [HumansFact]
+    public async Task Lines_by_account_narrow_by_window_and_type()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var purchase = Line(1, 1, 40000004, Instant.FromUtc(2026, 3, 1, 0, 0), credit: 100m);
+        purchase.Type = "purchase";
+        await SeedAsync(
+            purchase,
+            Line(2, 1, 40000004, Instant.FromUtc(2026, 3, 2, 0, 0), debit: 100m),
+            Line(3, 1, 40000004, Instant.FromUtc(2026, 5, 1, 0, 0), debit: 1m));
+
+        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct: ct)).Should().HaveCount(3);
+        (await _repo.GetLedgerLinesByAccountNumAsync(
+                40000004, Instant.FromUtc(2026, 3, 1, 0, 0), Instant.FromUtc(2026, 5, 1, 0, 0), ct: ct))
+            .Select(l => l.EntryNumber).Should().BeEquivalentTo([1, 2], "the upper bound is exclusive");
+        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, type: "purchase", ct: ct))
+            .Should().ContainSingle().Which.EntryNumber.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task Lines_by_entry_numbers_return_every_leg_on_any_account()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedAsync(
+            Line(7, 1, 40000004, Now, credit: 121m),
+            Line(7, 2, 62900300, Now, debit: 121m),
+            Line(8, 1, 57200001, Now, debit: 5m));
+
+        (await _repo.GetLedgerLinesByEntryNumbersAsync([7], ct)).Select(l => l.AccountNum)
+            .Should().BeEquivalentTo([40000004, 62900300]);
+        (await _repo.GetLedgerLinesByEntryNumbersAsync([], ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Type_totals_and_window_sums_are_grouped_in_the_query()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var purchase = Line(1, 1, 40000004, Instant.FromUtc(2026, 3, 1, 0, 0), credit: 100m);
+        purchase.Type = "purchase";
+        await SeedAsync(
+            purchase,
+            Line(2, 1, 40000004, Instant.FromUtc(2026, 3, 2, 0, 0), debit: 40m),
+            Line(3, 1, 57200001, Instant.FromUtc(2026, 3, 2, 0, 0), credit: 40m));
+
+        var byType = await _repo.GetAccountTypeTotalsAsync(40000000, 40999999, ct);
+        byType.Should().BeEquivalentTo(new[]
+        {
+            new HoldedAccountTypeTotals(40000004, "purchase", 0m, 100m),
+            new HoldedAccountTypeTotals(40000004, "payment", 40m, 0m),
+        });
+
+        var sums = await _repo.GetSumsByAccountAsync(
+            [40000004, 57200001], Instant.FromUtc(2026, 3, 2, 0, 0), Instant.FromUtc(2026, 3, 3, 0, 0), ct);
+        sums.Should().BeEquivalentTo(new Dictionary<int, decimal> { [40000004] = 40m, [57200001] = -40m });
+    }
+
+    [HumansFact]
+    public async Task Replace_keeps_entry_id_and_checked_current()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedAsync(Line(1, 1, 40000004, Now, credit: 1m));
+
+        var resynced = Line(1, 1, 40000004, Now, credit: 1m);
+        resynced.EntryId = "68f0c1a2b3c4d5e6f7a8b9c0";
+        resynced.Checked = true;
+        await SeedAsync(resynced);
+
+        var line = (await _repo.GetLedgerLinesByEntryNumbersAsync([1], ct)).Single();
+        line.EntryId.Should().Be("68f0c1a2b3c4d5e6f7a8b9c0");
+        line.Checked.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task GetOrCreateSyncState_creates_then_returns_same_row()
     {
@@ -83,7 +180,7 @@ public sealed class HoldedRepositoryTests
         var d = Line(4, 1, 40000004, Instant.FromUtc(2026, 6, 20, 0, 0), debit: 50m);
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [aPrime, d], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Select(l => l.EntryNumber).Should().BeEquivalentTo([1, 3, 4]);
         lines.Single(l => l.EntryNumber == 1).Credit.Should().Be(150m);
         lines.Single(l => l.EntryNumber == 3).Credit.Should().Be(300m, "rows outside the window are untouched");
@@ -101,7 +198,7 @@ public sealed class HoldedRepositoryTests
 
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, 40000004, [], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Should().ContainSingle();
         lines[0].AccountNum.Should().Be(57200001);
     }
@@ -117,7 +214,7 @@ public sealed class HoldedRepositoryTests
 
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Should().ContainSingle("an empty sweep is a valid result and clears the window");
         lines[0].EntryNumber.Should().Be(2);
     }
@@ -132,7 +229,7 @@ public sealed class HoldedRepositoryTests
         var reclassified = Line(1, 1, 62900128, Instant.FromUtc(2026, 6, 5, 0, 0), debit: 40m);
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [reclassified], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Should().ContainSingle();
         lines[0].AccountNum.Should().Be(62900128);
     }
@@ -147,8 +244,8 @@ public sealed class HoldedRepositoryTests
         await SeedAsync(Line(1, 1, 40000004, Instant.FromUtc(2026, 6, 5, 0, 0), credit: 100m));
 
         (await _repo.HasAnyLedgerLinesAsync(ct)).Should().BeTrue();
-        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct)).Should().ContainSingle();
-        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct)).Should().BeEmpty();
+        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct: ct)).Should().ContainSingle();
+        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct: ct)).Should().BeEmpty();
     }
 
     [HumansFact]

@@ -7,7 +7,8 @@ using NodaTime;
 
 namespace Humans.Holded.Services;
 
-/// <summary>All cross-section reads come from the cache: zero Holded calls per page view.</summary>
+/// <summary>All cross-section reads come from the cache: zero Holded calls per page view. Nothing loads the whole
+/// ledger table: balances and sums are grouped in the database, and statements load only their own entries.</summary>
 internal sealed class Service(
     IHoldedMirrorRepository repo,
     IHoldedClient client,
@@ -27,6 +28,12 @@ internal sealed class Service(
     // to a closed month forever.
     private static readonly Duration TrailingWindow = Duration.FromDays(45);
 
+    private const string PurchaseType = "purchase";
+    private const string PaymentType = "payment";
+
+    /// <summary>The connector's ledger-entries page size, for the full-resync cost estimate.</summary>
+    private const int LedgerPageSize = 200;
+
     /// <summary>More drifted accounts than this are reported as mismatches instead (and logged).</summary>
     private const int MaxTargetedRepullsPerRun = 10;
 
@@ -35,21 +42,60 @@ internal sealed class Service(
     // in-process gate is enough.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
+    public bool IsConfigured => client.IsConfigured;
+
     public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(
         int accountNum, CancellationToken ct = default)
     {
-        var lines = await repo.GetLedgerLinesByAccountNumAsync(accountNum, ct);
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(accountNum, ct: ct);
         return lines.Select(ToInfo).ToList();
     }
 
     public async Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        (await repo.GetAccountTotalsAsync(ct)).ToDictionary(t => t.AccountNum, t => t.Balance);
+
+    public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetEntryAsync(
+        int entryNumber, CancellationToken ct = default) =>
+        (await repo.GetLedgerLinesByEntryNumbersAsync([entryNumber], ct))
+            .OrderBy(l => l.Line)
+            .Select(ToInfo)
+            .ToList();
+
+    public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetPurchaseLinesAsync(
+        int accountNum, string? descriptionPrefix = null, CancellationToken ct = default) =>
+        (await repo.GetLedgerLinesByAccountNumAsync(accountNum, type: PurchaseType, ct: ct))
+            .Where(l => descriptionPrefix is null
+                        || (l.Description?.StartsWith(descriptionPrefix, StringComparison.Ordinal) ?? false))
+            .OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ThenBy(l => l.Line)
+            .Select(ToInfo)
+            .ToList();
+
+    public async Task<IReadOnlyDictionary<int, decimal>> GetOpenAmountsAsync(
+        int fromAccount, int toAccount, CancellationToken ct = default) =>
+        (await repo.GetAccountTypeTotalsAsync(fromAccount, toAccount, ct))
+            .Where(t => t.Type is PurchaseType or PaymentType)
+            .GroupBy(t => t.AccountNum)
+            .ToDictionary(
+                g => g.Key,
+                // A purchase credits the creditor, a payment debits it.
+                g => g.Where(t => string.Equals(t.Type, PurchaseType, StringComparison.Ordinal)).Sum(t => t.Credit - t.Debit)
+                     - g.Where(t => string.Equals(t.Type, PaymentType, StringComparison.Ordinal)).Sum(t => t.Debit - t.Credit));
+
+    public async Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
+        IReadOnlySet<int> accounts, LocalDate from, LocalDate to, CancellationToken ct = default)
     {
-        var lines = await repo.GetAllLedgerLinesAsync(ct);
-        return lines
-            .GroupBy(l => l.AccountNum)
-            .ToDictionary(g => g.Key, g => g.Sum(l => l.Debit) - g.Sum(l => l.Credit));
+        var sums = await repo.GetSumsByAccountAsync(
+            accounts.ToList(), ToWindowStart(from), ToWindowStart(to.PlusDays(1)), ct);
+        return accounts.ToDictionary(a => a, a => sums.GetValueOrDefault(a, 0m));
     }
+
+    public async Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default) =>
+        (await repo.GetAccountsAsync(ct))
+            .OrderBy(a => a.Number)
+            .Select(a => new HoldedChartAccountInfo(
+                a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Group, a.Archived, a.Balance))
+            .ToList();
 
     public async Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default)
     {
@@ -124,24 +170,51 @@ internal sealed class Service(
         }
     }
 
-    public async Task<HoldedAdminOverview> GetOverviewAsync(CancellationToken ct = default)
+    public async Task<HoldedSummary> GetSummaryAsync(CancellationToken ct = default)
     {
         // Drain first: the usage call below then shows up on the next load, so the meter reports itself.
         await DrainCallLogAsync(ct);
 
         HoldedUsageDto? usage = null;
-        try
+        if (client.IsConfigured)
         {
-            usage = await client.GetUsageAsync(ct);
-        }
-        catch (HoldedApiException ex)
-        {
-            // No key, Holded down, key revoked: the page says "unreachable" and still renders the mirror.
-            logger.LogWarning(ex, "Holded usage lookup failed; rendering /Holded from the mirror only");
+            try
+            {
+                usage = await client.GetUsageAsync(ct);
+            }
+            catch (HoldedApiException ex)
+            {
+                // Holded down, key revoked: the page says "unreachable" and still renders the mirror.
+                logger.LogWarning(ex, "Holded usage lookup failed; rendering /Holded from the mirror only");
+            }
         }
 
-        var apiCalls = await repo.GetApiCallsAsync(ct);
-        var callsByMonth = apiCalls
+        var syncStates = (await repo.GetSyncStatesAsync(ct))
+            .Select(s => new HoldedSyncStateRow(
+                s.Kind.ToString(), s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
+            .OrderBy(s => s.Kind, StringComparer.Ordinal)
+            .ToList();
+
+        var (lineCount, entryCount) = await repo.GetMirrorCountsAsync(ct);
+        var rows = await GetAccountRowsAsync(ct);
+
+        return new HoldedSummary(
+            IsConfigured: client.IsConfigured,
+            ApiReachable: usage is not null,
+            Usage: usage,
+            MonthlyCallBudget: options.Value.MonthlyCallBudget,
+            SyncStates: syncStates,
+            LedgerLineCount: lineCount,
+            EntryCount: entryCount,
+            AccountCount: rows.Count(r => !r.Archived),
+            MismatchCount: rows.Count(r => !r.Archived && !r.Reconciled),
+            FullSyncCalls: (lineCount + LedgerPageSize - 1) / LedgerPageSize + 1);
+    }
+
+    public async Task<IReadOnlyList<HoldedMonthlyCalls>> GetCallsByMonthAsync(CancellationToken ct = default)
+    {
+        await DrainCallLogAsync(ct);
+        return (await repo.GetApiCallsAsync(ct))
             .GroupBy(c =>
             {
                 var d = c.CalledAt.InZone(MadridZone).Date;
@@ -155,59 +228,48 @@ internal sealed class Service(
                     .ToDictionary(e => e.Key, e => e.Count(), StringComparer.Ordinal)))
             .OrderByDescending(m => m.Year).ThenByDescending(m => m.Month)
             .ToList();
+    }
 
-        var syncStates = (await repo.GetSyncStatesAsync(ct))
-            .Select(s => new HoldedSyncStateRow(
-                s.Kind.ToString(), s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
-            .OrderBy(s => s.Kind, StringComparer.Ordinal)
+    public async Task<HoldedAccountsPage> GetAccountsPageAsync(
+        HoldedAccountsFilter filter, CancellationToken ct = default)
+    {
+        var rows = await GetAccountRowsAsync(ct);
+        if (filter.Mismatched)
+            rows = rows.Where(r => !r.Archived && !r.Reconciled).ToList();
+
+        var hiddenArchived = filter.ShowArchived ? 0 : rows.Count(r => r.Archived);
+        var visible = rows.Where(r => filter.ShowArchived || !r.Archived).ToList();
+        var hiddenEmpty = filter.ShowEmpty ? 0 : visible.Count(r => r.IsEmpty);
+        visible = visible.Where(r => filter.ShowEmpty || !r.IsEmpty).ToList();
+
+        var groups = visible
+            .GroupBy(r => LeadingDigit(r.Number))
+            .OrderBy(g => g.Key)
+            .Select(g => new HoldedAccountGroup(
+                g.Key, GroupName(g.First().Number), g.ToList(),
+                g.Sum(r => r.HoldedBalance), g.Sum(r => r.LocalBalance ?? 0m),
+                g.Sum(r => r.LocalLineCount), g.Count(r => !r.Reconciled)))
             .ToList();
 
-        var lines = await repo.GetAllLedgerLinesAsync(ct);
-        var local = lines
-            .GroupBy(l => l.AccountNum)
-            .ToDictionary(
-                g => g.Key,
-                g => (Balance: g.Sum(l => l.Debit) - g.Sum(l => l.Credit), Count: g.Count()));
-
-        var accounts = (await repo.GetAccountsAsync(ct))
-            .Where(a => !a.Archived)
-            .OrderBy(a => a.Number)
-            .Select(a =>
-            {
-                var hasLines = local.TryGetValue(a.Number, out var cached);
-                return MakeAccountRow(
-                    a.Number, a.Name, a.Balance,
-                    hasLines ? cached.Balance : null,
-                    hasLines ? cached.Count : 0,
-                    a.Debit != 0m || a.Credit != 0m);
-            })
-            .ToList();
-
-        return new HoldedAdminOverview(
-            ApiReachable: usage is not null,
-            Usage: usage,
-            MonthlyCallBudget: options.Value.MonthlyCallBudget,
-            CallsByMonth: callsByMonth,
-            SyncStates: syncStates,
-            Accounts: accounts,
-            LedgerLineCount: lines.Count);
+        return new HoldedAccountsPage(filter, groups, hiddenArchived, hiddenEmpty);
     }
 
     public async Task<HoldedAccountStatement?> GetAccountStatementAsync(
         int number, CancellationToken ct = default)
     {
-        var lines = await repo.GetLedgerLinesByAccountNumAsync(number, ct);
+        var lines = await repo.GetLedgerLinesByAccountNumAsync(number, ct: ct);
         var accounts = await repo.GetAccountsAsync(ct);
         var account = accounts.FirstOrDefault(a => a.Number == number);
         if (account is null && lines.Count == 0)
             return null;
 
-        // Archived accounts are kept here, unlike the overview: a direct link is a deliberate lookup.
+        // Archived accounts are kept here, unlike the chart's default: a direct link is a deliberate lookup.
         decimal? localBalanceRaw = lines.Count == 0 ? null : lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
         var holdedBalanceRaw = account?.Balance ?? 0m;
 
-        // Counterparties are the entry's other legs, on any account, so this needs the whole mirror.
-        var byEntry = (await repo.GetAllLedgerLinesAsync(ct))
+        // Counterparties are the entry's other legs, on any account: only this account's entries are loaded.
+        var byEntry = (await repo.GetLedgerLinesByEntryNumbersAsync(
+                lines.Select(l => l.EntryNumber).Distinct().ToList(), ct))
             .GroupBy(l => l.EntryNumber)
             .ToDictionary(g => g.Key, g => g.ToList());
         var accountsByNumber = accounts.ToDictionary(a => a.Number);
@@ -215,7 +277,7 @@ internal sealed class Service(
         return new HoldedAccountStatement(
             MakeAccountRow(
                 number, account?.Name ?? "", holdedBalanceRaw, localBalanceRaw, lines.Count,
-                account is { } a && (a.Debit != 0m || a.Credit != 0m)),
+                account is { } a && (a.Debit != 0m || a.Credit != 0m), account?.Archived ?? false),
             lines
                 .OrderBy(l => l.Date)
                 .ThenBy(l => l.EntryNumber)
@@ -224,23 +286,50 @@ internal sealed class Service(
                 .ToList());
     }
 
-    public async Task<HoldedEntry?> GetEntryAsync(int entryNumber, CancellationToken ct = default)
+    public async Task<HoldedEntry?> GetEntryViewAsync(int entryNumber, CancellationToken ct = default)
     {
-        var lines = (await repo.GetAllLedgerLinesAsync(ct))
-            .Where(l => l.EntryNumber == entryNumber)
+        var lines = (await repo.GetLedgerLinesByEntryNumbersAsync([entryNumber], ct))
             .OrderBy(l => l.Line)
             .ToList();
         if (lines.Count == 0)
             return null;
 
         var accountsByNumber = (await repo.GetAccountsAsync(ct)).ToDictionary(a => a.Number);
-        return new HoldedEntry(entryNumber, lines.Select(l =>
-        {
-            accountsByNumber.TryGetValue(l.AccountNum, out var account);
-            return new HoldedEntryLine(
-                l.AccountNum, account?.Name, l.Type, l.Description,
-                ToAssociationPov(l.AccountNum, l.Debit - l.Credit));
-        }).ToList());
+        return new HoldedEntry(
+            entryNumber,
+            lines.Select(l => l.EntryId).FirstOrDefault(id => !string.IsNullOrEmpty(id)),
+            lines.Select(l =>
+            {
+                accountsByNumber.TryGetValue(l.AccountNum, out var account);
+                return new HoldedEntryLine(
+                    l.AccountNum, account?.Name, l.Type, l.Description,
+                    ToAssociationPov(l.AccountNum, l.Debit - l.Credit), l.Checked);
+            }).ToList());
+    }
+
+    /// <summary>Every chart account plus any number that only appears on a cached line, archived included.</summary>
+    private async Task<List<HoldedAccountRow>> GetAccountRowsAsync(CancellationToken ct)
+    {
+        var totals = (await repo.GetAccountTotalsAsync(ct)).ToDictionary(t => t.AccountNum);
+        var accounts = await repo.GetAccountsAsync(ct);
+        var chartNumbers = accounts.Select(a => a.Number).ToHashSet();
+
+        return accounts
+            .Select(a =>
+            {
+                var hasLines = totals.TryGetValue(a.Number, out var t);
+                return MakeAccountRow(
+                    a.Number, a.Name, a.Balance,
+                    hasLines ? t!.Balance : null,
+                    hasLines ? t!.LineCount : 0,
+                    a.Debit != 0m || a.Credit != 0m,
+                    a.Archived);
+            })
+            .Concat(totals.Values
+                .Where(t => !chartNumbers.Contains(t.AccountNum))
+                .Select(t => MakeAccountRow(t.AccountNum, "", 0m, t.Balance, t.LineCount, false, false)))
+            .OrderBy(r => r.Number)
+            .ToList();
     }
 
     /// <summary>A drifted account gets one targeted full-history re-pull; accounts still off afterwards are
@@ -373,11 +462,12 @@ internal sealed class Service(
     /// later edit can't flip one without the other: balances flip, the ✓/✗ never does.</summary>
     private static HoldedAccountRow MakeAccountRow(
         int number, string name, decimal holdedBalanceRaw, decimal? localBalanceRaw,
-        int lineCount, bool hasHoldedTotals) =>
+        int lineCount, bool hasHoldedTotals, bool archived) =>
         new(number, name, GroupName(number),
             ToAssociationPov(number, holdedBalanceRaw),
             localBalanceRaw is null ? null : ToAssociationPov(number, localBalanceRaw.Value),
-            lineCount, holdedBalanceRaw == (localBalanceRaw ?? 0m), hasHoldedTotals);
+            lineCount, holdedBalanceRaw == (localBalanceRaw ?? 0m), hasHoldedTotals,
+            PgcAccountNames.EnglishName(number, name), archived);
 
     private static HoldedStatementLine ToStatementLine(
         HoldedLedgerLine line, int accountNum,
@@ -385,7 +475,7 @@ internal sealed class Service(
         IReadOnlyDictionary<int, HoldedAccount> accountsByNumber) => new(
         line.EntryNumber, line.Line, line.Date, line.Type, line.Description,
         ToAssociationPov(accountNum, line.Debit - line.Credit),
-        ResolveCounterparty(line, byEntry, accountsByNumber));
+        ResolveCounterparty(line, byEntry, accountsByNumber), line.EntryId, line.Checked);
 
     /// <summary>A debit line's counterparties are the entry's credit lines and vice versa: the API returns no contra
     /// account. Null when the entry has no opposing leg (unbalanced or partly mirrored).</summary>
@@ -423,10 +513,13 @@ internal sealed class Service(
         Description = l.Description,
         Debit = l.Debit,
         Credit = l.Credit,
+        EntryId = l.EntryId,
+        Checked = l.Checked,
         CreatedAt = now,
         LastSyncedAt = now,
     };
 
     private static HoldedLedgerLineInfo ToInfo(HoldedLedgerLine l) => new(
-        l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit);
+        l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit,
+        l.EntryId, l.Checked ?? false);
 }

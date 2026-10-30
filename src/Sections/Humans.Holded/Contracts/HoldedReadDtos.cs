@@ -28,6 +28,10 @@ public sealed record HoldedLedgerLineDto
     public required decimal Credit { get; init; }
     public string? Type { get; init; }                 // e.g. "purchase", "payment"
     public string? Description { get; init; }
+    /// <summary>`id`: the journal entry's id, identical on every line of the entry. Not a line key.</summary>
+    public string? EntryId { get; init; }
+    /// <summary>`checked`: Holded's manual tick in its ledger view, not bank reconciliation.</summary>
+    public bool Checked { get; init; }
 }
 
 public sealed record HoldedAccountDto

@@ -1,0 +1,45 @@
+@model IReadOnlyList<HoldedMonthlyCalls>
+@{
+    ViewData["Title"] = "Holded API calls";
+}
+
+<h1 class="mb-3">Holded API calls</h1>
+<partial name="_HoldedNav" />
+
+<p class="text-muted">
+    Every call Humans made to Holded, by Madrid month and endpoint. Holded's own usage figure
+    (on the summary) stays the authoritative count.
+</p>
+
+<div class="card">
+    @if (Model.Count == 0)
+    {
+        <div class="card-body"><p class="mb-0 text-muted">No calls metered yet.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Month</th><th>Endpoint</th><th class="text-end">Calls</th></tr></thead>
+                @foreach (var m in Model)
+                {
+                    <tbody>
+                        <tr class="table-light">
+                            <th>@(new DateTime(m.Year, m.Month, 1).ToMonthYear())</th>
+                            <th class="text-muted small fw-normal">all endpoints</th>
+                            <th class="text-end">@m.Total</th>
+                        </tr>
+                        @foreach (var e in m.ByEndpoint.OrderByDescending(e => e.Value).ThenBy(e => e.Key, StringComparer.Ordinal))
+                        {
+                            <tr>
+                                <td></td>
+                                <td><code>@e.Key</code></td>
+                                <td class="text-end">@e.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                }
+            </table>
+        </div>
+    }
+</div>
