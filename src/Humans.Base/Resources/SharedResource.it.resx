@@ -1527,7 +1527,7 @@
   <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>Per la contabilità dell'associazione (per i rimborsi spese: nome legale, burner name, IBAN, dettagli della spesa e ricevute; per le fatture dello Store: nome, codice fiscale, indirizzo e indirizzo email dell'acquirente)</value></data>
   <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>Per la vendita e l'emissione dei biglietti (nome del titolare, indirizzo email e check-in)</value></data>
   <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>Per le mailing list (indirizzo email e appartenenza alle liste, ad esempio titolare di biglietto o volontario di turno; non condiviso se hai rifiutato le email di marketing)</value></data>
-  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Per l'assistente di aiuto nell'app, solo quando lo usi (i tuoi messaggi, oltre al burner name, lingua, livello di adesione, ruoli, team, consensi in sospeso e turni imminenti)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Per l'assistente di aiuto nell'app, solo quando lo usi (i tuoi messaggi, oltre al burner name, lingua, livello di adesione, ruoli, team e turni imminenti)</value></data>
   <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Informativa sulla privacy</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nome legale</value></data>

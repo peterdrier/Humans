@@ -1527,7 +1527,7 @@
   <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>Für die Buchhaltung des Vereins (bei Auslagenerstattungen: bürgerlicher Name, Burner Name, IBAN, Ausgabendetails und Belege; bei Store-Rechnungen: Name, Steuernummer, Adresse und E-Mail-Adresse der kaufenden Person)</value></data>
   <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>Für Ticketverkauf und Ticketausstellung (Name der Ticketinhaber, E-Mail-Adresse und Check-ins)</value></data>
   <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>Für Mailinglisten (E-Mail-Adresse und Listenzugehörigkeit, z. B. Ticketinhaber oder Schicht-Freiwillige; keine Weitergabe, wenn du Marketing-E-Mails abgelehnt hast)</value></data>
-  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Für den Hilfe-Assistenten in der App, nur wenn du ihn nutzt (deine Nachrichten sowie dein Burner Name, deine Sprache, Mitgliedsstufe, Rollen, Teams, ausstehende Einwilligungen und kommende Schichten)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Für den Hilfe-Assistenten in der App, nur wenn du ihn nutzt (deine Nachrichten sowie dein Burner Name, deine Sprache, Mitgliedsstufe, Rollen, Teams und kommende Schichten)</value></data>
   <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Datenschutzerklärung</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner Name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Bürgerlicher Vorname</value></data>

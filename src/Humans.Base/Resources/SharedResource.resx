@@ -914,7 +914,7 @@
   <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>For the association's accounting (for expense reimbursements: legal name, burner name, IBAN, expense details and receipts; for Store invoices: buyer name, tax ID, address and email address)</value></data>
   <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>For ticket sales and issuing tickets (ticket holder name, email address and check-ins)</value></data>
   <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>For mailing lists (email address and list membership, such as ticket holder or shift volunteer; not shared if you have opted out of marketing emails)</value></data>
-  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>For the in-app help assistant, only when you use it (your messages plus your burner name, language, membership tier, roles, teams, pending consents and upcoming shifts)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>For the in-app help assistant, only when you use it (your messages plus your burner name, language, membership tier, roles, teams and upcoming shifts)</value></data>
   <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Privacy policy</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Legal First Name</value></data>
