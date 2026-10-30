@@ -27,12 +27,13 @@ internal sealed class VolunteerTrackingService(
         if (calendar is null || dayOffsets.Any(day => day < calendar.BuildStartOffset || day > calendar.StrikeEndOffset))
             return false;
 
+        var offsets = dayOffsets.Distinct().Order().ToArray();
         var now = clock.GetCurrentInstant();
-        await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, dayOffsets, now);
+        await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, now);
         await audit.LogAsync(
-            dayOffsets.Count == 0 ? AuditAction.VolunteerAvailabilityCleared : AuditAction.VolunteerAvailabilitySet,
+            offsets.Length == 0 ? AuditAction.VolunteerAvailabilityCleared : AuditAction.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
-            $"EventSettingsId={eventSettingsId}; AvailableDays={dayOffsets.Count}; self-service update", userId,
+            $"EventSettingsId={eventSettingsId}; AvailableDays={offsets.Length}; self-service update", userId,
             relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
         viewInvalidator.InvalidateUser(userId);
         return true;
@@ -65,7 +66,7 @@ internal sealed class VolunteerTrackingService(
 
         var current = (await trackingRepo.GetAvailabilityForUserAsync(userId, eventSettingsId, ct).ConfigureAwait(false))
             .FirstOrDefault();
-        var offsets = current?.AvailableDayOffsets.ToList() ?? [];
+        var offsets = current?.AvailableDayOffsets.Distinct().ToList() ?? [];
 
         if (available)
         {

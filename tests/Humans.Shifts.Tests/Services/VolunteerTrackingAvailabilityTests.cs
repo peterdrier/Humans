@@ -35,20 +35,23 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             AuditLog);
     }
 
-    [HumansFact(Timeout = 10000)]
-    public async Task SetAvailability_CreatesRecord()
+    [HumansTheory(Timeout = 10000)]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SetAvailability_CreatesRecord(bool duplicateDays)
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SetAvailabilityAsync(userId, esId, [-3, -2, -1]);
+        await _service.SetAvailabilityAsync(userId, esId,
+            duplicateDays ? [-1, -3, -2, -3, -1] : [-3, -2, -1]);
 
         var record = await ShiftsDb.GeneralAvailability
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId, Xunit.TestContext.Current.CancellationToken);
         record.Should().NotBeNull();
-        record.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
+        record.AvailableDayOffsets.Should().Equal([-3, -2, -1]);
         await AuditLog.Received(1).LogAsync(AuditAction.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={esId}; AvailableDays=3; self-service update", userId,
@@ -177,16 +180,18 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData(-2)]
-    [Xunit.InlineData(-15)]
-    [Xunit.InlineData(0)]
-    public async Task SetDayAvailability_RemovesOffset(int dayOffset)
+    [Xunit.InlineData(-2, false)]
+    [Xunit.InlineData(-15, false)]
+    [Xunit.InlineData(0, false)]
+    [Xunit.InlineData(-2, true)]
+    public async Task SetDayAvailability_RemovesOffset(int dayOffset, bool duplicateDays)
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         // Seed retained data from before the calendar bounds were enforced.
-        await _repo.UpsertAvailabilityAsync(userId, esId, [-3, dayOffset], TestNow);
+        await _repo.UpsertAvailabilityAsync(userId, esId,
+            duplicateDays ? [-3, dayOffset, dayOffset, -3] : [-3, dayOffset], TestNow);
 
         var changed = await _service.SetDayAvailabilityAsync(
             userId, esId, dayOffset, false, Coordinator, Xunit.TestContext.Current.CancellationToken);
