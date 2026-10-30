@@ -20,30 +20,42 @@ internal sealed class CreditorMatchService(IHoldedService holded, IExpenseReport
     public async Task<IReadOnlyDictionary<int, CreditorMatchVm>> GetForMemberAccountsAsync(
         IEnumerable<HoldedCreditorAccountRow> rows, Guid viewerUserId, CancellationToken ct)
     {
-        var reports = await ReportsByAccountAsync(viewerUserId, ct);
+        var reports = await GetReportsAsync(viewerUserId, ct);
         var matches = new Dictionary<int, CreditorMatchVm>();
         foreach (var row in rows.Where(r => r.Bindings.Count == 1 && r.Balance.HasValue))
-            matches[row.SupplierAccountNum] = await MatchAsync(row.SupplierAccountNum, reports, ct);
+            matches[row.SupplierAccountNum] =
+                await MatchAsync(row.SupplierAccountNum, reports, row.Bindings[0].UserId, ct);
         return matches;
     }
 
     public async Task<CreditorMatchVm> GetAsync(int supplierAccountNum, Guid viewerUserId, CancellationToken ct) =>
-        await MatchAsync(supplierAccountNum, await ReportsByAccountAsync(viewerUserId, ct), ct);
+        await MatchAsync(supplierAccountNum, await GetReportsAsync(viewerUserId, ct), boundUserId: null, ct);
 
     private async Task<CreditorMatchVm> MatchAsync(
-        int supplierAccountNum, Dictionary<int, List<ExpenseReportDto>> reports, CancellationToken ct) =>
+        int supplierAccountNum, IReadOnlyList<ExpenseReportDto> reports, Guid? boundUserId, CancellationToken ct) =>
         Match(
-            reports.GetValueOrDefault(supplierAccountNum, []),
+            ReportsForAccount(supplierAccountNum, reports, boundUserId),
             (await holded.GetLedgerLinesAsync(supplierAccountNum, ct))
                 .Select(l => (l.Type, l.EntryNumber, l.Debit, l.Credit)));
 
+    /// <summary>The push records a report's account only after its documents exist, so an approval still waiting in
+    /// the outbox has none yet. It is the account owner's by submitter: the bound member, or whoever submitted a
+    /// report already booked here.</summary>
+    internal static List<ExpenseReportDto> ReportsForAccount(
+        int supplierAccountNum, IReadOnlyList<ExpenseReportDto> reports, Guid? boundUserId)
+    {
+        var owners = reports.Where(r => r.HoldedSupplierAccountNum == supplierAccountNum)
+            .Select(r => r.SubmitterUserId).ToHashSet();
+        if (boundUserId is { } bound) owners.Add(bound);
+        return reports
+            .Where(r => r.HoldedSupplierAccountNum == supplierAccountNum
+                        || (r.HoldedSupplierAccountNum is null && owners.Contains(r.SubmitterUserId)))
+            .ToList();
+    }
+
     // The finance-admin review queue is every submitted report.
-    private async Task<Dictionary<int, List<ExpenseReportDto>>> ReportsByAccountAsync(
-        Guid viewerUserId, CancellationToken ct) =>
-        (await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct))
-            .Where(r => r.HoldedSupplierAccountNum is not null)
-            .GroupBy(r => r.HoldedSupplierAccountNum!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
+    private async Task<IReadOnlyList<ExpenseReportDto>> GetReportsAsync(Guid viewerUserId, CancellationToken ct) =>
+        await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
 
     /// <summary>Purchases count once per journal entry: a document posts one line to the creditor however many lines
     /// it carries. Amounts are net from the member's side.</summary>

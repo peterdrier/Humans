@@ -79,4 +79,21 @@ public class CreditorMatchTests
         m.ApprovedNotBookedCount.Should().Be(1);
         m.Warnings.Should().HaveCount(4);
     }
+
+    [HumansFact]
+    public void ApprovalAwaitingPush_CountsForTheOwnerOfTheAccount()
+    {
+        var owner = Guid.NewGuid();
+        var booked = Report(10m, null, ExpenseReportStatus.Approved, "d1") with
+        { SubmitterUserId = owner, HoldedSupplierAccountNum = 41000005 };
+        var queued = Report(20m, null, ExpenseReportStatus.Approved, (string?)null) with { SubmitterUserId = owner };
+        var someoneElse = Report(30m, null, ExpenseReportStatus.Approved, (string?)null);
+
+        var forStatement = CreditorMatchService.ReportsForAccount(41000005, [booked, queued, someoneElse], null);
+        var forNewMember = CreditorMatchService.ReportsForAccount(41000006, [someoneElse], someoneElse.SubmitterUserId);
+
+        forStatement.Should().Equal(booked, queued);
+        forNewMember.Should().Equal(someoneElse);
+        CreditorMatchService.Match(forStatement, []).ApprovedNotBookedCount.Should().Be(1);
+    }
 }
