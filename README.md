@@ -41,7 +41,7 @@ Membership management system for Nobodies Collective, a Spanish nonprofit organi
 docker-compose up -d db
 ```
 
-3. Set secrets for `dotnet run` with user secrets or environment variables (see [Configuration](#configuration)) — `dotnet run` does not read `.env`. In Development, dev login (`DevAuth:Enabled`) lets you sign in at `/dev/login` without Google OAuth.
+3. Set secrets for `dotnet run` with user secrets or environment variables (see [Configuration](#configuration)) — `dotnet run` does not read `.env`. In Development, dev login (`DevAuth:Enabled`) adds persona sign-in buttons to `/Account/Login`.
 
 4. Run the web app. It applies pending migrations on startup:
 
