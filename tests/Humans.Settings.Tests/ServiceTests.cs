@@ -452,7 +452,7 @@ public sealed class ServiceTests
         await _repository.DidNotReceive().UpsertEventSettingsAsync(
             Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         // A refused save is not audited — nothing happened for the Board to see.
-        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -559,7 +559,7 @@ public sealed class ServiceTests
 
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default, default);
-        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default(AuditAction), default!, default, default!, default(Guid));
     }
 
     // Settings mints ids for new cycles with no existence check against Shifts: a Shifts knobs

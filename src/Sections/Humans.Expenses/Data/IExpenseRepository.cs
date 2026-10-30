@@ -93,6 +93,9 @@ internal interface IExpenseRepository : IRepository
     /// <summary>Null if a push was never queued.</summary>
     Task<HoldedExpenseOutboxEvent?> GetLatestOutboxForReportAsync(
         Guid reportId, CancellationToken ct = default);
+    /// <summary><see cref="GetLatestOutboxForReportAsync"/> for every report that has an event, in one query.</summary>
+    Task<IReadOnlyDictionary<Guid, HoldedExpenseOutboxEvent>> GetLatestOutboxByReportAsync(
+        CancellationToken ct = default);
     Task<IReadOnlyList<Guid>> GetFailedOutboxReportIdsAsync(CancellationToken ct = default);
     /// <summary>
     /// Clears the write-off, error, backoff and retry budget. False when the report has no failed or backing-off event;

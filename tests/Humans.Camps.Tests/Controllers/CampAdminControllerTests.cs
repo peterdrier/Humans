@@ -60,7 +60,7 @@ public class CampAdminControllerTests
         if (hasSeason)
             csv.Should().Contain("contact@example.org").And.Contain("Lead <lead@example.org>");
         file.FileDownloadName.Should().Be("barrios-2026.csv");
-        await audit.Received(1).LogAsync(AuditAction.CampsExported, "Camps", Guid.Empty,
+        await audit.Received(1).LogAsync(CampsAuditActions.CampsExported, "Camps", Guid.Empty,
             $"Camp contact and lead list exported for 2026: {(hasSeason ? 1 : 0)} rows", actorId);
     }
 

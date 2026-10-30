@@ -40,7 +40,7 @@ internal sealed class AccountProvisioningService(
             if (!(await userEmailService.DeleteEmailAsync(userId, emailId, ct)).Succeeded)
                 throw new InvalidOperationException("The planned unverified email could not be removed.");
             var result = await FindOrCreateCoreAsync(email, displayName, source, ct, affectedUsers);
-            await auditLogService.LogAsync(AuditAction.UserEmailDeleted, nameof(UserEmail), emailId,
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailDeleted, nameof(UserEmail), emailId,
                 $"Replaced unverified email {email} with verified import account {result.UserId} from {source}",
                 nameof(AccountProvisioningService), relatedEntityId: userId, relatedEntityType: nameof(User));
             transaction.Complete();
@@ -87,7 +87,7 @@ internal sealed class AccountProvisioningService(
                 // User/email may have committed before profile creation failed. Retry the
                 // idempotent final step before reporting a successfully provisioned account.
                 if (await userService.EnsureStubProfileAsync(existingUser.Id, ct: ct))
-                    await auditLogService.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), existingUser.Id,
+                    await auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), existingUser.Id,
                         $"Completed missing profile provisioning from {source}.", nameof(AccountProvisioningService));
 
                 return new AccountProvisioningResult(existingUser.Id, Created: false);
@@ -131,7 +131,7 @@ internal sealed class AccountProvisioningService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.ContactCreated,
+                UsersAuditActions.ContactCreated,
                 nameof(User), newUser.Id,
                 $"Account pre-created from {source} — {email}",
                 nameof(AccountProvisioningService));
@@ -189,7 +189,7 @@ internal sealed class AccountProvisioningService(
 
             if (await userService.EnsureStubProfileAsync(
                 existingUser.Id, burnerName, firstName, lastName, ct))
-                await auditLogService.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), existingUser.Id,
+                await auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), existingUser.Id,
                     "Completed missing profile after interrupted magic-link signup.", existingUser.Id);
             await userService.RecordLoginAsync(existingUser.Id, ct);
             return new MagicLinkSignupCompletionResult(

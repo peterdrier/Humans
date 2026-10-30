@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Consent;
 
@@ -38,6 +39,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, ConsentAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ConsentNotificationSources>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 

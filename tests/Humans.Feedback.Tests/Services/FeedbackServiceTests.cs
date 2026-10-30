@@ -532,9 +532,9 @@ public sealed class FeedbackServiceTests
         await _service.UpdateAssignmentAsync(report.Id, null, null, Guid.NewGuid(), ct);
 
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(Guid));
+            default(AuditAction), default!, default, default!, default(Guid));
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(
-            default, default!, default, default!, default(string)!);
+            default(AuditAction), default!, default, default!, default(string)!);
     }
 
     [HumansFact]

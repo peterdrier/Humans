@@ -19,11 +19,11 @@
         <small class="text-muted">
             @if (canAdminister)
             {
-                <a asp-controller="RideshareAdmin" asp-action="Index" class="link-secondary text-decoration-none" title="@Localizer["Rideshare_Settings"]">@Model.Year</a>
+                <a asp-controller="RideshareAdmin" asp-action="Index" class="link-secondary text-decoration-none" title="@Localizer["Rideshare_Settings"]">@Model.EventName</a>
             }
             else
             {
-                @Model.Year
+                @Model.EventName
             }
         </small>
     </h1>

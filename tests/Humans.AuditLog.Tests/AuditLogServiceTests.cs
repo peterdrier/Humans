@@ -24,6 +24,7 @@ public class AuditLogServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IUserService _userService;
     private readonly AuditLogService _service;
+    private static readonly AuditActionRegistry Registry = new([new TestActions()]);
 
     public AuditLogServiceTests()
     {
@@ -36,7 +37,7 @@ public class AuditLogServiceTests : IDisposable
         var repo = new AuditLogRepository(new TestDbContextFactory<AuditLogDbContext>(options));
         _userService = Substitute.For<IUserService>();
         // Default: nothing merged into anybody.
-        _service = new AuditLogService(repo, _userService, _clock, NullLogger<AuditLogService>.Instance);
+        _service = new AuditLogService(repo, _userService, Registry, _clock, NullLogger<AuditLogService>.Instance);
     }
 
     public void Dispose()
@@ -49,7 +50,7 @@ public class AuditLogServiceTests : IDisposable
     public async Task AbandonedAuditPage_CancelsRepositoryReads()
     {
         using var request = new CancellationTokenSource();
-        var controller = new AuditLogController(_userService, new AuditViewerService(_service, []))
+        var controller = new AuditLogController(_userService, new AuditViewerService(_service, Registry, []), Registry)
         {
             ControllerContext = new ControllerContext
             {
@@ -72,7 +73,7 @@ public class AuditLogServiceTests : IDisposable
             "Auto-approved", "SystemTeamSyncJob");
 
         var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        entry.Action.Should().Be(AuditAction.VolunteerApproved);
+        entry.Action.Should().Be(nameof(AuditAction.VolunteerApproved));
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
         entry.Description.Should().Be("SystemTeamSyncJob: Auto-approved");
@@ -92,7 +93,7 @@ public class AuditLogServiceTests : IDisposable
 
         var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         entry.ActorUserId.Should().Be(actorId);
-        entry.Action.Should().Be(AuditAction.MemberSuspended);
+        entry.Action.Should().Be(nameof(AuditAction.MemberSuspended));
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
         entry.Description.Should().Be("Suspended for inactivity");
@@ -163,22 +164,49 @@ public class AuditLogServiceTests : IDisposable
 
         items.Should().HaveCount(2);
         totalCount.Should().Be(2);
-        items.Should().OnlyContain(e => e.Action == AuditAction.VolunteerApproved);
+        items.Should().OnlyContain(e => e.Action == nameof(AuditAction.VolunteerApproved));
     }
 
     [HumansFact]
-    public async Task GetFilteredAsync_ReturnsAnomalyCount()
+    public async Task GetFilteredAsync_ReturnsAlertCountsForTheDeclaredAlertActions()
     {
         var now = _clock.GetCurrentInstant();
         SeedAuditLogEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid(), now);
         SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now - Duration.FromHours(1));
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount, anomalyCount) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, TestContext.Current.CancellationToken);
+        var (items, totalCount, alertCounts) = await _service.GetFilteredAsync("VolunteerApproved", 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         totalCount.Should().Be(1);
-        anomalyCount.Should().Be(1);
+        alertCounts.Should().Equal(new Dictionary<string, int>(StringComparer.Ordinal) { [nameof(AuditAction.AnomalousPermissionDetected)] = 1 });
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_MatchesTheFilterToADeclaredNameIgnoringCase()
+    {
+        var now = _clock.GetCurrentInstant();
+        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid(), now);
+        SeedAuditLogEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid(), now);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (items, _, _) = await _service.GetFilteredAsync("volunteerapproved", 1, 10, TestContext.Current.CancellationToken);
+
+        items.Should().ContainSingle().Which.Action.Should().Be(nameof(AuditAction.VolunteerApproved));
+    }
+
+    [HumansFact]
+    public async Task LogAsync_DefinitionAndEnumOverloads_StoreTheSameName()
+    {
+        var entityId = Guid.NewGuid();
+
+        await _service.LogAsync(TestActions.RoleAssigned, nameof(User), entityId, "by definition", "TestJob");
+        await _service.LogAsync(AuditAction.RoleAssigned, nameof(User), entityId, "by enum", "TestJob");
+
+        var stored = await _dbContext.AuditLogEntries.AsNoTracking()
+            .Select(e => e.Action)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        stored.Should().Equal(nameof(AuditAction.RoleAssigned), nameof(AuditAction.RoleAssigned));
     }
 
     [HumansFact]
@@ -264,7 +292,7 @@ public class AuditLogServiceTests : IDisposable
         var logger = loggerFactory.CreateLogger<AuditLogService>();
 
         var svc = new AuditLogService(
-            throwingRepo, _userService, _clock, logger);
+            throwingRepo, _userService, Registry, _clock, logger);
 
         var act = () => svc.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), Guid.NewGuid(),
@@ -283,7 +311,7 @@ public class AuditLogServiceTests : IDisposable
 
         var capturing = new CapturingLogger<AuditLogService>();
         var svc = new AuditLogService(
-            throwingRepo, _userService, _clock, capturing);
+            throwingRepo, _userService, Registry, _clock, capturing);
 
         await svc.LogAsync(
             AuditAction.MemberSuspended, nameof(User), Guid.NewGuid(),
@@ -360,7 +388,7 @@ public class AuditLogServiceTests : IDisposable
         var result = await _service.GetFilteredEntriesAsync(
             userId: userId, ct: TestContext.Current.CancellationToken);
 
-        result.Select(e => e.Action).Should().Equal(AuditAction.RoleAssigned, AuditAction.VolunteerApproved);
+        result.Select(e => e.Action).Should().Equal(nameof(AuditAction.RoleAssigned), nameof(AuditAction.VolunteerApproved));
     }
 
     [HumansFact]
@@ -385,14 +413,14 @@ public class AuditLogServiceTests : IDisposable
 
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
         var rows = json.RootElement.EnumerateArray()
-            .Select(r => (Action: (AuditAction)r.GetProperty("Action").GetInt32(), Role: r.GetProperty("Role").GetString()))
+            .Select(r => (Action: r.GetProperty("Action").GetString(), Role: r.GetProperty("Role").GetString()))
             .ToList();
         rows.Should().BeEquivalentTo(
         [
-            (Action: AuditAction.RoleAssigned, Role: "Actor"),
-            (Action: AuditAction.VolunteerApproved, Role: "Subject"),
-            (Action: AuditAction.TeamMemberAdded, Role: "Subject"),
-            (Action: AuditAction.MemberSuspended, Role: "Actor")
+            (Action: nameof(AuditAction.RoleAssigned), Role: "Actor"),
+            (Action: nameof(AuditAction.VolunteerApproved), Role: "Subject"),
+            (Action: nameof(AuditAction.TeamMemberAdded), Role: "Subject"),
+            (Action: nameof(AuditAction.MemberSuspended), Role: "Actor")
         ]);
     }
 
@@ -403,7 +431,7 @@ public class AuditLogServiceTests : IDisposable
         var entry = new AuditLogEntry
         {
             Id = Guid.NewGuid(),
-            Action = action,
+            Action = action.ToString(),
             EntityType = entityType,
             EntityId = entityId,
             Description = $"Test {action}",

@@ -55,7 +55,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
             await _service.UpdatePermissionLevelAsync(resourceId, DrivePermissionLevel.Viewer, actorUserId: actorId);
 
         await AuditLog.Received(1).LogAsync(
-            unlink ? AuditAction.GoogleResourceUnlinked : AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
+            unlink ? GoogleIntegrationAuditActions.GoogleResourceUnlinked : GoogleIntegrationAuditActions.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
             Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
     }
 
@@ -83,7 +83,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
 
         Assert.True(result.Success);
         var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
-        await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceLinked, nameof(GoogleResource), row.Id,
+        await AuditLog.Received(1).LogAsync(GoogleIntegrationAuditActions.GoogleResourceLinked, nameof(GoogleResource), row.Id,
             Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
     }
 
@@ -102,7 +102,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
         Assert.False(result.Succeeded);
         var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         Assert.True(row.RestrictInheritedAccess);
-        await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
+        await AuditLog.Received(1).LogAsync(GoogleIntegrationAuditActions.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
             Arg.Is<string>(text => text.Contains("desired", StringComparison.Ordinal)), actorId, teamId, TeamAuditEntityType);
     }
 
@@ -118,7 +118,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
         var group = await _service.LinkGroupAsync(Guid.NewGuid(), string.Empty, actorUserId: actorId);
         Assert.False(drive.Success);
         Assert.False(group.Success);
-        await AuditLog.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        await AuditLog.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), actorId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -150,7 +150,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
 
         // Exactly two audit entries (for the two previously-active doomed resources).
         await AuditLog.Received(2).LogAsync(
-            AuditAction.GoogleResourceDeactivated,
+            GoogleIntegrationAuditActions.GoogleResourceDeactivated,
             nameof(GoogleResource),
             Arg.Any<Guid>(),
             Arg.Any<string>(),
@@ -201,7 +201,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
 
         var stored = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, TestContext.Current.CancellationToken);
         stored.RestrictInheritedAccess.Should().BeTrue();
-        await AuditLog.Received(1).LogAsync(AuditAction.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
+        await AuditLog.Received(1).LogAsync(GoogleIntegrationAuditActions.GoogleResourceUpdated, nameof(GoogleResource), resourceId,
             Arg.Any<string>(), nameof(TeamResourceService), teamId, TeamAuditEntityType);
     }
 
@@ -260,7 +260,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
         await _service.DeactivateResourcesForTeamAsync(teamId, ct: TestContext.Current.CancellationToken);
 
         await AuditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(),
+            Arg.Any<AuditActionDefinition>(),
             Arg.Any<string>(),
             Arg.Any<Guid>(),
             Arg.Any<string>(),

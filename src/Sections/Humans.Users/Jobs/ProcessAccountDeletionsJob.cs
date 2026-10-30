@@ -67,7 +67,7 @@ internal sealed class ProcessAccountDeletionsJob(
                     // Must not name the human: the audit log outlives erasure, so a name here
                     // would re-seed the identity just removed.
                     await auditLogService.LogAsync(
-                        AuditAction.AccountAnonymized, nameof(User), userId,
+                        UsersAuditActions.AccountAnonymized, nameof(User), userId,
                         "Account anonymized",
                         nameof(ProcessAccountDeletionsJob));
 

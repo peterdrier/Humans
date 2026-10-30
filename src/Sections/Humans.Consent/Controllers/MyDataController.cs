@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Configuration;
 using Humans.Base.Controllers;
 using Humans.Consent.Models;
@@ -17,6 +18,7 @@ internal sealed class MyDataController(
     ConfigurationRegistry configRegistry) : HumansControllerBase(userService)
 {
     [HttpGet("Consent/MyData")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Index()
     {
         var ct = HttpContext.RequestAborted;

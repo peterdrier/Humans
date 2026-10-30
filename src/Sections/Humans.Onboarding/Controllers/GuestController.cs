@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using Humans.Users.Contracts;
 namespace Humans.Onboarding.Controllers;
 
 [Authorize]
+[AllowBeforeActiveMembership]
 internal sealed class GuestController(
     IUserService userService,
     IOnboardingWidgetState widgetState) : HumansControllerBase(userService)

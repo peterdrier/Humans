@@ -23,7 +23,7 @@ internal sealed class RideshareAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
         return View(RideshareSettingsViewModel.From(snapshot));
     }
 
@@ -35,32 +35,32 @@ internal sealed class RideshareAdminController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var year = await rideshare.GetActiveYearAsync(ct);
+        var eventSettingsId = model.EventSettingsId;
         var save = ModelState.IsValid ? model.ToSave() : null;
         if (save is null)
         {
             if (ModelState.IsValid) ModelState.AddModelError(string.Empty, "Every window date must be a valid date (yyyy-mm-dd).");
-            model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
+            model.Stats = (await rideshare.GetSnapshotAsync(eventSettingsId, ct)).Stats();
             return View(model);
         }
 
-        var result = await rideshare.SaveSettingsAsync(year, save, user.Id, ct);
+        var result = await rideshare.SaveSettingsAsync(eventSettingsId, save, user.Id, ct);
         if (result.Refusal is { } refusal)
         {
-            logger.LogWarning("Rideshare settings save for {Year} rejected: rule {Rule}", year, refusal.Key);
+            logger.LogWarning("Rideshare settings save for event {EventSettingsId} rejected: rule {Rule}", eventSettingsId, refusal.Key);
             ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
-            model.Stats = (await rideshare.GetSnapshotAsync(year, ct)).Stats();
+            model.Stats = (await rideshare.GetSnapshotAsync(eventSettingsId, ct)).Stats();
             return View(model);
         }
 
-        SetSuccess($"Rideshare settings for {year} saved.");
+        SetSuccess($"Rideshare settings for {model.EventName} saved.");
         return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Day")]
     public async Task<IActionResult> Day(string? date, CancellationToken ct)
     {
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
         var day = RideshareDates.Parse(date) ?? RideshareDates.Today(clock);
         return View(DayViewModel.Build(snapshot, day));
     }

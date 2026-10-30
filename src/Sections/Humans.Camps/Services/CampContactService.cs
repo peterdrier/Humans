@@ -58,7 +58,7 @@ internal sealed class CampContactService(
         try
         {
             await auditLogService.LogAsync(
-                AuditAction.FacilitatedMessageSent,
+                EmailAuditActions.FacilitatedMessageSent,
                 nameof(Camp), campId,
                 $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
                 senderUserId);

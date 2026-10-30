@@ -26,7 +26,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
         var dir = direction ?? RideshareDirection.Inbound;
         var day = RideshareDates.Parse(date) ?? BoardViewModel.DefaultDate(snapshot.Settings, dir, RideshareDates.Today(clock));
 
@@ -39,7 +39,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
         if (id is null)
             return View(OfferFormViewModel.ForNew(user, direction ?? RideshareDirection.Inbound, snapshot.Settings, RideshareDates.Today(clock)));
 
@@ -67,7 +67,7 @@ internal sealed class RideshareController(
         return await SaveFormAsync(model, async () =>
         {
             if (model.Id is { } id) return await rideshare.UpdateOfferAsync(id, user.Id, save, ct);
-            else return await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
+            else return await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveEventIdAsync(ct), save, ct);
         }, "Rideshare_OfferSaved");
     }
 
@@ -87,7 +87,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
         if (id is null)
             return View(RequestFormViewModel.ForNew(user, direction ?? RideshareDirection.Inbound, snapshot.Settings, RideshareDates.Today(clock)));
 
@@ -115,7 +115,7 @@ internal sealed class RideshareController(
         return await SaveFormAsync(model, async () =>
         {
             if (model.Id is { } id) return await rideshare.UpdateRequestAsync(id, user.Id, save, ct);
-            else return await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveYearAsync(ct), save, ct);
+            else return await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveEventIdAsync(ct), save, ct);
         }, "Rideshare_RequestSaved");
     }
 
@@ -134,7 +134,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveYearAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
         return View(MineViewModel.Build(snapshot, user.Id));
     }
 

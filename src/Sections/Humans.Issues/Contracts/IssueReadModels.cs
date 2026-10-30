@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.Issues.Contracts;
 
@@ -18,7 +17,7 @@ public sealed record IssueAuditEvent(
     Instant At,
     Guid? ActorUserId,
     string? ActorDisplayName,
-    AuditAction Action,
+    string Action,
     string Description) : IssueThreadEvent(At, ActorUserId, ActorDisplayName);
 
 public sealed record IssueListFilter(

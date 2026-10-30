@@ -19,14 +19,3 @@
 @* A section can only addTagHelper against assemblies it references — a Shell-resident
    component renders as inert literal markup. <vc:human> is in Humans.Base. *@
 @addTagHelper *, Humans.Base
-@* /Debug/WidgetGallery renders other sections' public view components as <vc:> tag helpers, so
-   their assemblies are opened here — _ViewImports rather than the view so
-   AuditLogPageRenderTests' binding walk sees the <vc:audit-log> call site as bound. *@
-@addTagHelper *, Humans.Camps
-@addTagHelper *, Humans.Users
-@addTagHelper *, Humans.Tickets
-@addTagHelper *, Humans.Shifts
-@addTagHelper *, Humans.Calendar
-@addTagHelper *, Humans.AuditLog
-@addTagHelper *, Humans.Teams
-@addTagHelper *, Humans.Events

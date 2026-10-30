@@ -80,7 +80,7 @@ public sealed class FacilitatedMessageControllerTests
     public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
     {
         var failure = new InvalidOperationException("Audit unavailable");
-        _audit.LogAsync(Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+        _audit.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(failure);
 
         var result = await _controller.SendMessage(
@@ -144,7 +144,7 @@ public sealed class FacilitatedMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
-        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default, default!, default, default!, default(Guid));
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -178,7 +178,7 @@ public sealed class FacilitatedMessageControllerTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.ReplyTo == null && m.UserId == _targetId), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.FacilitatedMessageSent, "User", _targetId,
+            EmailAuditActions.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("contact info shared: yes", StringComparison.Ordinal)),
             _viewerId);
     }

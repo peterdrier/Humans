@@ -9,8 +9,14 @@ internal sealed class RideshareTrip
 
     public Guid UserId { get; set; }
 
-    /// <summary>The active year at creation.</summary>
+    /// <summary>The year of the event at creation.</summary>
     public int Year { get; set; }
+
+    /// <summary>
+    /// The event this row belongs to. Null on rows from before events were tracked, until the
+    /// <c>rideshare.event-ids</c> data migration stamps them; until then they belong to the event that run would pick.
+    /// </summary>
+    public Guid? EventSettingsId { get; set; }
 
     public RideshareDirection Direction { get; set; }
 

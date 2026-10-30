@@ -71,7 +71,7 @@ public class HumanLifecycleServiceTests
         // Notifications owns the column limit and bounds the copy itself.
         body.Should().Be("Tu acceso ha sido suspendido: " + notes);
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.MemberSuspended, nameof(User), userId,
+            UsersAuditActions.MemberSuspended, nameof(User), userId,
             "Suspended: " + notes, adminId);
         await _userService.Received(1).SetSuspensionAsync(userId, Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
@@ -93,7 +93,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeTrue();
         await _userService.Received(1).SetSuspensionAsync(userId, true, true, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.MemberSuspended,
+            UsersAuditActions.MemberSuspended,
             nameof(User),
             userId,
             Arg.Is<string>(message => message.Contains(notes)),
@@ -158,7 +158,7 @@ public class HumanLifecycleServiceTests
         await _notificationService.DidNotReceiveWithAnyArgs().SendAsync(
             default!, default, default, null!, null!, cancellationToken: Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, Guid.Empty);
+            null!, null!, default, null!, Guid.Empty);
         _metrics.DidNotReceive().RecordMemberSuspended(Arg.Any<string>());
     }
 
@@ -178,7 +178,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeTrue();
         await _userService.Received(1).SetSuspensionAsync(userId, false, false, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.MemberUnsuspended,
+            UsersAuditActions.MemberUnsuspended,
             nameof(User),
             userId,
             "Unsuspended",
@@ -273,7 +273,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeTrue();
         await _userService.Received(1).SetSuspensionAsync(userId, false, false, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.MemberUnsuspended,
+            UsersAuditActions.MemberUnsuspended,
             nameof(User),
             userId,
             "Unsuspended after completing required consents",
@@ -294,7 +294,7 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeTrue();
         await _userService.DidNotReceiveWithAnyArgs().SetSuspensionAsync(default, default, default, Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(
-            default, null!, default, null!, null!);
+            null!, null!, default, null!, null!);
         await _notificationInboxService.DidNotReceiveWithAnyArgs()
             .ResolveBySourceAsync(Guid.Empty, null!, Arg.Any<CancellationToken>());
     }

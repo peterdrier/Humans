@@ -1,10 +1,10 @@
 @model RideshareSettingsViewModel
 @{
-    ViewData["Title"] = $"Rideshare {Model.Year}";
+    ViewData["Title"] = $"Rideshare {Model.EventName}";
     var s = Model.Stats;
 }
 
-<h1>Rideshare @Model.Year</h1>
+<h1>Rideshare @Model.EventName</h1>
 
 <div class="card mb-4" style="max-width: 720px;">
     <div class="card-body">
@@ -22,7 +22,8 @@
 
 <h2 class="h4">Destination &amp; travel windows</h2>
 <form method="post" asp-action="Index" style="max-width: 540px;">
-    <input type="hidden" asp-for="Year" />
+    <input type="hidden" asp-for="EventSettingsId" />
+    <input type="hidden" asp-for="EventName" />
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
     <div class="mb-3">

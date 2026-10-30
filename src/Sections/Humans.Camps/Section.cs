@@ -20,6 +20,7 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Camps;
 
@@ -33,11 +34,15 @@ public sealed class Section :
     ISectionRoles,
     ISectionAccessMatrix,
     ISectionAdminNav,
+    ISectionChrome,
     ISectionHelp,
     ISectionNav,
     ISectionPolicies,
     ISectionSettings
 {
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(CampsGalleryViewComponent))];
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(CampsRoles.CampsAdmin, "Camps Admin",
@@ -48,6 +53,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, CampsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, CampsNotificationSources>();
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
 

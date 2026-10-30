@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,12 +15,14 @@ namespace Humans.Gdpr.Controllers;
 /// </summary>
 [Authorize]
 [Route("Gdpr")]
+[AllowBeforeActiveMembership]
 internal sealed class UserController(
     IUserService userService,
     IAccountDeletionService accountDeletionService,
     IStringLocalizer<GdprResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet("Status")]
+    [AllowBeforeActiveMembership(Terminal = true)]
     public async Task<IActionResult> Status()
     {
         var state = RoleChecks.GetUserState(User);

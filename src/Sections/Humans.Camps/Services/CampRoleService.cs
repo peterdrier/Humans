@@ -66,7 +66,7 @@ internal sealed class CampRoleService(
 
         await repo.AddDefinitionAsync(def, ct); // SaveChangesAsync first
         await auditLog.LogAsync(
-            AuditAction.CampRoleDefinitionCreated,
+            CampsAuditActions.CampRoleDefinitionCreated,
             nameof(CampRoleDefinition),
             def.Id,
             $"Created camp role definition '{def.Name}'.",
@@ -152,7 +152,7 @@ internal sealed class CampRoleService(
         if (!updated) return UpdateCampRoleDefinitionResult.NotFound;
 
         await auditLog.LogAsync(
-            AuditAction.CampRoleDefinitionUpdated,
+            CampsAuditActions.CampRoleDefinitionUpdated,
             nameof(CampRoleDefinition),
             id,
             $"Updated camp role definition '{input.Name}'.",
@@ -181,7 +181,7 @@ internal sealed class CampRoleService(
         if (!updated) return false;
 
         await auditLog.LogAsync(
-            AuditAction.CampRoleDefinitionDeactivated,
+            CampsAuditActions.CampRoleDefinitionDeactivated,
             nameof(CampRoleDefinition), id,
             "Deactivated camp role definition.", actorUserId);
         return true;
@@ -198,7 +198,7 @@ internal sealed class CampRoleService(
         if (!updated) return false;
 
         await auditLog.LogAsync(
-            AuditAction.CampRoleDefinitionReactivated,
+            CampsAuditActions.CampRoleDefinitionReactivated,
             nameof(CampRoleDefinition), id,
             "Reactivated camp role definition.", actorUserId);
         return true;
@@ -267,7 +267,7 @@ internal sealed class CampRoleService(
         }
 
         await auditLog.LogAsync(
-            AuditAction.CampRoleAssigned,
+            CampsAuditActions.CampRoleAssigned,
             nameof(CampRoleAssignment),
             assignment.Id,
             $"Assigned role '{def.Name}' to member.",
@@ -325,7 +325,7 @@ internal sealed class CampRoleService(
         if (!deleted) return false;
 
         await auditLog.LogAsync(
-            AuditAction.CampRoleUnassigned,
+            CampsAuditActions.CampRoleUnassigned,
             nameof(CampRoleAssignment),
             assignmentId,
             "Unassigned camp role.",
@@ -342,7 +342,7 @@ internal sealed class CampRoleService(
         if (deleted > 0)
         {
             await auditLog.LogAsync(
-                AuditAction.CampRoleUnassigned,
+                CampsAuditActions.CampRoleUnassigned,
                 nameof(CampMember), campMemberId,
                 $"Cascade-removed {deleted} role assignment(s) for camp member.",
                 actorUserId);
@@ -462,7 +462,7 @@ internal sealed class CampRoleService(
                 };
                 await repo.AddDefinitionAsync(definition, ct);
                 await auditLog.LogAsync(
-                    AuditAction.CampRoleDefinitionCreated,
+                    CampsAuditActions.CampRoleDefinitionCreated,
                     nameof(CampRoleDefinition),
                     definition.Id,
                     $"Seeded system camp role '{name}'.",

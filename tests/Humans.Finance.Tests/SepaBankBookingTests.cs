@@ -131,7 +131,7 @@ public class SepaBankBookingTests
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
             default, default, default, default!, default, default);
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
                                 && d.Contains("pay-d1", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
@@ -195,7 +195,7 @@ public class SepaBankBookingTests
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("resumed (30.00 EUR already posted)", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
     }
@@ -220,7 +220,7 @@ public class SepaBankBookingTests
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("OVERPAID", StringComparison.Ordinal)
                                 && d.Contains("owed 20.00 EUR", StringComparison.Ordinal)
                                 && d.Contains("10.00 EUR in credit", StringComparison.Ordinal)),
@@ -237,7 +237,7 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("OVERPAID", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
     }
@@ -291,7 +291,7 @@ public class SepaBankBookingTests
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
             default, default);
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("RECONCILE PENDING", StringComparison.Ordinal)
                                 && d.Contains("journal entry cannot be linked", StringComparison.Ordinal)),
             actor, _userId, Arg.Any<string>());
@@ -609,7 +609,7 @@ public class SepaBankBookingTests
         await _repo.DidNotReceiveWithAnyArgs().MarkSepaTransferReconciledAsync(
             default, default);
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("RECONCILE PENDING", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
     }
@@ -659,7 +659,7 @@ public class SepaBankBookingTests
         await MakeService().BookSepaTransferAsync(TransferId, MovementId, actor);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("d1 10.00 EUR pay-d1", StringComparison.Ordinal)
                                 && d.Contains("journal entry for 20.00 EUR (e-1)", StringComparison.Ordinal)
                                 && d.Contains(MovementId, StringComparison.Ordinal)
@@ -792,7 +792,7 @@ public class SepaBankBookingTests
         await _repo.Received(1).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("RECONCILED", StringComparison.Ordinal)
                                 && d.Contains(MovementId, StringComparison.Ordinal)),
             "sepa-bank-booking", _userId, Arg.Any<string>());
@@ -828,7 +828,7 @@ public class SepaBankBookingTests
         await _repo.Received(stamped ? 1 : 0).MarkSepaTransferReconciledAsync(
             TransferId, FixedNow, Arg.Any<CancellationToken>());
         await _audit.Received(stamped ? 1 : 0).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("RECONCILED", StringComparison.Ordinal)),
             "sepa-bank-booking", _userId, Arg.Any<string>());
     }
@@ -989,7 +989,7 @@ public class SepaBankBookingTests
 
         await AssertNothingPostedAsync();
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            FinanceAuditActions.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1005,7 +1005,7 @@ public class SepaBankBookingTests
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, null, MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaBankLineSkipped, "SepaBankLine", Guid.Empty,
+            FinanceAuditActions.SepaBankLineSkipped, "SepaBankLine", Guid.Empty,
             Arg.Is<string>(d => d.Contains("stuck-1", StringComparison.Ordinal)),
             "sepa-bank-booking", Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1018,7 +1018,7 @@ public class SepaBankBookingTests
         await RunSweepAsync(5);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            FinanceAuditActions.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1038,7 +1038,7 @@ public class SepaBankBookingTests
         await RunSweepAsync(2);
 
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            FinanceAuditActions.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1070,7 +1070,7 @@ public class SepaBankBookingTests
         await RunSweepAsync(2);
 
         await _audit.DidNotReceive().LogAsync(
-            AuditAction.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            FinanceAuditActions.SepaBankLineSkipped, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -1160,7 +1160,7 @@ public class SepaBankBookingTests
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("resumed (5.00 EUR already posted)", StringComparison.Ordinal)
                                 && d.Contains("15.00 EUR in credit", StringComparison.Ordinal)),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
@@ -1208,7 +1208,7 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("could not be saved");
         await _audit.Received(1).LogAsync(
-            AuditAction.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("PARTIAL", StringComparison.Ordinal)
                                 && d.Contains("pay-d1", StringComparison.Ordinal)
                                 && d.Contains("could not be saved", StringComparison.Ordinal)),

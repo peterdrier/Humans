@@ -22,6 +22,7 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Teams;
 
@@ -31,12 +32,16 @@ public sealed class Section :
     ISectionRoles,
     ISectionAccessMatrix,
     ISectionAdminTiles,
+    ISectionChrome,
     ISectionHelp,
     ISectionJobs,
     ISectionNav,
     ISectionPolicies,
     IUserPart
 {
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(TeamsGalleryViewComponent))];
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(TeamsRoles.TeamsAdmin, "Teams Admin",
@@ -46,6 +51,7 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, TeamsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, TeamsNotificationSources>();
         services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
 

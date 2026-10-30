@@ -46,7 +46,7 @@ internal sealed class ProfileAdminController(
         if (deleted)
         {
             await audit.LogAsync(
-                AuditAction.OrphanUserEmailDeleted, nameof(UserEmail), emailId,
+                UsersAuditActions.OrphanUserEmailDeleted, nameof(UserEmail), emailId,
                 $"Orphan UserEmail row {emailId} deleted by EmailProblems action",
                 currentUser.Id);
             SetSuccess("Orphan email row deleted.");

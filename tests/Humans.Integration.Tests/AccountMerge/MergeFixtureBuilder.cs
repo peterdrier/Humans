@@ -339,7 +339,7 @@ public sealed class MergeFixtureBuilder
         _pendingAuditLog.Add(db => db.AuditLogEntries.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
-            Action = action,
+            Action = action.ToString(),
             EntityType = "User",
             EntityId = SourceUserId,
             Description = description,

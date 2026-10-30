@@ -50,10 +50,10 @@ public class ExpenseReportServiceGdprTests
         // export reads the single id.
 
         _auditLogService.GetFilteredEntriesAsync(
+                actions: Arg.Any<IReadOnlyList<AuditActionDefinition>>(),
                 entityType: Arg.Any<string>(),
                 entityId: Arg.Any<Guid?>(),
                 userId: Arg.Any<Guid?>(),
-                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
             .Returns([]);
@@ -196,7 +196,7 @@ public class ExpenseReportServiceGdprTests
 
         var entry = new AuditLogEntrySnapshot(
             Guid.NewGuid(),
-            AuditAction.ExpenseSubmit,
+            ExpensesAuditActions.ExpenseSubmit.Name,
             "ExpenseReport",
             Guid.NewGuid(),
             "Submitted",
@@ -206,10 +206,10 @@ public class ExpenseReportServiceGdprTests
             RelatedEntityType: null);
 
         _auditLogService.GetFilteredEntriesAsync(
+                actions: Arg.Any<IReadOnlyList<AuditActionDefinition>>(),
                 entityType: Arg.Any<string>(),
                 entityId: Arg.Any<Guid?>(),
                 userId: Arg.Any<Guid?>(),
-                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
             .Returns([entry]);
@@ -256,14 +256,14 @@ public class ExpenseReportServiceGdprTests
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>()).Returns([report]);
 
         var approval = new AuditLogEntrySnapshot(
-            Guid.NewGuid(), AuditAction.ExpenseApprove, "ExpenseReport", report.Id,
+            Guid.NewGuid(), ExpensesAuditActions.ExpenseApprove.Name, "ExpenseReport", report.Id,
             "Finance approved expense report.", FakeNow,
             ActorUserId: Guid.NewGuid(), RelatedEntityId: null, RelatedEntityType: null);
         _auditLogService.GetFilteredEntriesAsync(
+                actions: Arg.Any<IReadOnlyList<AuditActionDefinition>>(),
                 entityType: "ExpenseReport",
                 entityId: report.Id,
                 userId: Arg.Any<Guid?>(),
-                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
             .Returns([approval]);

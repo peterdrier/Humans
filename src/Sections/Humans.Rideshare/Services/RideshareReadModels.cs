@@ -84,9 +84,10 @@ internal sealed record SettingsView(
 /// <summary>Season aggregates for the admin "is this working?" view. Fill rate is the caller's: SeatsFilled / SeatsOffered.</summary>
 internal sealed record SeasonStats(int OffersPosted, int RequestsPosted, int SeatsOffered, int SeatsFilled, int RidersStillLooking);
 
-/// <summary>One burn year's state; the cached unit.</summary>
+/// <summary>One event's state; the cached unit. <see cref="EventSettingsId"/> is null when no event is active.</summary>
 internal sealed record RideshareSnapshot(
-    int Year,
+    Guid? EventSettingsId,
+    string EventName,
     SettingsView? Settings,
     IReadOnlyList<TripView> Trips,
     IReadOnlyList<RequestView> Requests,

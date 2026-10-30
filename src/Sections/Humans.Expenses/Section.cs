@@ -16,6 +16,7 @@ using Humans.Gdpr.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.Expenses;
 
@@ -28,6 +29,7 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<IAuditActionContributor, ExpensesAuditActions>();
         services.AddSectionDbContext<ExpensesDbContext>(sentinelTable: "expense_reports");
 
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();

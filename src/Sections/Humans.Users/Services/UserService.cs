@@ -272,7 +272,7 @@ internal sealed class UserService(
         // legal names and stay Bare. The repository derives User.State.
         await repo.AddAsync(profile, ct);
         if (actorUserId.HasValue)
-            await audit.LogAsync(AuditAction.StubProfileBackfilled, nameof(User), userId,
+            await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
                 "Created missing profile through admin backfill.", actorUserId.Value);
         return true;
     }

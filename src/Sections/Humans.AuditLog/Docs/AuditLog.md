@@ -4,7 +4,7 @@
   src/Sections/Humans.AuditLog/Contracts/AuditAction.cs
 -->
 <!-- freshness:flag-on-change
-  Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
+  Audit log append-only invariant, audit action definitions and registry, and self-persisting semantics — review when AuditLog service/repo/entity changes.
 -->
 
 # Audit Log — Section Invariants
@@ -19,7 +19,8 @@ Append-only system audit trail: who did what, when, to which entity. Used by eve
 ## Concepts
 
 - An **Audit Log Entry** is an append-only record of a single user-initiated or job-initiated action. Captures actor, action, entity type + id, free-text description, and timestamp. The retired Google-sync columns (see below) are kept for historical rows only.
-- **AuditAction** is the cross-section enum (`Humans.AuditLog.Contracts.AuditAction`) of action names, stored as string in the DB via `HasConversion<string>()`. Every action name is a contract — sections use the shared enum so reviewers can grep "who writes TierApplicationApproved" across the whole codebase.
+- An **audit action** is an `AuditActionDefinition` (`Humans.AuditLog.Contracts`): the stored `Name`, the English `Verb` and `SelfVerb` for the narrative line, `DescriptionIsTail`, `Alert` (highlighted rows, counted on the admin page) and `QuickFilter` (a button label on the admin page). The section that writes an action declares it as a `public static readonly` field on its `<Section>AuditActions : AuditActionContributor` class and registers that class as an `IAuditActionContributor`; `AuditActionRegistry` collects every contributor at startup, fails the boot on a duplicate (ignoring case, as filters match) or over-long name, and resolves a stored name back to its definition for rendering (a name nobody declares any more renders as a bare definition). The name is a contract — grep it to find the single writer.
+- **Transitional:** the `AuditAction` enum still exists and `LegacyAuditActions` (this section) declares every enum value until each section moves its own; `IAuditLogService` keeps enum overloads that store the enum's name. Both go with the enum ([`section-owned-audit-actions`](../../../../memory/architecture/section-owned-audit-actions.md)).
 - `SurveyResponsesExported` records the requesting human, survey id and response row count for available Surveys response exports.
 - **Self-persisting audit** (design-rules §7a): `IAuditLogService.LogAsync` saves each entry immediately via `IAuditLogRepository.AddAsync`, which uses `IDbContextFactory<AuditLogDbContext>` to open a fresh per-call context and `SaveChangesAsync`. Callers do not need to `SaveChanges` to flush audit, and must not expect audit to roll back if a later business step fails.
 - **Best-effort** — audit save failures are logged at Error and swallowed inside `AuditLogService.PersistAsync`. An audit hiccup never fails the business operation that called it.
@@ -35,7 +36,7 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 | Property | Type | Purpose |
 |----------|------|---------|
 | Id | Guid | PK |
-| Action | AuditAction | Enum stored as string, max 100 chars |
+| Action | string (100) | An `AuditActionDefinition.Name` |
 | EntityType | string (100) | Type of the primary affected entity (e.g. `"User"`, `"Team"`, `"GoogleResource"`) |
 | EntityId | Guid | Id of the primary affected entity (non-nullable) |
 | Description | text | Complete human-readable description of what happened |
@@ -48,9 +49,9 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 
 **Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`.
 
-### AuditAction (cross-section enum)
+### AuditAction (transitional enum)
 
-`AuditAction` (`Humans.AuditLog.Contracts.AuditAction`) is the shared contract across all writers. Stored as string via `HasConversion<string>()`. Full surface as of this sweep:
+`AuditAction` (`Humans.AuditLog.Contracts.AuditAction`) is the enum the sections not yet moved still pass; `LegacyAuditActions` declares those names as definitions, and a moved section's names live on its own `<Section>AuditActions` (listed in its `Docs/<Section>.md`). The catalog below goes when the last section declares its own actions. Full surface as of this sweep:
 
 <!-- freshness:auto id="auditaction-catalog" prompt="Regenerate this catalog from src/Sections/Humans.AuditLog/Contracts/AuditAction.cs: every enum value must appear exactly once, grouped by section, one line each; preserve prose outside this block." -->
 - **Email:** `EmailOutboxRetried`, `EmailOutboxDiscarded`, `EmailSendingPaused`, `EmailSendingResumed` — persisted admin outbox controls, written by `EmailOutboxService` after the save. `EmailDailySendCountsBackfilled` — the admin-triggered daily send-count backfill, written by `EmailOutboxService`. `EmailComposerSelfTestSent` — a human queued the shared composer's "Send to me" test to their own address, written by `ComposerSelfSendService`.
@@ -151,7 +152,7 @@ A section that wants to *show* audit history emits `<vc:audit-log>` with a predi
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
 - **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is GoogleIntegration's own `<vc:google-sync-log>`, not a layout here.
-- **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. A localized host page supplies the chrome; AuditLogResource supplies entry labels, action badges and narrative verbs in all six cultures. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
+- **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. A localized host page supplies the chrome; AuditLogResource supplies entry labels, action badges and narrative verbs in all six cultures, keyed by action name, and a definition without entries renders its English verb and its name split into words. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
 - Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests` (`Humans.Integration.Tests`, nightly, not CI).
 
 ## Negative Access Rules
@@ -181,7 +182,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 ## Architecture
 
-**Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`. `AuditEventTextualizer` is the stateless verb-table helper backing both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
+**Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`, plus the singleton `AuditActionRegistry` (also registered as an `IHostedService` so it is built at startup). Verbs and flags come from the `AuditActionDefinition` on each `AuditEvent`, which backs both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
 **Owned tables:** `audit_log`
 **Status:** G5 — own project `src/Sections/Humans.AuditLog`, cross-section surface in its `Contracts/` folder (nobodies-collective/Humans#866).
 
@@ -189,13 +190,13 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 `AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). Project references are `Humans.Base`, `Humans.Gdpr` (the `IUserDataContributor` contract) and `Humans.Users.Contracts` (merge-tombstone chain-following).
 
-**One Contracts home.** The section's `Contracts/` folder (namespace `Humans.AuditLog.Contracts`) carries `IAuditLogService` — the append path, called from most sections — plus `IAuditViewerService` / `AuditEvent` and `ILegacyGoogleSyncAuditReader`.
+**One Contracts home.** The section's `Contracts/` folder (namespace `Humans.AuditLog.Contracts`) carries `IAuditLogService` — the append path, called from most sections — plus `AuditActionDefinition` / `IAuditActionContributor` / `AuditActionContributor`, `IAuditViewerService` / `AuditEvent` and `ILegacyGoogleSyncAuditReader`.
 
 **Section-internal reads: `IAuditLogReader`.** `internal interface IAuditLogReader` (`Services/IAuditLogReader.cs`) holds the raw-snapshot reads whose only caller is `AuditViewerService` — `GetFilteredAsync`, `GetByUserAsync`, plus `GetFilteredEntriesAsync` so the viewer takes one injection rather than two. `AuditLogService` implements it alongside `IAuditLogService`; `Section.Register` maps both to the same scoped instance. Nothing outside this assembly can name it, which is the point: those reads stay off the public surface.
 
 **`<vc:audit-log>` binding.** The component is public in `Humans.AuditLog.ViewComponents`; its views are at `Views/Shared/Components/AuditLog/`. Every consuming assembly — `Humans.Calendar`, `Humans.Debug`, `Humans.Expenses`, `Humans.Store`, `Humans.Teams`, `Humans.Tickets`, `Humans.Users` — needs both a `ProjectReference` and `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`; a missing directive ships inert literal markup with a green build. Note the reference can be IL-invisible: Razor resolves `@addTagHelper` at compile time and the generated tag helper names no type from this assembly, so a consumer that only *renders* audit shows no `Humans.AuditLog` entry in `GetReferencedAssemblies()`. Seeded-marker render assertions guard the binding (`Humans.Integration.Tests`, nightly, not CI): `AuditLogPageRenderTests` on `/Users/Admin/{id}`, `/Debug/WidgetGallery` and `/Profile/{id}`, `StoreControllerTests` on `/Store/Order/{id}`, plus a source scan asserting every `<vc:audit-log>` call site sits under a `_ViewImports` chain that binds it.
 
-- `AuditLogService` (`internal sealed`, `Humans.AuditLog.Services`) depends only on abstractions — no `DbContext`, no `IMemoryCache`. Its cross-section surface is the whole of `Humans.AuditLog.Contracts.IAuditLogService` — four members: the two `LogAsync` write overloads plus `GetFilteredEntriesAsync` (Issues, `ExpenseReportService`, Users' `DuplicateAccountService`) and `GetEntityIdsForEntityTypeActionsAsync` (`ShiftsController.OrphanSignups`).
+- `AuditLogService` (`internal sealed`, `Humans.AuditLog.Services`) depends only on abstractions — no `DbContext`, no `IMemoryCache`. Its cross-section surface is the whole of `Humans.AuditLog.Contracts.IAuditLogService` — four members, each with a definition-typed form and a transitional enum form: the two `LogAsync` write overloads plus `GetFilteredEntriesAsync` (Issues, `ExpenseReportService`, Users' `DuplicateAccountService`) and `GetEntityIdsForEntityTypeActionsAsync` (`ShiftsController.OrphanSignups`).
 - `IAuditLogRepository` (impl `src/Sections/Humans.AuditLog/Data/AuditLogRepository.cs`, `internal sealed`) is the only file that touches `DbContext.AuditLogEntries` — confirmed by source: no other repository references the `AuditLogEntries` DbSet. Uses `IDbContextFactory<AuditLogDbContext>` with short-lived contexts per call.
 - **Decorator decision — no caching decorator (§15 Option A).** Writes are scattered across most sections; reads are admin-only and already filtered server-side by index. No benefit from a section-owned cache.
 - **Predicate-pushed reads (sanctioned exception to `no-linq-at-db-layer`).** Unlike most sections where in-memory filtering is preferred, `IAuditLogRepository` keeps predicate-pushed query methods (`GetByUserIdsAsync`, `GetFilteredAsync`, `GetFilteredEntriesAsync`, etc.) rather than exposing a `GetAll().Where(...)` surface. Reason: `audit_log` is a large append-only table with many writers, indefinite retention, and no ceiling on row count — loading all rows into RAM for in-memory filtering does not scale here. The section doc explicitly justifies this exception.
@@ -203,11 +204,11 @@ No other cross-section writes from this section outward. Audit is a sink.
 - **Own DbContext (#858):** `AuditLogDbContext` (`src/Sections/Humans.AuditLog/Data/AuditLogDbContext.cs`) maps only `audit_log`, migrates under `Data/Migrations/` against `__EFMigrationsHistory_AuditLog`, and carries the immutability triggers in its baseline.
 - **Cross-domain navs on the entity:** `ActorUserId`, `EntityId` and `RelatedEntityId` are bare cross-section Guid columns — no FK constraint, no nav property. Display names for those Guids come from the `IEntityNameContributor` fan-out.
 
-- **Member-facing resources.** `AuditLogResource` localizes line/table entry labels, action badges and subject/self/no-subject verb forms in en, es, de, it, fr and ca. Stored descriptions and `AuditEventTextualizer` plain-text output stay unchanged. Admin-only `/AuditLog` pages retain English copy under the admin localization exemption.
+- **Member-facing resources.** `AuditLogResource` localizes line/table entry labels, action badges and subject/self/no-subject verb forms in en, es, de, it, fr and ca, keyed by action name; a definition with no entry falls back to its English verb and its name split into words. Stored descriptions and `RenderPlainText` output stay unchanged. Admin-only `/AuditLog` pages retain English copy under the admin localization exemption; the admin page's quick-filter buttons and alert banner come from the registry's `QuickFilter` and `Alert` flags, not from the view.
 
 ### Touch-and-clean guidance
 
-- When adding a new `AuditAction` enum value, pair it with a one-line entry in the section list above. Reviewers should be able to grep the enum value to find the single writer.
+- A new audit action is a field on your section's `<Section>AuditActions`, documented in your section's `Docs/<Section>.md`; nothing in this section changes. While your section still uses the enum, add the value and its `LegacyAuditActions` line together, plus a one-line entry in the catalog above. Reviewers should be able to grep the name to find the single writer.
 - Do **not** call `IAuditLogService.LogAsync` before the business save. Audit goes after, always.
 - Do **not** add an `Update*` / `Delete*` / `Remove*` method to `IAuditLogRepository`; the database triggers will reject the operation regardless.
 - Do **not** attempt to log inside an outer transaction expecting rollback — audit commits independently via its own `DbContext`.

@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
@@ -18,9 +19,13 @@ internal sealed class ConsentReviewService(
     IConsentReviewRepository repo,
     IUserService users,
     IUserWrite userWrite,
+    IAuditLogService auditLog,
     IClock clock) : IConsentWrite, IUserDataContributor
 {
     internal const string ConsentReviewSlice = "ConsentReview";
+
+    /// <summary>The viewer reads a Profile entity as the person the row is about.</summary>
+    private const string ProfileEntityType = "Profile";
 
     public async Task<ConsentReviewInfo> GetReviewAsync(Guid userId, CancellationToken ct = default)
     {
@@ -41,7 +46,7 @@ internal sealed class ConsentReviewService(
         return result;
     }
 
-    public Task<OnboardingResult> RecordConsentCheckAsync(
+    public async Task<OnboardingResult> RecordConsentCheckAsync(
         Guid userId, ConsentCheckStatus status, Guid? reviewerId, string? notes, CancellationToken ct = default)
     {
         if (status is not (ConsentCheckStatus.Cleared or ConsentCheckStatus.Flagged))
@@ -49,9 +54,9 @@ internal sealed class ConsentReviewService(
                 "RecordConsentCheck only accepts Cleared or Flagged; use SetConsentCheckPending for the system-driven Pending transition.",
                 nameof(status));
 
-        return MutateAsync(userId, (row, now) =>
+        var cleared = status == ConsentCheckStatus.Cleared;
+        var result = await MutateAsync(userId, (row, now) =>
         {
-            var cleared = status == ConsentCheckStatus.Cleared;
             if (cleared && row.RejectedAt is not null)
                 return "AlreadyRejected";
             row.Status = status;
@@ -61,6 +66,16 @@ internal sealed class ConsentReviewService(
             row.IsApproved = cleared;
             return null;
         }, ct);
+        if (!result.Success)
+            return result;
+
+        var action = cleared ? ConsentAuditActions.ConsentCheckCleared : ConsentAuditActions.ConsentCheckFlagged;
+        var description = cleared ? "Consent check cleared" : $"Consent check flagged: {notes}";
+        if (reviewerId is { } reviewer)
+            await auditLog.LogAsync(action, ProfileEntityType, userId, description, reviewer);
+        else
+            await auditLog.LogAsync(action, ProfileEntityType, userId, description, nameof(ConsentReviewService));
+        return result;
     }
 
     public Task<OnboardingResult> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default) =>

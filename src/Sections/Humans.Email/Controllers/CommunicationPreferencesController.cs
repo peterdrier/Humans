@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Humans.Email.Contracts;
 using Humans.Email.Services;
@@ -19,6 +20,7 @@ internal sealed class CommunicationPreferencesController(
     IStringLocalizer<EmailResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet("CommunicationPreferences")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Index()
     {
         try
@@ -39,6 +41,7 @@ internal sealed class CommunicationPreferencesController(
 
     [HttpPost("CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> UpdatePreference(MessageCategory category, [BindRequired] bool emailEnabled, [BindRequired] bool alertEnabled)
     {
         try

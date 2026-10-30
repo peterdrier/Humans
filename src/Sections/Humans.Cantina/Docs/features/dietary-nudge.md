@@ -30,7 +30,7 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 - **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`ShiftsPolicies.MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
 - **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaPolicies.Read` roster, all through `ICantinaService`.
 
-Both forms are exempt from `MembershipRequiredFilter` so a not-yet-Active member can still answer them.
+Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can still answer them.
 
 ## GDPR
 

@@ -11,12 +11,18 @@ internal enum GrantState
     Revoked,
 }
 
+/// <summary>
+/// <see cref="EventSettingsId"/> is the program's event, or for a program not yet stamped the one
+/// <c>grants.event-ids</c> would give it; null when its year has none, and then <see cref="EventName"/> is the year.
+/// </summary>
 internal sealed record ProgramInfo(
     Guid Id,
     string Name,
     string Entitles,
     string? Description,
     int Year,
+    Guid? EventSettingsId,
+    string EventName,
     GrantIssuer IssuedBy,
     string? SourceKey,
     LocalDate? GrantsExpireOn,
@@ -60,7 +66,7 @@ internal sealed record ProgramSave(
     string Name,
     string Entitles,
     string? Description,
-    int Year,
+    Guid? EventSettingsId,
     GrantIssuer IssuedBy,
     string? SourceKey,
     LocalDate? GrantsExpireOn,

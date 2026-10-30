@@ -8,7 +8,7 @@
   src/Sections/Humans.AuditLog/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  AuditLogEntry schema, AuditAction enum values, immutability triggers, and audit-log views/routes — review when AuditAction enum, AuditLogService, or audit-log UI change.
+  AuditLogEntry schema, audit action definitions, immutability triggers, and audit-log views/routes — review when AuditActionDefinition, AuditLogService, or audit-log UI change.
 -->
 
 # F-12: Audit Log
@@ -24,7 +24,7 @@ Background jobs and admin actions make changes on members' behalf (team enrollme
 | Field | Type | Purpose |
 |-------|------|---------|
 | Id | Guid | PK |
-| Action | AuditAction (string) | What happened |
+| Action | string | What happened: an `AuditActionDefinition.Name` |
 | EntityType | string | "User", "Team", etc. |
 | EntityId | Guid | Primary affected entity |
 | Description | string | Human-readable text |
@@ -41,9 +41,9 @@ The columns `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `U
 
 Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. `ActorUserId` is a bare cross-section Guid column with no DB-level FK constraint — a deleted/anonymized actor is handled at the application layer: `AuditEvent` (`Contracts/AuditEvent.cs`) displays "Someone" when the actor name does not resolve.
 
-### AuditAction Enum
+### Audit action definitions
 
-Stored as string in the database. New values can be appended without migration.
+Each writing section declares its actions as `AuditActionDefinition` fields on its `<Section>AuditActions` contributor (name, English verb and self-verb, description-tail, alert and quick-filter flags); `AuditActionRegistry` collects them at startup. The `AuditAction` enum is transitional: `LegacyAuditActions` declares its values until each section moves its own. A new action needs no migration.
 
 The full value catalog lives in [`src/Sections/Humans.AuditLog/Docs/AuditLog.md`](../AuditLog.md) and is regenerated from `src/Sections/Humans.AuditLog/Contracts/AuditAction.cs` by `/freshness-sweep`. It is not duplicated here — one source of truth.
 
@@ -51,14 +51,14 @@ The full value catalog lives in [`src/Sections/Humans.AuditLog/Docs/AuditLog.md`
 
 The section splits into a write side and a read+render side:
 
-**`IAuditLogService` (write)** provides two `LogAsync` overloads (plus two narrow cross-section reads, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`):
+**`IAuditLogService` (write)** provides two `LogAsync` overloads, each taking an `AuditActionDefinition` (with a transitional `AuditAction` twin), plus two narrow cross-section reads, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`:
 
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID
 
 Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails.
 
-**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section via `Humans.Base`'s `IEntityNameContributor` fan-out (no per-call-site `GetUserDisplayNamesAsync` / `GetTeamNamesAsync` dance, and neither method exists any more). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verb tables (`GetActionVerb`, `GetActionSelfVerb`, `ShouldRenderDescriptionTail`) live in the stateless `AuditEventTextualizer` helper, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
+**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section via `Humans.Base`'s `IEntityNameContributor` fan-out (no per-call-site `GetUserDisplayNamesAsync` / `GetTeamNamesAsync` dance, and neither method exists any more). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verbs and the description-tail flag live on each action's `AuditActionDefinition`, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
 
 `IAuditLogService` exposes no display-name lookups to controllers — name resolution lives entirely behind `IAuditViewerService`.
 
@@ -120,9 +120,9 @@ Permission-change detail (user email, role, sync source, success flag, error mes
 ### Global Audit Log Page (`/AuditLog`)
 
 Accessible to Board and Admin. Displays all audit log entries with filtering by action type. Features:
-- Filter buttons: All, Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles
-- Anomalous entries highlighted with warning styling
-- Alert banner showing total anomaly count
+- Filter buttons: All, then one per definition with a `QuickFilter` label (today Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles)
+- `Alert` entries highlighted with warning styling
+- Alert banner per `Alert` action with its row count
 - Paginated (50 per page)
 
 ### Drive Activity Check (`/Monitor/CheckDriveActivity`)
@@ -139,7 +139,7 @@ Displays the 50 most recent audit entries affecting a user, queried by:
 - `EntityType = 'User' AND EntityId = @userId` (direct entries)
 - `RelatedEntityId = @userId` (related entries, e.g., team membership changes)
 
-Each entry renders structurally as: `[timestamp] — [actor] [verb] [subject] in [team] — [description]`. The verb tables (`GetActionVerb` / `GetActionSelfVerb`) live in `AuditEventTextualizer`; the self-form is used when actor == subject to avoid dangling prepositions. `IAuditViewerService` resolves the page, batch-loading actor/subject/target-team display names inside the section and returning `AuditEvent` records; the shared `AuditLogViewComponent` then composes HTML around `AuditEvent.RenderStructured`, which produces the field bundle (actor/subject as clickable `<human-link>` data, verb, description tail). Unmapped actions fall back to `[actor] · [ActionName] · [subject] — [description]` so attribution is never lost.
+Each entry renders structurally as: `[timestamp] — [actor] [verb] [subject] in [team] — [description]`. The verb and self-verb come from the action's definition; the self-form is used when actor == subject to avoid dangling prepositions. `IAuditViewerService` resolves the page, batch-loading actor/subject/target-team display names inside the section and returning `AuditEvent` records; the shared `AuditLogViewComponent` then composes HTML around `AuditEvent.RenderStructured`, which produces the field bundle (actor/subject as clickable `<human-link>` data, verb, description tail). Unmapped actions fall back to `[actor] · [ActionName] · [subject] — [description]` so attribution is never lost.
 
 ### Agent tool — `get_audit_history`
 

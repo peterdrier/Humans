@@ -69,7 +69,7 @@ internal sealed class CampCsvExportBuilder(
             }
         });
 
-        await audit.LogAsync(AuditAction.CampsExported, "Camps", Guid.Empty,
+        await audit.LogAsync(CampsAuditActions.CampsExported, "Camps", Guid.Empty,
             $"Camp contact and lead list exported for {year}: {rowCount} rows", actorUserId);
         return new CampCsvExport(bytes, "text/csv", $"barrios-{year}.csv");
     }

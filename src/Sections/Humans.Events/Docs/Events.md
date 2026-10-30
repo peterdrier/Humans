@@ -47,6 +47,7 @@ Event programming: submission, moderation, browsing, export, and preference mana
 | CampId | Guid? | FK only → Camp (Camps section); null for individual submissions |
 | GuideSharedVenueId | Guid? | FK → EventVenue; nullable |
 | SubmitterUserId | Guid | FK only → User (Users section) |
+| EventSettingsId | Guid? | Bare id of Settings' `settings_event` row the entry belongs to; stamped from `EventGuideSettings.EventSettingsId` on submit and bulk import. Null only on rows older than the column, until the `events.event-ids` data migration assigns them |
 | StartAt | Instant | NodaTime; UTC |
 | DurationMinutes | int | 15–1440 on the individual and admin forms (1440 = the all-day encoding); 15–480 in 15-minute steps on the barrio form and bulk CSV |
 | IsRecurring | bool | |
@@ -178,6 +179,10 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 | Board | Read the moderation queue, dashboard, categories, venues and export page; change nothing and download no CSV (`EventsPolicies.Read`) |
 
 ## Invariants
+
+- The guide shows one event: `EventGuideSettings.EventSettingsId`. Submission lists, the barrio CSV's existing rows, approved events (and the approved-event cache), favourites, the moderation queue and counts, camp overlap checks, the dashboard and the guide export only include entries of that event, plus entries with no event id yet (`Event.IsInEvent`). Entries of other events are kept, never deleted, and still reach GDPR export and by-id owner/moderator lookups. Pointing the guide at another event rebuilds the approved cache.
+
+- Data migration `events.event-ids` (`/Debug/DataMigrations`) gives each unassigned entry the non-deleted Settings event whose build-start to strike-end window holds the entry's local start date, else the event with the nearest gate opening (earliest on a tie). It only writes rows still without an event id.
 
 - Approve, reject, request-edit and moderator-withdraw forms reject invalid model binding or validation with HTTP 400 after resolving the moderator, before event reads or writes. This includes the moderation reason’s 500-character limit.
 

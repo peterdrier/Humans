@@ -68,18 +68,21 @@ lines can no longer be created — see `health.md` §5.
 
 ### ExpenseHoldedBookingService (Scoped — `IExpenseHoldedBookingService`)
 
-Repository: `IExpenseRepository`. Read-only list of every booked expense line for Finance's
-Holded reconciliation; it carries no `ExpenseReportService` dependency so Finance can inject
-it without a DI cycle.
+Repository: `IExpenseRepository`. Read-only: every booked expense line (Finance's duplicate
+check) and every expected Holded document with its report's outbox state (Finance's expense
+reconciliation, outbox events read in one query); it carries no `ExpenseReportService`
+dependency so Finance can inject it without a DI cycle.
 
 | Table | R/W |
 |-------|-----|
 | ExpenseReports | R |
 | ExpenseLines | R |
 | ExpenseAttachments | R (included with the lines) |
+| HoldedExpenseOutboxEvents | R (latest create event per report) |
 
 Cross-section calls via `IUserService` (resolves the submitter to the survivor after a merge,
-the creditor as `ExpenseHoldedPublisher` binds it). No `IMemoryCache`.
+the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedClient.IsConfigured` (the
+`NotConfigured` sync state). No `IMemoryCache`.
 
 ---
 

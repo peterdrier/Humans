@@ -1,6 +1,5 @@
 using NodaTime;
 using Humans.Base.Enums;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Domain;
 
@@ -8,7 +7,8 @@ internal sealed class AuditLogEntry
 {
     public Guid Id { get; init; }
 
-    public AuditAction Action { get; init; }
+    /// <summary>An <see cref="Contracts.AuditActionDefinition.Name"/>.</summary>
+    public string Action { get; init; } = string.Empty;
 
     public string EntityType { get; init; } = string.Empty;
 

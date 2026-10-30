@@ -101,7 +101,10 @@ public sealed class Section :
             $"{AgentSectionDocReader.SectionProjectFolder(key)}/{key}.md"));
 
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
-        [new(ChromeSlots.BodyEnd, typeof(HelpWidgetViewComponent))];
+        [
+            new(ChromeSlots.BodyEnd, typeof(HelpWidgetViewComponent)),
+            new(ChromeSlots.WidgetGallery, typeof(AgentGalleryViewComponent)),
+        ];
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {

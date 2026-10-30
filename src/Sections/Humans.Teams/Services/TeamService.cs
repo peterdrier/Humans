@@ -391,7 +391,7 @@ internal sealed class TeamService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.TeamPageContentUpdated, nameof(Team), teamId,
+                TeamsAuditActions.TeamPageContentUpdated, nameof(Team), teamId,
                 $"Team page content updated. Public: {isPublicPage}",
                 updatedByUserId);
 
@@ -514,7 +514,7 @@ internal sealed class TeamService(
         foreach (var userId in closedUsers)
         {
             await auditLogService.LogAsync(
-                AuditAction.TeamMemberRemoved, nameof(Team), teamId,
+                TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
                 $"Membership ended when {team.Name} was deactivated",
                 actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
         }
@@ -650,7 +650,7 @@ internal sealed class TeamService(
         cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
-            AuditAction.TeamJoinedDirectly, nameof(Team), teamId,
+            TeamsAuditActions.TeamJoinedDirectly, nameof(Team), teamId,
             $"Joined {team.Name} directly",
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
@@ -782,7 +782,7 @@ internal sealed class TeamService(
         await MarkMemberLeftWithOutboxAsync(member, null, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamLeft, nameof(Team), teamId,
+            TeamsAuditActions.TeamLeft, nameof(Team), teamId,
             $"Left {team.Name}",
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
@@ -866,7 +866,7 @@ internal sealed class TeamService(
         cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
-            AuditAction.TeamJoinRequestApproved, nameof(Team), request.TeamId,
+            TeamsAuditActions.TeamJoinRequestApproved, nameof(Team), request.TeamId,
             $"Join request for {request.Team.Name} approved",
             approverUserId,
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
@@ -901,7 +901,7 @@ internal sealed class TeamService(
         cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
-            AuditAction.TeamJoinRequestRejected, nameof(Team), request.TeamId,
+            TeamsAuditActions.TeamJoinRequestRejected, nameof(Team), request.TeamId,
             $"Join request for team rejected: {reason}",
             approverUserId,
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
@@ -1012,7 +1012,7 @@ internal sealed class TeamService(
         var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, mergeTarget?.Id, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamMemberRemoved, nameof(Team), teamId,
+            TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
             $"Member removed from {team.Name}",
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
@@ -1020,7 +1020,7 @@ internal sealed class TeamService(
         if (mergeTarget is not null && (wasCoordinator || removedAssignments.Count > 0))
         {
             await auditLogService.LogAsync(
-                AuditAction.TeamMemberRoleChanged, nameof(Team), teamId,
+                TeamsAuditActions.TeamMemberRoleChanged, nameof(Team), teamId,
                 $"Folded {removedAssignments.Count} role assignment(s) from merged account {userId}; source coordinator: {wasCoordinator}",
                 actorUserId, mergeTarget.UserId, nameof(User));
         }
@@ -1115,7 +1115,7 @@ internal sealed class TeamService(
         cancellationToken = CancellationToken.None;
 
         await auditLogService.LogAsync(
-            AuditAction.TeamMemberAdded, nameof(Team), teamId,
+            TeamsAuditActions.TeamMemberAdded, nameof(Team), teamId,
             $"Member added to {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
@@ -1137,7 +1137,7 @@ internal sealed class TeamService(
             return;
 
         await auditLogService.LogAsync(
-            AuditAction.TeamMemberRoleChanged, nameof(Team), teamId,
+            TeamsAuditActions.TeamMemberRoleChanged, nameof(Team), teamId,
             $"Set member role to {role}",
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
@@ -1188,7 +1188,7 @@ internal sealed class TeamService(
         await repo.AddRoleDefinitionAsync(definition, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamRoleDefinitionCreated, nameof(TeamRoleDefinition), definition.Id,
+            TeamsAuditActions.TeamRoleDefinitionCreated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' created for team {team.Name}",
             actorUserId,
             relatedEntityId: teamId, relatedEntityType: nameof(Team));
@@ -1258,7 +1258,7 @@ internal sealed class TeamService(
             definition, clearingIsManagement, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
+            TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
@@ -1285,7 +1285,7 @@ internal sealed class TeamService(
         await repo.RemoveRoleDefinitionAsync(definition, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
+            TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{definition.Name}' deleted from team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
@@ -1327,7 +1327,7 @@ internal sealed class TeamService(
             definition, clearingIsManagement, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
+            TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
@@ -1426,14 +1426,14 @@ internal sealed class TeamService(
         if (autoAddedToTeam)
         {
             await auditLogService.LogAsync(
-                AuditAction.TeamMemberAdded, nameof(Team), definition.TeamId,
+                TeamsAuditActions.TeamMemberAdded, nameof(Team), definition.TeamId,
                 $"Auto-added to {team.Name} via role assignment",
                 actorUserId,
                 relatedEntityId: targetUserId, relatedEntityType: nameof(User));
         }
 
         await auditLogService.LogAsync(
-            AuditAction.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
+            TeamsAuditActions.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
             $"Assigned to role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
@@ -1455,7 +1455,7 @@ internal sealed class TeamService(
             roleDefinitionId, teamMemberId, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
+            TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
             $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
@@ -1786,7 +1786,7 @@ internal sealed class TeamService(
             CreatedByUserId = actorUserId,
         };
         await repo.AddEarlyEntryGrantAsync(grant, ct);
-        await auditLogService.LogAsync(AuditAction.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), grant.Id,
+        await auditLogService.LogAsync(TeamsAuditActions.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), grant.Id,
             $"EE granted to {userId} on {entryDate} for \"{grant.ProjectName}\" (team {teamId})", actorUserId);
     }
 
@@ -1799,7 +1799,7 @@ internal sealed class TeamService(
         grant.ProjectName = projectName.Trim();
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repo.UpdateEarlyEntryGrantAsync(grant, ct);
-        await auditLogService.LogAsync(AuditAction.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
+        await auditLogService.LogAsync(TeamsAuditActions.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
             $"EE updated for {grant.UserId}: {entryDate}, \"{grant.ProjectName}\"", actorUserId);
     }
 
@@ -1808,7 +1808,7 @@ internal sealed class TeamService(
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
         if (grant is null || grant.TeamId != teamId) return; // idempotent; another team's grant counts as missing
         await repo.RemoveEarlyEntryGrantAsync(grantId, ct);
-        await auditLogService.LogAsync(AuditAction.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
+        await auditLogService.LogAsync(TeamsAuditActions.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
             $"EE revoked for {grant.UserId} (team {grant.TeamId})", actorUserId);
     }
 

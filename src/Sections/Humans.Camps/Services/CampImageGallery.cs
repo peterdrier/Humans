@@ -79,7 +79,7 @@ internal sealed class CampImageGallery(
         }
 
         await auditLog.LogAsync(
-            AuditAction.CampImageUploaded, nameof(CampImage), image.Id,
+            CampsAuditActions.CampImageUploaded, nameof(CampImage), image.Id,
             $"Uploaded image '{fileName}'",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
@@ -103,7 +103,7 @@ internal sealed class CampImageGallery(
         if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
 
         await auditLog.LogAsync(
-            AuditAction.CampImageDeleted, nameof(CampImage), imageId,
+            CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
             $"Deleted image {imageId}",
             actorUserId,
             relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));

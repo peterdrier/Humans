@@ -100,7 +100,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.EeSlotCount.Should().Be(13);
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampSeasonEeSlotCountChanged,
+            CampsAuditActions.CampSeasonEeSlotCountChanged,
             nameof(CampSeason), season.Id,
             Arg.Any<string>(), actor,
             camp.Id, nameof(Camp));
@@ -235,7 +235,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.HasEarlyEntry.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampEarlyEntryGranted,
+            CampsAuditActions.CampEarlyEntryGranted,
             nameof(CampMember), member.Id,
             Arg.Any<string>(), actor,
             camp.Id, nameof(Camp));
@@ -256,7 +256,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.HasEarlyEntry.Should().BeFalse();
 
         await AuditLog.Received(1).LogAsync(
-            AuditAction.CampEarlyEntryRevoked,
+            CampsAuditActions.CampEarlyEntryRevoked,
             nameof(CampMember), member.Id,
             Arg.Any<string>(), actor,
             camp.Id, nameof(Camp));
@@ -279,7 +279,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.HasEarlyEntry.Should().BeFalse();
 
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.CampEarlyEntryGranted,
+            CampsAuditActions.CampEarlyEntryGranted,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -321,7 +321,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         outcome.Should().Be(SetEarlyEntryOutcome.NoChange);
 
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.CampEarlyEntryGranted,
+            CampsAuditActions.CampEarlyEntryGranted,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -399,7 +399,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         reloaded.HasEarlyEntry.Should().BeTrue();
 
         await AuditLog.DidNotReceive().LogAsync(
-            AuditAction.CampEarlyEntryRevoked,
+            CampsAuditActions.CampEarlyEntryRevoked,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());

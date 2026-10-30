@@ -2,7 +2,6 @@ using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
@@ -246,7 +245,6 @@ public class DevLoginControllerTests
         Substitute.For<ISystemTeamSync>(),
         _users,
         Substitute.For<IConsentWrite>(),
-        Substitute.For<IAuditLogService>(),
         Substitute.For<ICampService>(),
         Substitute.For<ICampSeeding>(),
         Substitute.For<ICampRoleSeeding>(),

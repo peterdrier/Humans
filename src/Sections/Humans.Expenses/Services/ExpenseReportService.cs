@@ -134,13 +134,17 @@ internal sealed class ExpenseReportService(
                 .Where(a => a.Line.HoldedDocId is not null)
                 .Sum(a => a.Booked);
 
-    private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent)
+    private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent) =>
+        ResolveSyncState(outboxEvent, holdedClient.IsConfigured);
+
+    internal static ExpenseHoldedSyncState ResolveSyncState(
+        HoldedExpenseOutboxEvent? outboxEvent, bool holdedConfigured)
     {
         if (outboxEvent is null) return ExpenseHoldedSyncState.NotQueued;
         // Written off sets ProcessedAt too, so it has to be tested before the success case.
         if (outboxEvent.FailedPermanently) return ExpenseHoldedSyncState.Failed;
         if (outboxEvent.ProcessedAt is not null) return ExpenseHoldedSyncState.Pushed;
-        if (!holdedClient.IsConfigured) return ExpenseHoldedSyncState.NotConfigured;
+        if (!holdedConfigured) return ExpenseHoldedSyncState.NotConfigured;
         return outboxEvent.RetryCount > 0
             ? ExpenseHoldedSyncState.Retrying
             : ExpenseHoldedSyncState.Queued;
@@ -277,7 +281,7 @@ internal sealed class ExpenseReportService(
             if (actorUserId != submitterUserId)
             {
                 await auditLogService.LogAsync(
-                    AuditAction.ExpenseCreatedOnBehalf,
+                    ExpensesAuditActions.ExpenseCreatedOnBehalf,
                     AuditEntityTypes.Report, report.Id,
                     $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}."
                     + DescribeGrant(preapprovalGrantId),
@@ -336,7 +340,7 @@ internal sealed class ExpenseReportService(
         if (actorUserId == report.SubmitterUserId) return;
 
         await auditLogService.LogAsync(
-            AuditAction.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
             AuditEntityTypes.Report, report.Id,
             $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
             actorUserId,
@@ -748,7 +752,7 @@ internal sealed class ExpenseReportService(
             replacedAttachment = replacement.Replaced;
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseAttachmentUploaded,
+                ExpensesAuditActions.ExpenseAttachmentUploaded,
                 AuditEntityTypes.Report, reportId,
                 $"Attachment uploaded to line {lineId}.",
                 actorUserId,
@@ -845,7 +849,7 @@ internal sealed class ExpenseReportService(
             if (removed is null) return ExpenseMutationResult.Success;
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseAttachmentRemoved,
+                ExpensesAuditActions.ExpenseAttachmentRemoved,
                 AuditEntityTypes.Report, reportId,
                 $"Attachment removed from line {lineId}.",
                 actorUserId,
@@ -938,7 +942,7 @@ internal sealed class ExpenseReportService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseSubmit,
+                ExpensesAuditActions.ExpenseSubmit,
                 AuditEntityTypes.Report, reportId,
                 (report.SubmitterUserId == actorUserId
                     ? "Submitted expense report."
@@ -1020,7 +1024,7 @@ internal sealed class ExpenseReportService(
             }
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseWithdraw,
+                ExpensesAuditActions.ExpenseWithdraw,
                 AuditEntityTypes.Report, reportId,
                 "Withdrew expense report."
                 + (releasesGrant
@@ -1069,7 +1073,7 @@ internal sealed class ExpenseReportService(
             // Entity type is Profile and the actor may be somebody else, so without the related id the member's GDPR
             // export would miss the row carrying their raw IBAN.
             await auditLogService.LogAsync(
-                isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
+                isClearing ? ExpensesAuditActions.IbanRemove : ExpensesAuditActions.IbanSet,
                 AuditEntityTypes.Profile,
                 submitterUserId,
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
@@ -1121,7 +1125,7 @@ internal sealed class ExpenseReportService(
             : $"Payee IBAN updated for {await DescribeMemberAsync(report.SubmitterUserId, ct)} to {normalizedIban}";
 
         await auditLogService.LogAsync(
-            AuditAction.ExpensePayeeIbanUpdated,
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
             AuditEntityTypes.Report, report.Id,
             $"{description}.",
             actorUserId,
@@ -1215,7 +1219,7 @@ internal sealed class ExpenseReportService(
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseEndorse,
+                ExpensesAuditActions.ExpenseEndorse,
                 AuditEntityTypes.Report, reportId,
                 ReviewerLabel(report, actorIsFinanceAdmin)
                     + " endorsed expense report." + MaxAmountDetail(maxAmount),
@@ -1241,7 +1245,7 @@ internal sealed class ExpenseReportService(
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseCoordinatorReject,
+                ExpensesAuditActions.ExpenseCoordinatorReject,
                 AuditEntityTypes.Report, reportId,
                 $"{ReviewerLabel(report, actorIsFinanceAdmin)} rejected expense report: {reason}",
                 coordinatorUserId);
@@ -1273,7 +1277,7 @@ internal sealed class ExpenseReportService(
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not decline the line.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseLineDeclined,
+                ExpensesAuditActions.ExpenseLineDeclined,
                 AuditEntityTypes.Report, reportId,
                 $"{ReviewerLabel(report!, actorIsFinanceAdmin)} declined line "
                     + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
@@ -1298,7 +1302,7 @@ internal sealed class ExpenseReportService(
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not undo the decline.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseLineDeclineUndone,
+                ExpensesAuditActions.ExpenseLineDeclineUndone,
                 AuditEntityTypes.Report, reportId,
                 $"{ReviewerLabel(report!, actorIsFinanceAdmin)} undid the decline of line "
                     + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
@@ -1418,7 +1422,7 @@ internal sealed class ExpenseReportService(
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseApprove,
+                ExpensesAuditActions.ExpenseApprove,
                 AuditEntityTypes.Report, reportId,
                 "Finance approved expense report." + MaxAmountDetail(maxAmount)
                 + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
@@ -1427,7 +1431,7 @@ internal sealed class ExpenseReportService(
             if (overrideBooking is not null)
             {
                 await auditLogService.LogAsync(
-                    AuditAction.ExpenseCategoryOverride,
+                    ExpensesAuditActions.ExpenseCategoryOverride,
                     AuditEntityTypes.Report, reportId,
                     $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
                     + (overrideBooking.BudgetCategoryId is { } overrideCategory
@@ -1464,7 +1468,7 @@ internal sealed class ExpenseReportService(
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may not be in a rejectable status.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseReject,
+                ExpensesAuditActions.ExpenseReject,
                 AuditEntityTypes.Report, reportId,
                 $"Finance rejected expense report: {reason}",
                 actorUserId);
@@ -1485,7 +1489,7 @@ internal sealed class ExpenseReportService(
                         "This report has no failed or retrying Holded push to re-queue.");
 
             await auditLogService.LogAsync(
-                AuditAction.ExpenseHoldedRequeued,
+                ExpensesAuditActions.ExpenseHoldedRequeued,
                 AuditEntityTypes.Report, reportId,
                 "Finance re-queued the Holded push.",
                 actorUserId);
@@ -1608,28 +1612,28 @@ internal sealed class ExpenseReportService(
             allReports.AddRange(reports);
         }
 
-        var expenseActions = new List<AuditAction>
+        var expenseActions = new List<AuditActionDefinition>
         {
-            AuditAction.ExpenseCreatedOnBehalf,
-            AuditAction.ExpenseEditedOnBehalf,
-            AuditAction.ExpensePayeeIbanUpdated,
-            AuditAction.ExpenseSubmit,
-            AuditAction.ExpenseEndorse,
-            AuditAction.ExpenseCoordinatorReject,
-            AuditAction.ExpenseApprove,
-            AuditAction.ExpenseReject,
-            AuditAction.ExpenseWithdraw,
-            AuditAction.ExpenseCategoryOverride,
-            AuditAction.ExpenseSepaSent,
-            AuditAction.ExpenseSepaReopened,
-            AuditAction.ExpensePaid,
-            AuditAction.ExpenseAttachmentUploaded,
-            AuditAction.ExpenseAttachmentRemoved,
-            AuditAction.ExpenseLineDeclined,
-            AuditAction.ExpenseLineDeclineUndone,
-            AuditAction.IbanSet,
-            AuditAction.IbanRemove,
-            AuditAction.IbanReveal,
+            ExpensesAuditActions.ExpenseCreatedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
+            ExpensesAuditActions.ExpenseSubmit,
+            ExpensesAuditActions.ExpenseEndorse,
+            ExpensesAuditActions.ExpenseCoordinatorReject,
+            ExpensesAuditActions.ExpenseApprove,
+            ExpensesAuditActions.ExpenseReject,
+            ExpensesAuditActions.ExpenseWithdraw,
+            ExpensesAuditActions.ExpenseCategoryOverride,
+            ExpensesAuditActions.ExpenseSepaSent,
+            ExpensesAuditActions.ExpenseSepaReopened,
+            ExpensesAuditActions.ExpensePaid,
+            ExpensesAuditActions.ExpenseAttachmentUploaded,
+            ExpensesAuditActions.ExpenseAttachmentRemoved,
+            ExpensesAuditActions.ExpenseLineDeclined,
+            ExpensesAuditActions.ExpenseLineDeclineUndone,
+            ExpensesAuditActions.IbanSet,
+            ExpensesAuditActions.IbanRemove,
+            FinanceAuditActions.IbanReveal,
         };
 
         var auditEntries = (await auditLogService.GetFilteredEntriesAsync(

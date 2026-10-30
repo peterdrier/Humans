@@ -68,7 +68,7 @@ internal sealed class WorkspaceIdentityService(
         // Action, entity and wording unchanged from Users' SetGoogleAsync, so history reads back together.
         var previous = current is not null && !Same(current.Email, target.Email) ? current.Email : null;
         await audit.LogAsync(
-            AuditAction.UserEmailGoogleSet,
+            GoogleIntegrationAuditActions.UserEmailGoogleSet,
             nameof(User), userId,
             previous is null
                 ? $"Set Google identity to {target.Email}"

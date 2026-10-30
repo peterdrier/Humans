@@ -10,6 +10,7 @@ using Humans.Base.Enums;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Email.Contracts;
 
 namespace Humans.Email.Tests.Services;
 
@@ -47,7 +48,7 @@ public sealed class EmailOutboxServiceTests
                 committed = true;
                 return "recipient@example.org";
             });
-        var action = discard ? AuditAction.EmailOutboxDiscarded : AuditAction.EmailOutboxRetried;
+        var action = discard ? EmailAuditActions.EmailOutboxDiscarded : EmailAuditActions.EmailOutboxRetried;
         _audit.LogAsync(action, nameof(EmailOutboxMessage), id, Arg.Any<string>(), _actorId)
             .Returns(_ => { committed.Should().BeTrue(); return Task.CompletedTask; });
 
@@ -69,7 +70,7 @@ public sealed class EmailOutboxServiceTests
         var committed = false;
         _settingsStore.SetValueAsync(SettingKeys.IsEmailSendingPaused, paused ? "true" : "false",
             Arg.Any<CancellationToken>()).Returns(_ => { committed = true; return Task.CompletedTask; });
-        var action = paused ? AuditAction.EmailSendingPaused : AuditAction.EmailSendingResumed;
+        var action = paused ? EmailAuditActions.EmailSendingPaused : EmailAuditActions.EmailSendingResumed;
         _audit.LogAsync(action, "EmailSending", Guid.Empty, Arg.Any<string>(), _actorId)
             .Returns(_ => { committed.Should().BeTrue(); return Task.CompletedTask; });
 
@@ -413,7 +414,7 @@ public sealed class EmailOutboxServiceTests
             Arg.Is<IReadOnlyList<EmailDailySendCount>>(rows =>
                 rows.Count == 1 && rows[0].Date == day && rows[0].TemplateName == "welcome" && rows[0].SentCount == 1),
             Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(AuditAction.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount),
+        await _audit.Received(1).LogAsync(EmailAuditActions.EmailDailySendCountsBackfilled, nameof(EmailDailySendCount),
             Guid.Empty, Arg.Any<string>(), _actorId);
     }
 

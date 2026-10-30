@@ -104,7 +104,7 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<UserEmail?>(), Arg.Any<UserEmail?>(),
             Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -146,7 +146,7 @@ public class UserEmailServiceReconcileOAuthTests
         // The renamed-away address stops being the Google identity.
         await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.GoogleEmailRenamed,
+            UsersAuditActions.GoogleEmailRenamed,
             Arg.Any<string>(), userId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -211,7 +211,7 @@ public class UserEmailServiceReconcileOAuthTests
             rowToInsert: Arg.Is<UserEmail?>(r => r == null),
             Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.GoogleEmailRenamed,
+            UsersAuditActions.GoogleEmailRenamed,
             Arg.Any<string>(), userId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -287,7 +287,7 @@ public class UserEmailServiceReconcileOAuthTests
         result.AffectedRowId.Should().Be(planned.Id);
 
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailLinked,
+            UsersAuditActions.UserEmailLinked,
             Arg.Any<string>(), userId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -347,12 +347,12 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<CancellationToken>());
         // Paired audit rows: collision on signing user + displacement on displaced user.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.OAuthRenameCollision,
+            UsersAuditActions.OAuthRenameCollision,
             Arg.Any<string>(), signingUserId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailDisplacedByOAuthRename,
+            UsersAuditActions.UserEmailDisplacedByOAuthRename,
             Arg.Any<string>(), displacedUserId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -388,7 +388,7 @@ public class UserEmailServiceReconcileOAuthTests
         result.Outcome.Should().Be(ReconcileOutcome.CrossUserDisplaced);
         result.DisplacedUserLeftWithoutVerifiedEmail.Should().BeTrue();
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailDisplacedByOAuthRename,
+            UsersAuditActions.UserEmailDisplacedByOAuthRename,
             Arg.Any<string>(), displacedUserId,
             // Audit description must explicitly state the empty-verified state.
             Arg.Is<string>(s => s.Contains("zero verified", StringComparison.OrdinalIgnoreCase)
@@ -450,12 +450,12 @@ public class UserEmailServiceReconcileOAuthTests
         // The blocked attempt is audited on the signing user only — no audit
         // on the displaced user since nothing happened to them.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.OAuthRenameCollisionBlocked,
+            UsersAuditActions.OAuthRenameCollisionBlocked,
             Arg.Any<string>(), signingUserId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _auditLogService.DidNotReceive().LogAsync(
-            AuditAction.UserEmailDisplacedByOAuthRename,
+            UsersAuditActions.UserEmailDisplacedByOAuthRename,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());

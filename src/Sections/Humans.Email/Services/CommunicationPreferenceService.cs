@@ -240,9 +240,9 @@ internal sealed class CommunicationPreferenceService(
 
     private Task LogPreferenceChangeAsync(Guid userId, string description, Guid? actorUserId) =>
         actorUserId is { } actor
-            ? auditLog.LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
+            ? auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, "User", userId,
                 description, actor)
-            : auditLog.LogAsync(AuditAction.CommunicationPreferenceChanged, "User", userId,
+            : auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, "User", userId,
                 description, nameof(CommunicationPreferenceService));
 
     /// <summary>Keyed by the raw id, without merge resolution: this table's row, else the unshadowed legacy row.</summary>

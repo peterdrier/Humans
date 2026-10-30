@@ -19,12 +19,14 @@
     IImmediateOutboxProcessor), the MessageCategory rules, the facilitated-message builder, the body composer, the SMTP
     transport, the repository and the entity.
 
-    References Humans.Base only. Base references Humans.Users.Contracts, so nothing in that
-    project may ever reference this one.
+    References Humans.Base, plus Humans.AuditLog for the AuditActionDefinition that EmailAuditActions
+    declares (Camps and Teams audit facilitated messages with it). Base references Humans.Users.Contracts,
+    so nothing in that project may ever reference this one.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

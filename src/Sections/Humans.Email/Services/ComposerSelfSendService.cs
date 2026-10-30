@@ -38,7 +38,7 @@ internal sealed class ComposerSelfSendService(
         try
         {
             await audit.LogAsync(
-                AuditAction.EmailComposerSelfTestSent, "User", userId,
+                EmailAuditActions.EmailComposerSelfTestSent, "User", userId,
                 "Sent an email composer test message to themselves", userId);
         }
         catch (Exception ex)

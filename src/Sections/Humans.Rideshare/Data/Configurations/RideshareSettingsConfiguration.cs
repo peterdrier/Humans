@@ -21,7 +21,8 @@ internal sealed class RideshareSettingsConfiguration : IEntityTypeConfiguration<
         builder.Property(s => s.OutboundWindowEnd).IsRequired();
         builder.Property(s => s.UpdatedAt).IsRequired();
 
-        // One row per burn year, enforced by the repository upsert (uniqueness rests on Id only).
+        // One row per event, enforced by the repository upsert (uniqueness rests on Id only).
         builder.HasIndex(s => s.Year);
+        builder.HasIndex(s => s.EventSettingsId);
     }
 }

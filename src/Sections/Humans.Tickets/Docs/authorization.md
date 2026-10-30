@@ -16,7 +16,7 @@
 | `TicketController.ExportAccountantReport` | Action | `TicketsAdmin, Admin` | `TicketsPolicies.Manage` |
 | `TicketController.ExportDonations` | Action | `Admin` | `PolicyNames.AdminOnly` (donor-list CSV with buyer PII; pinned by `TicketControllerTests`) |
 | `TicketTransferController` | Class | `[Authorize]` (authenticated) | — |
-| `TicketParticipationController` (`/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`) | Class | `[Authorize]` (authenticated; acts on the signed-in member only, antiforgery POSTs) | — (exempt from `MembershipRequiredFilter`, as when Users served them) |
+| `TicketParticipationController` (`/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`) | Class | `[Authorize]` (authenticated; acts on the signed-in member only, antiforgery POSTs) | — (both actions carry `[AllowBeforeActiveMembership]`, as when Users served them) |
 | `TicketTransferAdminController` | Class | `TicketsAdmin, Board, Admin` | `TicketsPolicies.Read`; `Decide` carries `TicketsPolicies.Manage` |
 | `TicketsContactsAdminController` | Class | `TicketsAdmin, Board, Admin` | `TicketsPolicies.Read`; `Apply` carries `TicketsPolicies.Manage` |
 | `TicketsOnsiteAdminController` | Class | `TicketsAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate staff check the onsite roster from the door alongside the scanner) |

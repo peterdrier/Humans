@@ -219,7 +219,7 @@ internal sealed class UserEmailService(
         if (!update.Succeeded) return new VerifyEmailResult(string.Empty, false, update.ErrorKey);
 
         await auditLogService.LogAsync(
-            AuditAction.UserEmailManuallyVerified,
+            UsersAuditActions.UserEmailManuallyVerified,
             nameof(User), userId,
             $"Admin manually verified email {pendingEmail.Email}",
             actorUserId,
@@ -538,7 +538,7 @@ internal sealed class UserEmailService(
         if (!updated.Succeeded) return false;
         // No auto-promote: the admin picks the new primary deliberately.
         await auditLogService.LogAsync(
-            AuditAction.UserEmailPrimaryCleared,
+            UsersAuditActions.UserEmailPrimaryCleared,
             nameof(User), userId,
             $"Cleared primary flag from {row.Email}",
             actorUserId,
@@ -663,7 +663,7 @@ internal sealed class UserEmailService(
         await GoogleIdentity.ClearIfAddressAsync(userId, email, cancellationToken);
 
         await auditLogService.LogAsync(
-            AuditAction.UserEmailUnlinked,
+            UsersAuditActions.UserEmailUnlinked,
             nameof(User), userId,
             $"Unlinked {provider} (key {ShortHash(providerKey)}) from {email}",
             actorUserId,
@@ -735,7 +735,7 @@ internal sealed class UserEmailService(
                 blockedDescription);
 
             await auditLogService.LogAsync(
-                AuditAction.OAuthRenameCollisionBlocked,
+                UsersAuditActions.OAuthRenameCollisionBlocked,
                 nameof(User), userId,
                 blockedDescription,
                 actorUserId: userId,
@@ -786,7 +786,7 @@ internal sealed class UserEmailService(
         ReconcileOutcome outcome;
         Guid affectedRowId;
         string? previousEmail = tagged?.Email;
-        AuditAction signingAction;
+        AuditActionDefinition signingAction;
         string signingDescription;
 
         UserEmail? rowToUpdate = null;
@@ -808,7 +808,7 @@ internal sealed class UserEmailService(
 
             outcome = ReconcileOutcome.TagMoved;
             affectedRowId = siblingAtClaim.Id;
-            signingAction = AuditAction.GoogleEmailRenamed;
+            signingAction = UsersAuditActions.GoogleEmailRenamed;
             signingDescription =
                 $"OAuth tag moved from `{previousEmail}` to `{siblingAtClaim.Email}` " +
                 $"(sub={providerKey}); old row deleted, flags unioned onto matching row.";
@@ -824,7 +824,7 @@ internal sealed class UserEmailService(
 
             outcome = ReconcileOutcome.EmailRewritten;
             affectedRowId = tagged.Id;
-            signingAction = AuditAction.GoogleEmailRenamed;
+            signingAction = UsersAuditActions.GoogleEmailRenamed;
             signingDescription =
                 $"OAuth email renamed `{previousEmail}` -> `{claimEmail}` " +
                 $"(sub={providerKey}).";
@@ -841,7 +841,7 @@ internal sealed class UserEmailService(
 
             outcome = ReconcileOutcome.TagMoved;
             affectedRowId = siblingAtClaim.Id;
-            signingAction = AuditAction.GoogleEmailRenamed;
+            signingAction = UsersAuditActions.GoogleEmailRenamed;
             signingDescription =
                 $"OAuth tag attached to existing row `{siblingAtClaim.Email}` " +
                 $"(sub={providerKey}).";
@@ -863,7 +863,7 @@ internal sealed class UserEmailService(
 
             outcome = ReconcileOutcome.NewRowCreated;
             affectedRowId = rowToInsert.Id;
-            signingAction = AuditAction.UserEmailLinked;
+            signingAction = UsersAuditActions.UserEmailLinked;
             signingDescription =
                 $"OAuth callback: created UserEmail row " +
                 $"(provider={provider}, sub={providerKey}, email={claimEmail}).";
@@ -895,7 +895,7 @@ internal sealed class UserEmailService(
                 collisionDiagnostic);
 
             await auditLogService.LogAsync(
-                AuditAction.OAuthRenameCollision,
+                UsersAuditActions.OAuthRenameCollision,
                 nameof(User), userId,
                 collisionDiagnostic!,
                 actorUserId: userId,
@@ -908,7 +908,7 @@ internal sealed class UserEmailService(
                     ? " Displaced user left with zero verified emails."
                     : string.Empty);
             await auditLogService.LogAsync(
-                AuditAction.UserEmailDisplacedByOAuthRename,
+                UsersAuditActions.UserEmailDisplacedByOAuthRename,
                 nameof(User), blocker.UserId,
                 displacedAuditDescription,
                 actorUserId: userId,

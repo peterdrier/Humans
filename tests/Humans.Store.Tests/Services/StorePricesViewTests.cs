@@ -97,7 +97,7 @@ public class StorePricesViewTests
             100, 0, null, now, 100, 0, 0, 100);
         var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [line], [], 100, 0, 0, 0, 100, now);
-        var history = new AuditEvent(Guid.NewGuid(), now, AuditAction.StoreProductPriceChanged,
+        var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(nameof(AuditAction.StoreProductPriceChanged)),
             null, null, "Product", productId, null, null, null, null, null, null, null, "Price history fixture");
 
         var html = await RenderAsync("Order", new OrderViewModel { Order = order, CounterpartyDisplayName = "Camp" }, [history]);
@@ -165,7 +165,7 @@ public class StorePricesViewTests
         builder.Services.AddLocalization();
         var audit = Substitute.For<IAuditViewerService>();
         audit.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(history ?? []);
         builder.Services.AddSingleton(audit);
         var authorization = Substitute.For<IAuthorizationService>();

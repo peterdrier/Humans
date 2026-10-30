@@ -80,7 +80,7 @@ internal sealed class EmailProblemsService(
             if (emailAddition.ErrorKey is not null)
                 continue;
             await audit.LogAsync(
-                AuditAction.LegacyIdentityEmailBackfilled, nameof(User), info.Id,
+                UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), info.Id,
                 $"Backfilled verified UserEmail row from legacy User.Email column: {legacy}",
                 actorUserId);
             backfilled.Add((info.Id, legacy));
