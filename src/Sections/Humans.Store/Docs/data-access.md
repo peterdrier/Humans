@@ -87,6 +87,18 @@ Repository: `IStoreRepository`.
 Cross-section calls via `ISettingsService` (current event year), `ICampService` /
 `ITeamService` (counterparty display names), plus `IClock`. No writes, no `IMemoryCache`.
 
+### StoreStripePayments (internal — `IApplicationService`, constructed once by `Service`)
+
+Repository: `IStoreRepository`.
+
+| Table | R/W |
+|-------|-----|
+| store_payments | R/W (PaymentIntent dedupe, add, status update, delete) |
+| store_orders | R (`GetOrderByIdAsync` — refuses team-owned orders) |
+
+Records Stripe payments from checkout webhooks under a process-wide `TrackedLock`.
+Cross-section calls via `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
+
 ### BalanceCalculator
 
 Stateless calculator — no DI dependencies, no DB access.

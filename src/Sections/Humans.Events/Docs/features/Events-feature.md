@@ -87,7 +87,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 
 **Acceptance Criteria:**
 
-- Withdraw action available to EventsAdmin/Admin on any Approved event (moderation queue)
+- Withdraw action available to EventsAdmin/Admin on any event the submitter could withdraw — Pending or Approved, or a Draft individual event (moderation queue)
 - Withdraw action available to the original submitter on their own Approved event (the relevant block on My Event Submissions)
 - Transitions status to `Withdrawn`; event no longer returned by the public API
 - No email sent on withdrawal
@@ -263,7 +263,7 @@ Draft --> Pending           (Submit)
 Pending --> Approved        (Moderator: Approve)
 Pending --> Rejected        (Moderator: Reject)
 Pending --> ResubmitRequested (Moderator: Request Edit)
-Pending --> Withdrawn       (Submitter: withdraw)
+Pending --> Withdrawn       (Submitter or Moderator: withdraw)
 Rejected --> Pending        (Submitter: resubmit)
 ResubmitRequested --> Pending (Submitter: resubmit)
 Approved --> Withdrawn      (Submitter or Moderator: withdraw — hides from guide)
@@ -277,6 +277,7 @@ Hard deletion is not supported; `Withdrawn` is the terminal state for events rem
 |------|------------|
 | Admin | Full access: GuideSettings, categories, venues, moderation, exports |
 | EventsAdmin | Full event guide management: GuideSettings, categories, venues, moderation, exports |
+| Board | Read-only view of the moderation queue, dashboard, categories, venues and export page; no decisions, settings changes or CSV download |
 | Team Lead | Submit and edit camp events for own team; view submission status |
 | Any registered human | Submit and edit individual events at shared venues |
 | Attendee (anonymous) | Read-only access to published guide via PWA API |

@@ -147,8 +147,8 @@ after the retention window.
 
 The **write** actions (`Decision`, `Claim`/`ClaimPin` POST) require the dedicated `GateAdmit`
 policy rather than the read-only `ScannerAccess`, so the gate's admit surface never rides on the
-Scanner read gate. Both are satisfied by the shared gate-terminal account today; they are
-kept separate so they can diverge. The supervisor override on `Decision` is authorized by the
+Scanner read gate. Both admit the shared gate-terminal account; `GateAdmit` leaves out Board, which
+reads the gate but admits no one. The supervisor override on `Decision` is authorized by the
 shared override PIN (`Gate:SupervisorPin`), brute-force throttled via `GatePinThrottle` on a
 single terminal-wide bucket — see Invariants. (The `Claim`/`ClaimPin` PIN routes — plus
 the claim flow's `EndShift` POST and its name-search endpoint `/Gate/Search` — remain but are

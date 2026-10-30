@@ -163,10 +163,10 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 | `EventsController` | `/Events/` | All active members |
 | `EventsController` (barrio actions) | `/Events/Barrio/{slug}/` | Camp Lead or Workshop Lead (per camp); CampsAdmin / Admin globally |
 | `EventsController` (barrio bulk upload) | `/Events/Barrio/{slug}/BulkUpload` | Camp Lead or Workshop Lead (per camp); CampsAdmin / Admin globally |
-| `EventsModerationController` | `/Events/Moderate/` | EventsAdmin, Admin |
-| `EventsDashboardController` | `/Events/Dashboard/` | EventsAdmin, Admin |
-| `EventsExportController` | `/Events/Export/` | EventsAdmin, Admin |
-| `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin — `Settings` has no GET (only `POST SaveSettings`); the guide-settings form is the `/Settings#event-guide` tab (peterdrier/Humans#1634) |
+| `EventsModerationController` | `/Events/Moderate/` | EventsAdmin, Admin (Board read-only) |
+| `EventsDashboardController` | `/Events/Dashboard/` | EventsAdmin, Admin (Board read-only) |
+| `EventsExportController` | `/Events/Export/` | EventsAdmin, Admin (Board reads the page, no CSV) |
+| `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin (Board read-only) — `Settings` has no GET (only `POST SaveSettings`); the guide-settings form is the `/Settings#event-guide` tab (peterdrier/Humans#1634) |
 | `EventsApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
 ## Actors & Roles

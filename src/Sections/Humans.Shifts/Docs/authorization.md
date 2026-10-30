@@ -7,6 +7,7 @@
 | `ShiftsController.Summary` / `SummaryTeam` / `SummaryRota` | Action | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` OR any team manager/coordinator | `ShiftsPolicies.DepartmentRead` (read-only Shift Summary by Camp at `/Shifts/Summary`) |
 | `ShiftsController.Settings` (POST; the read side is the `/Settings#shifts` tab) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ShiftsController.OrphanSignups` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `ShiftsController.RevealMedical` (POST `Medical/{userId}/Reveal`) | Action | `Admin, Board, ShiftsNoInfo` | `ShiftsPolicies.MedicalDataViewer` — returns the medical-conditions text as JSON and writes a `MedicalConditionsRevealed` audit entry per call, which is what admits Board |
 | `ShiftAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
 | `ShiftAdminController.MoveRota` | Action | `Admin, ShiftsAdmin` | `ShiftsPolicies.ManageVolunteers` |
 | `ShiftDashboardController` | Class | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` OR any team manager/coordinator (custom handler) | `ShiftsPolicies.DepartmentRead` |

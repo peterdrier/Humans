@@ -192,6 +192,7 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 | Action | Required Role |
 |--------|---------------|
 | Provision account | UsersAdmin, Admin |
+| Provision account for a member of a team (from the team's Members page) | Coordinator of that team; TeamsAdmin, Board, Admin for any team |
 | Link existing account | Admin |
 | View `/Google/Accounts` (2FA status, recovery email, etc.) | Admin |
 | Reset password (one-shot delivery) | Admin |
@@ -203,6 +204,7 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 |-------|--------|--------|
 | `/Users/Admin/{id}` | GET | Human admin page (shows provisioning form) |
 | `/Google/Human/{id}/ProvisionEmail` | POST | Provision and link @nobodies.team account |
+| `/Teams/{slug}/Members/{userId}/ProvisionEmail` | POST | Same, from the team Members page (`TeamAdminController`); the human must be a member of the team |
 | `/Google/Accounts` | GET | List all @nobodies.team accounts with 2FA status, recovery email, link orphans |
 | `/Google/Accounts/ResetPassword` | POST | Reset password — temp password shown once in a modal |
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Reset password + issue one backup verification code — both shown once in the same modal |

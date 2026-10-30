@@ -34,8 +34,8 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - Logs each anomalous change to the audit log with `AnomalousPermissionDetected` action
 - Includes actor identity, affected resource, and specific permission changes in the log entry
 
+### US-13.2: Manual Check
 **As an** Admin (Board sees the Audit Log but not the button)
-**As a** Board member or Admin
 **I want to** manually trigger a Drive activity check
 **So that** I can verify the current state on demand
 
@@ -62,7 +62,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 
 ### Ownership
 
-- `GoogleIntegrationAuditActions.AnomalousPermissionDetected` enum value (stored as string, no migration needed) — the AuditLog section's `Contracts/` folder
+- `GoogleIntegrationAuditActions.AnomalousPermissionDetected` audit action definition (`Alert: true`, quick filter "Anomalous Permissions"; stored as a string, no migration needed) — `src/Sections/Humans.GoogleIntegration/Contracts/`
 - `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Contracts/` and `Services/`
 - `DriveActivityMonitorJob` - Hangfire background job wrapper — `src/Sections/Humans.Monitor/Jobs/`
 - `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering — `src/Sections/Humans.AuditLog/Controllers/`
@@ -147,6 +147,7 @@ Time-window dedup: each run queries only activity since the last successful run'
 | `Monitor/CheckDriveActivity` | POST | Trigger manual Drive activity check |
 
 ### Filter Options
+Quick filters are declared by each section's audit action definitions; the set today:
 - All (no filter)
 - Anomalous Permissions (`AnomalousPermissionDetected`)
 - Access Granted (`GoogleResourceAccessGranted`)

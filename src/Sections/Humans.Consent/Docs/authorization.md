@@ -3,9 +3,9 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `AdminLegalDocumentsController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`/Legal/Admin` — Documents CRUD, Archive, Sync, Versions/Summary all inherit) |
-| `ConsentController` | Class | `[Authorize]` (authenticated) | — |
+| `ConsentController` | Class | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — the consent wall is reachable before admission |
 | `LegalController` | Class | `AllowAnonymous` | — |
-| `MyDataController` | Class | `[Authorize]` (authenticated) | — (the caller's own My Data page at `/Consent/MyData`; never takes a user id) |
+| `MyDataController` | Class | `[Authorize]` (authenticated) | `Index` carries `[AllowBeforeActiveMembership]` (the caller's own My Data page at `/Consent/MyData`; never takes a user id) |
 
 ## User parts
 

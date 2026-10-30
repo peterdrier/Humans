@@ -30,14 +30,14 @@
 
 The Admin section is the global control panel: managing humans (suspending, rejecting, assigning roles, purging in non-production), configuring Google sync, reading the audit log, triaging the notification inbox, and running technical operations like configuration review, in-memory logs, database version, cache and query stats, and Hangfire lock cleanup.
 
-Admin is layered. **Board** and **UsersAdmin** can do human management — the list, detail, role assignments, suspend/unsuspend, and reject. **Admin** is the superset and additionally owns technical operations, sync settings, duplicate-account resolution, and workspace-account provisioning. Domain admins like Teams Admin, Camps Admin, and Tickets Admin are separate roles covered in their own section guides.
+Admin is layered. **UsersAdmin** does human management — the list, detail, role assignments, suspend/unsuspend, reject, and workspace-account provisioning. **Board** reads the same list and detail pages but changes nothing there. **Admin** is the superset and additionally owns technical operations, sync settings, and duplicate-account resolution; Board can open the technical pages read-only. Domain admins like Teams Admin, Camps Admin, and Tickets Admin are separate roles covered in their own section guides.
 
 ![TODO: screenshot — Admin dashboard home showing the stat tile strip and sync status]
 
 ## Key pages at a glance
 
 - `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs above the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
-- `/Users/Admin` — humans list; filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
+- `/Users/Admin` — humans list (Board, UsersAdmin, Admin); filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Email/Admin/{id}/Outbox` — per-human email outbox.
 - `/AuditLog` — global audit log, filterable and paginated.
@@ -47,7 +47,7 @@ Admin is layered. **Board** and **UsersAdmin** can do human management — the l
 - `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
 - `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
 - `/Users/Admin/{id}/Purge` — permanent delete, disabled in production.
-- `/hangfire` — Hangfire dashboard, Admin only.
+- `/hangfire` — Hangfire dashboard; Board can look, only Admin can act.
 
 ## As a Volunteer
 
@@ -61,7 +61,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, open feedback, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it: the open-feedback tile is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees Users, Onboarding, Governance and a few more; a domain admin sees just their own area.
+Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, open feedback, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it: the open-feedback tile is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees most sections, read-only apart from the Board's own decisions; a domain admin sees just their own area.
 
 ### Manage humans
 
@@ -69,9 +69,9 @@ Open `/Users/Admin`. Search by name or email, filter by `UserState` (`bare`, `ac
 
 - **Reject** a signup. Audited, and the human is notified. (There is no "approve volunteer" action — app access is automatic once the human enters their legal name (`UserState == Active`); Volunteers-team / Google Workspace provisioning follows from name + consents via the scheduled sync.)
 - **Suspend** or **Unsuspend**. Suspension requires a note; it revokes Google Workspace access on the next sync and ends current memberships. Unsuspension clears the flag and re-queues access.
-- **Add role** or **End role**. Role assignments are temporal — valid-from plus optional valid-to — and every change is audited. **Admin** can assign any role. **Board** and **UsersAdmin** can assign any role **except** Admin. The first Admin must be seeded directly in the database.
+- **Add role** or **End role**. Role assignments are temporal — valid-from plus optional valid-to — and every change is audited. **Admin** can assign any role. **UsersAdmin** can assign any role **except** Admin. Board sees the roster but assigns nothing. The first Admin must be seeded directly in the database.
 
-Every human-admin action writes an audit entry with your user as the actor.
+Suspend, unsuspend, reject, and role changes are for UsersAdmin and Admin; Board sees the page without those buttons. Every human-admin action writes an audit entry with your user as the actor.
 
 ### Read the audit log
 
@@ -79,7 +79,7 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Triage the notification inbox
 
-`/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at you personally appear under **Needs attention**; work-queue counts (consent reviews pending, applications awaiting your vote, failed Google sync events, and similar) appear as **Work queues** meters below. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Recent**. The bell icon shows a red count for actionable items and a green dot for informational-only.
+`/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at you personally appear under **Needs your attention**; work-queue counts (consent reviews pending, applications awaiting your vote, failed Google sync events, and similar) appear as **Work queues** meters below. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Recent**. The bell icon shows a red count for actionable items and a green dot for informational-only.
 
 ### Configure Google sync
 
@@ -89,15 +89,17 @@ The sync outbox (`/Google/SyncOutbox`) shows pending and failed events. From the
 
 See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 
-### Run technical operations (Admin only)
+### Run technical operations
+
+Board can open these pages and read them; every action on them is **Admin only**.
 
 - **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked.
-- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue, feedback and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once.
+- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue, feedback and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
 - **ClearHangfireLocks** removes stuck background-job locks; the app must be restarted afterwards to re-register recurring jobs.
-- **Hangfire dashboard** (`/hangfire`) is Admin-only for inspecting and re-queueing jobs.
+- **Hangfire dashboard** (`/hangfire`) opens for Board and Admin; only Admin can re-queue or otherwise change jobs.
 
 ### Resolve duplicate accounts
 

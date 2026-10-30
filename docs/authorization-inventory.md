@@ -42,6 +42,7 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | `AboutController.Staff` | Action | `[Authorize]` (authenticated) | — |
 | `HomeController` (`src/Humans.Web`) | Class | `[Authorize]` (inherited from `HumansControllerBase`) | — |
 | `HomeController.Index` / `Privacy` / `Error` | Action | `AllowAnonymous` | Override. `Index` is the landing page and the dashboard on one route: `MembershipRequiredFilter.IsPublicEndpoint` keeps the state and name gates on it for signed-in users |
+| `HomeController.Error` exception detail | In-method | `Board, Admin` | `AuthorizeAsync(User, PolicyNames.BoardOrAdmin)` — everyone else sees the status code only, since exception text can carry any section's data |
 | `AccountController` (`src/Humans.Web`) | Class | `AllowAnonymous` | Sign-in flows run before there is a principal |
 | `AccountController.GateLogin` (GET/POST) | Action | (anonymous via the class) | — (shared kiosk credential login at `/Account/GateLogin`; IP-throttled via `GateLoginThrottle`; never gated by role — the gate-terminal account holds no roles) |
 | `LanguageController` (`src/Humans.Web`) | Class | `AllowAnonymous` | Culture switch on the login page |
@@ -124,14 +125,14 @@ Every other top-nav link is contributed by its section through `ISectionNav` and
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Team/Index.cshtml` (`src/Sections/Humans.Teams`) | 19 | `(await AuthService.AuthorizeAsync(User, TeamsPolicies.Read)).Succeeded` | "Summary" + "Sync Status" toolbar buttons on the Teams landing page |
-| `Team/Summary.cshtml` | 22 | `authorize-policy="TeamsPolicies.Read"` | "Create Team" button (matches `TeamController.CreateTeam`) |
+| `Team/Summary.cshtml` | 22 | `authorize-policy="TeamsPolicies.Manage"` | "Create Team" button (matches `TeamController.CreateTeam`) |
 | `Team/Summary.cshtml` | 50 | `authorize-policy="TeamsPolicies.Read"` | Actions column header |
 | `Team/_AdminTeamRow.cshtml` | 42 | `(await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded` | Pending-shift-signup badge link |
 | `Team/_AdminTeamRow.cshtml` | 94 | `authorize-policy="TeamsPolicies.Read"` | Actions column cell (Edit button) |
-| `Team/_AdminTeamRow.cshtml` | 101 | `authorize-policy="BoardOrAdmin"` | Deactivate form (matches `TeamController.DeleteTeam`) |
+| `Team/_AdminTeamRow.cshtml` | 101 | `authorize-policy="AdminOnly"` | Deactivate form (matches `TeamController.DeleteTeam`) |
 | `Team/EditTeam.cshtml` | 81 | `authorize-policy="AdminOnly"` | "Sensitive team" checkbox |
-| `Team/Details.cshtml` | 316 | `(await AuthService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded` | Drives `canOpenStore` flag (OR'd with coordinator-of-active-top-level-department) for the "Open store" button |
-| `Team/Details.cshtml` | 386 | `authorize-policy="@PolicyNames.BoardOrAdmin"` | "Roster" link (matches `TeamAdminController.Roster`'s action-level policy) |
+| `Team/Details.cshtml` | 315 | `(await AuthService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded` | Drives `canOpenStore` flag (OR'd with coordinator-of-active-top-level-department) for the "Open store" button |
+| `Team/Details.cshtml` | 385 | `authorize-policy="@PolicyNames.BoardOrAdmin"` | "Roster" link (matches `TeamAdminController.Roster`'s action-level policy) |
 
 ### Camp Views
 
@@ -212,7 +213,7 @@ Controllers and views express the same rule by referencing the same constant —
 | Location | Check | Risk |
 |---|---|---|
 | `CampAdmin/Index.cshtml` — "Delete Camp" | `authorize-policy="AdminOnly"` in view | Delete action has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK, narrower than class-level CampsPolicies.Manage**. |
-| `Team/Summary.cshtml` / `_AdminTeamRow.cshtml` — Create/Edit links, Deactivate form | `authorize-policy="TeamsPolicies.Read"` on the links, `authorize-policy="BoardOrAdmin"` on the Deactivate form | Match `TeamController.CreateTeam` / `EditTeam` (`TeamsPolicies.Read`) and `DeleteTeam` (`BoardOrAdmin`) — **OK**. |
+| `Team/Summary.cshtml` / `_AdminTeamRow.cshtml` — Create/Edit links, Deactivate form | `authorize-policy="TeamsPolicies.Manage"` on Create, `TeamsPolicies.Read` on the Edit column, `authorize-policy="AdminOnly"` on the Deactivate form | Match `TeamController.CreateTeam` (`TeamsPolicies.Manage`), `EditTeam` GET (`TeamsPolicies.Read`) and `DeleteTeam` (`AdminOnly`) — **OK**. |
 | `Ticket/_TicketNav.cshtml` — Backfill / Settings links | `authorize-policy="AdminOnly"` in view | Targets `Shifts/Settings` / Ticket admin actions which have `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK**. |
 
 ### Server-Only (protected endpoint, no visible UI gating)
@@ -330,7 +331,7 @@ Grants, Preapprovals and Surveys still let Board act through their per-program a
 
 - `ShiftsPolicies.Read` and `ShiftsPolicies.DepartmentRead` are intentionally distinct: the first is role-list-based, the second additionally permits any team manager/coordinator (composite via `IsAnyTeamManagerOrCoordinatorHandler`).
 - `AppAccess` is the single nav-visibility gate: `UserState == Active` (the user entered their legal name). A plain `RequireAssertion` — no custom requirement/handler. It replaced the former `IsActiveMember` / `ActiveMemberOrShiftAccess` policies (and there is no separate shift access).
-- `CampsPolicies.Compliance` is deliberately broader than `CampsPolicies.Manage`: it short-circuits for CampsAdmin/Admin and otherwise admits any team/sub-team coordinator (composite via `CampComplianceAccessHandler`, reusing the same `IShiftService.GetCoordinatorTeamIdsAsync` lookup as `IsAnyTeamManagerOrCoordinatorHandler`). It gates only the read-only Barrios compliance matrix; the camp-management writes in `CampAdminController` stay on `CampsPolicies.Manage`.
+- `CampsPolicies.Compliance` is deliberately broader than `CampsPolicies.Manage`: it short-circuits for CampsAdmin/Board/Admin and otherwise admits any team/sub-team coordinator (composite via `CampComplianceAccessHandler`, reusing the same `IShiftService.GetCoordinatorTeamIdsAsync` lookup as `IsAnyTeamManagerOrCoordinatorHandler`). It gates only the read-only Barrios compliance matrix; the camp-management writes in `CampAdminController` stay on `CampsPolicies.Manage`.
 - `UsersPolicies.UsersAdminOnly` is a composite policy used for the nav "Humans" link that only shows when the user has UsersAdmin but not the broader Board/Admin access.
 - `ShiftsPolicies.MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether the medical reveal is offered within pages the user already has access to; the text itself comes only from the audited `POST /Shifts/Medical/{userId}/Reveal`.
 - Operator tooling (`/Debug/*`, `/Backdoor`, `/Agent/Admin/*`, Hangfire) is `BoardOrAdmin` to read; every state-changing POST there is `AdminOnly`.
@@ -360,43 +361,52 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 
 | File | Line | Call |
 |---|---|---|
+| `src/Humans.Web/Controllers/HomeController.cs` | 77 | `AuthorizeAsync(User, PolicyNames.BoardOrAdmin)` (`Error` — exception detail shown to Board and Admin only) |
 | `src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs` | 28 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` (`ResolveTeamManagementAsync`) |
 | `src/Sections/Humans.Teams/Contracts/HumansTeamControllerBase.cs` | 41 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageEarlyEntry)` (`ResolveEarlyEntryManagementAsync`) |
-| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 164 | `AuthorizeAsync(User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)` (drives `CanManageEarlyEntry` view-model flag on team details) |
-| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 758 | `AuthorizeAsync(User, PolicyNames.AdminOnly)` (EditTeam POST — `IsSensitive` leave-unchanged guard for non-Admin editors) |
+| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 162 | `AuthorizeAsync(User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)` (drives `CanManageEarlyEntry` view-model flag on team details) |
+| `src/Sections/Humans.Teams/Controllers/TeamController.cs` | 731 | `AuthorizeAsync(User, PolicyNames.AdminOnly)` (EditTeam POST — `IsSensitive` leave-unchanged guard for non-Admin editors) |
+| `src/Sections/Humans.Teams/Controllers/TeamAdminController.cs` | 407, 511, 574 | `AuthorizeAsync(User, TeamsPolicies.Manage)` (role-management toggle: `Roles`, `EditRole`, `ToggleManagement`) |
 | `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 25 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` (non-public season visibility) |
 | `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 54 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
-| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 85 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 33, 112 | `AuthorizeAsync(User, FinancePolicies.Manage)` |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 91 | `AuthorizeAsync(User, FinancePolicies.Manage)` (drives `IsCoordinator` flag alongside a coordinator-team-id lookup) |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 118, 241 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
+| `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 82 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
+| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 34, 113 | `AuthorizeAsync(User, FinancePolicies.Manage)` |
+| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 92 | `AuthorizeAsync(User, FinancePolicies.Manage)` (drives `IsCoordinator` flag alongside a coordinator-team-id lookup) |
+| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 119, 254 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `src/Sections/Humans.Containers/Controllers/ContainerController.cs` | 25 | `AuthorizeAsync(User, target, requirement)` (private `AuthorizeAsync` helper, called from every `Manage`/`Place` gate in the controller, including `ResolveAndAuthorizeAsync`) |
-| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 646 | `AuthorizeAsync(User, owningReport, new ExpenseReportOperationRequirement(ExpenseReportOperation.View))` (Attachment — 404 on denial) |
-| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 887 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(operation))` (private `AllowsAsync` — every other report operation: the per-action gate via the report resolver, and the Detail page's affordances) |
-| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 895 | `AuthorizeAsync(User, FinancePolicies.Manage)` (private `IsFinanceAdminAsync` — finance flag handed to the service, Review queue scope, New-report member picker) |
-| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 54, 76, 79–86, 150, 191, 222, 225, 244, 312, 339, 368, 393 | `AuthorizeAsync(User, order/resource, OrderOperationRequirement.X)` — the order page resolves its `Refund`/`DeletePayment` flags at 85–86; `RecordPayment` 222 plus `Refund` 225 when the method is a refund, `DeletePayment` 244; line-deadline-aware `AddLine`/`RemoveLine` at 339/368 authorize against an `OrderLineContext` |
-| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 115, 132 | `AuthorizeAsync(User, new OrderLineContext(...), OrderOperationRequirement.{AddLine, RemoveLine})` (private `FilterLineEditAffordancesAsync` helper — drives the per-product/per-line "can I still edit" affordances shown on the order page) |
-| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 263, 286 | `AuthorizeAsync(User, new OrderCreateContext(...), OrderOperationRequirement.Create)` (camp order `Create`, team order `CreateTeamOrder`) |
-| `src/Sections/Humans.Issues/Controllers/IssuesController.cs` | 216, 304, 344, 377, 410, 444 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
+| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 636 | `AuthorizeAsync(User, owningReport, new ExpenseReportOperationRequirement(ExpenseReportOperation.View))` (Attachment — 404 on denial) |
+| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 868 | `AuthorizeAsync(User, report, new ExpenseReportOperationRequirement(operation))` (private `AllowsAsync` — every other report operation: the per-action gate via the report resolver, and the Detail page's affordances) |
+| `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 875 | `AuthorizeAsync(User, FinancePolicies.Manage)` (private `IsFinanceAdminAsync` — finance flag handed to the service, Review queue scope, New-report member picker) |
+| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 52, 74, 77–84, 143, 181, 211, 214, 233, 301, 327, 355, 380 | `AuthorizeAsync(User, order/resource, OrderOperationRequirement.X)` — the order page resolves its `Refund`/`DeletePayment` flags at 83–84; `RecordPayment` 211 plus `Refund` 214 when the method is a refund, `DeletePayment` 233; line-deadline-aware `AddLine`/`RemoveLine` at 327/355 authorize against an `OrderLineContext` |
+| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 108, 125 | `AuthorizeAsync(User, new OrderLineContext(...), OrderOperationRequirement.{AddLine, RemoveLine})` (private `FilterLineEditAffordancesAsync` helper — drives the per-product/per-line "can I still edit" affordances shown on the order page) |
+| `src/Sections/Humans.Store/Controllers/StoreController.cs` | 252, 275 | `AuthorizeAsync(User, new OrderCreateContext(...), OrderOperationRequirement.Create)` (camp order `Create`, team order `CreateTeamOrder`) |
+| `src/Sections/Humans.Issues/Controllers/IssuesController.cs` | 213, 298, 336 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
 | `src/Sections/Humans.CityPlanning/Controllers/CityPlanningController.cs` | 28 | `AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)` (map-admin gate) |
-| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningController.cs` | 281 | `AuthorizeAsync(User, new ContainerAuthorizationTarget(userCamp.Id) { Year = year }, ContainerOperationRequirement.Place)` (a camp lead with no map-admin policy opens the map for their own camp) |
-| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 38 | `AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)` (map-admin gate) |
-| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 205, 282, 309, 346 | `AuthorizeAsync(User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place)` (per-container `canEdit` flag in the listing; container placement save, notes, clear) |
-| `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs` | 122, 181, 187, 197, 222, 254, 283, 319, 371, 618, 656 | `AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.X))` — `Submit`, `Edit`, `Preview`, `ViewResults` |
-| `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | 448, 451 | `AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.{Administer, Member})` (page permissions) |
+| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningController.cs` | 311 | `AuthorizeAsync(User, new ContainerAuthorizationTarget(userCamp.Id) { Year = year }, ContainerOperationRequirement.Place)` (a camp lead with no map-admin policy opens the map for their own camp) |
+| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 39 | `AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)` (map-admin gate) |
+| `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 192, 262 | `AuthorizeAsync(User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place)` (per-container `canEdit` flag in the listing at 192; the private `RequireContainerPlacementAsync` helper at 262 gates container placement save, notes, clear) |
+| `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs` | 114, 168, 174, 183, 340, 581, 619 | `AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.X))` — `Submit`, `Edit`, `Preview`, `ViewResults` |
+| `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | 419, 422 | `AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.{Administer, Member})` (page permissions) |
 | `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | `ApproveMember`, `DeclineMember`, `AddMember` (`ManageMembersAsync`) | Coordinator-only membership decisions: Board/Admin (`Administer`) or a current coordinator of an Active group, else `Forbid()`; the service re-checks via `RequireCoordinator` (`WorkgroupService.Helpers.cs`) unless `asAdmin` |
-| `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsAdminController.cs` | 174 | `AuthorizeAsync(User, program, ProgramOperationRequirement.{Manage, Administer})` (`AuthorizedAsync` helper — every per-program page and POST) |
-| `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsController.cs` | 38 | `AuthorizeAsync(User, PreapprovalsPolicies.Manage)` (the Manage button on the member page) |
-| `src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs` | 184, 222, 273, 315, 352, 372, 428, 503, 527, 565, 591, 761, 787, 831 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (the email-edit endpoints) |
-| `src/Sections/Humans.Tickets/ViewComponents/OnsiteChipViewComponent.cs` | 25 | `AuthorizeAsync(UserClaimsPrincipal, TicketsPolicies.Read)` (onsite-chip visibility gate for a non-self viewer) |
-| `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 174 | `AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)` (drives `isPrivilegedApprover` — gates whether a non-own-profile viewer sees the "sent messages" panel on the profile page; admits coordinators or `ShiftsPolicies.PrivilegedSignupApprover` role) |
-| `src/Sections/Humans.Auth/Controllers/RoleAssignmentsController.cs` | 105 | `AuthorizeAsync(User, model.RoleName, PolicyNames.RoleAssignmentManage)` (AddRole — goes through the named policy rather than passing `RoleAssignmentOperationRequirement.Manage` directly; see §5) |
-| `src/Sections/Humans.Auth/Controllers/RoleAssignmentsController.cs` | 143 | `AuthorizeAsync(User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage)` (EndRole) |
-| `src/Sections/Humans.GoogleIntegration/Controllers/TeamResourcesController.cs` | 273 | `AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)` (resource-based team-resource management gate) |
-| `src/Sections/Humans.Backdoor/Controllers/BackdoorFinanceController.cs` | 287, 290 | `AuthorizeAsync(User, FinancePolicies.Manage)` (finance-wide routes) and `AuthorizeAsync(User, report, PolicyNames.ExpenseReportView)` (report/attachment routes — named policy, same as `RoleAssignmentManage` above; peterdrier/Humans#1838) |
+| `src/Sections/Humans.Grants/Controllers/GrantsAdminController.cs` | 151 | `AuthorizeAsync(User, program, requirement)` (`ProgramOperationRequirement.{Manage, Administer}` — every per-program page and POST) |
+| `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsAdminController.cs` | 166 | `AuthorizeAsync(User, program, ProgramOperationRequirement.{Manage, Administer})` (`AuthorizedAsync` helper — every per-program page and POST) |
+| `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsController.cs` | 34 | `AuthorizeAsync(User, PreapprovalsPolicies.Manage)` (the Manage button on the member page) |
+| `src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs` | 183, 216, 262, 298, 330, 351, 404, 468, 490, 522, 540, 701, 719, 757 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (the email-edit endpoints) |
+| `src/Sections/Humans.Tickets/ViewComponents/OnsiteChipViewComponent.cs` | 19 | `AuthorizeAsync(UserClaimsPrincipal, TicketsPolicies.Read)` (onsite-chip visibility gate for a non-self viewer) |
+| `src/Sections/Humans.Auth/ViewComponents/RoleAssignmentsCardViewComponent.cs` | 24 | `AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)` (admin view mode only) |
+| `src/Sections/Humans.Grants/ViewComponents/UserGrantsViewComponent.cs` | 23, 35, 40 | `AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)` (admin view mode only); `GrantsPolicies.Manage`, then `ProgramOperationRequirement.Manage` per program, decide which grants offer a link |
+| `src/Sections/Humans.Campaigns/ViewComponents/CampaignCodesViewComponent.cs` | 21 | `AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)` (admin view mode only) |
+| `src/Sections/Humans.Email/ViewComponents/OutboxCardViewComponent.cs` / `CommunicationPreferencesCardViewComponent.cs` | 20 / 15 | `AuthorizeAsync(UserClaimsPrincipal, UsersPolicies.Read)` (admin view mode only) |
+| `src/Sections/Humans.GoogleIntegration/ViewComponents/WorkspaceIdentityCardViewComponent.cs` | 24 | `AuthorizeAsync(UserClaimsPrincipal, PolicyNames.AdminOnly)` (shows the Re-run button) |
+| `src/Sections/Humans.Finance/ViewComponents/PaymentDetailsViewComponent.cs` | 23 | `AuthorizeAsync(UserClaimsPrincipal, PolicyNames.AdminOnly)` (admin view mode only; renders nothing for Board and UsersAdmin) |
+| `src/Sections/Humans.Users/Controllers/ProfileViewController.cs` | 160 | `AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)` (drives `isPrivilegedApprover` — gates whether a non-own-profile viewer sees the "sent messages" panel on the profile page; admits coordinators or `ShiftsPolicies.PrivilegedSignupApprover` role) |
+| `src/Sections/Humans.Auth/Controllers/RoleAssignmentsController.cs` | 103 | `AuthorizeAsync(User, model.RoleName, PolicyNames.RoleAssignmentManage)` (AddRole — goes through the named policy rather than passing `RoleAssignmentOperationRequirement.Manage` directly; see §5) |
+| `src/Sections/Humans.Auth/Controllers/RoleAssignmentsController.cs` | 142 | `AuthorizeAsync(User, roleAssignment.RoleName, PolicyNames.RoleAssignmentManage)` (EndRole) |
+| `src/Sections/Humans.GoogleIntegration/Controllers/TeamResourcesController.cs` | 263 | `AuthorizeAsync(User, team, TeamResourceManageRequirement.Instance)` (resource-based team-resource management gate) |
+| `src/Sections/Humans.Backdoor/Controllers/BackdoorFinanceController.cs` | 343, 346 | `AuthorizeAsync(User, FinancePolicies.Manage)` (finance-wide routes) and `AuthorizeAsync(User, report, PolicyNames.ExpenseReportView)` (report/attachment routes — named policy, same as `RoleAssignmentManage` above; peterdrier/Humans#1838) |
 | `src/Sections/Humans.Agent/Controllers/AgentController.cs` | 59 | `AuthorizeAsync(User, user.Id, [new AgentRateLimitRequirement()])` (requirement instantiated directly, no `PolicyNames` constant) |
-| `src/Sections/Humans.Settings/ViewComponents/SettingsTabComposition.cs` | 30 | `AuthorizeAsync(user, null, tab.Policy)` (filters the `/Settings` tabs sections contribute) |
-| `src/Sections/Humans.Settings/ViewComponents/EventSettingsTabViewComponent.cs` | 24 | `AuthorizeAsync(UserClaimsPrincipal, null, PolicyNames.AdminOnly)` (Event tab editable vs read-only) |
+| `src/Sections/Humans.Settings/ViewComponents/SettingsTabComposition.cs` | 25 | `AuthorizeAsync(user, null, tab.Policy)` (filters the `/Settings` tabs sections contribute) |
+| `src/Sections/Humans.Settings/ViewComponents/EventSettingsTabViewComponent.cs` | 22 | `AuthorizeAsync(UserClaimsPrincipal, null, PolicyNames.AdminOnly)` (Event tab editable vs read-only) |
 | `src/Humans.Base/TagHelpers/AuthorizeViewTagHelper.cs` | 54 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
 | `src/Humans.Base/ViewComponents/SectionNavViewComponent.cs` | 64 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters section nav items) |
 | `src/Humans.Web/ViewComponents/AdminNavItems.cs` | 69 | `AuthorizeAsync(user, null, item.Policy)` (filters admin sidebar groups and tabs) |

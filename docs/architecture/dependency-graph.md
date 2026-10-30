@@ -98,7 +98,6 @@ graph LR
     CommPref[CommunicationPreferenceService]:::email
     EmailProblems[EmailProblemsService]:::users
     Unsub[UnsubscribeService]:::email
-    UserNameSync[UserNameSyncService]:::users
 
     AdminAuth[AdminAuthorizationService]:::auth
     MagicLink[MagicLinkService]:::auth
@@ -109,6 +108,8 @@ graph LR
     Camp[CampService]:::camps
     CampContact[CampContactService]:::camps
     CampRole[CampRoleService]:::camps
+    CampGallery[CampImageGallery]:::camps
+    CampNotices[CampMembershipNotices]:::camps
 
     Cantina[CantinaRosterService]:::cantina
     Dietary[DietaryProfileService]:::cantina
@@ -134,12 +135,12 @@ graph LR
     LegalSync[LegalDocumentSyncService]:::legal
     Consent[ConsentService]:::consent
     ConsentReview[ConsentReviewService]:::consent
+    ConsentReminder[ConsentReminderService]:::consent
     LegalSyncRunner[LegalDocumentSyncRunner]:::consent
 
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
     TicketTransfer[TicketTransferService]:::tickets
-    TicketPrefLock[TicketingPreferenceLock]:::tickets
     AttendeeImport[AttendeeContactImportService]:::tickets
     OnsiteRoster[OnsiteRosterService]:::tickets
     EventPart[EventParticipationService]:::tickets
@@ -173,11 +174,13 @@ graph LR
     OnboardWidget[OnboardingWidgetState]:::onboarding
 
     Feedback[FeedbackService]:::feedback
+    FeedbackReply[FeedbackReplyDelivery]:::feedback
 
     Budget[BudgetService]:::budget
     TicketBudget[TicketingBudgetService]:::budget
 
     Finance[HoldedFinanceManagement]:::finance
+    CreditorMatch[CreditorMatchService]:::finance
     HoldedDocSync[HoldedDocumentSync]:::finance
     SepaBooking[SepaBankBooking]:::finance
     PayDetails[PaymentDetailsService]:::finance
@@ -207,6 +210,7 @@ graph LR
     Store[StoreAccountingRead]:::store
     StoreInvoice[StoreInvoiceIssuer]:::store
     StoreOrders[StoreOrderReader]:::store
+    StoreStripe[StoreStripePayments]:::store
 
     ExpenseReport[ExpenseReportService]:::expenses
     ExpensePublisher[ExpenseHoldedPublisher]:::expenses
@@ -289,20 +293,16 @@ graph LR
     AcctDel --> Audit
     AcctDel --> Email
     Merge --> Audit
-    Merge --> Team
-    Merge --> Notif
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
     DupAcct --> AppDec
-    DupAcct --> Consent
     UsersAudience --> TicketQ
     HumanLifecycle --> NotifEmitter
     HumanLifecycle --> NotifInbox
     HumanLifecycle --> Audit
     HumanLifecycle --> Metrics
     TeamMsgOpts --> TRes
-    UserNameSync --> Audit
 
     %% Auth
     Role --> User
@@ -337,6 +337,9 @@ graph LR
     CampRole --> User
     CampRole --> Audit
     CampRole --> NotifEmitter
+    CampGallery --> Audit
+    CampNotices --> NotifEmitter
+    CampNotices --> User
 
     %% Cantina
     Cantina --> ShiftMgmt
@@ -348,6 +351,8 @@ graph LR
     MemTier --> User
     %% Consent
     ConsentReview --> User
+    ConsentReview --> Audit
+    ConsentReminder --> User
     %% Finance
     PayDetails --> User
     PayDetails --> Audit
@@ -357,6 +362,7 @@ graph LR
     CityPlan --> Team
     CityPlan --> User
     CityPlan --> Audit
+    CityPlan --> SettingsSvc
 
     %% Shifts
     ShiftMgmt --> Audit
@@ -405,7 +411,6 @@ graph LR
     LegalSync --> Team
     LegalSync --> User
     LegalSync --> Audit
-    Consent --> NotifInbox
     Consent --> HumanLifecycle
     Consent --> User
     Consent --> Metrics
@@ -432,7 +437,6 @@ graph LR
     TicketTransfer --> UEmail
     TicketTransfer --> Email
     TicketTransfer --> Audit
-    TicketPrefLock --> TicketQ
     AttendeeImport --> UEmail
     AttendeeImport --> AcctProv
     AttendeeImport --> User
@@ -516,11 +520,13 @@ graph LR
 
     %% Feedback
     Feedback --> User
-    Feedback --> UEmail
     Feedback --> Team
-    Feedback --> Email
-    Feedback --> NotifEmitter
     Feedback --> Audit
+    FeedbackReply --> User
+    FeedbackReply --> UEmail
+    FeedbackReply --> Email
+    FeedbackReply --> NotifEmitter
+    FeedbackReply --> Audit
 
     %% Budget
     Budget --> Team
@@ -535,6 +541,8 @@ graph LR
     Finance --> UEmail
     Finance --> Email
     Finance --> ExpenseBookings
+    CreditorMatch --> Holded
+    CreditorMatch --> ExpenseReport
     CashFlowSvc --> Budget
     CashFlowSvc --> TicketQ
     %% Finance -> Expenses is the section project (IExpenseHoldedBookingService, read-only);
@@ -601,6 +609,7 @@ graph LR
     Store --> Holded
     StoreInvoice --> Audit
     StoreInvoice --> Holded
+    StoreStripe --> Audit
     StoreOrders --> Camp
     StoreOrders --> Team
     StoreOrders --> SettingsSvc
@@ -625,6 +634,7 @@ graph LR
     ExpenseBgProc --> Finance
     ExpenseBgProc --> Audit
     ExpenseBookings --> User
+    ExpenseBookings --> Holded
 
     %% Containers
     Container --> Camp
@@ -719,6 +729,7 @@ graph LR
     Grant --> Audit
     Grant --> SettingsSvc
     LowIncome --> Grant
+    LowIncome --> User
 
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider/Lazy<T>) — break DI cycles
@@ -727,7 +738,6 @@ graph LR
     UEmail -. "lazy" .-> TicketQ
     UEmail -. "lazy" .-> GIdentity
     Team -. "lazy" .-> Role
-    Team -. "lazy" .-> Email
     Team -. "lazy" .-> GSyncOutbox
     Team -. "lazy" .-> GSyncSvc
     Team -. "lazy" .-> GIdentity
@@ -739,17 +749,17 @@ graph LR
     ShiftMgmt -. "lazy" .-> Team
     ShiftMgmt -. "lazy" .-> TicketQ
     ShiftMgmt -. "lazy" .-> User
+    ShiftMgmt -. "lazy" .-> SettingsSvc
     ShiftSign -. "lazy" .-> Team
     MembershipCalc -. "lazy" .-> Consent
     Consent -. "lazy" .-> MembershipCalc
     TRes -. "lazy" .-> Role
-    Cal -. "lazy" .-> Team
     Metrics -. "lazy" .-> User
 
     %% ── Edge styling ──
     %% Eager edges come first, then the lazy block; linkStyle indexes the lazy block by position.
     %% Recompute the indices whenever edges change.
-    linkStyle 389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409 stroke:#f97316,stroke-width:2.5px
+    linkStyle 395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414 stroke:#f97316,stroke-width:2.5px
 ```
 
 
@@ -779,9 +789,9 @@ Other notable one-way lazy edges:
 
 - **Team → User** — user-slice stitching; User no longer reaches back into Team.
 - **Team → GoogleSyncOutbox** — enqueues transactional-outbox Google-sync events on membership/role changes; one-way.
-- **ShiftManagement → Role / User / Camp / Tickets**, **Team → Role / Email**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
+- **ShiftManagement → Role / User / Camp / Tickets / Settings**, **Team → Role**, **TeamResource → Role** — one-way lazy where eager injection would still close a cycle through other paths (notably `ISystemTeamSync`, a job interface outside this graph).
 - **Team → WorkspaceIdentity**, **UserEmail → WorkspaceIdentity** — one-way lazy resolution of `IGoogleIntegrationService` / `IGoogleIntegrationWrite`.
-- **Calendar → Team**, **HumansMetrics → User** — Singleton hosts (the `CachingCalendarService` decorator, the polled metrics gauge) resolving a scoped read service per call, not cycle breaks.
+- **HumansMetrics → User** — a Singleton host (the polled metrics gauge) resolving a scoped read service per call, not a cycle break.
 
 When adding a new cross-service call, default to ctor injection. Reach for the lazy pattern only when ctor injection produces a circular DI error, and document why at the call site.
 
@@ -794,9 +804,9 @@ The most depended-on cross-section surfaces (read the counts off the diagram):
 - **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamService`, cross-section writes through `ITeamWrite` (internal `ITeamManagement` joins them); batch methods exist to avoid N+1 at call sites.
 - **`UserEmailService`** — email-identity lookups across the system. (The Google Workspace address is `WorkspaceIdentityService`'s since the Users decomposition.)
 - **`OutboxEmailService`** (`IEmailService`) / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.
-- **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `AccountMergeService` and `WorkgroupService` take the full `INotificationService`.
+- **`NotificationEmitter`** — the enqueue surface almost all notifiers inject; only `WorkgroupService` takes the full `INotificationService`.
 - **`SettingsWriteService`** (`ISettingsService`) — event/app settings read by most event-facing sections.
-- **`ShiftManagementService`** — shift hub; itself lazy-resolves Team/Role/Tickets/User/Camp to break cycles.
+- **`ShiftManagementService`** — shift hub; itself lazy-resolves Team/Role/Tickets/User/Camp/Settings to break cycles.
 - **`AdminAuthorizationService`**, **`ShiftViewService`** — repo-only adapters with zero outbound cross-section edges.
 
 ## Pending follow-ups

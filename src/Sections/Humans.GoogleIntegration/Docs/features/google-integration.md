@@ -376,7 +376,7 @@ public interface ISyncSettingsService
 ## Google Group Lifecycle
 
 ### GoogleGroupPrefix on Team
-Teams can have a `GoogleGroupPrefix` (e.g., `"events"` produces `events@nobodies.team`). This is set via the team edit form by TeamsAdmin, Board, or Admin users.
+Teams can have a `GoogleGroupPrefix` (e.g., `"events"` produces `events@nobodies.team`). This is set via the team edit form by TeamsAdmin or Admin users.
 
 ### EnsureTeamGroupAsync
 When `GoogleGroupPrefix` is set on a team, `EnsureTeamGroupAsync` is called to:

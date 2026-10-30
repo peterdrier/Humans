@@ -98,10 +98,12 @@ Reach Volunteer Coordination at [volunteers@nobodies.team](mailto:volunteers@nob
 
 Admins get the site-wide shift view and can approve, refuse, bail, or voluntell across any department. **ShiftsNoInfo** has the same signup powers but can't create or edit rotas and shifts. **ShiftsAdmin** has full coordinator capabilities across every department.
 
+**Board** members can read the shift dashboard, volunteer tracking, workload and post-event stats, but can't change anything.
+
 Admin-only controls:
 
-- **Event settings** at `/Settings#event` — gate opening date, build/event/strike offsets, timezone, early-entry capacity, barrios allocation, and early-entry close instant. Shifts' own knobs — the **shift browsing toggle** (when closed, regular humans only see shifts they already have signups for; privileged roles can always browse), global volunteer cap, and reminder lead time — live on `/Settings#shifts`.
-- **Medical data** on volunteer event profiles is visible only to Admin and ShiftsNoInfo. Coordinators and ShiftsAdmin see skills and dietary info but not medical.
+- **Event settings** at `/Settings#event` — gate opening date, build/event/strike offsets, timezone, early-entry capacity, barrios allocation, and early-entry close instant. Shifts' own knobs — the **shift browsing toggle** (when closed, regular humans only see shifts they already have signups for; privileged roles can always browse), global volunteer cap, reminder lead time, and the start day of each build sub-period (First crew, Set-up week, Pre-event week, Finishing weekend) — live on `/Settings#shifts`.
+- **Medical data** on volunteer event profiles is hidden until Admin, Board or ShiftsNoInfo clicks to reveal it, and each reveal is audit-logged. Coordinators and ShiftsAdmin see skills and dietary info but not medical.
 - **Early-entry freeze** — after early-entry close, non-privileged humans can't sign up for or bail from Set-up shifts; admins can still adjust.
 
 Only one active Event Settings exists at a time. Changes ripple through every shift date on the site.
