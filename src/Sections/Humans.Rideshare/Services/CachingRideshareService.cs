@@ -1,6 +1,7 @@
 using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -8,31 +9,34 @@ using NodaTime;
 namespace Humans.Rideshare.Services;
 
 /// <summary>
-/// One <see cref="RideshareSnapshot"/> per burn year; every write clears the whole cache (a year rebuilds in
+/// One <see cref="RideshareSnapshot"/> per event; every write clears the whole cache (an event rebuilds in
 /// milliseconds). Carries <see cref="IUserDataContributor"/> and <see cref="IUserMerge"/> because erasure and the
 /// merge fold change cached rows.
 /// </summary>
 internal sealed class CachingRideshareService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingRideshareService> logger)
-    : TrackedCache<int, RideshareSnapshot>("Rideshare.Snapshot", warmOnStartup: false, logger),
-      IRideshareService, IUserDataContributor, IUserMerge
+    : TrackedCache<Guid, RideshareSnapshot>("Rideshare.Snapshot", warmOnStartup: false, logger),
+      IRideshareService, IUserDataContributor, IUserMerge, IEventSettingsChangeListener
 {
     public const string InnerServiceKey = "rideshare-inner";
 
     public ICacheStats SnapshotCacheStats => this;
 
-    public Task<int> GetActiveYearAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetActiveYearAsync(ct));
+    public Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetActiveEventIdAsync(ct));
 
-    public async Task<RideshareSnapshot> GetSnapshotAsync(int year, CancellationToken ct = default) =>
-        (await GetAsync(year, ct))!;
+    public async Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default) =>
+        eventSettingsId is { } id
+            ? (await GetAsync(id, ct))!
+            : await WithInnerAsync(inner => inner.GetSnapshotAsync(null, ct));
 
-    protected override async ValueTask<RideshareSnapshot?> LoadRowAsync(int key, CancellationToken ct) =>
+    protected override async ValueTask<RideshareSnapshot?> LoadRowAsync(Guid key, CancellationToken ct) =>
         await WithInnerAsync(inner => inner.GetSnapshotAsync(key, ct));
 
-    public Task<RideshareMutationResult> CreateOfferAsync(Guid userId, int year, TripSave save, CancellationToken ct = default) =>
-        MutateAsync(inner => inner.CreateOfferAsync(userId, year, save, ct));
+    public Task<RideshareMutationResult> CreateOfferAsync(
+        Guid userId, Guid? eventSettingsId, TripSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.CreateOfferAsync(userId, eventSettingsId, save, ct));
 
     public Task<RideshareMutationResult> UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateOfferAsync(tripId, actorUserId, save, ct));
@@ -40,8 +44,9 @@ internal sealed class CachingRideshareService(
     public Task<RideshareMutationResult> CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CancelOfferAsync(tripId, actorUserId, ct));
 
-    public Task<RideshareMutationResult> CreateRequestAsync(Guid userId, int year, RequestSave save, CancellationToken ct = default) =>
-        MutateAsync(inner => inner.CreateRequestAsync(userId, year, save, ct));
+    public Task<RideshareMutationResult> CreateRequestAsync(
+        Guid userId, Guid? eventSettingsId, RequestSave save, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.CreateRequestAsync(userId, eventSettingsId, save, ct));
 
     public Task<RideshareMutationResult> UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.UpdateRequestAsync(requestId, actorUserId, save, ct));
@@ -62,8 +67,18 @@ internal sealed class CachingRideshareService(
     public Task<RideshareMutationResult> WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.WithdrawInterestAsync(interestId, actorUserId, ct));
 
-    public Task<RideshareMutationResult> SaveSettingsAsync(int year, SettingsSave save, Guid actorUserId, CancellationToken ct = default) =>
-        MutateAsync(inner => inner.SaveSettingsAsync(year, save, actorUserId, ct));
+    public Task<RideshareMutationResult> SaveSettingsAsync(
+        Guid? eventSettingsId, SettingsSave save, Guid actorUserId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.SaveSettingsAsync(eventSettingsId, save, actorUserId, ct));
+
+    public Task<IReadOnlyList<RideshareEventIdPlanRow>> GetEventIdPlanAsync(CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetEventIdPlanAsync(ct));
+
+    public Task<int> AssignEventIdsAsync(CancellationToken ct = default) =>
+        MutateAsync(inner => inner.AssignEventIdsAsync(ct));
+
+    // A rename changes the snapshot's name, and a gate-opening change can move a year's legacy rows to another event.
+    public void EventSettingsChanged(Guid eventSettingsId) => Clear();
 
     // Static table: the erasure-coverage architecture test reads it from an
     // uninitialized instance. Every category is erased in full.

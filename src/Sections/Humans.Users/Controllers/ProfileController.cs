@@ -1,5 +1,6 @@
 using Humans.Consent.Contracts;
 using Humans.Users.Services;
+using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
@@ -56,9 +57,11 @@ internal sealed class ProfileController(
     };
 
     [HttpGet("")]
+    [AllowBeforeActiveMembership]
     public IActionResult Index() => RedirectToAction(nameof(Me));
 
     [HttpGet("Me")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
         var info = await GetCurrentUserInfoAsync(ct);
@@ -93,6 +96,7 @@ internal sealed class ProfileController(
     }
 
     [HttpGet("Me/Edit")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false, CancellationToken ct = default)
     {
         var user = await userManager.GetUserAsync(User);
@@ -118,6 +122,7 @@ internal sealed class ProfileController(
     [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(21 * 1024 * 1024)] // 20 MB picture plus multipart overhead; upload validation enforces the file cap.
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         var user = await GetCurrentUserInfoAsync();
@@ -318,6 +323,7 @@ internal sealed class ProfileController(
 
     // GDPR Art. 9 data: owner-only here, and shown elsewhere only behind MedicalDataViewer.
     [HttpGet("Me/Medical")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical(CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
@@ -329,6 +335,7 @@ internal sealed class ProfileController(
 
     [HttpPost("Me/Medical")]
     [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical([Bind(nameof(MedicalViewModel.MedicalConditions))] MedicalViewModel model)
     {
         try

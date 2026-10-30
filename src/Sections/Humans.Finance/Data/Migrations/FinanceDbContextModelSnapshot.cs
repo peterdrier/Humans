@@ -18,7 +18,7 @@ namespace Humans.Finance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -143,6 +143,10 @@ namespace Humans.Finance.Data.Migrations
                     b.Property<Guid?>("BudgetCategoryId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContactId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ContactName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -185,6 +189,9 @@ namespace Humans.Finance.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("numeric");

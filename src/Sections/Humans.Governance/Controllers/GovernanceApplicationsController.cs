@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 using Humans.Governance.Services;
 using Humans.Base.Controllers;
@@ -16,6 +17,7 @@ namespace Humans.Governance.Controllers;
 
 [Authorize]
 [Route("Governance/Applications")]
+[AllowBeforeActiveMembership]
 internal sealed class GovernanceApplicationsController(
     ApplicationDecisionService applicationDecisionService,
     IUserService userService,

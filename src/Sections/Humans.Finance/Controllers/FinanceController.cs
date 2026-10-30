@@ -22,6 +22,7 @@ internal sealed class FinanceController(
     IHoldedFinanceAdminService holdedConnector,
     IExpenseReportService expenseReports,
     CashFlowService cashFlow,
+    CreditorMatchService creditorMatches,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("CashFlow")]
@@ -84,7 +85,9 @@ internal sealed class FinanceController(
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
+        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
         var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
+        var matches = await creditorMatches.GetForMemberAccountsAsync(rows, viewerUserId, HttpContext.RequestAborted);
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
@@ -106,7 +109,8 @@ internal sealed class FinanceController(
                 r.IbanMasked,
                 r.OpenDocumentCount,
                 r.PendingPayoutFileName,
-                r.HasDuplicateDocuments))
+                r.HasDuplicateDocuments,
+                matches.GetValueOrDefault(r.SupplierAccountNum)))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";
@@ -120,9 +124,16 @@ internal sealed class FinanceController(
                 b.Source.ToString()))
             .ToList();
 
+        var recon = await holdedFinance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         return View(new CreditorsPageVm(
-            accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings()));
+            accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings(),
+            recon.IsAvailable ? recon.Totals.Problems : null, recon.Totals.Warnings));
     }
+
+    /// <summary>Local mirrors only; fixes stay on the pages it links to.</summary>
+    [HttpGet("ExpenseRecon")]
+    public async Task<IActionResult> ExpenseRecon(int? year, CancellationToken ct)
+        => View(await holdedFinance.GetExpenseReconAsync(year, ct));
 
     /// <summary>Streams a pain.001.001.09 file. All-or-nothing: one bad amount refuses the batch, so the treasurer
     /// never uploads half of one.</summary>
@@ -339,7 +350,8 @@ internal sealed class FinanceController(
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
             .ToList();
-        return View(new CreditorStatementVm(ledger, lines, reports));
+        var match = await creditorMatches.GetAsync(accountNum, viewerUserId, HttpContext.RequestAborted);
+        return View(new CreditorStatementVm(ledger, lines, reports, match));
     }
 
     // Holded labels a payment with the purchase it settles, which reads like a second purchase.

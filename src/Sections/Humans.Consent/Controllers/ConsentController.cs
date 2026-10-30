@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Controllers;
 
 [Authorize]
+[AllowBeforeActiveMembership]
 internal sealed class ConsentController(
     IUserService userService,
     IConsentManagement consentService,

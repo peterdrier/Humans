@@ -4,10 +4,13 @@ using NodaTime;
 
 namespace Humans.Rideshare.Data;
 
-internal sealed record RideshareYearGraph(
+internal sealed record RideshareEventGraph(
     RideshareSettings? Settings,
     IReadOnlyList<RideshareTrip> Trips,
     IReadOnlyList<RideshareRequest> Requests);
+
+/// <summary>A row the <c>rideshare.event-ids</c> data migration has not stamped yet.</summary>
+internal sealed record RideshareUnassignedRow(string Table, Guid Id, int Year);
 
 /// <summary>
 /// Single-row getters return detached entities; the service mutates them and hands them back to an
@@ -15,11 +18,21 @@ internal sealed record RideshareYearGraph(
 /// </summary>
 internal interface IRideshareRepository : IRepository
 {
-    Task<RideshareYearGraph> GetYearGraphAsync(int year, CancellationToken ct = default);
+    /// <summary>
+    /// The event's rows, plus the unstamped rows of <paramref name="unassignedYear"/> when that year's legacy rows
+    /// belong to this event; null counts only stamped rows.
+    /// </summary>
+    Task<RideshareEventGraph> GetEventGraphAsync(Guid eventSettingsId, int? unassignedYear, CancellationToken ct = default);
 
-    Task<RideshareSettings?> GetSettingsAsync(int year, CancellationToken ct = default);
-    /// <summary>Insert-or-update keyed on <see cref="RideshareSettings.Year"/>.</summary>
+    /// <summary>Same scope as <see cref="GetEventGraphAsync"/>; a stamped row wins over a legacy one.</summary>
+    Task<RideshareSettings?> GetSettingsAsync(Guid eventSettingsId, int? unassignedYear, CancellationToken ct = default);
+    /// <summary>Insert-or-update keyed on <see cref="RideshareSettings.Id"/>.</summary>
     Task UpsertSettingsAsync(RideshareSettings settings, CancellationToken ct = default);
+
+    Task<IReadOnlyList<RideshareUnassignedRow>> GetUnassignedRowsAsync(CancellationToken ct = default);
+
+    /// <summary>Stamps every unstamped settings, trip and request row of each year with that year's event.</summary>
+    Task<int> AssignEventIdsAsync(IReadOnlyDictionary<int, Guid> eventByYear, CancellationToken ct = default);
 
     /// <summary>Trip with its <c>Interests</c> loaded (seat maths needs them).</summary>
     Task<RideshareTrip?> GetTripAsync(Guid id, CancellationToken ct = default);

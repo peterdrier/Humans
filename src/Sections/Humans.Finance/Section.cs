@@ -70,6 +70,7 @@ public sealed class Section :
         services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<Jobs.SepaBankBookingJob>();
         services.AddScoped<Jobs.HoldedDocSyncJob>();
+        services.AddScoped<Jobs.ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
 
         services.AddScoped<IPaymentDetailsRepository, PaymentDetailsRepository>();
@@ -84,6 +85,7 @@ public sealed class Section :
         services.AddScoped<IEmailPreviewContributor, FinanceEmailPreviews>();
 
         services.AddScoped<CashFlowService>();
+        services.AddScoped<CreditorMatchService>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -146,6 +148,10 @@ public sealed class Section :
         // Ahead of Holded's 03:00 ledger sweep; the shared "holded-api" lock keeps them apart if this runs long.
         yield return new RecurringJobDescriptor(
             "holded-doc-sync", typeof(HoldedDocSyncJob), "45 2 * * *");
+
+        // After the doc sync (02:45) and Holded's ledger sweep (03:00), so both mirrors it reads are fresh.
+        yield return new RecurringJobDescriptor(
+            "expense-recon", typeof(ExpenseReconJob), "30 3 * * *");
     }
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)

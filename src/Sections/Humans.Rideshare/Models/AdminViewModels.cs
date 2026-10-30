@@ -9,7 +9,10 @@ namespace Humans.Rideshare.Models;
 
 internal sealed class RideshareSettingsViewModel
 {
-    public int Year { get; set; }
+    /// <summary>The event the form edits, so a save lands on it even if another event becomes active meanwhile.</summary>
+    public Guid? EventSettingsId { get; set; }
+
+    public string EventName { get; set; } = string.Empty;
 
     [Required, StringLength(200)]
     public string DestinationLabel { get; set; } = string.Empty;
@@ -44,7 +47,8 @@ internal sealed class RideshareSettingsViewModel
         var s = snapshot.Settings;
         return new RideshareSettingsViewModel
         {
-            Year = snapshot.Year,
+            EventSettingsId = snapshot.EventSettingsId,
+            EventName = snapshot.EventName,
             DestinationLabel = s?.DestinationLabel ?? string.Empty,
             DestinationLatitude = s?.DestinationLatitude ?? 0,
             DestinationLongitude = s?.DestinationLongitude ?? 0,
@@ -77,7 +81,7 @@ internal sealed record RosterRider(Guid UserId, int Seats);
 /// <summary>Any status.</summary>
 internal sealed record DayRosterRow(TripView Trip, IReadOnlyList<RosterRider> Riders);
 
-internal sealed record DayViewModel(int Year, LocalDate Date, IReadOnlyList<DayRosterRow> Trips)
+internal sealed record DayViewModel(string EventName, LocalDate Date, IReadOnlyList<DayRosterRow> Trips)
 {
     public static DayViewModel Build(RideshareSnapshot snapshot, LocalDate date)
     {
@@ -90,7 +94,7 @@ internal sealed record DayViewModel(int Year, LocalDate Date, IReadOnlyList<DayR
                 .Select(i => new RosterRider(RiderOf(i, requestOwners), i.Seats))
                 .ToList()))
             .ToList();
-        return new DayViewModel(snapshot.Year, date, rows);
+        return new DayViewModel(snapshot.EventName, date, rows);
     }
 
     private static Guid RiderOf(InterestView interest, IReadOnlyDictionary<Guid, Guid> requestOwners) =>

@@ -6,36 +6,41 @@ namespace Humans.Rideshare.Data;
 
 internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> factory) : IRideshareRepository
 {
-    public async Task<RideshareYearGraph> GetYearGraphAsync(int year, CancellationToken ct = default)
+    public async Task<RideshareEventGraph> GetEventGraphAsync(
+        Guid eventSettingsId, int? unassignedYear, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var settings = await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Year == year, ct);
+        var settings = await FindSettingsAsync(ctx.Settings.AsNoTracking(), eventSettingsId, unassignedYear, ct);
         var trips = await ctx.Trips.AsNoTracking()
             .Include(t => t.Interests)
-            .Where(t => t.Year == year)
+            .Where(t => t.EventSettingsId == eventSettingsId
+                || (unassignedYear != null && t.EventSettingsId == null && t.Year == unassignedYear))
             .ToListAsync(ct);
         var requests = await ctx.Requests.AsNoTracking()
-            .Where(r => r.Year == year)
+            .Where(r => r.EventSettingsId == eventSettingsId
+                || (unassignedYear != null && r.EventSettingsId == null && r.Year == unassignedYear))
             .ToListAsync(ct);
-        return new RideshareYearGraph(settings, trips, requests);
+        return new RideshareEventGraph(settings, trips, requests);
     }
 
-    public async Task<RideshareSettings?> GetSettingsAsync(int year, CancellationToken ct = default)
+    public async Task<RideshareSettings?> GetSettingsAsync(
+        Guid eventSettingsId, int? unassignedYear, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Year == year, ct);
+        return await FindSettingsAsync(ctx.Settings.AsNoTracking(), eventSettingsId, unassignedYear, ct);
     }
 
     public async Task UpsertSettingsAsync(RideshareSettings settings, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.Settings.FirstOrDefaultAsync(s => s.Year == settings.Year, ct);
+        var existing = await ctx.Settings.FirstOrDefaultAsync(s => s.Id == settings.Id, ct);
         if (existing == null)
         {
             ctx.Settings.Add(settings);
         }
         else
         {
+            existing.EventSettingsId = settings.EventSettingsId;
             existing.DestinationLabel = settings.DestinationLabel;
             existing.DestinationLatitude = settings.DestinationLatitude;
             existing.DestinationLongitude = settings.DestinationLongitude;
@@ -46,6 +51,44 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
             existing.UpdatedAt = settings.UpdatedAt;
         }
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<RideshareUnassignedRow>> GetUnassignedRowsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var settings = await ctx.Settings.AsNoTracking().Where(s => s.EventSettingsId == null)
+            .Select(s => new RideshareUnassignedRow("rideshare_settings", s.Id, s.Year)).ToListAsync(ct);
+        var trips = await ctx.Trips.AsNoTracking().Where(t => t.EventSettingsId == null)
+            .Select(t => new RideshareUnassignedRow("rideshare_trips", t.Id, t.Year)).ToListAsync(ct);
+        var requests = await ctx.Requests.AsNoTracking().Where(r => r.EventSettingsId == null)
+            .Select(r => new RideshareUnassignedRow("rideshare_requests", r.Id, r.Year)).ToListAsync(ct);
+        return [.. settings, .. trips, .. requests];
+    }
+
+    public async Task<int> AssignEventIdsAsync(IReadOnlyDictionary<int, Guid> eventByYear, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var years = eventByYear.Keys.ToList();
+        var settings = await ctx.Settings.Where(s => s.EventSettingsId == null && years.Contains(s.Year)).ToListAsync(ct);
+        var trips = await ctx.Trips.Where(t => t.EventSettingsId == null && years.Contains(t.Year)).ToListAsync(ct);
+        var requests = await ctx.Requests.Where(r => r.EventSettingsId == null && years.Contains(r.Year)).ToListAsync(ct);
+
+        foreach (var s in settings) s.EventSettingsId = eventByYear[s.Year];
+        foreach (var t in trips) t.EventSettingsId = eventByYear[t.Year];
+        foreach (var r in requests) r.EventSettingsId = eventByYear[r.Year];
+        await ctx.SaveChangesAsync(ct);
+        return settings.Count + trips.Count + requests.Count;
+    }
+
+    /// <summary>A stamped row wins over a legacy one of the event's year.</summary>
+    private static async Task<RideshareSettings?> FindSettingsAsync(
+        IQueryable<RideshareSettings> settings, Guid eventSettingsId, int? unassignedYear, CancellationToken ct)
+    {
+        var rows = await settings
+            .Where(s => s.EventSettingsId == eventSettingsId
+                || (unassignedYear != null && s.EventSettingsId == null && s.Year == unassignedYear))
+            .ToListAsync(ct);
+        return rows.Find(s => s.EventSettingsId is not null) ?? rows.FirstOrDefault();
     }
 
     public async Task<RideshareTrip?> GetTripAsync(Guid id, CancellationToken ct = default)

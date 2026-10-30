@@ -31,7 +31,7 @@ humans look at the map and reach out.
 **Acceptance Criteria:**
 - Offer form captures direction, place + coarse coordinates (pre-filled from profile, overridable), optional waypoints, dates/duration, vehicle type, seats offered, luggage capacity, cost-sharing expectation, and free-text notes
 - Departure plus duration must remain within the supported date range, including the seeded inverse leg; invalid spans are refused before saving.
-- On create, the route is geocoded and computed once through the year's destination and stored; a paired inverse-direction offer is auto-seeded (same driver/vehicle/seats/luggage/cost, waypoints reversed) and the two are linked for display
+- On create, the route is geocoded and computed once through the event's destination and stored; a paired inverse-direction offer is auto-seeded (same driver/vehicle/seats/luggage/cost, waypoints reversed) and the two are linked for display
 - On an edit that changes the member point, waypoints, or direction, or of an offer saved without a route, the route is recomputed
 - Only the driver can edit or cancel their own offer; a cancelled offer cannot be edited
 - A null routing result never blocks the save — the offer still saves, with no drawn route
@@ -75,7 +75,7 @@ humans look at the map and reach out.
 ### US-5: Admin Configures the Season
 
 **As a** RideshareAdmin (or Admin)
-**I want to** set the year's destination and travel windows
+**I want to** set the event's destination and travel windows
 **So that** routing has a burn endpoint to compute against and the board scopes to the right dates
 
 **Acceptance Criteria:**

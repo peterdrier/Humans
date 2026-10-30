@@ -16,7 +16,8 @@ internal interface IHoldedRepository : IRepository
     /// <summary>Keyed on the account number, which is how Holded and every caller identify it.</summary>
     Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default);
 
-    /// <summary>Removes missing rows and keeps the identity and creation time of retained ones.</summary>
+    /// <summary>Removes missing rows and keeps the identity and creation time of retained ones. A null
+    /// <see cref="HoldedExpenseDoc.Notes"/> keeps the stored notes.</summary>
     Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);

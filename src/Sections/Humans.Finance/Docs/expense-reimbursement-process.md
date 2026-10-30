@@ -100,7 +100,20 @@ robbed, automation everywhere else.**
   Holded's own payment API, plus one journal entry for whatever no open document covers, so the
   accountant sees a normal ledger.
 
-## Status (2026-09-06)
+## Status (2026-10-29)
 
-Steps 1–11 are in production: the booking screen (`/Finance/Sepa`, nobodies-collective/Humans#1141)
-is on `upstream/main`.
+Steps 1–11 are in production. Since 2026-09-06, on `origin/main`:
+
+- **Booking runs itself.** The two-hourly sweep (`sepa-bank-booking`) books each transfer once
+  its Sabadell line appears; `/Finance/Sepa` keeps the manual Book, Book file and Process
+  buttons for what the sweep leaves to a human, and Withdraw for a transfer the bank cancelled.
+- **The 17–18 Oct outbox race** pushed the same expense lines into Holded two or three times
+  (430 extra purchase documents, €25,325.24, 20 members) before a payout file was generated
+  from the inflated balances. `/Finance/HoldedDuplicates` removes the extras; a member with
+  duplicates cannot be paid out until they are gone, and the nightly doc sync logs a warning
+  while any remain.
+- **The reconciliation report** (`/Finance/ExpenseRecon`, peterdrier/Humans#2207) compares what
+  Humans approved with what Holded holds, every line and every member balance, from local mirrors
+  only. It runs nightly at 03:30 and logs "Expense recon: 0 problems" or a warning with the
+  counts, and `/Finance/Creditors` shows a red banner while it has problems. The race went
+  unnoticed until a payee's amount looked wrong; this makes the next one visible the next morning.

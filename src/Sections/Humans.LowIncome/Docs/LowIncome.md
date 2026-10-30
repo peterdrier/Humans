@@ -11,7 +11,7 @@ A stub for the future Low Income process. Today it is one Admin-only page that g
 
 ## Concepts
 
-- A **Low Income grant** is a grant under the one open Grants program whose issuer is a source with key `low-income` (`Section.SourceKey`). An Admin creates that program under Grants → Programs.
+- A **Low Income grant** is a grant under the one open Grants program whose issuer is a source with key `low-income` (`Section.SourceKey`). Board or Admin creates that program under Grants → Programs.
 
 ## Routing
 
@@ -27,7 +27,8 @@ A stub for the future Low Income process. Today it is one Admin-only page that g
 
 - The section owns no tables, no services and no migrations.
 - Every action goes through `IGrantWrite` with source key `low-income`; Grants writes the row, the audit entry and the notice.
-- No open Low Income program in Grants is shown as an error on the page, never thrown. Typed source-write refusals preserve the operator guidance; expected failures log Warning without exception stacks. Dependency failures propagate instead of being mislabeled as a missing program or overlong reason.
+- A refusal from Grants (no open Low Income program, a reason that is too long) is shown on the page as an error and logged as a Warning without a stack trace; it is never thrown.
+- Any other failure in Grants propagates as an exception; the page never reports it as a refusal.
 
 ## Negative Access Rules
 

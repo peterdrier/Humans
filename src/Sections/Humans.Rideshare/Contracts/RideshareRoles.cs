@@ -4,7 +4,7 @@ namespace Humans.Rideshare.Contracts;
 public static class RideshareRoles
 {
     /// <summary>
-    /// Rideshare Admin: sets the year's destination and travel windows, views season statistics and the
+    /// Rideshare Admin: sets the event's destination and travel windows, views season statistics and the
     /// operational day roster. Confers nothing outside Rideshare.
     /// </summary>
     public const string RideshareAdmin = "RideshareAdmin";
