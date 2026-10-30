@@ -12,19 +12,52 @@ body:
     id: section
     attributes:
       label: Section
-      description: Which area of the app does this affect? See `docs/sections/` for the full list.
+      description: Which section does this affect? Options follow `src/Sections/Humans.<Section>`; triage applies the matching `section:<name>` label.
       options:
+        - Agent
+        - Audit Log
+        - Auth (sign-in, roles)
+        - Budget
+        - Calendar
+        - Campaigns
         - Camps
-        - Teams
-        - Legal
-        - Shifts
-        - Tickets
-        - Board
+        - Cantina
+        - City Planning
+        - Consent (legal documents)
+        - Containers
+        - Early Entry
+        - Email
+        - Events
+        - Expenses
+        - Finance
+        - Gate
+        - GDPR
+        - Google Integration
+        - Governance (applications, Board, assembly votes)
+        - Grants
+        - Guide
+        - Holded
+        - Issues
+        - Low Income
+        - MailerLite
+        - Monitor
+        - Notifications
         - Onboarding
-        - Admin
-        - Governance
-        - Profile / Account
-        - Auth / Sign-in
+        - Preapprovals
+        - Rideshare
+        - Scanner
+        - Search
+        - Settings
+        - Shifts
+        - Store
+        - Stripe
+        - Surveys
+        - Teams
+        - Ticket Tailor
+        - Tickets
+        - Tour
+        - Users (profiles, accounts, emails)
+        - Workgroups
         - Infrastructure / Build / CI
         - Other / Unsure
     validations:
