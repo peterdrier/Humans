@@ -25,8 +25,8 @@ public sealed class BoardReadsEverythingTests : IDisposable
     /// <summary>
     /// Writes Board makes by design (Governance, workgroups, legal documents), the onboarding review queue (left as it
     /// stands until it is retired), audited reveals that hand out data and change nothing, and the read-only sync
-    /// preview. Preapprovals' class gate admits Board to read; its per-program checks deny Board every write (its own
-    /// tests prove that). Grants and Surveys still let Board write until Peter decides who owns those writes.
+    /// preview. Preapprovals' and Grants' class gates admit Board to read; their per-program checks deny Board every
+    /// write (their own tests prove that).
     /// </summary>
     private static readonly HashSet<string> BoardWritesByDesign = new(StringComparer.Ordinal)
     {
@@ -42,7 +42,6 @@ public sealed class BoardReadsEverythingTests : IDisposable
         "GoogleController.SyncPreview",
         "GrantsAdminController",
         "PreapprovalsAdminController",
-        "SurveyAdminController",
     };
 
     private readonly ServiceProvider _serviceProvider;
@@ -75,7 +74,8 @@ public sealed class BoardReadsEverythingTests : IDisposable
     {
         PolicyClasses().Select(t => t.Name).Should().Contain(
             ["UsersPolicies", "TeamsPolicies", "CampsPolicies", "TicketsPolicies", "FinancePolicies",
-             "EventsPolicies", "CantinaPolicies", "RidesharePolicies", "StorePolicies", "ShiftsPolicies"]);
+             "EventsPolicies", "CantinaPolicies", "RidesharePolicies", "StorePolicies", "ShiftsPolicies",
+             "GrantsPolicies", "SurveysPolicies"]);
     }
 
     [HumansTheory]

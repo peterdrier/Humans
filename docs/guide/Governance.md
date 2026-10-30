@@ -134,7 +134,7 @@ Role assignments live on each human's detail page under the Admin area (`/Users/
 - **Admin** can assign and revoke any role, including Admin itself.
 - **Board** can assign and revoke any role **except** Admin.
 - **UsersAdmin** can assign and revoke any role **except** Admin (same surface as Board for role management).
-- Board does not assign or end roles. The full set of roles Users Admin can manage is every catalogued role but Admin: Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, ShiftsNoInfo, FeedbackAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EarlyEntryAdmin, RideshareAdmin, ConsentCoordinator, ShiftsAdmin.
+- Board does not assign or end roles. The full set of roles Users Admin can manage is every catalogued role but Admin: Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, ShiftsNoInfo, FeedbackAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EarlyEntryAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ConsentCoordinator, ShiftsAdmin.
 - Coordinator roles (Consent Coordinator, Shifts Admin) are assigned here too; what those coordinators actually do is described in [LegalAndConsent.md](LegalAndConsent.md) and [Onboarding.md](Onboarding.md).
 
 To end a role, set the **valid to** date. Historical assignments remain on the profile for the audit trail.

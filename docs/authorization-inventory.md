@@ -29,7 +29,7 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `AdminController` (`src/Humans.Web`) | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
-| `AdminController.Index` | Action | `Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
+| `AdminController.Index` | Action | `Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
 
 `/Admin/*` is a nav holder, not a section — each admin surface's controller lives in the section it acts on (see Per-Section Inventories above). The admin shell's sidebar groups and tabs come from sections' `ISectionAdminNav` contributions, each item filtered by its own policy (`AdminNavItems`, see §2 Shared Components); only the dashboard link is `AnyAdminRole`-gated.
 
@@ -173,7 +173,7 @@ Every other top-nav link is contributed by its section through `ISectionNav` and
 | `Store/Index.cshtml` (`src/Sections/Humans.Store`) | 10 | `authorize-policy="StorePolicies.Manage"` | Catalog / Summary / Payments admin button group on the Store landing page |
 | `Expenses/New.cshtml` (`src/Sections/Humans.Expenses`) | 27 | `authorize-policy="FinancePolicies.Manage"` | "For member" submitter picker |
 | `Rideshare/Mine.cshtml` (`src/Sections/Humans.Rideshare`) | 7 | `(await AuthService.AuthorizeAsync(User, RidesharePolicies.Manage)).Succeeded` | Drives `canAdminister` flag |
-| `SurveyAdmin/Results.cshtml` / `Builder.cshtml` (`src/Sections/Humans.Surveys`) | 17, 19, 243 / 24 | `authorize-policy="@...PolicyNames.BoardOrAdmin"` | Admin breadcrumbs and Board/Admin-only results controls |
+| `SurveyAdmin/Results.cshtml` / `Builder.cshtml` / `Queue.cshtml` (`src/Sections/Humans.Surveys`) | breadcrumbs, ranked availability, queue actions | `authorize-policy="@...SurveysPolicies.Read"` / `SurveysPolicies.Manage` | Admin breadcrumbs for readers; the edit breadcrumb, ranked availability and approve/reject only for Surveys Admin/Admin |
 
 ### Shared Components
 
@@ -272,7 +272,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Events | `EventsPolicies.Read`, `EventsPolicies.Manage` |
 | Expenses | `ExpenseReportView` |
 | Finance | `FinancePolicies.Read`, `FinancePolicies.Manage` (also gate Budget admin, Holded and the expense decisions) |
-| Grants | `GrantsManage` — section-local in `GrantsPolicies` |
+| Grants | `GrantsPolicies.Read`, `GrantsPolicies.Manage`; `GrantPrograms` — section-local in `GrantProgramsPolicy` |
 | Preapprovals | `PreapprovalsManage`, `PreapprovalsAccess` — section-local in `PreapprovalsPolicies` |
 | Rideshare | `RidesharePolicies.Read`, `RidesharePolicies.Manage` |
 | Shifts | `ShiftsPolicies.Read`, `ShiftsPolicies.Manage`, `ShiftsPolicies.ManageVolunteers`, `ShiftsPolicies.DepartmentRead`, `ShiftsPolicies.PrivilegedSignupApprover`, `ShiftsPolicies.MedicalDataViewer` (`Read` also gates the Early Entry roster) |
@@ -308,6 +308,10 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `CantinaPolicies.Manage` | CantinaAdmin, Admin | The roster CSVs |
 | `RidesharePolicies.Read` | RideshareAdmin, Board, Admin | |
 | `RidesharePolicies.Manage` | RideshareAdmin, Admin | Destination and travel windows |
+| `GrantsPolicies.Read` | GrantsAdmin, Board, Admin | Every grant program |
+| `GrantsPolicies.Manage` | GrantsAdmin, Admin | Create and edit programs |
+| `SurveysPolicies.Read` | SurveysAdmin, Board, Admin | The approval queue, recipient review, the official link |
+| `SurveysPolicies.Manage` | SurveysAdmin, Admin | Approve, reject, open, close, send, ranked availability |
 | `StorePolicies.Read` | StoreAdmin, FinanceAdmin, Board, Admin | |
 | `StorePolicies.Manage` | StoreAdmin, FinanceAdmin, Admin | Catalog changes and payment repairs; also `StoreRoles.CanAdministerStore` |
 | `ReviewQueueAccess` | ConsentCoordinator, ShiftsAdmin, Board, Admin | Untouched until the review queue is retired |
@@ -324,7 +328,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `PreapprovalsAccess` | `PreapprovalsManage` OR anyone with a grant or an open program | Section-local, composite |
 | `ExpenseReportView` | Resource-based (the expense report) | Wraps `ExpenseReportOperationRequirement(View)` — see §6, peterdrier/Humans#1838 |
 
-The per-object handlers (team admin pages, Google team resources, member email edits, the shift admin page, Preapprovals programs) deny Board every write and let it read through the section's Read policy or a `View` operation. Grants and Surveys still let Board act through their per-program and per-survey checks until Peter decides who writes there.
+The per-object handlers (team admin pages, Google team resources, member email edits, the shift admin page, Preapprovals and Grants programs, surveys) deny Board every write and let it read through the section's Read policy or a `View`/`ViewResults`/`Preview` operation. Grants and Surveys each gained a section admin role (`GrantsAdmin`, `SurveysAdmin`) for the writes Board used to make.
 
 ### Notes on Policy Design
 
@@ -382,7 +386,7 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 | `src/Sections/Humans.CityPlanning/Controllers/CityPlanningController.cs` | 281 | `AuthorizeAsync(User, new ContainerAuthorizationTarget(userCamp.Id) { Year = year }, ContainerOperationRequirement.Place)` (a camp lead with no map-admin policy opens the map for their own camp) |
 | `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 38 | `AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)` (map-admin gate) |
 | `src/Sections/Humans.CityPlanning/Controllers/CityPlanningApiController.cs` | 205, 282, 309, 346 | `AuthorizeAsync(User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place)` (per-container `canEdit` flag in the listing; container placement save, notes, clear) |
-| `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs` | 122, 181, 187, 197, 222, 254, 283, 319, 371, 618, 656 | `AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.X))` — `Submit`, `Edit`, `Preview`, `ViewResults` |
+| `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs` | 122, 181, 187, 197, 222, 254, 283, 319, 371, 618, 656 | `AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.X))` — `Submit`, `Edit`, `Preview`, `ViewResults`, `ExportResults` |
 | `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | 448, 451 | `AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.{Administer, Member})` (page permissions) |
 | `src/Sections/Humans.Workgroups/Controllers/WorkgroupsController.cs` | `ApproveMember`, `DeclineMember`, `AddMember` (`ManageMembersAsync`) | Coordinator-only membership decisions: Board/Admin (`Administer`) or a current coordinator of an Active group, else `Forbid()`; the service re-checks via `RequireCoordinator` (`WorkgroupService.Helpers.cs`) unless `asAdmin` |
 | `src/Sections/Humans.Preapprovals/Controllers/PreapprovalsAdminController.cs` | 174 | `AuthorizeAsync(User, program, ProgramOperationRequirement.{View, Manage, Administer})` (`AuthorizedAsync` helper — every per-program page and POST) |
@@ -411,7 +415,7 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 - **No `[Authorize(Roles = ...)]` attributes remain anywhere in `src/`** — every controller/action `[Authorize]` attribute now references a `PolicyNames` constant or is a bare authenticated/`[AllowAnonymous]` marker.
 - **`ScannerController` uses `PolicyNames.ScannerAccess`**, not `TicketsPolicies.Read` — the `ScannerAccess` policy is a composite assertion that additionally admits the shared gate-terminal account by its well-known `SystemUserIds.GateTerminal` NameIdentifier claim so the kiosk session can scan without holding any role.
 - **The Gate section (`/Gate`) splits read from write**: `GateController` reads under `ScannerAccess`, but every state-changing action (`Decision`, `Claim` POST, `ClaimPin`, `EndShift`) is gated by the separate `GateAdmit` policy. Scan attribution is session-based, stamped server-side after an active-member + personal-PIN check; supervisor overrides use the shared `Gate:SupervisorPin` config value (server-verified, throttled, fail-closed) — the PIN authorizes but never attributes. `GateController.Search` is a deliberately name-only, masked-email people search so the route-locked kiosk never exposes the broader `/api/profiles/search` surface.
-- **`SurveyController` is `[AllowAnonymous]`** — the entire public survey wizard is unauthenticated; identity flows from the invitation token, not the principal. `SurveyAdminController` (`AppAccess` plus per-survey `SurveyOperationRequirement`, `BoardOrAdmin` on the run/approval actions) and, in the Backdoor section, `BackdoorSurveysController` (`BackdoorApiKeyAuthFilter`) are the gated surfaces.
+- **`SurveyController` is `[AllowAnonymous]`** — the entire public survey wizard is unauthenticated; identity flows from the invitation token, not the principal. `SurveyAdminController` (`AppAccess` plus per-survey `SurveyOperationRequirement`, `SurveysPolicies.Read` on the queue and Send page, `SurveysPolicies.Manage` on the run/approval actions) and, in the Backdoor section, `BackdoorSurveysController` (`BackdoorApiKeyAuthFilter`) are the gated surfaces.
 - **`ICalFeedApiController` is `[AllowAnonymous]`** — the personal iCal feed uses a secret token in the URL for authentication; all failure modes return 404 to prevent oracle attacks.
 - The Events Guide controllers and `_Layout.cshtml` Events sub-dropdowns have all migrated to `EventsPolicies.Manage`.
 
@@ -441,6 +445,8 @@ Only `Admin` and `Board` are `RoleNames` constants in Base. Every other role is 
 | `CantinaAdmin` | `"CantinaAdmin"` |
 | `EarlyEntryAdmin` | `"EarlyEntryAdmin"` |
 | `RideshareAdmin` | `"RideshareAdmin"` |
+| `GrantsAdmin` | `"GrantsAdmin"` |
+| `SurveysAdmin` | `"SurveysAdmin"` |
 
 ### Role predicates → Canonical Policy Mapping
 

@@ -40,7 +40,7 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Pre-approvals (Programs), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync), Agent (Status, History), Backdoor (API keys), Debug (every item) — the last three read-only: their POSTs are `AdminOnly` |
+| Board | Tickets (Tickets, Onsite roster), Scanner, Users (Humans, Roles), Onboarding (Review), Pre-approvals (Programs), Grants (Programs), Governance (Voting, Applications, Assembly Votes), Workgroups, Audit (Audit log), Surveys (Surveys, Approvals), Google (Resource sync), Agent (Status, History), Backdoor (API keys), Debug (every item) — the last three read-only: their POSTs are `AdminOnly` |
 | UsersAdmin | Users (Humans, Roles) |
 | TicketsAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster), Scanner, Gate (Terminal) |
 | FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Holded connector), Holded, Pre-approvals (Programs), Store (Catalog, Summary, Payments, Order years) |
@@ -48,6 +48,8 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 | EventsAdmin | Events (Dashboard, Moderation, Categories, Venues, Export) |
 | CantinaAdmin | Cantina (Roster) |
 | RideshareAdmin | Rideshare (Settings & stats, Day roster) |
+| GrantsAdmin | Grants (Programs) |
+| SurveysAdmin | Surveys (Surveys, Approvals) |
 | ConsentCoordinator | Onboarding (Review) |
 | ShiftsAdmin | Early Entry, Onboarding (Review), Shifts (Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
@@ -56,7 +58,7 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 
 ## Invariants
 
-- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole`, derived from the sections' `ISectionRoles` — every role with `OpensAdminShell`; `EarlyEntryAdmin` is the one that opts out (15 roles today: Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator). Concrete admin tools are gated on their section controllers.
+- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole`, derived from the sections' `ISectionRoles` — every role with `OpensAdminShell`; `EarlyEntryAdmin` is the one that opts out (17 roles today: Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator). Concrete admin tools are gated on their section controllers.
 - `FeedbackAdmin` is in `AnyAdminRole` but owns no sidebar item since nobodies-collective/Humans#977 made every Feedback screen `AdminOnly`. A holder of only that role therefore reaches the shell and sees an empty sidebar. Dropping it from `AnyAdminRole` is a privilege reduction left undecided by #977.
 - The Surveys group's "Surveys" item is gated by `PolicyNames.AppAccess` (any Active human), not a Board/Admin policy — every admin-shaped role's holder sees it once they reach the shell, not only Board. Only "Approvals" (the authoring approval queue) is `BoardOrAdmin`.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.

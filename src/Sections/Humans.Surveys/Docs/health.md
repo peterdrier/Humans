@@ -62,7 +62,7 @@ Written fresh, not as today's layout with fixes.
 - **A resource handler holds the per-survey rules, and the service holds them again.** The handler
   is the browser's copy — it decides whether to render a button; the service is the enforcing copy
   and refuses regardless. Neither is redundant: one is a view concern, one is the invariant. Submit
-  checks the author, Approve and Reject check Board/Admin, the admin list scopes itself, and every
+  checks the author, Approve and Reject check Surveys Admin/Admin, the admin list scopes itself, and every
   edit path — `UpdateCoreAsync`, translation pre-fill, ranked availability — takes a `SurveyViewer`
   and compares it to `CreatedByUserId`, so an edit the handler refuses the service refuses too.
 - **One page flow.** Both entry paths differ only in how the session is keyed and where the
@@ -117,7 +117,7 @@ the line that enforces it.
   (`src/Sections/Humans.Surveys/Services/SurveyService.cs:609`); once pending it can be reached by
   neither of the two status verbs that would walk it back out — Open refuses it (`:533`) and Close
   refuses it (`:556`), so the `PendingApproval → Closed → Open` route to an unapproved Open survey
-  does not exist. Board/Admin keep the pre-existing direct Draft → Open path, which the gate does
+  does not exist. Surveys Admin/Admin keep the pre-existing direct Draft → Open path, which the gate does
   not touch.
 - **Approval cannot open a survey that has nobody to invite.** Approve-and-send checks the audience
   *configuration* and then resolves it to real recipients, both before the approval is persisted, so

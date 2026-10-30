@@ -248,7 +248,7 @@ internal sealed class SurveyService(
         if (existing is null) return new(Error: new("Surveys_PreviewNotFound", "Survey not found."));
         // The controller's resource handler says the same thing before rendering a button; this is
         // the enforcing copy, so an edit refused there is refused here too whoever the caller is.
-        if (!viewer.IsBoardOrAdmin && existing.CreatedByUserId != actorUserId)
+        if (!viewer.ManagesEverySurvey && existing.CreatedByUserId != actorUserId)
             return new(Error: new("Surveys_Validation_SaveNotAuthor", "Only the survey's author may edit it."));
         if (existing.IsAsociadoVote == true
             && existing.Status != SurveyStatus.Draft
@@ -494,7 +494,7 @@ internal sealed class SurveyService(
     public async Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default)
     {
         var surveys = await repo.GetAllSummariesAsync(ct);
-        var scoped = viewer.IsBoardOrAdmin
+        var scoped = viewer.SeesEverySurvey
             ? surveys
             : surveys.Where(s => s.CreatedByUserId == viewer.UserId).ToList();
         if (scoped.Count == 0) return [];
@@ -553,8 +553,8 @@ internal sealed class SurveyService(
 
     public async Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
     {
-        if (!viewer.IsBoardOrAdmin)
-            return new(Refusal: "Only Board/Admin may approve a survey.");
+        if (!viewer.ManagesEverySurvey)
+            return new(Refusal: "Only Surveys Admin or Admin may approve a survey.");
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey is null)
             return new(Refusal: "Survey not found.");
@@ -563,7 +563,7 @@ internal sealed class SurveyService(
 
         // Send validates the audience, and Open is not a state the author can edit out of — so a
         // misconfigured audience has to fail here, before approval is persisted, leaving the
-        // survey in the queue where the Board can reject it back to the author.
+        // survey in the queue where a Surveys Admin can reject it back to the author.
         var audienceError = AudienceConfigurationError(
             survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
         if (audienceError is not null)
@@ -591,8 +591,8 @@ internal sealed class SurveyService(
 
     public async Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default)
     {
-        if (!viewer.IsBoardOrAdmin)
-            return new(Refusal: "Only Board/Admin may reject a survey.");
+        if (!viewer.ManagesEverySurvey)
+            return new(Refusal: "Only Surveys Admin or Admin may reject a survey.");
         if (string.IsNullOrWhiteSpace(note))
             return new(Refusal: "A rejection note is required.");
         var survey = await repo.GetByIdAsync(surveyId, ct);
@@ -1653,7 +1653,7 @@ internal sealed class SurveyService(
                 "the answers themselves survive as an anonymous data point in the survey's " +
                 "results — GDPR Art. 17(3)(b). They are no longer attributable to anyone.",
             [AuthoredSurveys] =
-                "Partially retained: the authorship link is dropped and any Board rejection note " +
+                "Partially retained: the authorship link is dropped and any rejection note " +
                 "deleted, but the survey and its questions survive as the association's own " +
                 "record of what it asked — GDPR Art. 17(3)(b).",
             [SurveyInvitations] =

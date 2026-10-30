@@ -1,4 +1,5 @@
 using Humans.Base.Authorization;
+using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
@@ -16,8 +17,15 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Surveys;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionJobs
+public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectionPolicies, ISectionJobs
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(SurveysRoles.SurveysAdmin, "Surveys Admin",
+            "Survey stewards. They approve or reject submitted surveys, edit any survey, open and close them, send the invitations, and read every survey's results.",
+            "fa-solid fa-square-poll-vertical"),
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, SurveysAuditActions>();
@@ -42,13 +50,21 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs
         services.AddSingleton<IAuthorizationHandler, SurveyAuthorizationHandler>();
     }
 
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(SurveysPolicies.Read, policy =>
+            policy.RequireRole(SurveysRoles.SurveysAdmin, RoleNames.Board, RoleNames.Admin));
+        options.AddPolicy(SurveysPolicies.Manage, policy =>
+            policy.RequireRole(SurveysRoles.SurveysAdmin, RoleNames.Admin));
+    }
+
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Surveys", [
             // App access, not Board: authoring is self-service and the index is scoped to what the viewer authored,
             // so a Board gate would leave authors with a page they may use and no way to reach it.
             new("Surveys", "SurveyAdmin", "Index", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.AppAccess),
-            new("Approvals", "SurveyAdmin", "Queue", null, null, "fa-solid fa-square-poll-vertical", PolicyNames.BoardOrAdmin,
+            new("Approvals", "SurveyAdmin", "Queue", null, null, "fa-solid fa-square-poll-vertical", SurveysPolicies.Read,
                 PillCount: PillCounts.PendingApprovalQueueAsync)
         ])
     ];
