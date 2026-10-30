@@ -664,7 +664,8 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""documentDate"":""2026-10-10""");
         json.Should().Contain(@"""kind"":""UnboundContact""");
         json.Should().Contain(@"""difference"":-100");
-        json.Should().Contain(@"""problems"":3");
+        json.Should().Contain(@"""problems"":2");
+        json.Should().Contain(@"""warnings"":1");
         json.Should().NotContainEquivalentOf("iban");
     }
 

@@ -15,14 +15,14 @@ internal sealed class ExpenseReconJob(
         var t = report.Totals;
         if (!report.IsAvailable)
             logger.LogWarning("Expense recon: not computed — {Reason}", report.UnavailableReason);
-        else if (t.Problems == 0)
+        else if (t.Problems == 0 && t.Warnings == 0)
             logger.LogInformation(
                 "Expense recon: 0 problems — {Reports} reports, {Lines} lines, {Docs} Holded docs, {Members} members balanced.",
                 t.Reports, t.Lines, t.HoldedDocs, report.Members.Count);
         else
             logger.LogWarning(
-                "Expense recon: {Problems} problem(s) — {ProblemLines} of {Lines} lines, {Duplicates} duplicate doc(s) "
-                + "({Excess} excess), {Orphans} orphan doc(s), {MembersOff} member(s) off. See /Finance/ExpenseRecon.",
-                t.Problems, t.ProblemLines, t.Lines, t.DuplicateDocs, t.ExcessAmount, t.Orphans, t.MembersOff);
+                "Expense recon: {Problems} problem(s), {Warnings} member balance warning(s) — {ProblemLines} of {Lines} lines, "
+                + "{Duplicates} duplicate doc(s) ({Excess} excess), {Orphans} orphan doc(s). See /Finance/ExpenseRecon.",
+                t.Problems, t.Warnings, t.ProblemLines, t.Lines, t.DuplicateDocs, t.ExcessAmount, t.Orphans);
     }
 }

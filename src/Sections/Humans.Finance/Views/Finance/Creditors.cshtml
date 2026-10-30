@@ -36,28 +36,32 @@
     </div>
 </div>
 
-@if (Model.DuplicateFlaggedAccounts > 0 || Model.ReconProblems > 0)
+@if (Model.DuplicateFlaggedAccounts > 0)
 {
     <div class="alert alert-danger">
-        @if (Model.DuplicateFlaggedAccounts > 0)
-        {
-            <div>
-                <i class="fa-solid fa-clone me-1"></i>
-                <strong>@Model.DuplicateFlaggedAccounts creditor account@(Model.DuplicateFlaggedAccounts == 1 ? "" : "s")</strong>
-                carr@(Model.DuplicateFlaggedAccounts == 1 ? "ies" : "y") duplicate documents in Holded: an expense line matches more
-                than one purchase document, so the balance is inflated. Those rows cannot be paid until the extras are removed on
-                <a asp-action="HoldedDuplicates" class="alert-link">Duplicate docs</a>.
-            </div>
-        }
-        @if (Model.ReconProblems > 0)
-        {
-            <div>
-                <i class="fa-solid fa-scale-unbalanced me-1"></i>
-                <strong>@Model.ReconProblems expense reconciliation problem@(Model.ReconProblems == 1 ? "" : "s")</strong>:
-                approved expense lines and Holded disagree. See the
-                <a asp-action="ExpenseRecon" class="alert-link">expense reconciliation</a>.
-            </div>
-        }
+        <i class="fa-solid fa-clone me-1"></i>
+        <strong>@Model.DuplicateFlaggedAccounts creditor account@(Model.DuplicateFlaggedAccounts == 1 ? "" : "s")</strong>
+        carr@(Model.DuplicateFlaggedAccounts == 1 ? "ies" : "y") duplicate documents in Holded: an expense line matches more
+        than one purchase document, so the balance is inflated. Those rows cannot be paid until the extras are removed on
+        <a asp-action="HoldedDuplicates" class="alert-link">Duplicate docs</a>.
+    </div>
+}
+@if (Model.ReconProblems > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-scale-unbalanced me-1"></i>
+        <strong>@Model.ReconProblems expense reconciliation problem@(Model.ReconProblems == 1 ? "" : "s")</strong>:
+        approved expense lines and Holded disagree. Nothing is blocked. See the
+        <a asp-action="ExpenseRecon" class="alert-link">expense reconciliation</a>.
+    </div>
+}
+@if (Model.ReconWarnings > 0)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>@Model.ReconWarnings member balance warning@(Model.ReconWarnings == 1 ? "" : "s")</strong>:
+        a creditor balance differs from what the expense lines and SEPA bookings predict. Advisory only. See the
+        <a asp-action="ExpenseRecon" class="alert-link">expense reconciliation</a>.
     </div>
 }
 @if (Model.DuplicateFlaggedAccounts == 0 && Model.DuplicateCheckUnavailable)

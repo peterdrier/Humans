@@ -229,6 +229,28 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
+    public void MemberOff_IsAWarningNotAProblem()
+    {
+        var report = Build(
+            [Line("d1")], [Doc("d1")],
+            new Dictionary<int, decimal> { [AliceAccount] = 0m },
+            [Transfer(AliceAccount, 100m, booked: false)]);
+
+        report.Members.Single().IsWarning.Should().BeTrue();
+        report.Totals.Problems.Should().Be(0);
+        report.Totals.Warnings.Should().Be(1);
+    }
+
+    [HumansFact]
+    public void Problems_CountLinesAndOrphans_WarningsCountMembers()
+    {
+        var totals = new ExpenseReconTotals(1, 1, 1, ProblemLines: 2, DuplicateDocs: 0, ExcessAmount: 0m, Orphans: 3, MembersOff: 4);
+
+        totals.Problems.Should().Be(5);
+        totals.Warnings.Should().Be(4);
+    }
+
+    [HumansFact]
     public void GeneratedNotPaid_StaysBalanced_AndListsTheOpenTransfer()
     {
         var report = Build(
@@ -242,14 +264,14 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void MemberWithoutAnAccount_IsAProblemOnlyOnceHoldedHoldsTheirDocument()
+    public void MemberWithoutAnAccount_IsAWarningOnlyOnceHoldedHoldsTheirDocument()
     {
         var pending = Build([Line(null, user: Bob, state: ExpenseHoldedSyncState.Queued)], [], bindings: []);
         var booked = Build([Line("d1", user: Bob, contact: "c-bob")], [Doc("d1", contactId: "c-bob")], bindings: []);
 
         pending.Members.Single().Should().Match<ExpenseReconMember>(m =>
-            m.Status == ExpenseReconMemberStatus.NoAccount && !m.IsProblem);
-        booked.Members.Single().IsProblem.Should().BeTrue();
+            m.Status == ExpenseReconMemberStatus.NoAccount && !m.IsWarning);
+        booked.Members.Single().IsWarning.Should().BeTrue();
     }
 
     [HumansFact]
@@ -468,20 +490,21 @@ public class ExpenseReconTests
     // --- the nightly job ---
 
     [HumansTheory]
-    [InlineData(0, LogLevel.Information)]
-    [InlineData(2, LogLevel.Warning)]
-    public async Task Job_LogsOneSummaryLine(int orphans, LogLevel level)
+    [InlineData(0, 0, LogLevel.Information)]
+    [InlineData(2, 0, LogLevel.Warning)]
+    [InlineData(0, 3, LogLevel.Warning)]
+    public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level)
     {
         var finance = Substitute.For<IHoldedFinanceService>();
         finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
-            null, SyncedAt, null, [], [], [], [], new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, orphans, 0)));
+            null, SyncedAt, null, [], [], [], [], new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, orphans, membersOff)));
         var logger = new CapturingLogger<ExpenseReconJob>();
 
         await new ExpenseReconJob(finance, logger).ExecuteAsync(TestContext.Current.CancellationToken);
 
         var entry = logger.Entries.Should().ContainSingle().Subject;
         entry.Level.Should().Be(level);
-        if (orphans == 0) entry.Message.Should().StartWith("Expense recon: 0 problems");
+        if (orphans == 0 && membersOff == 0) entry.Message.Should().StartWith("Expense recon: 0 problems");
     }
 
     [HumansFact]

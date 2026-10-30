@@ -4,15 +4,15 @@
     var totals = Model.Totals;
     var problemLines = Model.Lines.Where(l => l.IsProblem).ToList();
     var okLines = Model.Lines.Where(l => !l.IsProblem).ToList();
-    var problemMembers = Model.Members.Where(m => m.IsProblem).ToList();
+    var warningMembers = Model.Members.Where(m => m.IsWarning).ToList();
 }
 
 @functions {
     private static (string Css, string Label) MemberBadge(ExpenseReconMember member) => member.Status switch
     {
         ExpenseReconMemberStatus.Balanced => ("bg-success", "Balanced"),
-        ExpenseReconMemberStatus.Off => ("bg-danger", "Off by " + Math.Abs(member.Difference).ToEuro()),
-        _ => member.IsProblem ? ("bg-danger", "No creditor account") : ("bg-secondary", "No creditor account"),
+        ExpenseReconMemberStatus.Off => ("bg-warning text-dark", "Off by " + Math.Abs(member.Difference).ToEuro()),
+        _ => member.IsWarning ? ("bg-warning text-dark", "No creditor account") : ("bg-secondary", "No creditor account"),
     };
 }
 
@@ -68,17 +68,21 @@
             <span class="badge bg-light text-dark">@totals.HoldedDocs Holded docs</span>
             <span class="badge @(totals.DuplicateDocs > 0 ? "bg-danger" : "bg-light text-dark")">@totals.DuplicateDocs duplicates · @totals.ExcessAmount.ToEuro() excess</span>
             <span class="badge @(totals.Orphans > 0 ? "bg-danger" : "bg-light text-dark")">@totals.Orphans orphans</span>
-            <span class="badge @(totals.MembersOff > 0 ? "bg-danger" : "bg-light text-dark")">@totals.MembersOff members off</span>
+            <span class="badge @(totals.MembersOff > 0 ? "bg-warning text-dark" : "bg-light text-dark")">@totals.MembersOff members off (warning)</span>
         </div>
         <div class="ms-auto">
             @if (totals.Problems == 0)
             {
                 <span class="text-success fw-semibold"><i class="fa-solid fa-check me-1"></i>0 problems</span>
+                @if (totals.Warnings > 0)
+                {
+                    <span class="text-warning fw-semibold ms-1">· @totals.Warnings member balance warning@(totals.Warnings == 1 ? "" : "s")</span>
+                }
             }
             else
             {
                 <span class="text-danger fw-semibold">
-                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@totals.Problems problem@(totals.Problems == 1 ? "" : "s")
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@totals.Problems problem@(totals.Problems == 1 ? "" : "s")@(totals.Warnings > 0 ? $" · {totals.Warnings} member balance warning{(totals.Warnings == 1 ? "" : "s")}" : "")
                 </span>
             }
         </div>
@@ -132,7 +136,7 @@
             <tr><th>Member</th><th>Account</th><th class="text-end">Ledger</th><th class="text-end">Expected</th><th>Status</th><th>Open SEPA transfers</th></tr>
         </thead>
         <tbody>
-            @foreach (var m in problemMembers.Concat(Model.Members.Where(x => !x.IsProblem)))
+            @foreach (var m in warningMembers.Concat(Model.Members.Where(x => !x.IsWarning)))
             {
                 var (css, label) = MemberBadge(m);
                 <tr>

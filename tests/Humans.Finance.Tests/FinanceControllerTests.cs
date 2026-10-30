@@ -333,12 +333,13 @@ public class FinanceControllerTests
         Accounts([]);
         _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(problems is { } n
             ? new ExpenseReconReport(null, Instant.FromUtc(2026, 10, 29, 3, 0), null, [], [], [], [],
-                new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, n, 0))
+                new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, n, 2))
             : ExpenseRecon.Unavailable(null, "never synced"));
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
         page.ReconProblems.Should().Be(expected);
+        page.ReconWarnings.Should().Be(expected is null ? 0 : 2);
         page.ReconUnavailable.Should().Be(expected is null);
     }
 

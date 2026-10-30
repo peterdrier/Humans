@@ -61,7 +61,8 @@ internal sealed record CreditorsPageVm(
     string SortBy,
     string SortDir,
     SepaPayoutSettings Sepa,
-    int? ReconProblems = 0)
+    int? ReconProblems = 0,
+    int ReconWarnings = 0)
 {
     /// <summary>Null when the expense reconciliation cannot be computed (the document mirror never synced).</summary>
     public bool ReconUnavailable => ReconProblems is null;

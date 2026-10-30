@@ -244,6 +244,7 @@ internal sealed class BackdoorFinanceController(
                 orphans = r.Totals.Orphans,
                 membersOff = r.Totals.MembersOff,
                 problems = r.Totals.Problems,
+                warnings = r.Totals.Warnings,
             },
             lines = r.Lines.Select(l => new
             {
@@ -284,7 +285,7 @@ internal sealed class BackdoorFinanceController(
                 expectedBalance = m.ExpectedBalance,
                 difference = m.Difference,
                 status = m.Status.ToString(),
-                isProblem = m.IsProblem,
+                isWarning = m.IsWarning,
                 openTransfers = m.OpenTransfers.Select(t => new
                 {
                     transferId = t.TransferId,

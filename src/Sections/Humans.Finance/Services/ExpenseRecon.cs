@@ -91,7 +91,7 @@ internal static class ExpenseRecon
             DuplicateDocs: lines.Sum(l => l.DuplicateDocIds.Count),
             ExcessAmount: lines.Sum(l => l.ExcessAmount),
             Orphans: orphans.Count,
-            MembersOff: members.Count(m => m.IsProblem));
+            MembersOff: members.Count(m => m.IsWarning));
 
         var years = allLines.Select(l => l.DocumentDate.Year).Concat(allOrphans.Select(o => o.Date.Year))
             .Distinct().OrderDescending().ToList();
@@ -171,7 +171,7 @@ internal static class ExpenseRecon
                         .Select(t => new ExpenseReconOpenTransfer(t.TransferId, t.FileName, t.GeneratedAt, t.Amount))
                         .ToList());
             })
-            .OrderByDescending(m => m.IsProblem)
+            .OrderByDescending(m => m.IsWarning)
             .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }

@@ -22,8 +22,8 @@ public sealed record ExpenseReconReport(
     public bool IsAvailable => UnavailableReason is null;
 }
 
-/// <summary><see cref="Problems"/> is what the "0 problems" line counts: problem lines, orphans and members
-/// whose balance is off.</summary>
+/// <summary><see cref="Problems"/> is what the "0 problems" line counts: problem lines and orphans.
+/// <see cref="Warnings"/> counts members whose balance is off: advisory only, never blocking anything.</summary>
 public sealed record ExpenseReconTotals(
     int Reports,
     int Lines,
@@ -34,7 +34,9 @@ public sealed record ExpenseReconTotals(
     int Orphans,
     int MembersOff)
 {
-    public int Problems => ProblemLines + Orphans + MembersOff;
+    public int Problems => ProblemLines + Orphans;
+
+    public int Warnings => MembersOff;
 }
 
 public enum ExpenseReconLineStatus
@@ -125,8 +127,8 @@ public sealed record ExpenseReconMember(
 {
     public decimal Difference => LedgerBalance - ExpectedBalance;
 
-    /// <summary>An account-less member counts only when Holded should already hold something of theirs.</summary>
-    public bool IsProblem => Status == ExpenseReconMemberStatus.Off
+    /// <summary>A warning, not a problem. An account-less member counts only when Holded should already hold something of theirs.</summary>
+    public bool IsWarning => Status == ExpenseReconMemberStatus.Off
                              || (Status == ExpenseReconMemberStatus.NoAccount && ExpectedBalance != 0m);
 }
 

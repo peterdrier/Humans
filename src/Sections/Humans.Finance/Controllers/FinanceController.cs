@@ -123,7 +123,7 @@ internal sealed class FinanceController(
         var recon = await holdedFinance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         return View(new CreditorsPageVm(
             accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings(),
-            recon.IsAvailable ? recon.Totals.Problems : null));
+            recon.IsAvailable ? recon.Totals.Problems : null, recon.Totals.Warnings));
     }
 
     /// <summary>Local mirrors only; fixes stay on the pages it links to.</summary>
