@@ -6,6 +6,7 @@ using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
+using Humans.Holded.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -21,6 +22,7 @@ internal sealed class FinanceController(
     IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
     IExpenseReportService expenseReports,
+    IHoldedService holdedLedger,
     CashFlowService cashFlow,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
@@ -84,7 +86,17 @@ internal sealed class FinanceController(
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
+        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
         var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
+        var reportsByAccount = await ReportsByAccountAsync(viewerUserId);
+
+        // Members' accounts only: an org vendor's purchases never come from expense reports.
+        var matches = new Dictionary<int, CreditorMatchVm>();
+        foreach (var r in rows.Where(r => r.Bindings.Count == 1 && r.Balance.HasValue))
+            matches[r.SupplierAccountNum] = CreditorMatchVm.Build(
+                reportsByAccount.GetValueOrDefault(r.SupplierAccountNum, []),
+                (await holdedLedger.GetLedgerLinesAsync(r.SupplierAccountNum, HttpContext.RequestAborted))
+                    .Select(l => (l.Type, l.EntryNumber, l.Debit, l.Credit)));
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
@@ -106,7 +118,8 @@ internal sealed class FinanceController(
                 r.IbanMasked,
                 r.OpenDocumentCount,
                 r.PendingPayoutFileName,
-                r.HasDuplicateDocuments))
+                r.HasDuplicateDocuments,
+                matches.GetValueOrDefault(r.SupplierAccountNum)))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";
@@ -324,12 +337,7 @@ internal sealed class FinanceController(
         var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
-        // The finance-admin review queue is every submitted report; the ones booked to this account are the other
-        // side of the ledger.
-        var reports = (await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, HttpContext.RequestAborted))
-            .Where(r => r.HoldedSupplierAccountNum == accountNum)
-            .OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt)
-            .ToList();
+        var reports = (await ReportsByAccountAsync(viewerUserId)).GetValueOrDefault(accountNum, []);
 
         // The running balance is the service's; the page shows newest activity first.
         var memberName = string.IsNullOrWhiteSpace(ledger.Contact?.Name) ? "member" : ledger.Contact.Name;
@@ -339,8 +347,19 @@ internal sealed class FinanceController(
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
             .ToList();
-        return View(new CreditorStatementVm(ledger, lines, reports));
+        var match = CreditorMatchVm.Build(reports, ledger.Lines.Select(l => (l.Type, l.EntryNumber, l.Debit, l.Credit)));
+        return View(new CreditorStatementVm(ledger, lines, reports, match));
     }
+
+    /// <summary>The finance-admin review queue is every submitted report; the ones booked to an account are the other
+    /// side of its ledger. Newest first.</summary>
+    private async Task<Dictionary<int, List<ExpenseReportDto>>> ReportsByAccountAsync(Guid viewerUserId) =>
+        (await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, HttpContext.RequestAborted))
+            .Where(r => r.HoldedSupplierAccountNum is not null)
+            .GroupBy(r => r.HoldedSupplierAccountNum!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt).ToList());
 
     // Holded labels a payment with the purchase it settles, which reads like a second purchase.
     private static string? StatementDescription(CreditorLedgerLine line, string memberName)
