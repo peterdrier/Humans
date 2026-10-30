@@ -504,7 +504,6 @@ public class TeamAdminControllerMembersTests
         result.TotalCount.Should().Be(1);
     }
 
-    // The role-management toggle asks the TeamsAdminOrAdmin policy; answer it from the principal's role claims.
     [HumansFact]
     public async Task Board_reads_the_members_page_without_any_management_controls()
     {
@@ -545,6 +544,7 @@ public class TeamAdminControllerMembersTests
         add.Should().BeOfType<ForbidResult>();
     }
 
+    // The role-management toggle asks the TeamsAdminOrAdmin policy; answer it from the principal's role claims.
     private static void StubTeamsAdminOrAdminPolicy(IAuthorizationService authorization) =>
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Manage)
             .Returns(call =>
