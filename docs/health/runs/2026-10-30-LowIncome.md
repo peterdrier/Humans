@@ -32,7 +32,7 @@
 
 - 1 — arm cut; the default arm still throws for any refusal the page cannot produce. Section tests green.
 - 2, 3 — `LowIncome.md` corrected and the invariant split into two plain statements.
-- 4 — ledgered as CENTRAL-103 (the fix adds a fact to Grants' public result, which is Peter's call).
+- 4 — not ledgered: Peter ruled the placeholder fine as it is (CENTRAL-103 dropped).
 - 5 — ledgered as CENTRAL-104.
 - 6 — `health.md` written with cites; trace gate clean apart from `ILowIncomeService`, which is named only under deliberately-not-done.
 

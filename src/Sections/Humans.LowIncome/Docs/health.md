@@ -78,7 +78,7 @@ Docs/                                    LowIncome.md (invariants), authorizatio
   its own `userId` on submit. The id `human-search-hidden-person` comes from the picker's
   `instance-key="person"`.
 - **A repeat Grant reports success.** Grants' issue is idempotent and its result cannot say the
-  person already held the grant (ledgered centrally).
+  person already held the grant; accepted for the placeholder.
 
 ## History
 
