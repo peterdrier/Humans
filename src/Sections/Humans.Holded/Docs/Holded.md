@@ -142,11 +142,12 @@ shown here.
   window width — the window is a quota choice.
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
-- Reads (`IHoldedService`: lines, balances, entry, purchase lines, open amounts, sums by account,
+- Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
   chart) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
-- `GetOpenAmountsAsync` is Σ purchase (credit − debit on `purchase` lines) − Σ payment (debit −
-  credit on `payment` lines) per account; journal entries and refunds are not counted.
+- `GetOpenDocumentAmountsAsync` is Σ (credit − debit) over `purchase`, `purchaserefund` and `payment`
+  lines per account: what documents leave open, not the balance (hand-booked entries and collections
+  are left out).
 - A ledger line keeps Holded's `id` as `EntryId` (the journal entry's id, shared by every line of
   the entry, so never a key: the natural key stays `(EntryNumber, Line)`) and `checked` as
   `Checked` (Holded's manual tick, not bank reconciliation; null until the line is re-synced).

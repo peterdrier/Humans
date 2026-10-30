@@ -51,6 +51,52 @@ public sealed class PgcAccountNamesTests
         missing.Should().BeEmpty();
     }
 
+    /// <summary>Standard-named accounts in the association's live Holded chart (30 Oct 2026) whose wording differs
+    /// from the PGC text. A name Holded uses with no entry fails here.</summary>
+    private static readonly (int Number, string Name)[] LiveChartNames =
+    [
+        (20400000, "Fondo comercio"), (20700000, "Derechos sobre activos cedidos en uso"),
+        (26000000, "Inversiones financieras a largo plazo en instrumentos de patrimonio"),
+        (27000000, "Fianzas constituidas a largo plazo"),
+        (28000000, "Amortización acumulada de investigación"), (28010000, "Amortización acumulada de desarrollo"),
+        (28020000, "Amortización acumulada de concesiones administrativas"),
+        (28030000, "Amortización acumulada de propiedad industrial"),
+        (28040000, "Amortización acumulada de fondo de comercio"),
+        (28050000, "Amortización acumulada de derechos de traspaso"),
+        (28060000, "Amortización acumulada de aplicaciones informáticas"),
+        (28070000, "Amortización acumulada de derechos de sobre activos cedidos en uso"),
+        (28140000, "Amortización acumulada de utillaje"), (28150000, "Amortización acumulada de otras instalaciones"),
+        (28160000, "Amortización acumulada de mobiliario"),
+        (28170000, "Amortización acumulada de equipos para procesos de información"),
+        (28180000, "Amortización acumulada de elementos de transporte"),
+        (28190000, "Amortización acumulada de otro inmovilizado material"),
+        (30000000, "Mercaderías A"), (31000000, "Materias primas A"), (33000000, "Productos en curso A"),
+        (34000000, "Productos semiterminados A"), (35000000, "Productos terminados A"),
+        (39000000, "Deterioro de valor de bienes destinados a la actividad"),
+        (43040000, "Clientes (moneda extranjera)"), (43090000, "Clientes, facturas pendientes de formalizar"),
+        (43100000, "Efectos comerciales en cartera"), (44000000, "Deudores (euros)"),
+        (44040000, "Deudores (moneda extranjera)"), (44090000, "Deudores, facturas pendientes de formalizar"),
+        (44100000, "Deudores, efectos comerciales en cartera"), (44800000, "Patrocinadores"),
+        (44820000, "Afiliados"), (44890000, "Otros deudores"), (46400000, "Entregas para gastos a justificar"),
+        (52000000, "Préstamos a corto plazo de entidades de crédito"),
+        (52090000, "Deudas por operaciones de factoring"), (55100000, "Cuenta corriente con patronos y otros"),
+        (57200000, "Bancos, euros"), (57400000, "Bancos, cuentas de ahorro, euros"),
+        (60000000, "Compras de bienes destinados a la actividad"),
+        (60800000, "Devoluciones de compras de bienes destinados a la actividad"),
+        (61000000, "Variación de existencias de bienes destinados a la actividad"),
+        (63000000, "Impuesto corriente"), (63010000, "Impuesto diferido"),
+        (66230000, "Intereses de deudas con entidades de crédito"), (66240000, "Intereses de deudas, otras empresas"),
+        (72300000, "Patrocinio"), (72310000, "Patrocinio publicitario"), (72330000, "Colaboraciones empresariales"),
+        (74700000, " Donaciones y legados transferidos al excedente del ejercicio"), // leading space is Holded's
+    ];
+
+    [HumansFact]
+    public void Every_standard_name_in_the_live_chart_translates()
+    {
+        LiveChartNames.Where(a => PgcAccountNames.EnglishName(a.Number, a.Name) is null)
+            .Select(a => a.Number).Should().BeEmpty();
+    }
+
     [HumansFact]
     public void Entries_are_digit_prefixes_with_both_names()
     {

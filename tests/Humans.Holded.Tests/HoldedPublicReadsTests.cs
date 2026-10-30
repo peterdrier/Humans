@@ -119,18 +119,19 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task GetOpenAmounts_is_purchases_less_payments_per_account_in_range()
+    public async Task GetOpenDocumentAmounts_is_purchases_less_refunds_and_payments_per_account_in_range()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedAsync(ct,
             Line(1, 1, 40000004, "purchase", credit: 121m),
-            Line(2, 1, 40000004, "payment", debit: 100m),
+            Line(2, 1, 40000004, "payment", debit: 90m),
+            Line(7, 1, 40000004, "purchaserefund", debit: 10m),
             Line(3, 1, 40000004, "entry", debit: 21m),          // a journal entry is not a payment
             Line(4, 1, 41000001, "purchase", credit: 10m),
             Line(5, 1, 41000002, "payment", debit: 3m),         // paid with no purchase mirrored
             Line(6, 1, 62900300, "purchase", debit: 121m));     // outside the range
 
-        var open = await _service.GetOpenAmountsAsync(40000000, 41999999, ct);
+        var open = await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
 
         open.Should().BeEquivalentTo(new Dictionary<int, decimal>
         {

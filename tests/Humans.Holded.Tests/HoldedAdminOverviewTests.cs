@@ -498,7 +498,7 @@ public sealed class HoldedAdminOverviewTests
         await _service.GetEntryAsync(1, ct);
         await _service.GetEntryViewAsync(1, ct);
         await _service.GetPurchaseLinesAsync(40000004, ct: ct);
-        await _service.GetOpenAmountsAsync(40000000, 41999999, ct);
+        await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
         await _service.GetSumsByAccountAsync(new HashSet<int> { 62900000 }, new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31), ct);
         await _service.GetChartAsync(ct);
         await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);

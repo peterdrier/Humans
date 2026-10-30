@@ -30,6 +30,7 @@ internal sealed class Service(
 
     private const string PurchaseType = "purchase";
     private const string PaymentType = "payment";
+    private const string PurchaseRefundType = "purchaserefund";
 
     /// <summary>The connector's ledger-entries page size, for the full-resync cost estimate.</summary>
     private const int LedgerPageSize = 200;
@@ -71,16 +72,13 @@ internal sealed class Service(
             .Select(ToInfo)
             .ToList();
 
-    public async Task<IReadOnlyDictionary<int, decimal>> GetOpenAmountsAsync(
+    public async Task<IReadOnlyDictionary<int, decimal>> GetOpenDocumentAmountsAsync(
         int fromAccount, int toAccount, CancellationToken ct = default) =>
         (await repo.GetAccountTypeTotalsAsync(fromAccount, toAccount, ct))
-            .Where(t => t.Type is PurchaseType or PaymentType)
+            .Where(t => t.Type is PurchaseType or PurchaseRefundType or PaymentType)
             .GroupBy(t => t.AccountNum)
-            .ToDictionary(
-                g => g.Key,
-                // A purchase credits the creditor, a payment debits it.
-                g => g.Where(t => string.Equals(t.Type, PurchaseType, StringComparison.Ordinal)).Sum(t => t.Credit - t.Debit)
-                     - g.Where(t => string.Equals(t.Type, PaymentType, StringComparison.Ordinal)).Sum(t => t.Debit - t.Credit));
+            // A purchase credits the creditor; a refund and a payment debit it.
+            .ToDictionary(g => g.Key, g => g.Sum(t => t.Credit - t.Debit));
 
     public async Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
         IReadOnlySet<int> accounts, LocalDate from, LocalDate to, CancellationToken ct = default)

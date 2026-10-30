@@ -42,7 +42,7 @@ dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
 call-budget display. Implements `IHoldedService` (the ledger-read
 surface consumed cross-section by Finance's `Service` —
 `GetLedgerLinesAsync`, `GetAccountBalancesAsync`; also `IsConfigured`,
-`GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenAmountsAsync`,
+`GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenDocumentAmountsAsync`,
 `GetSumsByAccountAsync`, `GetChartAsync` for the callers that will move off
 `IHoldedClient`) and `IHoldedAdminService` (the `/Holded` pages — summary,
 accounts, calls by month, account statements, entries). No

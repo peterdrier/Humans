@@ -28,11 +28,11 @@ public interface IHoldedService : IApplicationService
     Task<IReadOnlyList<HoldedLedgerLineInfo>> GetPurchaseLinesAsync(
         int accountNum, string? descriptionPrefix = null, CancellationToken ct = default);
 
-    /// <summary>What is still owed per account in [<paramref name="fromAccount"/>, <paramref name="toAccount"/>]:
-    /// Σ purchase (credit − debit on <c>purchase</c> lines) − Σ payment (debit − credit on <c>payment</c> lines).
-    /// Positive means owed by the association. Other line types (journal entries, refunds) are not counted.
-    /// Accounts with neither type are absent.</summary>
-    Task<IReadOnlyDictionary<int, decimal>> GetOpenAmountsAsync(
+    /// <summary>What purchase documents leave open per account in [<paramref name="fromAccount"/>,
+    /// <paramref name="toAccount"/>]: Σ (credit − debit) over <c>purchase</c>, <c>purchaserefund</c> and
+    /// <c>payment</c> lines. Positive means owed by the association. Not the account balance: lines booked by hand
+    /// (journal entries, collections) are left out. Accounts with none of the three types are absent.</summary>
+    Task<IReadOnlyDictionary<int, decimal>> GetOpenDocumentAmountsAsync(
         int fromAccount, int toAccount, CancellationToken ct = default);
 
     /// <summary>Σdebit − Σcredit per account over [<paramref name="from"/>, <paramref name="to"/>], both
