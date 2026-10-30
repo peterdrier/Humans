@@ -8,6 +8,9 @@
 
     // Ledger instants are Madrid midnight; the UTC calendar date is the previous day.
     var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    var m = Model.Match;
+    string Amt(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -28,16 +31,54 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-center"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Balance</h6>
             <span class="fs-4 @(Model.OwedBalance > 0 ? "finance-positive" : Model.OwedBalance < 0 ? "finance-negative" : "")">@Model.OwedBalance.ToEuro()</span>
             <div class="text-muted small mt-1">positive = owed to the member</div>
         </div></div>
     </div>
+    <div class="col-md-4">
+        <div class="card h-100 @(m.HasWarnings ? "border-danger" : "")"><div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted"><i class="fa-solid fa-scale-balanced me-1"></i>Expenses vs ledger</h6>
+            <table class="table table-sm mb-2 small">
+                <thead><tr><th></th><th class="text-end">Count</th><th class="text-end">Amount</th></tr></thead>
+                <tbody>
+                    <tr title="Holded documents our expense reports created. Capped lines that were not booked do not count.">
+                        <td>Expense docs</td>
+                        <td class="text-end @(m.CountsMatch ? "" : "text-danger fw-bold")">@m.ExpenseDocCount</td>
+                        <td class="text-end @(m.AmountsMatch ? "" : "text-danger fw-bold")">@Amt(m.ExpenseAmount)</td>
+                    </tr>
+                    <tr title="Purchase entries on this account in the ledger mirror.">
+                        <td>Ledger purchases</td>
+                        <td class="text-end @(m.CountsMatch ? "" : "text-danger fw-bold")">@m.PurchaseCount</td>
+                        <td class="text-end @(m.AmountsMatch ? "" : "text-danger fw-bold")">@Amt(m.PurchaseAmount)</td>
+                    </tr>
+                    <tr title="Payment lines on this account, net of money the member paid back.">
+                        <td>Payments</td>
+                        <td class="text-end">@m.PaymentCount</td>
+                        <td class="text-end">@Amt(m.PaymentAmount)</td>
+                    </tr>
+                </tbody>
+            </table>
+            @if (m.HasWarnings)
+            {
+                <div class="text-danger small fw-semibold">
+                    @foreach (var w in m.Warnings)
+                    {
+                        <div><i class="fa-solid fa-triangle-exclamation me-1"></i>@w</div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-success small"><i class="fa-solid fa-check me-1"></i>Expenses and ledger match</div>
+            }
+        </div></div>
+    </div>
     @if (c is not null)
     {
-        <div class="col-md-8">
+        <div class="col-md-5">
             <div class="card h-100"><div class="card-body">
                 <h6 class="card-subtitle mb-3 text-muted"><i class="fa-solid fa-address-card me-1"></i>Holded contact</h6>
                 <dl class="row mb-0 small">

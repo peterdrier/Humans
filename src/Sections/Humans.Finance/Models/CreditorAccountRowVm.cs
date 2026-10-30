@@ -10,6 +10,7 @@ namespace Humans.Finance.Models;
 /// <item><paramref name="PendingPayoutFileName"/>: an unbooked, unwithdrawn transfer to this account; the row is not
 /// payable again until it is booked or withdrawn.</item>
 /// <item><paramref name="HasDuplicateDocuments"/> is null when the check could not run.</item>
+/// <item><paramref name="Match"/> is null on rows that are not a single member's account with ledger lines.</item>
 /// </list>
 /// </remarks>
 internal sealed record CreditorAccountRowVm(
@@ -20,7 +21,8 @@ internal sealed record CreditorAccountRowVm(
     string? IbanMasked = null,
     int? OpenDocs = null,
     string? PendingPayoutFileName = null,
-    bool? HasDuplicateDocuments = false)
+    bool? HasDuplicateDocuments = false,
+    CreditorMatchVm? Match = null)
 {
     public const string DuplicateDocumentsReason = "duplicate documents in Holded";
 
