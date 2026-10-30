@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
@@ -10,6 +11,7 @@ using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
 using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -25,12 +27,13 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionNav,
-    ISectionPolicies
+    ISectionPolicies,
+    ISectionDataMigrations
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(RideshareRoles.RideshareAdmin, "Rideshare Admin",
-            "Road captains. They set the year's destination and travel windows, watch the season statistics, and keep the day roster of trips and riders.",
+            "Road captains. They set the event's destination and travel windows, watch the season statistics, and keep the day roster of trips and riders.",
             "fa-solid fa-car"),
     ];
 
@@ -67,6 +70,7 @@ public sealed class Section :
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingRideshareService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingRideshareService>().SnapshotCacheStats);
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingRideshareService>());
 
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
@@ -99,4 +103,29 @@ public sealed class Section :
         options.AddPolicy(PolicyNames.RideshareAdminOrAdmin, policy =>
             policy.RequireRole(RideshareRoles.RideshareAdmin, RoleNames.Admin));
     }
+
+    internal const string EventIdsKey = "rideshare.event-ids";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(EventIdsKey, "Rideshare",
+            "Give every rideshare settings row, offer and request the event of its year",
+            "Rideshare rows without an event id, and the year fallback that reads them",
+            StatusAsync, ApplyAsync),
+    ];
+
+    // Rows of a year with no event stay unstamped and unlisted: nothing reads them, and listing them would keep the
+    // migration pending forever.
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var plan = await sp.GetRequiredService<IRideshareService>().GetEventIdPlanAsync(ct);
+        return new(["Table", "Row", "Year", "Event"],
+            [
+                .. plan.Where(p => p.Event is not null).Select(p => (IReadOnlyList<string>)[
+                    p.Table, p.Id.ToString(), p.Year.ToString(CultureInfo.InvariantCulture), p.Event!.EventName]),
+            ]);
+    }
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<IRideshareService>().AssignEventIdsAsync(ct);
 }

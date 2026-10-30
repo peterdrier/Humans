@@ -147,11 +147,12 @@ else
         <label class="form-check-label" for="owedOnly">Only show accounts we owe money to</label>
     </div>
 
-    <div class="card">
-        <table class="table table-hover mb-0 align-middle">
+    @* Sized to the content, not the page: wide screens otherwise open a gap between Name and Balance. *@
+    <div class="card" style="width: fit-content; max-width: 100%; overflow-x: auto">
+        <table class="table table-hover mb-0 align-middle w-auto">
             <thead>
                 <tr>
-                    <th style="width: 14rem">Pay out</th>
+                    <th>Pay out</th>
                     <th>
                         <a asp-action="Creditors" asp-route-sort="account" asp-route-dir="@ToggleDir("account")"
                            class="text-decoration-none">@Header("Account", "account")</a>
@@ -168,6 +169,7 @@ else
                         <a asp-action="Creditors" asp-route-sort="opendocs" asp-route-dir="@ToggleDir("opendocs")"
                            class="text-decoration-none">@Header("Open docs", "opendocs")</a>
                     </th>
+                    <th title="A member's expense docs against the ledger's purchases, by count and amount. Hover a warning for the detail.">Checks</th>
                     <th>
                         <a asp-action="Creditors" asp-route-sort="member" asp-route-dir="@ToggleDir("member")"
                            class="text-decoration-none">@Header("Member", "member")</a>
@@ -201,7 +203,6 @@ else
                                            aria-label="Amount to pay account @r.SupplierAccountNum" />
                                 </div>
                             </div>
-                            <div class="text-muted small">@r.IbanMasked</div>
                         }
                         else if (r.HasDuplicateDocuments == true)
                         {
@@ -226,7 +227,7 @@ else
                         }
                     </td>
                     <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
-                    <td class="text-end">
+                    <td class="text-end text-nowrap">
                         @if (r.Balance is { } bal)
                         {
                             <span class="@(bal > 0 ? "finance-positive fw-semibold" : bal < 0 ? "finance-negative fw-semibold" : "")">@bal.ToEuro()</span>
@@ -244,6 +245,23 @@ else
                         else
                         {
                             <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        @if (r.Match is not { } match)
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                        else if (match.HasWarnings)
+                        {
+                            <a asp-action="CreditorStatement" asp-route-accountNum="@r.SupplierAccountNum"
+                               class="text-danger fw-semibold text-decoration-none" title="@string.Join("; ", match.Warnings)">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>Mismatch
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-success" title="Expense docs and ledger purchases match."><i class="fa-solid fa-check"></i></span>
                         }
                     </td>
                     @* Every binding, not just one: the automatic push paths record what Holded assigned rather than

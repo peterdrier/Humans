@@ -7,6 +7,7 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Controllers;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
+using Humans.Holded.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -37,16 +38,25 @@ public class FinanceControllerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
+    private readonly IHoldedService _holdedLedger = Substitute.For<IHoldedService>();
 
     public FinanceControllerTests() =>
         _expenses.GetReviewQueueAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<ExpenseReportDto>());
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, _expenses, new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            NullLogger<FinanceController>.Instance)
+        new(_users, _finance, _connector, _expenses,
+            new CashFlowService(_budget, Substitute.For<ITicketService>()),
+            new CreditorMatchService(_holdedLedger, _expenses), NullLogger<FinanceController>.Instance)
         {
-            ControllerContext = new() { HttpContext = new DefaultHttpContext() }
+            ControllerContext = new()
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, Ana.ToString())], authenticationType: "test")),
+                },
+            },
         };
 
     /// <summary>A controller wired with a real HttpContext and TempData, for actions
@@ -383,6 +393,7 @@ public class FinanceControllerTests
     public async Task GenerateSepa_InvalidBinding_DoesNotGeneratePartialBatch(bool hasActor)
     {
         var controller = hasActor ? MakeControllerWithHttpContext(Ana) : MakeController();
+        if (!hasActor) controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();

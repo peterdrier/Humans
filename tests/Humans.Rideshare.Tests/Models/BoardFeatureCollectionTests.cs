@@ -42,7 +42,7 @@ public sealed class BoardFeatureCollectionTests
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var trip = Trip(Guid.NewGuid(), route: StoredRoute);
         var request = Request(Guid.NewGuid());
-        var snapshot = new RideshareSnapshot(2026, Settings, [trip], [request], []);
+        var snapshot = new RideshareSnapshot(Guid.NewGuid(), "Test Burn", Settings, [trip], [request], []);
 
         var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound,
             Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer, _logger));
@@ -67,7 +67,7 @@ public sealed class BoardFeatureCollectionTests
         var trip = Trip(driver, route: route);
         var cancelled = Trip(driver, status: TripStatus.Cancelled);
         var request = Request(me);
-        var snapshot = new RideshareSnapshot(2026, Settings, [trip, cancelled], [request], []);
+        var snapshot = new RideshareSnapshot(Guid.NewGuid(), "Test Burn", Settings, [trip, cancelled], [request], []);
         var users = new Dictionary<Guid, UserInfo> { [driver] = User(driver, "Ada") };
 
         var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound, me, users, _localizer, _logger));
@@ -103,7 +103,7 @@ public sealed class BoardFeatureCollectionTests
     {
         var direction = inbound ? RideshareDirection.Inbound : RideshareDirection.Outbound;
         var trip = Trip(Guid.NewGuid(), direction, route: null, waypoints: [new Waypoint("Lyon", 45.76, 4.84)]);
-        var snapshot = new RideshareSnapshot(2026, Settings, [trip], [], []);
+        var snapshot = new RideshareSnapshot(Guid.NewGuid(), "Test Burn", Settings, [trip], [], []);
 
         var features = Features(BoardFeatureCollection.Build(snapshot, July3, direction, Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer, _logger));
 
@@ -128,7 +128,7 @@ public sealed class BoardFeatureCollectionTests
     public void Build_FallsBackToOrigin_OnAMalformedRoute_AndOmitsTheDestinationWithoutSettings(string route)
     {
         var trip = Trip(Guid.NewGuid(), route: route);
-        var snapshot = new RideshareSnapshot(2026, null, [trip], [], []);
+        var snapshot = new RideshareSnapshot(Guid.NewGuid(), "Test Burn", null, [trip], [], []);
 
         var features = Features(BoardFeatureCollection.Build(snapshot, July3, RideshareDirection.Inbound, Guid.NewGuid(), new Dictionary<Guid, UserInfo>(), _localizer, _logger));
 

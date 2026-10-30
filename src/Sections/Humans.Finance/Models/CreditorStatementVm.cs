@@ -8,7 +8,8 @@ namespace Humans.Finance.Models;
 internal sealed record CreditorStatementVm(
     HoldedCreditorLedger Ledger,
     IReadOnlyList<CreditorStatementLineVm> Lines,
-    IReadOnlyList<ExpenseReportDto> ExpenseReports)
+    IReadOnlyList<ExpenseReportDto> ExpenseReports,
+    CreditorMatchVm Match)
 {
     public decimal OwedBalance => -Ledger.Balance;
 }
