@@ -6,8 +6,14 @@ using Humans.Base.Constants;
 using Humans.Grants.Authorization;
 using Humans.Grants.Contracts;
 using Humans.Grants.Services;
+using Humans.Grants.Controllers;
+using Humans.Grants.Models;
 using Humans.Grants.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace Humans.Grants.Tests.Authorization;
 
@@ -90,6 +96,38 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         (await PolicyAllowedAsync(user)).Should().BeFalse();
         (await ProgramAllowedAsync(user, info, ProgramOperationRequirement.View)).Should().BeFalse();
         (await ProgramAllowedAsync(user, info, ProgramOperationRequirement.Manage)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Index_ShowsProgramsManagedThroughAnyMergedId_AndHidesUnrelatedPrograms(bool archivedCookie)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var throughAlias = await SeedProgramAsync(name: "Archived manager", managers: archived);
+        var throughSurvivor = await SeedProgramAsync(name: "Current manager", managers: survivor);
+        await SeedProgramAsync(name: "Other manager", managers: SeedUser("Other"));
+        var viewer = Principal(archivedCookie ? archived : survivor);
+        var service = NewService();
+        var program = (await service.GetProgramAsync(throughAlias.Id, Ct))!;
+        (await PolicyAllowedAsync(viewer)).Should().BeTrue();
+        (await ProgramAllowedAsync(viewer, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new GrantsAdminController(service, Users, authorization, Settings,
+            NullLogger<GrantsAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = viewer } }
+        };
+
+        var result = await controller.Index(Ct);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
+        model.CanAdminister.Should().BeFalse();
+        model.Programs.Select(p => p.Id).Should().BeEquivalentTo([throughAlias.Id, throughSurvivor.Id]);
     }
 
     [HumansFact]

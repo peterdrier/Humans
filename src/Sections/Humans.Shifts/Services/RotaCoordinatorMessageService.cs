@@ -72,21 +72,15 @@ internal sealed class RotaCoordinatorMessageService(
             includeShifts,
             ct);
 
-        var auditSuffix = string.Empty;
-        if (summary.Skipped > 0) auditSuffix += $" ({summary.Skipped} skipped: no email or missing user)";
-        if (summary.Failed > 0) auditSuffix += $" ({summary.Failed} failed: enqueue error)";
-
         await AuditDispatchAsync(
             ShiftsAuditActions.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
             $"Requested rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) on '{rota.Name}'"
-                + auditSuffix,
+                + summary.AuditSuffix,
             senderUserId, summary.Requested);
 
-        // Every enqueue threw. The audit row already records it; fail so the controller shows no success toast.
-        if (summary.Requested == 0 && summary.Failed > 0)
-            return RotaMessageDispatchResult.Failure(
-                $"Failed to enqueue any emails ({summary.Failed} enqueue error(s)); check server logs.");
+        if (summary.FailureMessage is { } failure)
+            return RotaMessageDispatchResult.Failure(failure);
 
         return RotaMessageDispatchResult.Success(summary.Requested, rota.Name);
     }
@@ -134,22 +128,17 @@ internal sealed class RotaCoordinatorMessageService(
             includeShifts,
             ct);
 
-        var auditSuffix = string.Empty;
-        if (summary.Skipped > 0) auditSuffix += $" ({summary.Skipped} skipped: no email or missing user)";
-        if (summary.Failed > 0) auditSuffix += $" ({summary.Failed} failed: enqueue error)";
-
         await AuditDispatchAsync(
             ShiftsAuditActions.CoordinatorTeamRotasMessageSent,
             // Persisted literal: memory/code/type-name-as-persisted-string.md.
             "Team", teamId,
             $"Requested team-wide rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) "
                 + $"across {groups.Count} rota(s) in '{team.Name}'"
-                + auditSuffix,
+                + summary.AuditSuffix,
             senderUserId, summary.Requested);
 
-        if (summary.Requested == 0 && summary.Failed > 0)
-            return TeamRotasMessageDispatchResult.Failure(
-                $"Failed to enqueue any emails ({summary.Failed} enqueue error(s)); check server logs.");
+        if (summary.FailureMessage is { } failure)
+            return TeamRotasMessageDispatchResult.Failure(failure);
 
         return TeamRotasMessageDispatchResult.Success(summary.Requested, groups.Count, team.Name);
     }
@@ -393,5 +382,15 @@ internal sealed class RotaCoordinatorMessageService(
     private sealed record DispatchSummary(
         int Requested,
         int Skipped,
-        int Failed);
+        int Failed)
+    {
+        public string AuditSuffix =>
+            (Skipped > 0 ? $" ({Skipped} skipped: no email or missing user)" : string.Empty)
+            + (Failed > 0 ? $" ({Failed} failed: enqueue error)" : string.Empty);
+
+        // A partial dispatch succeeded; only an all-failed dispatch must suppress the success toast.
+        public string? FailureMessage => Requested == 0 && Failed > 0
+            ? $"Failed to enqueue any emails ({Failed} enqueue error(s)); check server logs."
+            : null;
+    }
 }

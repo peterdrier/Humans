@@ -50,15 +50,15 @@ internal sealed partial class PreapprovalService
             priority, titleKey, info, "Preapprovals_Notice_FileBy_Body", MemberUrl(info.ProgramId),
             FileBySourceKey(info.Id), ct);
 
-    /// <summary>Declined, revoked, amount changed: informational, no source key.</summary>
+    /// <summary>Informational unless revocation affects a holding report; no source key.</summary>
     private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
-        decimal? previousAmount = null) =>
+        decimal? previousAmount = null, Guid? holdingReportId = null) =>
         NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalGrantDecided,
-            info.Status == GrantStatus.Revoked && info.ExpenseReportId is not null
+            holdingReportId is not null
                 ? NotificationClass.Actionable
                 : NotificationClass.Informational,
             NotificationPriority.Normal, titleKey, info, "Preapprovals_Notice_Decided_Body",
-            info.Status == GrantStatus.Revoked && info.ExpenseReportId is { } reportId
+            holdingReportId is { } reportId
                 ? $"/Expenses/{reportId}"
                 : MemberUrl(info.ProgramId),
             sourceKey: null, ct, detail, previousAmount);

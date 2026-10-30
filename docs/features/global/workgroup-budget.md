@@ -99,7 +99,7 @@ with `WorkgroupBudgetSave(decimal? Amount, int? ExistingAccountNum)` — a non-n
   different number, which rebinds. Rebinding never touches the old account.
 - Amount must be ≥ 0 when set.
 - Writes a system log entry (`WorkgroupLogKind.BudgetSet`, title carries the amount and
-  account number) and an audit entry (`AuditAction.WorkgroupBudgetSet`, `relatedEntityId` = the
+  account number) and an audit entry (`WorkgroupsAuditActions.WorkgroupBudgetSet`, `relatedEntityId` = the
   workgroup). When Finance reports `Created = false` for a create request, the success message
   says the group was linked to the existing account of that name.
 - Allowed on any status except Refused / Withdrawn.

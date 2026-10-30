@@ -10,14 +10,8 @@ internal interface IDietaryProfileRepository : IRepository
 
     Task<IReadOnlyList<DietaryProfile>> GetManyAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>For the data migration's pending list.</summary>
-    Task<IReadOnlyList<DietaryProfile>> GetAllAsync(CancellationToken ct = default);
-
     /// <summary>Overwrites every food field and the decline flag.</summary>
     Task UpsertAsync(DietaryProfile values, CancellationToken ct = default);
-
-    /// <summary>False when the member already had a row and nothing was written.</summary>
-    Task<bool> TryInsertAsync(DietaryProfile values, CancellationToken ct = default);
 
     /// <summary>False when there was none.</summary>
     Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default);

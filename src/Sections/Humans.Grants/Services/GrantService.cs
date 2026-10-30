@@ -93,7 +93,7 @@ internal sealed partial class GrantService(
         g.ExpiresOn ?? p.GrantsExpireOn, g.IssuedAt, g.IssuedByUserId, g.NotifiedAt, g.RevokedAt,
         g.RevokedByUserId, g.RevokeReason);
 
-    /// <summary>Every id the person has held, so a grant under a since-merged id is still theirs.</summary>
+    /// <summary>The survivor id first, followed by every merged id, so writes and holding checks identify one person.</summary>
     private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);

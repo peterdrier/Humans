@@ -121,8 +121,8 @@ internal sealed class Profile
     public bool IsApproved { get; set; }
 
     /// <summary>
-    /// Frozen legacy column: Governance's <c>governance_membership_tiers</c> is the live tier. Kept
-    /// until the <c>governance.profile-tier</c> copy is done in production.
+    /// Frozen legacy column, retained for GDPR export until a separate schema drop.
+    /// Governance owns the live tier.
     /// </summary>
     public LegacyMembershipTier MembershipTier { get; set; }
 

@@ -9,10 +9,6 @@ using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Services;
 
-/// <summary>
-/// Until the <c>governance.profile-tier</c> copy has run, a member without a row reads their
-/// legacy <c>profiles.MembershipTier</c> through <see cref="UserInfo"/>.
-/// </summary>
 internal sealed class MembershipTierService(
     IMembershipTierRepository repo,
     IApplicationRepository applications,
@@ -25,22 +21,15 @@ internal sealed class MembershipTierService(
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         var row = await repo.GetAsync(info?.Id ?? userId, ct);
-        return row?.Tier ?? LegacyTier(info);
+        return row?.Tier ?? MembershipTier.Volunteer;
     }
 
     /// <summary>Every member whose tier is not Volunteer, keyed by user id.</summary>
     public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetTiersAsync(CancellationToken ct = default)
     {
-        var rows = (await repo.GetAllAsync(ct)).ToDictionary(r => r.UserId);
-        var result = new Dictionary<Guid, MembershipTier>();
-        foreach (var info in await users.GetAllUserInfosAsync(ct))
-        {
-            if (!rows.ContainsKey(info.Id) && LegacyTier(info) is var legacy and not MembershipTier.Volunteer)
-                result[info.Id] = legacy;
-        }
-        foreach (var row in rows.Values.Where(r => r.Tier != MembershipTier.Volunteer))
-            result[row.UserId] = row.Tier;
-        return result;
+        return (await repo.GetAllAsync(ct))
+            .Where(r => r.Tier != MembershipTier.Volunteer)
+            .ToDictionary(r => r.UserId, r => r.Tier);
     }
 
     /// <summary>Approval: the member now holds <paramref name="application"/>'s tier until its term ends.</summary>
@@ -88,84 +77,15 @@ internal sealed class MembershipTierService(
         return result;
     }
 
-    /// <summary>Living members whose legacy profile tier is not Volunteer and who have no row yet,
-    /// with the row the copy would write (term and grant read from their latest Approved
-    /// application for that tier, when there is one).</summary>
-    public async Task<IReadOnlyList<MembershipTierRecord>> GetUncopiedLegacyTiersAsync(CancellationToken ct = default)
-    {
-        var copied = (await repo.GetAllAsync(ct)).Select(r => r.UserId).ToHashSet();
-        var pending = new List<MembershipTierRecord>();
-        foreach (var info in (await users.GetAllUserInfosAsync(ct)).OrderBy(u => u.CreatedAt))
-        {
-            if (copied.Contains(info.Id) || LegacyTier(info) is not (var tier and not MembershipTier.Volunteer))
-                continue;
-            pending.Add(await LegacyRecordAsync(info.Id, tier, ct));
-        }
-        return pending;
-    }
-
-    public async Task<int> CopyLegacyTiersAsync(CancellationToken ct = default)
-    {
-        var written = 0;
-        foreach (var record in await GetUncopiedLegacyTiersAsync(ct))
-        {
-            if (await repo.TryInsertAsync(record, ct))
-                written++;
-        }
-        return written;
-    }
-
-    private async Task<MembershipTierRecord> LegacyRecordAsync(Guid userId, MembershipTier tier, CancellationToken ct)
-    {
-        var granting = LatestApproved(await applications.GetByUserIdAsync(userId, ct), tier);
-        return new MembershipTierRecord
-        {
-            UserId = userId,
-            Tier = tier,
-            GrantedAt = granting?.ResolvedAt ?? clock.GetCurrentInstant(),
-            ExpiresAt = granting?.TermExpiresAt,
-            GrantedByApplicationId = granting?.Id,
-        };
-    }
-
     private static MemberApplication? LatestApproved(IEnumerable<MemberApplication> apps, MembershipTier tier) =>
         apps.Where(a => a.Status == ApplicationStatus.Approved && a.MembershipTier == tier)
             .MaxBy(a => a.ResolvedAt);
-
-    /// <summary>The one reader of the obsolete legacy field: the read fallback, the copy and the
-    /// merge fallback. Deleted with the migration once production reports it done.
-    /// The legacy enum maps by name (same members, same stored strings).</summary>
-    private static MembershipTier LegacyTier(UserInfo? info)
-    {
-#pragma warning disable HUM_PROFILE_TIER // the fallback and copy the field is kept for (plan §3.1)
-        var legacy = info?.Profile?.MembershipTier ?? LegacyMembershipTier.Volunteer;
-#pragma warning restore HUM_PROFILE_TIER
-        return legacy switch
-        {
-            LegacyMembershipTier.Colaborador => MembershipTier.Colaborador,
-            LegacyMembershipTier.Asociado => MembershipTier.Asociado,
-            _ => MembershipTier.Volunteer,
-        };
-    }
 
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
         _ = now;
-        // A recorded tier (including a Volunteer downgrade) beats that account's legacy tier.
-        if (await repo.GetAsync(mergedToUserId, ct) is null)
-        {
-            var legacyOwner = mergedToUserId;
-            var legacy = LegacyTier(await users.GetRawUserInfoAsync(mergedToUserId, ct));
-            if (legacy == MembershipTier.Volunteer && await repo.GetAsync(mergedFromUserId, ct) is null)
-            {
-                legacyOwner = mergedFromUserId;
-                legacy = LegacyTier(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
-            }
-            if (legacy != MembershipTier.Volunteer)
-                await repo.TryInsertAsync(await LegacyRecordAsync(legacyOwner, legacy, ct), ct);
-        }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
     }
 
@@ -181,7 +101,7 @@ internal sealed class MembershipTierService(
                 ExpiresAt = row.ExpiresAt.ToInvariantDate(),
                 row.GrantedByApplicationId,
             }
-            : LegacyTier(info) is var legacy and not MembershipTier.Volunteer ? new { Tier = legacy } : null;
+            : null;
         return [new UserDataSlice(MembershipTierSlice, data)];
     }
 

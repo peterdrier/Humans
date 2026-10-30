@@ -4,7 +4,6 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Notifications.Contracts/RideshareNotificationSources.cs
-  src/Sections/Humans.AuditLog/Contracts/AuditAction.cs
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
@@ -299,7 +298,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   remaining recomputes on next read.
 - When an interest is declined: the interest's author gets a neutral `Informational`
   notification with no reason.
-- When settings are saved: `IAuditLogService.LogAsync(AuditAction.RideshareSettingsUpdated, ...)`
+- When settings are saved: `IAuditLogService.LogAsync(RideshareAuditActions.RideshareSettingsUpdated, ...)`
   records the change.
 - After every write, `CachingRideshareService` clears its snapshot cache so the next read
   rebuilds it. A read begun before that clear cannot repopulate the cache with its old snapshot.

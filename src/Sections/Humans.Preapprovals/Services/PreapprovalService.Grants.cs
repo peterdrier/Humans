@@ -207,6 +207,7 @@ internal sealed partial class PreapprovalService
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
         if ((reason?.Length ?? 0) > NoteMax) return new(new PreapprovalRefusal(PreapprovalErrorKeys.TextTooLong));
 
+        var holdingReportId = grant.Status == GrantStatus.Claimed ? grant.ExpenseReportId : null;
         // The amount and any report id stay: the row is the record of what was committed.
         grant.Status = GrantStatus.Revoked;
         grant.UpdatedAt = clock.GetCurrentInstant();
@@ -217,11 +218,11 @@ internal sealed partial class PreapprovalService
         var why = Trimmed(reason);
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, grant,
             $"Revoked {Euros(grant.MaxAmount)} under \"{grant.Program.Name}\"{LabelSuffix(grant)}" +
-            $"{(grant.ExpenseReportId is { } r ? $" while held by expense report {r}" : "")}{(why is null ? "" : $": {why}")}.",
+            $"{(holdingReportId is { } r ? $" while held by expense report {r}" : "")}{(why is null ? "" : $": {why}")}.",
             actorUserId);
         await ResolveFileByAsync(grant.Id, actorUserId, ct);
         var info = ToInfo(grant);
-        await NotifyDecidedAsync(info, "Preapprovals_Notice_Revoked", why, ct);
+        await NotifyDecidedAsync(info, "Preapprovals_Notice_Revoked", why, ct, holdingReportId: holdingReportId);
         await EmailAsync(info, PreapprovalNoticeKind.Revoked, why, ct);
         return PreapprovalMutationResult.Ok;
     }
@@ -249,7 +250,7 @@ internal sealed partial class PreapprovalService
 
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantAmountChanged, grant,
             $"Amount under \"{program.Name}\"{LabelSuffix(grant)} changed {Euros(old)} → {Euros(amount)}" +
-            $"{(grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
+            $"{(grant.Status == GrantStatus.Claimed && grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
             actorUserId);
         var info = ToInfo(grant, program);
         await NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", null, ct, previousAmount: old);

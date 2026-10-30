@@ -149,13 +149,13 @@ public class CantinaRosterServiceTests
 
         await _service.GetWeeklyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
         await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
-        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), "User", chipsOnly, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), "User", chipsOnly, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
         _audit.ClearReceivedCalls();
 
         await _service.GetDailyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
         await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", withOther, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
         await _audit.Received(1).LogAsync(CantinaAuditActions.CantinaHealthDetailsRevealed, "User", chipsOnly, Arg.Any<string>(), actorId, burn.Id, "EventSettings");
-        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditAction>(), "User", nothing, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _audit.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), "User", nothing, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
         _audit.ClearReceivedCalls();
 
         await _service.GetDailyRosterAsync(0, RosterDisclosure.Export(actorId), ct);

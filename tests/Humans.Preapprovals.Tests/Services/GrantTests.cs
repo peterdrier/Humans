@@ -362,14 +362,15 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansTheory]
-    [InlineData((int)GrantStatus.Open)]
-    [InlineData((int)GrantStatus.Claimed)]
-    public async Task Revoke_KeepsAmountAndReport_ResolvesFileBy_NotifiesHolder(int statusValue)
+    [InlineData((int)GrantStatus.Open, false)]
+    [InlineData((int)GrantStatus.Claimed, false)]
+    [InlineData((int)GrantStatus.Open, true)]
+    public async Task Revoke_KeepsAmountAndReport_ResolvesFileBy_NotifiesHolder(int statusValue, bool withdrawnReport)
     {
         var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
         var person = SeedUser("Person");
-        var reportId = status == GrantStatus.Claimed ? Guid.NewGuid() : (Guid?)null;
+        var reportId = status == GrantStatus.Claimed || withdrawnReport ? Guid.NewGuid() : (Guid?)null;
         var grant = await SeedGrantAsync(program, beneficiary: person, amount: 300m, status: status, expenseReportId: reportId);
         var actor = SeedUser("Manager");
 
@@ -387,7 +388,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
             status == GrantStatus.Claimed ? $"/Expenses/{reportId}" : $"/Preapprovals/{program.Id}",
             Arg.Any<string?>(), Arg.Any<string?>(), null, Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_revoked"), Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Budget cut")), actor, program.Id, AuditEntityTypes.Program);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Budget cut")
+            && s.Contains("while held by expense report") == (status == GrantStatus.Claimed)), actor, program.Id, AuditEntityTypes.Program);
     }
 
     [HumansTheory]
@@ -454,13 +456,16 @@ public sealed class GrantTests : PreapprovalsTestHarness
         changedEmail.Should().Contain(oldText).And.Contain(newText);
     }
 
-    [HumansFact]
-    public async Task ChangeAmount_CeilingChecked_AuditedWithOldAndNew_Notifies()
+    [HumansTheory]
+    [InlineData((int)GrantStatus.Claimed)]
+    [InlineData((int)GrantStatus.Open)]
+    public async Task ChangeAmount_CeilingChecked_AuditedWithOldAndNew_Notifies(int statusValue)
     {
         var program = await SeedProgramAsync(ceiling: 1000m);
         await SeedGrantAsync(program, amount: 600m);
         var person = SeedUser("Person");
-        var grant = await SeedGrantAsync(program, beneficiary: person, amount: 300m, status: GrantStatus.Claimed, expenseReportId: Guid.NewGuid());
+        var status = (GrantStatus)statusValue;
+        var grant = await SeedGrantAsync(program, beneficiary: person, amount: 300m, status: status, expenseReportId: Guid.NewGuid());
         var actor = SeedUser("Manager");
         var service = NewService();
 
@@ -471,7 +476,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
         result.Refusal.Should().BeNull();
         (await ReadGrantAsync(grant.Id)).MaxAmount.Should().Be(400m);
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantAmountChanged, AuditEntityTypes.Grant, grant.Id,
-            Arg.Is<string>(s => s.Contains("300.00 € → 400.00 €")), actor, program.Id, AuditEntityTypes.Program);
+            Arg.Is<string>(s => s.Contains("300.00 € → 400.00 €")
+                && s.Contains("held by expense report") == (status == GrantStatus.Claimed)), actor, program.Id, AuditEntityTypes.Program);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalGrantDecided, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Is<string?>(b => b!.Contains("300.00 €")),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), null, Arg.Any<CancellationToken>());

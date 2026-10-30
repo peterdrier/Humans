@@ -732,6 +732,66 @@ public class CalendarServiceValidationTests
         logger.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    public async Task OccurrenceWrites_RequireGeneratedIdentityUnlessExceptionAlreadyExists(
+        bool allDay, bool cancel, bool existingException)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var originalUtc = allDay ? (Instant?)null : Instant.FromUtc(2026, 6, 4, 10, 0);
+        var originalDate = allDay ? new LocalDate(2026, 6, 4) : (LocalDate?)null;
+        var movedUtc = allDay ? (Instant?)null : Instant.FromUtc(2026, 6, 5, 10, 0);
+        var movedDate = allDay ? new LocalDate(2026, 6, 5) : (LocalDate?)null;
+        var ev = new Humans.Calendar.Domain.CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            IsAllDay = allDay,
+            StartUtc = allDay ? null : Instant.FromUtc(2026, 6, 1, 10, 0),
+            EndUtc = allDay ? null : Instant.FromUtc(2026, 6, 1, 11, 0),
+            StartDate = allDay ? new LocalDate(2026, 6, 1) : null,
+            EndDateExclusive = allDay ? new LocalDate(2026, 6, 2) : null,
+            RecurrenceRule = "FREQ=DAILY;COUNT=2",
+            RecurrenceTimezone = "UTC"
+        };
+        if (existingException)
+            ev.Exceptions.Add(new Humans.Calendar.Domain.CalendarEventException
+            {
+                Id = Guid.NewGuid(),
+                EventId = ev.Id,
+                OriginalOccurrenceStartUtc = originalUtc,
+                OriginalOccurrenceDate = originalDate,
+                OverrideStartUtc = movedUtc,
+                OverrideStartDate = movedDate
+            });
+        repo.GetEventByIdAsync(ev.Id, Arg.Any<CancellationToken>()).Returns(ev);
+        repo.UpsertExceptionAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(), Arg.Any<Instant>(),
+            Arg.Any<Action<Humans.Calendar.Domain.CalendarEventException>>(), Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>())
+            .Returns((string?)null);
+        var audit = Substitute.For<IAuditLogService>();
+        var service = BuildService(repo, audit);
+
+        var result = cancel
+            ? await service.CancelOccurrenceAsync(ev.Id, originalUtc, Guid.NewGuid(),
+                TestContext.Current.CancellationToken, originalDate)
+            : await service.OverrideOccurrenceAsync(ev.Id, originalUtc,
+                new OverrideOccurrenceDto(movedUtc, null, "Moved", null, null, null, movedDate),
+                Guid.NewGuid(), TestContext.Current.CancellationToken, originalDate);
+
+        result.Should().Be(existingException);
+        await repo.Received(existingException ? 1 : 0).UpsertExceptionAsync(
+            ev.Id, originalUtc, Arg.Any<Guid>(), Arg.Any<Instant>(),
+            Arg.Any<Action<Humans.Calendar.Domain.CalendarEventException>>(),
+            Arg.Any<CancellationToken>(), originalDate);
+        if (!existingException) audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static CalendarService BuildService(ICalendarRepository repo)
     {
         return BuildService(repo, Substitute.For<IAuditLogService>());

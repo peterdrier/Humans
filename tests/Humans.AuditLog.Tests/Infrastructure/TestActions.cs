@@ -20,6 +20,9 @@ internal sealed class TestActions : AuditActionContributor
 
     public static readonly AuditActionDefinition VolunteerApproved = new("VolunteerApproved", Verb: "approved");
 
+    public static readonly AuditActionDefinition RoleEnded = new("RoleEnded", Verb: "ended role of");
+    public static readonly AuditActionDefinition WorkgroupDispositionRecorded = new("WorkgroupDispositionRecorded");
+    public static readonly AuditActionDefinition GoogleResourceAccessGranted = new("GoogleResourceAccessGranted");
     public static readonly AuditActionDefinition RoleAssigned =
         new("RoleAssigned", Verb: "assigned role to", DescriptionIsTail: true, QuickFilter: "Roles");
 

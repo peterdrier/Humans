@@ -253,7 +253,7 @@ public async Task SuspendAsync(Guid userId, Guid actorId, string reason, Cancell
     _store.Upsert(userId);
 
     await _auditLog.LogAsync(               // then audit (self-persisting)
-        AuditAction.ProfileSuspended, nameof(User), userId,
+        UsersAuditActions.MemberSuspended, nameof(User), userId,
         $"Suspended (was={previousState}): {reason}",   // the reason lives here, not on the row
         actorId);
 }

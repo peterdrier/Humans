@@ -64,7 +64,7 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
 
 - `OrderExportRow` (existing) gained `VendorOrderId`, `PurchasedAt`, `VipDonations`.
 - `DonationExportRow` (new, section-internal): `Date, VendorOrderId, BuyerName, BuyerEmail, Type, Amount`.
-- `AuditAction.TicketDonationsExported` (new).
+- `TicketsAuditActions.TicketDonationsExported` (new).
 
 ## Workflow
 

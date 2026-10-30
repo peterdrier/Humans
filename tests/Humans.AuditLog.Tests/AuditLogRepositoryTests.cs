@@ -24,7 +24,7 @@ public class AuditLogRepositoryTests
     [HumansFact]
     public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierEntries()
     {
-        await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
         var first = await _sut.GetFilteredAsync(null, [], 1, 50, Xunit.TestContext.Current.CancellationToken);
         first.Items.Should().ContainSingle();
         var result = await _sut.GetFilteredAsync(null, [], int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
@@ -37,27 +37,27 @@ public class AuditLogRepositoryTests
     public async Task GetFilteredAsync_CountsEveryAlertActionOverTheWholeLog()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        await _sut.AddAsync(MakeEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
-        await _sut.AddAsync(MakeEntry(AuditAction.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
-        await _sut.AddAsync(MakeEntry(AuditAction.MemberSuspended, "User", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(TestActions.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(TestActions.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(TestActions.MemberSuspended, "User", Guid.NewGuid()), ct);
 
         var result = await _sut.GetFilteredAsync(
-            nameof(AuditAction.MemberSuspended),
-            [nameof(AuditAction.AnomalousPermissionDetected), nameof(AuditAction.MemberSuspended)],
+            TestActions.MemberSuspended.Name,
+            [TestActions.AnomalousPermissionDetected.Name, TestActions.MemberSuspended.Name],
             1, 50, ct);
 
         result.Items.Should().ContainSingle();
         result.AlertCounts.Should().BeEquivalentTo(new Dictionary<string, int>(StringComparer.Ordinal)
         {
-            [nameof(AuditAction.AnomalousPermissionDetected)] = 2,
-            [nameof(AuditAction.MemberSuspended)] = 1,
+            [TestActions.AnomalousPermissionDetected.Name] = 2,
+            [TestActions.MemberSuspended.Name] = 1,
         });
     }
 
     [HumansFact]
     public async Task AddAsync_PersistsEntry_VisibleOnNextRead()
     {
-        var entry = MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid());
+        var entry = MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid());
 
         await _sut.AddAsync(entry, Xunit.TestContext.Current.CancellationToken);
 
@@ -78,7 +78,7 @@ public class AuditLogRepositoryTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var now = Instant.FromUtc(2026, 5, 12, 10, 0);
 
-        await _sut.AddAsync(MakeEntry(AuditAction.VolunteerApproved, "User", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), ct);
         var newer = MakeGoogleSyncEntry(now);
         var older = MakeGoogleSyncEntry(now - Duration.FromHours(3));
         await _sut.AddAsync(newer, ct);
@@ -93,7 +93,7 @@ public class AuditLogRepositoryTests
     private static AuditLogEntry MakeGoogleSyncEntry(Instant occurredAt) => new()
     {
         Id = Guid.NewGuid(),
-        Action = nameof(AuditAction.GoogleResourceAccessGranted),
+        Action = TestActions.GoogleResourceAccessGranted.Name,
         EntityType = "GoogleResource",
         EntityId = Guid.NewGuid(),
         Description = "GoogleWorkspaceSyncService: Granted Drive access",
@@ -106,11 +106,11 @@ public class AuditLogRepositoryTests
     };
 
     private static AuditLogEntry MakeEntry(
-        AuditAction action, string entityType, Guid entityId,
+        AuditActionDefinition action, string entityType, Guid entityId,
         Instant? occurredAt = null) => new()
         {
             Id = Guid.NewGuid(),
-            Action = action.ToString(),
+            Action = action.Name,
             EntityType = entityType,
             EntityId = entityId,
             Description = $"Test {action}",

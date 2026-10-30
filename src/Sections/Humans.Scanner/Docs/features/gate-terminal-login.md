@@ -93,7 +93,7 @@ cannot be opened by the kiosk account.
   `GateAdmit` — same principals today (TicketsAdmin/Board/Admin or the gate account by
   id), kept separate so the gate's admission writes never ride on the read-only
   `ScannerAccess` gate.
-- **Audit:** every password set/rotate writes `AuditAction.GateTerminalPasswordSet`
+- **Audit:** every password set/rotate writes `TicketsAuditActions.GateTerminalPasswordSet`
   with the acting admin as actor. Gate sign-ins stamp `LastLoginAt` (surfaced on the
   admin card).
 

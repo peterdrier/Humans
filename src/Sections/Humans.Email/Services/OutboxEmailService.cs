@@ -70,6 +70,13 @@ internal sealed class OutboxEmailService(
 
         if (message.DoNotPersist)
         {
+            if (EmailTestAddress.IsTestAddress(message.RecipientEmail))
+            {
+                logger.LogInformation("Skipped email without an outbox row to a test address: {TemplateName}",
+                    message.TemplateName);
+                return;
+            }
+
             // Straight to the transport: no row, no retry, no stored copy of a member the erasure
             // just removed. Logged without the address for the same reason.
             await transport.SendAsync(

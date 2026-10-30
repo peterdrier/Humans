@@ -104,13 +104,14 @@ public class ProfileTests
     }
 
     [HumansTheory]
-    [InlineData(LegacyMembershipTier.Volunteer)]
-    [InlineData(LegacyMembershipTier.Colaborador)]
-    [InlineData(LegacyMembershipTier.Asociado)]
-    public void Profile_CanSetMembershipTier(LegacyMembershipTier tier)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Profile_CanSetMembershipTier(int value)
     {
         var profile = CreateProfile();
 
+        var tier = (LegacyMembershipTier)value;
         profile.MembershipTier = tier;
 
         profile.MembershipTier.Should().Be(tier);

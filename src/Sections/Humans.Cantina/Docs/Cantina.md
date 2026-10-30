@@ -3,7 +3,7 @@
   tests/Humans.Cantina.Tests/**
 -->
 <!-- freshness:flag-on-change
-  Cantina access gate, weekly-roster aggregation, on-site definition, the dietary-profile store/legacy fallback, and the MedicalConditions exclusion — review when Cantina services/controllers/views change, or when Shifts changes the shape of `volunteer_event_profiles` / `shift_signups`.
+  Cantina access gate, weekly-roster aggregation, on-site definition, the dietary-profile store, and the MedicalConditions exclusion — review when Cantina services/controllers/views change, or when Shifts changes the shape of `volunteer_event_profiles` / `shift_signups`.
 -->
 
 # Cantina — Section Invariants
@@ -32,14 +32,14 @@ Weekly roster surface for the food-service team — who is on site each day of t
 | `DeclinedToAnswer` | `bool?`, null = unanswered. True after "I don't want to answer": every food field is then empty. Saving answers resets it. |
 | `UpdatedAt` | `Instant` |
 
-Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The data-migration registry entry `cantina.profile-dietary` copies the legacy `profiles` food columns for members without a row (idempotent).
+Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
-**Legacy fallback.** Until the retirement PR drops the Users columns, a member without a row reads their legacy `ProfileInfo` food fields (`[Obsolete]`, `HUM_PROFILE_DIETARY`). `DietaryProfileService.LegacyProfile` is the one suppressed reader. A saved row — even an emptied one — always wins, so a cleared answer never resurrects.
+**Read source.** Dietary answers come only from `cantina_dietary_profiles`. A member without a row has no dietary answer; a saved empty or declined row remains authoritative.
 
 ### Read sources
 
 - `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
-- `profiles` / `users` — owned by **Users/Identity**. Burner names, the merge chain and the legacy food fallback are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
+- `profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
 
 ## Routing
 
@@ -81,8 +81,8 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has a confirmed shift no later than the day after the week, so its arrival day always exists and `ArrivesOn` is non-nullable.
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. Member self-saves and declines are not audited.
-- Merge (`IUserMerge`): the survivor's answers win. When the survivor has none, the source's effective answers move, including legacy-only answers. Saved empty answers and declines suppress that account's legacy answers. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
-- GDPR: export slice `DietaryProfile` (row or legacy fallback, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.
+- Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
+- GDPR: export slice `DietaryProfile` (row, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.
 - Burner-name stitching reads `UserInfo.BurnerName` — the value Users already resolved (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097) — off the cached `UserInfo` from `IUserService`. The `"(unknown)"` fall-through covers a user id the cohort read did not return, not a case the roster is expected to render.
 
 ## Negative Access Rules
@@ -107,7 +107,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync` (active event/burn).
-- **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names, the merge chain and the legacy food fallback. No entity reads.
+- **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.
 - **Gdpr:** implements `IUserDataContributor` and `IUserMerge` (`DietaryProfileService`).
 - **Inbound:** Shifts (banner, volunteer search, admin badges) and Users (medical prompt) read `ICantinaService`.
 
@@ -119,7 +119,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 **Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built on the §15 pattern.
 **Health target:** [`health.md`](health.md) — the shape this section is converging on, its seams and its deliberately-not-done list.
 
-- Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (of Shifts and Users, Cantina references only their `.Contracts` leaves). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save, the decline and the legacy copy. `ICantinaRosterService` stays in `Services/`, `internal`.
+- Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (of Shifts and Users, Cantina references only their `.Contracts` leaves). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save and the decline. `ICantinaRosterService` stays in `Services/`, `internal`.
 - **`CantinaDbContext`** registered via `AddSectionDbContext` (sentinel `cantina_dietary_profiles`); `DietaryProfileRepository` is its only reader/writer and only `DietaryProfileService` calls it.
 - **Roster calculations stay section-internal.** `CantinaRosterCalculation` owns day membership, day totals, weekly people rows and dietary rollups. `CantinaRosterService` retains source-data loading, arrival-day orchestration, clock access and export audits; no service contract or DI registration changes.
 
@@ -128,5 +128,5 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`). The
 - **Display sort is presentation.** `CantinaRosterAssembler`, `CantinaRosterCsvWriter` and `CantinaDailyMatrixCsvWriter` live in the section's `Models/` (`memory/architecture/display-sort-in-controllers.md`).
 - **Decorator decision — no caching decorators.** Roster aggregation is live per request; dietary reads are one keyed row (or one batched query) on a handful of pages — a `TrackedCache` decorator buys nothing at this scale.
 - **Cross-domain navs** — none declared; `DietaryProfile` keys on `UserId` only. All cross-section linkage is via service interfaces, by id.
-- **Cross-section calls** — `IShiftService` (on-site cohort), `ISettingsService` (active event/burn), `IUserService` (burner names, merge chain, legacy fallback), `ICantinaService` (dietary).
-- **Tests** — `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs` and `CantinaDailyRosterServiceTests.cs` pin the aggregation rules; `Models/CantinaRosterAssemblerTests.cs` and `Models/CantinaCsvWritersTests.cs` pin the display sort and the export layout; `CantinaArchitectureTests.cs` pins the section shape, including that no roster DTO grows a `Medical*` property; `DietaryProfileTests.cs` pins fallback, save rules, merge, migration, export/erase and the nudge; `Controllers/CantinaProfileControllerTests.cs` pins sign-in and antiforgery, prefill, the save and decline redirects, and validation (including Other without text). The opt-in `tests/Humans.Integration.Tests/Controllers/CantinaPageRenderTests.cs` (not run in CI) renders the roster, day and dietary pages, both CSV exports and the volunteer deny path, in English and Spanish.
+- **Cross-section calls** — `IShiftService` (on-site cohort), `ISettingsService` (active event/burn), `IUserService` (burner names and merge chain), `ICantinaService` (dietary).
+- **Tests** — `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs` and `CantinaDailyRosterServiceTests.cs` pin the aggregation rules; `Models/CantinaRosterAssemblerTests.cs` and `Models/CantinaCsvWritersTests.cs` pin the display sort and the export layout; `CantinaArchitectureTests.cs` pins the section shape, including that no roster DTO grows a `Medical*` property; `DietaryProfileTests.cs` pins reads, save rules, merge, export/erase and the nudge; `Controllers/CantinaProfileControllerTests.cs` pins sign-in and antiforgery, prefill, the save and decline redirects, and validation (including Other without text). The opt-in `tests/Humans.Integration.Tests/Controllers/CantinaPageRenderTests.cs` (not run in CI) renders the roster, day and dietary pages, both CSV exports and the volunteer deny path, in English and Spanish.

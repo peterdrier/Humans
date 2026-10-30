@@ -10,10 +10,4 @@ internal interface IDietaryProfileManagement : ICantinaService
 
     /// <summary>Clears every food field and stops the prompts until the member saves answers.</summary>
     Task DeclineAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>Legacy food columns non-empty and no row yet, oldest-joined first.</summary>
-    Task<IReadOnlyList<DietaryProfileInfo>> GetUncopiedLegacyProfilesAsync(CancellationToken ct = default);
-
-    /// <summary>Idempotent: a row written since the list was read is left alone. Returns the rows written.</summary>
-    Task<int> CopyLegacyProfilesAsync(CancellationToken ct = default);
 }

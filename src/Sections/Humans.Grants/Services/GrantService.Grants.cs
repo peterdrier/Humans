@@ -24,15 +24,19 @@ internal sealed partial class GrantService
         var ids = userIds.Distinct().ToList();
         if (ids.Count == 0) return new(Refusal: "Pick at least one person.");
 
+        var recipients = new List<IReadOnlyList<Guid>>();
+        foreach (var id in ids)
+            recipients.Add(await AllIdsAsync(id, ct));
         var holding = program.Grants.Where(g => g.RevokedAt is null).Select(g => g.UserId).ToHashSet();
         var now = clock.GetCurrentInstant();
-        var grants = ids.Where(id => !holding.Contains(id))
-            .Select(id => NewGrant(program, id, sourceRef: null, expiresOn, actorUserId, now))
+        var grants = recipients.DistinctBy(personIds => personIds[0])
+            .Where(personIds => !personIds.Any(holding.Contains))
+            .Select(personIds => NewGrant(program, personIds[0], sourceRef: null, expiresOn, actorUserId, now))
             .ToList();
         if (grants.Count == 0) return new(Value: []);
 
         await PersistIssuedGrantsAsync(program, grants, actorUserId,
-            grant => $"Issued under \"{program.Name}\" ({program.Year}){ExpirySuffix(grant, program)}" +
+            (grant, year) => $"Issued under \"{program.Name}\" ({year}){ExpirySuffix(grant, program)}" +
                 $"{(grants.Count > 1 ? $" (batch of {grants.Count})" : "")}.", ct);
         return new(grants.Select(g => g.Id).ToList());
     }
@@ -55,10 +59,11 @@ internal sealed partial class GrantService
         if (grant is null) return new("Grant not found.");
         if (grant.RevokedAt is not null) return new("A revoked grant has no notice to resend.");
 
+        var year = EventOf(grant.Program, await settingsService.GetAllEventSettingsAsync(ct))?.Year ?? grant.Program.Year;
         grant.NotifiedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
         await AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
-            $"Notice for \"{grant.Program.Name}\" ({grant.Program.Year}) sent again.", actorUserId);
+            $"Notice for \"{grant.Program.Name}\" ({year}) sent again.", actorUserId);
         await AnnounceIssuedAsync(grant, grant.Program, CancellationToken.None);
         return GrantMutationResult.Ok;
     }
@@ -72,25 +77,27 @@ internal sealed partial class GrantService
         var program = await SourceProgramAsync(sourceKey, ct);
         if (program is null) return new(Guid.Empty, GrantWriteRefusal.NoOpenProgram);
 
-        var live = program.Grants.FirstOrDefault(g => g.UserId == userId && g.RevokedAt is null);
+        var personIds = await AllIdsAsync(userId, ct);
+        var live = program.Grants.FirstOrDefault(g => personIds.Contains(g.UserId) && g.RevokedAt is null);
         if (live is not null) return new(live.Id);
 
-        var grant = NewGrant(program, userId, sourceRef, expiresOn: null, actorUserId, clock.GetCurrentInstant());
+        var grant = NewGrant(program, personIds[0], sourceRef, expiresOn: null, actorUserId, clock.GetCurrentInstant());
         await PersistIssuedGrantsAsync(program, [grant], actorUserId,
-            issued => $"Issued under \"{program.Name}\" ({program.Year}) by source {program.SourceKey}" +
+            (issued, year) => $"Issued under \"{program.Name}\" ({year}) by source {program.SourceKey}" +
                 $"{(sourceRef is null ? "" : $", ref {sourceRef}")}{ExpirySuffix(issued, program)}.", ct);
         return new(grant.Id);
     }
 
     private async Task PersistIssuedGrantsAsync(
         GrantProgram program, IReadOnlyList<Grant> grants, Guid actorUserId,
-        Func<Grant, string> describe, CancellationToken ct)
+        Func<Grant, int, string> describe, CancellationToken ct)
     {
+        var year = EventOf(program, await settingsService.GetAllEventSettingsAsync(ct))?.Year ?? program.Year;
         await repository.AddGrantsAsync(grants, ct);
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
         {
-            await AuditGrantAsync(GrantsAuditActions.GrantIssued, grant, describe(grant), actorUserId);
+            await AuditGrantAsync(GrantsAuditActions.GrantIssued, grant, describe(grant, year), actorUserId);
             await AnnounceIssuedAsync(grant, program, CancellationToken.None);
         }
     }
@@ -102,7 +109,8 @@ internal sealed partial class GrantService
             return new(false, GrantWriteRefusal.ReasonTooLong);
         var program = await SourceProgramAsync(sourceKey, ct);
         if (program is null) return new(false, GrantWriteRefusal.NoOpenProgram);
-        var live = program.Grants.FirstOrDefault(g => g.UserId == userId && g.RevokedAt is null);
+        var personIds = await AllIdsAsync(userId, ct);
+        var live = program.Grants.FirstOrDefault(g => personIds.Contains(g.UserId) && g.RevokedAt is null);
         if (live is null) return new(false);
         live.Program = program;
         await RevokeCoreAsync(live, Trimmed(reason), actorUserId, ct);
@@ -121,6 +129,7 @@ internal sealed partial class GrantService
 
     private async Task RevokeCoreAsync(Grant grant, string? reason, Guid actorUserId, CancellationToken ct)
     {
+        var year = EventOf(grant.Program, await settingsService.GetAllEventSettingsAsync(ct))?.Year ?? grant.Program.Year;
         grant.RevokedAt = clock.GetCurrentInstant();
         grant.RevokedByUserId = actorUserId;
         grant.RevokeReason = reason;
@@ -129,7 +138,7 @@ internal sealed partial class GrantService
         ct = CancellationToken.None;
 
         await AuditGrantAsync(GrantsAuditActions.GrantRevoked, grant,
-            $"Revoked under \"{grant.Program.Name}\" ({grant.Program.Year}){(reason is null ? "" : $": {reason}")}.",
+            $"Revoked under \"{grant.Program.Name}\" ({year}){(reason is null ? "" : $": {reason}")}.",
             actorUserId);
         await AnnounceRevokedAsync(grant, grant.Program, ct);
     }

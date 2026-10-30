@@ -37,15 +37,6 @@ internal sealed class MembershipTierRepository(IDbContextFactory<GovernanceDbCon
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> TryInsertAsync(MembershipTierRecord values, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.MembershipTiers.AnyAsync(x => x.UserId == values.UserId, ct)) return false;
-        ctx.MembershipTiers.Add(Copy(values, values.UserId));
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task UpdateExpiryForApplicationAsync(Guid applicationId, LocalDate? expiresAt, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

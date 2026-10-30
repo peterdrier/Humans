@@ -58,7 +58,7 @@ The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox 
 
 The dashboard (`/Email/EmailOutbox`) shows the last 90 days in a Date/Sent/Failed table.
 
-**Backfill:** `GET /Email/EmailOutbox/BackfillDailyCounts` previews rows to add (count, date range, first 50 rows); `POST` confirms. Aggregates retained `Sent` outbox rows by `SentAt`'s UTC date; `FailedCount` stays `0` (failure day isn't reconstructable from the outbox). Excludes today's UTC date entirely. Only inserts (Date, TemplateName) combinations with no existing row — idempotent, re-running is a no-op past the first pass. Audited as `AuditAction.EmailDailySendCountsBackfilled`.
+**Backfill:** `GET /Email/EmailOutbox/BackfillDailyCounts` previews rows to add (count, date range, first 50 rows); `POST` confirms. Aggregates retained `Sent` outbox rows by `SentAt`'s UTC date; `FailedCount` stays `0` (failure day isn't reconstructable from the outbox). Excludes today's UTC date entirely. Only inserts (Date, TemplateName) combinations with no existing row — idempotent, re-running is a no-op past the first pass. Audited as `EmailAuditActions.EmailDailySendCountsBackfilled`.
 
 ## Metrics (OpenTelemetry)
 

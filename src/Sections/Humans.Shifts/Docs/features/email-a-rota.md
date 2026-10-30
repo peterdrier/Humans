@@ -42,7 +42,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - Each email body contains the coordinator's free-text message plus that recipient's own chronologically ordered shifts on this rota.
 - Shift list uses the event's timezone (matches the rota detail page convention): `"ddd MMMM d"` for all-day shifts, `"ddd MMMM d @ HH:mm"` for time-slotted shifts.
 - Delivery flows through `IEmailService` → outbox so audit, opt-out routing, and category suppression stay consistent with every other transactional send.
-- A single audit row (`AuditAction.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text.
+- A single audit row (`ShiftsAuditActions.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text.
 - Non-coordinators (and `ShiftsNoInfo`) do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
 
 ### US-732.2: Recipients see exactly their own shifts
@@ -130,7 +130,7 @@ No new entities or migrations. The feature is pure orchestration over existing t
 - `IUserService.GetUserInfosAsync(userIds, ct)` — recipient name/email/culture lookup.
 - `IEmailService.SendAsync(ShiftsEmails.CoordinatorRotaMessage(request), ct)` — outbox enqueue.
 - `ShiftsEmails` — the section's own builder for the template (copy in `ShiftsResource*.resx`).
-- `AuditAction.CoordinatorRotaMessageSent` — new audit action value.
+- `ShiftsAuditActions.CoordinatorRotaMessageSent` — new audit action value.
 
 ## Workflow
 

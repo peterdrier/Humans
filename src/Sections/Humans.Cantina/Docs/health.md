@@ -118,11 +118,9 @@ The layout matches.
 - **The `VolunteerEventProfile` dietary columns in Shifts are kept only until a prod-verified
   drop.** When they go, every doc that still names them (and this section's freshness
   triggers) is re-checked in the same pass.
-- **The legacy food columns on `profiles` are still there.** The answers moved into
-  `cantina_dietary_profiles`; the old columns stay, `[Obsolete]` on `ProfileInfo`
-  (`HUM_PROFILE_DIETARY`), read only by `DietaryProfileService.LegacyProfile` and the
-  `cantina.profile-dietary` copy, and still exported and erased by Users. A retirement PR, after
-  production has run the copy, removes the fallback and drops the columns (ledger `CENTRAL-90`).
+- **The legacy food columns on `profiles` are still there.** They are no longer exposed
+  on `ProfileInfo` or read by Cantina. Users still exports and erases them until a separate
+  approved schema change removes them.
 
 ## 6. Deliberately not done
 

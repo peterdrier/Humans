@@ -27,16 +27,6 @@ internal sealed class WorkloadService(
         // Reuses the event-shift query for the rota ids rather than add an interface method.
         var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(calendar.Id), ct);
         var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
-        if (rotaIds.Count == 0)
-        {
-            return new WorkloadReport(
-                EventSettingsId: calendar.Id,
-                EventYear: calendar.Year,
-                ByPerson: [],
-                ByRota: [],
-                ByDepartment: []);
-        }
-
         // Unfiltered: the workload view is admin-only and needs hidden rotas.
         var views = await view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
         var entries = views.Values
