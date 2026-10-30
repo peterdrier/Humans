@@ -29,6 +29,10 @@ public sealed record HoldedContactDto
 {
     public required string Id { get; init; }
     public string? Name { get; init; }
+    /// <summary>v2 <c>custom_id</c>: read-only on the API, set only on contacts created through v1 or Holded's app.</summary>
+    public string? CustomId { get; init; }
+    /// <summary>v2 <c>type</c>: <c>creditor</c>, <c>supplier</c>, <c>client</c>, <c>debtor</c>…</summary>
+    public string? Type { get; init; }
     /// <summary>supplier_record.num — the 400000xx supplier account number, or null if not yet assigned.</summary>
     public int? SupplierAccountNum { get; init; }
 

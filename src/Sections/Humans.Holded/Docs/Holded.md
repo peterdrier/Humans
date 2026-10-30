@@ -121,13 +121,38 @@ ownership: these screens cover what `HoldedDbContext` owns, that one covers what
 does. They link to each other rather than restating each other's figures; nothing of Finance's is
 shown here.
 
+## Write face (`IHoldedWrite`)
+
+Ensure-style writes for other sections, each `[ExternalWrite]`: the caller passes Humans keys
+(account numbers, names, the text it wrote), the call finds the Holded ids it needs inside itself,
+is safe to repeat, and returns an outcome, never a Holded id.
+
+- `EnsureCreditorContactAsync` — contact by `custom_id`, else exact legal name among `creditor`
+  contacts, else POST; returns `supplier_record.num`. Never PUTs a contact.
+- `EnsurePurchaseDocumentAsync` — contact by account number (live contacts list); document by
+  contact + description + total + notes (list, then GET for notes); else created with
+  `items[].account` = the chart mirror's Holded id for the expense account number. Attaches on create,
+  or when the caller says its earlier attachment did not go up: Holded's v2 purchase GET does not
+  report attachments (unverified against the live API; the caller-supplied flag covers the gap).
+  Approves a draft.
+- `EnsureExpenseAccountAsync` — chart mirror by number, else POST `expenses-accounts` and refresh the
+  chart mirror.
+- `DeletePurchaseDocumentAsync` — finds the document live (contact, description, total, date);
+  refuses when its notes differ or it carries a payment; deletes, then runs the trailing ledger sync.
+- `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
+  outcome says whether Holded confirmed it.
+
+Not here yet: paying a creditor from a treasury, the bank feed and reconcile, sales documents (they
+move with the Finance and Store phases). Callers still on `IHoldedClient` are debt `CENTRAL-105`.
+Audit entries stay with the calling section, which knows why it wrote.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
 | Finance admin / Admin | Everything above (`FinancePolicies.Manage`). |
 | Board | Read the summary, accounts, statements, entries and calls; trigger no sync (`FinancePolicies.Read`). |
-| Other sections | Read via `IHoldedService`; trigger sync (nightly job). |
+| Other sections | Read via `IHoldedService`; write via `IHoldedWrite`; trigger sync (nightly job). |
 | Any human | None directly. |
 
 ## Invariants
@@ -183,7 +208,7 @@ shown here.
 ## Architecture
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`) for the mirror, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`) for the mirror, `IHoldedWrite` (+ its outcome records) for writes, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md); the single-mirror design is
