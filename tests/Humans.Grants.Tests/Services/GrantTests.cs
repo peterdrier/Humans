@@ -95,6 +95,85 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
+    public async Task IssueTo_MergedAliasesIssueOneGrantToTheSurvivor_AndRetriesSkipIt()
+    {
+        var archived = SeedUser("Archived");
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var actor = SeedUser("Manager");
+        var program = await SeedProgramAsync();
+        var service = NewService();
+
+        var first = await service.IssueToAsync(program.Id, [archived, survivor], null, actor, Ct);
+        var retry = await service.IssueToAsync(program.Id, [archived], null, actor, Ct);
+
+        first.Value.Should().ContainSingle();
+        retry.Value.Should().BeEmpty();
+        (await ReadGrantsAsync()).Should().ContainSingle().Which.UserId.Should().Be(survivor);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, survivor);
+        await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task IssueTo_AnExistingGrantUnderAMergedIdCountsAsHeld()
+    {
+        var archived = SeedUser("Archived");
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var program = await SeedProgramAsync();
+        var held = await SeedGrantAsync(program, archived);
+
+        var result = await NewService().IssueToAsync(program.Id, [survivor, archived], null, SeedUser(), Ct);
+
+        result.Value.Should().BeEmpty();
+        (await ReadGrantsAsync()).Should().ContainSingle().Which.Id.Should().Be(held.Id);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SourceWrite_MergedAliasIssuesToTheSurvivor_RetriesReturnIt_AndAliasRevocationFindsIt()
+    {
+        var archived = SeedUser("Archived");
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var actor = SeedUser("Admin");
+        await SeedProgramAsync(GrantIssuer.Source, "low-income");
+        var service = NewService();
+
+        var first = await service.IssueAsync("low-income", archived, "app-42", actor, Ct);
+        var retry = await service.IssueAsync("low-income", survivor, "app-43", actor, Ct);
+
+        first.Succeeded.Should().BeTrue();
+        retry.Should().Be(first);
+        (await ReadGrantsAsync()).Should().ContainSingle().Which.UserId.Should().Be(survivor);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, survivor);
+        (await service.RevokeAsync("low-income", archived, "Withdrew", actor, Ct)).Revoked.Should().BeTrue();
+        (await ReadGrantAsync(first.GrantId)).RevokeReason.Should().Be("Withdrew");
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, survivor);
+    }
+
+    [HumansFact]
+    public async Task SourceWrite_FindsAnExistingGrantUnderAMergedId_ForIssueAndRevoke()
+    {
+        var archived = SeedUser("Archived");
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        AliasMergedId(archived, survivor);
+        var actor = SeedUser("Admin");
+        var program = await SeedProgramAsync(GrantIssuer.Source, "low-income");
+        var held = await SeedGrantAsync(program, archived);
+        var service = NewService();
+
+        var issue = await service.IssueAsync("low-income", survivor, null, actor, Ct);
+
+        issue.GrantId.Should().Be(held.Id);
+        Email.ReceivedCalls().Should().BeEmpty();
+        (await service.RevokeAsync("low-income", survivor, "Withdrew", actor, Ct)).Revoked.Should().BeTrue();
+        (await ReadGrantAsync(held.Id)).RevokeReason.Should().Be("Withdrew");
+        (await ReadGrantsAsync()).Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task IssueTo_AfterRevoke_IssuesAgain()
     {
         var person = SeedUser();
