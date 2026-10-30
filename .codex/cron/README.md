@@ -74,11 +74,26 @@ permissions throughout, with the same original work deadline.
 The last completed turn supplies the cumulative Markdown PR body, followed
 by the wrapper's measured goal time, actual worker time, total elapsed time
 through validation, and gate result. No unfilled template is appended.
+
+Model-capacity failures wait three minutes and retry the interrupted batch in the
+same thread/goal, up to three retries per worker session. The original deadline
+and model stay fixed; retries do not start if the wait would exhaust the window.
+The quota guard checks live allowance again before resuming. Other blockers and
+non-capacity failures stop immediately. Retrying preserves unfinished work; the
+agent inspects previous actions and the working tree before continuing.
+
+The worker waits for the failed turn's diagnostic after a blocked notification.
+Its actual stop reason (deadline, quota, blocker, server error, or disconnect) is
+recorded in the service journal, file log, summary, and saved report; published
+PRs include the reason and capacity retry history. The latest completed cumulative
+report is retained if a later turn fails. Status details also live beside the
+report in `last-message-YYYY-MM-DD.md.status.json`.
+
 Blocked goals return a distinct result: the wrapper records the actual commit
 count, checks the branch and clean tree, and runs final build/test gates. Substantive
-committed work is published as a draft with a blocked warning and Git commit list,
-while the service still fails. Other goal failures, missing completion reports,
-and disconnection fail without publishing. Dirty blocked runs never publish.
+committed work is published as a draft with the stop reason, last available report,
+and Git commit list, while the service still fails. Other goal failures, missing
+completion reports, and disconnection fail without publishing. Dirty blocked runs never publish.
 
 If the final build or non-integration test gate fails, the wrapper starts short Codex repair passes, capped at
 `GATE_REPAIR_ATTEMPTS` (default `2`) in total across both gates. Each pass gets

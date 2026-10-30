@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest.mock import Mock, patch
 
 SOURCE = Path(__file__).resolve().parents[1]
 
@@ -71,6 +72,126 @@ class QuotaPolicyTests(unittest.TestCase):
         snapshot = self.snapshot(0, secondary=True)
         snapshot["rateLimitsByLimitId"]["codex"]["primary"]["usedPercent"] = 100
         self.assertIn("exhausted", run_goal.quota_stop_reason(snapshot, 1000000))
+
+
+class GoalFailureTests(unittest.TestCase):
+    def event(self, method, **params):
+        return {"method": method, "params": {"threadId": "same-thread", **params}}
+
+    def failure(self, message="Selected model is at capacity. Please try a different model.",
+                code="serverOverloaded"):
+        # Actual server order: blocked notification precedes the failed turn detail.
+        return [self.event("turn/started"),
+                self.event("thread/goal/updated", goal={"status": "blocked"}),
+                self.event("turn/completed", turn={"status": "failed", "error": {
+                    "message": message, "codexErrorInfo": code}})]
+
+    def run_events(self, events, deadline=1001000, repair=True, quota=False):
+        initial = [{"id": 1, "result": {}},
+                   {"id": 2, "result": {"thread": {"id": "same-thread"}}},
+                   {"id": 3, "result": {"goal": {"status": "active"}}}]
+        if quota:
+            initial.insert(1, {"id": 5, "result": QuotaPolicyTests().snapshot(0)})
+        proc = Mock()
+        proc.stdout = iter(json.dumps(event) + "\n" for event in initial + events)
+        with tempfile.TemporaryDirectory() as directory:
+            prompt = Path(directory) / "prompt"
+            report = Path(directory) / "report"
+            prompt.write_text("Repair only this gate")
+            with patch.object(run_goal.subprocess, "Popen", return_value=proc), \
+                 patch.object(run_goal.time, "sleep") as sleep, \
+                 patch.object(run_goal.time, "time", return_value=1000000), \
+                 patch.object(run_goal.subprocess, "check_output", return_value=""), \
+                 patch.dict(os.environ, WORK_DIR=directory, IGNORE_QUOTA_CUTOFF="0" if quota else "1"), \
+                 patch("builtins.print"):
+                result = run_goal.run(prompt, report, deadline, repair)
+            requests = [json.loads(call.args[0]) for call in proc.stdin.write.call_args_list]
+            return result, report.read_text() if report.exists() else "", requests, sleep.call_args_list
+
+    def test_capacity_failure_retries_same_goal_and_recovers(self):
+        events = self.failure() + [
+            {"id": 5, "result": {"goal": {"status": "active"}}},
+            self.event("turn/started"),
+            self.event("thread/goal/updated", goal={"status": "complete"}),
+            self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                               "text": "Recovered cumulative report"}),
+            self.event("turn/completed", turn={"status": "completed"})]
+        result, report, requests, sleeps = self.run_events(events)
+        self.assertIsNone(result)
+        self.assertEqual([call.args for call in sleeps], [(180,)])
+        self.assertIn("Recovered cumulative report", report)
+        self.assertIn("Capacity retry 1/3", report)
+        self.assertIn("model is at capacity", report)
+        self.assertIn("Gate repair completed", report)
+        goals = [r["params"] for r in requests if r["method"] == "thread/goal/set"]
+        self.assertEqual(len(goals), 2)
+        self.assertEqual(goals[0]["objective"], goals[1]["objective"])
+        self.assertTrue(all(g["threadId"] == "same-thread" for g in goals))
+        self.assertIn("original deadline remains 1001000", requests[-1]["params"]["input"][0]["text"])
+
+    def test_capacity_retries_are_bounded_and_explain_exhaustion(self):
+        events = []
+        for attempt in range(4):
+            events += self.failure()
+            if attempt < 3:
+                events.append({"id": 5 + attempt * 2, "result": {"goal": {"status": "active"}}})
+        result, report, requests, sleeps = self.run_events(events)
+        self.assertEqual(result, 2)
+        self.assertEqual(len(sleeps), 3)
+        self.assertIn("capacity retries exhausted", report)
+        self.assertIn("serverOverloaded", report)
+        self.assertEqual(sum(r["method"] == "thread/start" for r in requests), 1)
+
+    def test_deadline_prevents_capacity_retry(self):
+        result, report, _, sleeps = self.run_events(self.failure(), deadline=1000100)
+        self.assertEqual(result, 2)
+        self.assertEqual(sleeps, [])
+        self.assertIn("insufficient time before original deadline", report)
+
+    def test_capacity_retry_rechecks_quota_before_reactivating_goal(self):
+        events = self.failure() + [
+            {"id": 6, "result": QuotaPolicyTests().snapshot(100)}]
+        result, report, requests, sleeps = self.run_events(events, repair=False, quota=True)
+        self.assertEqual(result, 2)
+        self.assertEqual(len(sleeps), 1)
+        self.assertIn("weekly quota cutoff", report)
+        self.assertIn("model is at capacity", report)
+        self.assertEqual(sum(r["method"] == "account/rateLimits/read" for r in requests), 2)
+        self.assertEqual(sum(r["method"] == "thread/goal/set" for r in requests), 1)
+
+    def test_capacity_retry_recovers_in_nightly_mode(self):
+        events = self.failure() + [
+            {"id": 6, "result": QuotaPolicyTests().snapshot(0)},
+            {"id": 7, "result": {"goal": {"status": "active"}}},
+            self.event("turn/started"),
+            self.event("thread/goal/updated", goal={"status": "complete"}),
+            self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                               "text": "Recovered nightly report"}),
+            self.event("turn/completed", turn={"status": "completed"}),
+            {"id": 9, "result": QuotaPolicyTests().snapshot(100)}]
+        result, report, requests, _ = self.run_events(events, repair=False, quota=True)
+        self.assertEqual(result, 3)
+        self.assertIn("Recovered nightly report", report)
+        turns = [r for r in requests if r["method"] == "turn/start"]
+        self.assertEqual(len(turns), 2)
+        self.assertIn("Retry the interrupted batch", turns[-1]["params"]["input"][0]["text"])
+        self.assertIn("original deadline remains 1001000", turns[-1]["params"]["input"][0]["text"])
+
+    def test_blocked_later_turn_preserves_previous_cumulative_report(self):
+        events = [self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                                   "text": "Previous cumulative report"}),
+                  self.event("turn/completed", turn={"status": "completed"})]
+        events += self.failure("Needs maintainer decision", "other")
+        result, report, _, _ = self.run_events(events)
+        self.assertEqual(result, 2)
+        self.assertIn("Previous cumulative report", report)
+        self.assertIn("Needs maintainer decision", report)
+
+    def test_noncapacity_blocker_is_reported_without_retry(self):
+        result, report, _, sleeps = self.run_events(self.failure("Authentication expired", "unauthorized"))
+        self.assertEqual(result, 2)
+        self.assertEqual(sleeps, [])
+        self.assertIn("unauthorized: Authentication expired", report)
 
 
 class DailyDebtTests(unittest.TestCase):
@@ -298,7 +419,11 @@ for line in sys.stdin:
         emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": report}})
     if scenario == "early-deadline-race":
         time.sleep(max(0, int((root / "clock").read_text()) + 3 - time.time()) + 0.05)
-    emit("turn/completed", {"turn": {"status": "completed"}})
+    if scenario.startswith("blocked"):
+        emit("turn/completed", {"turn": {"status": "failed", "error": {
+            "message": "Fixture dependency unavailable", "codexErrorInfo": "other"}}})
+    else:
+        emit("turn/completed", {"turn": {"status": "completed"}})
 ''')
         script.chmod(0o755)
         for name in ("codex", "gh", "dotnet", "date"):
@@ -618,6 +743,9 @@ for line in sys.stdin:
         self.assertIn("exit_reason=pushed-draft-goal-blocked commits=2 build=pass test=pass", result.stdout)
         body = (self.root / "pr-body").read_text()
         self.assertIn("The Codex goal stopped blocked", body)
+        self.assertIn("other: Fixture dependency unavailable", body)
+        self.assertIn("Worker outcome: other: Fixture dependency unavailable", result.stdout)
+        self.assertIn("worker_reason=other: Fixture dependency unavailable", result.stdout)
         self.assertIn("Fix 1", body)
         self.assertIn("Fix 2", body)
         self.assertNotIn("Cumulative fixes: 2", body)

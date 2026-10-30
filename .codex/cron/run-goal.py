@@ -68,13 +68,7 @@ def run(prompt_file, report_file, deadline, repair=False):
     # These are the app-server equivalents of dangerous CLI mode, and remain
     # attached to the thread for every native goal continuation.
     dangerous = os.environ.get("CODEX_DANGEROUS", "1") == "1"
-    proc = subprocess.Popen(
-        ["codex", "app-server", "--stdio", "--enable", "goals",
-         "-c", "agents.enabled=true",
-         "-c", 'agents.default_subagent_model="gpt-6-luna"',
-         "-c", 'agents.default_subagent_reasoning_effort="medium"'],
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
-    )
+    proc = None
     thread_id = None
     goal_status = None
     final_message = ""
@@ -86,6 +80,16 @@ def run(prompt_file, report_file, deadline, repair=False):
     quota_request = None
     quota_phase = None
     quota_policy = {}
+    stop_reason = "Codex disconnected before goal completion"
+    retry_history = []
+    retrying = False
+    turn_error = None
+    last_report = ""
+
+    def outcome(reason):
+        nonlocal stop_reason
+        stop_reason = " ".join(str(reason).split())[:1500]
+        print(f"Worker outcome: {stop_reason}", flush=True)
 
     def send(method, params, request_id=None):
         message = {"method": method, "params": params}
@@ -95,6 +99,13 @@ def run(prompt_file, report_file, deadline, repair=False):
         proc.stdin.flush()
 
     try:
+        proc = subprocess.Popen(
+            ["codex", "app-server", "--stdio", "--enable", "goals",
+             "-c", "agents.enabled=true",
+             "-c", 'agents.default_subagent_model="gpt-6-luna"',
+             "-c", 'agents.default_subagent_reasoning_effort="medium"'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
+        )
         send("initialize", {"clientInfo": {"name": "humans_debt_runner", "version": "1"},
                             "capabilities": {"experimentalApi": True}}, 1)
         for line in proc.stdout:
@@ -108,7 +119,9 @@ def run(prompt_file, report_file, deadline, repair=False):
                 reason = ("weekly quota read failed" if "error" in event else
                           quota_stop_reason(event.get("result", {}), time.time(), quota_policy))
                 if reason:
-                    print(f"Stopping new work: {reason}", flush=True)
+                    outcome(reason)
+                    if quota_phase == "retry":
+                        return 2
                     if quota_phase == "round":
                         if not final_message.strip():
                             raise RuntimeError("Completed round lacks cumulative report")
@@ -116,9 +129,18 @@ def run(prompt_file, report_file, deadline, repair=False):
                     return 3
                 if quota_phase == "startup":
                     send("thread/start", thread_params, 2)
+                elif quota_phase == "retry":
+                    if time.time() >= deadline:
+                        outcome("Original deadline reached before capacity retry")
+                        return 2
+                    resume_request = next_request_id
+                    next_request_id += 1
+                    send("thread/goal/set", {"threadId": thread_id,
+                         "objective": objective, "status": "active"}, resume_request)
                 elif time.time() >= deadline:
                     if not final_message.strip():
                         raise RuntimeError("Completed round lacks cumulative report")
+                    outcome("Gate repair completed" if repair else "Work deadline reached")
                     Path(report_file).write_text(final_message)
                     return
                 else:
@@ -176,8 +198,11 @@ def run(prompt_file, report_file, deadline, repair=False):
                 now = int(time.time())
                 send("turn/start", {"threadId": thread_id, "input": [{
                     "type": "text",
-                    "text": (
-                        f"The completed round has been accepted; continue with the next round. "
+                    "text": ("Retry the interrupted gate repair, preserving unfinished work. "
+                             f"The original deadline remains {deadline}.\n" + prompt) if repair else (
+                        ("Retry the interrupted batch after a model-capacity error. Inspect the "
+                         "working tree and previous actions before continuing; preserve unfinished work. "
+                         if retrying else "The completed round has been accepted; continue with the next round. ") +
                         f"Actual Unix time is {now}; the original deadline remains {deadline} "
                         f"({max(0, deadline - now)} seconds remaining). The same goal is active again. "
                         "Read get_goal and continue substantive fixes in this same branch/session "
@@ -189,6 +214,7 @@ def run(prompt_file, report_file, deadline, repair=False):
                     ),
                 }]}, next_request_id)
                 next_request_id += 1
+                retrying = False
             params = event.get("params", {})
             if params.get("threadId") != thread_id or thread_id is None:
                 continue
@@ -199,22 +225,56 @@ def run(prompt_file, report_file, deadline, repair=False):
                     # passes before this turn finishes. Never interrupt its work.
                     premature_completion = True
                     print("Round completed before deadline; will check continuation after this turn", flush=True)
-                if goal_status == "blocked":
-                    print("Native goal blocked; returning committed work for draft validation", flush=True)
-                    return 2
-                if goal_status not in ("active", "complete"):
+                # The failure detail follows this notification in turn/completed.
+                if goal_status not in ("active", "complete", "blocked"):
                     raise RuntimeError(f"Native goal stopped incomplete: {goal_status}")
             elif method == "thread/goal/cleared":
                 raise RuntimeError("Native goal was cleared before completion")
+            elif method == "error":
+                turn_error = params.get("error")
             elif method == "turn/started":
                 final_message = ""
+                turn_error = None
             elif method == "item/completed":
                 item = params["item"]
                 if item["type"] == "agentMessage" and item.get("phase") == "final_answer":
                     final_message = item["text"]
             elif method == "turn/completed" and started:
-                if params["turn"]["status"] != "completed":
-                    raise RuntimeError(f"Codex turn failed: {params['turn']}")
+                turn = params["turn"]
+                error = turn.get("error") or turn_error or {}
+                if goal_status == "blocked" or turn["status"] != "completed":
+                    detail = error.get("message") or final_message or "Native goal blocked without a reported reason"
+                    code = error.get("codexErrorInfo")
+                    if isinstance(code, dict):
+                        code = next(iter(code), None)
+                    outcome(f"{code + ': ' if code else ''}{detail}")
+                    capacity = code == "serverOverloaded" or "model is at capacity" in detail.lower()
+                    if capacity and len(retry_history) < 3 and time.time() + 180 < deadline:
+                        retry_history.append(f"Capacity retry {len(retry_history) + 1}/3 after 180 seconds: {stop_reason}")
+                        print(retry_history[-1], flush=True)
+                        time.sleep(180)
+                        if time.time() >= deadline:
+                            outcome(stop_reason + "; original deadline reached during capacity retry wait")
+                            return 2
+                        retrying = True
+                        if quota_enabled:
+                            quota_request = next_request_id
+                            quota_phase = "retry"
+                            send("account/rateLimits/read", {}, quota_request)
+                        else:
+                            resume_request = next_request_id
+                            send("thread/goal/set", {"threadId": thread_id,
+                                 "objective": objective, "status": "active"}, resume_request)
+                        next_request_id += 1
+                        continue
+                    if capacity:
+                        outcome(stop_reason + ("; capacity retries exhausted" if len(retry_history) == 3
+                                               else "; insufficient time before original deadline to retry"))
+                    if goal_status == "blocked" or capacity:
+                        return 2
+                    raise RuntimeError(stop_reason)
+                if final_message.strip():
+                    last_report = final_message
                 if quota_enabled and goal_status == "complete":
                     if not final_message.strip():
                         raise RuntimeError("Completed round lacks cumulative report")
@@ -235,19 +295,35 @@ def run(prompt_file, report_file, deadline, repair=False):
                 if goal_status == "complete":
                     if (not repair and time.time() < deadline) or not final_message.strip():
                         raise RuntimeError("Completed goal lacks elapsed work window or final report")
+                    outcome("Gate repair completed" if repair else "Work deadline reached")
                     Path(report_file).write_text(final_message)
                     return
                 # A normal turn boundary is not completion. Keep this same
                 # connection/session alive while Codex continues its own goal.
         raise RuntimeError(f"Codex disconnected before goal completion (status={goal_status})")
+    except (OSError, ValueError, KeyError, RuntimeError) as error:
+        outcome(error)
+        raise
     finally:
-        proc.stdin.close()
-        proc.terminate()
-        try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+        if proc is not None:
+            proc.stdin.close()
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+        Path(str(report_file) + ".status.json").write_text(json.dumps({
+            "reason": stop_reason, "retries": retry_history,
+        }))
+        print(f"Worker stopped: {stop_reason}", flush=True)
+        report = Path(report_file)
+        if last_report and (not report.exists() or not report.read_text().strip()):
+            report.write_text(last_report)
+        with report.open("a") as output:
+            output.write("\n\n## Runner outcome\n\n" + stop_reason + "\n")
+            for retry in retry_history:
+                output.write("\n- " + retry + "\n")
 
 
 if __name__ == "__main__":
