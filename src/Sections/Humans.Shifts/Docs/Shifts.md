@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/**
   src/Sections/Humans.Shifts.Contracts/**
-  src/Humans.Base/Authorization/ShiftsRoles.cs
+  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Tickets.Contracts/ParticipationStatus.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
@@ -166,8 +166,8 @@ These controllers serve this section, each with distinct URL scope and authoriza
 | `ShiftsController` | `/Shifts` | `[Authorize]` (per-action for admin/settings) |
 | `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + runtime department checks (`CanManageDepartmentAsync` / `CanApproveDepartmentAsync`, private to the controller, over `ShiftsRoles` + `IsDeptCoordinatorAsync`) |
 | `ShiftDashboardController` | `/Shifts/Dashboard` | `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]` |
-| `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = ShiftsPolicies.Manage)]` (per-action `ShiftsPolicies.ManageVolunteers` for mutating POSTs — Admin / ShiftsAdmin) |
-| `ShiftWorkloadAdminController` | `/Shifts/Admin/Workload` | `[Authorize(Policy = ShiftsPolicies.Manage)]` |
+| `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = ShiftsPolicies.Read)]` (per-action `ShiftsPolicies.Manage` for the export — Admin / ShiftsNoInfo / ShiftsAdmin — and `ShiftsPolicies.ManageVolunteers` for mutating POSTs — Admin / ShiftsAdmin) |
+| `ShiftWorkloadAdminController` | `/Shifts/Admin/Workload` | `[Authorize(Policy = ShiftsPolicies.Read)]` |
 | `ShiftProfileController` | `/Shifts` | `[Authorize]` — two actions (`GET`/`POST /Shifts/ShiftInfo`) |
 
 Selected routes:
@@ -214,13 +214,13 @@ Selected routes:
 | `GET /Teams/{slug}/Shifts/Email` | Compose a team-wide coordinator message to everyone with an active signup across the team's selected rotas |
 | `POST /Teams/{slug}/Shifts/Email` | Send the team-wide coordinator message, or (`intent=refresh`, or any send whose audience has not been previewed) re-preview the recipients for the posted audience selection |
 | `GET /Shifts/Dashboard` | Cross-department coordinator dashboard |
-| `GET /Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department (`ShiftsPolicies.Manage`) |
+| `GET /Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department (`ShiftsPolicies.Read`) |
 | `GET /Shifts/Dashboard/SearchVolunteers` | Dashboard volunteer search |
 | `POST /Shifts/Dashboard/Voluntell` | Dashboard voluntell |
-| `GET /Shifts/Dashboard/VolunteerTracking` | Build-week availability grid (`ShiftsPolicies.Manage`) |
-| `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` | Grid export, burner names only |
+| `GET /Shifts/Dashboard/VolunteerTracking` | Build-week availability grid (`ShiftsPolicies.Read`) |
+| `GET /Shifts/Dashboard/VolunteerTracking/ExportXlsx` | Grid export, burner names only (`ShiftsPolicies.Manage`) |
 | `POST /Shifts/Dashboard/VolunteerTracking/{SetCampSetup,ClearCampSetup,SetDayOff,ClearDayOff,SetAvailabilityDay,ClearAvailabilityDay}` | Coordinator edits to a volunteer's build-week status and per-day availability (`ShiftsPolicies.ManageVolunteers`) |
-| `GET /Shifts/Admin/Workload` | Per-person / per-department hour workload (`ShiftsPolicies.Manage`) |
+| `GET /Shifts/Admin/Workload` | Per-person / per-department hour workload (`ShiftsPolicies.Read`) |
 | `GET /Shifts/ShiftInfo` | Volunteer's own shift-matching profile (skills, quirks, languages, preferred shift tags); linked from `/Profile/Me/Edit` |
 | `POST /Shifts/ShiftInfo` | Save shift-matching profile and tag preferences (`SetVolunteerTagPreferencesAsync`) |
 
@@ -231,7 +231,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 | Actor | Capabilities |
 |-------|--------------|
 | Any active human | Browse available shifts (when browsing is open or they have existing signups). Sign up for shifts (single or date-range for build/strike rotas). View own signups and schedule. Bail from own signups (single or whole range). Set general availability. Fill out volunteer event profile. Save preferred rota tags. **Currently** can also see who has signed up for any shift on `/Shifts` (temporary public-signup-list policy — see [feature 26](features/shift-signup-visibility.md)) |
-| Department coordinator | Manage rotas and shifts for their department and all sub-teams. Approve, refuse, and bail signups. Voluntell humans (single or range) on their own department's shifts. Mark no-show. Remove confirmed signups. Manage rota tags. View volunteer event profiles (except medical data). View the cross-department shift dashboard, but the coordinator-activity panel and the per-shift voluntell action on it remain gated to ShiftsAdmin/Admin/ShiftsNoInfo |
+| Department coordinator | Manage rotas and shifts for their department and all sub-teams. Approve, refuse, and bail signups. Voluntell humans (single or range) on their own department's shifts. Mark no-show. Remove confirmed signups. Manage rota tags. View volunteer event profiles (except medical data). View the cross-department shift dashboard, but the coordinator-activity panel (ShiftsAdmin/Admin/ShiftsNoInfo/Board) and the per-shift voluntell action (ShiftsAdmin/Admin/ShiftsNoInfo) on it stay gated |
 | Sub-team manager | Manage rotas and shifts for their sub-team only. Approve, refuse, and bail signups on their sub-team. Voluntell humans on their own sub-team's shifts. Cannot manage sibling sub-teams or the parent department. View the cross-department shift dashboard with the same privileged-panel restrictions as a department coordinator |
 | ShiftsAdmin | All coordinator capabilities across all departments (rotas, shifts, signups, voluntell, no-show, remove). Move rotas between departments. Access the cross-department shift dashboard including the coordinator-activity panel and per-shift voluntell action. Cannot view medical data |
 | ShiftsNoInfo | Approve, refuse, and bail signups across all departments. Voluntell humans. Mark no-show. Remove confirmed signups. Reveal volunteer medical data (audited, per person). Access the cross-department shift dashboard including the privileged sub-panels. **Cannot create or edit rotas or shifts** (management is gated to Admin/ShiftsAdmin + dept coordinators) |
@@ -317,7 +317,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - Early-entry freeze: after `EventSettings.EarlyEntryClose`, non-privileged humans cannot sign up for, range-sign-up to, bail from, or have approval issued on Build-period shifts. Admin/ShiftsNoInfo/ShiftsAdmin/dept coordinators bypass the freeze.
 - Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants. Single and range signup use the same confirmed-only rule; Pending signups only reserve their exact shift against duplicate signup. Range signup and range voluntell also treat multiple selected all-day shifts on the same date as a conflict, skipping that date where conflict skipping applies. Range approval rechecks existing confirmed commitments and overlaps within the selected block, reporting the dates as warnings while retaining the same coordinator override as single approval.
 - All-day shifts cover the standard work block **08:00–18:00** local time (`Shift.AllDayWindowStart` / `Shift.AllDayWindowEnd`). Patterns outside this window must be modeled as regular time-slotted shifts, not as `IsAllDay = true`. The window is computed at read time by `GetAbsoluteStart` / `GetAbsoluteEnd`; the `StartTime` and `Duration` columns on `IsAllDay` rows are don't-care and must never be used directly for overlap math or staffing calculations.
-- All dashboard endpoints on `ShiftDashboardController` (and its analytics methods on `IShiftManagement`: `GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`, `GetCoverageHeatmapAsync`, `GetDailyDepartmentStaffingAsync`, `GetShiftDurationBreakdownAsync`, `GetPostEventStatsAsync`) sit behind the controller's `ShiftsPolicies.DepartmentRead` policy; `PostEventStats`, `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` (Admin/ShiftsNoInfo/ShiftsAdmin). The services themselves are auth-free per design rules.
+- All dashboard endpoints on `ShiftDashboardController` (and its analytics methods on `IShiftManagement`: `GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`, `GetCoverageHeatmapAsync`, `GetDailyDepartmentStaffingAsync`, `GetShiftDurationBreakdownAsync`, `GetPostEventStatsAsync`) sit behind the controller's `ShiftsPolicies.DepartmentRead` policy; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin/Board/ShiftsNoInfo/ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` (Admin/ShiftsNoInfo/ShiftsAdmin). The services themselves are auth-free per design rules.
 - **Coordinator dashboard metric definitions** (authoritative; unit tests pin these):
   - **Shift inclusion filter** — a shift is included iff `!shift.AdminOnly` and `shift.Rota.IsVisibleToVolunteers`. Matches the public browse-surface definition.
   - Overview totals and department/subgroup rows share `ShiftManagementService.AggregateShifts` for filled-shift counts, capped filled slots and per-period staffing.
@@ -367,7 +367,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Regular humans **cannot** approve, refuse, or bail other humans' signups. Single bail refuses Refused, Cancelled and NoShow signups with localized feedback instead of attempting an invalid transition; their recorded history is unchanged. Single and range bail rejections (including early-entry closure) use the six-culture Shifts resources, as do shared signup-not-found and missing-calendar errors; the signup modal uses the shared localized close label.
 - Regular humans **cannot** voluntell other humans.
 - Regular humans (no team coordinator / management role anywhere) **cannot** see the cross-department shift dashboard.
-- Department coordinators / sub-team managers **cannot** see the dashboard's coordinator-activity panel or trigger the per-shift voluntell action — those stay on the narrower `ShiftsPolicies.Manage` policy (Admin / ShiftsNoInfo / ShiftsAdmin). The page entry is on the wider `ShiftsPolicies.DepartmentRead` policy.
+- Department coordinators / sub-team managers **cannot** see the dashboard's coordinator-activity panel or trigger the per-shift voluntell action — the coordinator-activity panel stays on `ShiftsPolicies.Read` (Admin / Board / ShiftsNoInfo / ShiftsAdmin) and the voluntell action on `ShiftsPolicies.Manage` (Admin / ShiftsNoInfo / ShiftsAdmin). The page entry is on the wider `ShiftsPolicies.DepartmentRead` policy.
 - Department coordinators **cannot** manage rotas or approve signups outside their own department.
 - Sub-team managers **cannot** manage rotas or approve signups outside their own sub-team (not siblings, not parent department).
 - Department coordinators **cannot** view volunteer medical data.

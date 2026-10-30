@@ -53,7 +53,7 @@ Your Communication Preferences page (`/Email/Guest/CommunicationPreferences`) st
 
 ## As a Board member / Admin
 
-Full campaign management requires the **Admin** role. **TicketsAdmin** can view campaign details and generate discount codes through the ticket vendor, but cannot create, edit, activate, or complete campaigns.
+Full campaign management requires the **Admin** role. **TicketsAdmin** can view campaign details and generate discount codes through the ticket vendor, but cannot create, edit, activate, or complete campaigns. **Board** members can view campaign details read-only.
 
 ### Create a campaign
 

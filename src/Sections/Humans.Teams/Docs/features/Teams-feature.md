@@ -101,7 +101,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Cannot modify system team membership
 
 ### US-6.8: Create Team (Admin)
-**As a** board member
+**As a** Teams Admin or Admin
 **I want to** create new teams for organizational initiatives
 **So that** members can organize around specific projects
 
@@ -154,14 +154,14 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Subteams only appear if `IsPromotedToDirectory` is true; top-level teams always appear
 
 ### US-6.12: Manage Team Early Entry (Coordinator/EE Admin)
-**As a** team coordinator, Early-Entry Team Administrator, board member, or admin
+**As a** team coordinator, Early Entry Admin, board member, or admin
 **I want to** grant festival early-entry access to people on behalf of my team
 **So that** project crews who need to arrive ahead of the gates are on the early-entry roster
 
 **Acceptance Criteria:**
-- A team must have Early Entry enabled (a flag on the team's admin settings, set by TeamsAdmin/Board/Admin) before it can grant EE
+- A team must have Early Entry enabled (a flag on the team's admin settings, set by TeamsAdmin/Admin) before it can grant EE
 - The Early Entry page at `/Teams/{slug}/EarlyEntry` is only reachable when the team has Early Entry enabled
-- Coordinators (and parent-department coordinators) manage EE for their own team; the cross-team Early-Entry Team Administrator role can manage EE on any enabled team
+- Coordinators (and parent-department coordinators) manage EE for their own team; the cross-team Early Entry Admin role can manage EE on any enabled team
 - Grant an entry by choosing a person (search by name or ticket barcode), an entry date, and a project name
 - Edit or remove existing grants; removing a grant that is already gone is a no-op
 - Grants are listed ordered by project name, then entry date
@@ -295,7 +295,7 @@ User clicks "Leave"
 
 ## Related Features
 
-- [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — Board role enables team creation
+- [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — Teams Admin and Admin roles enable team creation
 - [Volunteer Status](../../../Humans.Onboarding/Docs/features/volunteer-status.md) — Determines Volunteers team membership
 - [Google Integration](../../../Humans.GoogleIntegration/Docs/features/google-integration.md) — Team resource provisioning
 - [Background Jobs](../../../../../docs/features/global/background-jobs.md) — System team sync job

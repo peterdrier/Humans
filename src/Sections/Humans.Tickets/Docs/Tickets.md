@@ -143,7 +143,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 - Board **cannot** approve or reject transfer requests — transfer review is gated by `TicketsPolicies.Manage`. Board can view ticket data but the transfer side-effects (vendor void+reissue, local attendee mutation) are admin-only.
 - Board **cannot** trigger attendee contact import — same `TicketsPolicies.Manage` gate as the sync.
 - Board **cannot** set or rotate the gate-terminal password (`SetPassword` is `TicketsPolicies.Manage`); it reads the credential status, the transfer queue and the contacts preview (`TicketsPolicies.Read`).
-- The gate-terminal account **cannot** reach any `/Tickets/*` page — it holds no roles; only the Scanner section's `ScannerAccess` policy admits it.
+- The gate-terminal account **cannot** reach any `/Tickets/*` page except the `ScannerAccess`-gated `/Tickets/Admin/Onsite` roster — it holds no roles, and no Tickets policy admits it.
 - TicketsAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketsPolicies.Read`.
@@ -165,13 +165,13 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Transfers/Confirm` | POST | `[Authorize]` | Transfer wizard: confirm recipient |
 | `/Tickets/Transfers` | POST | `[Authorize]` | Transfer wizard: submit the request |
 | `/Tickets/Transfers/Cancel` | POST | `[Authorize]` | Sender cancels a `Pending` request |
-| `/Tickets/Admin/Transfers` | GET | `TicketsPolicies.Manage` | Transfer queue (`?tab=pending` default, `?tab=all`) plus the order-drift table |
-| `/Tickets/Admin/Transfers/Detail/{id}` | GET | `TicketsPolicies.Manage` | One request with its audit trail |
+| `/Tickets/Admin/Transfers` | GET | `TicketsPolicies.Read` | Transfer queue (`?tab=pending` default, `?tab=all`) plus the order-drift table |
+| `/Tickets/Admin/Transfers/Detail/{id}` | GET | `TicketsPolicies.Read` | One request with its audit trail |
 | `/Tickets/Admin/Transfers/Decide` | POST | `TicketsPolicies.Manage` | Process / retry / mark successful / cancel with reason |
-| `/Tickets/Admin/Contacts` | GET | `TicketsPolicies.Manage` | Preview attendee-contact-import plan |
+| `/Tickets/Admin/Contacts` | GET | `TicketsPolicies.Read` | Preview attendee-contact-import plan |
 | `/Tickets/Admin/Contacts/Apply` | POST | `TicketsPolicies.Manage` | Apply selected attendees |
 | `/Tickets/Admin/Onsite` | GET | `ScannerAccess` | "Who's Onsite" roster |
-| `/Tickets/Admin/Gate` | GET | `TicketsPolicies.Manage` | Gate-terminal account status card |
+| `/Tickets/Admin/Gate` | GET | `TicketsPolicies.Read` | Gate-terminal account status card |
 | `/Tickets/Admin/Gate/SetPassword` | POST | `TicketsPolicies.Manage` | Set/rotate the gate-terminal password |
 | `/Tickets/Participation/Backfill` | GET + POST | `AdminOnly` | CSV import of participation records |
 | `/Tickets/DeclareNotAttending` | POST | `[Authorize]` | The signed-in member declares they are not attending the active event year (`TicketParticipationController`; the dashboard ticket card posts it) |

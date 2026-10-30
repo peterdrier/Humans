@@ -96,16 +96,16 @@ There is no `/Board/*` route prefix. `BoardController` was removed in nobodies-c
 
 ### UsersAdminController (`/Users/Admin`) — Human management actions
 
-Human management is now on `UsersAdminController` under `/Users/Admin`, accessible to UsersAdmin, Board, and Admin roles.
+Human management is now on `UsersAdminController` under `/Users/Admin`: readable by UsersAdmin, Board, and Admin; its writes (suspend, unsuspend, reject, role changes) need UsersAdmin or Admin, and Board never writes.
 
 | Route | Action | Roles |
 |-------|--------|-------|
 | `/Users/Admin` | AdminList | UsersAdmin, Board, Admin — member list |
 | `/Users/Admin/{id}` | AdminDetail | UsersAdmin, Board, Admin — member detail |
 | `/Email/Admin/{id}/Outbox` | MemberOutbox.AdminOutbox (Email) | UsersAdmin, Board, Admin — view email outbox |
-| `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: UsersAdmin, Board, Admin |
-| `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: UsersAdmin, Board, Admin |
-| `/Users/Admin/{id}/Reject` | RejectSignup | POST: UsersAdmin, Board, Admin |
+| `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: UsersAdmin, Admin |
+| `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: UsersAdmin, Admin |
+| `/Users/Admin/{id}/Reject` | RejectSignup | POST: UsersAdmin, Admin |
 | `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: UsersAdmin, Admin |
 | `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: UsersAdmin, Admin |
 | `/Auth/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | UsersAdmin, Board, Admin — role assignments across members |
@@ -127,10 +127,10 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/RemediateAllGroupSettings` | Admin | POST: Fix settings drift on all groups |
 | `/Google/AllGroups` | Admin | GET: All Google groups |
 | `/Google/Sync` | TeamsAdmin, Board, Admin | GET: Sync status page (tabbed: Drive/Groups) |
-| `/Google/Sync/Preview/{resourceType}` | TeamsAdmin, Board, Admin | GET: AJAX preview drift |
+| `/Google/Sync/Preview/{resourceType}` | TeamsAdmin, Board, Admin | POST: AJAX preview drift |
 | `/Google/Sync/Execute/{resourceId}` | Admin | POST: Sync one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | Admin | POST: Sync all of a type |
-| `/Monitor/CheckDriveActivity` (`MonitorController`, not `GoogleController` — nobodies-collective/Humans#866) | Board, Admin | POST: Manual Drive Activity check |
+| `/Monitor/CheckDriveActivity` (`MonitorController`, not `GoogleController` — nobodies-collective/Humans#866) | Admin | POST: Manual Drive Activity check |
 | `/Google/Resource/{id}` (`GoogleController`) | Board, Admin | GET: Per-resource sync audit log |
 | `/Google/Human/{id}` (`GoogleController`) | UsersAdmin, Board, Admin | GET: Per-user sync audit log |
 | `/Google/Human/{id}/ProvisionEmail` | UsersAdmin, Admin | POST: Provision @nobodies.team email |
@@ -192,7 +192,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `users.total` | Total users | Users | — | `IUserService` snapshot count |
 | `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
 | `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
-| `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftService.GetOverallCoverageAsync` |
+| `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagement.GetOverallCoverageAsync` (section-internal) |
 | `feedback.open` | Open feedback | Feedback | AdminOnly | `FeedbackService.GetActionableCountAsync` (section-internal) — Board/domain admins don't see it (nobodies-collective/Humans#977) |
 | `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |
@@ -201,7 +201,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `auditlog.total` | Audit events | Audit Log | — | `AuditViewerService.GetPageAsync`'s `TotalCount` |
 | `email.outbox` | Emails | Email | — | `IEmailOutboxManagement.GetOutboxStatsAsync` (section-internal) total |
 | `store.orders` | Store orders | Store | StorePolicies.Read | Store's own `Service.GetStoreSummaryAsync` for the active event year; blank with no active event |
-| `expenses.reports` | Expense reports | Expenses | FinancePolicies.Read | `IExpenseReportService.GetAllAsync`, all statuses |
+| `expenses.reports` | Expense reports | Expenses | FinancePolicies.Read | `IExpenseReportManagement.GetAllAsync` (section-internal), all statuses |
 | `workgroups.queue` | Workgroups | Workgroups | BoardOrAdmin | `IWorkgroupService.GetRegisterAsync` — pending applications/referrals plus items awaiting a disposition; hidden when nothing is waiting |
 
 ### Cards — `admin-dashboard` chrome slot
@@ -337,7 +337,7 @@ Sections also contribute richer cards into the `admin-dashboard` chrome slot (`C
 
 Board and Admin are **roles**, not areas — the only `/Admin/` route is the shared dashboard (`AdminController`). Governance operations that used to sit behind `/Board/` now live on the owning section's own routes (`/Users/Admin`, `/Governance/*`, `/AuditLog`, `/Google/*`) and are gated per-route by role.
 
-Board members reach governance operations — member management, applications, teams, roles, audit log — through those section routes. Admin-only technical operations (configuration, Hangfire, system team sync, sync settings) live in the Debug and Google groups of the admin shell.
+Board members reach governance operations — member management, applications, teams, roles, audit log — through those section routes. Operator tooling (configuration, Hangfire, logs, system team sync, sync settings) lives in the Debug and Google groups of the admin shell; Board reads it, and every write is Admin only.
 
 A user can hold both roles simultaneously. Admin is a superset for role assignment purposes.
 
@@ -359,14 +359,14 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 | **CantinaAdmin** | Cantina weekly roster. |
 | **RideshareAdmin** | Rideshare settings (year's destination, travel windows), season statistics, and the day roster. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
-| **ShiftsAdmin** | Read-only access to onboarding review queue. |
+| **ShiftsAdmin** | Onboarding review queue plus system-wide shift management (volunteer tracking, workload, post-event stats). |
 | **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
 
 ### Authorization Foundation
 
-The app uses both role-based `[Authorize(Roles = "...")]` attributes (on controllers) and policy-based `[Authorize(Policy = "...")]` attributes (on views and tag helpers via `PolicyNames` constants). Policies are defined in `AuthorizationPolicyExtensions` and registered in `Program.cs`. Policy names are in `PolicyNames` constants.
+Access is policy-based end to end: controllers use `[Authorize(Policy = "...")]`, views and tag helpers use `authorize-policy`. Cross-section policies are defined in `AuthorizationPolicyExtensions` with names in `PolicyNames`; each section registers its own (`<Section>Policies.Read` / `Manage`) from its `Section.cs`.
 
-Role claims are synced from the `RoleAssignment` table to Identity claims via `RoleAssignmentClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and `[Authorize(Roles = "...")]` work correctly based on temporal role assignments.
+Role claims are synced from the `RoleAssignment` table to Identity claims via `RoleAssignmentClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and the role-based policies work correctly based on temporal role assignments.
 
 ### Role Assignment Authorization
 Resource-based: `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.Auth`) call `IAuthorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)`, evaluated by `RoleAssignmentAuthorizationHandler` (`Humans.Auth`) against the target role name (the resource):
@@ -377,11 +377,11 @@ Resource-based: `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.Auth`) ca
 - Attempting to assign a role outside your permissions returns 403 Forbidden; ending one outside your permissions returns 404 (the row is treated as not found rather than as a permissions error)
 
 ### Hangfire Dashboard
-- Restricted to **Admin** role only via `HangfireAuthorizationFilter`
+- Admin and Board via `HangfireAuthorizationFilter`; read-only for everyone but Admin
 
 ### Role Assignment
 - Configured via `RoleAssignment` with temporal validity (ValidFrom/ValidTo)
-- Created by existing Admin or Board member (within their permissions)
+- Created by an existing Admin or UsersAdmin (within their permissions; Board cannot assign roles)
 - Bootstrap: First Admin must be created directly in the database
 
 ## Audit Logging

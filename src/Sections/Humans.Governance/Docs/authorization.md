@@ -8,7 +8,7 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `GovernanceController` | Class | `[Authorize]` (authenticated) | — |
-| `GovernanceApplicationsController` | Class | `[Authorize]` (authenticated) | — |
+| `GovernanceApplicationsController` | Class | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — the applicant side stays reachable before Active; the admin actions below carry their own policies |
 | `GovernanceApplicationsController.Admin` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 | `GovernanceApplicationsController.AdminDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 | `GovernanceApplicationsController.AdminTermExpiry` | Action | `Admin` | `PolicyNames.AdminOnly` |

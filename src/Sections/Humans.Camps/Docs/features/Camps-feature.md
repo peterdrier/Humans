@@ -121,9 +121,9 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** the camp registration lifecycle is controlled
 
 **Acceptance Criteria:**
-- Season registration toggles and name-lock changes record the acting admin and target year after saving, with no audit for unchanged values.
-- Open a season by year (adds to OpenSeasons list), from the Barrios tab on `/Settings`
-- Close a season by year (removes from OpenSeasons list), from the same tab
+- Season registration toggles and name-lock changes record the acting admin and target event after saving, with no audit for unchanged values.
+- Open camp registration per Settings event (a `CampEventSettings` row), from the Barrios tab on `/Settings`
+- Close camp registration per Settings event, from the same tab
 - Set name lock date per year (prevents name changes after date)
 - The publicly-shown year is not set here — it resolves from Settings' active event
 
@@ -137,13 +137,13 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Deletes camp and all related data (seasons, leads, images, historical names)
 - Requires confirmation
 
-### US-20.9: View Season Details by Year
+### US-20.9: View Season Details by Event
 **As a** visitor or member
-**I want to** view a camp's details for a specific season year
+**I want to** view a camp's details for the season at a specific event
 **So that** I can see historical or non-current season information
 
 **Acceptance Criteria:**
-- Accessible at `/Camps/{slug}/Season/{year}`
+- Accessible at `/Camps/{slug}/Season/{eventSettingsId}`
 - Returns 404 if camp or season not found
 - Reuses the detail view with the specified season's data
 
@@ -237,6 +237,7 @@ CampSeason
 ├── Id: Guid
 ├── CampId: Guid (FK → Camp)
 ├── Year: int
+├── EventSettingsId: Guid? [bare id of Settings' settings_event row; unique with CampId]
 ├── Name: string
 ├── NameLockDate: LocalDate?
 ├── NameLockedAt: Instant?
@@ -268,8 +269,15 @@ CampSeason
 CampSettings
 ├── Id: Guid
 ├── PublicYear: int [dead column (nobodies-collective#1632); year now resolves from Settings' active event]
-├── OpenSeasons: List<int> [JSON]
+├── OpenSeasons: List<int> [JSON; legacy fallback for events with no CampEventSettings row]
 └── EeStartDate: LocalDate? [dead column (nobodies-collective#1633); replaced by EventSettings.EarlyEntryStartOffset]
+```
+
+### CampEventSettings
+```
+CampEventSettings
+├── EventSettingsId: Guid [PK; bare id of Settings' settings_event row]
+└── RegistrationOpen: bool
 ```
 
 ### Supporting Entities
@@ -457,6 +465,7 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | Add active member to camp (lead-driven shortcut) | Camp Lead, CampsAdmin, or Admin |
 | View role assignments | Authenticated users only (no anonymous render) |
 | Role-staffing compliance matrix | CampsAdmin, Admin, or any team/sub-team coordinator (`CampsPolicies.Compliance`) |
+| View the Barrios admin pages (read-only) | Board (`CampsPolicies.Read`), CampsAdmin, or Admin |
 | JSON API | Public (AllowAnonymous) |
 
 ## URL Structure
@@ -465,7 +474,7 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 |-------|-------------|
 | `GET /Camps` | Public camp listing |
 | `GET /Camps/{slug}` | Camp detail page |
-| `GET /Camps/{slug}/Season/{year}` | Camp detail for specific season |
+| `GET /Camps/{slug}/Season/{eventSettingsId}` | Camp detail for the season at a specific event |
 | `GET /Camps/Register` | Registration form |
 | `POST /Camps/Register` | Submit registration |
 | `GET /Camps/{slug}/Contact` | Facilitated contact form for camp leads |
@@ -473,7 +482,7 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `GET /Camps/{slug}/Edit` | Edit form (camp metadata only — links to Members for role/membership management) |
 | `POST /Camps/{slug}/Edit` | Submit edits |
 | `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
-| `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
+| `POST /Camps/{slug}/OptIn/{eventSettingsId}` | Opt-in to the season for an event |
 | `POST /Camps/{slug}/Withdraw/{seasonId}` | Lead withdraws a season |
 | `POST /Camps/{slug}/MarkFull/{seasonId}` | Lead or CampsAdmin marks an Active season Full |
 | `POST /Camps/{slug}/HistoricalNames/Add` | Manually add a historical name |
@@ -491,8 +500,8 @@ Note: `Full` is informational only — it does not gate join requests. A camp le
 | `GET /Camps/Admin` | Admin dashboard |
 | `POST /Camps/Admin/Approve/{seasonId}` | Approve season |
 | `POST /Camps/Admin/Reject/{seasonId}` | Reject season |
-| `POST /Camps/Admin/OpenSeason` | Open season (year as form field) |
-| `POST /Camps/Admin/CloseSeason/{year}` | Close season |
+| `POST /Camps/Admin/OpenSeason/{eventSettingsId}` | Open registration for an event |
+| `POST /Camps/Admin/CloseSeason/{eventSettingsId}` | Close registration for an event |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `GET /Camps/Admin/Export` | Export camps CSV |
 | `POST /Camps/Admin/Delete` | Delete camp (Admin only; campId as form field) |

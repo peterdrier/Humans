@@ -84,6 +84,7 @@ Member request and cancellation errors are localized in all six cultures. Unknow
 **Acceptance Criteria:**
 - `/Tickets/Admin/Transfers` lists `Pending` rows (FIFO) plus an "All" tab; an order-drift table flags
   paid orders whose valid-ticket count dropped below what was issued (manual-reconciliation aid).
+- Board (`TicketsPolicies.Read`) can open the queue and detail read-only; the decision form renders only for `TicketsPolicies.Manage`.
 - The Detail page shows the ticket/order context, both parties, the reason, a "View order in
   TicketTailor" link, and processing instructions that match the active path.
 - Before **Process transfer**, the current synced attendee must still be `Valid` with no `CheckedInAt`.

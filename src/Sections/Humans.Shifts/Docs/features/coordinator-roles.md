@@ -41,20 +41,19 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 | Access Onboarding Review queue | Yes | Yes | Yes | Yes (read-only) |
 | Clear/Flag consent checks | Yes | Yes | Yes | No |
 | Vote on tier applications | Yes | No | No | No |
-| Assign roles | Yes | Yes | No | No |
+| Assign roles | No | Yes | No | No |
 | Access Hangfire | No | Yes | No | No |
 
 ## User Stories
 
 ### US-17.1: Assign Coordinator Roles
 
-**As an** Admin or Board member
+**As an** Admin or Users Admin
 **I want to** assign Consent Coordinator or Shifts Admin roles to humans
 **So that** onboarding responsibilities are delegated appropriately
 
 **Acceptance Criteria:**
-- Admin can assign/end ConsentCoordinator and ShiftsAdmin roles
-- Board can assign/end ConsentCoordinator and ShiftsAdmin roles
+- Admin and Users Admin can assign/end ConsentCoordinator and ShiftsAdmin roles; Board cannot
 - Assignment uses existing RoleAssignment entity with temporal validity
 - Coordinator roles appear in the available roles dropdown on HumanDetail
 - Audit log records role assignment
@@ -87,16 +86,8 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 
 ## Data Model
 
-### RoleNames Constants (Updated)
-```csharp
-public static class RoleNames
-{
-    public const string Admin = "Admin";
-    public const string Board = "Board";
-    public const string ConsentCoordinator = "ConsentCoordinator";
-    public const string ShiftsAdmin = "ShiftsAdmin";
-}
-```
+### Role name constants
+`RoleNames` (Base) carries only `Admin` and `Board`. Each section owns its roles: `ConsentRoles.ConsentCoordinator` (Consent) and `ShiftsRoles.ShiftsAdmin` (Shifts.Contracts).
 
 ### Role Assignment
 Uses existing `RoleAssignment` entity — no new tables needed:
@@ -127,7 +118,7 @@ With action-level restrictions:
 ### Role Assignment Authorization
 Role management lives on `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.Auth`) and is enforced by the resource-based `RoleAssignmentAuthorizationHandler` (`RoleAssignmentOperationRequirement.Manage`), not a `CanManageRole()` method:
 - **Admin** can assign any role
-- **Admin** or **UsersAdmin** can assign ConsentCoordinator and ShiftsAdmin; Board assigns no roles (Admin is not in that set)
+- **UsersAdmin** can assign every role except Admin, including ConsentCoordinator and ShiftsAdmin; Board assigns no roles
 
 ## Onboarding Review Queue
 

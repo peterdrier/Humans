@@ -3,6 +3,7 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `ProfileController` (own profile), `ProfileEmailsController` (email grids), `ProfileViewController` (others' profiles, picture, popovers, search) — all `[Route("Profile")]` | Class | `[Authorize]` (authenticated) | — |
+| `ProfileController` / `ProfileEmailsController` own-profile actions (`Index`, `Me`, `Me/Edit`, `Me/Medical`, `Me/Emails/*`, `Me/LinkedAccounts/Unlink`) | Action | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — own-profile maintenance stays reachable before Active; `ProfileViewController` has none |
 | `ProfileEmailsController.VerifyEmail` (`Me/Emails/Verify`) | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.Picture` | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |

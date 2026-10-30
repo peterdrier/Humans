@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
-  src/Humans.Base/Authorization/ShiftsRoles.cs
+  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
   src/Sections/Humans.Shifts/Domain/Rota.cs
@@ -197,14 +197,14 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | `/Shifts/Summary[/{teamSlug}[/{rotaGuid}]]` | Read-only Shift Summary by Camp — confirmed-hour/count totals per human and per camp, at global / team-set / single-rota scope (`ShiftsPolicies.DepartmentRead` policy) |
 | `/Shifts/Preferences/Tags` | POST: Save volunteer tag preferences |
 | `/Shifts/Settings` | POST only: Admin saves Shifts' own knobs, posted from the `/Settings#shifts` tab |
-| `/Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department and period (`ShiftsPolicies.Manage` policy) |
+| `/Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department and period (`ShiftsPolicies.Read` policy) |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |
 | `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |
 | `/Human/{id}/Admin` | Shift signups ViewComponent (admin view of user's shifts) |
 
 ## Coordinator Dashboard
 
-**Purpose:** Give Shifts Admins, NoInfoAdmins, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
+**Purpose:** Give Shifts Admins, Shifts NoInfo holders, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
 
 **Route:** `/Shifts/Dashboard` — the four dashboard panels render above the urgent-shifts filter.
 
@@ -236,7 +236,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
 - **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
 
-**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats`, `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsNoInfo, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
+**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin, Board, ShiftsNoInfo, ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsNoInfo, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
 
 **Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
 

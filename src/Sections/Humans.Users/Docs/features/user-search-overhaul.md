@@ -59,6 +59,7 @@ All **profile information** searchable; **board/admin and private info excluded*
   ContactFields, publicly-exposed emails (public).
 - `LegalName` *(new)* — FirstName/LastName; admin/coordinator only.
 - `Admin` — all verified emails + non-public ContactFields; admin/board only.
+- `ExactName` — accent-/case-folded full-name equality rather than substring/token matching; public. Counts burner-name collisions (see [burner-name-collision-warning](burner-name-collision-warning.md)).
 - `PublicAll = Name | Bio`, `AdminAll = Name | Bio | LegalName | Admin`. The unused coordinator-picker alias was removed; future callers compose the existing flags.
 
 `PersonSearchMatcher` (`src/Sections/Humans.Users/Services/PersonSearchMatcher.cs`) — a pure,

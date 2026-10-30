@@ -8,5 +8,5 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `MonitorController` | Class | `[Route("Monitor")]` only — no class-level `[Authorize]` | — |
+| `MonitorController` | Class | `[Route("Monitor")]` only — no class-level `[Authorize]`; authenticated by default through `HumansControllerBase` | — |
 | `MonitorController.CheckDriveActivity` | Action | `Admin` | `PolicyNames.AdminOnly` |

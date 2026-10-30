@@ -363,6 +363,8 @@ The fanouts:
 | any holder of bare Guids | `IEntityNameContributor` (`Humans.Base.Interfaces`) | `CachingTeamService` (Teams), `CachingUserService` (Users) | `Guid → EntityName(type, display name, slug?)` for the ids on one page |
 | the `/Email/EmailPreview` gallery (`EmailController`) | `IEmailPreviewContributor` (`Humans.Email.Contracts`) | every section that sends email | one rendered sample per template a section sends |
 | the preference toggles (`CommunicationPreferenceService`) | `ICommunicationPreferenceLock` (`Humans.Email.Contracts`) | `TicketingPreferenceLock` (Tickets) | the categories a human may not change on the member and guest pages |
+| `AuditActionRegistry` (AuditLog) | `IAuditActionContributor` (`Humans.AuditLog`, `Contracts/` folder) | every section that writes an audit row, via its `<Section>AuditActions` | stored action name → `AuditActionDefinition` (verb, alert flag, quick filter) for rendering and filtering |
+| `NotificationSourceRegistry` (Notifications) | `INotificationSourceContributor` (`Humans.Notifications.Contracts`) | every section that emits a notification, via its `<Section>NotificationSources` | stored source name → `NotificationSourceDefinition` (category, inbox group, retired flag) |
 
 `IEntityNameContributor` is the one that lives in Base rather than in a consumer's contracts leaf, because it has more than one consumer and they must not reference each other (nobodies-collective/Humans#1059). It inverts the arrow that used to make AuditLog reference Teams and GoogleIntegration just to print names: sections point at the Base contract, and the consumer names no section. Wide-fan-in sections that must not gain outbound links — Audit, Auth, Search — are exactly its intended callers.
 

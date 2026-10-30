@@ -32,7 +32,7 @@
 | `GoogleController.Index` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleSyncHistoryMigrationAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `WorkspaceIdentityController` (`[Route("Google")]`) | Class | authenticated | `[Authorize]` |
-| `WorkspaceIdentityController.Set` (`WorkspaceEmail`) | Action | the signed-in member, on their own rows only | class `[Authorize]`; target is the current user |
+| `WorkspaceIdentityController.Set` (`WorkspaceEmail`) | Action | the signed-in member, on their own rows only | class `[Authorize]` plus `[AllowBeforeActiveMembership]` on the action; target is the current user |
 | `WorkspaceIdentityController.AdminSet` (`Admin/{id:guid}/WorkspaceEmail`) | Action | `UsersAdmin, Admin` | `UsersPolicies.Manage` |
 | `TeamResourcesController` (`[Route("Google/Teams/{slug}/Resources")]`) | Class | authenticated | `[Authorize]` |
 | `TeamResourcesController` (the six POST actions) | Action | authenticated | `[Authorize]` on each action |

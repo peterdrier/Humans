@@ -81,7 +81,7 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 
 ### CalendarFeedToken
 
-The credential in a member's personal iCal subscription URL. One row per member, created the first time they open the feed card on `/Calendar` and absent until then. Unrelated to `CalendarEvent` — the feed carries no calendar events at all.
+The credential in a member's personal iCal subscription URL. One row per member, created when they press the feed card's create button on `/Calendar` and absent until then. Unrelated to `CalendarEvent` — the feed carries no calendar events at all.
 
 **Table:** `calendar_feed_tokens`
 

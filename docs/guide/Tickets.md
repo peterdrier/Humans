@@ -37,7 +37,7 @@ Ticket data syncs automatically. Attendees are auto-matched to humans by email, 
 
 ### See whether you have a ticket
 
-Your home dashboard (`/`) shows a Ticket Status card. If at least one valid attendee record is matched to you, it confirms you have a ticket and shows the count when you have more than one. If nothing is matched, it shows a button linking out to the vendor's purchase page (and a "Different email?" link to your profile emails). If ticketing is not configured at all, you see a warning instead. Between events, while the event is marked off season, the card is hidden.
+Your home dashboard (`/`) shows a Ticket Status card. If at least one valid attendee record is matched to you, it confirms you have a ticket and shows the count when you have more than one. If nothing is matched, it shows a button linking out to the vendor's purchase page (and a "Different email?" link to your profile emails). If ticketing is not configured at all, you see a warning instead, and if your ticket status can't be loaded the card says so rather than claiming you have no ticket. Between events, while the event is marked off season, the card is hidden.
 
 Matching is by **attendee email**, not buyer email. The sync compares each attendee email against every **verified** email on every user, normalized so gmail/googlemail aliases collide. If you bought tickets for other people but not one for yourself, you do not count as having a ticket — buyer-only matches don't earn coverage.
 
@@ -53,7 +53,7 @@ Can't make it, or bought a ticket under your name for a friend? You can transfer
 
 ## As a Board member / Admin (Tickets Admin)
 
-Tickets Admin, Admin, and Board all see the Tickets dashboard. Board can view everything but cannot trigger sync, export, or generate codes — those require Tickets Admin or Admin.
+Tickets Admin, Admin, and Board all see the Tickets dashboard, the transfer queue, the attendee-contacts preview, and the gate-account page. Board can view everything but cannot trigger sync, export, generate codes, decide transfers, apply the contact import, or set the gate password — those require Tickets Admin or Admin.
 
 ### Dashboard, orders, and attendees
 
@@ -91,11 +91,11 @@ When you import historical attendance from outside the vendor (e.g. from a previ
 
 ### Process ticket transfers
 
-When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. The queue and its decisions are Tickets Admin and Admin only; Board cannot open it.
+When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it one of two ways. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. Process transfer is not offered once the ticket has been scanned at the gate or is no longer valid; cancel the request, or use Mark successful only if the swap was already done at the vendor. Tickets Admin and Admin make the decisions; Board can open the queue and requests read-only.
 
 ### Import attendee contacts
 
-`/Tickets/Admin/Contacts` lets you provision Humans accounts for ticket attendees who aren't matched to a human yet — useful for getting buyers into the system. Preview the import first, then apply it.
+`/Tickets/Admin/Contacts` lets you provision Humans accounts for ticket attendees who aren't matched to a human yet — useful for getting buyers into the system. Preview the import first, then apply it (Tickets Admin and Admin; Board sees the preview only).
 
 ### Sync configuration
 
