@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Cantina.Contracts;
 using Humans.Cantina.Domain;
 
@@ -26,6 +27,10 @@ internal sealed class DietaryViewModel
     public bool DeclineToAnswer { get; set; }
 
     public bool DeclinedToAnswer { get; set; }
+
+    /// <summary>Set by the controller from the principal; the page lists the audited reveals of this member's answers.</summary>
+    [BindNever]
+    public Guid UserId { get; set; }
 
     public static DietaryViewModel FromProfile(DietaryProfileInfo? profile) => profile is null ? new() : new()
     {

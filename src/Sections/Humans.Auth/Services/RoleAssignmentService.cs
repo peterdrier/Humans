@@ -133,7 +133,7 @@ internal sealed class RoleAssignmentService(
         try
         {
             await notificationService.SendAsync(
-                NotificationSource.RoleAssignmentChanged,
+                AuthNotificationSources.RoleAssignmentChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 $"You were assigned the {roleName} role",
@@ -194,7 +194,7 @@ internal sealed class RoleAssignmentService(
         try
         {
             await notificationService.SendAsync(
-                NotificationSource.RoleAssignmentChanged,
+                AuthNotificationSources.RoleAssignmentChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 $"Your {roleAssignment.RoleName} role assignment has ended",

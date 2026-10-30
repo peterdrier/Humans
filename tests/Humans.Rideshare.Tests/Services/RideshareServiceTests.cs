@@ -818,7 +818,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         interest.RequestId.Should().Be(request.Id);
         interest.FromUserId.Should().Be(driver);
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
             "Ada can take you", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == rider),
             Arg.Is<string?>(b => b!.Contains(request.PickupPlaceLabel) && b.Contains("2 seats")),
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -841,7 +841,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         declined.RespondedAt.Should().Be(Clock.GetCurrentInstant());
         declined.Message.Should().BeNull();
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestDeclined, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
             "Ride update", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == rider),
             "Ada wasn't able to offer a spot this time.",
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -859,7 +859,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await NewService().DeclineInterestAsync(interest.Id, rider, Ct);
 
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestDeclined, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestDeclined, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
             "Ride update", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             "Bo went with another ride this time.",
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -920,7 +920,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await NewService().ExpressInterestAsync(SeedUser("Bo"), trip.Id, null, 1, "Room for a tent?", Ct);
 
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
             "Bo is interested in your ride", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             Arg.Is<string?>(b => b!.Contains("Paris") && b.Contains("1 seat") && b.Contains("Room for a tent?")),
             "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -946,7 +946,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
 
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
             title, Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             Arg.Any<string?>(), "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -974,7 +974,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await NewService().ExpressInterestAsync(rider, trip.Id, null, 1, null, Ct);
 
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestReceived, NotificationClass.Actionable, Arg.Any<NotificationPriority>(),
             "Bo is interested in your ride", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             Arg.Is<string?>(b => b!.Contains(englishDate) && b.Contains("1 seat")),
             "/Rideshare/Mine", "Open Rideshare", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -998,7 +998,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         accepted.Status.Should().Be(InterestStatus.Accepted);
         accepted.RespondedAt.Should().Be(Clock.GetCurrentInstant());
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestAccepted, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
             "You're in: ride with Ada", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == rider),
             Arg.Any<string?>(), "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -1016,7 +1016,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         await NewService().AcceptInterestAsync(answer.Id, rider, Ct);
 
         await Notifications.Received(1).SendAsync(
-            NotificationSource.RideshareInterestAccepted, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
+            RideshareNotificationSources.RideshareInterestAccepted, NotificationClass.Informational, Arg.Any<NotificationPriority>(),
             "Bo accepted your offer of a ride", Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == driver),
             Arg.Any<string?>(), "/Rideshare/Mine", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -1070,7 +1070,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     {
         var trip = await SeedTripAsync(SeedUser("Ada"));
         Notifications.SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("mail is down"));
@@ -1109,7 +1109,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         }
 
         Notifications.SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
@@ -1137,7 +1137,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             _ => InterestStatus.Pending
         });
         await Notifications.Received(1).SendAsync(
-            Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), CancellationToken.None);
         Logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);

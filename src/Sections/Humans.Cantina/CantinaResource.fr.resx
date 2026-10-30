@@ -94,4 +94,10 @@
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
   <data name="Cantina_Dietary_Declined" xml:space="preserve"><value>C'est noté : nous ne vous redemanderons plus vos informations alimentaires. Vous pouvez les ajouter ici à tout moment.</value></data>
   <data name="Cantina_Dietary_DeclinedNotice" xml:space="preserve"><value>Vous avez choisi de ne pas partager vos informations alimentaires, nous ne vous les demanderons donc pas. Vous pouvez toujours les remplir à tout moment.</value></data>
+  <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Afficher les allergies et intolérances</value></data>
+  <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Les détails des allergies et intolérances sont masqués. Les afficher est enregistré dans le journal d'audit.</value></data>
+  <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Les afficher est enregistré dans le journal d'audit.</value></data>
+  <data name="Cantina_Dietary_RevealsTitle" xml:space="preserve"><value>Qui a consulté ces informations</value></data>
+  <data name="Cantina_Dietary_RevealsEmpty" xml:space="preserve"><value>Personne n'a consulté tes réponses sur les allergies et intolérances.</value></data>
+  <data name="Cantina_Dietary_RevealedBy" xml:space="preserve"><value>Consulté par</value></data>
 </root>

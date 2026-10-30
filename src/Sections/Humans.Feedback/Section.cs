@@ -9,6 +9,7 @@ using Humans.Feedback.Services;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
@@ -32,6 +33,7 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, FeedbackAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, FeedbackNotificationSources>();
         services.AddSectionDbContext<FeedbackDbContext>(sentinelTable: "feedback_reports");
 
         services.AddSingleton<IFeedbackRepository, FeedbackRepository>();

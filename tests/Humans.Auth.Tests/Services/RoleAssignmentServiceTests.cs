@@ -242,7 +242,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         await SeedUserAsync(assignerId, "Admin");
         Notifier
             .SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -269,7 +269,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
         Notifier
             .SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -328,7 +328,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         (await _rowCache.GetActiveForUserAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
         await Notifier.DidNotReceive().SendAsync(
-            Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());

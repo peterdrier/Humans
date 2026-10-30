@@ -29,9 +29,15 @@
                     <span asp-validation-for="Name" class="text-danger"></span>
                 </div>
                 <div class="col-md-3">
-                    <label asp-for="Year" class="form-label">Year</label>
-                    <input asp-for="Year" type="number" min="2000" max="2100" class="form-control" />
-                    <span asp-validation-for="Year" class="text-danger"></span>
+                    <label asp-for="EventSettingsId" class="form-label">Event</label>
+                    <select asp-for="EventSettingsId" class="form-select">
+                        <option value="">Pick an event</option>
+                        @foreach (var e in Model.Events)
+                        {
+                            <option value="@e.Id">@e.EventName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="EventSettingsId" class="text-danger"></span>
                 </div>
             </div>
 

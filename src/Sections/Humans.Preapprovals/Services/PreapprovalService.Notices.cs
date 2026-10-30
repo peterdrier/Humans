@@ -36,24 +36,24 @@ internal sealed partial class PreapprovalService
     /// <summary>Clears the beneficiary's standing "file by" prompt (issued, released, reminders, deadline moved).</summary>
     private Task ResolveFileByAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
         SafeAsync(() => notificationResolve.ResolveBySourceKeyAsync(
-            NotificationSource.PreapprovalFileBy, FileBySourceKey(grantId), actorUserId, ct), "resolve file-by", grantId);
+            PreapprovalsNotificationSources.PreapprovalFileBy, FileBySourceKey(grantId), actorUserId, ct), "resolve file-by", grantId);
 
     /// <summary>Clears the managers' "application received" prompt (approved, declined, dropped).</summary>
     private Task ResolveRequestAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
         SafeAsync(() => notificationResolve.ResolveBySourceKeyAsync(
-            NotificationSource.PreapprovalApplicationReceived, RequestSourceKey(grantId), actorUserId, ct),
+            PreapprovalsNotificationSources.PreapprovalApplicationReceived, RequestSourceKey(grantId), actorUserId, ct),
             "resolve application-received", grantId);
 
     /// <summary>Keyed by the grant, so one resolve clears every variant (issued, released, reminder, deadline moved).</summary>
     private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct) =>
-        NotifyAsync([info.BeneficiaryUserId], NotificationSource.PreapprovalFileBy, NotificationClass.Actionable,
+        NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable,
             priority, titleKey, info, "Preapprovals_Notice_FileBy_Body", MemberUrl(info.ProgramId),
             FileBySourceKey(info.Id), ct);
 
     /// <summary>Declined, revoked, amount changed: informational, no source key.</summary>
     private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
         decimal? previousAmount = null) =>
-        NotifyAsync([info.BeneficiaryUserId], NotificationSource.PreapprovalGrantDecided,
+        NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalGrantDecided,
             info.Status == GrantStatus.Revoked && info.ExpenseReportId is not null
                 ? NotificationClass.Actionable
                 : NotificationClass.Informational,
@@ -67,14 +67,14 @@ internal sealed partial class PreapprovalService
     private async Task NotifyManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
     {
         var applicant = await users.GetUserInfoAsync(info.BeneficiaryUserId, ct);
-        await NotifyAsync(program.ManagerUserIds, NotificationSource.PreapprovalApplicationReceived,
+        await NotifyAsync(program.ManagerUserIds, PreapprovalsNotificationSources.PreapprovalApplicationReceived,
             NotificationClass.Actionable, NotificationPriority.Normal, "Preapprovals_Notice_ApplicationReceived",
             info, "Preapprovals_Notice_ApplicationReceived_Body", ManageUrl(info.ProgramId),
             RequestSourceKey(info.Id), ct, detail: applicant?.BurnerName ?? "A member");
     }
 
     private async Task NotifyAsync(
-        IReadOnlyList<Guid> recipientUserIds, NotificationSource source, NotificationClass notificationClass,
+        IReadOnlyList<Guid> recipientUserIds, NotificationSourceDefinition source, NotificationClass notificationClass,
         NotificationPriority priority, string titleKey, GrantInfo info, string bodyKey, string actionUrl,
         string? sourceKey, CancellationToken ct, string? detail = null, decimal? previousAmount = null)
     {

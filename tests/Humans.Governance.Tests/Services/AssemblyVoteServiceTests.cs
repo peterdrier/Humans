@@ -138,7 +138,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         ballot.Revision.Should().Be(1);
         ballot.Choice.Should().Be(AssemblyBallotChoice.Yes);
         await _fx.NotificationResolve.Received(1).ResolveBySourceAsync(
-            userId, NotificationSource.AssemblyVoteOpened, CancellationToken.None, vote.Id.ToString());
+            userId, GovernanceNotificationSources.AssemblyVoteOpened, CancellationToken.None, vote.Id.ToString());
     }
 
     [HumansFact]
@@ -147,7 +147,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync();
         var userId = Guid.NewGuid();
         await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true);
-        _fx.NotificationResolve.ResolveBySourceAsync(userId, NotificationSource.AssemblyVoteOpened,
+        _fx.NotificationResolve.ResolveBySourceAsync(userId, GovernanceNotificationSources.AssemblyVoteOpened,
                 Arg.Any<CancellationToken>(), vote.Id.ToString())
             .Returns(Task.FromException(new InvalidOperationException("inbox unavailable")));
 
@@ -168,7 +168,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.NotOnRoster);
-        await _fx.NotificationResolve.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default);
+        await _fx.NotificationResolve.DidNotReceiveWithAnyArgs().ResolveBySourceAsync(default, default!);
         (await _fx.Db.AssemblyBallots.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -1660,7 +1660,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var order = new List<string>();
         string? noticeTitle = null;
         _fx.Notifications.When(n => n.SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<CancellationToken>()))
@@ -1835,7 +1835,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // Opening a vote that closes in two hours is allowed, and nothing settles a lapsed
         // vote until the hourly sweep runs — so the status alone still says Open.
         _fx.Notifications.When(n => n.SendAsync(
-                Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(),
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -1847,7 +1847,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Should().Be(AssemblyVoteActionResult.Ok);
 
         await _fx.NotificationResolve.Received().ResolveBySourceKeyAsync(
-            NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), null,
+            GovernanceNotificationSources.AssemblyVoteOpened, vote.Id.ToString(), null,
             Arg.Any<CancellationToken>());
     }
 

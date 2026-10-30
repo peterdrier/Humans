@@ -96,7 +96,7 @@ internal sealed class ApplicationDecisionService(
 
         await SendDecisionNotificationAsync(
             application,
-            NotificationSource.ApplicationApproved,
+            GovernanceNotificationSources.ApplicationApproved,
             "Governance_Notification_ApplicationApproved",
             "Governance_Notification_ApplicationApprovedBody",
             "ApplicationApproved",
@@ -146,7 +146,7 @@ internal sealed class ApplicationDecisionService(
 
         await SendDecisionNotificationAsync(
             application,
-            NotificationSource.ApplicationRejected,
+            GovernanceNotificationSources.ApplicationRejected,
             "Governance_Notification_ApplicationRejected",
             "Governance_Notification_ApplicationRejectedBody",
             "ApplicationRejected",
@@ -769,7 +769,7 @@ internal sealed class ApplicationDecisionService(
 
     private async Task SendDecisionNotificationAsync(
         MemberApplication application,
-        NotificationSource source,
+        NotificationSourceDefinition source,
         string titleKey,
         string bodyKey,
         string logName,

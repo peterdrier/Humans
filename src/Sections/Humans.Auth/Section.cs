@@ -14,6 +14,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
@@ -29,6 +30,7 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, AuthAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, AuthNotificationSources>();
         services.AddSectionDbContext<AuthDbContext>(sentinelTable: "role_assignments");
 
         // Composed from every section's ISectionRoles (registered by discovery); throws on a duplicate name.

@@ -5,6 +5,9 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
+    <!-- CampsResource and ShiftsResource are sample section resource sets for the translations tests; Debug itself references neither section. -->
+    <ProjectReference Include="..\..\src\Sections\Humans.Camps\Humans.Camps.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

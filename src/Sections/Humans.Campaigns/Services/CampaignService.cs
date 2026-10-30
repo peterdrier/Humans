@@ -498,7 +498,7 @@ internal sealed class CampaignService(
                 var body = NoticeResources.GetString("Campaigns_Notification_ReceivedBody", culture)!;
 
                 await notificationService.SendAsync(
-                    NotificationSource.CampaignReceived,
+                    CampaignsNotificationSources.CampaignReceived,
                     NotificationClass.Informational,
                     NotificationPriority.Normal,
                     title,

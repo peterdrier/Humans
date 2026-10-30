@@ -232,7 +232,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "resolving the voter's open-vote notification", voteId,
             token => notificationResolve.ResolveBySourceAsync(
-                userId, NotificationSource.AssemblyVoteOpened, token, sourceKey: voteId.ToString()));
+                userId, GovernanceNotificationSources.AssemblyVoteOpened, token, sourceKey: voteId.ToString()));
 
         return BallotSubmissionOutcome.Recorded;
     }
@@ -434,7 +434,7 @@ internal sealed class AssemblyVoteService(
         AfterTransitionAsync(
             "resolving the open-vote notification", vote.Id,
             ct => notificationResolve.ResolveBySourceKeyAsync(
-                NotificationSource.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct));
+                GovernanceNotificationSources.AssemblyVoteOpened, vote.Id.ToString(), actorUserId, ct));
 
     /// <summary>
     /// Runs a side effect after an irreversible, committed transition without letting a throw
@@ -1272,7 +1272,7 @@ internal sealed class AssemblyVoteService(
             && open.AcceptsBallotsAt(clock.GetCurrentInstant()))
         {
             await notifications.SendAsync(
-                NotificationSource.AssemblyVoteOpened,
+                GovernanceNotificationSources.AssemblyVoteOpened,
                 NotificationClass.Actionable,
                 NotificationPriority.Normal,
                 vote.Title.Resolve(vote.OfficialCulture, vote.OfficialCulture),

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Models.Tables;
@@ -12,12 +13,13 @@ using Humans.Grants.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.Grants;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUserPart
+public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUserPart, ISectionDataMigrations
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
@@ -30,6 +32,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUse
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, GrantsAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, GrantsNotificationSources>();
         services.AddSectionDbContext<GrantsDbContext>(sentinelTable: "grant_programs");
 
         services.AddSingleton<IGrantRepository, GrantRepository>();
@@ -64,4 +67,27 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUse
         new(UserPartSlots.Profile, typeof(MyGrantsViewComponent), Weight: 95),
         new(UserPartSlots.AdminDetail, typeof(UserGrantsViewComponent), Weight: 95),
     ];
+
+    internal const string EventIdsKey = "grants.event-ids";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(EventIdsKey, "Grants",
+            "Give every grant program the event of its year",
+            "Programs without an event id, and the year fallback that reads them",
+            StatusAsync, ApplyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var plan = await sp.GetRequiredService<IGrantManagement>().GetEventIdPlanAsync(ct);
+        return new(["Program", "Name", "Year", "Event"],
+            [
+                .. plan.Select(p => (IReadOnlyList<string>)[
+                    p.ProgramId.ToString(), p.ProgramName, p.Year.ToString(CultureInfo.InvariantCulture), p.Event.EventName]),
+            ]);
+    }
+
+    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<IGrantManagement>().AssignProgramEventIdsAsync(ct);
 }

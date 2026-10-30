@@ -11,7 +11,7 @@ A grant entitles a human to a thing (a cheaper ticket, early entry for build, st
 
 ## Concepts
 
-- A **Grant program** is one kind of entitlement for one year: a name, what it **entitles** the person to (shown to them verbatim), an optional default expiry, and **who issues** it: its own managers by hand, or a **source** section (Low Income) identified by a source key.
+- A **Grant program** is one kind of entitlement for one event (picked from the Settings events; the program's year follows it): a name, what it **entitles** the person to (shown to them verbatim), an optional default expiry, and **who issues** it: its own managers by hand, or a **source** section (Low Income) identified by a source key.
 - A **Grant** entitles one person under one program. It is **Active** until it expires or is revoked; **Expired** the day after its expiry date (its own date, else the program's), read against today in Europe/Madrid; **Revoked** once revoked, whatever the date. Revoked wins over expired.
 - A program is **Open** or **Closed**. Closed programs take no new grants; existing grants stay.
 
@@ -27,7 +27,8 @@ A grant entitles a human to a thing (a cheaper ticket, early entry for build, st
 | Name | string(200) | |
 | Entitles | string(500) | What the person gets, in their notice and on their profile |
 | Description | string(2000)? | Managers and Board only |
-| Year | int | |
+| Year | int | the event's year, for display and sorting |
+| EventSettingsId | Guid? | index; the event. Null on programs from before events were tracked: they read as the earliest non-deleted event of their year (by gate opening) until the `grants.event-ids` data migration (on `/Debug/DataMigrations`) stamps that event |
 | IssuedBy | GrantIssuer (string) | `Managers` or `Source` |
 | SourceKey | string(32)? | Set only when `IssuedBy = Source`; the key the source section passes |
 | GrantsExpireOn | LocalDate? | Default expiry for its grants; null = never |
@@ -104,9 +105,10 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 - **Audit actions:** declared on `GrantsAuditActions` (`src/Sections/Humans.Grants/GrantsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GrantProgramCreated`, `GrantProgramEdited`, `GrantProgramManagerAdded`, `GrantProgramManagerRemoved`, `GrantIssued`, `GrantRevoked`, `GrantNoticeResent`.
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, preferred language, burner names), `IUserEmailService.GetNotificationTargetEmailsAsync` (notice address). Implements `IUserMerge`.
-- **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`).
+- **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`). Its sources are declared in `GrantsNotificationSources` (`src/Sections/Humans.Grants/GrantsNotificationSources.cs`), one `NotificationSourceDefinition` each: `GrantReceived` (informational, to the grant holder: a grant issued to the person, or its notice resent); `GrantRevoked` (informational, to the former holder: a grant the person held was revoked).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.
 - **AuditLog**: `IAuditLogService.LogAsync`.
+- **Settings**: `ISettingsService.GetAllEventSettingsAsync` (the events a program can be for, and naming them), `GetActiveEventSettingsAsync` (the new-program default).
 - **LowIncome** (caller): issues and revokes through `IGrantWrite` with source key `low-income`.
 - **Gdpr**: implements `IUserDataContributor` (slices `Grants`, `GrantDecisions`).
 - Email and Tickets do not know Grants exists; delivery of the thing (e.g. a vendor code) is a later, separate concern.

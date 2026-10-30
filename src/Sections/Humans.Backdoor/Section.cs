@@ -32,7 +32,7 @@ public sealed class Section : ISection, ISectionAdminNav
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Backdoor", [
-            new("API keys", "Backdoor", "Index", null, null, "fa-solid fa-key", PolicyNames.AdminOnly)
+            new("API keys", "Backdoor", "Index", null, null, "fa-solid fa-key", PolicyNames.BoardOrAdmin)
         ])
     ];
 }

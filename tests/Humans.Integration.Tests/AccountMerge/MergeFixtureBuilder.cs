@@ -440,7 +440,7 @@ public sealed class MergeFixtureBuilder
             Id = notificationId,
             Title = title,
             Priority = NotificationPriority.Normal,
-            Source = NotificationSource.SyncError,
+            Source = "SyncError",
             Class = NotificationClass.Informational,
             CreatedAt = _now,
         };

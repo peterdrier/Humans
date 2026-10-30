@@ -33,6 +33,9 @@ internal interface IGrantRepository : IRepository
     /// <summary>Scalar columns only; managers go through <see cref="SetManagersAsync"/>.</summary>
     Task UpdateProgramAsync(GrantProgram program, CancellationToken ct = default);
 
+    /// <summary>Stamps each listed program that has no event id yet; returns the rows written.</summary>
+    Task<int> AssignEventIdsAsync(IReadOnlyDictionary<Guid, Guid> eventByProgram, CancellationToken ct = default);
+
     /// <summary>One save.</summary>
     Task SetManagersAsync(
         Guid programId, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,

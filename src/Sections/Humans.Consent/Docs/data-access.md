@@ -119,7 +119,7 @@ Repository: `IConsentRepository`.
 | ConsentRecords | R/W |
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
-`INotificationAutoResolve`, `IHumanLifecycleService`, `IUserService`,
+`IHumanLifecycleService`, `IUserService`,
 `IHumansMetrics`, plus `IServiceProvider` to lazy-resolve `IMembershipCalculator`
 (cycle-breaking). Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching

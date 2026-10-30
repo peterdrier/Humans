@@ -189,9 +189,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible uniquement par toi et les No-Info Admins. Tout ce que l’équipe de coordination devrait savoir — diabète, épilepsie, blessures graves, etc.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible par toi, les Shifts NoInfo admins et le Conseil ; chaque fois que l'un d'eux l'ouvre, c'est enregistré et listé ci-dessous. Tout ce que les coordinateurs devraient savoir — diabète, épilepsie, blessures graves, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Problèmes de santé</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Facultatif. Visible uniquement par toi et les No-Info Admins.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Facultatif. Visible par toi, les Shifts NoInfo admins et le Conseil ; chaque consultation est enregistrée.</value></data>
   <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Marqué le</value></data>
   <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Marqué par</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Mes e-mails</value></data>
@@ -772,4 +772,7 @@
   <data name="Users_Search_ExactName" xml:space="preserve"><value>Nom exact</value></data>
   <data name="Users_Search_Interests" xml:space="preserve"><value>Centres d’intérêt</value></data>
   <data name="Users_Search_Pronouns" xml:space="preserve"><value>Pronoms</value></data>
+  <data name="Users_Medical_RevealsTitle" xml:space="preserve"><value>Qui a consulté ces informations</value></data>
+  <data name="Users_Medical_RevealsEmpty" xml:space="preserve"><value>Personne n'a consulté tes informations médicales.</value></data>
+  <data name="Users_Medical_RevealedBy" xml:space="preserve"><value>Consulté par</value></data>
 </root>

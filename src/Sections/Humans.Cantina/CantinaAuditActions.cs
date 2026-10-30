@@ -6,4 +6,6 @@ namespace Humans.Cantina;
 internal sealed class CantinaAuditActions : AuditActionContributor
 {
     public static readonly AuditActionDefinition CantinaRosterExported = new("CantinaRosterExported");
+
+    public static readonly AuditActionDefinition CantinaHealthDetailsRevealed = new("CantinaHealthDetailsRevealed");
 }

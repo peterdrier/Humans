@@ -2,6 +2,7 @@ using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Services;
+using Humans.AuditLog.ViewComponents;
 using Humans.Base.Authorization;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -12,8 +13,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace Humans.AuditLog;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles
+public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, ISectionChrome
 {
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(AuditLogGalleryViewComponent))];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");

@@ -1275,4 +1275,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Il motivo non può superare i 1000 caratteri.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Questa iscrizione non è più attiva e non può essere annullata.</value></data>
+  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Mostra i dati medici (ogni consultazione viene registrata nel registro di audit)</value></data>
+  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Impossibile caricare i dati medici.</value></data>
 </root>

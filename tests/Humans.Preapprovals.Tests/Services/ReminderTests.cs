@@ -34,7 +34,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         await service.SendDeadlineRemindersAsync(Ct);
         await service.SendDeadlineRemindersAsync(Ct);
 
-        await Notifications.Received(1).SendAsync(NotificationSource.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
+        await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_deadline_reminder" && m.Culture == "fr"), Arg.Any<CancellationToken>());
@@ -60,7 +60,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
 
         await service.SendDeadlineRemindersAsync(Ct);
 
-        await Notifications.Received(1).SendAsync(NotificationSource.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.High,
+        await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.High,
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await using var db = OpenContext();
@@ -81,7 +81,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
 
         await NewService().SendDeadlineRemindersAsync(Ct);
 
-        await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default, default, default, default!, default!);
+        await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default!, default, default, default!, default!);
         await using var db = OpenContext();
         (await db.RemindersSent.CountAsync(Ct)).Should().Be(0);
         (await ReadGrantAsync(expired.Id)).Status.Should().Be(GrantStatus.Open, "a passed deadline changes nothing");
@@ -102,7 +102,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         }
         await service.SendDeadlineRemindersAsync(Ct);
 
-        await Notifications.Received(2).SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+        await Notifications.Received(2).SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await using var check = OpenContext();
@@ -117,7 +117,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         var fine = SeedUser("Fine");
         await SeedGrantAsync(program, broken);
         var ok = await SeedGrantAsync(program, fine);
-        Notifications.SendAsync(Arg.Any<NotificationSource>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+        Notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
                 Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(broken)), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("boom"));

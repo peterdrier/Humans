@@ -3,7 +3,7 @@
   tests/Humans.Rideshare.Tests/RideshareArchitectureTests.cs
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
-  src/Sections/Humans.Notifications.Contracts/NotificationSource.cs
+  src/Sections/Humans.Notifications.Contracts/RideshareNotificationSources.cs
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
@@ -305,7 +305,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   Idempotent; the decorator clears the snapshot cache afterwards.
 - **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active year settings anchor to
   (`GetActiveYearAsync` falls back to the clock's UTC year when no active burn is set).
-- **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined
+- **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
   notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
