@@ -763,9 +763,12 @@ public class CalendarServiceValidationTests
         if (existingException)
             ev.Exceptions.Add(new Humans.Calendar.Domain.CalendarEventException
             {
-                Id = Guid.NewGuid(), EventId = ev.Id,
-                OriginalOccurrenceStartUtc = originalUtc, OriginalOccurrenceDate = originalDate,
-                OverrideStartUtc = movedUtc, OverrideStartDate = movedDate
+                Id = Guid.NewGuid(),
+                EventId = ev.Id,
+                OriginalOccurrenceStartUtc = originalUtc,
+                OriginalOccurrenceDate = originalDate,
+                OverrideStartUtc = movedUtc,
+                OverrideStartDate = movedDate
             });
         repo.GetEventByIdAsync(ev.Id, Arg.Any<CancellationToken>()).Returns(ev);
         repo.UpsertExceptionAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(), Arg.Any<Instant>(),

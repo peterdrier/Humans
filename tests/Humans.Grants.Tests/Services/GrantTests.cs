@@ -76,7 +76,7 @@ public sealed class GrantTests : GrantsTestHarness
         else
             (await service.RevokeGrantAsync(grantId, "Withdrew", actor, Ct)).Refusal.Should().BeNull();
 
-        foreach (var action in new[] { AuditAction.GrantIssued, AuditAction.GrantNoticeResent, AuditAction.GrantRevoked })
+        foreach (var action in new[] { GrantsAuditActions.GrantIssued, GrantsAuditActions.GrantNoticeResent, GrantsAuditActions.GrantRevoked })
             await AuditLog.Received(1).LogAsync(action, AuditEntityTypes.Grant, grantId,
                 Arg.Is<string>(d => d.Contains($"({expectedYear})", StringComparison.Ordinal)),
                 actor, person, AuditEntityTypes.User);

@@ -48,7 +48,9 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
         {
             ProgramsCreated = rows.ProgramsCreated.Select(p => new
             {
-                p.Name, Year = EventOf(p, events)?.Year ?? p.Year, CreatedAt = p.CreatedAt.ToIso8601()
+                p.Name,
+                Year = EventOf(p, events)?.Year ?? p.Year,
+                CreatedAt = p.CreatedAt.ToIso8601()
             }).ToList(),
             ManagerOf = rows.ManagerRows.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
             ManagersNamed = rows.ManagersAdded.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
