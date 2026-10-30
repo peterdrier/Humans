@@ -40,15 +40,15 @@ is finalized; only the collective decision is retained. See
 
 ## Camp Lead
 
-A human responsible for a camp. A camp has at least one lead and, by default,
-up to two (a Camps Admin can raise the cap). Leads have equal authority and are
-managed from the camp's Edit page. (An older "Primary Lead / Co-Lead"
-distinction is being retired.) See [Camps](Camps.md).
+A human responsible for a camp. Whoever registers a camp becomes its first
+lead; the Camp Lead role allows two per camp by default (a Camps Admin can
+raise the cap). Leads have equal authority and are managed from the Roles
+panel on the camp's Members page. See [Camps](Camps.md).
 
 ## Camp Season
 
 A camp's per-year record — name, blurb, vibes, space needs, placement, and
-status (Pending, Active, Full, Withdrawn). Placement on the barrio map
+status (Pending, Active, Full, Rejected, Withdrawn). Placement on the barrio map
 requires an approved season for the current year. See [Camps](Camps.md).
 
 ## Colaborador
@@ -107,8 +107,8 @@ date and an optional valid-to date. Every change is audited. See
 
 ## Section
 
-A vertical area of the app (Profiles, Teams, Shifts, Camps, Budget, Admin,
-etc.). Each section has its own guide file.
+An area of the app (Teams, Shifts, Camps, Budget, and so on). Most sections
+have their own guide page.
 
 ## Service account
 
@@ -125,8 +125,8 @@ inherited ones. See [Google Integration](GoogleIntegration.md).
 
 ## Sound zone
 
-A noise-level classification assigned to a camp (quiet, medium, loud, and so
-on). Color-codes the barrio map and feeds camp directory filters. See
+A colour-coded noise-level classification assigned to a camp (Blue, Green,
+Yellow, Orange, Red, or Surprise). Color-codes the barrio map and feeds camp directory filters. See
 [Camps](Camps.md) and [City Planning](CityPlanning.md).
 
 ## Sub-team
@@ -163,6 +163,6 @@ documents; admission is automatic. See [Onboarding](Onboarding.md).
 
 ## Shifts Admin
 
-The role that acts as a facilitation contact for onboarding, with read-only
-access to the onboarding review queue. Distinct from the Consent Coordinator,
+The role that runs shift management app-wide and acts as the facilitation
+contact for onboarding, with read-only access to the onboarding review queue. Distinct from the Consent Coordinator,
 who reviews consents. See [Onboarding](Onboarding.md).
