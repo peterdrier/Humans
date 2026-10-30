@@ -6,6 +6,7 @@ using Humans.Grants.Domain;
 using Humans.Grants.Services;
 using Humans.Grants.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -43,6 +44,42 @@ public sealed class GrantTests : GrantsTestHarness
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, fresh);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{fresh}@example.org"), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, true, 2028)]
+    [Xunit.InlineData(true, true, 2028)]
+    [Xunit.InlineData(false, false, 2027)]
+    [Xunit.InlineData(true, false, 2027)]
+    public async Task GrantAudits_FollowTheProgramsEventYear_WithStoredYearFallback(
+        bool source, bool eventAvailable, int expectedYear)
+    {
+        var actor = SeedUser("Manager");
+        var person = SeedUser("Holder");
+        var program = await SeedProgramAsync(source ? GrantIssuer.Source : GrantIssuer.Managers, "low-income");
+        await using (var db = OpenContext())
+        {
+            (await db.Programs.SingleAsync(Ct)).EventSettingsId = Event2027.Id;
+            await db.SaveChangesAsync(Ct);
+        }
+        var movedEvent = BurnFixtures.Burn(year: 2028) with { Id = Event2027.Id };
+        Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(eventAvailable ? [movedEvent] : []);
+        var service = NewService();
+
+        var grantId = source
+            ? (await service.IssueAsync("low-income", person, "app-42", actor, Ct)).GrantId
+            : (await service.IssueToAsync(program.Id, [person], null, actor, Ct)).Value!.Single();
+        (await service.ResendNoticeAsync(grantId, actor, Ct)).Refusal.Should().BeNull();
+        if (source)
+            (await service.RevokeAsync("low-income", person, "Withdrew", actor, Ct)).Succeeded.Should().BeTrue();
+        else
+            (await service.RevokeGrantAsync(grantId, "Withdrew", actor, Ct)).Refusal.Should().BeNull();
+
+        foreach (var action in new[] { AuditAction.GrantIssued, AuditAction.GrantNoticeResent, AuditAction.GrantRevoked })
+            await AuditLog.Received(1).LogAsync(action, AuditEntityTypes.Grant, grantId,
+                Arg.Is<string>(d => d.Contains($"({expectedYear})", StringComparison.Ordinal)),
+                actor, person, AuditEntityTypes.User);
     }
 
     [HumansFact]
