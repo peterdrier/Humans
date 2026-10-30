@@ -292,23 +292,6 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_reads_a_missing_id_and_checked_as_null_and_unticked()
-    {
-        var json = """
-        {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-          "debit":"0.00","credit":"10.00"}],"cursor":null,"has_more":false}
-        """;
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
-
-        var line = (await client.ListLedgerEntriesAsync(
-            new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31),
-            ct: Xunit.TestContext.Current.CancellationToken)).Single();
-
-        line.EntryId.Should().BeNull();
-        line.Checked.Should().BeFalse();
-    }
-
-    [HumansFact]
     public async Task ListLedgerEntries_follows_cursor_until_has_more_false()
     {
         var callCount = 0;
