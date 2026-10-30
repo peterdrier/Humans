@@ -187,6 +187,55 @@ class GoalFailureTests(unittest.TestCase):
         self.assertIn("Previous cumulative report", report)
         self.assertIn("Needs maintainer decision", report)
 
+    def test_recovered_capacity_error_does_not_retry_deliberate_blocker(self):
+        events = [
+            self.event("turn/started"),
+            self.event("error", willRetry=True, error={
+                "message": "Selected model is at capacity.", "codexErrorInfo": "serverOverloaded"}),
+            self.event("thread/goal/updated", goal={"status": "blocked"}),
+            self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                               "text": "Needs maintainer decision"}),
+            self.event("turn/completed", turn={"status": "completed", "error": None})]
+        result, report, requests, sleeps = self.run_events(events)
+        self.assertEqual(result, 2)
+        self.assertEqual(sleeps, [])
+        self.assertIn("Needs maintainer decision", report)
+        self.assertNotIn("capacity", report)
+        self.assertEqual(sum(r["method"] == "thread/goal/set" for r in requests), 1)
+
+    def test_completed_blocker_uses_agent_message_over_error_notification(self):
+        events = [
+            self.event("turn/started"),
+            self.event("error", willRetry=False, error={
+                "message": "Old transport error", "codexErrorInfo": "other"}),
+            self.event("thread/goal/updated", goal={"status": "blocked"}),
+            self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                               "text": "Needs maintainer decision"}),
+            self.event("turn/completed", turn={"status": "completed", "error": None})]
+        result, report, _, sleeps = self.run_events(events)
+        self.assertEqual(result, 2)
+        self.assertEqual(sleeps, [])
+        self.assertIn("Needs maintainer decision", report)
+        self.assertNotIn("Old transport error", report)
+
+    def test_terminal_capacity_notification_still_retries_failed_turn(self):
+        events = [
+            self.event("turn/started"),
+            self.event("error", willRetry=False, error={
+                "message": "Selected model is at capacity.", "codexErrorInfo": "serverOverloaded"}),
+            self.event("thread/goal/updated", goal={"status": "blocked"}),
+            self.event("turn/completed", turn={"status": "failed", "error": None}),
+            {"id": 5, "result": {"goal": {"status": "active"}}},
+            self.event("turn/started"),
+            self.event("thread/goal/updated", goal={"status": "complete"}),
+            self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                               "text": "Recovered report"}),
+            self.event("turn/completed", turn={"status": "completed"})]
+        result, report, _, sleeps = self.run_events(events)
+        self.assertIsNone(result)
+        self.assertEqual([call.args for call in sleeps], [(180,)])
+        self.assertIn("Recovered report", report)
+
     def test_noncapacity_blocker_is_reported_without_retry(self):
         result, report, _, sleeps = self.run_events(self.failure("Authentication expired", "unauthorized"))
         self.assertEqual(result, 2)

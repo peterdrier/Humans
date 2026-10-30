@@ -231,7 +231,8 @@ def run(prompt_file, report_file, deadline, repair=False):
             elif method == "thread/goal/cleared":
                 raise RuntimeError("Native goal was cleared before completion")
             elif method == "error":
-                turn_error = params.get("error")
+                if not params.get("willRetry"):
+                    turn_error = params.get("error")
             elif method == "turn/started":
                 final_message = ""
                 turn_error = None
@@ -241,7 +242,7 @@ def run(prompt_file, report_file, deadline, repair=False):
                     final_message = item["text"]
             elif method == "turn/completed" and started:
                 turn = params["turn"]
-                error = turn.get("error") or turn_error or {}
+                error = turn.get("error") or (turn_error if turn["status"] != "completed" else None) or {}
                 if goal_status == "blocked" or turn["status"] != "completed":
                     detail = error.get("message") or final_message or "Native goal blocked without a reported reason"
                     code = error.get("codexErrorInfo")
