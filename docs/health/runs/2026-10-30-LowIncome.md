@@ -3,7 +3,7 @@
 - Invocation: unattended (scheduled routine section-doctor-daily, prompt: Run the section-doctor skill unattended.)
 - Anchor commit: `71037de84` (origin/main at branch point); branch `section-doctor/2026-10-30T003937Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2216
 
 ## Assessment summary
 

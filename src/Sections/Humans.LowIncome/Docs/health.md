@@ -84,4 +84,4 @@ Docs/                                    LowIncome.md (invariants), authorizatio
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-10-30 | First doctor pass — an unreachable refusal message cut, and the doc corrected on who can open the program | pending |
+| 1 | 2026-10-30 | First doctor pass — an unreachable refusal message cut, and the doc corrected on who can open the program | peterdrier/Humans#2216 |
