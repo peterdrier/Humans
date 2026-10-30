@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
+using Humans.Holded.Models;
 using Humans.Holded.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,9 +35,15 @@ public sealed class HoldedAdminOverviewTests
         _callLog.DrainAll().Returns([]);
         _client.GetUsageAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36, Limit = 2_000_000 });
+        _client.IsConfigured.Returns(true);
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
             Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
     }
+
+    /// <summary>Every non-archived row of /Holded/Accounts, empty ones included, in page order.</summary>
+    private async Task<IReadOnlyList<HoldedAccountRow>> ChartRowsAsync(CancellationToken ct) =>
+        (await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowEmpty: true), ct))
+            .Groups.SelectMany(g => g.Accounts).ToList();
 
     private static HoldedApiCall Call(Instant at, string endpoint) => new()
     {
@@ -95,20 +102,22 @@ public sealed class HoldedAdminOverviewTests
             Call(Instant.FromUtc(2026, 8, 4, 10, 0), "ListLedgerEntriesAsync"),
         ], ct);
 
-        var overview = await _service.GetOverviewAsync(ct);
+        var calls = await _service.GetCallsByMonthAsync(ct);
 
-        overview.CallsByMonth.Should().HaveCount(2);
-        overview.CallsByMonth[0].Year.Should().Be(2026);
-        overview.CallsByMonth[0].Month.Should().Be(8);
-        overview.CallsByMonth[0].Total.Should().Be(3);
-        overview.CallsByMonth[0].ByEndpoint["ListLedgerEntriesAsync"].Should().Be(2);
-        overview.CallsByMonth[0].ByEndpoint["GetUsageAsync"].Should().Be(1);
-        overview.CallsByMonth[1].Month.Should().Be(7);
-        overview.CallsByMonth[1].Total.Should().Be(1);
+        calls.Should().HaveCount(2);
+        calls[0].Year.Should().Be(2026);
+        calls[0].Month.Should().Be(8);
+        calls[0].Total.Should().Be(3);
+        calls[0].ByEndpoint["ListLedgerEntriesAsync"].Should().Be(2);
+        calls[0].ByEndpoint["GetUsageAsync"].Should().Be(1);
+        calls[1].Month.Should().Be(7);
+        calls[1].Total.Should().Be(1);
 
-        overview.MonthlyCallBudget.Should().Be(2000);
-        overview.Usage!.Period.Should().Be("2026-08");
-        overview.ApiReachable.Should().BeTrue();
+        var summary = await _service.GetSummaryAsync(ct);
+        summary.MonthlyCallBudget.Should().Be(2000);
+        summary.Usage!.Period.Should().Be("2026-08");
+        summary.ApiReachable.Should().BeTrue();
+        summary.IsConfigured.Should().BeTrue();
     }
 
     [HumansFact]
@@ -123,9 +132,7 @@ public sealed class HoldedAdminOverviewTests
             Account(62999999, 999m, archived: true),
         ], FixedNow, ct);
 
-        var overview = await _service.GetOverviewAsync(ct);
-
-        overview.Accounts.Select(a => a.Number).Should().Equal(40000004, 62900000, 62900128);
+        (await ChartRowsAsync(ct)).Select(a => a.Number).Should().Equal(40000004, 62900000, 62900128);
     }
 
     [HumansFact]
@@ -139,8 +146,7 @@ public sealed class HoldedAdminOverviewTests
             Account(62900141, 10m),                                 // posted to, drifted
         ], FixedNow, ct);
 
-        var overview = await _service.GetOverviewAsync(ct);
-        var byNumber = overview.Accounts.ToDictionary(a => a.Number);
+        var byNumber = (await ChartRowsAsync(ct)).ToDictionary(a => a.Number);
 
         // The cancelling account reconciles against an empty mirror, so Reconciled cannot carry
         // this and HoldedBalance cannot either — both read exactly like the untouched account.
@@ -165,10 +171,9 @@ public sealed class HoldedAdminOverviewTests
             Account(75900001, -5_000.00m),
         ], FixedNow, ct);
 
-        var overview = await _service.GetOverviewAsync(ct);
+        var page = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowEmpty: true), ct);
 
-        // Number order is group order, which is what lets the view group without sorting again.
-        overview.Accounts.Select(a => a.Group).Should().Equal(
+        page.Groups.Select(g => g.Name).Should().Equal(
             "Receivables and payables",
             "Financial accounts",
             "Purchases and expenses",
@@ -190,8 +195,7 @@ public sealed class HoldedAdminOverviewTests
             Line(1, 40000004, credit: 53_203.00m),
             Line(2, 57200001, debit: 771_074.85m));
 
-        var overview = await _service.GetOverviewAsync(ct);
-        var byNumber = overview.Accounts.ToDictionary(a => a.Number);
+        var byNumber = (await ChartRowsAsync(ct)).ToDictionary(a => a.Number);
 
         byNumber[40000004].LocalBalance.Should().Be(-53_203.00m);
         byNumber[40000004].LocalLineCount.Should().Be(1);
@@ -207,7 +211,10 @@ public sealed class HoldedAdminOverviewTests
         byNumber[62900141].LocalBalance.Should().BeNull();
         byNumber[62900141].Reconciled.Should().BeFalse();
 
-        overview.LedgerLineCount.Should().Be(2);
+        var summary = await _service.GetSummaryAsync(ct);
+        summary.LedgerLineCount.Should().Be(2);
+        summary.EntryCount.Should().Be(2);
+        summary.MismatchCount.Should().Be(2);
     }
 
     [HumansFact]
@@ -219,13 +226,14 @@ public sealed class HoldedAdminOverviewTests
         await _repo.UpsertAccountsAsync([Account(62900000, 133_416.45m)], FixedNow, ct);
         await SeedLinesAsync(ct, Line(1, 62900000, debit: 133_416.45m));
 
-        var overview = await _service.GetOverviewAsync(ct);
+        var summary = await _service.GetSummaryAsync(ct);
 
-        overview.Usage.Should().BeNull();
-        overview.ApiReachable.Should().BeFalse();
-        overview.MonthlyCallBudget.Should().Be(2000);
-        overview.Accounts.Should().ContainSingle();
-        overview.LedgerLineCount.Should().Be(1);
+        summary.Usage.Should().BeNull();
+        summary.ApiReachable.Should().BeFalse();
+        summary.IsConfigured.Should().BeTrue();
+        summary.MonthlyCallBudget.Should().Be(2000);
+        summary.AccountCount.Should().Be(1);
+        summary.LedgerLineCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -237,9 +245,9 @@ public sealed class HoldedAdminOverviewTests
             new(Instant.FromUtc(2026, 8, 9, 9, 0), "ListLedgerEntriesAsync", "GET", 200, 42, "minute"),
         });
 
-        var overview = await _service.GetOverviewAsync(ct);
+        var calls = await _service.GetCallsByMonthAsync(ct);
 
-        overview.CallsByMonth.Should().ContainSingle()
+        calls.Should().ContainSingle()
             .Which.ByEndpoint["ListLedgerEntriesAsync"].Should().Be(1);
     }
 
@@ -256,7 +264,7 @@ public sealed class HoldedAdminOverviewTests
             };
         });
 
-        var act = () => _service.GetOverviewAsync(cancellation.Token);
+        var act = () => _service.GetSummaryAsync(cancellation.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         var calls = await _repo.GetApiCallsAsync(Xunit.TestContext.Current.CancellationToken);
@@ -269,7 +277,7 @@ public sealed class HoldedAdminOverviewTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        var act = () => _service.GetOverviewAsync(cancellation.Token);
+        var act = () => _service.GetSummaryAsync(cancellation.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
         _callLog.DidNotReceive().DrainAll();
@@ -285,9 +293,9 @@ public sealed class HoldedAdminOverviewTests
         state.LastError = "57200001: holded 418840.54, local 771074.85";
         await _repo.SaveSyncStateAsync(state, ct);
 
-        var overview = await _service.GetOverviewAsync(ct);
+        var summary = await _service.GetSummaryAsync(ct);
 
-        var row = overview.SyncStates.Should().ContainSingle().Subject;
+        var row = summary.SyncStates.Should().ContainSingle().Subject;
         row.Kind.Should().Be("Ledger");
         row.Status.Should().Be("Idle");
         row.LastCount.Should().Be(17);
@@ -445,7 +453,7 @@ public sealed class HoldedAdminOverviewTests
             Line(1852, 57200001, debit: 50_000m, line: 1),
             Line(1852, 40000010, credit: 50_000m, line: 2));
 
-        var entry = await _service.GetEntryAsync(1852, ct);
+        var entry = await _service.GetEntryViewAsync(1852, ct);
 
         entry.Should().NotBeNull();
         entry.EntryNumber.Should().Be(1852);
@@ -463,7 +471,7 @@ public sealed class HoldedAdminOverviewTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedLinesAsync(ct, Line(1, 57200001, debit: 100m));
 
-        (await _service.GetEntryAsync(9999, ct)).Should().BeNull();
+        (await _service.GetEntryViewAsync(9999, ct)).Should().BeNull();
     }
 
     [HumansFact]
@@ -474,7 +482,7 @@ public sealed class HoldedAdminOverviewTests
             Options.Create(new HoldedSectionOptions { MonthlyCallBudget = 5000 }),
             NullLogger<Service>.Instance);
 
-        (await service.GetOverviewAsync(ct)).MonthlyCallBudget.Should().Be(5000);
+        (await service.GetSummaryAsync(ct)).MonthlyCallBudget.Should().Be(5000);
     }
 
     [HumansFact]
@@ -488,6 +496,12 @@ public sealed class HoldedAdminOverviewTests
         await _service.GetAccountBalancesAsync(ct);
         await _service.GetAccountStatementAsync(40000004, ct);
         await _service.GetEntryAsync(1, ct);
+        await _service.GetEntryViewAsync(1, ct);
+        await _service.GetPurchaseLinesAsync(40000004, ct: ct);
+        await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
+        await _service.GetSumsByAccountAsync(new HashSet<int> { 62900000 }, new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31), ct);
+        await _service.GetChartAsync(ct);
+        await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);
 
         _client.ReceivedCalls().Should().BeEmpty();
     }

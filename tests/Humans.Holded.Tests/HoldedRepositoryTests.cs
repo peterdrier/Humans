@@ -44,6 +44,14 @@ public sealed class HoldedRepositoryTests
             Instant.FromUtc(2000, 1, 1, 0, 0), Instant.FromUtc(2100, 1, 1, 0, 0),
             null, lines, Now, Xunit.TestContext.Current.CancellationToken);
 
+    private async Task<IReadOnlyList<HoldedLedgerLine>> AllLinesAsync(CancellationToken ct)
+    {
+        var accounts = (await _repo.GetAccountTotalsAsync(ct)).Select(t => t.AccountNum);
+        var lines = new List<HoldedLedgerLine>();
+        foreach (var a in accounts) lines.AddRange(await _repo.GetLedgerLinesByAccountNumAsync(a, ct: ct));
+        return lines;
+    }
+
     [HumansFact]
     public async Task GetOrCreateSyncState_creates_then_returns_same_row()
     {
@@ -83,7 +91,7 @@ public sealed class HoldedRepositoryTests
         var d = Line(4, 1, 40000004, Instant.FromUtc(2026, 6, 20, 0, 0), debit: 50m);
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [aPrime, d], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Select(l => l.EntryNumber).Should().BeEquivalentTo([1, 3, 4]);
         lines.Single(l => l.EntryNumber == 1).Credit.Should().Be(150m);
         lines.Single(l => l.EntryNumber == 3).Credit.Should().Be(300m, "rows outside the window are untouched");
@@ -101,7 +109,7 @@ public sealed class HoldedRepositoryTests
 
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, 40000004, [], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Should().ContainSingle();
         lines[0].AccountNum.Should().Be(57200001);
     }
@@ -117,7 +125,7 @@ public sealed class HoldedRepositoryTests
 
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Should().ContainSingle("an empty sweep is a valid result and clears the window");
         lines[0].EntryNumber.Should().Be(2);
     }
@@ -132,7 +140,7 @@ public sealed class HoldedRepositoryTests
         var reclassified = Line(1, 1, 62900128, Instant.FromUtc(2026, 6, 5, 0, 0), debit: 40m);
         await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [reclassified], Now, ct);
 
-        var lines = await _repo.GetAllLedgerLinesAsync(ct);
+        var lines = await AllLinesAsync(ct);
         lines.Should().ContainSingle();
         lines[0].AccountNum.Should().Be(62900128);
     }
@@ -147,8 +155,8 @@ public sealed class HoldedRepositoryTests
         await SeedAsync(Line(1, 1, 40000004, Instant.FromUtc(2026, 6, 5, 0, 0), credit: 100m));
 
         (await _repo.HasAnyLedgerLinesAsync(ct)).Should().BeTrue();
-        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct)).Should().ContainSingle();
-        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct)).Should().BeEmpty();
+        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct: ct)).Should().ContainSingle();
+        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct: ct)).Should().BeEmpty();
     }
 
     [HumansFact]

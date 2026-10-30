@@ -263,9 +263,10 @@ public class HoldedClientReadTests
     public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
     {
         var json = """
-        {"items":[{"entry_number":2064.0,"line":2.0,"date":"09/02/2026","type":"payment",
-          "description":"","doc_description":"","account":40000004.0,"debit":"0.00",
-          "credit":"1200.00","tags":[],"checked":false}],"cursor":null,"has_more":false}
+        {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c0","entry_number":2064.0,"line":2.0,"date":"09/02/2026",
+          "type":"payment","description":"Purchase  Bus deposit","doc_description":"F-2026-014",
+          "account":40000004.0,"debit":"0.00","credit":"1200.00","tags":["camp"],"checked":true}],
+         "cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
@@ -281,6 +282,9 @@ public class HoldedClientReadTests
         line.Debit.Should().Be(0.00m);
         line.Credit.Should().Be(1200.00m);
         line.Type.Should().Be("payment");
+        line.Description.Should().Be("Purchase  Bus deposit");
+        line.EntryId.Should().Be("68f0c1a2b3c4d5e6f7a8b9c0");
+        line.Checked.Should().BeTrue();
         line.Date.Should().Be(
             new LocalDate(2026, 2, 9)
                 .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
@@ -298,14 +302,16 @@ public class HoldedClientReadTests
             if (callCount == 1)
             {
                 return Respond(HttpStatusCode.OK, """
-                {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-                  "debit":"0.00","credit":"10.00"}],"cursor":"c1","has_more":true}
+                {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+                  "debit":"0.00","credit":"10.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false}],"cursor":"c1","has_more":true}
                 """);
             }
             secondQuery = req.RequestUri!.Query;
             return Respond(HttpStatusCode.OK, """
-            {"items":[{"entry_number":2,"line":1,"date":"02/01/2026","account":40000004,
-              "debit":"0.00","credit":"5.00"}],"cursor":null,"has_more":false}
+            {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":2,"line":1,"date":"02/01/2026","account":40000004,
+              "debit":"0.00","credit":"5.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false}],"cursor":null,"has_more":false}
             """);
         });
 
@@ -372,8 +378,9 @@ public class HoldedClientReadTests
         // The page cannot be followed, and the prefix cannot be returned: the same replace
         // semantics as the cap case turn a short read into a delete of rows Holded still has.
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
-            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-              "debit":"0.00","credit":"10.00"}],"cursor":null,"has_more":true}
+            {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"0.00","credit":"10.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false}],"cursor":null,"has_more":true}
             """));
 
         var client = Make(handler);
@@ -406,8 +413,9 @@ public class HoldedClientReadTests
     public async Task ListLedgerEntries_refuses_a_page_with_a_null_item()
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
-            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-              "debit":"0.00","credit":"10.00"},null],"cursor":null,"has_more":false}
+            {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"0.00","credit":"10.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false},null],"cursor":null,"has_more":false}
             """)));
         var act = async () => await client.ListLedgerEntriesAsync(
             new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),

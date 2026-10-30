@@ -14,6 +14,7 @@ internal sealed class HoldedLedgerLineConfiguration : IEntityTypeConfiguration<H
         b.HasIndex(x => new { x.EntryNumber, x.Line }).IsUnique();
         b.HasIndex(x => x.AccountNum);
         b.Property(x => x.Type).HasMaxLength(32);
+        b.Property(x => x.EntryId).HasMaxLength(64);
         // Description is left unbounded (text): the cache must never fail an upsert on a long line label.
         b.Property(x => x.Debit).HasColumnType("decimal(12,2)");
         b.Property(x => x.Credit).HasColumnType("decimal(12,2)");

@@ -23,8 +23,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <!-- /Holded shows Finance's doc-sync row and creditor-binding count beside the mirror's own
-         state. Contracts leaf only — the section itself is never referenced. -->
+    <!-- FinancePolicies only: /Holded is gated by Finance's Read and Manage policies. No Finance service is
+         called. Contracts leaf only; the section itself is never referenced. -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
   </ItemGroup>
 

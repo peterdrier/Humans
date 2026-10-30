@@ -61,20 +61,37 @@ mirror tables runs before this baseline recreates them.
 
 ## Routing
 
-- `/Holded` — admin screen: usage meter (API's number displayed; budget = config
-  `Holded:MonthlyCallBudget`, default 2000), calls-by-month, per-kind sync states plus
-  Finance's doc-sync row (read-only; its trigger is Finance's), Sync now / Full sync buttons, and the chart of accounts with
-  reconciliation flags — split by PGC group (named in English from the account number's leading
-  digit, not Holded's Spanish `group` string). Archived accounts are left out; an unused
-  account (no cached line, no Holded totals and no disagreement) is hidden by default.
-  Account balances read in the association's POV (below).
+Every page under `/Holded` reads the mirror and links to the others (Summary, Accounts, API calls,
+and one "Finance" link to `/Finance/Holded`). Each page does one thing.
+
+- `/Holded` — summary: configured or not (`IsConfigured`), live API usage as one line (GET
+  /usage, skipped when not configured; budget = `Holded:MonthlyCallBudget`, default 2000), per
+  sync kind the last run, status, count and error, mirror counts (lines, entries, non-archived
+  accounts), the number of accounts where mirror ≠ Holded (linked to `/Holded/Accounts?mismatched=true`),
+  and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200
+  lines plus the chart; 42 today).
+- `/Holded/Accounts` — the chart grouped by PGC group (English group name from the leading digit,
+  not Holded's Spanish `group` string). Groups are collapsed, showing account count, Holded and
+  mirror balance, lines and mismatches; expanded rows show number, Holded name, English name,
+  both balances, lines and the ✓/✗. Archived and empty accounts (no cached line, no Holded totals,
+  no disagreement) are hidden by default, each with a toggle (`?archived=true`, `?empty=true`);
+  `?mismatched=true` shows only non-archived accounts that disagree. An account seen only on a
+  line (not yet in the chart) is listed, with a zero Holded balance.
 - `/Holded/Accounts/{number}` — the general-ledger page for ANY account (departments, banks,
-  creditors): header balances, and every cached line with its counterparty and signed Amount,
-  both in the association's POV. The Entry cell links to the entry page below; "See in Holded"
-  opens the account's own ledger at `app.holded.com/accounting/ledger/{number}`.
-- `/Holded/Entries/{number}` — every leg of one journal entry (account + name, type,
-  description, signed Amount), no balancing total row. 404 when no cached line carries the
-  entry number.
+  creditors): header balances, and every cached line with its counterparty, signed Amount, Holded's
+  entry id and its manual Checked tick. Counterparties are read from the line's own entries only.
+  "See in Holded" opens the account's own ledger at `app.holded.com/accounting/ledger/{number}`.
+- `/Holded/Entries/{number}` — every leg of one journal entry (account + name, type, description,
+  signed Amount, Checked) and the entry's Holded id, no balancing total row. 404 when no cached
+  line carries the entry number. No link into Holded's app yet: its entry URL is unverified.
+- `/Holded/Calls` — API calls by Madrid month and endpoint, from `holded_api_calls`.
+
+**English names** come from `PgcAccountNames`, a static dictionary of the PGC PYMES chart (plus
+the non-profit adaptation's own accounts) keyed by number prefix, longest matching prefix first.
+It is applied at render time only, and only when Holded's name is the standard Spanish one for
+that prefix (case, accents and spacing ignored; a letter-free suffix such as "21%" is kept).
+Member accounts (40xxxxxx, 41xxxxxx) and the 629 category accounts always keep their own name.
+The mirror stores only what Holded returned.
 
 ### Association-POV sign convention
 
@@ -100,16 +117,16 @@ entry page instead.
 
 **Not this section:** `/Finance/Holded` is Finance's own connector index — its purchase-doc sync
 staleness, category map and pulled docs (nobodies-collective/Humans#1000). The split is the table
-ownership: this screen covers what `HoldedDbContext` owns, that one covers what `FinanceDbContext`
-does. The two link to each other rather than restating each other's figures; the doc-sync row shown
-in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInfoAsync`.
+ownership: these screens cover what `HoldedDbContext` owns, that one covers what `FinanceDbContext`
+does. They link to each other rather than restating each other's figures; nothing of Finance's is
+shown here.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
 | Finance admin / Admin | Everything above (`FinancePolicies.Manage`). |
-| Board | Read the overview, account statements and entry legs; trigger no sync (`FinancePolicies.Read`). |
+| Board | Read the summary, accounts, statements, entries and calls; trigger no sync (`FinancePolicies.Read`). |
 | Other sections | Read via `IHoldedService`; trigger sync (nightly job). |
 | Any human | None directly. |
 
@@ -125,7 +142,16 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
   window width — the window is a quota choice.
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
-- Reads (`GetLedgerLinesAsync`, `GetAccountBalancesAsync`) never call Holded.
+- Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
+  chart) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
+  in the database, statements load only their own entries. Amounts are Holded's raw sign.
+- `GetOpenDocumentAmountsAsync` is Σ (credit − debit) over `purchase`, `purchaserefund` and `payment`
+  lines per account: what documents leave open, not the balance (hand-booked entries and collections
+  are left out).
+- A ledger line keeps Holded's `id` as `EntryId` (the journal entry's id, shared by every line of
+  the entry, so never a key: the natural key stays `(EntryNumber, Line)`) and `checked` as
+  `Checked` (Holded's manual tick, not bank reconciliation; null until the line is re-synced).
+  `doc_description` and `tags` are not stored.
 - API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
 - The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
   `ReconcileBankMovementAsync`) is **not** mirrored here — Finance's SEPA booking flow
@@ -141,8 +167,8 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 ## Negative Access Rules
 
 - Only this section's repository touches `HoldedDbContext`.
-- This section never reads Finance's tables; the admin screen obtains Finance's doc-sync row
-  via `IHoldedFinanceService` in the controller.
+- This section never reads Finance's tables and calls no Finance service. Its only Finance
+  reference is `FinancePolicies`, the policy names its pages are gated by.
 
 ## Triggers
 
@@ -151,14 +177,16 @@ in the table above is still fetched through `IHoldedFinanceService.GetDocSyncInf
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector); Finance's `IHoldedFinanceService.GetDocSyncInfoAsync` (the doc-sync row and the creditor-binding count on `/Holded`).
+- Outbound: `IHoldedClient` (this section's own connector). Finance's `FinancePolicies` constants only.
 - Inbound: Finance (creditor statuses/statements/actuals via `IHoldedService`), the nightly job.
 
 ## Architecture
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`) for the mirror, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`) for the mirror, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
 **Owned tables:** the four above
-**Target shape:** [`health.md`](health.md). Historical design record:
+**Target shape:** [`health.md`](health.md); the single-mirror design is
+the 2026-10-30 Holded section-flow record (phase 1 built the reads and
+pages; the callers still on `IHoldedClient` are ledger debt `CENTRAL-105`). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

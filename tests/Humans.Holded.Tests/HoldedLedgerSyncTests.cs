@@ -88,8 +88,8 @@ public sealed class HoldedLedgerSyncTests
         calls[0].From.Should().Be(new LocalDate(2020, 1, 1));
         calls[0].To.Should().Be(Today);
 
-        (await _repo.GetLedgerLinesByAccountNumAsync(62900140, ct)).Should().ContainSingle();
-        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct)).Should().ContainSingle();
+        (await _repo.GetLedgerLinesByAccountNumAsync(62900140, ct: ct)).Should().ContainSingle();
+        (await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct: ct)).Should().ContainSingle();
     }
 
     [HumansFact]
@@ -122,7 +122,7 @@ public sealed class HoldedLedgerSyncTests
         StubWindowFetch(Dto(1, 1, 40000004, FixedNow, credit: 23m));
         await _service.SyncLedgerAsync(full: true, ct);
 
-        var lines = await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct);
+        var lines = await _repo.GetLedgerLinesByAccountNumAsync(40000004, ct: ct);
         lines.Should().ContainSingle();
         lines[0].EntryNumber.Should().Be(1);
     }
@@ -152,7 +152,7 @@ public sealed class HoldedLedgerSyncTests
         ledgerState.SyncStatus.Should().Be(HoldedSyncStatus.Idle);               // reported, not failed
 
         // The re-pulled lines landed in the mirror despite the residual.
-        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct)).Should().ContainSingle();
+        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct: ct)).Should().ContainSingle();
     }
 
     [HumansFact]
@@ -251,8 +251,7 @@ public sealed class HoldedLedgerSyncTests
         var logger = new CapturingLogger<Humans.Holded.Controllers.HoldedController>();
         var controller = new Humans.Holded.Controllers.HoldedController(
             Substitute.For<Humans.Users.Contracts.IUserService>(),
-            Substitute.For<IHoldedAdminService>(), holded,
-            Substitute.For<Humans.Finance.Contracts.IHoldedFinanceService>(), logger)
+            Substitute.For<IHoldedAdminService>(), holded, logger)
         {
             TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
                 new Microsoft.AspNetCore.Http.DefaultHttpContext(),

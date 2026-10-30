@@ -5,10 +5,20 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Entry <code>@Model.EntryNumber</code></h1>
-    <a asp-action="Index" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Holded
-    </a>
 </div>
+<partial name="_HoldedNav" />
+
+<p class="mb-2">
+    Holded entry id:
+    @if (string.IsNullOrEmpty(Model.EntryId))
+    {
+        <span class="text-muted">not read yet: it arrives with the next sync that covers this entry.</span>
+    }
+    else
+    {
+        <code>@Model.EntryId</code>
+    }
+</p>
 
 <p class="text-muted">
     Every leg of this entry, in the association's own point of view (+ money in, − money out).
@@ -24,6 +34,7 @@
                 <tr>
                     <th>Account</th><th>Type</th><th>Description</th>
                     <th class="text-end">Amount</th>
+                    <th class="text-center" title="Holded's manual tick in its ledger view. Not bank reconciliation.">Checked</th>
                 </tr>
             </thead>
             <tbody>
@@ -37,6 +48,12 @@
                     <td class="text-muted small">@l.Type</td>
                     <td>@l.Description</td>
                     <td class="text-end">@l.Amount.ToSignedEuro()</td>
+                    <td class="text-center">
+                        @if (l.Checked == true)
+                        {
+                            <i class="fa-solid fa-check text-success"></i>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>

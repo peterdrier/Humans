@@ -128,6 +128,8 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
                 Credit = ReadRequiredDecimalV2(Prop(n, "credit"), "credit"),
                 Type = Prop(n, "type")?.GetValue<string>(),
                 Description = Prop(n, "description")?.GetValue<string>(),
+                EntryId = Prop(n, "id")?.GetValue<string>(),
+                Checked = Prop(n, "checked")?.GetValue<bool>() ?? false,
             }).ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
