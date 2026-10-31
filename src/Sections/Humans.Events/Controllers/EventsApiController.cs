@@ -49,7 +49,7 @@ internal sealed class EventsApiController(
             UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
 
         var results = new List<GuideEventApiDto>();
-        foreach (var e in events)
+        foreach (var e in events.OrderBy(e => e.StartAt))
         {
             if (categorySlug != null && !string.Equals(e.CategorySlug, categorySlug, StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -102,6 +102,7 @@ internal sealed class EventsApiController(
         var events = await guide.GetApprovedEventsAsync(null, null, null, null, [], ct);
         var barrioGroups = events
             .Where(e => e.CampId.HasValue)
+            .OrderBy(e => e.StartAt)
             .GroupBy(e => e.CampId!.Value)
             .Select(g =>
             {
@@ -137,7 +138,7 @@ internal sealed class EventsApiController(
             id,
             campName,
             camp?.Slug,
-            events.Select(e =>
+            events.OrderBy(e => e.StartAt).Select(e =>
             {
                 var dayOffset = ComputeDayOffset(e.StartAt, gateOpeningDate, tz);
                 // Barrio detail returns this camp's events only — host is always the camp's own value.

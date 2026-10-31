@@ -299,7 +299,6 @@ internal sealed class CachingEventService(
             results.Add(view);
         }
 
-        results.Sort((a, b) => a.StartAt.CompareTo(b.StartAt));
         return results;
     }
 

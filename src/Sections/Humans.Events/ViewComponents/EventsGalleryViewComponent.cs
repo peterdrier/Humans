@@ -18,7 +18,7 @@ internal sealed class EventsGalleryViewComponent(IEventService eventService, ICo
         {
             var events = await eventService.GetApprovedEventsAsync(
                 campId: null, venueId: null, categoryId: null, q: null, excludedSlugs: [], HttpContext.RequestAborted);
-            eventId = events.FirstOrDefault()?.Id;
+            eventId = events.MinBy(e => e.StartAt)?.Id;
         }
 
         return View(new EventsGalleryViewModel(eventId));
