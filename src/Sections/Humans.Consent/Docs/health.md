@@ -126,4 +126,4 @@ Three aggregates and one content proxy, each with a single writer:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | section-doctor | 2026-08-31 | First pass: doc truth vs post-G5 code, dead sync surface, notification fan-out delta | peterdrier/Humans#1572 |
-| section-doctor | 2026-10-31 | Consent-submit errors shown, member-review lane in the target, sync runner internal | pending |
+| section-doctor | 2026-10-31 | Consent-submit errors shown, member-review lane in the target, sync runner internal | peterdrier/Humans#2227 |
