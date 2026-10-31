@@ -66,6 +66,36 @@ public class MailerLiteClientRetryTests
         (await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle(g => g.Id == "42");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(",\"status\":null")]
+    [Xunit.InlineData(",\"status\":\"\"")]
+    [Xunit.InlineData(",\"status\":\"  \\t\"")]
+    public async Task RefreshAsync_RejectsMissingStatusAndPreservesSnapshot(string statusProperty)
+    {
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        var fetchedAt = client.LastFetchedAt;
+        handler.EnqueueJson(HttpStatusCode.OK,
+            "{\"data\":[{\"id\":\"sub-2\",\"email\":\"bob@example.org\"" + statusProperty + "}],\"meta\":{\"next_cursor\":null}}");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+
+        var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<System.Text.Json.JsonException>()
+            .WithMessage("subscriber.status missing");
+        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
+        client.LastFetchedAt.Should().Be(fetchedAt);
+        var emails = new List<string>();
+        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
+            emails.Add(subscriber.Email);
+        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
+    }
+
     [HumansFact]
     public async Task RefreshAsync_FollowsGroupMetadataAcrossEmptyIntermediatePage()
     {
