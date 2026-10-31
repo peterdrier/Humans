@@ -65,7 +65,21 @@ internal sealed class ShiftDashboardPageBuilder(
             EventSettings = es,
             StaffingData = staffing.StaffingData.ToList(),
             StaffingHours = staffing.StaffingHours.ToList(),
-            Overview = overview,
+            Overview = overview with
+            {
+                Departments = overview.Departments
+                    .OrderBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
+                    .ThenBy(r => r.DepartmentName, StringComparer.Ordinal)
+                    .Select(r => r with
+                    {
+                        Subgroups = r.Subgroups
+                            .OrderByDescending(s => s.IsDirect)
+                            .ThenBy(s => s.TotalSlots == 0 ? 0 : 100.0 * s.FilledSlots / s.TotalSlots)
+                            .ThenBy(s => s.Name, StringComparer.Ordinal)
+                            .ToList()
+                    })
+                    .ToList()
+            },
             CoordinatorActivity = coordinatorActivity,
             Trends = trends,
             DailyDepartmentStaffing = dailyDeptStaffing.Select(day => day with

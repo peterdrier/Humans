@@ -1497,12 +1497,6 @@ internal sealed class ShiftManagementService(
                         dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
                         dAgg.Build, dAgg.Event, dAgg.Strike));
                 }
-
-                subgroups = subgroups
-                    .OrderByDescending(r => r.IsDirect)
-                    .ThenBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
-                    .ThenBy(r => r.Name, StringComparer.Ordinal)
-                    .ToList();
             }
 
             rows.Add(new DepartmentStaffingRow(
@@ -1512,10 +1506,7 @@ internal sealed class ShiftManagementService(
                 subgroups));
         }
 
-        return rows
-            .OrderBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
-            .ThenBy(r => r.DepartmentName, StringComparer.Ordinal)
-            .ToList();
+        return rows;
     }
 
     private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
