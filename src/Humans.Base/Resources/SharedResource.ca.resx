@@ -1173,7 +1173,7 @@
     <value>Responsable del tractament</value>
   </data>
   <data name="Privacy_DataControllerBody" xml:space="preserve">
-    <value>Una associació sense ànim de lucre espanyola registrada a Andalusia.</value>
+    <value>Una associació sense ànim de lucre espanyola amb seu a Madrid (NIF G26726299).</value>
   </data>
   <data name="Privacy_DataControllerDPO" xml:space="preserve">
     <value>Per a consultes sobre protecció de dades, contacta amb el nostre Delegat de Protecció de Dades a:</value>
@@ -1521,6 +1521,14 @@
   <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>Per fer</value></data>
   <data name="MarkdownHelp_Title" xml:space="preserve"><value>Referència ràpida de Markdown</value></data>
   <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Política de privacitat de Google</value></data>
+  <data name="Privacy_ThirdParty_Gmail" xml:space="preserve"><value>Per a lliurar els correus que t'enviem (la teva adreça de correu, nom i el contingut del missatge)</value></data>
+  <data name="Privacy_ThirdParty_GoogleMaps" xml:space="preserve"><value>Per a la cerca d'ubicacions i els mapes (el lloc que cerques i la teva adreça IP, enviats pel teu navegador)</value></data>
+  <data name="Privacy_ThirdParty_Stripe" xml:space="preserve"><value>Per als pagaments amb targeta a la Botiga (nom i correu del comprador; les dades de la targeta s'introdueixen directament a Stripe)</value></data>
+  <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>Per a la comptabilitat de l'associació (en reemborsaments de despeses: nom legal, nom burner, IBAN, detalls de la despesa i justificants; en factures de la Botiga: nom, NIF, adreça i correu del comprador)</value></data>
+  <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>Per a la venda i emissió d'entrades (nom del titular, adreça de correu i registres d'entrada)</value></data>
+  <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>Per a les llistes de correu (adreça de correu i pertinença a llistes, com ara titular d'entrada o voluntari de torns; no es comparteix si has rebutjat els correus de màrqueting)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Per a l'assistent d'ajuda de l'aplicació, només quan el fas servir (els teus missatges, a més del teu nom burner, idioma, nivell de membre, rols, equips i propers torns)</value></data>
+  <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Política de privacitat</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Nom burner</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nom legal</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Cognoms legals</value></data>

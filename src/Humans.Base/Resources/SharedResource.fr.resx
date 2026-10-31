@@ -1173,7 +1173,7 @@
     <value>Responsable du traitement</value>
   </data>
   <data name="Privacy_DataControllerBody" xml:space="preserve">
-    <value>Une association espagnole à but non lucratif enregistrée en Andalousie.</value>
+    <value>Une association espagnole à but non lucratif dont le siège est à Madrid (NIF G26726299).</value>
   </data>
   <data name="Privacy_DataControllerDPO" xml:space="preserve">
     <value>Pour les questions relatives à la protection des données, contactez notre Délégué à la Protection des Données à :</value>
@@ -1521,6 +1521,14 @@
   <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>À faire</value></data>
   <data name="MarkdownHelp_Title" xml:space="preserve"><value>Aide-mémoire Markdown</value></data>
   <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Politique de confidentialité de Google</value></data>
+  <data name="Privacy_ThirdParty_Gmail" xml:space="preserve"><value>Pour l'envoi des e-mails que nous vous adressons (votre adresse e-mail, votre nom et le contenu du message)</value></data>
+  <data name="Privacy_ThirdParty_GoogleMaps" xml:space="preserve"><value>Pour la recherche de lieux et les cartes (le lieu que vous recherchez et votre adresse IP, transmis par votre navigateur)</value></data>
+  <data name="Privacy_ThirdParty_Stripe" xml:space="preserve"><value>Pour les paiements par carte dans la Boutique (nom et adresse e-mail de l'acheteur ; les données de carte sont saisies directement auprès de Stripe)</value></data>
+  <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>Pour la comptabilité de l'association (pour les remboursements de frais : nom légal, burner name, IBAN, détails de la dépense et justificatifs ; pour les factures de la Boutique : nom, numéro fiscal, adresse et adresse e-mail de l'acheteur)</value></data>
+  <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>Pour la vente et l'émission des billets (nom du titulaire, adresse e-mail et enregistrements à l'entrée)</value></data>
+  <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>Pour les listes de diffusion (adresse e-mail et appartenance aux listes, par exemple détenteur de billet ou bénévole inscrit à un créneau ; non transmis si vous avez refusé les e-mails marketing)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Pour l'assistant d'aide de l'application, uniquement lorsque vous l'utilisez (vos messages ainsi que votre burner name, langue, niveau d'adhésion, rôles, équipes et créneaux à venir)</value></data>
+  <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Politique de confidentialité</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Prénom légal</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Nom de famille légal</value></data>

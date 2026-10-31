@@ -673,7 +673,7 @@
   <data name="Medical_Badge" xml:space="preserve"><value>Medical</value></data>
   <data name="Privacy_Lead" xml:space="preserve"><value>Humans manages membership for Nobodies Collective and processes personal data in accordance with GDPR and Spanish data protection law (LOPDGDD).</value></data>
   <data name="Privacy_DataControllerTitle" xml:space="preserve"><value>Data Controller</value></data>
-  <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association registered in Andalucia.</value></data>
+  <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association based in Madrid (NIF G26726299).</value></data>
   <data name="Privacy_DataControllerDPO" xml:space="preserve"><value>For data protection inquiries, contact our Data Protection Officer at:</value></data>
   <data name="Privacy_DataWeCollectTitle" xml:space="preserve"><value>Data We Collect</value></data>
   <data name="Privacy_DataWeCollectIntro" xml:space="preserve"><value>We collect and process the following categories of personal data:</value></data>
@@ -908,6 +908,14 @@
   <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>To do</value></data>
   <data name="MarkdownHelp_Title" xml:space="preserve"><value>Markdown Quick Reference</value></data>
   <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Google's Privacy Policy</value></data>
+  <data name="Privacy_ThirdParty_Gmail" xml:space="preserve"><value>For delivering the emails we send you (your email address, name and the message content)</value></data>
+  <data name="Privacy_ThirdParty_GoogleMaps" xml:space="preserve"><value>For location search and maps (the place you search for and your IP address, sent by your browser)</value></data>
+  <data name="Privacy_ThirdParty_Stripe" xml:space="preserve"><value>For card payments in the Store (buyer name and email address; card details are entered directly with Stripe)</value></data>
+  <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>For the association's accounting (for expense reimbursements: legal name, burner name, IBAN, expense details and receipts; for Store invoices: buyer name, tax ID, address and email address)</value></data>
+  <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>For ticket sales and issuing tickets (ticket holder name, email address and check-ins)</value></data>
+  <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>For mailing lists (email address and list membership, such as ticket holder or shift volunteer; not shared if you have opted out of marketing emails)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>For the in-app help assistant, only when you use it (your messages plus your burner name, language, membership tier, roles, teams and upcoming shifts)</value></data>
+  <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Privacy policy</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Legal First Name</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Legal Last Name(s)</value></data>

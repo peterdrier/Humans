@@ -1173,7 +1173,7 @@
     <value>Responsable del tratamiento</value>
   </data>
   <data name="Privacy_DataControllerBody" xml:space="preserve">
-    <value>Una asociación sin ánimo de lucro española registrada en Andalucía.</value>
+    <value>Una asociación sin ánimo de lucro española con domicilio en Madrid (NIF G26726299).</value>
   </data>
   <data name="Privacy_DataControllerDPO" xml:space="preserve">
     <value>Para consultas sobre protección de datos, contacta con nuestro Delegado de Protección de Datos en:</value>
@@ -1521,6 +1521,14 @@
   <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>Por hacer</value></data>
   <data name="MarkdownHelp_Title" xml:space="preserve"><value>Referencia rápida de Markdown</value></data>
   <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Política de Privacidad de Google</value></data>
+  <data name="Privacy_ThirdParty_Gmail" xml:space="preserve"><value>Para entregar los correos que te enviamos (tu dirección de correo, nombre y el contenido del mensaje)</value></data>
+  <data name="Privacy_ThirdParty_GoogleMaps" xml:space="preserve"><value>Para la búsqueda de ubicaciones y los mapas (el lugar que buscas y tu dirección IP, enviados por tu navegador)</value></data>
+  <data name="Privacy_ThirdParty_Stripe" xml:space="preserve"><value>Para los pagos con tarjeta en la Tienda (nombre y correo del comprador; los datos de la tarjeta se introducen directamente en Stripe)</value></data>
+  <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>Para la contabilidad de la asociación (en reembolsos de gastos: nombre legal, burner name, IBAN, detalles del gasto y justificantes; en facturas de la Tienda: nombre, NIF, dirección y correo del comprador)</value></data>
+  <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>Para la venta y emisión de entradas (nombre del titular, dirección de correo y registros de entrada)</value></data>
+  <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>Para las listas de correo (dirección de correo y pertenencia a listas, como titular de entrada o voluntario de turnos; no se comparte si has rechazado los correos de marketing)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Para el asistente de ayuda de la aplicación, solo cuando lo usas (tus mensajes, además de tu burner name, idioma, nivel de membresía, roles, equipos y próximos turnos)</value></data>
+  <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Política de privacidad</value></data>
   <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Nombre legal</value></data>
   <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Apellidos legales</value></data>
