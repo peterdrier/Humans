@@ -46,7 +46,7 @@ internal sealed class CalendarService(
         if (teamId is null)
             occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
 
-        return CalendarOccurrenceExpander.OrderForDisplay(occurrences, viewerZone);
+        return occurrences;
     }
 
     /// <summary>

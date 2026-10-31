@@ -248,7 +248,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_OrdersContributedItemsBeforeLaterAllDayEvents()
+    public async Task GetOccurrencesInWindowAsync_IncludesContributedItemsAndLaterAllDayEvents()
     {
         var allDay = BuildInfo(title: "All-day", start: null, end: null) with
         {
@@ -267,14 +267,14 @@ public sealed class CachingCalendarServiceTests
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"],
             ct: TestContext.Current.CancellationToken);
 
-        results.Select(r => r.Title).Should().Equal(item.Summary, "All-day");
+        results.Select(r => r.Title).Should().BeEquivalentTo([item.Summary, "All-day"]);
     }
 
     [HumansTheory]
-    [InlineData("America/Los_Angeles", true)]
-    [InlineData("Europe/Madrid", false)]
-    [InlineData("Pacific/Auckland", false)]
-    public async Task GetOccurrencesInWindowAsync_OrdersMixedSourcesInViewerZone(string timezone, bool contributionFirst)
+    [InlineData("America/Los_Angeles")]
+    [InlineData("Europe/Madrid")]
+    [InlineData("Pacific/Auckland")]
+    public async Task GetOccurrencesInWindowAsync_ComposesMixedSourcesInViewerZone(string timezone)
     {
         var allDay = BuildInfo(title: "All-day", start: null, end: null) with
         {
@@ -293,8 +293,7 @@ public sealed class CachingCalendarServiceTests
             Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0),
             DateTimeZoneProviders.Tzdb[timezone], ct: TestContext.Current.CancellationToken);
 
-        results.Select(r => r.Title).Should().Equal(contributionFirst
-            ? [item.Summary, "All-day"] : ["All-day", item.Summary]);
+        results.Select(r => r.Title).Should().BeEquivalentTo([item.Summary, "All-day"]);
     }
 
     [HumansFact]
