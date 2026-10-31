@@ -343,7 +343,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProjectionAndRefreshAsync_SavesParametersThenRefreshes()
+    public async Task UpdateProjectionAndRefreshAsync_RequestsOneAtomicParameterAndForecastUpdate()
     {
         var groupId = Guid.NewGuid();
         var yearId = Guid.NewGuid();
@@ -360,8 +360,10 @@ public class TicketingBudgetServiceTests
             StripeFeePercent: 1.4m,
             StripeFeeFixed: 0.25m,
             TicketTailorFeePercent: 0.5m);
-        _budgetService.RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>())
-            .Returns(4);
+        _budgetService.UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,
+            command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
+            command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,
+            refreshProjections: true, Xunit.TestContext.Current.CancellationToken).Returns(4);
 
         _budgetService.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(yearId, "2026", "Budget", BudgetYearStatus.Active, false,
@@ -371,22 +373,11 @@ public class TicketingBudgetServiceTests
         var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(4);
-        Received.InOrder(() =>
-        {
-            _ = _budgetService.UpdateTicketingProjectionAsync(
-                groupId,
-                command.StartDate,
-                command.EventDate,
-                command.InitialSalesCount,
-                command.DailySalesRate,
-                command.AverageTicketPrice,
-                command.VatRate,
-                command.StripeFeePercent,
-                command.StripeFeeFixed,
-                command.TicketTailorFeePercent,
-                actorUserId);
-            _ = _budgetService.RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>());
-        });
+        await _budgetService.Received(1).UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,
+            command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
+            command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,
+            refreshProjections: true, Xunit.TestContext.Current.CancellationToken);
+        await _budgetService.DidNotReceive().RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>());
     }
 
     private static TicketOrderInfo BuildOrder(

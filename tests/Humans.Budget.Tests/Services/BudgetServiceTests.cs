@@ -332,8 +332,8 @@ public sealed class BudgetServiceTests
         else
         {
             await budget.Received(1).UpdateTicketingProjectionAsync(_yearId, null, null,
-                0, 0m, 0m, 0, 0m, 0m, 0m, viewerId);
-            await budget.Received(1).RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
+                0, 0m, 0m, 0, 0m, 0m, 0m, viewerId, refreshProjections: true, Arg.Any<CancellationToken>());
+            await budget.DidNotReceive().RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
         }
     }
 
@@ -393,8 +393,8 @@ public sealed class BudgetServiceTests
             result.Should().BeOfType<RedirectToActionResult>();
             await budget.Received(1).UpdateTicketingProjectionAsync(_yearId, null, null,
                 zero ? 0 : 123, zero ? 0m : 5m, zero ? 0m : 120m, zero ? 0 : 21,
-                zero ? 0m : 1.5m, zero ? 0m : 0.3m, zero ? 0m : 0.5m, viewerId);
-            await budget.Received(1).RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
+                zero ? 0m : 1.5m, zero ? 0m : 0.3m, zero ? 0m : 0.5m, viewerId, refreshProjections: true, Arg.Any<CancellationToken>());
+            await budget.DidNotReceive().RefreshTicketingProjectionsAsync(_yearId, viewerId, Arg.Any<CancellationToken>());
         }
         if (!viewerExists || omitted.Length > 0) budget.ReceivedCalls().Should().BeEmpty();
     }
@@ -442,7 +442,47 @@ public sealed class BudgetServiceTests
             result.Should().BeOfType<RedirectToActionResult>();
             saved.DailySalesRate.Should().Be(5m);
             saved.AverageTicketPrice.Should().Be(120m);
+            (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().BeGreaterThan(0);
+            (await db.BudgetAuditLogs.ToListAsync(TestContext.Current.CancellationToken))
+                .Should().ContainSingle().Which.Description.Should().Contain("Updated ticketing projection parameters; refreshed");
             controller.TempData.ContainsKey("SuccessMessage").Should().BeTrue();
+        }
+    }
+
+    [HumansFact]
+    public async Task Projection_update_does_not_commit_parameters_or_audit_when_projected_rows_fail_to_save()
+    {
+        var factory = new TestDbContextFactory<BudgetDbContext>(new DbContextOptionsBuilder<BudgetDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new RejectProjectedRowSave())
+            .Options);
+        var seeded = await SeedTicketingYearAsync(factory);
+        var repository = new BudgetRepository(factory, NullLogger<BudgetRepository>.Instance);
+        var budget = new BudgetServiceImpl(repository, _teamService, _userService, Clock, NullLogger<BudgetServiceImpl>.Instance);
+        var ticketing = new TicketingBudgetService(Substitute.For<ITicketService>(), budget, Clock,
+            NullLogger<TicketingBudgetService>.Instance);
+        var command = new TicketingProjectionUpdateCommand(seeded.GroupId, _yearId,
+            new LocalDate(2026, 4, 1), new LocalDate(2026, 4, 7), 10, 5m, 120m, 21, 1.5m, 0.3m, 0.5m);
+
+        Func<Task> save = async () => { await ticketing.UpdateProjectionAndRefreshAsync(command, Guid.NewGuid(), TestContext.Current.CancellationToken); };
+
+        await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Projected row save failed");
+        await using var verify = await factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var projection = await verify.TicketingProjections.SingleAsync(TestContext.Current.CancellationToken);
+        projection.StartDate.Should().BeNull();
+        projection.InitialSalesCount.Should().Be(0);
+        (await verify.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await verify.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    private sealed class RejectProjectedRowSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context?.ChangeTracker.Entries<BudgetLineItem>().Any(entry => entry.State == EntityState.Added) == true)
+                throw new InvalidOperationException("Projected row save failed");
+            return ValueTask.FromResult(result);
         }
     }
 
@@ -2184,14 +2224,14 @@ public sealed class BudgetServiceTests
     }
 
     private async Task<(Guid GroupId, Guid ProjectionId, Guid RevenueCatId, Guid FeesCatId)>
-        SeedTicketingYearAsync()
+        SeedTicketingYearAsync(TestDbContextFactory<BudgetDbContext>? factory = null)
     {
         var groupId = Guid.NewGuid();
         var projectionId = Guid.NewGuid();
         var revenueCatId = Guid.NewGuid();
         var feesCatId = Guid.NewGuid();
 
-        await using var ctx = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var ctx = await (factory ?? BudgetDbFactory).CreateDbContextAsync(TestContext.Current.CancellationToken);
         ctx.BudgetYears.Add(new BudgetYear
         {
             Id = _yearId,

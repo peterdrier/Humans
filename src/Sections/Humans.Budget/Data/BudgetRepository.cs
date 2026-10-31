@@ -801,15 +801,19 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId, ct);
     }
 
-    public async Task<bool> UpdateTicketingProjectionAsync(
+    public async Task<int> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
         Guid actorUserId,
         Instant now,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        LocalDate? refreshFromDate = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == update.BudgetGroupId, ct)
+        var group = await ctx.BudgetGroups
+            .Include(g => g.Categories).ThenInclude(category => category.LineItems)
+            .Include(g => g.TicketingProjection)
+            .FirstOrDefaultAsync(g => g.Id == update.BudgetGroupId, ct)
             ?? throw new InvalidOperationException($"Budget group {update.BudgetGroupId} not found");
 
         if (!group.IsTicketingGroup)
@@ -817,8 +821,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         await EnsureYearNotClosedAsync(ctx, group.BudgetYearId, ct);
 
-        var projection = await ctx.TicketingProjections
-            .FirstOrDefaultAsync(p => p.BudgetGroupId == update.BudgetGroupId, ct)
+        var projection = group.TicketingProjection
             ?? throw new InvalidOperationException("No ticketing projection found for this group.");
 
         projection.StartDate = update.StartDate;
@@ -832,12 +835,22 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         projection.TicketTailorFeePercent = update.TicketTailorFeePercent;
         projection.UpdatedAt = now;
 
+        var created = 0;
+        if (refreshFromDate is { } today)
+        {
+            var (revenueCategory, feesCategory) = FindTicketingCategories(group);
+            if (revenueCategory is not null && feesCategory is not null)
+                created = MaterializeProjectedWeeks(ctx, projection, revenueCategory, feesCategory, today, now);
+        }
+
         AddDescriptionAudit(ctx, group.BudgetYearId, nameof(TicketingProjection), projection.Id,
-            "Updated ticketing projection parameters",
+            refreshFromDate is null
+                ? "Updated ticketing projection parameters"
+                : $"Updated ticketing projection parameters; refreshed {created} projected line item(s)",
             actorUserId, now);
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return created;
     }
 
     public async Task<int> SyncTicketingActualsAsync(
