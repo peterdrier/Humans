@@ -955,7 +955,6 @@ internal sealed class ShiftSignupService(
     {
         var signups = (await repo.GetForUsersAsync([userId], ct: ct))
             .Where(s => s.Status == SignupStatus.NoShow)
-            .OrderByDescending(s => s.ReviewedAt)
             .ToList();
 
         var calendarsById = new Dictionary<Guid, EventSettingsInfo>();

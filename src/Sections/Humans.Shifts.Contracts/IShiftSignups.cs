@@ -28,6 +28,7 @@ public interface IShiftSignups
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
+    /// <summary>No-show entries with review timestamps, without display ordering.</summary>
     Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>One atomic save; returns each cancelled signup so the caller can audit them one by one.</summary>
