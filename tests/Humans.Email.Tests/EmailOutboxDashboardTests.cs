@@ -10,19 +10,22 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using NodaTime;
 
 namespace Humans.Email.Tests;
 
 public sealed class EmailOutboxDashboardTests
 {
     [HumansFact]
-    public async Task EmailOutbox_UsesConfiguredBatchSize()
+    public async Task EmailOutbox_UsesConfiguredBatchSizeAndOrdersDailyCounts()
     {
         var outbox = Substitute.For<IEmailOutboxManagement>();
         outbox.GetOutboxStatsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new EmailOutboxStats(0, 0, 0, 0, false, []));
+        var day = new LocalDate(2026, 8, 15);
         outbox.GetDailySendCountsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new DailySendCountsDto([], []));
+            .Returns(new DailySendCountsDto(
+                [new DailySendCountRow(day, 3, 1), new DailySendCountRow(day.PlusDays(1), 5, 0)], []));
         var controller = new EmailController(
             Substitute.For<IUserService>(), outbox, NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings { OutboxBatchSize = 37 }))
@@ -32,8 +35,10 @@ public sealed class EmailOutboxDashboardTests
 
         var result = await controller.EmailOutbox();
 
-        result.Should().BeOfType<ViewResult>().Subject.Model
-            .Should().BeOfType<EmailOutboxViewModel>().Subject.OutboxBatchSize.Should().Be(37);
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<EmailOutboxViewModel>().Subject;
+        model.OutboxBatchSize.Should().Be(37);
+        model.DailyCounts.Select(r => r.Date).Should().Equal(day.PlusDays(1), day);
     }
     [HumansTheory]
     [InlineData("stats")]
