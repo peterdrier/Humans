@@ -246,7 +246,8 @@ internal sealed class BackdoorFinanceController(
                 problems = r.Totals.Problems,
                 warnings = r.Totals.Warnings,
             },
-            lines = r.Lines.Select(l => new
+            lines = r.Lines.OrderByDescending(l => l.IsProblem).ThenBy(l => l.Status)
+                .ThenByDescending(l => l.DocumentDate).Select(l => new
             {
                 expenseReportId = l.ExpenseReportId,
                 lineId = l.LineId,
@@ -265,7 +266,7 @@ internal sealed class BackdoorFinanceController(
                 duplicateDocIds = l.DuplicateDocIds,
                 excessAmount = l.ExcessAmount,
             }),
-            orphans = r.Orphans.Select(o => new
+            orphans = r.Orphans.OrderByDescending(o => o.Date).Select(o => new
             {
                 holdedDocId = o.HoldedDocId,
                 docNumber = o.DocNumber,
@@ -276,7 +277,8 @@ internal sealed class BackdoorFinanceController(
                 total = o.Total,
                 kind = o.Kind.ToString(),
             }),
-            members = r.Members.Select(m => new
+            members = r.Members.OrderByDescending(m => m.IsWarning)
+                .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase).Select(m => new
             {
                 userId = m.UserId,
                 memberName = m.MemberName,

@@ -2,9 +2,11 @@
 @{
     ViewData["Title"] = "Expense Reconciliation";
     var totals = Model.Totals;
-    var problemLines = Model.Lines.Where(l => l.IsProblem).ToList();
-    var okLines = Model.Lines.Where(l => !l.IsProblem).ToList();
-    var warningMembers = Model.Members.Where(m => m.IsWarning).ToList();
+    var lines = Model.Lines.OrderBy(l => l.Status).ThenByDescending(l => l.DocumentDate).ToList();
+    var problemLines = lines.Where(l => l.IsProblem).ToList();
+    var okLines = lines.Where(l => !l.IsProblem).ToList();
+    var members = Model.Members.OrderByDescending(m => m.IsWarning)
+        .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase).ToList();
 }
 
 @functions {
@@ -105,7 +107,7 @@
                 <tr><th>Date</th><th>Doc</th><th>Contact</th><th>Description</th><th>Notes</th><th class="text-end">Total</th><th>Kind</th></tr>
             </thead>
             <tbody>
-                @foreach (var o in Model.Orphans)
+                @foreach (var o in Model.Orphans.OrderByDescending(o => o.Date))
                 {
                     <tr>
                         <td class="text-nowrap">@o.Date.ToInvariantDate()</td>
@@ -136,7 +138,7 @@
             <tr><th>Member</th><th>Account</th><th class="text-end">Ledger</th><th class="text-end">Expected</th><th>Status</th><th>Open SEPA transfers</th></tr>
         </thead>
         <tbody>
-            @foreach (var m in warningMembers.Concat(Model.Members.Where(x => !x.IsWarning)))
+            @foreach (var m in members)
             {
                 var (css, label) = MemberBadge(m);
                 <tr>

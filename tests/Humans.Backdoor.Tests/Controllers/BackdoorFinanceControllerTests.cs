@@ -644,18 +644,21 @@ public class BackdoorFinanceControllerTests
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
         var member = Guid.NewGuid();
+        var line = new ExpenseReconLine(Guid.NewGuid(), Guid.NewGuid(), member, "Ana", "ER: Train", 100m,
+            new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Duplicated, "d1", "F1", 100m, "Ana T",
+            ["d2"], 100m);
+        var orphan = new ExpenseReconOrphan("d9", "F9", new LocalDate(2026, 10, 11), "Nobody", "ER: X", null, 5m,
+            ExpenseReconOrphanKind.UnboundContact);
+        var warning = new ExpenseReconMember(member, "Ana", 41000001, -200m, -100m, ExpenseReconMemberStatus.Off,
+            [new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)]);
         _finance.GetExpenseReconAsync(2026, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             2026, Instant.FromUtc(2026, 10, 29, 2, 45), null, [2026],
-            [
-                new ExpenseReconLine(Guid.NewGuid(), Guid.NewGuid(), member, "Ana", "ER: Train", 100m,
-                    new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Duplicated, "d1", "F1", 100m, "Ana T",
-                    ["d2"], 100m),
-            ],
-            [new ExpenseReconOrphan("d9", "F9", new LocalDate(2026, 10, 11), "Nobody", "ER: X", null, 5m,
-                ExpenseReconOrphanKind.UnboundContact)],
-            [new ExpenseReconMember(member, "Ana", 41000001, -200m, -100m, ExpenseReconMemberStatus.Off,
-                [new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)])],
-            new ExpenseReconTotals(1, 1, 3, 1, 1, 100m, 1, 1)));
+            [line with { ExpenseReportId = Guid.NewGuid(), LineId = Guid.NewGuid(), Status = ExpenseReconLineStatus.Booked,
+                HoldedDocId = "booked", DuplicateDocIds = [], ExcessAmount = 0m }, line],
+            [orphan with { HoldedDocId = "older", Date = orphan.Date.PlusDays(-1) }, orphan],
+            [warning with { UserId = Guid.NewGuid(), MemberName = "Aardvark", LedgerBalance = -100m, Status = ExpenseReconMemberStatus.Balanced },
+                warning with { UserId = Guid.NewGuid(), MemberName = "Zed" }, warning],
+            new ExpenseReconTotals(2, 2, 5, 1, 1, 100m, 2, 2)));
 
         var result = await _sut.ExpenseRecon(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -664,9 +667,16 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""documentDate"":""2026-10-10""");
         json.Should().Contain(@"""kind"":""UnboundContact""");
         json.Should().Contain(@"""difference"":-100");
-        json.Should().Contain(@"""problems"":2");
-        json.Should().Contain(@"""warnings"":1");
+        json.Should().Contain(@"""problems"":3");
+        json.Should().Contain(@"""warnings"":2");
         json.Should().NotContainEquivalentOf("iban");
+        using var body = JsonDocument.Parse(json);
+        body.RootElement.GetProperty("lines").EnumerateArray().Select(l => l.GetProperty("holdedDocId").GetString())
+            .Should().Equal("d1", "booked");
+        body.RootElement.GetProperty("orphans").EnumerateArray().Select(o => o.GetProperty("holdedDocId").GetString())
+            .Should().Equal("d9", "older");
+        body.RootElement.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("memberName").GetString())
+            .Should().Equal("Ana", "Zed", "Aardvark");
     }
 
     private const string SpacedIban = "es79 2100 0813 6101 2345 6789";
