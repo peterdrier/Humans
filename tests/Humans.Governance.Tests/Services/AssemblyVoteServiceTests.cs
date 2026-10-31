@@ -41,6 +41,54 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public void Dispose() => _fx.Dispose();
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task VoteLists_ApplyTheirDisplayOrder(bool admin)
+    {
+        var userId = Guid.NewGuid();
+        var now = Instant.FromUtc(2026, 10, 1, 0, 0);
+        AssemblyVoteListItem Item(AssemblyVoteStatus status, int days) =>
+            new(Guid.NewGuid(), "Vote", status, AssemblyVoteKind.YesNo, now + Duration.FromDays(days),
+                null, false, false, false, new(0, 0, 0, 0, 0, 0, null));
+        var closed = Item(AssemblyVoteStatus.Closed, 3);
+        var early = Item(AssemblyVoteStatus.Open, 1);
+        var late = Item(AssemblyVoteStatus.Open, 2);
+        var votes = Substitute.For<IAssemblyVoteService>();
+        votes.GetVotesForMemberAsync(userId, Arg.Any<CancellationToken>()).Returns([closed, early, late]);
+        votes.GetAllForAdminAsync(Arg.Any<CancellationToken>()).Returns([early, closed, late]);
+        var context = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+            }
+        };
+        IReadOnlyList<AssemblyVoteListItem> ordered;
+        if (admin)
+        {
+            var controller = new GovernanceVotesAdminController(_fx.Users, votes,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+                { ControllerContext = context };
+            var view = (await controller.Index(TestContext.Current.CancellationToken))
+                .Should().BeOfType<ViewResult>().Subject;
+            ordered = view.Model.Should().BeOfType<AssemblyVoteAdminListViewModel>().Subject.Votes;
+        }
+        else
+        {
+            var controller = new GovernanceVotesController(_fx.Users, votes,
+                Substitute.For<IStringLocalizer<GovernanceResource>>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+                { ControllerContext = context };
+            var view = (await controller.Index(TestContext.Current.CancellationToken))
+                .Should().BeOfType<ViewResult>().Subject;
+            ordered = view.Model.Should().BeOfType<AssemblyVoteListViewModel>().Subject.Votes;
+        }
+        ordered.Select(v => v.Id).Should().Equal(admin
+            ? [closed.Id, late.Id, early.Id] : new[] { late.Id, early.Id, closed.Id });
+    }
+
+
+    [HumansTheory]
     [InlineData("malformed")]
     [InlineData("missing-key")]
     [InlineData("blank")]

@@ -26,7 +26,10 @@ internal sealed class GovernanceVotesAdminController(
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var votes = await voteService.GetAllForAdminAsync(ct);
-        return View("~/Views/Governance/Votes/Admin/Index.cshtml", new AssemblyVoteAdminListViewModel { Votes = votes });
+        return View("~/Views/Governance/Votes/Admin/Index.cshtml", new AssemblyVoteAdminListViewModel
+        {
+            Votes = votes.OrderByDescending(v => v.ClosesAt).ToList()
+        });
     }
 
     [HttpGet("Create")]

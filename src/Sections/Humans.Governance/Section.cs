@@ -282,6 +282,7 @@ public sealed class Section :
 
         return votes
             .Where(v => v.Status == AssemblyVoteStatus.Open && v.IsOnRoster)
+            .OrderByDescending(v => v.ClosesAt)
             .Select(v => new ThingsToDoEntry(
                 $"assembly-vote-{v.Id}",
                 localizer["Todo_AssemblyVote_Title"].Value,

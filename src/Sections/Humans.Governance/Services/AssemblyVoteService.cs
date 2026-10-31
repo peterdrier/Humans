@@ -106,12 +106,7 @@ internal sealed class AssemblyVoteService(
                 await repository.GetParticipationAsync(vote.Id, ct)));
         }
 
-        // Open votes first, then most recently closing. A few rows a year — ordering in
-        // memory is cheaper to read than to express in SQL.
-        return items
-            .OrderByDescending(i => i.Status == AssemblyVoteStatus.Open)
-            .ThenByDescending(i => i.ClosesAt)
-            .ToList();
+        return items;
     }
 
     public async Task<AssemblyVoteDetail?> GetVoteForMemberAsync(
@@ -712,7 +707,7 @@ internal sealed class AssemblyVoteService(
                 await repository.GetParticipationAsync(vote.Id, ct)));
         }
 
-        return items.OrderByDescending(i => i.ClosesAt).ToList();
+        return items;
     }
 
     public async Task<AssemblyVoteDraft?> GetDraftAsync(Guid voteId, CancellationToken ct = default)
