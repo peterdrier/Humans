@@ -35,10 +35,7 @@ internal sealed partial class ApplicationRepository
         }
         else
         {
-            row.Tier = values.Tier;
-            row.GrantedAt = values.GrantedAt;
-            row.ExpiresAt = values.ExpiresAt;
-            row.GrantedByApplicationId = values.GrantedByApplicationId;
+            ctx.Entry(row).CurrentValues.SetValues(Copy(values, values.UserId));
         }
     }
 
