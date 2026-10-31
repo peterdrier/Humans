@@ -861,6 +861,48 @@ public class ServiceIssueInvoiceTests
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(true, "subtotal")]
+    [InlineData(true, "tax")]
+    [InlineData(true, "total")]
+    [InlineData(false, "subtotal")]
+    [InlineData(false, "tax")]
+    [InlineData(false, "total")]
+    public async Task A_new_document_with_mismatched_totals_stays_open_and_is_not_reissued(bool identified, string field)
+    {
+        var order = CampOrder(identified: identified);
+        Arrange(order, IceProduct());
+        var kind = identified ? HoldedSalesDocumentKind.Invoice : HoldedSalesDocumentKind.SalesReceipt;
+        var document = SalesDoc(isDraft: false, id: "doc-1");
+        document = field switch
+        {
+            "subtotal" => document with { Subtotal = 101m },
+            "tax" => document with { Tax = 22m },
+            _ => document with { Total = 122m },
+        };
+        _holded.GetSalesDocumentAsync(kind, document.Id, Arg.Any<CancellationToken>()).Returns(document);
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*no longer matches*");
+        order.State.Should().Be(OrderState.Open);
+        order.IssuedInvoiceId.Should().BeNull();
+        _holded.FindSalesDocumentIdsByTagAsync(kind, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
+            .Returns(new List<string> { document.Id });
+
+        var retry = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        retry.Succeeded.Should().BeFalse();
+        retry.Refusal.Should().Match("*no longer matches*");
+        await _holded.Received(1).CreateSalesDocumentAsync(kind, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _holded.Received(1).ApproveSalesDocumentAsync(kind, document.Id, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().SaveIssuedInvoiceAsync(Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            StoreAuditActions.StoreInvoiceIssued, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
     [HumansFact]
     public async Task A_recovered_document_that_no_longer_matches_the_order_refuses_loudly()
     {
