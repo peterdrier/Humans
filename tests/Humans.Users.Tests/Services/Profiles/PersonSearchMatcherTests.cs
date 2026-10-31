@@ -273,11 +273,25 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Volunteer_cv_matches_under_Bio_scope()
+    public void Volunteer_cv_matches_newest_matching_entry_under_Bio_scope()
     {
-        var human = Human(burnerName: "Sparkle", cv: [("Nowhere 2024", "Gate crew")]);
+        var human = Human(burnerName: "Sparkle");
+        human = human with
+        {
+            Profile = human.Profile! with
+            {
+                VolunteerHistory =
+                [
+                    new(Guid.NewGuid(), new LocalDate(2024, 7, 1), "Elsewhere 2024", "Gate crew"),
+                    new(Guid.NewGuid(), new LocalDate(2026, 7, 1), "Unrelated event", "Kitchen crew"),
+                    new(Guid.NewGuid(), new LocalDate(2025, 7, 1), "Elsewhere 2025", "Gate crew"),
+                ]
+            }
+        };
 
-        PersonSearchMatcher.Match(human, "nowhere", PersonSearchFields.Bio).Should().NotBeNull();
+        var match = PersonSearchMatcher.Match(human, "elsewhere", PersonSearchFields.Bio);
+        match.Should().NotBeNull();
+        match!.Snippet.Should().Be("Elsewhere 2025");
     }
 
     [HumansFact]

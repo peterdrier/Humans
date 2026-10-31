@@ -81,11 +81,11 @@ internal static class PersonSearchMatcher
             if (FoldedContains(p.Pronouns, foldedQuery))
                 return new PersonSearchMatch(Label("Users_Search_Pronouns"), p.Pronouns, null, ScoreOtherField);
 
-            foreach (var v in p.VolunteerHistory)
-            {
-                if (FoldedContains(v.EventName, foldedQuery) || FoldedContains(v.Description, foldedQuery))
-                    return new PersonSearchMatch(Label("Users_Profile_BurnerCV"), v.EventName, null, ScoreOtherField);
-            }
+            var historyMatch = p.VolunteerHistory
+                .Where(v => FoldedContains(v.EventName, foldedQuery) || FoldedContains(v.Description, foldedQuery))
+                .MaxBy(v => v.Date);
+            if (historyMatch is not null)
+                return new PersonSearchMatch(Label("Users_Profile_BurnerCV"), historyMatch.EventName, null, ScoreOtherField);
 
             foreach (var cf in p.ContactFields)
             {

@@ -50,7 +50,6 @@ internal static class UserInfoFactory
             .ToList();
 
         var volunteerHistoryInfos = volunteerHistory
-            .OrderByDescending(v => v.Date)
             .Select(v => new VolunteerHistoryInfo(v.Id, v.Date, v.EventName, v.Description))
             .ToList();
 

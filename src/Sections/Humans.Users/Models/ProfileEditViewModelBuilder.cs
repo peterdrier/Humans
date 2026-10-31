@@ -69,7 +69,9 @@ internal static class ProfileEditViewModelBuilder
                 Visibility = cf.Visibility,
                 DisplayOrder = cf.DisplayOrder
             }).ToList(),
-            EditableVolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryEditViewModel
+            EditableVolunteerHistory = (profile?.VolunteerHistory ?? [])
+                .OrderByDescending(cv => cv.Date)
+                .Select(cv => new VolunteerHistoryEntryEditViewModel
             {
                 Id = cv.Id,
                 DateString = cv.Date.ToInvariantDate(),

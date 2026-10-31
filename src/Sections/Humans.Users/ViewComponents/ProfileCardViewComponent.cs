@@ -123,7 +123,9 @@ public sealed class ProfileCardViewComponent(
                 Value = cf.Value,
                 Visibility = cf.Visibility
             }).ToList(),
-            VolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryViewModel
+            VolunteerHistory = (profile?.VolunteerHistory ?? [])
+                .OrderByDescending(cv => cv.Date)
+                .Select(cv => new VolunteerHistoryEntryViewModel
             {
                 Date = cv.Date,
                 EventName = cv.EventName,
