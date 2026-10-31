@@ -310,13 +310,10 @@ internal sealed class StoreOrderReader(
                 productNames.TryGetValue(g.Key, out var n) ? n : "(unknown)",
                 g.Sum(x => x.Qty),
                 g.Sum(x => x.TotalEur)))
-            .OrderByDescending(p => p.TotalQty)
-            .ThenBy(p => p.ProductName, StringComparer.Ordinal)
             .ToList();
 
         var productColumns = byItem
             .Select(p => new CrossTabColumn(p.ProductId, p.ProductName, p.TotalQty))
-            .OrderBy(c => c.ProductName, StringComparer.Ordinal)
             .ToList();
 
         var counterpartyRows = counterparties

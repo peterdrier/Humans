@@ -208,7 +208,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - Add/remove line operations forward caller cancellation to the read-only event-timezone lookup before changing line rows or writing their audit entries.
 - Catalog and order-line/counterparty result wrappers surface only known Store validation/rule feedback. Unexpected dependency failures log Error with the exception and return no diagnostic text, selecting the controller's existing localized fallback (operator-only catalog uses its existing generic error). Cancellation still propagates.
 
-- The admin summary uses one camp/team counterparty projection for order totals, product totals and quantity cross-tabs. Cross-tab identity includes both counterparty type and id; team payment and balance cells remain zero.
+- The admin summary uses one camp/team counterparty projection for order totals, product totals and quantity cross-tabs. Cross-tab identity includes both counterparty type and id; team payment and balance cells remain zero. Its view orders product totals by quantity descending then name, and cross-tab columns by product name, using ordinal comparison. Headers, body cells and footer totals share that ordered column list; the reader returns unordered aggregates.
 - Admin summary camp totals use the selected UI culture, matching the table’s row amounts. Camp-only totals, payment calculations and invariant sort keys remain unchanged.
 
 - Member order price-history tables supply localized date/action/description headers through the shared audit component’s keyed labels, preserving product predicates, column order and audit entries.
