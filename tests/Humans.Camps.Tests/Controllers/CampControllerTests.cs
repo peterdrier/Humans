@@ -730,15 +730,25 @@ public class CampControllerTests
         var filteredOut = MakeCamp("zeta", "Zeta Camp", CampSeasonStatus.Full, kidsWelcome: YesNoMaybe.No);
         var pending = MakeCamp("pending", "Pending Camp", CampSeasonStatus.Pending);
         StubCampReadModel([matching, filteredOut, pending]);
+        _roles.GetDirectoryRoleSummariesAsync(EventIdFor(2026), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>
+            {
+                [matching.Seasons.Single().Id] = [
+                    new("Zebra", 2, 3) { SortOrder = 1 },
+                    new("Alpha", 0, 1) { SortOrder = 1 },
+                    new("Priority", 1, 1) { SortOrder = -1 },
+                ],
+            });
         var controller = BuildController();
 
-        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true }, TestContext.Current.CancellationToken);
+        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true, ShowLeadPositions = true }, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
         vm.Year.Should().Be(2026);
         vm.Camps.Should().ContainSingle(c => c.Id == matching.Id);
         vm.Camps.Single().ImageUrl.Should().Be("/cover.jpg");
+        vm.Camps.Single().LeadPositionPills.Select(pill => pill.Name).Should().Equal("Priority", "Alpha", "Zebra");
         vm.MyCamps.Should().BeEmpty();
         ((int)controller.ViewBag.PendingCount).Should().Be(1);
         await _camps.Received(1).GetSettingsAsync(Arg.Any<CancellationToken>());
@@ -1038,7 +1048,11 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CampRolesPanelData(season.Id, [])));
+            .Returns(new CampRolesPanelData(season.Id, [
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [], 1, false, 0),
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Alpha", SortOrder = 1 }, [], 1, false, 0),
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Priority", SortOrder = -1 }, [], 1, false, 0),
+            ]));
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(
                 new Dictionary<Guid, ShiftUserSummary>
@@ -1061,6 +1075,7 @@ public class CampControllerTests
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
+        vm.RolesPanel!.Rows.Select(row => row.Name).Should().Equal("Priority", "Alpha", "Zebra");
         vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
         vm.ActiveMembers.Single(m => m.UserId == oneShiftMemberId).EventShiftSignupCount.Should().Be(1);
         vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupCount.Should().Be(5);

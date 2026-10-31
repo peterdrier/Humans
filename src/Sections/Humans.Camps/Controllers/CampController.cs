@@ -149,7 +149,8 @@ internal sealed class CampController(
             Status = season.Status,
             TimesAtNowhere = camp.TimesAtNowhere,
             LeadPositionPills = roleSummaries is not null && roleSummaries.TryGetValue(season.Id, out var summaries)
-            ? summaries.Select(s => new CampLeadPositionPillViewModel
+            ? summaries.OrderBy(s => s.SortOrder).ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(s => new CampLeadPositionPillViewModel
             {
                 Name = s.Name,
                 FilledCount = s.Filled,
@@ -517,7 +518,9 @@ internal sealed class CampController(
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var rows = panelData.Rows.Select(r => new CampRoleRowViewModel
+        var rows = panelData.Rows
+            .OrderBy(r => r.Definition.SortOrder).ThenBy(r => r.Definition.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new CampRoleRowViewModel
         {
             DefinitionId = r.Definition.Id,
             Name = r.Definition.Name,

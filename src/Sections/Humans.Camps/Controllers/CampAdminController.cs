@@ -261,7 +261,9 @@ internal sealed class CampAdminController(
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(CancellationToken ct)
     {
-        var defs = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, ct);
+        var defs = (await campRoleService.ListDefinitionsAsync(includeDeactivated: true, ct))
+            .OrderBy(d => d.SortOrder).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         var settings = await campService.GetSettingsAsync(ct);
         var year = settings.PublicYear;
         CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
