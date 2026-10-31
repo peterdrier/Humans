@@ -333,16 +333,11 @@ internal sealed partial class WorkgroupService(
         ApplyFields(workgroup, edit.Name, edit.Purpose, edit.Deliverable, edit.DeliverableKind,
             edit.Audience, edit.TargetDate, edit.DiscordChannelUrl, edit.IsSensitive);
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
-        ct = CancellationToken.None;
-
-        if (scopeChanged)
-        {
-            await AddSystemEntryAsync(workgroup, WorkgroupLogKind.ScopeChanged, now,
+        await repository.UpdateWorkgroupAsync(workgroup, ct, scopeChanged
+            ? [SystemEntry(workgroup.Id, WorkgroupLogKind.ScopeChanged, now,
                 $"By {workgroup.TargetDate?.ToInvariantLongDate() ?? "no date yet"} we will deliver "
-                    + $"{workgroup.Deliverable} to the {workgroup.Audience}.",
-                ct, authorUserId: actorUserId);
-        }
+                    + $"{workgroup.Deliverable} to the {workgroup.Audience}.", authorUserId: actorUserId)]
+            : null);
         return new();
     }
 
@@ -630,11 +625,9 @@ internal sealed partial class WorkgroupService(
             workgroup.HoldedAccountId = account.AccountId;
         }
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
-        ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup), ct,
-            authorUserId: actorUserId);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup),
+                authorUserId: actorUserId)]);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
         return new(account);
     }

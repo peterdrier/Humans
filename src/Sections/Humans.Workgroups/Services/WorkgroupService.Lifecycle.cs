@@ -29,9 +29,9 @@ internal sealed partial class WorkgroupService
         workgroup.RegisteredAt = now;
         workgroup.Reasons = null;
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Registered, now, body: null)]);
 
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Registered, now, body: null, ct);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
@@ -50,10 +50,10 @@ internal sealed partial class WorkgroupService
         var now = clock.GetCurrentInstant();
         workgroup.Status = WorkgroupStatus.Referred;
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Referred, now, Trimmed(note))]);
         ct = CancellationToken.None;
 
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Referred, now, Trimmed(note), ct);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupReferred, workgroup,
             $"Referred '{workgroup.Name}' to the Board{(Trimmed(note) is { } n ? $": {n}" : "")}",
             actorUserId);
@@ -79,10 +79,10 @@ internal sealed partial class WorkgroupService
         workgroup.Status = WorkgroupStatus.Refused;
         workgroup.Reasons = reasons.Trim();
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Refused, now, reasons.Trim())]);
         ct = CancellationToken.None;
 
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Refused, now, reasons.Trim(), ct);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupRefused, workgroup,
             $"Refused '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Refused, reasons.Trim(), ct);
@@ -104,11 +104,10 @@ internal sealed partial class WorkgroupService
         workgroup.Reasons = reasons.Trim();
         workgroup.EndedAt = now;
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Withdrawn, now, reasons.Trim())],
+            ClosePendingRequests(workgroup, now));
         ct = CancellationToken.None;
-        await ClosePendingRequestsAsync(workgroup, now, ct);
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Withdrawn, now, reasons.Trim(), ct);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupWithdrawn, workgroup,
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
@@ -145,10 +144,10 @@ internal sealed partial class WorkgroupService
         workgroup.EndedAt = null;
         workgroup.Reasons = null;
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Reactivated, now, body: null)]);
         ct = CancellationToken.None;
 
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Reactivated, now, body: null, ct);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);

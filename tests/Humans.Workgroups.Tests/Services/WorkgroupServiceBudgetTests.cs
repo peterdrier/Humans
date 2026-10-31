@@ -102,11 +102,13 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         var repository = Substitute.For<IWorkgroupRepository>();
         repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
             .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
-        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>())
+        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>(),
+                Arg.Any<IReadOnlyList<WorkgroupLogEntry>?>(), Arg.Any<IReadOnlyList<WorkgroupMember>?>())
             .Returns(async c =>
             {
                 c.Arg<CancellationToken>().Should().Be(cancellation.Token);
-                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>());
+                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>(),
+                    c.Arg<IReadOnlyList<WorkgroupLogEntry>?>(), c.Arg<IReadOnlyList<WorkgroupMember>?>());
                 await cancellation.CancelAsync();
             });
         repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())

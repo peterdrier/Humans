@@ -43,7 +43,10 @@ internal interface IWorkgroupRepository : IRepository
     /// <summary>Inserts the group with the rows created in the same act (members, the log entry).</summary>
     Task AddWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default);
 
-    Task UpdateWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default);
+    /// <summary>Group fields, optional system log entries and explicit member changes in one save.</summary>
+    Task UpdateWorkgroupAsync(
+        Workgroup workgroup, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null,
+        IReadOnlyList<WorkgroupMember>? membersToUpdate = null);
 
     /// <summary>Membership and its optional system log entries in one save.</summary>
     Task AddMemberAsync(

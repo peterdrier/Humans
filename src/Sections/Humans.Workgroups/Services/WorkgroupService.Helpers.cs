@@ -537,12 +537,11 @@ internal sealed partial class WorkgroupService
     }
 
     /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
-    private async Task ClosePendingRequestsAsync(Workgroup w, Instant now, CancellationToken ct)
+    private static IReadOnlyList<WorkgroupMember> ClosePendingRequests(Workgroup w, Instant now)
     {
         var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
-        if (pending.Count == 0) return;
         foreach (var m in pending) m.LeftAt = now;
-        await repository.UpdateMembersAsync(pending, ct);
+        return pending;
     }
 
     /// <summary>The one place a group ends, whether a member marked it done or the Secretary closed it.</summary>
@@ -559,13 +558,11 @@ internal sealed partial class WorkgroupService
         w.Reasons = Trimmed(reasons) ?? w.Reasons;
         w.EndedAt = now;
         w.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(w, ct);
+        await repository.UpdateWorkgroupAsync(w, ct,
+            [SystemEntry(w.Id, WorkgroupLogKind.Ended, now, Trimmed(reasons) ?? reason.ToString(),
+                authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId)],
+            ClosePendingRequests(w, now));
         ct = CancellationToken.None;
-        await ClosePendingRequestsAsync(w, now, ct);
-
-        await AddSystemEntryAsync(w, WorkgroupLogKind.Ended, now,
-            Trimmed(reasons) ?? reason.ToString(), ct,
-            authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId);
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
 
