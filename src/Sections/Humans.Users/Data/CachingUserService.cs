@@ -533,16 +533,6 @@ internal sealed class CachingUserService(
         await RefreshEntryAsync(userId);
     }
 
-    public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
-        Guid userId,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.AnonymizeProfileForDeletionAsync(userId, ct));
-        if (result.Anonymized) await RefreshEntryAsync(userId);
-        return result;
-    }
-
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
         IReadOnlyList<ProfileLanguageInfo> languages,

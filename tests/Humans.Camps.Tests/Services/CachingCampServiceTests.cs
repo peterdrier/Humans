@@ -565,7 +565,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.MarkSeasonFullAsync), (t, c, se, ct) => t._service.MarkSeasonFullAsync(c, se, actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.ChangeSeasonNameAsync), (t, c, se, ct) => t._service.ChangeSeasonNameAsync(c, se, "New Name", actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.AddHistoricalNameAsync), (t, c, se, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", TestActorId, ct) },
         { nameof(ICampManagement.RemoveHistoricalNameAsync), (t, c, se, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), TestActorId, ct) },

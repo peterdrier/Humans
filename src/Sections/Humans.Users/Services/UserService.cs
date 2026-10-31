@@ -480,7 +480,7 @@ internal sealed class UserService(
         await repo.UpdateAsync(profile, ct);
     }
 
-    public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
+    internal async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
         CancellationToken ct = default)
     {

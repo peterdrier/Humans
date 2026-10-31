@@ -1130,7 +1130,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
     }
 
-    public async Task<CampUpdateResult> ChangeSeasonNameAsync(
+    internal async Task<CampUpdateResult> ChangeSeasonNameAsync(
         Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;

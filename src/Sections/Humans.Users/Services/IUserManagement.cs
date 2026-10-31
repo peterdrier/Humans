@@ -77,13 +77,6 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         string? medicalConditions,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Clears identifying profile fields; the caller deletes the picture file first.
-    /// </summary>
-    Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
-        Guid userId,
-        CancellationToken ct = default);
-
     Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
         IReadOnlyList<ProfileLanguageInfo> languages,

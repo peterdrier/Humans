@@ -83,9 +83,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task<CampUpdateResult> ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default);
-
     /// <summary>Idempotent — returns existing row's id with an <c>Already*</c> outcome if one exists.</summary>
     Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default);

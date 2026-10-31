@@ -395,15 +395,6 @@ internal sealed class CachingCampService(
             await InvalidateSettingsAsync(cancellationToken);
         });
 
-    public Task<CampUpdateResult> ChangeSeasonNameAsync(
-        Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default) =>
-        MutateAsync(async () =>
-        {
-            var result = await WithInnerAsync(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, actorUserId: actorUserId, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
-            return result;
-        });
-
     // Membership writes — invalidate the parent camp (EeGrantedCount + MemberCount move).
 
     public Task<CampMemberRequestResult> RequestCampMembershipAsync(
