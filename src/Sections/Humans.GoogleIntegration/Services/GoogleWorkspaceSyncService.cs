@@ -1070,25 +1070,14 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         void Add(string key, string? val) { if (val is not null) dict[key] = val; }
 
-        Add("WhoCanJoin", s.WhoCanJoin);
-        Add("WhoCanViewMembership", s.WhoCanViewMembership);
-        Add("WhoCanContactOwner", s.WhoCanContactOwner);
-        Add("WhoCanPostMessage", s.WhoCanPostMessage);
-        Add("WhoCanViewGroup", s.WhoCanViewGroup);
-        Add("WhoCanModerateMembers", s.WhoCanModerateMembers);
+        foreach (var (key, value) in SnapshotToEnforcedDict(s))
+            Add(key, value);
+
         Add("WhoCanModerateContent", s.WhoCanModerateContent);
         Add("WhoCanAssistContent", s.WhoCanAssistContent);
         Add("WhoCanDiscoverGroup", s.WhoCanDiscoverGroup);
         Add("WhoCanLeaveGroup", s.WhoCanLeaveGroup);
-        Add("AllowExternalMembers", s.AllowExternalMembers);
-        Add("AllowWebPosting", s.AllowWebPosting);
-        Add("IsArchived", s.IsArchived);
         Add("ArchiveOnly", s.ArchiveOnly);
-        Add("MembersCanPostAsTheGroup", s.MembersCanPostAsTheGroup);
-        Add("IncludeInGlobalAddressList", s.IncludeInGlobalAddressList);
-        Add("EnableCollaborativeInbox", s.EnableCollaborativeInbox);
-        Add("MessageModerationLevel", s.MessageModerationLevel);
-        Add("SpamModerationLevel", s.SpamModerationLevel);
         Add("ReplyTo", s.ReplyTo);
         Add("CustomReplyTo", s.CustomReplyTo);
         Add("IncludeCustomFooter", s.IncludeCustomFooter);
