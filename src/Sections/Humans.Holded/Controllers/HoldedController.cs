@@ -27,8 +27,16 @@ internal sealed class HoldedController(
 
     [HttpGet("Accounts")]
     public async Task<IActionResult> Accounts(
-        bool archived = false, bool empty = false, bool mismatched = false, CancellationToken ct = default) =>
-        View(await admin.GetAccountsPageAsync(new HoldedAccountsFilter(archived, empty, mismatched), ct));
+        bool archived = false, bool empty = false, bool mismatched = false, CancellationToken ct = default)
+    {
+        var page = await admin.GetAccountsPageAsync(new HoldedAccountsFilter(archived, empty, mismatched), ct);
+        return View(page with
+        {
+            Groups = page.Groups.OrderBy(group => group.Digit)
+                .Select(group => group with { Accounts = group.Accounts.OrderBy(account => account.Number).ToList() })
+                .ToList()
+        });
+    }
 
     [HttpGet("Calls")]
     public async Task<IActionResult> Calls(CancellationToken ct) =>

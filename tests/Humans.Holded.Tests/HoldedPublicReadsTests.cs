@@ -197,9 +197,9 @@ public sealed class HoldedPublicReadsTests
 
         var page = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);
 
-        page.Groups.Select(g => (g.Digit, g.Name)).Should().Equal(
-            (4, "Receivables and payables"), (5, "Financial accounts"));
-        var bank = page.Groups[1];
+        page.Groups.Select(g => (g.Digit, g.Name)).Should().BeEquivalentTo([
+            (4, "Receivables and payables"), (5, "Financial accounts")]);
+        var bank = page.Groups.Single(group => group.Digit == 5);
         bank.Accounts.Select(a => a.Number).Should().Equal(57200001);
         bank.HoldedBalance.Should().Be(500m);
         bank.MirrorBalance.Should().Be(400m);
@@ -209,7 +209,8 @@ public sealed class HoldedPublicReadsTests
         page.HiddenEmpty.Should().Be(1);
 
         var all = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowArchived: true, ShowEmpty: true), ct);
-        all.Groups[1].Accounts.Select(a => a.Number).Should().Equal(57200001, 57200002, 57200003);
+        all.Groups.Single(group => group.Digit == 5).Accounts.Select(a => a.Number)
+            .Should().BeEquivalentTo([57200001, 57200002, 57200003]);
 
         var mismatched = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(Mismatched: true), ct);
         mismatched.Groups.SelectMany(g => g.Accounts).Select(a => a.Number).Should().Equal(57200001);

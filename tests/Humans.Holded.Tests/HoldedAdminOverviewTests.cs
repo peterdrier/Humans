@@ -44,9 +44,14 @@ public sealed class HoldedAdminOverviewTests
     }
 
     /// <summary>Every non-archived row of /Holded/Accounts, empty ones included, in page order.</summary>
-    private async Task<IReadOnlyList<HoldedAccountRow>> ChartRowsAsync(CancellationToken ct) =>
-        (await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowEmpty: true), ct))
-            .Groups.SelectMany(g => g.Accounts).ToList();
+    private async Task<IReadOnlyList<HoldedAccountRow>> ChartRowsAsync(CancellationToken ct)
+    {
+        var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
+            NullLogger<HoldedController>.Instance);
+        var page = (await controller.Accounts(empty: true, ct: ct)).Should().BeOfType<ViewResult>().Which.Model
+            .Should().BeOfType<HoldedAccountsPage>().Which;
+        return page.Groups.SelectMany(group => group.Accounts).ToList();
+    }
 
     private static HoldedApiCall Call(Instant at, string endpoint) => new()
     {
@@ -179,11 +184,11 @@ public sealed class HoldedAdminOverviewTests
 
         var page = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowEmpty: true), ct);
 
-        page.Groups.Select(g => g.Name).Should().Equal(
+        page.Groups.Select(g => g.Name).Should().BeEquivalentTo([
             "Receivables and payables",
             "Financial accounts",
             "Purchases and expenses",
-            "Sales and income");
+            "Sales and income"]);
     }
 
     [HumansFact]

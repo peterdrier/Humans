@@ -239,7 +239,6 @@ internal sealed class Service(
 
         var groups = visible
             .GroupBy(r => LeadingDigit(r.Number))
-            .OrderBy(g => g.Key)
             .Select(g => new HoldedAccountGroup(
                 g.Key, GroupName(g.First().Number), g.ToList(),
                 g.Sum(r => r.HoldedBalance), g.Sum(r => r.LocalBalance ?? 0m),
@@ -323,7 +322,6 @@ internal sealed class Service(
             .Concat(totals.Values
                 .Where(t => !chartNumbers.Contains(t.AccountNum))
                 .Select(t => MakeAccountRow(t.AccountNum, "", 0m, t.Balance, t.LineCount, false, false)))
-            .OrderBy(r => r.Number)
             .ToList();
     }
 

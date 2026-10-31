@@ -132,6 +132,8 @@ shown here.
 
 ## Invariants
 
+- The Accounts controller orders PGC groups by leading digit and each group's accounts by number. Service grouping, filters and totals do not impose display order; summary counts are independent of row order.
+
 - The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets newest first. Services supply the state and aggregated counts without display ordering.
 
 - `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
