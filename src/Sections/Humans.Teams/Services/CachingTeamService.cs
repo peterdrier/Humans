@@ -280,7 +280,12 @@ internal sealed class CachingTeamService(
         {
             if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
                 continue;
-            var mgmt = team.RoleDefinitions.FirstOrDefault(d => d.IsManagement && d.IsPublic);
+            var mgmt = team.RoleDefinitions
+                .Where(d => d.IsManagement && d.IsPublic)
+                // arch:db-sort-ok first authored public management-role selector (FirstOrDefault)
+                .OrderBy(d => d.SortOrder)
+                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
+                .FirstOrDefault();
             if (mgmt is not null)
                 result[teamId] = mgmt.Name;
         }
@@ -378,7 +383,7 @@ internal sealed class CachingTeamService(
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        // No activity or system filter; the projection is pre-sorted at warm time.
+        // Role administration includes inactive and system teams.
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
             return [];

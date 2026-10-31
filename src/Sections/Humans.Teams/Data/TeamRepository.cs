@@ -89,7 +89,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .AsNoTracking()
             .Include(d => d.Assignments)
                 .ThenInclude(a => a.TeamMember)
-            .OrderBy(d => d.SortOrder).ThenBy(d => d.Name) // arch:db-sort-ok
             .ToListAsync(ct);
 
         return definitions
