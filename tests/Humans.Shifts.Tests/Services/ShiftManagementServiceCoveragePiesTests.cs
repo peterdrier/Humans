@@ -175,10 +175,8 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ResultSortedAlphabetically_ByTeamName_ParentNamePopulatedForSubteams()
+    public async Task ResultIncludesEligibleTeams_AndParentNamesForSubteams()
     {
-        // Service returns natural-name-ordered rows; the "sub-team next to
-        // parent" rule is applied later in the view-model assembly layer.
         var (es, _, _) = SeedDeptScenario();
         var mango = new Team
         {
@@ -222,7 +220,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id, ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Select(r => r.TeamName).Should().Equal("Apple Slice", "Banana", "Mango");
+        result.Select(r => r.TeamName).Should().BeEquivalentTo("Apple Slice", "Banana", "Mango");
         result.Single(r => string.Equals(r.TeamName, "Apple Slice", StringComparison.Ordinal))
             .ParentTeamName.Should().Be("Mango");
         result.Single(r => string.Equals(r.TeamName, "Banana", StringComparison.Ordinal))

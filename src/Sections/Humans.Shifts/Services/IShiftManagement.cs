@@ -96,8 +96,8 @@ internal interface IShiftManagement
 
     /// <summary>
     /// One pie per top-level department or promoted sub-team; other sub-teams roll up to their parent. AdminOnly shifts and
-    /// hidden rotas are excluded. Rows come in <c>TeamName</c> order; the view model places promoted sub-teams by their
-    /// parent.
+    /// hidden rotas are excluded. Rows have no display order; the view model orders departments and places promoted
+    /// sub-teams by their parent.
     /// </summary>
     Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
         Guid eventSettingsId,

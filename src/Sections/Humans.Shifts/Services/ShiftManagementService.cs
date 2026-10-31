@@ -1315,7 +1315,6 @@ internal sealed class ShiftManagementService(
         // Display order (sub-team beside parent) lives in the view model.
         return pieTeams
             .Where(t => requested.GetValueOrDefault(t.Id) > 0)
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new DepartmentCoveragePie(
                 TeamId: t.Id,
                 TeamName: t.Name,

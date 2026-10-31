@@ -94,7 +94,7 @@ When the page has a `fromDate` / `toDate` filter applied, the same window is app
 
 ### Display ordering
 
-Service returns rows in natural `TeamName` order. The view-model assembly layer (`ShiftBrowsePageBuilder.OrderPiesGroupedByParent`) applies the sub-team-next-to-parent grouping for display — keeping display ordering out of the service per `memory/architecture/display-sort-in-controllers`.
+Service returns rows without display ordering. The view-model assembly layer (`ShiftBrowsePageBuilder.OrderPiesGroupedByParent`) applies the sub-team-next-to-parent grouping for display — keeping display ordering out of the service per `memory/architecture/display-sort-in-controllers`.
 
 ## Routes
 

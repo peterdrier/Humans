@@ -714,7 +714,7 @@ public sealed class CampaignServiceTests
         page.SelectedTeamId.Should().Be(alpha.Id);
         page.Preview.Should().NotBeNull();
         page.Preview!.EligibleCount.Should().Be(1);
-        page.Teams.Select(t => t.Name).Should().ContainInOrder("Alpha Team", "Beta Team");
+        page.Teams.Select(t => t.Name).Should().BeEquivalentTo("Alpha Team", "Beta Team");
         page.CanSendWave.Should().BeTrue();
     }
 

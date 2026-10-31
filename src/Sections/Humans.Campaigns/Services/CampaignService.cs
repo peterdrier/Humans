@@ -214,8 +214,7 @@ internal sealed class CampaignService(
             return null;
 
         var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive)
-            .OrderBy(t => t.Name, StringComparer.Ordinal);
+            .Where(t => t.IsActive);
         var teamOptions = teams
             .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
             .ToList();

@@ -15,7 +15,7 @@
         <form method="get" class="d-flex align-items-center gap-3">
             <select name="teamId" class="form-select" style="max-width: 400px;">
                 <option value="">-- Select a team --</option>
-                @foreach (var team in Model.Teams)
+                @foreach (var team in Model.Teams.OrderBy(t => t.Name, StringComparer.Ordinal))
                 {
                     <option value="@team.Id" selected="@(Model.SelectedTeamId == team.Id ? "selected" : null)">@team.Name</option>
                 }
