@@ -87,7 +87,6 @@ internal sealed class UserEmailService(
 
         return info.UserEmails
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
-            .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailDto(
                 e.Id,
                 e.Email,

@@ -109,7 +109,7 @@ public sealed class ProfileCardViewComponent(
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
             ViewMode = viewMode,
             CanViewLegalName = canViewLegalName,
-            UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
+            UserEmails = visibleEmails.OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).Select(e => new UserEmailDisplayViewModel
             {
                 Email = e.Email,
                 IsPrimary = e.IsPrimary,
