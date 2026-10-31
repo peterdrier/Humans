@@ -40,6 +40,9 @@
   <data name="Common_EditProfile" xml:space="preserve"><value>Edit Profile</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Common_Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Common_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Common_Pagination" xml:space="preserve"><value>Pagination</value></data>
   <data name="Common_Filter" xml:space="preserve"><value>Filter</value></data>
   <data name="Common_FilterColumn" xml:space="preserve"><value>Filter {0}</value></data>
   <data name="Common_All" xml:space="preserve"><value>All</value></data>

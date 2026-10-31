@@ -55,6 +55,9 @@
   <data name="Common_Close" xml:space="preserve">
     <value>Schließen</value>
   </data>
+  <data name="Common_Previous" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Common_Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="Common_Pagination" xml:space="preserve"><value>Seitennavigation</value></data>
   <data name="Common_Filter" xml:space="preserve"><value>Filtern</value></data>
   <data name="Common_FilterColumn" xml:space="preserve"><value>{0} filtern</value></data>
   <data name="Common_All" xml:space="preserve"><value>Alle</value></data>

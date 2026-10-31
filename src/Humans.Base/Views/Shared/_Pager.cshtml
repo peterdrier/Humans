@@ -40,10 +40,10 @@
     }
 }
 
-<nav aria-label="Pagination" class="@Model.NavCssClass">
+<nav aria-label="@Localizer["Common_Pagination"]" class="@Model.NavCssClass">
     <ul class="pagination @Model.PaginationCssClass">
         <li class="page-item @(current <= 1 ? "disabled" : "")">
-            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current - 1)">Previous</a>
+            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current - 1)">@Localizer["Common_Previous"]</a>
         </li>
         @foreach (var p in pages)
         {
@@ -59,7 +59,7 @@
             }
         }
         <li class="page-item @(current >= Model.TotalPages ? "disabled" : "")">
-            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current + 1)">Next</a>
+            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current + 1)">@Localizer["Common_Next"]</a>
         </li>
     </ul>
 </nav>
