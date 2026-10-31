@@ -141,7 +141,7 @@ internal sealed class CampController(
             Slug = camp.Slug,
             Name = season.Name,
             BlurbShort = season.BlurbShort,
-            ImageUrl = camp.Images.FirstOrDefault()?.Url,
+            ImageUrl = camp.Images.MinBy(image => image.SortOrder)?.Url,
             Vibes = [.. season.Vibes],
             AcceptingMembers = season.AcceptingMembers,
             KidsWelcome = season.KidsWelcome,
@@ -1273,7 +1273,7 @@ internal sealed class CampController(
             HideHistoricalNames = camp.HideHistoricalNames,
             TimesAtNowhere = camp.TimesAtNowhere,
             HistoricalNames = [.. camp.HistoricalNames],
-            ImageUrls = camp.Images.Select(image => image.Url).ToList(),
+            ImageUrls = camp.Images.OrderBy(image => image.SortOrder).Select(image => image.Url).ToList(),
             CurrentSeason = new CampSeasonDetailViewModel
             {
                 Id = season.Id,

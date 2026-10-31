@@ -422,7 +422,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 .Select(name => name.Name)
                 .ToList(),
             Images = camp.Images
-                .OrderBy(image => image.SortOrder)
                 .Select(image => new CampImageSummary(image.Id, $"/{image.StoragePath}", image.SortOrder))
                 .ToList()
         };
@@ -535,7 +534,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             season.SoundZone,
             season.ElectricalGrid,
             camp.Images
-                .OrderBy(i => i.SortOrder)
                 .Select(i => new CampImageSummary(i.Id, $"/{i.StoragePath}", i.SortOrder))
                 .ToList(),
             camp.HistoricalNames
