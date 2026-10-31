@@ -49,7 +49,10 @@ public sealed record QuestionAggregate(
 }
 
 /// <summary><see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
-public sealed record OptionCount(string Value, string Label, int Count, double Percent);
+public sealed record OptionCount(string Value, string Label, int Count, double Percent)
+{
+    public int Order { get; init; }
+}
 
 /// <summary>Empty buckets are included across the question's range.</summary>
 public sealed record RatingBucket(int Value, int Count);

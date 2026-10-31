@@ -180,7 +180,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
-- Question aggregates carry authored page and position metadata without display sorting. The results builder and Backdoor aggregate projection order questions by page, then position.
+- Question aggregates carry authored page and position metadata without display sorting. The results builder and Backdoor aggregate projection order questions by page, then position. Choice option counts likewise carry authored positions for these consumers to order; grid columns remain aligned with their cells.
 - Identified response data includes submission time and response-id metadata without display ordering. The results builder orders respondents by submission time, then response id. Anonymous/unattributed ballot ordering and identity-disclosure gates are unchanged.
 
 - The approval-queue controller orders pending submissions oldest first, with undated rows first, on both GET and rejection redisplay. The service supplies pending items and author names without display sorting.

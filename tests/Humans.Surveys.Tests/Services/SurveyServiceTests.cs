@@ -4103,7 +4103,7 @@ public class SurveyServiceTests
         survey.Questions = new List<SurveyQuestion>
         {
             ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1,
-                ("yes", "Yes", 1), ("no", "No", 2), ("maybe", "Maybe", 3)),
+                ("maybe", "Maybe", 3), ("yes", "Yes", 1), ("no", "No", 2)),
             RatingQuestion(ratingId, surveyId, 2, 1, 5),
             TextQuestion(textId, surveyId, 3),
         };
@@ -4153,7 +4153,8 @@ public class SurveyServiceTests
         result.Questions.Select(question => (question.QuestionId, question.PageNumber, question.Order))
             .Should().BeEquivalentTo(new[] { (choiceId, 1, 1), (ratingId, 1, 2), (textId, 1, 3) });
         choice.OptionCounts.Should().HaveCount(3);
-        choice.OptionCounts.Select(o => o.Value).Should().ContainInOrder("yes", "no", "maybe");
+        choice.OptionCounts.Select(o => (o.Value, o.Order)).Should().BeEquivalentTo(
+            new[] { ("yes", 1), ("no", 2), ("maybe", 3) });
         choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Count.Should().Be(2);
         choice.OptionCounts.Single(o => string.Equals(o.Value, "no", StringComparison.Ordinal)).Count.Should().Be(1);
         var maybe = choice.OptionCounts.Single(o => string.Equals(o.Value, "maybe", StringComparison.Ordinal));

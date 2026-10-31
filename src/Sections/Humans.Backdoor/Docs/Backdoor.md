@@ -93,7 +93,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - API-key timestamps on the operator key page use the shared display formatter in Europe/Madrid time, with date ordering and month names following the UI culture; unused or unbounded timestamps still read "never".
 
 - Surveys response exports pass the authenticated API key owner to the Surveys service for its disclosure audit (survey id and row count); requests without an actor cannot export.
-- Surveys aggregate JSON orders questions by authored page and position, using owner-supplied metadata without adding JSON fields.
+- Surveys aggregate JSON orders questions by authored page and position, and choice option counts by authored option position, using owner-supplied metadata without adding JSON fields.
 - Surveys response exports preserve the owning section's privacy rules: closed Asociado ballots have no identity or submission timestamps and order by response id. A `since` filter cannot match their suppressed timestamps.
 - Issues list/detail/comments GETs and legacy Feedback list/detail/messages GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
 

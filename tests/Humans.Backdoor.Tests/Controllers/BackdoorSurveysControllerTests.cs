@@ -295,7 +295,11 @@ public class BackdoorSurveysControllerTests
             [
                 new QuestionAggregate(Guid.NewGuid(), "Later page", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 2, Order = 0 },
                 new QuestionAggregate(Guid.NewGuid(), "Later question", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 1, Order = 2 },
-                new QuestionAggregate(Guid.NewGuid(), "First", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 1, Order = 1 },
+                new QuestionAggregate(Guid.NewGuid(), "First", SurveyQuestionType.SingleChoice, [
+                    new OptionCount("maybe", "Maybe", 0, 0) { Order = 3 },
+                    new OptionCount("yes", "Yes", 3, 75) { Order = 1 },
+                    new OptionCount("no", "No", 1, 25) { Order = 2 },
+                ], [], null, []) { PageNumber = 1, Order = 1 },
             ], []));
 
         var result = await _sut.Aggregates(id, Xunit.TestContext.Current.CancellationToken);
@@ -310,6 +314,9 @@ public class BackdoorSurveysControllerTests
         var questions = json.RootElement.GetProperty("questions").EnumerateArray().ToList();
         questions.Select(question => question.GetProperty("prompt").GetString())
             .Should().Equal("First", "Later question", "Later page");
+        var options = questions[0].GetProperty("optionCounts").EnumerateArray().ToList();
+        options.Select(option => option.GetProperty("value").GetString()).Should().Equal("yes", "no", "maybe");
+        options.SelectMany(option => option.EnumerateObject()).Select(property => property.Name).Should().NotContain("order");
         questions.SelectMany(question => question.EnumerateObject()).Select(property => property.Name)
             .Should().NotContain(new[] { "pageNumber", "order" });
     }

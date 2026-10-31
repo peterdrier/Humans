@@ -47,12 +47,17 @@ public sealed class SurveyResultsBuilderTests
             [
                 new QuestionAggregate(Guid.NewGuid(), "Unanswered", SurveyQuestionType.Rating, [], [], null, []) { PageNumber = 2, Order = 0 },
                 new QuestionAggregate(Guid.NewGuid(), "Rating", SurveyQuestionType.Rating, [], [], 3.5, []) { PageNumber = 1, Order = 2 },
-                new QuestionAggregate(Guid.NewGuid(), "Earlier", SurveyQuestionType.Rating, [], [], null, []) { PageNumber = 1, Order = 1 },
+                new QuestionAggregate(Guid.NewGuid(), "Earlier", SurveyQuestionType.SingleChoice, [
+                    new OptionCount("maybe", "Maybe", 0, 0) { Order = 3 },
+                    new OptionCount("yes", "Yes", 2, 100) { Order = 1 },
+                    new OptionCount("no", "No", 0, 0) { Order = 2 },
+                ], [], null, []) { PageNumber = 1, Order = 1 },
             ], []);
 
         var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 2, SurveyResultsScope.Combined));
 
         model.Questions.Select(question => question.Prompt).Should().Equal("Earlier", "Rating", "Unanswered");
+        model.Questions[0].OptionCounts.Select(option => option.Value).Should().Equal("yes", "no", "maybe");
         model.Questions[1].RatingAverage.Should().Be(expected);
         model.Questions[2].RatingAverage.Should().BeNull();
     }

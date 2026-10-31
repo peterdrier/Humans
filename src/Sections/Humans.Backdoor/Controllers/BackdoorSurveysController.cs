@@ -160,7 +160,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
                 id = q.QuestionId,
                 prompt = q.Prompt,
                 type = q.Type.ToString(),
-                optionCounts = q.OptionCounts.Select(o => new { value = o.Value, label = o.Label, count = o.Count, percent = o.Percent }),
+                optionCounts = q.OptionCounts.OrderBy(o => o.Order).Select(o => new { value = o.Value, label = o.Label, count = o.Count, percent = o.Percent }),
                 grid = q.Grid is null
                     ? null
                     : new

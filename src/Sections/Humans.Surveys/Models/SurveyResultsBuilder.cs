@@ -45,7 +45,7 @@ internal static class SurveyResultsBuilder
         QuestionId = q.QuestionId,
         Prompt = q.Prompt,
         Type = q.Type,
-        OptionCounts = q.OptionCounts,
+        OptionCounts = q.OptionCounts.OrderBy(option => option.Order).ToList(),
         Grid = q.Grid,
         RatingDistribution = q.RatingDistribution,
         RatingAverage = q.RatingAverage is { } avg ? avg.ToString("0.0", CultureInfo.CurrentUICulture) : null,
