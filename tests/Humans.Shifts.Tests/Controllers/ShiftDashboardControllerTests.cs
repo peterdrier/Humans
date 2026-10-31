@@ -122,6 +122,13 @@ public class ShiftDashboardControllerTests
             .Returns(original);
         _management.GetCoverageHeatmapAsync(settings.Id, null, null, Arg.Any<CancellationToken>())
             .Returns(new CoverageHeatmap([], []));
+        _management.GetShiftDurationBreakdownAsync(settings.Id, null, null, Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new ShiftDurationBreakdownRow(false, 4, 10, 2),
+                new ShiftDurationBreakdownRow(false, 2, 3, 1),
+                new ShiftDurationBreakdownRow(true, 0, 5, 4)
+            });
 
         var result = Assert.IsType<ViewResult>(await Controller().Index(
             null, null, null, null, null, null, null, TestContext.Current.CancellationToken));
@@ -133,6 +140,8 @@ public class ShiftDashboardControllerTests
         Assert.Equal(new[] { "Filled", "Zero", "Empty" }, original.Departments.Select(d => d.DepartmentName), StringComparer.Ordinal);
         Assert.Equal(new[] { "A Empty", "Z Never", "Parent", "Recent" },
             model.CoordinatorActivity.Select(r => r.TeamName), StringComparer.Ordinal);
+        Assert.Equal(new[] { (true, 0), (false, 2), (false, 4) },
+            model.ShiftDurationBreakdown.Select(r => (r.IsAllDay, r.DurationHours)));
         var parent = model.CoordinatorActivity[2];
         Assert.Equal(new[] { "Old child", "Recent child" }, parent.Subgroups.Select(r => r.TeamName), StringComparer.Ordinal);
         Assert.Equal(new[] { older, recent }, parent.Subgroups[0].Coordinators.Select(c => c.LastLoginAt!.Value));

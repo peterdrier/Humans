@@ -604,28 +604,27 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetBrowseShifts_IncludeSignups_ConfirmedBeforePending()
+    public async Task BrowseDisplayItem_OrdersConfirmedFirstThenNames()
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var confirmedUser = SeedUser("Zara");
         var pendingUser = SeedUser("Alice");
 
-        SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
+        var otherConfirmed = SeedUser("aaron");
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
+        SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
+        SeedSignup(shift, otherConfirmed, SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups));
 
-        // Confirmed (Zara) first, then Pending (Alice), regardless of name order.
-        var signups = results[0].Signups;
-        signups.Should().HaveCount(2);
-        signups[0].DisplayName.Should().Be("Zara");
-        signups[0].Status.Should().Be(SignupStatus.Confirmed);
-        signups[1].DisplayName.Should().Be("Alice");
-        signups[1].Status.Should().Be(SignupStatus.Pending);
+        var signups = ShiftBrowseMapper.MapToDisplayItem(results[0]).Signups;
+        signups.Select(s => s.DisplayName).Should().Equal("aaron", "Zara", "Alice");
+        signups.Select(s => s.Status).Should().Equal(
+            SignupStatus.Confirmed, SignupStatus.Confirmed, SignupStatus.Pending);
     }
 
     [HumansFact]

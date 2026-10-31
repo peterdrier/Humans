@@ -1006,14 +1006,8 @@ internal sealed class ShiftManagementService(
                         {
                             UserInfo? user = null;
                             userLookup?.TryGetValue(ss.UserId, out user);
-                            return (
-                                ss.UserId,
-                                DisplayName: user?.BurnerName ?? string.Empty,
-                                ss.Status);
+                            return new ShiftSignupInfo(ss.UserId, user?.BurnerName ?? string.Empty, ss.Status);
                         })
-                        .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
-                        .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
-                        .Select(ss => new ShiftSignupInfo(ss.UserId, ss.DisplayName, ss.Status))
                         .ToList()
                     : [];
                 return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups);
@@ -1963,8 +1957,6 @@ internal sealed class ShiftManagementService(
                 DurationHours: g.Key.Hours,
                 TotalSlots: g.Sum(s => s.MaxVolunteers),
                 FilledSlots: g.Sum(FilledSlotsOn)))
-            .OrderByDescending(r => r.IsAllDay)
-            .ThenBy(r => r.DurationHours)
             .ToList();
 
         return grouped;

@@ -86,7 +86,10 @@ internal sealed class ShiftDashboardPageBuilder(
             {
                 Departments = day.Departments.OrderBy(d => d.DepartmentName, StringComparer.Ordinal).ToList()
             }).ToList(),
-            ShiftDurationBreakdown = shiftDurationBreakdown,
+            ShiftDurationBreakdown = shiftDurationBreakdown
+                .OrderByDescending(r => r.IsAllDay)
+                .ThenBy(r => r.DurationHours)
+                .ToList(),
             CoverageHeatmap = coverageHeatmap with
             {
                 Rotas = coverageHeatmap.Rotas

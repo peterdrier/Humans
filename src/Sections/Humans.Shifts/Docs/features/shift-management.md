@@ -72,6 +72,8 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - AdminOnly shifts hidden from non-privileged users
 - EE freeze blocks non-privileged build shift signups after early entry close
 
+Browse signup display ordering is shared by the browse page, row refresh, onboarding list and gallery through `ShiftBrowseMapper`: Confirmed before Pending, then ordinal name comparison ignoring case.
+
 ### US-25.4: Coordinator Approves/Refuses Signups
 **As a** department coordinator
 **I want to** approve or refuse pending signups
@@ -211,6 +213,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 **Panels:**
 
 - **Overview counters** — five cards: shifts filled (with per-period Build/Event/Strike fill chips coloured ≥80% green / 60–79% amber / <60% red), ticket holders, ticket holding volunteers (primary-bordered emphasis card; sub-line shows how many ticket-holding humans haven't signed up), non-ticket signups, stale pending (warning-bordered when > 0).
+- **Duration breakdown** — the dashboard page builder places the all-day bucket first, then hourly buckets in ascending duration.
 - **Departments table** — one row per parent team, sorted in the dashboard page builder by ascending slot fill %, then ordinal name. Subgroups pin Direct first, then use ascending slot fill % and ordinal name. Clicking a row expands to either three period sub-rows (Build/Event/Strike) when the department has no subteams, or a subgroup table showing each subteam (plus a "Direct" row for rotas attached to the parent itself) with per-period fill % chips.
 - **Coordinator activity** — teams that have ≥1 pending signup, one row each listing coordinator names, oldest login across that team's coordinators (rendered red if > 7 days or never), and pending signup count. The page builder orders roots/subgroups by the oldest login anywhere in the subtree, then ordinal team name; missing logins and coordinator-free subtrees come first. Each coordinator list is oldest-first. Hidden entirely if no team has pending signups.
 - **Trends chart** — line chart with three series (new signups, new ticket sales, distinct logins / DAU) over a selectable window (7/30/90 days, All). Window toggle re-renders via `asp-route-trendWindow=`. DAU series is dashed with a tooltip noting that only the last login per human is stored (older buckets undercount).
