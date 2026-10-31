@@ -158,7 +158,9 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    resumed, and whether the reconcile landed.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
-ledger, so paying one would post against a document that does not exist for accounting.
+ledger, so paying one would post against a document that does not exist for accounting. An approved document
+with a missing/null pending balance rejects the complete purchase-document read before any posting;
+it cannot disappear from the FIFO list and be replaced by a journal remainder. Drafts may omit the balance.
 
 ### Known limits
 

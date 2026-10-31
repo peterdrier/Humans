@@ -164,7 +164,9 @@ public class HoldedClientReadTests
     [Xunit.InlineData("id", null, true)]
     [Xunit.InlineData("id", "", true)]
     [Xunit.InlineData("id", " ", true)]
-    public async Task ListPurchaseDocuments_refuses_missing_or_blank_id(
+    [Xunit.InlineData("payments_pending", null, false)]
+    [Xunit.InlineData("payments_pending", null, true)]
+    public async Task ListPurchaseDocuments_refuses_missing_or_blank_required_fields(
         string field, string? value, bool present)
     {
         var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
@@ -249,8 +251,8 @@ public class HoldedClientReadTests
         var json = """
         {"items":[
           {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","draft":false},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","draft":true},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","draft":true},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":null}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -260,6 +262,7 @@ public class HoldedClientReadTests
         docs.Single(d => string.Equals(d.Id, "d1", StringComparison.Ordinal)).IsDraft.Should().Be(false);
         docs.Single(d => string.Equals(d.Id, "d2", StringComparison.Ordinal)).IsDraft.Should().Be(true);
         docs.Single(d => string.Equals(d.Id, "d3", StringComparison.Ordinal)).IsDraft.Should().BeNull();
+        docs.Should().OnlyContain(d => d.PaymentsPending == 0m);
     }
 
     [HumansFact]

@@ -252,7 +252,11 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         Tax = ReadDecimalV2(Prop(n, "tax")),
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
-        PaymentsPending = ReadDecimalV2(Prop(n, "payments_pending")),
+        // Approved documents must not disappear from the live open-document list as fabricated paid balances.
+        // Drafts can omit this field and are excluded from booking independently by their draft flag.
+        PaymentsPending = Prop(n, "draft")?.GetValue<bool>() == false
+            ? ReadRequiredDecimalV2(Prop(n, "payments_pending"), "payments_pending")
+            : ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),

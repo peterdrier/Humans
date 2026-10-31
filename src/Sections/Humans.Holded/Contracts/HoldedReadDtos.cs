@@ -63,8 +63,8 @@ public sealed record HoldedPurchaseDocListItemDto
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
-    /// <summary>`payments_pending` — what is still unpaid on this doc. An absent field reads as 0,
-    /// i.e. nothing owed, which is the safe direction: it refuses a booking rather than over-paying.</summary>
+    /// <summary>`payments_pending` — what is still unpaid on this doc. Required when <c>draft</c> is false;
+    /// an absent balance on a draft or unknown approval state reads as 0, and those docs are not bookable.</summary>
     public decimal PaymentsPending { get; init; }
     // v2 list items carry no approval timestamp (only the single GET does) but do carry `draft`. Null when
     // Holded doesn't report it, which Finance treats as not yet approved.
