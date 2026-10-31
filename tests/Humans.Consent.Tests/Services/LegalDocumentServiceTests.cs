@@ -134,7 +134,6 @@ public sealed class LegalDocumentServiceTests : IDisposable
             ["es"] = "hola"
         };
 
-        // First call — populates cache.
         var result1 = await _service.GetDocumentContentAsync("statutes");
 
         // Swap out underlying content — if second call still equals first, cache worked.

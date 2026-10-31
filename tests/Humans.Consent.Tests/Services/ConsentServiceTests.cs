@@ -713,10 +713,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     [HumansFact]
     public async Task GetConsentMapForUsersAsync_InputContainsBothSourceAndTarget_DoesNotThrow()
     {
-        // Regression: when the input list contains both a source tombstone id and its merge
-        // target, the chain-follow path used to append the source id again
-        // without dedup. The downstream repo's `userIds.ToDictionary(id =>
-        // id, ...)` then threw ArgumentException on the duplicate key.
+        // Source and target in one batch: ids must be deduped before the repository's ToDictionary.
         var sourceId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
         var unrelatedId = Guid.NewGuid();
@@ -742,7 +739,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                             createdAt: Clock.GetCurrentInstant()))
                         : targetInfo)));
 
-        // Input contains both source and target — duplicate-id risk path.
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId], TestContext.Current.CancellationToken);
 
         result.Should().ContainKey(targetId);

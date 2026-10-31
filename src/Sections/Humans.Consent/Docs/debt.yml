@@ -1,0 +1,9 @@
+# Section debt ledger for Humans.Consent. Shape + routing: memory/process/debt-ledger-additions.md.
+# /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
+version: 1
+next_id: 2
+inbox:
+  - added: 2026-10-31
+    id: CONSENT-1
+    what: "No test in Humans.Consent.Tests pins that a Consent Coordinator (or a plain member) is refused on AdminLegalDocumentsController; the BoardOrAdmin class policy is the only guard for the invariant that the Coordinator cannot manage legal documents. Found by the 2026-10-31 section-doctor Tests thread."
+    review: light
