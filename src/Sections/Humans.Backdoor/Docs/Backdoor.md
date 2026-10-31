@@ -83,6 +83,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 ## Invariants
 
+- Creditor-account JSON orders each account's bindings and unresolved bindings by creation time ascending. Finance supplies the timestamp metadata; the JSON binding fields remain unchanged.
+
 - The notifications JSON projection orders unread rows newest first and visible meters by priority descending. Notifications supplies the role-filtered data and priority metadata; the JSON meter fields remain label, count and link.
 - The Holded-sync JSON projection orders unmatched documents by document date descending, matching Finance's unmatched queue. Finance supplies date metadata without imposing list order; the JSON document fields remain unchanged.
 

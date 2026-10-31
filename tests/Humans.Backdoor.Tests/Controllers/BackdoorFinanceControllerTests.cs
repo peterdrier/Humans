@@ -471,19 +471,25 @@ public class BackdoorFinanceControllerTests
         var ana = Guid.NewGuid();
         var ben = Guid.NewGuid();
         var orphan = Guid.NewGuid();
+        var newerOrphan = Guid.NewGuid();
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>()).Returns((
             (IReadOnlyList<HoldedCreditorAccountRow>)
             [
                 new HoldedCreditorAccountRow(40000060, "Ana Torres", -50m, 50m,
                     [
-                        new CreditorContactBinding(ana, "c-ana", 40000060, CreditorContactSource.Auto),
-                        new CreditorContactBinding(ben, "c-ben", 40000060, CreditorContactSource.Manual),
+                        new CreditorContactBinding(ben, "c-ben", 40000060, CreditorContactSource.Manual)
+                            { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+                        new CreditorContactBinding(ana, "c-ana", 40000060, CreditorContactSource.Auto)
+                            { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
                     ],
                     "ES79****789"),
             ],
             (IReadOnlyList<CreditorContactBinding>)
             [
-                new CreditorContactBinding(orphan, "c-orphan", null, CreditorContactSource.Auto),
+                new CreditorContactBinding(newerOrphan, "c-newer", null, CreditorContactSource.Auto)
+                    { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+                new CreditorContactBinding(orphan, "c-orphan", null, CreditorContactSource.Auto)
+                    { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
             ]));
 
         var result = await _sut.CreditorAccounts(Xunit.TestContext.Current.CancellationToken);
@@ -491,7 +497,8 @@ public class BackdoorFinanceControllerTests
         using var json = JsonDocument.Parse(Emitted(result));
         var bindings = json.RootElement.GetProperty("accounts")[0].GetProperty("bindings");
         bindings.GetArrayLength().Should().Be(2);
-        json.RootElement.GetProperty("unresolved").GetArrayLength().Should().Be(1);
+        bindings.EnumerateArray().Select(b => b.GetProperty("userId").GetGuid()).Should().Equal(ana, ben);
+        json.RootElement.GetProperty("unresolved").GetArrayLength().Should().Be(2);
         json.RootElement.GetProperty("unresolved")[0].GetProperty("userId").GetGuid().Should().Be(orphan);
     }
 

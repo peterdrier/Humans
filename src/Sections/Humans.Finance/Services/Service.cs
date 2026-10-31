@@ -553,7 +553,6 @@ internal sealed class Service(
             .ToDictionary(
                 g => g.Key,
                 g => (IReadOnlyList<CreditorContactBinding>)g
-                    .OrderBy(x => x.Binding.CreatedAt)
                     .Select(x => ToBinding(x.Binding))
                     .ToList());
 
@@ -561,7 +560,6 @@ internal sealed class Service(
         // dropped: unreturned is unbindable.
         var unresolved = resolved
             .Where(x => x.Account is null)
-            .OrderBy(x => x.Binding.CreatedAt)
             .Select(x => ToBinding(x.Binding))
             .ToList();
 
@@ -689,7 +687,7 @@ internal sealed class Service(
     }
 
     private static CreditorContactBinding ToBinding(HoldedCreditorContact b) =>
-        new(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source);
+        new(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source) { CreatedAt = b.CreatedAt };
 
     // An account, and the Holded contact behind it, binds to at most one member. All three write paths check with
     // FindConflictingBinding and differ only in the remedy: refuse when the value is our guess, write and let the

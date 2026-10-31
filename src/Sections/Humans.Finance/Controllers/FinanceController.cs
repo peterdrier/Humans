@@ -103,7 +103,7 @@ internal sealed class FinanceController(
         var vms = rows
             .Select(r => new CreditorAccountRowVm(
                 r.SupplierAccountNum, r.Name, r.Balance is { } bal ? -bal : null,
-                r.Bindings.Select(b => new CreditorBindingVm(
+                r.Bindings.OrderBy(b => b.CreatedAt).Select(b => new CreditorBindingVm(
                     b.UserId,
                     names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),
                     b.Source.ToString())).ToList(),
@@ -119,6 +119,7 @@ internal sealed class FinanceController(
         var accounts = SortCreditorRows(vms, sortBy, sortDir);
 
         var unresolvedVm = unresolved
+            .OrderBy(b => b.CreatedAt)
             .Select(b => new CreditorBindingVm(
                 b.UserId,
                 names.TryGetValue(b.UserId, out var nm) ? nm : b.UserId.ToString(),

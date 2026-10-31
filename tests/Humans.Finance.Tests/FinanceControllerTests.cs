@@ -385,7 +385,9 @@ public class FinanceControllerTests
     public async Task Creditors_NamesEveryBoundMember_IncludingACollision()
     {
         NameThem((Ana, "Ana"), (Bo, "Bo"));
-        Accounts([Row(40000002, "shared", -1m, Bound(Ana, 40000002), Bound(Bo, 40000002))]);
+        Accounts([Row(40000002, "shared", -1m,
+            Bound(Bo, 40000002) with { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+            Bound(Ana, 40000002) with { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) })]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
@@ -408,13 +410,16 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Creditors_CarriesTheUnresolvedBindingsWithTheirNames()
     {
-        NameThem((Bo, "Bo"));
-        Accounts([], [Bound(Bo, null)]);
+        NameThem((Ana, "Ana"), (Bo, "Bo"));
+        Accounts([], [
+            Bound(Bo, null) with { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+            Bound(Ana, null) with { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
+        ]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
         page.Accounts.Should().BeEmpty();
-        page.Unresolved.Should().ContainSingle().Which.MemberName.Should().Be("Bo");
+        page.Unresolved.Select(b => b.MemberName).Should().Equal("Ana", "Bo");
     }
 
     [HumansTheory]

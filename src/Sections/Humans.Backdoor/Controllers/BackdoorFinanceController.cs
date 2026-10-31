@@ -128,7 +128,7 @@ internal sealed class BackdoorFinanceController(
         return Ok(new
         {
             accounts = accounts.Select(a => ProjectCreditorAccount(a, names)),
-            unresolved = unresolved.Select(b => ProjectBinding(b, names)),
+            unresolved = unresolved.OrderBy(b => b.CreatedAt).Select(b => ProjectBinding(b, names)),
         });
     }
 
@@ -516,7 +516,7 @@ internal sealed class BackdoorFinanceController(
             balance = a.Balance,
             owedToMember = a.OwedToMember,
             ibanMasked = a.IbanMasked,
-            bindings = a.Bindings.Select(b => ProjectBinding(b, names)),
+            bindings = a.Bindings.OrderBy(b => b.CreatedAt).Select(b => ProjectBinding(b, names)),
         };
 
     private static object ProjectLedgerLine(CreditorLedgerLine l) => new

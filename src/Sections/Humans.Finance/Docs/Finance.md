@@ -262,6 +262,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Creditor-account reads return bindings with creation timestamps without list ordering. The Finance and Backdoor projections order each account's bindings and unresolved bindings oldest first; collision and payout eligibility remain independent of that display order.
+
 - Expense-account options carry account metadata without display ordering. Expenses orders its choices by budget-category status, label and account number; Preapprovals orders its choices by account number.
 
 - Finance marks account provisioning, create-or-link expense accounts, and creditor-contact creation as external writes. State-changing HTTP callers must not pass browser cancellation into those Holded mutations.

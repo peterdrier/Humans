@@ -651,8 +651,8 @@ public class HoldedFinanceServiceTests
         // push paths record what Holded assigned rather than refusing, so this state is reachable.
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
-            new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
-            new() { UserId = second, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
+            new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual, CreatedAt = FixedNow },
+            new() { UserId = second, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto, CreatedAt = FixedNow + Duration.FromDays(1) },
         });
 
         var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -662,6 +662,8 @@ public class HoldedFinanceServiceTests
         row.OwedToMember.Should().Be(10m);
         // Both, not the first: hiding the second is what kept the collision invisible to admins.
         row.Bindings.Select(b => b.UserId).Should().BeEquivalentTo([first, second]);
+        row.Bindings.Single(b => b.UserId == first).CreatedAt.Should().Be(FixedNow);
+        row.Bindings.Single(b => b.UserId == second).CreatedAt.Should().Be(FixedNow + Duration.FromDays(1));
     }
 
     [HumansFact]
