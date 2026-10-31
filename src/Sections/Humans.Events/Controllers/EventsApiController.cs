@@ -151,7 +151,7 @@ internal sealed class EventsApiController(
     {
         var ct = HttpContext.RequestAborted;
         var categories = await guide.GetActiveCategoriesAsync(ct);
-        return Ok(categories.Select(c => new GuideCategoryApiDto(
+        return Ok(categories.OrderBy(c => c.DisplayOrder).Select(c => new GuideCategoryApiDto(
             c.Id,
             c.Name,
             c.Slug,

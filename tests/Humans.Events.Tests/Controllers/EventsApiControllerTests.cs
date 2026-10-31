@@ -211,6 +211,18 @@ public class EventsApiControllerTests
         result.Should().BeOfType(invalidDay ? typeof(BadRequestResult) : typeof(NotFoundResult));
     }
 
+    [HumansFact]
+    public async Task GetCategories_OrdersByDisplayOrder()
+    {
+        var first = new EventCategoryView(Guid.NewGuid(), "First", "first", false, 1, true);
+        var second = new EventCategoryView(Guid.NewGuid(), "Second", "second", false, 2, true);
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([second, first]);
+
+        var result = (await BuildController().GetCategories()).Should().BeOfType<OkObjectResult>().Subject;
+        result.Value.Should().BeAssignableTo<IEnumerable<GuideCategoryApiDto>>().Subject
+            .Select(c => c.Id).Should().Equal(first.Id, second.Id);
+    }
+
     private EventsApiController BuildController()
     {
         var controller = new EventsApiController(_guide, _camps, _users, NullLogger<EventsApiController>.Instance)
