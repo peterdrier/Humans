@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
@@ -17,7 +16,7 @@ internal sealed class StoreOrderReader(
     ICampService campService,
     ITeamService teamService,
     IClock clock,
-    ISettingsService settingsService) : IApplicationService
+    ISettingsService settingsService) : IStoreAccountingRead
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
@@ -222,5 +221,217 @@ internal sealed class StoreOrderReader(
     private static ProductDto MapProduct(Product p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
             p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
+
+    /// <summary>
+    /// What every year-wide view needs to price an order. Shared by the admin summary and the accounting export so their
+    /// totals can't drift apart.
+    /// </summary>
+    private sealed record YearContext(
+        IReadOnlyDictionary<Guid, CampSeasonInfo> SeasonsForYear,
+        IReadOnlyList<Product> Products,
+        IReadOnlyList<Guid> DepartmentIds,
+        IReadOnlyDictionary<Guid, string> TeamNames,
+        IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> CurrentPrices);
+
+    private async Task<YearContext> LoadYearContextAsync(int year, CancellationToken ct)
+    {
+        var seasonsForYear = (await campService.GetCampsForYearAsync(year, ct))
+            .SelectMany(camp => camp.Seasons.Where(season => season.Year == year))
+            .ToDictionary(season => season.Id);
+        var products = await repo.GetAllProductsForYearAsync(year, ct);
+
+        var allTeams = await teamService.GetTeamsAsync(ct);
+        var departmentIds = allTeams.Values
+            .Where(t => t.ParentTeamId is null)
+            .Select(t => t.Id)
+            .ToList();
+        var teamNames = allTeams.Values.ToDictionary(t => t.Id, t => t.Name);
+
+        // Reprice Open orders like the order page does, but from the requested year's products: a historical summary
+        // must not reprice against a later year's prices.
+        var currentPrices = products.ToDictionary(
+            p => p.Id,
+            p => new BalanceCalculator.ProductPrice(p.UnitPriceEur, p.VatRatePercent, p.DepositAmountEur));
+
+        return new YearContext(seasonsForYear, products, departmentIds, teamNames, currentPrices);
+    }
+
+    private static Dictionary<Guid, BalanceCalculator.Result> PriceAll(
+        IEnumerable<Order> orders, YearContext context) =>
+        orders.ToDictionary(o => o.Id, o => BalanceCalculator.Compute(o, context.CurrentPrices));
+
+    public async Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default)
+    {
+        var context = await LoadYearContextAsync(year, ct);
+        var (seasonsForYear, products, departmentIds, teamNames, _) = context;
+
+        var campOrders = seasonsForYear.Count == 0
+            ? Array.Empty<Order>()
+            : await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                seasonsForYear.Keys.ToList(), ct);
+
+        var campOrdersInYear = campOrders
+            .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
+            .ToList();
+        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
+        var counterparties = campOrdersInYear
+            .Select(o => (Order: o, Type: OrderCounterpartyType.Camp,
+                Id: o.CampSeasonId!.Value, Name: seasonsForYear[o.CampSeasonId.Value].Name))
+            .Concat(teamOrders.Select(o => (Order: o, Type: OrderCounterpartyType.Team,
+                Id: o.TeamId!.Value, Name: teamNames.GetValueOrDefault(o.TeamId.Value, "(unknown team)"))))
+            .ToList();
+        var totalsByOrder = PriceAll(counterparties.Select(c => c.Order), context);
+        var productNames = products.ToDictionary(p => p.Id, p => p.Name);
+
+        var byCounterparty = counterparties.Select(c =>
+        {
+            var totals = totalsByOrder[c.Order.Id];
+            var billable = c.Type == OrderCounterpartyType.Camp;
+            return new OrderSummaryDto(
+                c.Order.Id, c.Type, c.Id, c.Name, c.Order.State,
+                totals.TotalDueEur,
+                billable ? totals.PaymentsTotalEur : 0m,
+                billable ? totals.BalanceEur : 0m);
+        }).ToList();
+
+        // By-item aggregates camp AND team orders so suppliers see the full demand.
+        var allLineProjections = counterparties
+            .SelectMany(c =>
+            {
+                var lineTotals = totalsByOrder[c.Order.Id].Lines.ToDictionary(t => t.LineId);
+                return c.Order.Lines.Select(l => new { l.ProductId, l.Qty, lineTotals[l.Id].TotalEur });
+            })
+            .ToList();
+
+        var byItem = allLineProjections
+            .GroupBy(x => x.ProductId)
+            .Select(g => new ProductAggregateDto(
+                g.Key,
+                productNames.TryGetValue(g.Key, out var n) ? n : "(unknown)",
+                g.Sum(x => x.Qty),
+                g.Sum(x => x.TotalEur)))
+            .OrderByDescending(p => p.TotalQty)
+            .ThenBy(p => p.ProductName, StringComparer.Ordinal)
+            .ToList();
+
+        var productColumns = byItem
+            .Select(p => new CrossTabColumn(p.ProductId, p.ProductName, p.TotalQty))
+            .OrderBy(c => c.ProductName, StringComparer.Ordinal)
+            .ToList();
+
+        var counterpartyRows = counterparties
+            .GroupBy(c => (c.Type, c.Id))
+            .Select(g =>
+            {
+                var perProduct = g
+                    .SelectMany(c => c.Order.Lines)
+                    .GroupBy(l => l.ProductId)
+                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+                return new CrossTabRow(
+                    g.Key.Type, g.Key.Id, g.First().Name, perProduct.Values.Sum(), perProduct);
+            }).ToList();
+        return new SummaryDto(
+            year,
+            byCounterparty,
+            byItem,
+            new CrossTabDto(productColumns, counterpartyRows));
+    }
+
+    /// <summary>
+    /// Selected by persisted <see cref="Order.Year"/>, not through the counterparty: a since-deleted camp or reparented
+    /// department still has its money in the books.
+    /// </summary>
+    private async Task<(IReadOnlyList<Order> Orders, YearContext Context)> LoadYearOrdersForAccountingAsync(
+        int year, CancellationToken ct)
+    {
+        var context = await LoadYearContextAsync(year, ct);
+        var orders = await repo.GetOrdersForYearWithLinesAndPaymentsAsync(
+            year, context.SeasonsForYear.Keys.ToList(), ct);
+        return (orders, context);
+    }
+
+    public async Task<IReadOnlyList<AccountingOrderLineDto>> GetOrderLinesAsync(int year, CancellationToken ct = default)
+    {
+        var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
+        var totalsByOrder = PriceAll(orders, context);
+
+        // By id, not year: a line may point at a product deactivated or re-homed since, and the export still needs its name.
+        var products = (await repo.GetProductsByIdsAsync(
+                orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList(), ct))
+            .ToDictionary(p => p.Id);
+        var invoiceNumbers = (await repo.GetInvoicesForOrdersAsync(
+                orders.Where(o => o.IssuedInvoiceId is not null).Select(o => o.Id).ToList(), ct))
+            .ToDictionary(i => i.OrderId, i => i.HoldedDocNumber);
+
+        var rows = new List<AccountingOrderLineDto>();
+        foreach (var o in orders)
+        {
+            var (counterpartyType, label) = CounterpartyOf(o, context);
+            var totalsByLine = totalsByOrder[o.Id].Lines.ToDictionary(t => t.LineId);
+            foreach (var l in o.Lines)
+            {
+                var t = totalsByLine[l.Id];
+                products.TryGetValue(l.ProductId, out var product);
+                rows.Add(new AccountingOrderLineDto(
+                    year,
+                    o.Id,
+                    counterpartyType,
+                    label,
+                    o.CounterpartyName,
+                    o.CounterpartyVatId,
+                    o.CounterpartyCountryCode,
+                    o.State,
+                    invoiceNumbers.GetValueOrDefault(o.Id),
+                    l.Id,
+                    l.ProductId,
+                    product?.Name ?? "(unknown product)",
+                    product?.HoldedRevenueAccountNum,
+                    l.Qty,
+                    t.EffectiveUnitPrice,
+                    t.EffectiveVatRate,
+                    t.TotalEur,
+                    t.SubtotalEur,
+                    t.VatEur,
+                    t.DepositEur,
+                    l.AddedAt));
+            }
+        }
+        return rows;
+    }
+
+    public async Task<IReadOnlyList<AccountingPaymentDto>> GetPaymentsAsync(int year, CancellationToken ct = default)
+    {
+        // Team orders never carry payments; the Paid filter below is what selects.
+        var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
+
+        var rows = new List<AccountingPaymentDto>();
+        foreach (var o in orders)
+        {
+            var (counterpartyType, label) = CounterpartyOf(o, context);
+            foreach (var p in o.Payments.Where(p => p.Status == PaymentStatus.Paid))
+            {
+                rows.Add(new AccountingPaymentDto(
+                    year,
+                    o.Id,
+                    counterpartyType,
+                    label,
+                    p.Id,
+                    p.AmountEur,
+                    p.Method.ToString(),
+                    p.StripePaymentIntentId,
+                    p.ExternalRef,
+                    p.ReceivedAt));
+            }
+        }
+        return rows;
+    }
+
+    private static (OrderCounterpartyType Type, string Label) CounterpartyOf(Order o, YearContext context) =>
+        o.TeamId is { } tid
+            ? (OrderCounterpartyType.Team, context.TeamNames.GetValueOrDefault(tid, "(unknown team)"))
+            : (OrderCounterpartyType.Camp,
+                o.CampSeasonId is { } sid && context.SeasonsForYear.TryGetValue(sid, out var season)
+                    ? season.Name
+                    : "(unknown camp)");
 
 }

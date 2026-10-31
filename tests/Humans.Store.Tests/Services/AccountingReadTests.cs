@@ -1,17 +1,12 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services;
-using Humans.Stripe.Contracts;
 using Humans.Teams.Contracts;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -35,15 +30,13 @@ public class AccountingReadTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly Service _service;
+    private readonly StoreOrderReader _reader;
 
     public AccountingReadTests()
     {
-        _service = new Service(
-            _repo, Substitute.For<IAuditLogService>(), _camps, _teams,
-            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(),
-            Substitute.For<IStripeService>(), Substitute.For<IHoldedClient>(),
-            Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
+        _reader = new StoreOrderReader(
+            _repo, _camps, _teams,
+            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>());
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfo(SeasonId, "Camp Alpha")]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -126,7 +119,7 @@ public class AccountingReadTests
     [HumansFact]
     public async Task Order_lines_cover_camp_and_team_orders_with_their_labels()
     {
-        var lines = await _service.GetOrderLinesAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var lines = await _reader.GetOrderLinesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         lines.Should().HaveCount(3);
         lines.Where(l => l.OrderId == CampOrderId).Should().AllSatisfy(l =>
@@ -151,8 +144,8 @@ public class AccountingReadTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
-        var lines = await _service.GetOrderLinesAsync(2026, ct);
-        var summary = await _service.GetStoreSummaryAsync(2026, ct);
+        var lines = await _reader.GetOrderLinesAsync(2026, ct);
+        var summary = await _reader.GetStoreSummaryAsync(2026, ct);
 
         // Open orders reprice to the live catalog: ice is 4 now, not the 3 snapshotted.
         var ice = lines.Single(l => l.OrderId == CampOrderId && l.ProductId == IceId);
@@ -183,7 +176,7 @@ public class AccountingReadTests
         campOrder.State = OrderState.InvoiceIssued;
         campOrder.IssuedInvoiceId = Guid.NewGuid();
 
-        var lines = await _service.GetOrderLinesAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var lines = await _reader.GetOrderLinesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         var ice = lines.Single(l => l.OrderId == CampOrderId && l.ProductId == IceId);
         ice.OrderState.Should().Be(OrderState.InvoiceIssued);
@@ -195,7 +188,7 @@ public class AccountingReadTests
     [HumansFact]
     public async Task Payments_are_paid_only_refunds_negative_and_carry_the_stripe_intent()
     {
-        var payments = await _service.GetPaymentsAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var payments = await _reader.GetPaymentsAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         payments.Should().HaveCount(2, "Pending and Failed rows are not money");
         payments.Should().AllSatisfy(p =>
@@ -233,8 +226,8 @@ public class AccountingReadTests
             .Returns([orphan]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var line = (await _service.GetOrderLinesAsync(2026, ct)).Single();
-        var payment = (await _service.GetPaymentsAsync(2026, ct)).Single();
+        var line = (await _reader.GetOrderLinesAsync(2026, ct)).Single();
+        var payment = (await _reader.GetPaymentsAsync(2026, ct)).Single();
 
         line.OrderId.Should().Be(orphanId);
         line.CounterpartyType.Should().Be(OrderCounterpartyType.Camp);
@@ -252,8 +245,8 @@ public class AccountingReadTests
             .Returns([]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;
-        (await _service.GetOrderLinesAsync(2025, ct)).Should().BeEmpty();
-        (await _service.GetPaymentsAsync(2025, ct)).Should().BeEmpty();
+        (await _reader.GetOrderLinesAsync(2025, ct)).Should().BeEmpty();
+        (await _reader.GetPaymentsAsync(2025, ct)).Should().BeEmpty();
     }
 
     private static CampInfo MakeCampInfo(Guid seasonId, string name)
