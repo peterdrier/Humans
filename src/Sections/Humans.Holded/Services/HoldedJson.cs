@@ -31,6 +31,14 @@ internal static class HoldedJson
     internal static IReadOnlyList<string> ReadTags(JsonNode? node) =>
         Arr(node).Where(t => t is not null).Select(t => t!.GetValue<string>()).ToList();
 
+    internal static string ReadEuroCurrency(JsonNode? node)
+    {
+        var currency = node?.GetValue<string>() ?? "eur";
+        if (!string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+            throw new HoldedPermanentException("Holded document currency must be EUR.");
+        return currency;
+    }
+
     // v2 sends decimals as strings (e.g. "121.00").
     internal static decimal ReadDecimalV2(JsonNode? node) =>
         decimal.Parse(node?.GetValue<string>() ?? "0", CultureInfo.InvariantCulture);

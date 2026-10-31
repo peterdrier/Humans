@@ -163,6 +163,24 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("EUR")]
+    [InlineData("usd")]
+    [InlineData("")]
+    public async Task GetSalesDocument_requires_euro_currency_when_reported(string? currency)
+    {
+        var json = new System.Text.Json.Nodes.JsonObject { ["id"] = "doc-9", ["total"] = "121.00", ["currency"] = currency };
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json.ToJsonString())));
+        var read = () => client.GetSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
+
+        if (currency is null || string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+            (await read()).Total.Should().Be(121m);
+        else
+            await read.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*currency*");
+    }
+
+    [HumansTheory]
     [InlineData(HoldedSalesDocumentKind.Invoice, "{}")]
     [InlineData(HoldedSalesDocumentKind.Invoice, "{\"total\":null}")]
     [InlineData(HoldedSalesDocumentKind.SalesReceipt, "{}")]

@@ -258,7 +258,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
             ? ReadRequiredDecimalV2(Prop(n, "payments_pending"), "payments_pending")
             : ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
-        Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
+        Currency = ReadEuroCurrency(Prop(n, "currency")),
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
         {

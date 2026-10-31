@@ -160,6 +160,28 @@ public class HoldedClientReadTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("EUR")]
+    [Xunit.InlineData("usd")]
+    [Xunit.InlineData("")]
+    public async Task ListPurchaseDocuments_requires_euro_currency_when_reported(string? currency)
+    {
+        var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
+        doc["currency"] = currency;
+        var json = new JsonObject { ["items"] = new JsonArray(doc), ["has_more"] = false };
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json.ToJsonString())));
+        var read = () => client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        if (currency is null || string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+        {
+            var documents = await read();
+            documents.Should().ContainSingle().Which.Currency.Should().Be(currency ?? "eur");
+        }
+        else
+            await read.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*currency*");
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("id", null, false)]
     [Xunit.InlineData("id", null, true)]
     [Xunit.InlineData("id", "", true)]
