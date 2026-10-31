@@ -195,10 +195,10 @@ internal sealed partial class WorkgroupService(
         var now = clock.GetCurrentInstant();
         member.IsPending = null;
         member.JoinedAt = now;
-        if (isNew) await repository.AddMemberAsync(member, ct);
-        else await repository.UpdateMembersAsync([member], ct);
+        var entries = new[] { SystemEntry(workgroup.Id, WorkgroupLogKind.MemberJoined, now, name) };
+        if (isNew) await repository.AddMemberAsync(member, ct, entries);
+        else await repository.UpdateMembersAsync([member], ct, entries);
         ct = CancellationToken.None;
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberJoined, now, name, ct);
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
@@ -260,13 +260,16 @@ internal sealed partial class WorkgroupService(
 
         var leavingName = await NameOfAsync(userId, ct);
         var promotedName = promoted is null ? null : await NameOfAsync(promoted.UserId, ct);
-        await repository.UpdateMembersAsync(changed, ct);
+        var entries = new List<WorkgroupLogEntry>
+        {
+            SystemEntry(workgroup.Id, WorkgroupLogKind.MemberLeft, now, leavingName)
+        };
+        if (promoted is not null)
+            entries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now, promotedName));
+        await repository.UpdateMembersAsync(changed, ct, entries);
         ct = CancellationToken.None;
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberLeft, now, leavingName, ct);
         if (promoted is not null)
         {
-            await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
-                promotedName, ct);
             await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
                 $"Coordination handed to {promotedName} when the last coordinator left",
                 userId);
@@ -383,10 +386,10 @@ internal sealed partial class WorkgroupService(
             return new();
 
         var names = await NamesOfAsync(wanted, ct);
-        await repository.UpdateMembersAsync(changed, ct);
+        await repository.UpdateMembersAsync(changed, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now,
+                string.Join(", ", names), authorUserId: asAdmin ? null : actorUserId)]);
         ct = CancellationToken.None;
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
-            string.Join(", ", names), ct, authorUserId: asAdmin ? null : actorUserId);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
             $"Coordinators set to {string.Join(", ", names)}", actorUserId);
 

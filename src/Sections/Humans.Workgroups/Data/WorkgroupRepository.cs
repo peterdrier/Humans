@@ -89,14 +89,18 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddMemberAsync(WorkgroupMember member, CancellationToken ct = default)
+    public async Task AddMemberAsync(
+        WorkgroupMember member, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Members.Add(member);
+        if (logEntries is not null) ctx.LogEntries.AddRange(logEntries);
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateMembersAsync(IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default)
+    public async Task UpdateMembersAsync(
+        IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default,
+        IReadOnlyList<WorkgroupLogEntry>? logEntries = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         foreach (var member in members)
@@ -104,6 +108,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
             ctx.Attach(member);
             ctx.Entry(member).State = EntityState.Modified;
         }
+        if (logEntries is not null) ctx.LogEntries.AddRange(logEntries);
         await ctx.SaveChangesAsync(ct);
     }
 

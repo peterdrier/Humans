@@ -45,9 +45,14 @@ internal interface IWorkgroupRepository : IRepository
 
     Task UpdateWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default);
 
-    Task AddMemberAsync(WorkgroupMember member, CancellationToken ct = default);
+    /// <summary>Membership and its optional system log entries in one save.</summary>
+    Task AddMemberAsync(
+        WorkgroupMember member, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null);
 
-    Task UpdateMembersAsync(IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default);
+    /// <summary>Membership changes and their optional system log entries in one save.</summary>
+    Task UpdateMembersAsync(
+        IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default,
+        IReadOnlyList<WorkgroupLogEntry>? logEntries = null);
 
     Task AddMeetingAsync(WorkgroupMeeting meeting, CancellationToken ct = default);
 
