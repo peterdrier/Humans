@@ -31,13 +31,7 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
         }
         else
         {
-            row.DietaryPreference = values.DietaryPreference;
-            row.Allergies = [.. values.Allergies];
-            row.AllergyOtherText = values.AllergyOtherText;
-            row.Intolerances = [.. values.Intolerances];
-            row.IntoleranceOtherText = values.IntoleranceOtherText;
-            row.DeclinedToAnswer = values.DeclinedToAnswer;
-            row.UpdatedAt = values.UpdatedAt;
+            ctx.Entry(row).CurrentValues.SetValues(Copy(values, values.UserId));
         }
         await ctx.SaveChangesAsync(ct);
     }
