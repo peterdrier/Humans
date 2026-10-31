@@ -606,20 +606,19 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.ByTicketType.Should().HaveCount(3);
 
-        // Ordered by face value descending.
-        var vip = result.ByTicketType[0];
+        var vip = result.ByTicketType.Single(t => string.Equals(t.TicketTypeName, "VIP", StringComparison.Ordinal));
         vip.TicketTypeName.Should().Be("VIP");
         vip.Price.Should().Be(420m);
         vip.TicketsSold.Should().Be(1);
         vip.FaceValue.Should().Be(420m);
 
-        var fullWeek = result.ByTicketType[1];
+        var fullWeek = result.ByTicketType.Single(t => string.Equals(t.TicketTypeName, "Full Week", StringComparison.Ordinal) && t.Price == 100m);
         fullWeek.TicketTypeName.Should().Be("Full Week");
         fullWeek.Price.Should().Be(100m);
         fullWeek.TicketsSold.Should().Be(2);
         fullWeek.FaceValue.Should().Be(200m);
 
-        var earlyBird = result.ByTicketType[2];
+        var earlyBird = result.ByTicketType.Single(t => string.Equals(t.TicketTypeName, "Full Week", StringComparison.Ordinal) && t.Price == 80m);
         earlyBird.TicketTypeName.Should().Be("Full Week");
         earlyBird.Price.Should().Be(80m);
         earlyBird.TicketsSold.Should().Be(1);
@@ -724,15 +723,14 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.ByDiscountCampaign.Should().HaveCount(2);
 
-        var campaign = result.ByDiscountCampaign[0];
+        var campaign = result.ByDiscountCampaign.Single(c => c.CodesGranted is not null);
         campaign.CampaignTitle.Should().Be("Volunteer Comps");
         campaign.CodesGranted.Should().Be(3);
         campaign.CodesUsed.Should().Be(2);
         campaign.AverageDiscount.Should().Be(40m);
         campaign.TotalDiscount.Should().Be(80m);
 
-        // Vendor codes always sort last and have nothing granted.
-        var vendor = result.ByDiscountCampaign[1];
+        var vendor = result.ByDiscountCampaign.Single(c => c.CodesGranted is null);
         vendor.CampaignTitle.Should().Be("No campaign (vendor codes)");
         vendor.CodesGranted.Should().BeNull();
         vendor.CodesUsed.Should().Be(1);

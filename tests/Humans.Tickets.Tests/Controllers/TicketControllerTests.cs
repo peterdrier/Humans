@@ -29,6 +29,44 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
+    [HumansFact]
+    public async Task SalesAggregates_OrdersTicketTypesAndCampaignsForDisplay()
+    {
+        var aggregates = new TicketSalesAggregates
+        {
+            ByTicketType =
+            [
+                new() { TicketTypeName = "Early", FaceValue = 80m },
+                new() { TicketTypeName = "VIP", FaceValue = 420m },
+                new() { TicketTypeName = "Full", FaceValue = 200m }
+            ],
+            ByDiscountCampaign =
+            [
+                new() { CampaignTitle = "Vendor", CodesGranted = null, TotalDiscount = 900m },
+                new() { CampaignTitle = "Zeta", CodesGranted = 1, TotalDiscount = 10m },
+                new() { CampaignTitle = "alpha", CodesGranted = 1, TotalDiscount = 10m },
+                new() { CampaignTitle = "Largest", CodesGranted = 1, TotalDiscount = 80m }
+            ]
+        };
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetSalesAggregatesAsync(Arg.Any<CancellationToken>()).Returns(aggregates);
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.SalesAggregates();
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeOfType<TicketSalesAggregatesViewModel>().Subject;
+        model.ByTicketType.Select(t => t.TicketTypeName).Should().Equal("VIP", "Full", "Early");
+        model.ByDiscountCampaign.Select(c => c.CampaignTitle).Should().Equal("Largest", "alpha", "Zeta", "Vendor");
+    }
+
     [HumansTheory]
     [InlineData("orders")]
     [InlineData("attendees")]

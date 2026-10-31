@@ -156,8 +156,12 @@ internal sealed class TicketController(
             WeeklySales = aggregates.WeeklySales,
             QuarterlySales = aggregates.QuarterlySales,
             MonthlySales = aggregates.MonthlySales,
-            ByTicketType = aggregates.ByTicketType,
-            ByDiscountCampaign = aggregates.ByDiscountCampaign,
+            ByTicketType = aggregates.ByTicketType.OrderByDescending(t => t.FaceValue).ToList(),
+            ByDiscountCampaign = aggregates.ByDiscountCampaign
+                .OrderBy(r => r.CodesGranted is null)
+                .ThenByDescending(r => r.TotalDiscount)
+                .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
         };
 
         return View(model);

@@ -411,7 +411,6 @@ internal sealed class TicketQueryService(
                 TicketsSold = g.Count(),
                 FaceValue = g.Sum(a => a.Price),
             })
-            .OrderByDescending(t => t.FaceValue)
             .ToList();
 
         return new TicketSalesAggregates
@@ -463,8 +462,6 @@ internal sealed class TicketQueryService(
                     TotalDiscount = usage.Total,
                 };
             })
-            .OrderByDescending(r => r.TotalDiscount)
-            .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var unattributed = paidDiscountOrders
