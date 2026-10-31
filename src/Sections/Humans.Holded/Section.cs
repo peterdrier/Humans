@@ -53,6 +53,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
+        services.AddScoped<IHoldedWrite, Services.HoldedWrite>();
+
         services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();

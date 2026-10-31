@@ -336,18 +336,7 @@ internal sealed class Service(
         RefreshAccountsAndReconcileAsync(LocalDate today, Instant now, CancellationToken ct)
     {
         var accounts = await client.ListAccountingAccountsAsync(ct);
-        await repo.UpsertAccountsAsync(accounts.Select(a => new HoldedAccount
-        {
-            Number = a.Number,
-            HoldedId = a.Id,
-            Name = a.Name,
-            Group = a.Group,
-            Debit = a.Debit,
-            Credit = a.Credit,
-            Balance = a.Balance,
-            Archived = a.Archived,
-            SyncedAt = now,
-        }).ToList(), now, ct);
+        await repo.UpsertAccountsAsync(accounts.Select(a => ToAccountEntity(a, now)).ToList(), now, ct);
 
         var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
         accountsState.SyncStatus = HoldedSyncStatus.Idle;
@@ -515,6 +504,19 @@ internal sealed class Service(
         Checked = l.Checked,
         CreatedAt = now,
         LastSyncedAt = now,
+    };
+
+    internal static HoldedAccount ToAccountEntity(HoldedAccountDto a, Instant now) => new()
+    {
+        Number = a.Number,
+        HoldedId = a.Id,
+        Name = a.Name,
+        Group = a.Group,
+        Debit = a.Debit,
+        Credit = a.Credit,
+        Balance = a.Balance,
+        Archived = a.Archived,
+        SyncedAt = now,
     };
 
     private static HoldedLedgerLineInfo ToInfo(HoldedLedgerLine l) => new(
