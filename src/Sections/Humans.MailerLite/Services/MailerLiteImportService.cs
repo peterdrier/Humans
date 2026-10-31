@@ -32,16 +32,14 @@ internal sealed class MailerLiteImportService(
         var plan = await BuildPlanAsync(ct);
 
         int humansOutMlIn = 0;
-        foreach (var d in plan.Decisions.Where(d => d.Outcome
-            is SubscriberOutcome.VerifiedPrefsAlreadyMatch
-            or SubscriberOutcome.VerifiedFlipToOptIn
-            or SubscriberOutcome.VerifiedFlipToOptOut
-            or SubscriberOutcome.VerifiedKeepHumansPref))
-        {
-            if (d.TargetUserId is not Guid uid) continue;
-            if (!string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase)) continue;
-            if (await prefs.IsOptedOutAsync(uid, MessageCategory.Marketing, ct)) humansOutMlIn++;
-        }
+        var activeUserIds = plan.Decisions
+            .Where(d => IsVerifiedMatch(d.Outcome)
+                && string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase))
+            .Select(d => d.TargetUserId)
+            .OfType<Guid>()
+            .Distinct();
+        foreach (var userId in activeUserIds)
+            if (await prefs.IsOptedOutAsync(userId, MessageCategory.Marketing, ct)) humansOutMlIn++;
 
         return new DriftReport(HumansOptedOutMlActive: humansOutMlIn, HumansOptedInMlAbsent: null);
     }
