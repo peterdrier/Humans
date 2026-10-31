@@ -361,9 +361,7 @@ internal sealed class Service(
             .Select(g => new HoldedActualRow(
                 g.Key,
                 g.Sum(d => d.Total),
-                g.OrderByDescending(d => d.Date)
-                    .ThenBy(d => d.DocNumber, StringComparer.Ordinal)
-                    .Select(d => new HoldedActualDoc(
+                g.Select(d => new HoldedActualDoc(
                         d.HoldedDocId, d.DocNumber, d.ContactName, d.Description, d.Date, d.Total,
                         HoldedDocUrl(d.HoldedDocId)))
                     .ToList()))
@@ -458,8 +456,7 @@ internal sealed class Service(
                 state.StatusChangedAt),
             bindings.Count,
             categoryMap,
-            managed.OrderBy(m => m.HoldedAccountNumber)
-                .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
+            managed.Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
                 .ToList(),
             docs.Select(d => new HoldedDocVm(
                 d.HoldedDocId,

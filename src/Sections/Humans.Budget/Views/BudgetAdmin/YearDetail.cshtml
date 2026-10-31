@@ -496,7 +496,7 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        @foreach (var doc in holded.Docs)
+                                                        @foreach (var doc in holded.Docs.OrderByDescending(d => d.Date).ThenBy(d => d.DocNumber, StringComparer.Ordinal))
                                                         {
                                                             <tr>
                                                                 <td class="ps-4">

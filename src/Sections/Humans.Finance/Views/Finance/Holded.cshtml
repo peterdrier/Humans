@@ -262,7 +262,7 @@
             <table class="table table-sm mb-0">
                 <thead><tr><th>Account</th><th>Label</th><th>Holded id</th><th>Active</th><th>Since</th></tr></thead>
                 <tbody>
-                @foreach (var m in Model.ManagedAccounts)
+                @foreach (var m in Model.ManagedAccounts.OrderBy(m => m.AccountNumber))
                 {
                     <tr>
                         <td><code>@m.AccountNumber</code></td>

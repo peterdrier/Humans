@@ -195,7 +195,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetActualsForYear_CarriesTheDocsBehindTheTotal_NewestFirst()
+    public async Task GetActualsForYear_CarriesTheApprovedDocsBehindTheTotal()
     {
         var cat = Guid.NewGuid();
         _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseDoc>
@@ -212,12 +212,13 @@ public class HoldedFinanceServiceTests
             .Should().ContainSingle().Which;
 
         // Only what the total is made of — the draft is excluded from both.
-        row.Docs.Select(d => d.DocNumber).Should().Equal("PUR-2", "PUR-1");
+        row.Docs.Select(d => d.DocNumber).Should().BeEquivalentTo("PUR-2", "PUR-1");
         row.Docs.Sum(d => d.Total).Should().Be(row.Actual);
-        row.Docs[0].HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-d2");
-        row.Docs[0].ContactName.Should().Be("Beta");
-        row.Docs[0].Description.Should().Be("ER: Tent pegs");
-        row.Docs[0].Date.Should().Be(new LocalDate(2026, 5, 1));
+        var document = row.Docs.Single(d => string.Equals(d.DocNumber, "PUR-2", StringComparison.Ordinal));
+        document.HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-d2");
+        document.ContactName.Should().Be("Beta");
+        document.Description.Should().Be("ER: Tent pegs");
+        document.Date.Should().Be(new LocalDate(2026, 5, 1));
     }
 
     [HumansTheory]
