@@ -24,8 +24,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.SubmitterUserId == submitterUserId)
-            // arch:db-sort-ok submitter's own list — newest-first paging-friendly default
-            .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
@@ -40,8 +38,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status && r.BudgetCategoryId != null && categoryIds.Contains(r.BudgetCategoryId.Value))
-            // arch:db-sort-ok coordinator queue FIFO — oldest pending submissions surface first
-            .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
