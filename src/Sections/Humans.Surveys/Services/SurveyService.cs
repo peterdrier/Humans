@@ -1687,8 +1687,6 @@ internal sealed class SurveyService(
     {
         var identified = responses
             .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
-            .OrderBy(r => r.SubmittedAt)
-            .ThenBy(r => r.Id)
             .ToList();
         if (identified.Count == 0) return [];
 
@@ -1703,7 +1701,7 @@ internal sealed class SurveyService(
                 var userId = r.UserId!.Value;
                 var name = users.TryGetValue(userId, out var user) ? user.BurnerName : userId.ToString();
                 var answers = BuildRespondentAnswers(r, answerContext, culture);
-                return new RespondentDetail(userId, name, r.SubmittedAt, answers);
+                return new RespondentDetail(userId, name, r.SubmittedAt, answers) { ResponseId = r.Id };
             })
             .ToList();
     }

@@ -27,7 +27,10 @@ internal static class SurveyResultsBuilder
             Scope = scoped.Scope,
             SelectedResponseCount = scoped.SelectedResponseCount,
             Questions = view.Questions.Select(BuildQuestion).ToList(),
-            Respondents = view.IdentifiedRespondents.Select(BuildRespondent).ToList(),
+            Respondents = view.IdentifiedRespondents
+                .OrderBy(respondent => respondent.SubmittedAt)
+                .ThenBy(respondent => respondent.ResponseId)
+                .Select(BuildRespondent).ToList(),
             IsEmbargoed = scoped.IsEmbargoed,
             RankedQuestions = scoped.RankedQuestions ?? new Dictionary<Guid, RankedQuestionResult>(),
             IsAsociadoVote = scoped.IsAsociadoVote,

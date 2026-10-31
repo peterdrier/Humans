@@ -180,6 +180,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
+- Identified response data includes submission time and response-id metadata without display ordering. The results builder orders respondents by submission time, then response id. Anonymous/unattributed ballot ordering and identity-disclosure gates are unchanged.
+
 - The approval-queue controller orders pending submissions oldest first, with undated rows first, on both GET and rejection redisplay. The service supplies pending items and author names without display sorting.
 
 - Invited wizard starts reject invalid model binding and undefined anonymity values with HTTP 400 before creating drafts, marking an invitation started or storing wizard state. A malformed privacy choice never silently uses the model’s Identified default.

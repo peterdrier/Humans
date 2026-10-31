@@ -61,7 +61,10 @@ public sealed record GridAggregateRow(string Value, string Label, IReadOnlyList<
 public sealed record GridCellCount(string ColumnValue, string ColumnLabel, int Count, double Percent);
 
 /// <summary>Identified respondents only.</summary>
-public sealed record RespondentDetail(Guid UserId, string Name, Instant? SubmittedAt, IReadOnlyList<RespondentAnswer> Answers);
+public sealed record RespondentDetail(Guid UserId, string Name, Instant? SubmittedAt, IReadOnlyList<RespondentAnswer> Answers)
+{
+    public Guid ResponseId { get; init; }
+}
 
 /// <summary>Choice labels resolved in the default culture.</summary>
 public sealed record RespondentAnswer(

@@ -4368,7 +4368,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_orders_identified_respondents_by_submission_time()
+    public async Task GetResultsAsync_preserves_identified_respondent_metadata()
     {
         var surveyId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
@@ -4379,16 +4379,12 @@ public class SurveyServiceTests
         var now = _clock.GetCurrentInstant();
         var earlierUser = Guid.NewGuid();
         var laterUser = Guid.NewGuid();
+        var laterResponse = SubmittedResponse(surveyId, ResponseAnonymity.Identified,
+            SurveyInputMethod.UserSpecificLink, now, laterUser);
+        var earlierResponse = SubmittedResponse(surveyId, ResponseAnonymity.Identified,
+            SurveyInputMethod.UserSpecificLink, now - Duration.FromMinutes(5), earlierUser);
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new List<SurveyResponse>
-            {
-                SubmittedResponse(
-                    surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
-                    now, laterUser),
-                SubmittedResponse(
-                    surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
-                    now - Duration.FromMinutes(5), earlierUser),
-            });
+            .Returns(new List<SurveyResponse> { laterResponse, earlierResponse });
         _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -4401,10 +4397,12 @@ public class SurveyServiceTests
 
         var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
 
-        result!.IdentifiedRespondents.Select(respondent => respondent.Name)
-            .Should().ContainInOrder("Earlier", "Later");
-        result.IdentifiedRespondents.Select(respondent => respondent.SubmittedAt)
-            .Should().BeInAscendingOrder();
+        result!.IdentifiedRespondents.Select(respondent =>
+                (respondent.ResponseId, respondent.UserId, respondent.Name, respondent.SubmittedAt))
+            .Should().BeEquivalentTo([
+                (earlierResponse.Id, earlierUser, "Earlier", earlierResponse.SubmittedAt),
+                (laterResponse.Id, laterUser, "Later", laterResponse.SubmittedAt),
+            ]);
     }
 
     [HumansFact]
