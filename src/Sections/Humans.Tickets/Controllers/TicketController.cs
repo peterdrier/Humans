@@ -111,7 +111,7 @@ internal sealed class TicketController(
             CodesRedeemed = data.CodesRedeemed,
             CodesUnused = data.CodesUnused,
             RedemptionRate = data.RedemptionRate,
-            Campaigns = data.Campaigns,
+            Campaigns = data.Campaigns.OrderByDescending(c => c.CreatedAt).ToList(),
             Codes = data.Codes,
             Search = search,
         };
@@ -161,6 +161,7 @@ internal sealed class TicketController(
                 .OrderBy(r => r.CodesGranted is null)
                 .ThenByDescending(r => r.TotalDiscount)
                 .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(r => r.CreatedAt)
                 .ToList(),
         };
 

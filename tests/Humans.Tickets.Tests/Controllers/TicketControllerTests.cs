@@ -30,8 +30,10 @@ namespace Humans.Tickets.Tests.Controllers;
 public class TicketControllerTests
 {
     [HumansFact]
-    public async Task SalesAggregates_OrdersTicketTypesAndCampaignsForDisplay()
+    public async Task Reports_OrderTicketTypesAndCampaignsForDisplay()
     {
+        var earlier = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var later = earlier.Plus(Duration.FromDays(1));
         var aggregates = new TicketSalesAggregates
         {
             ByTicketType =
@@ -44,12 +46,21 @@ public class TicketControllerTests
             [
                 new() { CampaignTitle = "Vendor", CodesGranted = null, TotalDiscount = 900m },
                 new() { CampaignTitle = "Zeta", CodesGranted = 1, TotalDiscount = 10m },
-                new() { CampaignTitle = "alpha", CodesGranted = 1, TotalDiscount = 10m },
+                new() { CampaignTitle = "alpha", CodesGranted = 2, TotalDiscount = 10m, CreatedAt = earlier },
+                new() { CampaignTitle = "alpha", CodesGranted = 1, TotalDiscount = 10m, CreatedAt = later },
                 new() { CampaignTitle = "Largest", CodesGranted = 1, TotalDiscount = 80m }
             ]
         };
         var queries = Substitute.For<ITicketManagement>();
         queries.GetSalesAggregatesAsync(Arg.Any<CancellationToken>()).Returns(aggregates);
+        queries.GetCodeTrackingDataAsync(null, Arg.Any<CancellationToken>()).Returns(new CodeTrackingData
+        {
+            Campaigns =
+            [
+                new() { CampaignTitle = "Older", CreatedAt = earlier },
+                new() { CampaignTitle = "Newest", CreatedAt = later },
+            ]
+        });
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
             Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
@@ -64,7 +75,13 @@ public class TicketControllerTests
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should()
             .BeOfType<TicketSalesAggregatesViewModel>().Subject;
         model.ByTicketType.Select(t => t.TicketTypeName).Should().Equal("VIP", "Full", "Early");
-        model.ByDiscountCampaign.Select(c => c.CampaignTitle).Should().Equal("Largest", "alpha", "Zeta", "Vendor");
+        model.ByDiscountCampaign.Select(c => c.CampaignTitle).Should().Equal("Largest", "alpha", "alpha", "Zeta", "Vendor");
+        model.ByDiscountCampaign.Where(c => string.Equals(c.CampaignTitle, "alpha", StringComparison.Ordinal))
+            .Select(c => c.CodesGranted).Should().Equal(1, 2);
+
+        var codes = await controller.Codes(null);
+        codes.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TicketCodeTrackingViewModel>()
+            .Which.Campaigns.Select(c => c.CampaignTitle).Should().Equal("Newest", "Older");
     }
 
     [HumansFact]

@@ -693,7 +693,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task CodeTrackingSearch_IgnoresSurroundingWhitespace(string search, int expectedRows)
     {
         var campaignId = Guid.NewGuid();
-        StubCodeTracking(new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 2, Redeemed: 0),
+        var createdAt = Instant.FromUtc(2026, 1, 1, 0, 0);
+        StubCodeTracking(new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 2, Redeemed: 0) { CreatedAt = createdAt },
             [("VOL1", campaignId), ("VOL2", campaignId)]);
 
         var result = await _service.GetCodeTrackingDataAsync(search);
@@ -702,14 +703,16 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Codes.Should().Contain(row => string.Equals(row.Code, "VOL1", StringComparison.Ordinal));
         result.TotalCodesSent.Should().Be(2);
         result.Campaigns.Should().ContainSingle();
+        result.Campaigns[0].CreatedAt.Should().Be(createdAt);
     }
 
     [HumansFact]
     public async Task GetSalesAggregatesAsync_ByDiscountCampaign_SplitsGrantedCodesFromVendorCodes()
     {
         var campaignId = Guid.NewGuid();
+        var createdAt = Instant.FromUtc(2026, 1, 1, 0, 0);
         StubCodeTracking(
-            new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 3, Redeemed: 2),
+            new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 3, Redeemed: 2) { CreatedAt = createdAt },
             [("VOL1", campaignId), ("VOL2", campaignId), ("VOL3", campaignId)]);
 
         await TicketsDb.TicketOrders.AddRangeAsync(
@@ -725,6 +728,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         var campaign = result.ByDiscountCampaign.Single(c => c.CodesGranted is not null);
         campaign.CampaignTitle.Should().Be("Volunteer Comps");
+        campaign.CreatedAt.Should().Be(createdAt);
         campaign.CodesGranted.Should().Be(3);
         campaign.CodesUsed.Should().Be(2);
         campaign.AverageDiscount.Should().Be(40m);

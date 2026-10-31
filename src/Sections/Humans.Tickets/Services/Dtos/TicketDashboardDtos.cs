@@ -137,6 +137,7 @@ internal sealed class TicketTypeSalesAggregate
 internal sealed class DiscountCampaignAggregate
 {
     public string CampaignTitle { get; init; } = string.Empty;
+    public Instant CreatedAt { get; init; }
 
     /// <summary>Null for the unattributed row — nothing granted those codes.</summary>
     public int? CodesGranted { get; init; }
@@ -161,6 +162,7 @@ internal sealed class CampaignCodeSummaryDto
 {
     public Guid CampaignId { get; init; }
     public string CampaignTitle { get; init; } = string.Empty;
+    public Instant CreatedAt { get; init; }
     public int TotalGrants { get; init; }
     public int Redeemed { get; init; }
     public int Unused { get; init; }

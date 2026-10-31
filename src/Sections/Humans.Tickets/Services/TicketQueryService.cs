@@ -247,6 +247,7 @@ internal sealed class TicketQueryService(
             {
                 CampaignId = c.CampaignId,
                 CampaignTitle = c.CampaignTitle,
+                CreatedAt = c.CreatedAt,
                 TotalGrants = c.TotalGrants,
                 Redeemed = c.Redeemed,
                 Unused = c.TotalGrants - c.Redeemed,
@@ -455,6 +456,7 @@ internal sealed class TicketQueryService(
                 return new DiscountCampaignAggregate
                 {
                     CampaignTitle = c.CampaignTitle,
+                    CreatedAt = c.CreatedAt,
                     CodesGranted = c.TotalGrants,
                     CodesUsed = usage.Used,
                     AverageDiscount = usage.Used > 0 ? Math.Round(usage.Total / usage.Used, 2) : 0m,
