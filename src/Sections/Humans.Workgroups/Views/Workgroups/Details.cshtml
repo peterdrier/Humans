@@ -3,7 +3,11 @@
     var w = Model.Workgroup;
     ViewData["Title"] = w.Name;
 
-    var coordinatorIds = w.CoordinatorUserIds();
+    var members = w.CurrentMembers()
+        .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
+        .ThenBy(m => m.JoinedAt).ToList();
+    var coordinatorIds = members.Where(m => m.Role == WorkgroupMemberRole.Coordinator)
+        .Select(m => m.UserId).ToList();
     var isDormant = w.Status == WorkgroupStatus.Dormant;
 
     IEnumerable<(LocalDate Date, WorkgroupLogEntryInfo? Log, WorkgroupMeetingInfo? Meeting)> Timeline()
@@ -205,7 +209,7 @@
                         {
                             <select name="coordinatorUserIds" class="form-select form-select-sm" style="max-width: 240px;">
                                 <option value="">—</option>
-                                @foreach (var member in w.CurrentMembers())
+                                @foreach (var member in members)
                                 {
                                     <option value="@member.UserId" selected="@(coordinatorIds.Count > slot && coordinatorIds[slot] == member.UserId)">@Model.DisplayName(member.UserId)</option>
                                 }
@@ -247,7 +251,7 @@
     <div class="col-lg-4">
         <h2 class="h5">@Localizer["Workgroups_Roster"]</h2>
         <ul class="list-group mb-3">
-            @foreach (var m in w.CurrentMembers().OrderByDescending(m => m.Role))
+            @foreach (var m in members)
             {
                 var info = Model.People.TryGetValue(m.UserId, out var i) ? i : null;
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -274,7 +278,9 @@
 
         @if (Model.CanManageMembers)
         {
-            var pending = w.PendingMembers().ToList();
+            var pending = w.PendingMembers()
+                .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
+                .ThenBy(m => m.JoinedAt).ToList();
             @if (pending.Count > 0)
             {
                 <h3 class="h6">@Localizer["Workgroups_PendingRequests"] <span class="badge bg-warning text-dark">@pending.Count</span></h3>
@@ -311,7 +317,7 @@
                     <div class="mb-2">
                         <label class="form-label small">@Localizer["Workgroups_Field_ReplacementCoordinator"]</label>
                         <select name="replacementCoordinatorUserId" class="form-select form-select-sm">
-                            @foreach (var member in w.CurrentMembers().Where(m => m.UserId != Model.CurrentUserId))
+                            @foreach (var member in members.Where(m => m.UserId != Model.CurrentUserId))
                             {
                                 <option value="@member.UserId">@Model.DisplayName(member.UserId)</option>
                             }
@@ -332,7 +338,7 @@
                     {
                         <select name="coordinatorUserIds" class="form-select form-select-sm mb-1">
                             <option value="">—</option>
-                            @foreach (var member in w.CurrentMembers())
+                            @foreach (var member in members)
                             {
                                 <option value="@member.UserId" selected="@(c.Count > slot && c[slot] == member.UserId)">@Model.DisplayName(member.UserId)</option>
                             }

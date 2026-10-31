@@ -31,8 +31,6 @@ internal sealed partial class WorkgroupService
         w.RegisteredAt,
         w.EndedAt,
         w.Members
-            .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
-            .ThenBy(m => m.JoinedAt)
             .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone outside the repository; the log keeps the history.
