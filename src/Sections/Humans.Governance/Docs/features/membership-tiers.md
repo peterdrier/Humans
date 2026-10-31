@@ -22,6 +22,8 @@ Tier is held in Governance's `governance_membership_tiers` (one row per non-defa
 
 Approval commits the application decision, history, Board-vote removal and membership-tier grant together. A failed tier insert or update leaves the application Submitted and its votes intact; the audit and follow-up effects run only after that save.
 
+Admin expiry correction saves the application date and its granting tier’s expiry together before auditing. A failed tier save preserves drift for retry. It does not create missing tier rows or change a tier granted by another application.
+
 ### Three Managed Tiers
 
 | Tier | Description | Application Required | Board Vote | Term |

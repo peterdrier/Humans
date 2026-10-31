@@ -42,15 +42,6 @@ internal sealed partial class ApplicationRepository
         }
     }
 
-    public async Task UpdateExpiryForApplicationAsync(Guid applicationId, LocalDate? expiresAt, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.MembershipTiers.Where(x => x.GrantedByApplicationId == applicationId).ToListAsync(ct);
-        if (rows.Count == 0) return;
-        foreach (var row in rows) row.ExpiresAt = expiresAt;
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task ReassignAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

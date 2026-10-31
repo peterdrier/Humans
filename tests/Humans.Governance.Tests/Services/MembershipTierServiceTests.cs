@@ -116,18 +116,6 @@ public sealed class MembershipTierServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SyncExpiry_UpdatesTheGrantingApplicationsTerm()
-    {
-        var id = SeedUser();
-        var app = await SeedApprovedAsync(id, MembershipTier.Colaborador, new LocalDate(2027, 12, 31));
-
-        await SeedRowAsync(id, MembershipTier.Colaborador, app);
-
-        await _sut.SyncExpiryAsync(app.Id, new LocalDate(2028, 12, 31), Ct);
-        (await RowAsync(id))!.ExpiresAt.Should().Be(new LocalDate(2028, 12, 31));
-    }
-
-    [HumansFact]
     public async Task Expire_DowngradesLapsedHolders_KeepsInTermOnes_HonorsAnotherInTermTier()
     {
         var lapsed = SeedUser();

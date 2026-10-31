@@ -69,10 +69,16 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAsync(MemberApplication application, CancellationToken ct = default)
+    public async Task UpdateAsync(MemberApplication application, CancellationToken ct = default, bool syncTierExpiry = false)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Applications.Attach(application).State = EntityState.Modified;
+        if (syncTierExpiry)
+        {
+            var tiers = await ctx.MembershipTiers.Where(t => t.GrantedByApplicationId == application.Id).ToListAsync(ct);
+            foreach (var tier in tiers)
+                tier.ExpiresAt = application.TermExpiresAt;
+        }
         await ctx.SaveChangesAsync(ct);
     }
 

@@ -419,8 +419,7 @@ internal sealed class ApplicationDecisionService(
                 continue;
 
             application.TermExpiresAt = row.ExpectedExpiry;
-            await repository.UpdateAsync(application, ct);
-            await membershipTiers.SyncExpiryAsync(application.Id, row.ExpectedExpiry, ct);
+            await repository.UpdateAsync(application, ct, syncTierExpiry: true);
 
             await auditLogService.LogAsync(
                 GovernanceAuditActions.TierTermExpiryCorrected,

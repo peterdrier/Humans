@@ -35,10 +35,11 @@ internal interface IApplicationRepository : IRepository
     Task AddAsync(MemberApplication application, CancellationToken ct = default);
 
     /// <summary>
+    /// Can synchronize expiry on the tier granted by this application in the same save.
     /// Does NOT delete BoardVotes — see <see cref="FinalizeAsync"/> for the
     /// approve/reject/withdraw transactional commit.
     /// </summary>
-    Task UpdateAsync(MemberApplication application, CancellationToken ct = default);
+    Task UpdateAsync(MemberApplication application, CancellationToken ct = default, bool syncTierExpiry = false);
 
     /// <summary>
     /// Persists the mutated application, optional tier grant and deletion of every <c>BoardVote</c> row for it in one

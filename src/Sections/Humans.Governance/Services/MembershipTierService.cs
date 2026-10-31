@@ -32,10 +32,6 @@ internal sealed class MembershipTierService(
             .ToDictionary(r => r.UserId, r => r.Tier);
     }
 
-    /// <summary>Keeps <c>ExpiresAt</c> true when an admin corrects the granting application's term.</summary>
-    public Task SyncExpiryAsync(Guid applicationId, LocalDate? expiresAt, CancellationToken ct = default) =>
-        repo.UpdateExpiryForApplicationAsync(applicationId, expiresAt, ct);
-
     public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> ExpireAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default)
     {

@@ -1762,9 +1762,60 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task FixTermExpiryDriftAsync_RewritesExpiryAndAuditsEachRow()
+    public async Task FixTermExpiryDriftAsync_TierSaveFailurePreservesBothExpiriesForRetry()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var interceptor = new RejectTierGrantSave();
+        var factory = new TestDbContextFactory<GovernanceDbContext>(new DbContextOptionsBuilder<GovernanceDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options);
+        var oldExpiry = new LocalDate(2029, 12, 31);
+        var application = new MemberApplication
+        {
+            Id = Guid.NewGuid(), UserId = Guid.NewGuid(), MembershipTier = MembershipTier.Asociado,
+            Motivation = "Motivation", SubmittedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        application.Approve(Guid.NewGuid(), null, Clock);
+        application.TermExpiresAt = oldExpiry;
+        await using (var seed = await factory.CreateDbContextAsync(ct))
+        {
+            seed.Applications.Add(application);
+            seed.MembershipTiers.Add(new MembershipTierRecord
+            {
+                UserId = application.UserId, Tier = application.MembershipTier,
+                GrantedAt = Clock.GetCurrentInstant(), ExpiresAt = oldExpiry, GrantedByApplicationId = application.Id,
+            });
+            await seed.SaveChangesAsync(ct);
+        }
+        interceptor.Reject = true;
+        var service = CreateService(new ApplicationRepository(factory), factory);
+        var correct = () => service.FixTermExpiryDriftAsync(Guid.NewGuid(), ct);
+
+        await correct.Should().ThrowAsync<InvalidOperationException>().WithMessage("Tier grant save failed");
+        await using var verify = await factory.CreateDbContextAsync(ct);
+        (await verify.Applications.SingleAsync(ct)).TermExpiresAt.Should().Be(oldExpiry);
+        (await verify.MembershipTiers.SingleAsync(ct)).ExpiresAt.Should().Be(oldExpiry);
+        (await service.GetTermExpiryDriftAsync(ct)).Should().ContainSingle().Which.ApplicationId.Should().Be(application.Id);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task FixTermExpiryDriftAsync_RewritesExpiryAndAuditsEachRow(bool? grantingApplication)
     {
         var drifted = await SeedApprovedApplicationAsync(new LocalDate(2029, 12, 31));
+        var grantId = grantingApplication == true ? drifted.Id : Guid.NewGuid();
+        var grantedAt = Clock.GetCurrentInstant() - Duration.FromDays(1);
+        if (grantingApplication is not null)
+        {
+            GovernanceDb.MembershipTiers.Add(new MembershipTierRecord
+            {
+                UserId = drifted.UserId, Tier = MembershipTier.Asociado, GrantedAt = grantedAt,
+                ExpiresAt = drifted.TermExpiresAt, GrantedByApplicationId = grantId,
+            });
+            await SaveAllAsync(TestContext.Current.CancellationToken);
+        }
         var adminId = Guid.NewGuid();
 
         var count = await _service.FixTermExpiryDriftAsync(adminId, TestContext.Current.CancellationToken);
@@ -1773,6 +1824,15 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         ClearAllTrackers();
         var updated = await GovernanceDb.Applications.FirstAsync(a => a.Id == drifted.Id, TestContext.Current.CancellationToken);
         updated.TermExpiresAt.Should().Be(new LocalDate(2027, 12, 31));
+        var tier = await GovernanceDb.MembershipTiers.SingleOrDefaultAsync(TestContext.Current.CancellationToken);
+        if (grantingApplication is null) tier.Should().BeNull();
+        else
+        {
+            tier!.ExpiresAt.Should().Be(grantingApplication.Value ? new LocalDate(2027, 12, 31) : new LocalDate(2029, 12, 31));
+            tier.Tier.Should().Be(MembershipTier.Asociado);
+            tier.GrantedAt.Should().Be(grantedAt);
+            tier.GrantedByApplicationId.Should().Be(grantId);
+        }
         await AuditLog.Received(1).LogAsync(
             GovernanceAuditActions.TierTermExpiryCorrected, AuditEntityTypes.Application, drifted.Id,
             Arg.Any<string>(), adminId);
