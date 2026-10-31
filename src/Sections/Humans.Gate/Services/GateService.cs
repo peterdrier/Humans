@@ -177,7 +177,7 @@ internal sealed class GateService(
     {
         try
         {
-            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, null, CancellationToken.None));
             if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
                 mirrorLedger.TryMarkSent(vendorTicketId);
         }
@@ -307,7 +307,7 @@ internal sealed class GateService(
             var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
             // The job keeps the original admit time and runs independently of the admin request.
             backgroundJobs.Enqueue<GateVendorCheckInJob>(j =>
-                j.ExecuteBackfillAsync(row.VendorTicketId!, admittedAtUnixSeconds, CancellationToken.None));
+                j.ExecuteAsync(row.VendorTicketId!, admittedAtUnixSeconds, CancellationToken.None));
             enqueued.Add(row);
         }
 
