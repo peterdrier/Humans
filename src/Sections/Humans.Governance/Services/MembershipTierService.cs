@@ -32,17 +32,6 @@ internal sealed class MembershipTierService(
             .ToDictionary(r => r.UserId, r => r.Tier);
     }
 
-    /// <summary>Approval: the member now holds <paramref name="application"/>'s tier until its term ends.</summary>
-    public Task GrantAsync(MemberApplication application, CancellationToken ct = default) =>
-        repo.UpsertAsync(new MembershipTierRecord
-        {
-            UserId = application.UserId,
-            Tier = application.MembershipTier,
-            GrantedAt = clock.GetCurrentInstant(),
-            ExpiresAt = application.TermExpiresAt,
-            GrantedByApplicationId = application.Id,
-        }, ct);
-
     /// <summary>Keeps <c>ExpiresAt</c> true when an admin corrects the granting application's term.</summary>
     public Task SyncExpiryAsync(Guid applicationId, LocalDate? expiresAt, CancellationToken ct = default) =>
         repo.UpdateExpiryForApplicationAsync(applicationId, expiresAt, ct);

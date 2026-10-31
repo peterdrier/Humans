@@ -4,8 +4,8 @@
 
 Project: `src/Sections/Humans.Governance`; services under `Services/`,
 repository under `Data/`. **DbContext:**
-`GovernanceDbContext`. `ApplicationRepository`,
-`AssemblyVoteRepository` and `MembershipTierRepository` inject
+`GovernanceDbContext`. `ApplicationRepository`
+and `AssemblyVoteRepository` inject
 `IDbContextFactory<GovernanceDbContext>` directly. Owns
 `Applications`, `MembershipTiers` (`governance_membership_tiers`), `ApplicationStateHistories`, `BoardVotes`,
 `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
@@ -56,7 +56,7 @@ delegate to `MembershipTierService`.
 ### MembershipTierService (Scoped, internal)
 
 Repositories: `IMembershipTierRepository`, plus `IApplicationRepository` (read-only — grant
-and term data for expiry).
+and term data for expiry). Both interfaces resolve to `ApplicationRepository`; its membership-tier partial owns tier access so approvals can commit the tier and application together.
 
 | Table | R/W |
 |-------|-----|

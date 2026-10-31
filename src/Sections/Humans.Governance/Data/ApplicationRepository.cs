@@ -6,7 +6,8 @@ using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data;
 
-internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory) : IApplicationRepository
+internal sealed partial class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory)
+    : IApplicationRepository, IMembershipTierRepository
 {
     public async Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default)
     {
@@ -75,7 +76,7 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task FinalizeAsync(MemberApplication application, CancellationToken ct = default)
+    public async Task FinalizeAsync(MemberApplication application, CancellationToken ct = default, MembershipTierRecord? tierGrant = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Existing history and votes stay unchanged; new history rows have no key
@@ -88,6 +89,8 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
             .Where(bv => bv.ApplicationId == application.Id)
             .ToListAsync(ct);
         ctx.BoardVotes.RemoveRange(votes);
+        if (tierGrant is not null)
+            await PrepareTierUpsertAsync(ctx, tierGrant, ct);
 
         await ctx.SaveChangesAsync(ct);
     }

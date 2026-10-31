@@ -97,11 +97,12 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _service = CreateService();
     }
 
-    private ApplicationDecisionService CreateService(IApplicationRepository? repository = null) => new(
+    private ApplicationDecisionService CreateService(
+        IApplicationRepository? repository = null, IDbContextFactory<GovernanceDbContext>? factory = null) => new(
         repository ?? _repository,
         _userService,
         new MembershipTierService(
-            new MembershipTierRepository(GovernanceDbFactory), repository ?? _repository, _userService, Clock),
+            new ApplicationRepository(factory ?? GovernanceDbFactory), repository ?? _repository, _userService, Clock),
         _roleAssignmentService,
         AuditLog,
         _emailService,
@@ -489,12 +490,91 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             reviewerId);
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_GrantsTheTierWithTheApplicationsTerm()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveAsync_TierSaveFailurePreservesSubmittedApplicationAndVotes(bool existingTier)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var interceptor = new RejectTierGrantSave();
+        var factory = new TestDbContextFactory<GovernanceDbContext>(new DbContextOptionsBuilder<GovernanceDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options);
+        var application = new MemberApplication
+        {
+            Id = Guid.NewGuid(), UserId = Guid.NewGuid(), MembershipTier = MembershipTier.Asociado,
+            Motivation = "Motivation", SubmittedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+        };
+        var voterId = Guid.NewGuid();
+        await using (var seed = await factory.CreateDbContextAsync(ct))
+        {
+            seed.Applications.Add(application);
+            seed.BoardVotes.Add(new BoardVote
+            {
+                Id = Guid.NewGuid(), ApplicationId = application.Id, BoardMemberUserId = voterId,
+                Vote = VoteChoice.Yay, VotedAt = Clock.GetCurrentInstant(),
+            });
+            if (existingTier) seed.MembershipTiers.Add(new MembershipTierRecord
+            {
+                UserId = application.UserId, Tier = MembershipTier.Volunteer, GrantedAt = Clock.GetCurrentInstant(),
+            });
+            await seed.SaveChangesAsync(ct);
+        }
+        interceptor.Reject = true;
+        var service = CreateService(new ApplicationRepository(factory), factory);
+        var approve = () => service.ApproveAsync(application.Id, Guid.NewGuid(), null, null, ct);
+
+        await approve.Should().ThrowAsync<InvalidOperationException>().WithMessage("Tier grant save failed");
+        await using var verify = await factory.CreateDbContextAsync(ct);
+        var saved = await verify.Applications.Include(a => a.StateHistory).SingleAsync(ct);
+        saved.Status.Should().Be(ApplicationStatus.Submitted);
+        saved.ResolvedAt.Should().BeNull();
+        saved.TermExpiresAt.Should().BeNull();
+        saved.StateHistory.Should().BeEmpty();
+        (await verify.BoardVotes.SingleAsync(ct)).BoardMemberUserId.Should().Be(voterId);
+        var tier = await verify.MembershipTiers.SingleOrDefaultAsync(ct);
+        if (existingTier)
+        {
+            tier!.Tier.Should().Be(MembershipTier.Volunteer);
+            tier.GrantedByApplicationId.Should().BeNull();
+        }
+        else tier.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _syncJob.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class RejectTierGrantSave : SaveChangesInterceptor
+    {
+        public bool Reject { get; set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Reject && eventData.Context?.ChangeTracker.Entries<MembershipTierRecord>()
+                .Any(entry => entry.State is EntityState.Added or EntityState.Modified) == true)
+                throw new InvalidOperationException("Tier grant save failed");
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveAsync_GrantsTheTierWithTheApplicationsTerm(bool existingTier)
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
         await SeedBoardVoteAsync(app.Id);
+        if (existingTier)
+        {
+            GovernanceDb.MembershipTiers.Add(new MembershipTierRecord
+            {
+                UserId = userId, Tier = MembershipTier.Volunteer,
+                GrantedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
+            });
+            await SaveAllAsync(TestContext.Current.CancellationToken);
+        }
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
 

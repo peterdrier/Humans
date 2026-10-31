@@ -4,8 +4,7 @@ using NodaTime;
 
 namespace Humans.Governance.Data;
 
-internal sealed class MembershipTierRepository(IDbContextFactory<GovernanceDbContext> factory)
-    : IMembershipTierRepository
+internal sealed partial class ApplicationRepository
 {
     public async Task<MembershipTierRecord?> GetAsync(Guid userId, CancellationToken ct = default)
     {
@@ -22,6 +21,13 @@ internal sealed class MembershipTierRepository(IDbContextFactory<GovernanceDbCon
     public async Task UpsertAsync(MembershipTierRecord values, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        await PrepareTierUpsertAsync(ctx, values, ct);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    private static async Task PrepareTierUpsertAsync(
+        GovernanceDbContext ctx, MembershipTierRecord values, CancellationToken ct)
+    {
         var row = await ctx.MembershipTiers.SingleOrDefaultAsync(x => x.UserId == values.UserId, ct);
         if (row is null)
         {
@@ -34,7 +40,6 @@ internal sealed class MembershipTierRepository(IDbContextFactory<GovernanceDbCon
             row.ExpiresAt = values.ExpiresAt;
             row.GrantedByApplicationId = values.GrantedByApplicationId;
         }
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateExpiryForApplicationAsync(Guid applicationId, LocalDate? expiresAt, CancellationToken ct = default)

@@ -74,8 +74,6 @@ internal sealed class ApplicationDecisionService(
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
-        await membershipTiers.GrantAsync(application, cancellationToken);
-
         if (application.MembershipTier == MembershipTier.Colaborador)
             await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Colaboradors, cancellationToken);
@@ -173,11 +171,19 @@ internal sealed class ApplicationDecisionService(
     {
         // Resolve the Board before the write so nothing awaitable sits between commit and audit.
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
-        await repository.FinalizeAsync(application, cancellationToken);
+        var approved = application.Status == ApplicationStatus.Approved;
+        var tierGrant = approved ? new MembershipTierRecord
+        {
+            UserId = application.UserId,
+            Tier = application.MembershipTier,
+            GrantedAt = clock.GetCurrentInstant(),
+            ExpiresAt = application.TermExpiresAt,
+            GrantedByApplicationId = application.Id,
+        } : null;
+        await repository.FinalizeAsync(application, cancellationToken, tierGrant);
 
         InvalidateVotingBadges(boardMemberIds);
 
-        var approved = application.Status == ApplicationStatus.Approved;
         var decision = approved ? "approved" : "rejected";
         await auditLogService.LogAsync(
             approved ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,

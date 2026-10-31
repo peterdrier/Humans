@@ -20,6 +20,8 @@ Nobodies Collective has four effective membership tiers, though only three are m
 
 Tier is held in Governance's `governance_membership_tiers` (one row per non-default member), not on the profile and not as a role. Tier applications use the `Application` entity (with a `MembershipTier` field) and always go through the dedicated Governance Applications route; initial profile setup describes the tiers and links there.
 
+Approval commits the application decision, history, Board-vote removal and membership-tier grant together. A failed tier insert or update leaves the application Submitted and its votes intact; the audit and follow-up effects run only after that save.
+
 ### Three Managed Tiers
 
 | Tier | Description | Application Required | Board Vote | Term |

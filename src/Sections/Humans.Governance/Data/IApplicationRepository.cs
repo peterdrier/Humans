@@ -41,11 +41,11 @@ internal interface IApplicationRepository : IRepository
     Task UpdateAsync(MemberApplication application, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists the mutated application and deletes every <c>BoardVote</c> row for it in one
+    /// Persists the mutated application, optional tier grant and deletion of every <c>BoardVote</c> row for it in one
     /// <c>SaveChangesAsync</c>. Read <see cref="GetVoterIdsForApplicationAsync"/> first if the
     /// caller needs voter ids for cache invalidation.
     /// </summary>
-    Task FinalizeAsync(MemberApplication application, CancellationToken ct = default);
+    Task FinalizeAsync(MemberApplication application, CancellationToken ct = default, MembershipTierRecord? tierGrant = null);
 
     /// <summary>Distinct voters on this application, for badge invalidation after finalize.</summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
