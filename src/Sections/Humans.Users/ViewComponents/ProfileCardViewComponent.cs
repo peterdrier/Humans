@@ -115,7 +115,7 @@ public sealed class ProfileCardViewComponent(
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility
             }).ToList(),
-            ContactFields = contactFields.Select(cf => new ContactFieldViewModel
+            ContactFields = contactFields.OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldViewModel
             {
                 Id = cf.Id,
                 FieldType = cf.FieldType,

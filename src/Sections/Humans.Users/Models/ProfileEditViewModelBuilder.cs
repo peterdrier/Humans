@@ -60,7 +60,8 @@ internal static class ProfileEditViewModelBuilder
                 && string.IsNullOrEmpty(profile?.LastName)
                 && string.IsNullOrEmpty(profile?.EmergencyContactName),
             ContactFields = BuildLegacyContactFields(profile),
-            EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default).Select(cf => new ContactFieldEditViewModel
+            EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default)
+                .OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldEditViewModel
             {
                 Id = cf.Id,
                 FieldType = cf.FieldType,
@@ -91,7 +92,8 @@ internal static class ProfileEditViewModelBuilder
     }
 
     public static IReadOnlyList<ContactFieldViewModel> BuildLegacyContactFields(ProfileInfo? profile)
-        => (profile?.ContactFields ?? []).Where(cf => cf.FieldType == default).Select(cf => new ContactFieldViewModel
+        => (profile?.ContactFields ?? []).Where(cf => cf.FieldType == default)
+        .OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldViewModel
         {
             Id = cf.Id,
             FieldType = cf.FieldType,

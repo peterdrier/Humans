@@ -87,12 +87,11 @@ internal static class PersonSearchMatcher
             if (historyMatch is not null)
                 return new PersonSearchMatch(Label("Users_Profile_BurnerCV"), historyMatch.EventName, null, ScoreOtherField);
 
-            foreach (var cf in p.ContactFields)
-            {
-                if (cf.Visibility == ContactFieldVisibility.AllActiveProfiles &&
-                    FoldedContains(cf.Value, foldedQuery))
-                    return new PersonSearchMatch(DisplayLabel(cf), cf.Value, null, ScoreOtherField);
-            }
+            var publicContactMatch = p.ContactFields
+                .Where(cf => cf.Visibility == ContactFieldVisibility.AllActiveProfiles && FoldedContains(cf.Value, foldedQuery))
+                .MinBy(cf => cf.DisplayOrder);
+            if (publicContactMatch is not null)
+                return new PersonSearchMatch(DisplayLabel(publicContactMatch), publicContactMatch.Value, null, ScoreOtherField);
 
             foreach (var email in user.UserEmails)
             {
@@ -112,14 +111,12 @@ internal static class PersonSearchMatcher
                     return new PersonSearchMatch(Label("Enum_ContactFieldType_Email"), null, email, ScoreOtherField);
             }
 
-            foreach (var cf in p.ContactFields)
-            {
-                // Public ContactFields are handled in the Bio bucket; Admin covers the remainder.
-                if (cf.Visibility == ContactFieldVisibility.AllActiveProfiles)
-                    continue;
-                if (FoldedContains(cf.Value, foldedQuery))
-                    return new PersonSearchMatch(DisplayLabel(cf), cf.Value, cf.Value, ScoreOtherField);
-            }
+            // Public ContactFields are handled in the Bio bucket; Admin covers the remainder.
+            var privateContactMatch = p.ContactFields
+                .Where(cf => cf.Visibility != ContactFieldVisibility.AllActiveProfiles && FoldedContains(cf.Value, foldedQuery))
+                .MinBy(cf => cf.DisplayOrder);
+            if (privateContactMatch is not null)
+                return new PersonSearchMatch(DisplayLabel(privateContactMatch), privateContactMatch.Value, privateContactMatch.Value, ScoreOtherField);
         }
 
         return null;

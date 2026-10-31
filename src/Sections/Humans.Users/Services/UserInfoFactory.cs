@@ -40,7 +40,6 @@ internal static class UserInfoFactory
             return null;
 
         var contactFieldInfos = contactFields
-            .OrderBy(c => c.DisplayOrder)
             .Select(c => new ContactFieldInfo(
                 c.Id, c.FieldType, c.CustomLabel, c.Value, c.Visibility, c.DisplayOrder))
             .ToList();

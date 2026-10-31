@@ -307,6 +307,33 @@ public class PersonSearchMatcherTests
         PersonSearchMatcher.Match(priv, "privatehandle", PersonSearchFields.AdminAll).Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [InlineData(ContactFieldVisibility.AllActiveProfiles, PersonSearchFields.Bio)]
+    [InlineData(ContactFieldVisibility.BoardOnly, PersonSearchFields.Admin)]
+    public void Contact_match_uses_authored_order_within_its_visibility_bucket(
+        ContactFieldVisibility visibility, PersonSearchFields fields)
+    {
+        var otherVisibility = visibility == ContactFieldVisibility.AllActiveProfiles
+            ? ContactFieldVisibility.BoardOnly : ContactFieldVisibility.AllActiveProfiles;
+        var human = Human(burnerName: "Sparkle");
+        human = human with
+        {
+            Profile = human.Profile! with
+            {
+                ContactFields =
+                [
+                    new(Guid.NewGuid(), ContactFieldType.Other, null, "handle-later", visibility, 2),
+                    new(Guid.NewGuid(), ContactFieldType.Other, null, "handle-other-bucket", otherVisibility, 0),
+                    new(Guid.NewGuid(), ContactFieldType.Other, null, "handle-first", visibility, 1),
+                ]
+            }
+        };
+
+        var match = PersonSearchMatcher.Match(human, "handle", fields);
+        match.Should().NotBeNull();
+        match!.Snippet.Should().Be("handle-first");
+    }
+
     [HumansFact]
     public void Publicly_exposed_email_matches_for_everyone_but_private_email_is_admin_only()
     {
