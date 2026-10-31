@@ -947,7 +947,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     }
 
     public async Task<CampUpdateResult> AddHistoricalNameAsync(
-        Guid campId, string name, CancellationToken cancellationToken = default)
+        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             return CampUpdateResult.Failure("Camps_Flash_NameRequired");
@@ -965,15 +965,20 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         };
 
         await _repo.AddHistoricalNameAsync(entry, cancellationToken);
+        await _auditLog.LogAsync(
+            CampsAuditActions.CampHistoricalNameAdded, nameof(CampHistoricalName), entry.Id,
+            $"Added historical name '{name}'", actorUserId,
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
         return CampUpdateResult.Success();
     }
 
     public async Task<CampUpdateResult> RemoveHistoricalNameAsync(
-        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
         if (camp is null) return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
-        if (camp.HistoricalNames.All(n => n.Id != historicalNameId))
+        var entry = camp.HistoricalNames.FirstOrDefault(n => n.Id == historicalNameId);
+        if (entry is null)
         {
             return CampUpdateResult.Failure("Camps_Flash_HistoricalNameWrongCamp");
         }
@@ -983,6 +988,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         {
             return CampUpdateResult.Failure("Camps_Flash_HistoricalNameNotFound");
         }
+        await _auditLog.LogAsync(
+            CampsAuditActions.CampHistoricalNameRemoved, nameof(CampHistoricalName), historicalNameId,
+            $"Removed historical name '{entry.Name}'", actorUserId,
+            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
         return CampUpdateResult.Success();
 
     }

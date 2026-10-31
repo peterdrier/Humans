@@ -699,11 +699,11 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddHistoricalName(string slug, string name)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
             return errorResult;
 
-        var result = await _campService.AddHistoricalNameAsync(camp.Id, name);
+        var result = await _campService.AddHistoricalNameAsync(camp.Id, name, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Adding a historical name failed for camp {CampId}: {Reason}", camp.Id, key);
@@ -722,11 +722,11 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveHistoricalName(string slug, Guid nameId)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
             return errorResult;
 
-        var result = await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
+        var result = await _campService.RemoveHistoricalNameAsync(camp.Id, nameId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Removing historical name {NameId} failed for camp {CampId}: {Reason}", nameId, camp.Id, key);

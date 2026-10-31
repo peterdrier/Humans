@@ -82,6 +82,8 @@
   <data name="Enum_AuditAction_CampImageUploaded" xml:space="preserve"><value>Imagen del campamento cargada</value></data>
   <data name="Enum_AuditAction_CampImageDeleted" xml:space="preserve"><value>Imagen del campamento eliminada</value></data>
   <data name="Enum_AuditAction_CampImagesReordered" xml:space="preserve"><value>Imágenes del campamento reordenadas</value></data>
+  <data name="Enum_AuditAction_CampHistoricalNameAdded" xml:space="preserve"><value>Nombre histórico del campamento añadido</value></data>
+  <data name="Enum_AuditAction_CampHistoricalNameRemoved" xml:space="preserve"><value>Nombre histórico del campamento eliminado</value></data>
   <data name="Enum_AuditAction_ShiftSignupConfirmed" xml:space="preserve"><value>Inscripción al turno confirmada</value></data>
   <data name="Enum_AuditAction_ShiftSignupRefused" xml:space="preserve"><value>Inscripción al turno rechazada</value></data>
   <data name="Enum_AuditAction_ShiftSignupVoluntold" xml:space="preserve"><value>Inscripción al turno asignada por la coordinación</value></data>

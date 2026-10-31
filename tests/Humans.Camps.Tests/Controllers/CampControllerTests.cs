@@ -612,10 +612,10 @@ public class CampControllerTests
                     _camps.RemoveCampMemberAsync(camp.Id, targetId, actorId).Returns(CampMembershipMutationResult.Failure(key));
                     result = controller.RemoveMembership(camp.Slug, targetId); break;
                 case "AddHistoricalName":
-                    _camps.AddHistoricalNameAsync(camp.Id, "Previous Name").Returns(CampUpdateResult.Failure(key));
+                    _camps.AddHistoricalNameAsync(camp.Id, "Previous Name", actorId).Returns(CampUpdateResult.Failure(key));
                     result = controller.AddHistoricalName(camp.Slug, "Previous Name"); break;
                 case "RemoveHistoricalName":
-                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
+                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId, actorId).Returns(CampUpdateResult.Failure(key));
                     result = controller.RemoveHistoricalName(camp.Slug, targetId); break;
                 case "DeleteImage":
                     _camps.DeleteImageAsync(camp.Id, targetId, actorUserId: Arg.Any<Guid>()).Returns(CampUpdateResult.Failure(key));

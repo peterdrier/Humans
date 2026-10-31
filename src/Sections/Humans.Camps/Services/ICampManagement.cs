@@ -54,9 +54,9 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, Guid actorUserId, CancellationToken cancellationToken = default);
     Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>

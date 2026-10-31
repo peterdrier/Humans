@@ -82,6 +82,8 @@
   <data name="Enum_AuditAction_CampImageUploaded" xml:space="preserve"><value>Camp image uploaded</value></data>
   <data name="Enum_AuditAction_CampImageDeleted" xml:space="preserve"><value>Camp image deleted</value></data>
   <data name="Enum_AuditAction_CampImagesReordered" xml:space="preserve"><value>Camp images reordered</value></data>
+  <data name="Enum_AuditAction_CampHistoricalNameAdded" xml:space="preserve"><value>Camp historical name added</value></data>
+  <data name="Enum_AuditAction_CampHistoricalNameRemoved" xml:space="preserve"><value>Camp historical name removed</value></data>
   <data name="Enum_AuditAction_ShiftSignupConfirmed" xml:space="preserve"><value>Shift signup confirmed</value></data>
   <data name="Enum_AuditAction_ShiftSignupRefused" xml:space="preserve"><value>Shift signup refused</value></data>
   <data name="Enum_AuditAction_ShiftSignupVoluntold" xml:space="preserve"><value>Shift signup assigned by coordinator</value></data>

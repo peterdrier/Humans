@@ -2554,7 +2554,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         Func<Task<CampUpdateResult>> act = image
             ? () => _service.DeleteImageAsync(Guid.NewGuid(), Guid.NewGuid(), actorUserId: TestActorId, ct)
-            : () => _service.RemoveHistoricalNameAsync(Guid.NewGuid(), Guid.NewGuid(), ct);
+            : () => _service.RemoveHistoricalNameAsync(Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct);
         (await act()).ErrorKey.Should().Be(key);
         _fileStorage.Files.Should().BeEmpty();
     }
@@ -2702,11 +2702,13 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
+        AuditLog.ClearReceivedCalls();
 
-        var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {new string('a', length)}  ", ct);
+        var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {new string('a', length)}  ", TestActorId, ct);
 
         result.ErrorKey.Should().Be(length == 0 ? "Camps_Flash_NameRequired" : "Camps_Validation_HistoricalNameLength");
         (await CampsDb.CampHistoricalNames.CountAsync(ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -2715,12 +2717,17 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
+        AuditLog.ClearReceivedCalls();
         var name = new string('a', 256);
 
-        var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {name}  ", ct);
+        var result = await _service.AddHistoricalNameAsync(camp.Id, $"  {name}  ", TestActorId, ct);
 
         result.Succeeded.Should().BeTrue();
-        (await CampsDb.CampHistoricalNames.SingleAsync(ct)).Name.Should().Be(name);
+        var saved = await CampsDb.CampHistoricalNames.SingleAsync(ct);
+        saved.Name.Should().Be(name);
+        await AuditLog.Received(1).LogAsync(CampsAuditActions.CampHistoricalNameAdded,
+            nameof(CampHistoricalName), saved.Id, $"Added historical name '{name}'", TestActorId,
+            relatedEntityId: camp.Id, relatedEntityType: nameof(Camp));
     }
 
     [HumansTheory]
@@ -2744,6 +2751,25 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task RemoveHistoricalName_audits_the_removed_name_and_acting_manager()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCampAsync();
+        await _service.AddHistoricalNameAsync(camp.Id, "Old Name", TestActorId, ct);
+        var name = await CampsDb.CampHistoricalNames.SingleAsync(ct);
+        AuditLog.ClearReceivedCalls();
+
+        var result = await _service.RemoveHistoricalNameAsync(camp.Id, name.Id, TestActorId, ct);
+
+        result.Succeeded.Should().BeTrue();
+        (await CampsDb.CampHistoricalNames.AsNoTracking().AnyAsync(ct)).Should().BeFalse();
+        await AuditLog.Received(1).LogAsync(CampsAuditActions.CampHistoricalNameRemoved,
+            nameof(CampHistoricalName), name.Id, "Removed historical name 'Old Name'", TestActorId,
+            relatedEntityId: camp.Id, relatedEntityType: nameof(Camp));
+    }
+
+    [HumansFact]
     public async Task RemoveHistoricalNameAsync_WrongCamp_ReturnsRefusal()
     {
         await SeedSettingsAsync();
@@ -2752,16 +2778,19 @@ public sealed class CampServiceTests : CampsTestHarness
         var campB = (await _service.CreateCampAsync(
             Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
             null, null, false, 1, MakeSeasonData(), null, Event2026.Id, TestContext.Current.CancellationToken)).Value!;
-        await _service.AddHistoricalNameAsync(campA.Id, "Old Name", TestContext.Current.CancellationToken);
+        await _service.AddHistoricalNameAsync(campA.Id, "Old Name", TestActorId, TestContext.Current.CancellationToken);
         var name = await CampsDb.CampHistoricalNames.AsNoTracking().FirstAsync(n => n.CampId == campA.Id, TestContext.Current.CancellationToken);
 
+        AuditLog.ClearReceivedCalls();
+
         // Scope check resolves the scoped camp's aggregate, so the wrong camp must exist.
-        var action = () => _service.RemoveHistoricalNameAsync(campB.Id, name.Id, TestContext.Current.CancellationToken);
+        var action = () => _service.RemoveHistoricalNameAsync(campB.Id, name.Id, TestActorId, TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_HistoricalNameWrongCamp");
 
         var stillThere = await CampsDb.CampHistoricalNames.AsNoTracking().FirstOrDefaultAsync(n => n.Id == name.Id, TestContext.Current.CancellationToken);
         stillThere.Should().NotBeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
