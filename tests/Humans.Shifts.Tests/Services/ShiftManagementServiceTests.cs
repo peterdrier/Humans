@@ -91,7 +91,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(false, false)]
-    public async Task RotaWriteFailure_EvictsTheCommittedRota(bool create, bool failureAfterRotaSave)
+    public async Task RotaWriteFailure_EvictsCachedRotaBeforeOrAfterCommit(bool create, bool failureAfterRotaSave)
     {
         var (settings, existing) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -104,19 +104,20 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         } : existing;
+        var originalName = rota.Name;
         rota.Name = "Changed rota";
         var real = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var repo = Substitute.For<IShiftManagementRepository>();
         repo.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
         var failure = new IOException("Persistence acknowledgement failed");
-        repo.SaveRotaAsync(rota, Arg.Any<EntityMutationMode>(), Arg.Any<CancellationToken>())
+        repo.SaveRotaAsync(rota, Arg.Any<EntityMutationMode>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<Guid>?>())
             .Returns(async call =>
             {
-                await real.SaveRotaAsync(rota, call.Arg<EntityMutationMode>(), call.Arg<CancellationToken>());
-                if (failureAfterRotaSave) throw failure;
+                if (!failureAfterRotaSave) throw failure;
+                await real.SaveRotaAsync(rota, call.Arg<EntityMutationMode>(), call.Arg<CancellationToken>(),
+                    call.Arg<IReadOnlyList<Guid>?>());
+                throw failure;
             });
-        repo.SetRotaTagsAsync(rota.Id, Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(failure));
         repo.GetRotaAsync(rota.Id, RotaReadShape.None, Arg.Any<CancellationToken>()).Returns(rota);
         var views = new ShiftViewProbe();
         await views.PrimeRotaAsync(rota.Id);
@@ -133,9 +134,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         (await views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        (await real.GetRotaAsync(
-            rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken))!.Name
-            .Should().Be("Changed rota");
+        var saved = await real.GetRotaAsync(rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken);
+        if (create && !failureAfterRotaSave) saved.Should().BeNull();
+        else saved!.Name.Should().Be(failureAfterRotaSave ? "Changed rota" : originalName);
     }
 
     [HumansTheory]

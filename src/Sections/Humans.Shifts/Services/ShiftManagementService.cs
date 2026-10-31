@@ -262,9 +262,8 @@ internal sealed class ShiftManagementService(
         rota.UpdatedAt = clock.GetCurrentInstant();
         try
         {
-            await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
-            if (tagIds is { Count: > 0 })
-                await repo.SetRotaTagsAsync(rota.Id, tagIds);
+            await repo.SaveRotaAsync(rota, EntityMutationMode.Add,
+                tagIds: tagIds is { Count: > 0 } ? tagIds : null);
         }
         finally
         {
@@ -287,9 +286,7 @@ internal sealed class ShiftManagementService(
         rota.UpdatedAt = clock.GetCurrentInstant();
         try
         {
-            await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
-            if (input.TagIds is not null)
-                await repo.SetRotaTagsAsync(rota.Id, input.TagIds);
+            await repo.SaveRotaAsync(rota, EntityMutationMode.Update, tagIds: input.TagIds);
         }
         finally
         {
