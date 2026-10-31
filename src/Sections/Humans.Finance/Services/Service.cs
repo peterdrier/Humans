@@ -310,7 +310,6 @@ internal sealed class Service(
                 .Select(m => new HoldedExpenseAccountOption(
                     m.HoldedAccountNumber, m.HoldedAccountId, m.Label,
                     IsBudgetCategory: false, IsActive: m.IsActive)))
-            .OrderBy(o => o.AccountNum)
             .ToList();
         return options;
     }

@@ -143,12 +143,19 @@ public sealed class ExpensesControllerPreapprovalTests
     {
         var own = Grant("Own", Today.PlusDays(10));
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([own]);
+        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>()).Returns([
+            new HoldedExpenseAccountOption(62900001, "other", "Alpha", false, true),
+            new HoldedExpenseAccountOption(62900003, "z", "Zulu", true, true),
+            new HoldedExpenseAccountOption(62900005, "a5", "Alpha", true, true),
+            new HoldedExpenseAccountOption(62900004, "a4", "alpha", true, true),
+        ]);
 
         var model = (await Build().New()).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseNewViewModel>().Subject;
 
         model.PreapprovalGrantId.Should().BeNull();
         model.Grants.Should().ContainSingle().Which.Id.Should().Be(own.Id);
+        model.Accounts.Select(a => a.AccountNum).Should().Equal(62900004, 62900005, 62900003, 62900001);
         await _preapprovals.DidNotReceive().GetGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 

@@ -262,6 +262,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Expense-account options carry account metadata without display ordering. Expenses orders its choices by budget-category status, label and account number; Preapprovals orders its choices by account number.
+
 - Finance marks account provisioning, create-or-link expense accounts, and creditor-contact creation as external writes. State-changing HTTP callers must not pass browser cancellation into those Holded mutations.
 
 - Holded provisioning POSTs require an explicit account-block start and one/all choice. Missing fields and binding errors return HTTP 400 and a Warning after actor resolution, before planning or creating accounts. Missing actors retain Challenge; explicit false add-all flags remain valid.

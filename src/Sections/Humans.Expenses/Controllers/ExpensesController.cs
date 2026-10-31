@@ -986,6 +986,7 @@ internal sealed class ExpensesController(
         return accounts
             .OrderByDescending(a => a.IsBudgetCategory)
             .ThenBy(a => a.Label, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(a => a.AccountNum)
             .ToList();
     }
 

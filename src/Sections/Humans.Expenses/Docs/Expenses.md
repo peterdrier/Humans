@@ -148,6 +148,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- New, edit and approval-override account choices are ordered by budget-category status first, then label ignoring case, then account number. The controller owns that order; Finance supplies unordered account metadata.
+
 - The member index retains request cancellation through its Budget coordinator-scope lookup.
 
 - The **For member** picker prefills the resolved member ID alongside their name, including when its input is an archived account ID.
