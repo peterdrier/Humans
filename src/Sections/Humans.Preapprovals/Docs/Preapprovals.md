@@ -175,7 +175,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`PreapprovalsAuditActions.Preapproval*`), related to the program, the expense report, or the
   affected user. Program kind edits before the first grant include the old and new sizing
-  rules in the program-edit audit, alongside any per-person amount change.
+  rules in the program-edit audit, alongside any per-person amount change. Program fields and manager additions/removals persist in one save; a failed manager write leaves fields and managers unchanged, without success audits or deadline notices.
 - The member program page localizes its breadcrumb navigation label in all six supported cultures.
 - Member notices and emails format amounts and claim deadlines in the recipient’s culture.
   Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
@@ -186,7 +186,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   plus email; approve, decline and a merge-drop resolve it. Applicant-name enrichment
   belongs to each best-effort channel: a lookup or delivery fault is logged after the audited
   save, leaves the successful application successful, and does not skip the other channel.
-  Initial reads and the first persistence call retain request cancellation. Once a grant or program update commits, manager changes, audit, notification resolution and notice/email handoffs finish independently of browser cancellation; this includes each beneficiary of a batch issue.
+  Initial reads and the first persistence call retain request cancellation. Once a grant or complete program edit commits, audit, notification resolution and notice/email handoffs finish independently of browser cancellation; this includes each beneficiary of a batch issue.
 - Decline, revoke, amount change: `PreapprovalGrantDecided` notification and the matching
   email. A revoke on a Claimed grant links the holding expense report.
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
