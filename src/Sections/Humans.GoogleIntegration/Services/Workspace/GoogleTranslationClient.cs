@@ -43,15 +43,7 @@ internal sealed class GoogleTranslationClient(
                     $"Translation to '{targetLanguage}' failed (HTTP {(int)response.StatusCode}). Is the Cloud Translation API enabled on the Google project?");
             }
 
-            var payload = await response.Content.ReadFromJsonAsync<TranslateResponse>(ct)
-                ?? throw new InvalidOperationException("Translation returned an empty response.");
-            if (payload.Data.Translations.Count != chunk.Length)
-            {
-                throw new InvalidOperationException(
-                    $"Translation returned {payload.Data.Translations.Count} segments for {chunk.Length} inputs.");
-            }
-
-            results.AddRange(payload.Data.Translations.Select(t => t.TranslatedText));
+            results.AddRange(await ReadTranslationsAsync(response.Content, chunk.Length, ct));
         }
 
         logger.LogInformation(
@@ -59,11 +51,27 @@ internal sealed class GoogleTranslationClient(
         return results;
     }
 
+    internal static async Task<IReadOnlyList<string>> ReadTranslationsAsync(
+        HttpContent content, int expectedCount, CancellationToken ct)
+    {
+        var payload = await content.ReadFromJsonAsync<TranslateResponse>(ct)
+            ?? throw new InvalidOperationException("Translation returned an empty response.");
+        var translations = payload.Data?.Translations
+            ?? throw new InvalidOperationException("Translation returned no segments.");
+        if (translations.Count != expectedCount)
+        {
+            throw new InvalidOperationException(
+                $"Translation returned {translations.Count} segments for {expectedCount} inputs.");
+        }
+        return translations.Select(t => t?.TranslatedText
+            ?? throw new InvalidOperationException("Translation returned a segment without translated text.")).ToList();
+    }
+
     private sealed record TranslateRequest(IReadOnlyList<string> Q, string Source, string Target, string Format);
 
-    private sealed record TranslateResponse(TranslateData Data);
+    private sealed record TranslateResponse(TranslateData? Data);
 
-    private sealed record TranslateData(IReadOnlyList<Translation> Translations);
+    private sealed record TranslateData(IReadOnlyList<Translation?>? Translations);
 
-    private sealed record Translation(string TranslatedText);
+    private sealed record Translation(string? TranslatedText);
 }

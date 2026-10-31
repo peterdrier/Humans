@@ -129,6 +129,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Invariants
 
+- Cloud Translation returns exactly one non-null translated text per input, in input order. Missing data, missing/null segments or missing/null `translatedText` fail the complete translation call before callers can store incomplete text. Explicit empty strings remain valid.
+
 - Domain-group reads impose no display order. The All Groups view orders linked groups first, then email ignoring case; batch settings remediation explicitly uses that same sequence.
 
 - Password-reset and backup-code audits resolve the linked member through the same `UserEmailMatchOwner.ByEmail` picker as account listings and syncs, including Gmail-alias identity and verified/newest/stable-id precedence. Unlinked addresses retain an empty audit entity id.
