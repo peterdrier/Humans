@@ -235,7 +235,7 @@ internal sealed class IssuesService(
     /// </summary>
     private async Task<Issue?> FindHandleableAsync(Guid issueId, IssueViewer viewer, CancellationToken ct)
     {
-        var issue = await repo.FindForMutationAsync(issueId, ct);
+        var issue = await repo.GetByIdAsync(issueId, ct);
         return issue is not null && CanHandle(issue, viewer)
             ? issue
             : null;
@@ -393,7 +393,7 @@ internal sealed class IssuesService(
         bool resolveOnPost = false,
         CancellationToken ct = default)
     {
-        var issue = await repo.FindForMutationAsync(issueId, ct);
+        var issue = await repo.GetByIdAsync(issueId, ct);
         if (issue is null || !await CanSeeAsync(issue, viewer, ct))
         {
             logger.LogWarning("Issue {IssueId} not found during PostComment", issueId);
