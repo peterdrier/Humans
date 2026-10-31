@@ -1415,8 +1415,7 @@ internal sealed class ShiftSignupService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        var eventIds = await GetSignupEventIdsAsync([sourceUserId], ct);
-        var movedCount = await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        var (movedCount, eventIds) = await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         viewInvalidator.InvalidateUser(sourceUserId);
         viewInvalidator.InvalidateUser(targetUserId);

@@ -2316,6 +2316,59 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             targetUserId, nameof(User));
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reassign_MovesActorReferences_AndRefreshesTheirEventCaches(bool ownsDuplicateSignup)
+    {
+        var (eventSettings, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var otherActor = Guid.NewGuid();
+        var enrolled = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        enrolled.EnrolledByUserId = source;
+        enrolled.ReviewedByUserId = otherActor;
+        var reviewed = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.NoShow);
+        reviewed.EnrolledByUserId = otherActor;
+        reviewed.ReviewedByUserId = source;
+        reviewed.ReviewedAt = TestNow - Duration.FromHours(2);
+        reviewed.StatusReason = "Absent";
+        var survivor = SeedSignup(target, shift.Id, SignupStatus.Confirmed);
+        survivor.EnrolledByUserId = otherActor;
+        var duplicate = ownsDuplicateSignup ? SeedSignup(source, shift.Id, SignupStatus.Pending) : null;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        await _views.PrimeUserAsync(enrolled.UserId, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        var management = Substitute.For<IShiftManagement>();
+        var service = new ShiftSignupService(_repo, Substitute.For<IVolunteerTrackingRepository>(), management,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        var mergedAt = TestNow + Duration.FromHours(1);
+        var actor = Guid.NewGuid();
+
+        await service.ReassignAsync(source, target, actor, mergedAt, TestContext.Current.CancellationToken);
+        await service.ReassignAsync(source, target, actor, mergedAt, TestContext.Current.CancellationToken);
+
+        var rows = await ShiftsDb.ShiftSignups.AsNoTracking().ToDictionaryAsync(x => x.Id, TestContext.Current.CancellationToken);
+        rows[enrolled.Id].UserId.Should().Be(enrolled.UserId);
+        rows[enrolled.Id].EnrolledByUserId.Should().Be(target);
+        rows[enrolled.Id].ReviewedByUserId.Should().Be(otherActor);
+        rows[enrolled.Id].UpdatedAt.Should().Be(mergedAt);
+        rows[reviewed.Id].EnrolledByUserId.Should().Be(otherActor);
+        rows[reviewed.Id].ReviewedByUserId.Should().Be(target);
+        rows[reviewed.Id].ReviewedAt.Should().Be(TestNow - Duration.FromHours(2));
+        rows[reviewed.Id].Status.Should().Be(SignupStatus.NoShow);
+        rows[reviewed.Id].StatusReason.Should().Be("Absent");
+        rows[survivor.Id].EnrolledByUserId.Should().Be(otherActor);
+        if (duplicate is not null) rows.Should().NotContainKey(duplicate.Id);
+        (await _views.IsUserCachedAsync(enrolled.UserId)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        management.Received(1).InvalidateDashboardCaches(eventSettings.Id);
+        await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupReassigned, nameof(User), target,
+            Arg.Is<string>(text => text.Contains(ownsDuplicateSignup ? "Reassigned 3" : "Reassigned 2")),
+            actor, target, nameof(User));
+    }
+
     [HumansFact]
     public async Task Reassign_WhenSourceHasNoSignups_DoesNotWriteAudit()
     {
