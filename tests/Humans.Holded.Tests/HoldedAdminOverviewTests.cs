@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
+using Humans.Holded.Controllers;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using Humans.Holded.Models;
@@ -10,6 +11,8 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Holded.Tests;
 
@@ -102,7 +105,10 @@ public sealed class HoldedAdminOverviewTests
             Call(Instant.FromUtc(2026, 8, 4, 10, 0), "ListLedgerEntriesAsync"),
         ], ct);
 
-        var calls = await _service.GetCallsByMonthAsync(ct);
+        var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
+            NullLogger<HoldedController>.Instance);
+        var calls = (await controller.Calls(ct)).Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeAssignableTo<IReadOnlyList<HoldedMonthlyCalls>>().Which;
 
         calls.Should().HaveCount(2);
         calls[0].Year.Should().Be(2026);
@@ -292,10 +298,16 @@ public sealed class HoldedAdminOverviewTests
         state.LastCount = 17;
         state.LastError = "57200001: holded 418840.54, local 771074.85";
         await _repo.SaveSyncStateAsync(state, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.FullSync, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
 
-        var summary = await _service.GetSummaryAsync(ct);
+        var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
+            NullLogger<HoldedController>.Instance);
+        var summary = (await controller.Index(ct)).Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeOfType<HoldedSummary>().Which;
 
-        var row = summary.SyncStates.Should().ContainSingle().Subject;
+        summary.SyncStates.Select(row => row.Kind).Should().Equal("Accounts", "FullSync", "Ledger");
+        var row = summary.SyncStates.Single(row => string.Equals(row.Kind, "Ledger", StringComparison.Ordinal));
         row.Kind.Should().Be("Ledger");
         row.Status.Should().Be("Idle");
         row.LastCount.Should().Be(17);

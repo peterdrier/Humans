@@ -189,7 +189,6 @@ internal sealed class Service(
         var syncStates = (await repo.GetSyncStatesAsync(ct))
             .Select(s => new HoldedSyncStateRow(
                 s.Kind.ToString(), s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
-            .OrderBy(s => s.Kind, StringComparer.Ordinal)
             .ToList();
 
         var (lineCount, entryCount) = await repo.GetMirrorCountsAsync(ct);
@@ -223,7 +222,6 @@ internal sealed class Service(
                 m.Count(),
                 m.GroupBy(c => c.Endpoint, StringComparer.Ordinal)
                     .ToDictionary(e => e.Key, e => e.Count(), StringComparer.Ordinal)))
-            .OrderByDescending(m => m.Year).ThenByDescending(m => m.Month)
             .ToList();
     }
 

@@ -132,6 +132,8 @@ shown here.
 
 ## Invariants
 
+- The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets newest first. Services supply the state and aggregated counts without display ordering.
+
 - `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
 
 - Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
