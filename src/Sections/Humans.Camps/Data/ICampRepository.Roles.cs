@@ -65,7 +65,8 @@ internal partial interface ICampRepository
     /// <summary>
     /// A source member is re-pointed unless the target already holds a live membership that season (it would violate
     /// <c>IX_camp_members_active_unique</c>); then its assignments fold onto the target's member, dropped on collision,
-    /// and the source member is deleted. Removed source members never collide and always re-point. Idempotent.
+    /// and the source member is deleted. Both save stages share one transaction. Removed source members never
+    /// collide and always re-point. Idempotent.
     /// <paramref name="updatedAt"/> is unused: these tables carry no <c>UpdatedAt</c>.
     /// </summary>
     Task ReassignMembershipsToUserAsync(

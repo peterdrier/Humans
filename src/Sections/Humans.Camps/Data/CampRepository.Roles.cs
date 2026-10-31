@@ -1,3 +1,4 @@
+using System.Transactions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -236,6 +237,9 @@ internal sealed partial class CampRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
+        using var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled);
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         // Tracked — these rows are re-pointed (UserId) or deleted below.
@@ -243,7 +247,10 @@ internal sealed partial class CampRepository
             .Where(m => m.UserId == sourceUserId)
             .ToListAsync(ct);
         if (sourceMembers.Count == 0)
+        {
+            scope.Complete();
             return;
+        }
 
         var sourceSeasonIds = sourceMembers.Select(m => m.CampSeasonId).Distinct().ToList();
 
@@ -327,9 +334,8 @@ internal sealed partial class CampRepository
             }
         }
 
-        // Phase 1: commit re-points + role moves/removals BEFORE deleting the colliding
-        // source members, so the CampRoleAssignment -> CampMember cascade can't take a
-        // just-moved role down with its old (source) member.
+        // Save role moves/removals BEFORE deleting colliding members, so the cascade cannot delete moved roles.
+        // Both saves share the transaction: failed member removal must roll back the role and membership fold.
         await ctx.SaveChangesAsync(ct);
 
         if (collidingMemberToTarget.Count > 0)
@@ -338,5 +344,6 @@ internal sealed partial class CampRepository
                 sourceMembers.Where(m => collidingMemberToTarget.ContainsKey(m.Id)));
             await ctx.SaveChangesAsync(ct);
         }
+        scope.Complete();
     }
 }
