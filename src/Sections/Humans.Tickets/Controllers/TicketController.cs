@@ -140,7 +140,7 @@ internal sealed class TicketController(
             FilterTeam = filterTeam,
             FilterTier = filterTier,
             FilterTicketStatus = filterTicketStatus,
-            AvailableTeams = result.AvailableTeams,
+            AvailableTeams = result.AvailableTeams.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
         };
 
         return View(model);

@@ -67,6 +67,27 @@ public class TicketControllerTests
         model.ByDiscountCampaign.Select(c => c.CampaignTitle).Should().Equal("Largest", "alpha", "Zeta", "Vendor");
     }
 
+    [HumansFact]
+    public async Task WhoHasntBought_OrdersTeamFilterNamesIgnoringCase()
+    {
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, Arg.Any<CancellationToken>())
+            .Returns(new WhoHasntBoughtResult { AvailableTeams = ["Zebra", "alpha", "Bravo"] });
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.WhoHasntBought(null);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<WhoHasntBoughtViewModel>()
+            .Subject.AvailableTeams.Should().Equal("alpha", "Bravo", "Zebra");
+    }
+
     [HumansTheory]
     [InlineData("orders")]
     [InlineData("attendees")]

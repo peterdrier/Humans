@@ -141,7 +141,6 @@ internal sealed class TicketQueryService(
                     EffectiveRate = totalAmt > 0 ? Math.Round(totalStripe / totalAmt * 100, 2) : 0,
                 };
             })
-            .OrderByDescending(f => f.TotalStripeFees)
             .ToList();
 
         var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync();
@@ -667,7 +666,6 @@ internal sealed class TicketQueryService(
         var availableTeams = rows
             .SelectMany(r => r.TeamNames)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new WhoHasntBoughtResult
@@ -789,8 +787,6 @@ internal sealed class TicketQueryService(
             .ToDictionary(g => g.Key, g => g.First().Id);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
-            .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
-            .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
             .Select(a => new UserTicketHoldingRow(
                 a.Id,
                 a.AttendeeName,
