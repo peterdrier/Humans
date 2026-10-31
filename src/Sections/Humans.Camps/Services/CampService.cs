@@ -1462,11 +1462,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (openSeason is null)
             return AssignCampRoleOutcome.SeasonNotFound;
 
-        var memberId = await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
-        if (memberId is null)
+        var user = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (user is null || user.IsTombstone)
             return AssignCampRoleOutcome.MemberNotFound;
         return await _campRoleService.Value.AssignAsync(
-            openSeason.Id, roleDefinitionId, memberId.Value, actorUserId, cancellationToken);
+            openSeason.Id, roleDefinitionId, Guid.Empty, actorUserId, cancellationToken, addUserId: userId);
     }
 
     public async Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(

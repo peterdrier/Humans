@@ -32,10 +32,11 @@ internal partial interface ICampRepository
     Task<bool> AssignmentExistsAsync(Guid campSeasonId, Guid definitionId, Guid campMemberId, CancellationToken ct = default);
 
     /// <summary>
-    /// False when the unique index fired (race lost). The repo translates the PostgreSQL 23505 so the service needs no
-    /// EF Core.
+    /// Saves an assignment and optional membership activation together. Assigned is false on a duplicate assignment;
+    /// Membership describes the activation when addUserId is supplied.
     /// </summary>
-    Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default);
+    Task<(bool Assigned, CampMemberInsertResult? Membership)> AddAssignmentAsync(
+        CampRoleAssignment assignment, CancellationToken ct = default, Guid? addUserId = null);
 
     Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken ct = default);
 

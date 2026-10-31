@@ -25,7 +25,7 @@ public sealed class CampRepositoryTests : IDisposable
         var insert = () => repo.AddAssignmentAsync(row, Xunit.TestContext.Current.CancellationToken);
 
         if (duplicate)
-            (await insert()).Should().BeFalse();
+            (await insert()).Assigned.Should().BeFalse();
         else
             (await insert.Should().ThrowAsync<DbUpdateException>()).Which.Should().BeSameAs(failure);
     }

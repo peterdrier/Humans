@@ -567,9 +567,9 @@ internal sealed class CachingCampService(
         WithInnerRolesAsync(inner => inner.BuildPanelAsync(campSeasonId, ct));
 
     Task<AssignCampRoleOutcome> ICampRoleService.AssignAsync(
-        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct) =>
+        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct, Guid? addUserId) =>
         MutateRolesAsync(
-            inner => inner.AssignAsync(campSeasonId, roleDefinitionId, campMemberId, actorUserId, ct),
+            inner => inner.AssignAsync(campSeasonId, roleDefinitionId, campMemberId, actorUserId, ct, addUserId),
             outcome => outcome == AssignCampRoleOutcome.Assigned);
 
     Task<CampRoleAssignmentInfo?> ICampRoleService.GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct) =>

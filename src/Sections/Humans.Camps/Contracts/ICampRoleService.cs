@@ -33,7 +33,9 @@ internal interface ICampRoleService : IApplicationService
 
     Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default);
 
-    Task<AssignCampRoleOutcome> AssignAsync(Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Assigns an existing active member, or atomically adds/activates addUserId when supplied.</summary>
+    Task<AssignCampRoleOutcome> AssignAsync(Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId,
+        CancellationToken ct = default, Guid? addUserId = null);
 
     /// <summary>Includes its season, so callers can verify camp ownership before mutating it.</summary>
     Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default);

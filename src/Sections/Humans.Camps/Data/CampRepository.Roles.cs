@@ -117,21 +117,37 @@ internal sealed partial class CampRepository
                         && a.CampMemberId == campMemberId, ct);
     }
 
-    public async Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default)
+    public async Task<(bool Assigned, CampMemberInsertResult? Membership)> AddAssignmentAsync(
+        CampRoleAssignment assignment, CancellationToken ct = default, Guid? addUserId = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        CampMemberInsertResult? membership = null;
+        if (addUserId is { } userId)
+        {
+            membership = await PrepareActiveMembershipAsync(
+                ctx, assignment.CampSeasonId, userId, assignment.AssignedAt, assignment.AssignedByUserId, ct);
+            assignment = new CampRoleAssignment
+            {
+                Id = assignment.Id,
+                CampSeasonId = assignment.CampSeasonId,
+                CampRoleDefinitionId = assignment.CampRoleDefinitionId,
+                CampMemberId = membership.MemberId,
+                AssignedAt = assignment.AssignedAt,
+                AssignedByUserId = assignment.AssignedByUserId,
+            };
+        }
         ctx.CampRoleAssignments.Add(assignment);
         try
         {
             await ctx.SaveChangesAsync(ct);
-            return true;
+            return (true, membership);
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
         { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_camp_role_assignments_unique" })
         {
             // Unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId) —
             // caller treats false as "already holds role".
-            return false;
+            return (false, null);
         }
     }
 
