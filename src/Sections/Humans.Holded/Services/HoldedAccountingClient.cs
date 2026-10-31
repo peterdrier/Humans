@@ -66,7 +66,7 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
             var items = await transport.GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
             return items.Select(n => new HoldedExpenseAccountDto
             {
-                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                Id = ReadRequiredString(Prop(n, "id"), "id"),
                 AccountNum = ReadRequiredInt(Prop(n, "account_num"), "account_num"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
             }).ToList();

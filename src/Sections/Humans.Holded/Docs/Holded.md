@@ -33,7 +33,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   returns are deleted (an empty fetch still deletes). Never append-only: a line Holded deleted
   or reclassified would linger forever.
 - **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
-  identities and amounts, complete pagination, typed write responses, the `unconfirmed:`
+  identities (including expense-account IDs) and amounts, complete pagination, typed write responses, the `unconfirmed:`
   references, the 429 policy) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
   depends on one consequence: no short or fabricated page ever reaches replace semantics.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
