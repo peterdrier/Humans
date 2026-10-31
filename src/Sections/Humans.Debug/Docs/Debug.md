@@ -2,6 +2,7 @@
   src/Sections/Humans.Debug/**
   src/Humans.Base/ViewComponents/AdminNavComposition.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
+  src/Humans.Web/Services/ClientStatsTracker.cs
   src/Humans.Web/Program.cs
 -->
 
@@ -79,6 +80,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 ## Triggers
 
 The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views; error responses for the `/Debug/HttpErrors` buffer) and a `MeterListener` over the ASP.NET Core hosting meter (status codes). 429s are recorded via the rate limiter's `OnRejected` callback in `Program.cs` rather than `ClientStatsMiddleware` (the limiter rejects before the middleware runs). The write triggers are `ClearHangfireLocks`, an explicit maintenance POST, and `/Debug/DataMigrations/Apply`, which runs one section's migration.
+
+The HTTP-error buffer caps URLs at 200 UTF-16 units and user-agent strings at 150, without splitting Unicode surrogate pairs.
 
 ## Data migrations
 
