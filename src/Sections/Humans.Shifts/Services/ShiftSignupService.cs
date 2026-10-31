@@ -330,14 +330,7 @@ internal sealed class ShiftSignupService(
 
         if (shift.GetAbsoluteEnd(calendar) > now)
         {
-            try
-            {
-                await SendAssignmentNoticeAsync(userId, "Shifts_Notification_AssignedDay", shift.Rota.Name, shift.DayOffset);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} shift {ShiftId}", userId, shiftId);
-            }
+            await SendAssignmentNoticeAsync(userId, signup.Id, "Shifts_Notification_AssignedDay", shift.Rota.Name, shift.DayOffset);
         }
 
         return SignupResult.Ok(signup.Id);
@@ -447,15 +440,8 @@ internal sealed class ShiftSignupService(
 
         if (assignable.Any(s => s.GetAbsoluteEnd(calendar) > now))
         {
-            try
-            {
-                await SendAssignmentNoticeAsync(userId, assignable.Count == 1
-                    ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", rota.Name, assignable.Count);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} rota {RotaId}", userId, rotaId);
-            }
+            await SendAssignmentNoticeAsync(userId, firstSignup!.Id, assignable.Count == 1
+                ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", rota.Name, assignable.Count);
         }
 
         return SignupResult.Ok(firstSignup!.Id, warning);
@@ -1052,19 +1038,26 @@ internal sealed class ShiftSignupService(
         return user is null || user.IsTombstone ? null : user.Id;
     }
 
-    private async Task SendAssignmentNoticeAsync(Guid userId, string resourceKey, params object[] args)
+    private async Task SendAssignmentNoticeAsync(Guid userId, Guid signupId, string resourceKey, params object[] args)
     {
-        var culture = await GetRecipientCultureAsync(userId);
-        var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
-        await notificationService.SendAsync(
-            ShiftsNotificationSources.ShiftAssigned,
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            title,
-            [userId],
-            body: null,
-            actionUrl: "/Shifts",
-            actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
+        try
+        {
+            var culture = await GetRecipientCultureAsync(userId);
+            var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
+            await notificationService.SendAsync(
+                ShiftsNotificationSources.ShiftAssigned,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                title,
+                [userId],
+                body: null,
+                actionUrl: "/Shifts",
+                actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} signup {SignupId}", userId, signupId);
+        }
     }
 
     private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
