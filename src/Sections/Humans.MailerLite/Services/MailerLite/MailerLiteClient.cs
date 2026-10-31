@@ -74,6 +74,10 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         var group = env?.Data
             ?? throw new InvalidOperationException("MailerLite returned no group on CreateGroup.");
 
+        if (string.IsNullOrWhiteSpace(group.Id) ||
+            !string.Equals(group.Name, name, StringComparison.Ordinal))
+            throw new InvalidOperationException("MailerLite returned an invalid group on CreateGroup.");
+
         await AppendToGroupsCacheAsync(group, ct);
         return group;
     }
@@ -265,8 +269,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             if (body?.Data is null || body.Meta is null ||
                 body.Meta.CurrentPage != page || body.Meta.LastPage < page)
                 throw new HttpRequestException("MailerLite returned invalid group pagination metadata.");
-            if (body.Data.Any(group => group is null))
-                throw new HttpRequestException("MailerLite returned a null group page item.");
+            if (body.Data.Any(group => group is null ||
+                string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)))
+                throw new HttpRequestException("MailerLite returned an incomplete group page item.");
             results.AddRange(body.Data);
             if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
             page++;

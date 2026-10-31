@@ -20,6 +20,10 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("repeated-cursor")]
     [Xunit.InlineData("wrong-group-page")]
     [Xunit.InlineData("invalid-last-page")]
+    [Xunit.InlineData("missing-group-id")]
+    [Xunit.InlineData("blank-group-id")]
+    [Xunit.InlineData("missing-group-name")]
+    [Xunit.InlineData("blank-group-name")]
     public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
@@ -48,6 +52,10 @@ public class MailerLiteClientRetryTests
         {
             "null-groups" => "null",
             "null-group-item" => """{"data":[null],"meta":{"current_page":1,"last_page":1}}""",
+            "missing-group-id" => HumansGroupPage.Replace("\"id\":\"42\",", "", StringComparison.Ordinal),
+            "blank-group-id" => HumansGroupPage.Replace("\"id\":\"42\"", "\"id\":\"  \"", StringComparison.Ordinal),
+            "missing-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\",", "", StringComparison.Ordinal),
+            "blank-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\"", "\"name\":\"  \"", StringComparison.Ordinal),
             "wrong-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal),
             "invalid-last-page" => HumansGroupPage.Replace("\"last_page\":1", "\"last_page\":0", StringComparison.Ordinal),
             _ => HumansGroupPage,

@@ -10,7 +10,12 @@ public class MailerLiteClientWriteGuardTests
     [HumansTheory]
     [Xunit.InlineData("{}")]
     [Xunit.InlineData("{\"data\":null}")]
-    public async Task CreateGroupAsync_RejectsMissingGroupWithoutPoisoningTheSnapshot(string response)
+    [Xunit.InlineData("""{"data":{"name":"Humans - Test"}}""")]
+    [Xunit.InlineData("""{"data":{"id":"  ","name":"Humans - Test"}}""")]
+    [Xunit.InlineData("""{"data":{"id":"42"}}""")]
+    [Xunit.InlineData("""{"data":{"id":"42","name":"  "}}""")]
+    [Xunit.InlineData("""{"data":{"id":"42","name":"Humans - Other"}}""")]
+    public async Task CreateGroupAsync_RejectsInvalidGroupWithoutPoisoningTheSnapshot(string response)
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
