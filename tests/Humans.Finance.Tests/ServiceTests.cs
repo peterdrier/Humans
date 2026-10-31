@@ -384,21 +384,21 @@ public class HoldedFinanceServiceTests
             {
                 Id = "d1", DocNumber = "F001", ContactName = "Alice", Date = docDate,
                 Subtotal = 100, Tax = 21, Total = 121, Currency = "eur", IsDraft = false,
-                Lines = [new HoldedPurchaseLineDto { Amount = 100, AccountId = "acc-1", Tags = [] }],
+                Lines = [new HoldedPurchaseLineDto { AccountId = "acc-1", Tags = [] }],
                 Tags = [],
             },
             new()
             {
                 Id = "d2", DocNumber = "F002", ContactName = "Bob", Date = docDate,
                 Subtotal = 50, Tax = 0, Total = 50, Currency = "eur", IsDraft = true,
-                Lines = [new HoldedPurchaseLineDto { Amount = 50, AccountId = "acc-generic", Tags = [] }],
+                Lines = [new HoldedPurchaseLineDto { AccountId = "acc-generic", Tags = [] }],
                 Tags = ["comms"],   // tag match
             },
             new()
             {
                 Id = "d3", DocNumber = "F003", ContactName = "Carol", Date = docDate,
                 Subtotal = 30, Tax = 0, Total = 30, Currency = "eur",
-                Lines = [new HoldedPurchaseLineDto { Amount = 30, AccountId = "acc-generic", Tags = [] }],
+                Lines = [new HoldedPurchaseLineDto { AccountId = "acc-generic", Tags = [] }],
                 Tags = ["nope"],    // no match
             },
         };
@@ -454,7 +454,7 @@ public class HoldedFinanceServiceTests
                 {
                     Id = "d-null", DocNumber = "F010", ContactName = "Dan", Date = Instant.FromUtc(2026, 4, 15, 10, 0),
                     Subtotal = 10, Tax = 0, Total = 10, Currency = "eur", IsDraft = null,
-                    Lines = [new HoldedPurchaseLineDto { Amount = 10, AccountId = "acc-x", Tags = [] }],
+                    Lines = [new HoldedPurchaseLineDto { AccountId = "acc-x", Tags = [] }],
                     Tags = [],
                 },
             ]);
@@ -482,7 +482,7 @@ public class HoldedFinanceServiceTests
             new()
             {
                 Id = "doc-1", DocNumber = "F1", ContactName = "Vendor", Date = FixedNow, Subtotal = 10m, Tax = 2.1m, Total = 12.1m,
-                IsDraft = false, Lines = [new HoldedPurchaseLineDto { Amount = 10m, AccountId = "m-1" }],
+                IsDraft = false, Lines = [new HoldedPurchaseLineDto { AccountId = "m-1" }],
             },
         });
         List<HoldedExpenseDoc>? saved = null;
@@ -995,12 +995,10 @@ public class HoldedFinanceServiceTests
             TestContext.Current.CancellationToken);
 
         id.Should().Be("new-contact");
-        // No binding/seed -> create; legal->Name, burner->TradeName, userId->CustomId.
         await _client.Received(1).CreateContactAsync(
             Arg.Is<HoldedContactInput>(i =>
                 i.Name == "Maria Garcia" &&
                 i.TradeName == "Meri" &&
-                i.CustomId == userId.ToString() &&
                 i.Type == "creditor"),
             Arg.Any<CancellationToken>());
         await _repo.Received(1).TryInsertCreditorContactAsync(

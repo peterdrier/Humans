@@ -898,7 +898,6 @@ internal sealed class Service(
             {
                 Name = legalName,
                 TradeName = tradeName,
-                CustomId = userId.ToString(),
                 Type = "creditor",
                 Iban = string.IsNullOrWhiteSpace(iban) ? null : iban,
             }, ct);

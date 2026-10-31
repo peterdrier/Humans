@@ -155,7 +155,6 @@ public class HoldedClientSalesDocumentTests
         doc.Subtotal.Should().Be(160.00m);
         doc.Tax.Should().Be(21.00m);
         doc.Total.Should().Be(181.00m);
-        doc.Status.Should().Be("pending");
         doc.RawJson.Should().Be(json);
     }
 

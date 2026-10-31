@@ -82,7 +82,6 @@ public class ServiceIssueInvoiceTests
                 Subtotal = 100m,
                 Tax = 21m,
                 Total = 121m,
-                Status = "pending",
                 RawJson = """{"id":"doc-1"}""",
             });
         _holded.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
@@ -563,7 +562,6 @@ public class ServiceIssueInvoiceTests
             Subtotal = subtotal,
             Tax = tax,
             Total = total,
-            Status = "pending",
             IsDraft = isDraft,
             RawJson = $$"""{"id":"{{id}}"}""",
         };

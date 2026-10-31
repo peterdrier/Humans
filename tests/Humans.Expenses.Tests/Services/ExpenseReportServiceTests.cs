@@ -3926,7 +3926,7 @@ public sealed partial class ExpenseReportServiceTests
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, TestContext.Current.CancellationToken);
 
         // Contact enrichment is delegated to Finance with the legal name, burner and iban
-        // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
+        // (the contact payload itself — Name/TradeName — is covered in HoldedFinanceServiceTests).
         await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             userId, legalName, burnerName, iban,
             Arg.Any<string?>(), Arg.Any<int?>(), ExpenseReportBackgroundProcessor.OutboxJobName,

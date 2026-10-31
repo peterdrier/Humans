@@ -39,10 +39,12 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Every call is metered into the singleton `IHoldedCallLog` (in-memory queue) with its
   `X-RateLimit-*` headers; the Holded section drains it to `holded_api_calls`. The plan-tier
   budget (~2,000 calls/month) is the real allowance — `GET /usage`'s `limit` is Holded's
-  billable-overage ceiling, displayed but never budgeted against.
+  billable-overage ceiling, not the plan budget; the usage read exposes only its period and call count.
 
 ## Invariants
 
+- Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
+- Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
 - The single purchase-document read carries only approval time, notes and payment details. Its callers already know the requested id; totals and tags belong to the list read. Unused detail fields are ignored rather than parsed.
 
 - `HoldedClient` remains the typed-client entry point. Its internal operation clients share one

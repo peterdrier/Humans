@@ -153,7 +153,6 @@ public class HoldedClientReadTests
         var line = doc.Lines[0];
         line.AccountId.Should().Be("acc-629");
         line.Tags.Should().ContainSingle("adminstaff");
-        line.Amount.Should().Be(100.0m);
     }
 
     [HumansTheory]
@@ -566,7 +565,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task GetUsage_parses_period_usage_limit_and_secondary()
+    public async Task GetUsage_parses_period_and_usage()
     {
         var json = """
         {"type":"automation_token","period":"2026-08","usage":36,"limit":2000000,
@@ -579,8 +578,6 @@ public class HoldedClientReadTests
 
         usage.Period.Should().Be("2026-08");
         usage.Usage.Should().Be(36);
-        usage.Limit.Should().Be(2000000);
-        usage.SecondaryUsages.Should().ContainKey("api_v1_legacy_1").WhoseValue.Should().Be(35);
     }
 
     [HumansFact]

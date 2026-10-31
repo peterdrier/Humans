@@ -258,7 +258,6 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
         {
-            Amount = ReadDecimalV2(Prop(p, "price")),
             AccountId = Prop(p, "account")?.GetValue<string>(),
             Tags = ReadTags(Prop(p, "tags")),
         }).ToList(),

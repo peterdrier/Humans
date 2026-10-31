@@ -93,7 +93,6 @@ internal sealed class HoldedSalesClient(HoldedTransport transport)
                 Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
                 Tax = ReadDecimalV2(Prop(node, "tax")),
                 Total = ReadRequiredDecimalV2(Prop(node, "total"), "total"),
-                Status = Prop(node, "status")?.GetValue<string>(),
                 IsDraft = Prop(node, "draft")?.GetValue<bool>(),
                 RawJson = body,
             };

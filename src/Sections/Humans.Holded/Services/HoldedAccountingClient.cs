@@ -181,16 +181,10 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
             // exception so /Holded degrades to "unreachable" instead of a raw 500.
             var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
                 ?? throw new HoldedTransientException("Holded returned empty body");
-            var secondary = Prop(node, "secondary_usages") as JsonObject;
             return new HoldedUsageDto
             {
                 Period = Prop(node, "period")?.GetValue<string>() ?? "",
                 Usage = Prop(node, "usage")?.GetValue<long>() ?? 0,
-                Limit = Prop(node, "limit")?.GetValue<long>() ?? 0,
-                SecondaryUsages = secondary is null
-                    ? new Dictionary<string, long>(StringComparer.Ordinal)
-                    : secondary.ToDictionary(
-                        kv => kv.Key, kv => kv.Value?.GetValue<long>() ?? 0, StringComparer.Ordinal),
             };
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException

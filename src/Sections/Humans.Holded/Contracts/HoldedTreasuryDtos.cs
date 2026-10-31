@@ -15,7 +15,6 @@ public sealed record HoldedBankMovementDto
     public string? Description { get; init; }
     /// <summary>`pending` | `partial` | `reconciled`, verbatim and lowercased.</summary>
     public required string Status { get; init; }
-    public string? Origin { get; init; }
 }
 
 public sealed record HoldedReconcileDocumentRef(string DocumentId, string DocumentType);

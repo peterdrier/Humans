@@ -240,7 +240,7 @@ public class HoldedClientContactTests
             return Respond(HttpStatusCode.OK, """{"id":"new-c"}""");
         }));
 
-        var id = await client.CreateContactAsync(new HoldedContactInput { Name = "Legal", CustomId = "u1" }, Xunit.TestContext.Current.CancellationToken);
+        var id = await client.CreateContactAsync(new HoldedContactInput { Name = "Legal" }, Xunit.TestContext.Current.CancellationToken);
 
         method.Should().Be("POST");
         id.Should().Be("new-c");
@@ -258,7 +258,7 @@ public class HoldedClientContactTests
         }));
 
         await client.CreateContactAsync(
-            new HoldedContactInput { Name = "Legal", CustomId = "u1" },
+            new HoldedContactInput { Name = "Legal" },
             Xunit.TestContext.Current.CancellationToken);
 
         capturedBody.Should().NotContain("custom_id");

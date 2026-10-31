@@ -34,7 +34,7 @@ public sealed class HoldedAdminOverviewTests
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
         _callLog.DrainAll().Returns([]);
         _client.GetUsageAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36, Limit = 2_000_000 });
+            .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36 });
         _client.IsConfigured.Returns(true);
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
             Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
