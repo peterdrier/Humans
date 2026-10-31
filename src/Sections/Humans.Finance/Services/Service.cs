@@ -1399,8 +1399,6 @@ internal sealed class Service(
                     contact?.SupplierAccountNum ?? binding?.SupplierAccountNum,
                     lines, orphans);
             })
-            .OrderBy(m => m.SupplierAccountNum ?? int.MaxValue)
-            .ThenBy(m => m.ContactName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         // Holded has no archive call, so an empty unbound contact is listed, not touched.
@@ -1408,8 +1406,7 @@ internal sealed class Service(
         var empty = contactById.Values
             .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
                         && !boundContacts.Contains(c.Id) && !docsByContact[c.Id].Any())
-            .OrderBy(c => c.SupplierAccountNum)
-            .Select(c => $"{c.SupplierAccountNum} {c.Name} ({c.Id})")
+            .Select(c => (AccountNum: c.SupplierAccountNum!.Value, Summary: $"{c.SupplierAccountNum} {c.Name} ({c.Id})"))
             .ToList();
 
         return new HoldedDuplicatesVm(members, empty, null);
@@ -1445,7 +1442,8 @@ internal sealed class Service(
 
         var before = await ReadCreditorBalancesAsync(ct);
         var results = new List<HoldedDuplicateMemberResult>();
-        foreach (var member in plan.Members)
+        foreach (var member in plan.Members.OrderBy(m => m.SupplierAccountNum ?? int.MaxValue)
+                     .ThenBy(m => m.ContactName, StringComparer.OrdinalIgnoreCase))
         {
             var account = member.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
             var deletedDocs = new List<string>();

@@ -262,6 +262,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Duplicate-document previews order member groups by creditor account then contact name ignoring case, and empty unbound contacts by account number in the view. The plan carries account metadata without display sorting; apply explicitly preserves the account/name processing sequence.
+
 - Creditor-account reads return bindings with creation timestamps without list ordering. The Finance and Backdoor projections order each account's bindings and unresolved bindings oldest first; collision and payout eligibility remain independent of that display order.
 
 - Expense-account options carry account metadata without display ordering. Expenses orders its choices by budget-category status, label and account number; Preapprovals orders its choices by account number.

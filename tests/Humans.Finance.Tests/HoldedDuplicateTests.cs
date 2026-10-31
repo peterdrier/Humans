@@ -320,7 +320,7 @@ public class HoldedDuplicateTests
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
-        vm.EmptyUnboundContactIds.Should().Equal("41000062 Someone Else (c-empty)");
+        vm.EmptyUnboundContacts.Should().Equal((41000062, "41000062 Someone Else (c-empty)"));
         vm.HasWork.Should().BeFalse();
     }
 
