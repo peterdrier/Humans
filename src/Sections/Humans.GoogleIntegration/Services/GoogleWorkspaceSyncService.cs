@@ -417,7 +417,8 @@ internal sealed class GoogleWorkspaceSyncService(
             return GroupLinkResult.Error($"This group is already linked to team \"{conflictName}\".");
         }
 
-        var inactiveForTeam = await FindInactiveGroupForTeamByUrlAsync(teamId, expectedUrl, cancellationToken);
+        var inactiveForTeam = await resourceRepository.FindInactiveGroupByCandidatesAsync(
+            teamId, googleNumericId: email, normalizedGroupEmail: email, cancellationToken);
         if (inactiveForTeam is not null && !confirmReactivation)
         {
             return GroupLinkResult.NeedsConfirmation(
@@ -986,26 +987,6 @@ internal sealed class GoogleWorkspaceSyncService(
         var all = await GetActiveGroupResourcesAsync(ct);
         return all.FirstOrDefault(r => r.Url is not null &&
             string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private async Task<GoogleResource?> FindInactiveGroupForTeamByUrlAsync(
-        Guid teamId, string expectedUrl, CancellationToken ct)
-    {
-        var parts = expectedUrl.Split("/g/");
-        if (parts.Length != 2) return null;
-        var prefix = parts[1].Split('/')[0];
-        var beforeG = parts[0];
-        var aIdx = beforeG.LastIndexOf("/a/", StringComparison.Ordinal);
-        if (aIdx < 0) return null;
-        var domain = beforeG[(aIdx + 3)..];
-        var email = string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(domain)
-            ? null : $"{prefix}@{domain}";
-        if (email is null) return null;
-        return await resourceRepository.FindInactiveGroupByCandidatesAsync(
-            teamId,
-            googleNumericId: email,
-            normalizedGroupEmail: email,
-            ct);
     }
 
     private async Task<IReadOnlyList<GoogleResource>> GetActiveGroupResourcesAsync(CancellationToken ct)
