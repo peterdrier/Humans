@@ -167,8 +167,11 @@ public class TicketTailorServiceTests
         await act.Should().ThrowExactlyAsync<HttpRequestException>();
     }
 
-    [HumansFact]
-    public async Task GetIssuedTicketsAsync_ParsesTicketResponse()
+    [HumansTheory]
+    [Xunit.InlineData("valid", 15000)]
+    [Xunit.InlineData("voided", 0)]
+    [Xunit.InlineData("valid", null)]
+    public async Task GetIssuedTicketsAsync_ParsesTicketResponse(string status, int? price)
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -183,8 +186,8 @@ public class TicketTailorServiceTests
                     full_name = "Jane Doe",
                     email = "jane@example.com",
                     description = "Full Week",
-                    listed_price = 15000,
-                    status = "valid",
+                    listed_price = price,
+                    status,
                     order_id = "ord_001"
                 }
             },
@@ -197,9 +200,35 @@ public class TicketTailorServiceTests
         tickets.Should().HaveCount(1);
         tickets[0].AttendeeName.Should().Be("Jane Doe");
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
-        tickets[0].Price.Should().Be(150m);
+        tickets[0].Price.Should().Be((price ?? 0) / 100m);
+        tickets[0].Status.Should().Be(status);
         tickets[0].TicketTypeName.Should().Be("Full Week");
         tickets[0].VendorOrderId.Should().Be("ord_001");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("null")]
+    [Xunit.InlineData("\" \"")]
+    public async Task GetIssuedTicketsAsync_RejectsMissingStatusOnLaterPages(string? jsonStatus)
+    {
+        var handler = new RecordingHttpHandler();
+        var first = handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = "it_first", status = "valid" } },
+            links = new { next = "more" }
+        });
+        var document = JsonNode.Parse("""{"data":[{"id":"it_second"}],"links":{"next":null}}""")!;
+        if (jsonStatus is not null) document["data"]![0]!["status"] = JsonNode.Parse(jsonStatus);
+        var second = handler.EnqueueResponse(HttpStatusCode.OK, document);
+        var service = TicketTailorTestHost.CreateService(handler);
+
+        var load = () => service.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        await load.Should().ThrowAsync<HttpRequestException>();
+        handler.RequestCount.Should().Be(2);
+        first.WasDisposed.Should().BeTrue();
+        second.WasDisposed.Should().BeTrue();
     }
 
     [HumansFact]
@@ -562,12 +591,12 @@ public class TicketTailorServiceTests
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "it_1", order_id = "ord_1" }, new { id = "it_2", order_id = "ord_1" } },
+            data = new[] { new { id = "it_1", order_id = "ord_1", status = "valid" }, new { id = "it_2", order_id = "ord_1", status = "valid" } },
             links = new { next = "more" }
         });
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "it_3", order_id = "ord_2" } },
+            data = new[] { new { id = "it_3", order_id = "ord_2", status = "voided" } },
             links = new { next = (string?)null }
         });
         handler.EnqueueResponse(HttpStatusCode.OK, new

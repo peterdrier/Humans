@@ -97,7 +97,14 @@ internal sealed class TicketTailorService : ITicketVendorService
         var tickets = new List<VendorTicketDto>();
         await foreach (var page in FetchPagesAsync<TtIssuedTicket>(
             "issued_tickets", "updated_at", since, eventId, static ticket => ticket.Id, ct))
-            tickets.AddRange(page.Select(ToVendorTicket));
+        {
+            foreach (var ticket in page)
+            {
+                if (string.IsNullOrWhiteSpace(ticket.Status))
+                    throw new HttpRequestException($"TicketTailor ticket {ticket.Id} is missing required status.");
+                tickets.Add(ToVendorTicket(ticket, ticket.Status));
+            }
+        }
 
         _logger.LogInformation("Fetched {Count} issued tickets from TicketTailor for event {EventId}",
             tickets.Count, eventId);
@@ -355,7 +362,12 @@ internal sealed class TicketTailorService : ITicketVendorService
                     "TicketTailor issue returned 2xx without a ticket id",
                     TicketVendorFailureKind.Transient);
 
-            return ToVendorTicket(body);
+            if (!string.Equals(body.Status, "valid", StringComparison.Ordinal))
+                throw new TicketVendorWriteException(
+                    "TicketTailor issue returned 2xx without a valid ticket status",
+                    TicketVendorFailureKind.Transient);
+
+            return ToVendorTicket(body, body.Status!);
         }
     }
 
@@ -427,14 +439,14 @@ internal sealed class TicketTailorService : ITicketVendorService
         return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
-    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket) => new(
+    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket, string status) => new(
         VendorTicketId: ticket.Id,
         VendorOrderId: ticket.OrderId,
         AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
         AttendeeEmail: ResolveAttendeeEmail(ticket),
         TicketTypeName: ticket.Description ?? "Unknown",
         Price: (ticket.ListedPrice ?? 0) / 100m,
-        Status: ticket.Status ?? "valid",
+        Status: status,
         Barcode: ticket.Barcode);
 
     // issued_ticket.email is the buyer's, copied onto every ticket. The attendee's comes from a custom
