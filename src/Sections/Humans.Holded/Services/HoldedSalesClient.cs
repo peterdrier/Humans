@@ -60,10 +60,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport)
                 .Where(n => ReadTags(Prop(n, "tags")).Contains(tag, StringComparer.Ordinal))
                 // A match without an id cannot be dropped: the caller reads an empty result as
                 // "nothing issued yet" and creates a second approved document.
-                .Select(n => Prop(n, "id")?.GetValue<string>() is { Length: > 0 } id
-                    ? id
-                    : throw new HoldedPermanentException(
-                        "Holded sales document is missing required field 'id' — refusing the page."))
+                .Select(n => ReadRequiredString(Prop(n, "id"), "id"))
                 .ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -88,7 +85,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport)
                 ?? throw new HoldedTransientException("Holded returned empty body");
             return new HoldedSalesDocumentDto
             {
-                Id = Prop(node, "id")?.GetValue<string>() ?? documentId,
+                Id = ReadRequiredString(Prop(node, "id") ?? JsonValue.Create(documentId), "id"),
                 DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
                 Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
                 Tax = ReadDecimalV2(Prop(node, "tax")),

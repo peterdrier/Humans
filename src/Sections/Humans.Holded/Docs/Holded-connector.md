@@ -71,6 +71,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. An absent `payments_pending` reads as 0, the safe direction (refuses a booking rather than over-paying).
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
+- Contact and sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists skip and log unidentified rows while retaining valid contacts. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - A `ledger-entries` item is exactly `id, entry_number, line, date, type, description,
   doc_description, account, debit, credit, tags[], checked`. `id` is the journal entry's id

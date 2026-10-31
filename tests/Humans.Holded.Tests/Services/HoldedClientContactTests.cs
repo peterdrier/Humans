@@ -42,12 +42,28 @@ public class HoldedClientContactTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
-    [HumansFact]
-    public async Task GetContact_supplierAccountNum_null_when_absent()
+    [HumansTheory]
+    [Xunit.InlineData("{\"id\":\"c1\",\"name\":\"X\"}")]
+    [Xunit.InlineData("{\"name\":\"X\"}")]
+    [Xunit.InlineData("{\"id\":null,\"name\":\"X\"}")]
+    public async Task GetContact_supplierAccountNum_null_when_absent(string json)
     {
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":"c1","name":"X"}""")));
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
         var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        contact.Id.Should().Be("c1");
         contact.SupplierAccountNum.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("{\"id\":\"\"}")]
+    [Xunit.InlineData("{\"id\":\"   \"}")]
+    public async Task GetContact_refuses_blank_identity(string json)
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = async () => await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
@@ -141,13 +157,18 @@ public class HoldedClientContactTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
-    [HumansFact]
-    public async Task ListContacts_skips_an_unreadable_contact_and_keeps_the_rest()
+    [HumansTheory]
+    [Xunit.InlineData("{\"id\":42}")]
+    [Xunit.InlineData("{}")]
+    [Xunit.InlineData("{\"id\":null}")]
+    [Xunit.InlineData("{\"id\":\"\"}")]
+    [Xunit.InlineData("{\"id\":\"   \"}")]
+    public async Task ListContacts_skips_an_unreadable_contact_and_keeps_the_rest(string unreadable)
     {
         // A value of the wrong type anywhere in the projection must not take down the whole page.
-        var json = """
+        var json = $$$"""
         {"items":[
-          {"id":42,"name":"Numeric id"},
+          {{{unreadable}}},
           {"id":"c2","name":"Daniela Real","supplier_record":{"num":40000001}}
         ],"cursor":null,"has_more":false}
         """;
