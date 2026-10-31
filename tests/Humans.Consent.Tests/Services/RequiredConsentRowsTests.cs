@@ -24,7 +24,7 @@ public sealed class RequiredConsentRowsTests
 
         var rows = RequiredConsentRows.BuildOrdered(
             [
-                Doc("Privacy", oldVersion, currentVersion, pendingVersion),
+                Doc("Privacy", pendingVersion, oldVersion, currentVersion),
                 Doc("Statutes", futureOnly)
             ],
             new HashSet<Guid>(),

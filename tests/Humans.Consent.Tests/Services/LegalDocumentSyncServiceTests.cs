@@ -106,9 +106,9 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var currentId = Guid.NewGuid();
         foreach (var (documentId, id, effectiveFrom) in new[]
         {
+            (document.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1))),
             (document.Id, Guid.NewGuid(), now.Minus(Duration.FromDays(1))),
             (document.Id, currentId, now),
-            (document.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1))),
             (futureOnly.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1)))
         })
         {

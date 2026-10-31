@@ -401,9 +401,7 @@ internal sealed partial class LegalDocumentSyncService(
 
     private static RequiredDocumentVersionSnapshot? ToLatestRequiredVersionSnapshot(LegalDocument document, Instant now)
     {
-        var version = document.Versions
-            .Where(v => v.EffectiveFrom <= now)
-            .MaxBy(v => v.EffectiveFrom);
+        var version = CurrentVersionAt(document, now);
         return version is null ? null : new(
             version.Id,
             version.LegalDocumentId,
