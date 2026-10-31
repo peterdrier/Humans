@@ -350,12 +350,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        // No-op: each repository method commits its own context.
-        return Task.CompletedTask;
-    }
-
     public async Task<TeamJoinRequest?> FindUserPendingRequestAsync(
         Guid teamId, Guid userId, CancellationToken ct = default)
     {
@@ -531,13 +525,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Set<TeamRoleDefinition>().Attach(definition);
         db.Set<TeamRoleDefinition>().Remove(definition);
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task AddAssignmentAsync(TeamRoleAssignment assignment, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        db.Set<TeamRoleAssignment>().Add(assignment);
         await db.SaveChangesAsync(ct);
     }
 
