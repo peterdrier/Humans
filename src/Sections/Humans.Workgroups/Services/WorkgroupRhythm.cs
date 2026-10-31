@@ -44,12 +44,8 @@ internal static class WorkgroupRhythm
 
     public static bool AcceptsMemberWork(this WorkgroupInfo w) => w.Status == WorkgroupStatus.Active;
 
-    /// <summary>Not yet started, soonest first.</summary>
-    public static IEnumerable<WorkgroupMeetingInfo> UpcomingMeetings(this WorkgroupInfo w, Instant now) =>
-        w.Meetings.Where(m => m.StartUtc >= now).OrderBy(m => m.StartUtc);
-
     public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
-        w.UpcomingMeetings(now).FirstOrDefault();
+        w.Meetings.Where(m => m.StartUtc >= now).MinBy(m => m.StartUtc);
 
     /// <summary>An Update entry or a meeting; a Note or Disclosure doesn't count.</summary>
     public static Instant? LastActivityAt(this WorkgroupInfo w, Instant now)

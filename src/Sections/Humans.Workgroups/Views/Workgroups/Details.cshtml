@@ -18,7 +18,7 @@
             if (e.Kind == WorkgroupLogKind.BudgetSet && !Model.CanSeeBudget) continue;
             yield return (e.OccurredOn, e, null);
         }
-        foreach (var m in w.Meetings)
+        foreach (var m in w.Meetings.OrderBy(m => m.StartUtc))
         {
             yield return (m.StartUtc.InUtc().Date, null, m);
         }

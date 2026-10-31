@@ -36,7 +36,6 @@ internal sealed partial class WorkgroupService
         // Soft-deleted meetings are gone outside the repository; the log keeps the history.
         w.Meetings
             .Where(m => m.DeletedAt is null)
-            .OrderBy(m => m.StartUtc)
             .Select(m => new WorkgroupMeetingInfo(
                 m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
                 m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt))
