@@ -10,7 +10,8 @@ namespace Humans.GoogleIntegration.Services.Workspace;
 
 internal sealed class TeamResourceGoogleClient(
     IOptions<GoogleWorkspaceSettings> settings,
-    ILogger<TeamResourceGoogleClient> logger) : ITeamResourceGoogleClient
+    ILogger<TeamResourceGoogleClient> logger,
+    IGoogleDrivePermissionsClient drivePermissions) : ITeamResourceGoogleClient
 {
     private readonly GoogleWorkspaceSettings _settings = settings.Value;
 
@@ -32,13 +33,17 @@ internal sealed class TeamResourceGoogleClient(
             request.Fields = "id, name, webViewLink, mimeType, parents, driveId";
             request.SupportsAllDrives = true;
             var file = await request.ExecuteAsync(ct);
+            var fileId = file.Id ?? itemId;
 
             var isFolder = string.Equals(file.MimeType, "application/vnd.google-apps.folder", StringComparison.Ordinal);
-            var fullPath = await BuildFolderPathAsync(drive, file, ct);
+            var fullPath = await DriveFolderPath.ResolveAsync(
+                drivePermissions, fileId, logger, ct,
+                new DriveFileMetadata(fileId, file.Name, file.Parents as IReadOnlyList<string>, file.DriveId,
+                    file.InheritedPermissionsDisabled)) ?? file.Name;
 
             return new DriveLookupResult(
                 new DriveItem(
-                    Id: file.Id,
+                    Id: fileId,
                     Name: file.Name,
                     WebViewLink: file.WebViewLink,
                     IsFolder: isFolder,
@@ -119,71 +124,6 @@ internal sealed class TeamResourceGoogleClient(
 
         _serviceAccountEmail = "unknown@serviceaccount.iam.gserviceaccount.com";
         return _serviceAccountEmail;
-    }
-
-    /// <summary>Falls back to the item's own name when ancestor access is denied.</summary>
-    private async Task<string> BuildFolderPathAsync(
-        DriveService drive, Google.Apis.Drive.v3.Data.File file, CancellationToken ct)
-    {
-        // When the file IS the shared drive root, Files.Get returns "Drive" as the name.
-        // Use Drives.Get to get the actual drive name.
-        if (!string.IsNullOrEmpty(file.DriveId)
-            && string.Equals(file.Id, file.DriveId, StringComparison.Ordinal))
-        {
-            try
-            {
-                var driveInfo = await drive.Drives.Get(file.DriveId).ExecuteAsync(ct);
-                return driveInfo.Name;
-            }
-            catch (Google.GoogleApiException ex)
-            {
-                logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", file.DriveId);
-                return file.Name;
-            }
-        }
-
-        var segments = new List<string> { file.Name };
-        var currentParents = file.Parents;
-        var driveId = file.DriveId;
-
-        // Walk up the parent chain (max 10 levels to avoid infinite loops)
-        for (var i = 0; i < 10 && currentParents is { Count: > 0 }; i++)
-        {
-            var parentId = currentParents[0];
-
-            if (string.Equals(parentId, driveId, StringComparison.Ordinal))
-            {
-                try
-                {
-                    var driveInfo = await drive.Drives.Get(driveId).ExecuteAsync(ct);
-                    segments.Add(driveInfo.Name);
-                }
-                catch (Google.GoogleApiException ex)
-                {
-                    logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", driveId);
-                }
-                break;
-            }
-
-            try
-            {
-                var parentRequest = drive.Files.Get(parentId);
-                parentRequest.Fields = "id, name, parents, driveId";
-                parentRequest.SupportsAllDrives = true;
-                var parent = await parentRequest.ExecuteAsync(ct);
-
-                segments.Add(parent.Name);
-                currentParents = parent.Parents;
-            }
-            catch (Google.GoogleApiException ex)
-            {
-                logger.LogDebug(ex, "Cannot access parent folder {ParentId} — stopping path walk", parentId);
-                break;
-            }
-        }
-
-        segments.Reverse();
-        return string.Join(" / ", segments);
     }
 
     private async Task<DriveService> GetDriveServiceAsync(CancellationToken ct)

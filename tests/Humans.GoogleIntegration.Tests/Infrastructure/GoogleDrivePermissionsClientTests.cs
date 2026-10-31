@@ -76,6 +76,62 @@ public sealed class GoogleDrivePermissionsClientTests
         handler.Requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Patch);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("full")]
+    [Xunit.InlineData("root-denied")]
+    [Xunit.InlineData("root-omits-drive-id")]
+    [Xunit.InlineData("root-file-denied")]
+    public async Task GetDriveItemAsync_UsesCompleteSharedPathOrLeafName(string scenario)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var rootTarget = string.Equals(scenario, "root-omits-drive-id", StringComparison.Ordinal);
+        var rootDenied = string.Equals(scenario, "root-denied", StringComparison.Ordinal);
+        var rootFileDenied = string.Equals(scenario, "root-file-denied", StringComparison.Ordinal);
+        const string leafJson = """
+            {"id":"folder-1","name":"Finance","mimeType":"application/vnd.google-apps.folder",
+             "parents":["parent-1"],"driveId":"drive-1","webViewLink":"https://drive.google.com/drive/folders/folder-1"}
+            """;
+        const string rootJson = """
+            {"id":"drive-1","name":"Drive","mimeType":"application/vnd.google-apps.folder",
+             "webViewLink":"https://drive.google.com/drive/folders/drive-1"}
+            """;
+        using var handler = new RecordingHandler(leafJson, responseForPath: path =>
+        {
+            if (path.EndsWith("/drives/drive-1", StringComparison.Ordinal))
+                return rootDenied
+                    ? ("""{"error":{"code":403,"message":"permission denied"}}""", HttpStatusCode.Forbidden)
+                    : ("""{"id":"drive-1","name":"Nobodies"}""", HttpStatusCode.OK);
+            if (rootFileDenied && path.EndsWith("/files/drive-1", StringComparison.Ordinal))
+                return ("""{"error":{"code":403,"message":"permission denied"}}""", HttpStatusCode.Forbidden);
+            if (path.EndsWith("/files/parent-1", StringComparison.Ordinal))
+                return ("""{"id":"parent-1","name":"Administration","parents":["drive-1"],"driveId":"drive-1"}""", HttpStatusCode.OK);
+            return (rootTarget ? rootJson : leafJson, HttpStatusCode.OK);
+        });
+        using var drive = CreateDrive(handler);
+        var permissions = Substitute.For<IGoogleDrivePermissionsClient>();
+        permissions.GetFileAsync("parent-1", ct).Returns(new DriveFileMetadataResult(
+            new DriveFileMetadata("parent-1", "Administration", ["drive-1"], "drive-1", null), null));
+        permissions.GetFileAsync("drive-1", ct).Returns(rootFileDenied
+            ? new DriveFileMetadataResult(null, new GoogleClientError(403, "permission denied"))
+            : new DriveFileMetadataResult(new DriveFileMetadata("drive-1", "Drive", null, null, null), null));
+        permissions.GetSharedDriveAsync("drive-1", ct).Returns(rootDenied
+            ? new SharedDriveMetadataResult(null, new GoogleClientError(403, "permission denied"))
+            : new SharedDriveMetadataResult(new SharedDriveMetadata("drive-1", "Nobodies"), null));
+        var client = new TeamResourceGoogleClient(
+            Options.Create(new GoogleWorkspaceSettings()), NullLogger<TeamResourceGoogleClient>.Instance, permissions);
+        typeof(TeamResourceGoogleClient).GetField("_driveService", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(client, drive);
+        var targetId = rootTarget ? "drive-1" : "folder-1";
+
+        var result = await client.GetDriveItemAsync(targetId, expectFolder: true, ct);
+
+        result.Error.Should().BeNull();
+        result.Item!.FullPath.Should().Be(rootTarget ? "Nobodies" : rootDenied ? "Finance" : "Nobodies / Administration / Finance");
+        result.Item.Name.Should().Be(rootTarget ? "Drive" : "Finance");
+        result.Item.IsFolder.Should().BeTrue();
+        result.Item.WebViewLink.Should().Be($"https://drive.google.com/drive/folders/{targetId}");
+    }
+
     private static DriveService CreateDrive(RecordingHandler handler)
     {
         var factory = Substitute.For<Google.Apis.Http.IHttpClientFactory>();
@@ -95,7 +151,8 @@ public sealed class GoogleDrivePermissionsClientTests
         return client;
     }
 
-    private sealed class RecordingHandler(string responseJson, HttpStatusCode status = HttpStatusCode.OK)
+    private sealed class RecordingHandler(string responseJson, HttpStatusCode status = HttpStatusCode.OK,
+        Func<string, (string Json, HttpStatusCode Status)>? responseForPath = null)
         : HttpMessageHandler
     {
         public List<(HttpMethod Method, string Url, string? Body)> Requests { get; } = [];
@@ -113,9 +170,10 @@ public sealed class GoogleDrivePermissionsClientTests
                 body = await reader.ReadToEndAsync(cancellationToken);
             }
             Requests.Add((request.Method, request.RequestUri!.ToString(), body));
-            return new HttpResponseMessage(status)
+            var response = responseForPath?.Invoke(request.RequestUri.AbsolutePath) ?? (responseJson, status);
+            return new HttpResponseMessage(response.Item2)
             {
-                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+                Content = new StringContent(response.Item1, Encoding.UTF8, "application/json")
             };
         }
     }
