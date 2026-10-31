@@ -120,6 +120,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Invariants
 
+- Admin program grant ordering belongs to the view model: applications oldest-created first, decided grants nonterminal first then oldest-created. Service projections impose no display order.
+
 - Status follows: `Applied → Open | Declined`; `Open → Claimed | Revoked`; `Claimed → Open`
   (withdraw before approval) `| Consumed | Revoked`. Consumed, Declined and Revoked are
   terminal. Every move is a person's action or Expenses' on their behalf; nothing runs on a

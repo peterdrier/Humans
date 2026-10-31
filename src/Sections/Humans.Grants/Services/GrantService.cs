@@ -58,7 +58,7 @@ internal sealed partial class GrantService(
             p.IssuedBy, p.SourceKey, p.GrantsExpireOn,
             p.Status, p.CreatedByUserId, p.CreatedAt, p.UpdatedAt,
             p.Managers.Select(m => m.UserId).ToList(),
-            p.Grants.OrderBy(g => g.IssuedAt).Select(g => ToInfo(g, p, evt)).ToList());
+            p.Grants.Select(g => ToInfo(g, p, evt)).ToList());
     }
 
     /// <summary>The program's own event, else the one <c>grants.event-ids</c> would give it.</summary>
