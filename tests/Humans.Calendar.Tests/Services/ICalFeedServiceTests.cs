@@ -65,7 +65,7 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
-    public async Task GetFeedItemsAsync_MergesAndSortsByStart()
+    public async Task GetFeedItemsAsync_MergesContributors()
     {
         var early = Instant.FromUtc(2026, 7, 1, 10, 0);
         var late = Instant.FromUtc(2026, 7, 3, 10, 0);
@@ -76,8 +76,7 @@ public class ICalFeedServiceTests
         var items = await service.GetFeedItemsAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(2);
-        items[0].Uid.Should().Be("a@x");
-        items[1].Uid.Should().Be("b@x");
+        items.Select(i => i.Uid).Should().BeEquivalentTo(["a@x", "b@x"]);
     }
 
     [HumansTheory]
@@ -193,6 +192,7 @@ public class ICalFeedServiceTests
         {
             await Task.Yield();
             return [
+                MakeItem("later@humans.nobodies.team", "Events", Instant.FromUtc(2026, 7, 3, 8, 0)),
                 MakeItem("shift-1@humans.nobodies.team", "Shifts", Instant.FromUtc(2026, 7, 2, 8, 0))
                     with { Summary = $"Owner language {CultureInfo.CurrentUICulture.Name}" },
             ];
@@ -215,7 +215,7 @@ public class ICalFeedServiceTests
 
         // Round-trips through the same library calendar clients use.
         var parsed = Ical.Net.Calendar.Load(ics);
-        parsed!.Events.Should().HaveCount(1);
+        parsed!.Events.Select(e => e.Uid).Should().Equal("shift-1@humans.nobodies.team", "later@humans.nobodies.team");
     }
 
     [HumansFact]
