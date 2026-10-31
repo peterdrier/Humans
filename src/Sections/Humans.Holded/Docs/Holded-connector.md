@@ -51,7 +51,9 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
   call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
-  GETs. Every write, including a bodyless sales-approval POST, surfaces it as transient immediately.
+  GETs. HTTP-date waits retain their fractional remaining seconds and round up to the delay's millisecond
+  precision, so a future retry date is never rounded down to an immediate retry; past dates still retry immediately. Every write, including a bodyless sales-approval POST,
+  surfaces it as transient immediately.
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
