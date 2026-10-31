@@ -70,6 +70,10 @@ internal sealed class AttendeeContactImportService(
 
         // Re-query so plan/apply are stateless (a sync between plan and apply is tolerated).
         var freshById = await LoadFreshUnmatchedAttendeesByIdAsync(eventId, ct);
+        ct.ThrowIfCancellationRequested();
+        // Provisioning commits in Users before attendee links and participation save here.
+        // Once writes begin, closing the tab must not strand that work or its batch audit.
+        ct = CancellationToken.None;
         var importState = new AttendeeImportApplyState();
 
         foreach (var d in plan.Decisions.Where(d => selectedAttendeeIds.Contains(d.AttendeeId)))
