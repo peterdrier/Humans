@@ -726,14 +726,9 @@ internal sealed class GoogleWorkspaceSyncService(
 
         var groupInfos = (await Task.WhenAll(tasks)).ToList();
 
-        var sorted = groupInfos
-            .OrderBy(g => g.LinkedTeamId is null ? 1 : 0)
-            .ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
         return new AllGroupsResult
         {
-            Groups = sorted,
+            Groups = groupInfos,
             ExpectedSettings = expectedSettings
         };
     }

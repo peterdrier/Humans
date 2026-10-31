@@ -198,7 +198,10 @@ internal sealed class GoogleController(
                 return RedirectToAction(nameof(AllGroups));
             }
 
-            var drifted = result.Groups.Where(g => g.HasDrift).ToList();
+            var drifted = result.Groups.Where(g => g.HasDrift)
+                .OrderBy(g => g.LinkedTeamId is null)
+                .ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             if (drifted.Count == 0)
             {
                 SetInfo("No drifted groups found — nothing to remediate.");
