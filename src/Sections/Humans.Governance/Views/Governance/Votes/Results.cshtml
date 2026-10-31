@@ -235,7 +235,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var row in disclosed)
+                        @foreach (var row in disclosed.OrderByDescending(r => r.IsOfficial).ThenBy(r => r.DisplayName, StringComparer.CurrentCulture))
                         {
                             <tr>
                                 <td>@row.DisplayName</td>

@@ -574,8 +574,6 @@ internal sealed class AssemblyVoteService(
                 x.Ballot!.Choice,
                 x.Ballot.Ranking,
                 x.Ballot.Revision))
-            .OrderByDescending(r => r.IsOfficial)
-            .ThenBy(r => r.DisplayName, StringComparer.CurrentCulture)
             .ToList();
     }
 
