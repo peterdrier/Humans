@@ -126,6 +126,8 @@ predicate reads that column.
 
 Meeting URLs accept up to 2000 characters. The service validates the limit for creates
 and edits; form failures preserve the entered values and show a localized error.
+Meeting date/time inputs use the shared invariant formatters and remain UTC, with
+ISO dates and 24-hour times regardless of request culture.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 

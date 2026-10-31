@@ -108,7 +108,7 @@
                 @foreach (var o in Model.Orphans)
                 {
                     <tr>
-                        <td class="text-nowrap">@o.Date.ToString("yyyy-MM-dd", null)</td>
+                        <td class="text-nowrap">@o.Date.ToInvariantDate()</td>
                         <td><span title="@o.HoldedDocId">@o.DocNumber</span></td>
                         <td>@o.ContactName</td>
                         <td>@o.Description</td>
