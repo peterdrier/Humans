@@ -524,7 +524,6 @@ internal sealed class SurveyService(
         var authors = await userService.GetUserInfosAsync(authorIds, ct);
 
         return pending
-            .OrderBy(s => s.SubmittedAt)
             .Select(s => new SurveyPendingApprovalItem(
                 s.Id,
                 s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
