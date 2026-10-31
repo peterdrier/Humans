@@ -84,21 +84,17 @@ internal sealed class GoogleAdminService(
                     RecoveryEmail: account.RecoveryEmail));
             }
 
-            var sorted = accountInfos
-                .OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            var linkedCount = sorted.Count(a => a.MatchedUserId.HasValue);
+            var linkedCount = accountInfos.Count(a => a.MatchedUserId.HasValue);
             // Suspended accounts cannot sign in, so their missing 2FA is noise.
-            var missingTwoFactorCount = sorted.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
+            var missingTwoFactorCount = accountInfos.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
 
             return new WorkspaceAccountListResult(
-                Accounts: sorted,
-                TotalAccounts: sorted.Count,
-                ActiveAccounts: sorted.Count(a => !a.IsSuspended),
-                SuspendedAccounts: sorted.Count(a => a.IsSuspended),
+                Accounts: accountInfos,
+                TotalAccounts: accountInfos.Count,
+                ActiveAccounts: accountInfos.Count(a => !a.IsSuspended),
+                SuspendedAccounts: accountInfos.Count(a => a.IsSuspended),
                 LinkedAccounts: linkedCount,
-                UnlinkedAccounts: sorted.Count - linkedCount,
+                UnlinkedAccounts: accountInfos.Count - linkedCount,
                 NotPrimaryCount: notPrimaryCount,
                 MissingTwoFactorCount: missingTwoFactorCount);
         }

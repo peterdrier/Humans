@@ -412,7 +412,7 @@ internal sealed class GoogleController(
 
         var model = new WorkspaceEmailListViewModel
         {
-            Accounts = result.Accounts,
+            Accounts = result.Accounts.OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase).ToList(),
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,
             SuspendedAccounts = result.SuspendedAccounts,
