@@ -574,6 +574,13 @@
   <!-- Facilitated Messaging -->
   <data name="Search_Title" xml:space="preserve"><value>Search Humans</value></data>
   <data name="Search_Placeholder" xml:space="preserve"><value>Search by name, city, interests, bio...</value></data>
+  <data name="VolunteerSearch_SearchFailed" xml:space="preserve"><value>Search failed.</value></data>
+  <data name="VolunteerSearch_ScheduleConflict" xml:space="preserve"><value>Schedule conflict</value></data>
+  <data name="VolunteerSearch_Pool" xml:space="preserve"><value>Pool</value></data>
+  <data name="VolunteerSearch_ShiftCount" xml:space="preserve"><value>{0} shifts</value></data>
+  <data name="VolunteerSearch_ShiftCountSingular" xml:space="preserve"><value>{0} shift</value></data>
+  <data name="VolunteerSearch_ConflictWarning" xml:space="preserve"><value>Warning: schedule conflict</value></data>
+  <data name="VolunteerSearch_Assign" xml:space="preserve"><value>Assign</value></data>
   <data name="Search_NoResults" xml:space="preserve"><value>No humans found matching your search.</value></data>
   <data name="Search_MatchedIn" xml:space="preserve"><value>Matched in</value></data>
   <data name="Search_MinChars" xml:space="preserve"><value>Enter at least 2 characters to search.</value></data>

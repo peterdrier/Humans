@@ -967,6 +967,13 @@
   <data name="Search_Placeholder" xml:space="preserve">
     <value>Cerca per nom, ciutat, interessos, bio...</value>
   </data>
+  <data name="VolunteerSearch_SearchFailed" xml:space="preserve"><value>La cerca ha fallat.</value></data>
+  <data name="VolunteerSearch_ScheduleConflict" xml:space="preserve"><value>Conflicte d’horari</value></data>
+  <data name="VolunteerSearch_Pool" xml:space="preserve"><value>Reserva</value></data>
+  <data name="VolunteerSearch_ShiftCount" xml:space="preserve"><value>{0} torns</value></data>
+  <data name="VolunteerSearch_ShiftCountSingular" xml:space="preserve"><value>{0} torn</value></data>
+  <data name="VolunteerSearch_ConflictWarning" xml:space="preserve"><value>Avís: conflicte d’horari</value></data>
+  <data name="VolunteerSearch_Assign" xml:space="preserve"><value>Assigna</value></data>
   <data name="Search_NoResults" xml:space="preserve">
     <value>No s’han trobat humans amb aquesta cerca.</value>
   </data>

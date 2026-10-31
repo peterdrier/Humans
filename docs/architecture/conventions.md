@@ -219,6 +219,8 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Rideshare/wwwroot/js/rideshare/board.js` (`Views/Rideshare/Index.cshtml`) | Rideshare board map reads its GeoJSON feed from `RideshareApi` | Interactive map |
 | `Humans.Web/wwwroot/js/site.js` | Timezone, notification popup, profile popover | Utility |
 
+The shared volunteer-search script localizes its assignment controls, conflict text, pool badge and shift counts in all six cultures. Caller-supplied feedback labels remain supported; localized JavaScript strings use JSON encoding and are escaped when inserted into HTML.
+
 Paths are relative to `src/` (`src/Sections/` for the section projects).
 
 When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.

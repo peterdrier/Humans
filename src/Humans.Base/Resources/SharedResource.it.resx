@@ -967,6 +967,13 @@
   <data name="Search_Placeholder" xml:space="preserve">
     <value>Cerca per nome, città, interessi, bio...</value>
   </data>
+  <data name="VolunteerSearch_SearchFailed" xml:space="preserve"><value>Ricerca non riuscita.</value></data>
+  <data name="VolunteerSearch_ScheduleConflict" xml:space="preserve"><value>Conflitto di orario</value></data>
+  <data name="VolunteerSearch_Pool" xml:space="preserve"><value>Riserva</value></data>
+  <data name="VolunteerSearch_ShiftCount" xml:space="preserve"><value>{0} turni</value></data>
+  <data name="VolunteerSearch_ShiftCountSingular" xml:space="preserve"><value>{0} turno</value></data>
+  <data name="VolunteerSearch_ConflictWarning" xml:space="preserve"><value>Attenzione: conflitto di orario</value></data>
+  <data name="VolunteerSearch_Assign" xml:space="preserve"><value>Assegna</value></data>
   <data name="Search_NoResults" xml:space="preserve">
     <value>Nessun human trovato corrispondente alla tua ricerca.</value>
   </data>

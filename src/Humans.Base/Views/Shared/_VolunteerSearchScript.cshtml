@@ -3,10 +3,15 @@
     var voluntellUrl = (string?)ViewData["VoluntellUrl"] ?? string.Empty;
     var assignButtonClass = (string?)ViewData["AssignButtonClass"] ?? "btn-success";
     var dietaryPreferenceStyle = (string?)ViewData["DietaryPreferenceStyle"] ?? "muted";
-    var noResultsText = (string?)ViewData["NoResultsText"] ?? "No humans found.";
-    var errorText = (string?)ViewData["ErrorText"] ?? "Search failed.";
-    var overlapLabel = (string?)ViewData["OverlapLabel"] ?? "Schedule conflict";
+    var noResultsText = (string?)ViewData["NoResultsText"] ?? Localizer["Search_NoResults"].Value;
+    var errorText = (string?)ViewData["ErrorText"] ?? Localizer["VolunteerSearch_SearchFailed"].Value;
+    var overlapLabel = (string?)ViewData["OverlapLabel"] ?? Localizer["VolunteerSearch_ScheduleConflict"].Value;
     var showPoolBadge = (bool?)ViewData["ShowPoolBadge"] ?? false;
+    var poolLabel = Localizer["VolunteerSearch_Pool"].Value;
+    var shiftCountLabel = Localizer["VolunteerSearch_ShiftCount"].Value;
+    var shiftCountSingularLabel = Localizer["VolunteerSearch_ShiftCountSingular"].Value;
+    var conflictWarningLabel = Localizer["VolunteerSearch_ConflictWarning"].Value;
+    var assignLabel = Localizer["VolunteerSearch_Assign"].Value;
 }
 (function () {
     var searchUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(searchUrl));
@@ -18,6 +23,11 @@
     var errorText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(errorText));
     var overlapLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(overlapLabel));
     var showPoolBadge = @showPoolBadge.ToString().ToLowerInvariant();
+    var poolLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(poolLabel));
+    var shiftCountLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(shiftCountLabel));
+    var shiftCountSingularLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(shiftCountSingularLabel));
+    var conflictWarningLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(conflictWarningLabel));
+    var assignLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(assignLabel));
 
     function renderBadges(items, cssClass) {
         if (!items || items.length === 0) {
@@ -50,7 +60,7 @@
         var html = '<ul class="list-group list-group-flush">';
         results.forEach(function (result) {
             var poolBadge = showPoolBadge && result.isInPool
-                ? '<span class="badge bg-success ms-2">Pool</span>'
+                ? '<span class="badge bg-success ms-2">' + escapeHtml(poolLabel) + '</span>'
                 : '';
             var overlapWarning = result.hasOverlap
                 ? '<span class="badge bg-warning text-dark ms-2">' + escapeHtml(overlapLabel) + '</span>'
@@ -65,7 +75,9 @@
             html += '<strong>' + escapeHtml(result.displayName) + '</strong>';
             html += poolBadge;
             html += overlapWarning;
-            html += ' <small class="text-muted">(' + result.bookedShiftCount + ' shifts)</small>';
+            var shiftCount = (result.bookedShiftCount === 1 ? shiftCountSingularLabel : shiftCountLabel)
+                .replace('{0}', result.bookedShiftCount);
+            html += ' <small class="text-muted">(' + escapeHtml(shiftCount) + ')</small>';
             html += dietaryPreference;
             html += '<div class="mt-1">' + skillBadges + quirkBadges + languageBadges + '</div>';
             html += '</div>';
@@ -74,8 +86,8 @@
             html += '<input type="hidden" name="shiftId" value="' + escapeHtml(shiftId) + '" />';
             html += '<input type="hidden" name="userId" value="' + escapeHtml(result.userId) + '" />';
             html += '<button type="submit" class="btn btn-sm ' + assignButtonClass + '"'
-                + (result.hasOverlap ? ' title="Warning: schedule conflict"' : '')
-                + '>Assign</button>';
+                + (result.hasOverlap ? ' title="' + escapeHtml(conflictWarningLabel) + '"' : '')
+                + '>' + escapeHtml(assignLabel) + '</button>';
             html += '</form>';
             html += '</li>';
         });

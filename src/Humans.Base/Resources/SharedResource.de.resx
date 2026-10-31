@@ -967,6 +967,13 @@
   <data name="Search_Placeholder" xml:space="preserve">
     <value>Nach Name, Stadt, Interessen, Bio suchen...</value>
   </data>
+  <data name="VolunteerSearch_SearchFailed" xml:space="preserve"><value>Suche fehlgeschlagen.</value></data>
+  <data name="VolunteerSearch_ScheduleConflict" xml:space="preserve"><value>Terminkonflikt</value></data>
+  <data name="VolunteerSearch_Pool" xml:space="preserve"><value>Pool</value></data>
+  <data name="VolunteerSearch_ShiftCount" xml:space="preserve"><value>{0} Schichten</value></data>
+  <data name="VolunteerSearch_ShiftCountSingular" xml:space="preserve"><value>{0} Schicht</value></data>
+  <data name="VolunteerSearch_ConflictWarning" xml:space="preserve"><value>Warnung: Terminkonflikt</value></data>
+  <data name="VolunteerSearch_Assign" xml:space="preserve"><value>Zuweisen</value></data>
   <data name="Search_NoResults" xml:space="preserve">
     <value>Keine Humans gefunden, die deiner Suche entsprechen.</value>
   </data>
