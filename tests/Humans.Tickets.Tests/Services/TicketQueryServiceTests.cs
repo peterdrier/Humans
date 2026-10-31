@@ -380,6 +380,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.QuarterlySales.Should().ContainSingle();
 
         var weekly = result.WeeklySales.Single();
+        weekly.WeekStart.Should().Be(new LocalDate(2026, 3, 2));
         weekly.TicketsSold.Should().Be(1);
         weekly.Donations.Should().Be(25m);
         weekly.VipDonations.Should().Be(400m - TicketConstants.VipThresholdEuros);
@@ -440,9 +441,9 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         var result = await _service.GetSalesAggregatesAsync();
 
-        result.MonthlySales.Select(m => m.MonthLabel).Should().Equal("2026-03", "2026-04", "2026-05");
+        result.MonthlySales.Select(m => m.MonthLabel).Should().BeEquivalentTo(new[] { "2026-03", "2026-04", "2026-05" });
 
-        var mar = result.MonthlySales[0];
+        var mar = result.MonthlySales.Single(month => string.Equals(month.MonthLabel, "2026-03", StringComparison.Ordinal));
         mar.OrderCount.Should().Be(1);
         mar.TicketsSold.Should().Be(1);
         mar.GrossRevenue.Should().Be(425m);
@@ -458,14 +459,14 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         mar.WithheldTax.Should().Be(0.30m);
         mar.RefundedGross.Should().Be(200m);
 
-        var apr = result.MonthlySales[1];
+        var apr = result.MonthlySales.Single(month => string.Equals(month.MonthLabel, "2026-04", StringComparison.Ordinal));
         apr.GrossRevenue.Should().Be(315m);
         apr.TicketIncomeInclVat.Should().Be(315m);
         apr.TicketIncomeExVat.Should().Be(315m - 28.64m);
         apr.StripeFees.Should().Be(3m);
         apr.RefundedGross.Should().Be(0m);
 
-        var may = result.MonthlySales[2];
+        var may = result.MonthlySales.Single(month => string.Equals(month.MonthLabel, "2026-05", StringComparison.Ordinal));
         may.OrderCount.Should().Be(0);
         may.GrossRevenue.Should().Be(0m);
         may.TicketIncomeInclVat.Should().Be(0m);

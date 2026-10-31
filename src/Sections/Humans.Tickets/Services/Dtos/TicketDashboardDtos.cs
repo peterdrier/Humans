@@ -67,6 +67,7 @@ internal sealed class TicketSalesAggregates
 
 internal sealed class WeeklySalesAggregate
 {
+    public LocalDate WeekStart { get; init; }
     public string WeekLabel { get; init; } = string.Empty;
     public int TicketsSold { get; init; }
     public decimal GrossRevenue { get; init; }

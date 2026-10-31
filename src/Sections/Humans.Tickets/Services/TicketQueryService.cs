@@ -325,13 +325,13 @@ internal sealed class TicketQueryService(
                 var monday = date.PlusDays(-(int)date.DayOfWeek + 1);
                 return monday;
             })
-            .OrderBy(g => g.Key)
             .Select(g =>
             {
                 var monday = g.Key;
                 var sunday = monday.PlusDays(6);
                 return new WeeklySalesAggregate
                 {
+                    WeekStart = monday,
                     WeekLabel = $"{monday.ToWeekdayDayMonth()} – {sunday.ToWeekdayDayMonth()}",
                     TicketsSold = g.Sum(o => o.AttendeeCount),
                     GrossRevenue = g.Sum(o => o.TotalAmount),
@@ -350,7 +350,6 @@ internal sealed class TicketQueryService(
                 var quarter = (date.Month - 1) / 3 + 1;
                 return (date.Year, quarter);
             })
-            .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.quarter)
             .Select(g => new QuarterlySalesAggregate
             {
                 QuarterLabel = $"Q{g.Key.quarter} {g.Key.Year}",
@@ -371,7 +370,6 @@ internal sealed class TicketQueryService(
             .ToDictionary(g => g.Key, g => g.ToList());
         var paidByMonth = orders.GroupBy(o => MonthKey(o.PurchasedAt)).ToDictionary(g => g.Key, g => g.ToList());
         var monthlySales = paidByMonth.Keys.Union(refundedByMonth.Keys)
-            .OrderBy(k => k)
             .Select(k =>
             {
                 var paid = paidByMonth.GetValueOrDefault(k) ?? [];

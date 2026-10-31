@@ -1,3 +1,5 @@
+using CsvHelper;
+using Humans.Base.Csv;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
@@ -30,12 +32,26 @@ namespace Humans.Tickets.Tests.Controllers;
 public class TicketControllerTests
 {
     [HumansFact]
-    public async Task Reports_OrderTicketTypesAndCampaignsForDisplay()
+    public async Task Reports_OrderSalesBucketsTicketTypesAndCampaignsForDisplay()
     {
         var earlier = Instant.FromUtc(2026, 1, 1, 0, 0);
         var later = earlier.Plus(Duration.FromDays(1));
         var aggregates = new TicketSalesAggregates
         {
+            WeeklySales = [
+                new() { WeekStart = new LocalDate(2026, 1, 5), WeekLabel = "Later" },
+                new() { WeekStart = new LocalDate(2025, 12, 29), WeekLabel = "Earlier" },
+            ],
+            QuarterlySales = [
+                new() { Year = 2026, Quarter = 2 },
+                new() { Year = 2025, Quarter = 4 },
+                new() { Year = 2026, Quarter = 1 },
+            ],
+            MonthlySales = [
+                new() { MonthLabel = "2026-02", GrossRevenue = 20m },
+                new() { MonthLabel = "2025-12", GrossRevenue = 5m },
+                new() { MonthLabel = "2026-01", GrossRevenue = 10m },
+            ],
             ByTicketType =
             [
                 new() { TicketTypeName = "Early", FaceValue = 80m },
@@ -74,10 +90,22 @@ public class TicketControllerTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should()
             .BeOfType<TicketSalesAggregatesViewModel>().Subject;
+        model.WeeklySales.Select(week => week.WeekLabel).Should().Equal("Earlier", "Later");
+        model.QuarterlySales.Select(quarter => (quarter.Year, quarter.Quarter)).Should().Equal((2025, 4), (2026, 1), (2026, 2));
+        model.MonthlySales.Select(month => month.MonthLabel).Should().Equal("2025-12", "2026-01", "2026-02");
         model.ByTicketType.Select(t => t.TicketTypeName).Should().Equal("VIP", "Full", "Early");
         model.ByDiscountCampaign.Select(c => c.CampaignTitle).Should().Equal("Largest", "alpha", "alpha", "Zeta", "Vendor");
         model.ByDiscountCampaign.Where(c => string.Equals(c.CampaignTitle, "alpha", StringComparison.Ordinal))
             .Select(c => c.CodesGranted).Should().Equal(1, 2);
+
+        var export = (await controller.ExportAccountantReport()).Should().BeOfType<FileContentResult>().Which;
+        using var input = new StreamReader(new MemoryStream(export.FileContents));
+        using var csv = new CsvReader(input, HumansCsv.ReadConfig());
+        await csv.ReadAsync();
+        csv.ReadHeader();
+        var months = new List<string?>();
+        while (await csv.ReadAsync()) months.Add(csv.GetField("Month"));
+        months.Should().Equal("2025-12", "2026-01", "2026-02", "Total");
 
         var codes = await controller.Codes(null);
         codes.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TicketCodeTrackingViewModel>()

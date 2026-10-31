@@ -153,9 +153,9 @@ internal sealed class TicketController(
 
         var model = new TicketSalesAggregatesViewModel
         {
-            WeeklySales = aggregates.WeeklySales,
-            QuarterlySales = aggregates.QuarterlySales,
-            MonthlySales = aggregates.MonthlySales,
+            WeeklySales = aggregates.WeeklySales.OrderBy(week => week.WeekStart).ToList(),
+            QuarterlySales = aggregates.QuarterlySales.OrderBy(quarter => quarter.Year).ThenBy(quarter => quarter.Quarter).ToList(),
+            MonthlySales = aggregates.MonthlySales.OrderBy(month => month.MonthLabel, StringComparer.Ordinal).ToList(),
             ByTicketType = aggregates.ByTicketType.OrderByDescending(t => t.FaceValue).ToList(),
             ByDiscountCampaign = aggregates.ByDiscountCampaign
                 .OrderBy(r => r.CodesGranted is null)
@@ -316,7 +316,7 @@ internal sealed class TicketController(
             csv.WriteRow("Month", "Orders", "Tickets", "Gross Collected", "Standalone Donations", "VIP Donations",
                 "Ticket Income incl VAT", "VAT 10%", "Ticket Income ex VAT", "Stripe Fees", "Ticket Tailor Fees",
                 "Stripe Fee VAT", "Withheld Tax", "Refunded Orders Gross");
-            foreach (var m in months)
+            foreach (var m in months.OrderBy(month => month.MonthLabel, StringComparer.Ordinal))
             {
                 WriteAccountantRow(csv, m.MonthLabel, m.OrderCount, m.TicketsSold, m.GrossRevenue, m.Donations,
                     m.VipDonations, m.TicketIncomeInclVat, m.VatAmount, m.TicketIncomeExVat, m.StripeFees,
