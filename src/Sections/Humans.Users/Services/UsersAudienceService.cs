@@ -11,9 +11,12 @@ internal sealed class UsersAudienceService(
     {
         var allUsers = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
+        var matchedOrders = ticketOrders
+            .Where(o => o.MatchedUserId.HasValue || o.Attendees.Any(a => a.MatchedUserId.HasValue))
+            .ToList();
         var start = year.HasValue ? Instant.FromUtc(year.Value, 1, 1, 0, 0) : default;
         var end = year.HasValue ? Instant.FromUtc(year.Value + 1, 1, 1, 0, 0) : default;
-        IReadOnlySet<Guid> ticketUserIds = ticketOrders
+        IReadOnlySet<Guid> ticketUserIds = matchedOrders
             .Where(o => !year.HasValue || (o.PurchasedAt >= start && o.PurchasedAt < end))
             .SelectMany(o => o.MatchedUserId.HasValue
                 ? o.Attendees
@@ -41,8 +44,7 @@ internal sealed class UsersAudienceService(
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var years = ticketOrders
-            .Where(o => o.MatchedUserId.HasValue)
+        var years = matchedOrders
             .Select(o => o.PurchasedAt.InUtc().Year)
             .Distinct()
             .OrderByDescending(y => y)
