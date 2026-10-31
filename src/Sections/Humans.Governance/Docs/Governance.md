@@ -319,6 +319,8 @@ Approval and rejection share the same ordered eligibility check (application exi
 - **Ties are reported, never resolved.** Statutes Art. 10.2 gives the President of the Board the casting vote and the Secretary records it in the acta; the system prints that rule and stops.
 - `application_state_history` is append-only per §12 — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
 
+The Board-voting dashboard controller orders member columns by display name with ordinal case-insensitive comparison. The decision service returns the member data without presentation ordering.
+
 ## Negative Access Rules
 
 - Regular humans **cannot** view other humans' applications, cast Board votes, or manage role assignments.

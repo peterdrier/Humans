@@ -620,6 +620,38 @@ public class TeamControllerPageContentTests
     }
 
     [HumansFact]
+    public async Task Details_OrdersMembersByRoleThenNameBeforeMapping()
+    {
+        var team = new TeamPageTeamSummary(
+            Guid.NewGuid(), "Test", "Test", null, "test", true, false, false,
+            SystemTeamType.None, Instant.FromUtc(2026, 1, 1, 0, 0), true, false,
+            null, [], null, null, null);
+        var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", null, null, TeamMemberRole.Coordinator, null);
+        var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", null, null, TeamMemberRole.Member, null);
+        var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", null, null, TeamMemberRole.Member, null);
+        var page = new TeamPageDetailResult(
+            team, [coordinator, zeta, alpha], [], [], [], false, false, false, false, false, false, false,
+            null, 0, null, null, [], []);
+        var pages = Substitute.For<ITeamPageService>();
+        pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
+        var controller = new TeamController(
+            Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.Details("test", TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model
+            .Should().BeOfType<TeamDetailViewModel>().Subject;
+        model.Members.Select(m => m.UserId).Should().Equal(alpha.UserId, zeta.UserId, coordinator.UserId);
+    }
+
+    [HumansFact]
     public async Task Details_RendersPageContentWithSharedMarkdownProtections()
     {
         const string markdown = """

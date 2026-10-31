@@ -116,6 +116,8 @@ internal sealed class TeamController(
         }
 
         var members = teamPage.Members
+            .OrderBy(m => m.Role)
+            .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Select(MapTeamMember)
             .ToList();
 

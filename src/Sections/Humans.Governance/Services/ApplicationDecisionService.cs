@@ -500,7 +500,6 @@ internal sealed class ApplicationDecisionService(
         var boardUsersById = await userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values
             .Select(u => new BoardMemberInfo(u.Id, u.BurnerName))
-            .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new BoardVotingDashboardData(rows, boardMembers);
