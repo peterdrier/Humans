@@ -51,7 +51,6 @@ internal sealed partial class WorkgroupService
                 e.SurveyId, e.CreatedAt, e.UpdatedAt))
             .ToList(),
         w.Documents
-            .OrderByDescending(d => d.CreatedAt)
             .Select(ToInfo)
             .ToList(),
         w.BudgetAmount,
@@ -79,7 +78,6 @@ internal sealed partial class WorkgroupService
         d.CreatedAt,
         d.UpdatedAt,
         d.Comments
-            .OrderBy(c => c.CreatedAt)
             .Select(c => new WorkgroupCommentInfo(
                 c.Id, c.DocumentId, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
                 c.Disposition, c.Response, c.RespondedByUserId, c.RespondedAt, c.HiddenAt,

@@ -519,6 +519,7 @@ display-name reads.
   entry for the whole register, cleared on every write. The shared guarded loader prevents
   loads begun before a clear from repopulating it with the old register. Nothing time-derived is cached —
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
+- **Document ordering** — views order documents newest first. The document page sorts comments once: populated categories follow their earliest comment, and each thread keeps chronological order.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
