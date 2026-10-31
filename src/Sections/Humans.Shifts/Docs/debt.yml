@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Shifts. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 10
-inbox: []
+next_id: 11
+inbox:
+  - added: 2026-10-31
+    id: SHIFTS-10
+    what: "VolunteerTrackingRepository.ReassignAvailabilityToUserAsync moves GeneralAvailability but leaves VolunteerBuildStatus on the archived source. Source-only camp-setup dates and day-off annotations therefore disappear from the survivor's tracking view after a merge. The fold needs a rule for conflicting setup dates, notes and same-day annotations when both accounts have a row for an event. Found while checking merge ownership and GDPR export."
+    review: panel

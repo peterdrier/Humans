@@ -44,6 +44,7 @@ internal sealed class ShiftSignupService(
     internal const string ShiftSignups = "ShiftSignups";
     internal const string VolunteerEventProfiles = "VolunteerEventProfiles";
     internal const string GeneralAvailability = "GeneralAvailability";
+    internal const string VolunteerBuildStatuses = "VolunteerBuildStatuses";
     internal const string ShiftTagPreferences = "ShiftTagPreferences";
 
     // Lazy, to break the DI cycle with TeamService.
@@ -1182,9 +1183,12 @@ internal sealed class ShiftSignupService(
             volunteerEventProfile is null ? [] : [volunteerEventProfile];
         var generalAvailability = await trackingRepo.GetAvailabilityForUserAsync(userId, ct: ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUsersAsync([userId], ct);
+        var exportUserIds = (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+        var buildStatuses = await trackingRepo.GetBuildStatusesForEventAsync(null, exportUserIds, ct);
 
         var distinctEventSettingsIds = signups.Select(ss => ss.Shift.Rota.EventSettingsId)
             .Concat(generalAvailability.Select(ga => ga.EventSettingsId))
+            .Concat(buildStatuses.Select(bs => bs.EventSettingsId))
             .Distinct();
         var eventNamesById = new Dictionary<Guid, string>();
         foreach (var id in distinctEventSettingsIds)
@@ -1231,7 +1235,22 @@ internal sealed class ShiftSignupService(
             TagName = vtp.ShiftTag.Name
         }).ToList());
 
-        return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
+        var buildStatusSlice = new UserDataSlice(VolunteerBuildStatuses, buildStatuses.Select(bs => new
+        {
+            bs.EventSettingsId,
+            EventName = eventNamesById.GetValueOrDefault(bs.EventSettingsId, string.Empty),
+            BarrioSetupStartDate = bs.BarrioSetupStartDate.ToInvariantDate(),
+            bs.Notes,
+            SetAt = bs.SetAt.ToIso8601(),
+            DayOffs = bs.DayOffs.Select(day => new
+            {
+                day.DayOffset,
+                day.Reason,
+                MarkedAt = day.MarkedAt.ToIso8601()
+            }).ToList()
+        }).ToList());
+
+        return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice, buildStatusSlice];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
@@ -1245,6 +1264,7 @@ internal sealed class ShiftSignupService(
                 "a coordinator wrote on any signup is cleared.",
             [VolunteerEventProfiles] = null,
             [GeneralAvailability] = null,
+            [VolunteerBuildStatuses] = null,
             [ShiftTagPreferences] = null
         };
 

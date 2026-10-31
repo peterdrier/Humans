@@ -8,15 +8,15 @@ namespace Humans.Shifts.Data;
 internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunteerTrackingRepository
 {
     public async Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
-        Guid eventSettingsId,
+        Guid? eventSettingsId,
         IReadOnlyCollection<Guid>? userIds = null,
         CancellationToken ct = default)
     {
         if (userIds is { Count: 0 }) return [];
 
-        var query = db.VolunteerBuildStatuses
-            .AsNoTracking()
-            .Where(x => x.EventSettingsId == eventSettingsId);
+        var query = db.VolunteerBuildStatuses.AsNoTracking();
+        if (eventSettingsId is { } eventId)
+            query = query.Where(x => x.EventSettingsId == eventId);
 
         if (userIds is not null)
             query = query.Where(x => userIds.Contains(x.UserId));

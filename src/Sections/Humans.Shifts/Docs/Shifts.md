@@ -98,6 +98,8 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 - `DayOffs` (jsonb `List<DayOffEntry>`: `DayOffset`, optional `Reason`, `MarkedByUserId`, `MarkedAt`) — sparse day-off annotations, one entry per day offset (relative to `EventSettings.GateOpeningDate`, all negative for build days) where the coordinator has acknowledged the volunteer is off-site. Day-off days render striped grey on the heatmap and are excluded from gap counts.
   Reasons are trimmed and capped at 200 UTF-16 units without splitting surrogate pairs; blank reasons remain null.
 
+The GDPR `VolunteerBuildStatuses` export includes camp-setup dates, notes, change timestamps and day-off offsets/reasons/timestamps across all events and the requested human's merge identities, even without signups or availability. Other humans' rows are excluded. The erasure declaration names the slice; the existing tracking erasure deletes these rows.
+
 **Table:** `volunteer_build_statuses`
 
 **Indices:** PK on `Id`; unique on `(UserId, EventSettingsId)` (one row per volunteer per event).

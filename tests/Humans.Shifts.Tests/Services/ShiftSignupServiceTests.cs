@@ -151,6 +151,54 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesBuildStatusesAcrossEventsAndMergeIdentities(bool archivedId)
+    {
+        var (firstEvent, _, _) = SeedShiftScenario(SignupPolicy.Public);
+        var (secondEvent, _, _) = SeedShiftScenario(SignupPolicy.Public);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var coordinator = Guid.NewGuid();
+        ShiftsDb.VolunteerBuildStatuses.AddRange(
+            new VolunteerBuildStatus
+            {
+                Id = Guid.NewGuid(), UserId = source, EventSettingsId = firstEvent.Id,
+                BarrioSetupStartDate = new LocalDate(2026, 6, 20), Notes = "Setup plan",
+                SetByUserId = coordinator, SetAt = TestNow,
+                DayOffs = [new DayOffEntry(-3, "Rest", coordinator, TestNow)]
+            },
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = target, EventSettingsId = secondEvent.Id },
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSettingsId = firstEvent.Id, Notes = "Other human" });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var info = UserInfoStubHelpers.MakeUserInfo(target) with { MergedUserIds = [source] };
+        _users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(info);
+        _users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(info);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var service = new ShiftSignupService(_repo, new VolunteerTrackingRepository(ShiftsDb), _shiftMgmt,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().With(_teamService).Build(), Clock,
+            NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+
+        var slices = await service.ContributeForUserAsync(archivedId ? source : target, TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle(x => string.Equals(x.SectionName, "VolunteerBuildStatuses", StringComparison.Ordinal)).Which;
+        var rows = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data).EnumerateArray().ToList();
+        rows.Should().HaveCount(2);
+        rows.Select(x => x.GetProperty("EventSettingsId").GetGuid()).Should().BeEquivalentTo([firstEvent.Id, secondEvent.Id]);
+        var setup = rows.Single(x => x.GetProperty("EventSettingsId").GetGuid() == firstEvent.Id);
+        setup.GetProperty("BarrioSetupStartDate").GetString().Should().Be("2026-06-20");
+        setup.GetProperty("Notes").GetString().Should().Be("Setup plan");
+        setup.GetProperty("SetAt").GetString().Should().Be("2026-06-15T12:00:00Z");
+        var dayOff = setup.GetProperty("DayOffs").EnumerateArray().Single();
+        dayOff.GetProperty("DayOffset").GetInt32().Should().Be(-3);
+        dayOff.GetProperty("Reason").GetString().Should().Be("Rest");
+        dayOff.GetProperty("MarkedAt").GetString().Should().Be("2026-06-15T12:00:00Z");
+        service.ErasureDeclaration.Should().ContainKey("VolunteerBuildStatuses");
+        service.ErasureDeclaration["VolunteerBuildStatuses"].Should().BeNull();
+    }
+
+    [HumansTheory]
     [InlineData("signup", "signup", true)]
     [InlineData("signup", "signup", false)]
     [InlineData("range", "voluntell-range", true)]
