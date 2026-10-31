@@ -1456,19 +1456,59 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task GetUserApplicationDetailAsync_IncludesStateHistory()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApplicationDetails_order_state_history_newest_first(bool admin)
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
         app.Withdraw(Clock);
+        var now = Clock.GetCurrentInstant();
+        app.StateHistory.Add(new ApplicationStateHistory
+        {
+            ApplicationId = app.Id, Status = ApplicationStatus.Submitted,
+            ChangedAt = now - Duration.FromDays(2), ChangedByUserId = userId, Notes = "Oldest",
+        });
+        app.StateHistory.Add(new ApplicationStateHistory
+        {
+            ApplicationId = app.Id, Status = ApplicationStatus.Submitted,
+            ChangedAt = now - Duration.FromDays(1), ChangedByUserId = userId, Notes = "Middle",
+        });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result.History.Should().HaveCount(1);
-        result.History[0].Status.Should().Be(ApplicationStatus.Withdrawn);
+        result.History.Should().HaveCount(3);
+        result.History.Should().ContainSingle(row => row.Status == ApplicationStatus.Withdrawn);
+        result.History.Where(row => row.Status == ApplicationStatus.Submitted)
+            .Select(row => (row.ChangedAt, row.Notes)).Should().BeEquivalentTo(new[]
+            {
+                (now - Duration.FromDays(2), "Oldest"), (now - Duration.FromDays(1), "Middle"),
+            });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+                },
+            },
+        };
+        var page = (admin ? await controller.AdminDetail(app.Id) : await controller.Details(app.Id))
+            .Should().BeOfType<ViewResult>().Which;
+        var history = admin
+            ? page.Model.Should().BeOfType<AdminApplicationDetailViewModel>().Which.History
+            : page.Model.Should().BeOfType<ApplicationDetailViewModel>().Which.History;
+        history.Select(row => row.ChangedAt).Should().Equal(
+            now.ToDateTimeUtc(), (now - Duration.FromDays(1)).ToDateTimeUtc(), (now - Duration.FromDays(2)).ToDateTimeUtc());
+        history.Select(row => row.Notes).Should().Equal(null, "Middle", "Oldest");
     }
 
     [HumansTheory]

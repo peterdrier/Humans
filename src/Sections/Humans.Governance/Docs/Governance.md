@@ -289,6 +289,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - The overview's statutes card shows the existing localized content-unavailable message when no translations are returned, rather than an empty tab body.
 - Statutes language tabs retain native language names and use the localized canonical Spanish legal marker.
 
+- Application detail reads supply history timestamps and reviewer details without display sorting. Member and Board detail controllers order history newest first; GDPR export keeps its chronological order.
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same six-culture status captions as application details.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
 - Board-voting rows carry voter IDs; the pages render voter identities through the Human component. Detail reads do not perform an unused bulk voter-name lookup.

@@ -712,7 +712,6 @@ internal sealed class ApplicationDecisionService(
             : null;
 
         var history = application.StateHistory
-            .OrderByDescending(h => h.ChangedAt)
             .Select(h => new ApplicationStateHistoryDto(
                 Status: h.Status,
                 ChangedAt: h.ChangedAt,

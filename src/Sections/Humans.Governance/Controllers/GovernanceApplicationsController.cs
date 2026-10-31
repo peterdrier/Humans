@@ -184,6 +184,7 @@ internal sealed class GovernanceApplicationsController(
             ReviewNotes = application.ReviewNotes,
             CanWithdraw = application.CanWithdraw,
             History = application.History
+                .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
                 {
                     Status = h.Status,
@@ -313,6 +314,7 @@ internal sealed class GovernanceApplicationsController(
             ReviewNotes = application.ReviewNotes,
             CanApproveReject = application.CanApproveReject,
             History = application.History
+                .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
                 {
                     Status = h.Status,
