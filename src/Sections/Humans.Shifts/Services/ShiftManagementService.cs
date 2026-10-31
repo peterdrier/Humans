@@ -1433,19 +1433,15 @@ internal sealed class ShiftManagementService(
             staffing.TotalSlots > 0 ? 100.0 * staffing.FilledSlots / staffing.TotalSlots : 0d;
     }
 
+    private static Guid DepartmentIdOf(Guid teamId, IReadOnlyDictionary<Guid, TeamInfo> teams) =>
+        teams.TryGetValue(teamId, out var team) ? team.ParentTeamId ?? team.Id : teamId;
+
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,
         Dictionary<Guid, int> confirmedCounts,
         EventSettingsInfo es,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
-        Guid DeptIdOf(Shift s)
-        {
-            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team))
-                return s.Rota.TeamId; // Team row vanished — fall back to the rota's team id.
-            return team.ParentTeamId ?? team.Id;
-        }
-
         string NameOf(Guid teamId) =>
             teamLookup.TryGetValue(teamId, out var t) ? t.Name : string.Empty;
 
@@ -1453,7 +1449,7 @@ internal sealed class ShiftManagementService(
             teamLookup.TryGetValue(teamId, out var t) ? t.Slug : null;
 
         var groups = shifts
-            .GroupBy(DeptIdOf)
+            .GroupBy(s => DepartmentIdOf(s.Rota.TeamId, teamLookup))
             .ToList();
 
         var rows = new List<DepartmentStaffingRow>();
@@ -2078,12 +2074,6 @@ internal sealed class ShiftManagementService(
         var teamIdsOnRotas = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas, ct);
 
-        Guid DeptIdOf(Shift s)
-        {
-            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return s.Rota.TeamId;
-            return team.ParentTeamId ?? team.Id;
-        }
-
         string DeptNameOf(Guid deptId) =>
             teamLookup.TryGetValue(deptId, out var t) ? t.Name : string.Empty;
 
@@ -2098,7 +2088,7 @@ internal sealed class ShiftManagementService(
 
         foreach (var shift in allShifts)
         {
-            var deptId = DeptIdOf(shift);
+            var deptId = DepartmentIdOf(shift.Rota.TeamId, teamLookup);
             var period = shift.GetShiftPeriod(es);
 
             if (!deptBuckets.TryGetValue(deptId, out var periodBucket))
