@@ -33,9 +33,11 @@ internal interface IExpenseRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<ExpenseAttachment>?> RemoveLineAsync(
         Guid reportId, Guid lineId, CancellationToken ct = default);
-    /// <summary>Atomic. Returns whether the line exists and the replaced attachment for post-commit file cleanup.</summary>
+    /// <summary>Atomic, including an optional decline-state and total change. Returns whether the line exists
+    /// and the replaced attachment for post-commit file cleanup.</summary>
     Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
-        Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default);
+        Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default,
+        (NodaTime.Instant UpdatedAt, string? Reason, Guid? ByUserId, NodaTime.Instant? At)? declineState = null);
     /// <summary>
     /// Moves the stored <c>Total</c> by the line's amount. Who may decline is the service's call. False when the report
     /// or line does not exist.

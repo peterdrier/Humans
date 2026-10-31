@@ -171,29 +171,39 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
     }
 
     public async Task<(bool Found, ExpenseAttachment? Replaced)> ReplaceLineAttachmentAsync(
-        Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default)
+        Guid reportId, Guid lineId, ExpenseAttachment? attachment, CancellationToken ct = default,
+        (Instant UpdatedAt, string? Reason, Guid? ByUserId, Instant? At)? declineState = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var line = await ctx.ExpenseLines.Include(l => l.Attachment)
             .SingleOrDefaultAsync(l => l.Id == lineId && l.ExpenseReportId == reportId, ct);
         if (line is null) return (false, null);
-        if (line.AttachmentId == attachment?.Id) return (true, null);
+        var attachmentChanged = line.AttachmentId != attachment?.Id;
+        if (!attachmentChanged && declineState is null) return (true, null);
 
-        var replaced = line.Attachment;
-        ExpenseAttachment? replacement = null;
-        if (attachment is not null)
+        var replaced = attachmentChanged ? line.Attachment : null;
+        if (attachmentChanged)
         {
-            replacement = await ctx.ExpenseAttachments.FindAsync([attachment.Id], ct);
-            if (replacement is null)
+            ExpenseAttachment? replacement = null;
+            if (attachment is not null)
             {
-                replacement = attachment;
-                ctx.ExpenseAttachments.Add(replacement);
+                replacement = await ctx.ExpenseAttachments.FindAsync([attachment.Id], ct);
+                if (replacement is null)
+                {
+                    replacement = attachment;
+                    ctx.ExpenseAttachments.Add(replacement);
+                }
             }
+            line.Attachment = replacement;
+            line.AttachmentId = replacement?.Id;
+            if (replaced is not null)
+                ctx.ExpenseAttachments.Remove(replaced);
         }
-        line.Attachment = replacement;
-        line.AttachmentId = replacement?.Id;
-        if (replaced is not null)
-            ctx.ExpenseAttachments.Remove(replaced);
+        if (declineState is { } state)
+        {
+            var report = await ctx.ExpenseReports.SingleAsync(r => r.Id == reportId, ct);
+            ApplyDecline(report, line, state.Reason, state.ByUserId, state.At, state.UpdatedAt);
+        }
         await ctx.SaveChangesAsync(ct);
         return (true, replaced);
     }
@@ -210,29 +220,22 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         if (report is null || line is null) return false;
         if (line.Declined == declined) return true;
 
-        // Proof rows never count toward the total, so only a top-level line moves it.
-        if (line.ParentLineId is null)
-            report.Total += declined ? -line.Amount : line.Amount;
-        if (declined)
-        {
-            line.DeclinedReason = reason;
-            line.DeclinedByUserId = byUserId;
-            line.DeclinedAt = now;
-        }
-        else
-        {
-            ClearDecline(line);
-        }
-        report.UpdatedAt = now;
+        ApplyDecline(report, line, declined ? reason : null, declined ? byUserId : null,
+            declined ? now : null, now);
         await ctx.SaveChangesAsync(ct);
         return true;
     }
 
-    private static void ClearDecline(ExpenseLine line)
+    private static void ApplyDecline(
+        ExpenseReport report, ExpenseLine line, string? reason, Guid? byUserId, Instant? at, Instant updatedAt)
     {
-        line.DeclinedReason = null;
-        line.DeclinedByUserId = null;
-        line.DeclinedAt = null;
+        // Proof rows never count toward the total, so only a top-level line moves it.
+        if (line.ParentLineId is null && line.Declined != (at is not null))
+            report.Total += at is not null ? -line.Amount : line.Amount;
+        line.DeclinedReason = reason;
+        line.DeclinedByUserId = byUserId;
+        line.DeclinedAt = at;
+        report.UpdatedAt = updatedAt;
     }
 
     public async Task<ExpenseAttachment?> RemoveLineAttachmentAsync(Guid reportId, Guid lineId, CancellationToken ct = default)
