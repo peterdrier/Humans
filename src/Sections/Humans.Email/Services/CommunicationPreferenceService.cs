@@ -96,8 +96,7 @@ internal sealed class CommunicationPreferenceService(
     {
         var shadowed = rows.Select(r => (r.UserId, r.Category)).ToHashSet();
         return [.. rows.Where(r => r.OptedOut is not null)
-            .Concat(legacy.Where(l => !shadowed.Contains((l.UserId, l.Category))))
-            .OrderBy(r => r.Category)];
+            .Concat(legacy.Where(l => !shadowed.Contains((l.UserId, l.Category))))];
     }
 
     private static CommunicationPreferenceSnapshot ToSnapshot(CommunicationPreference p) =>
@@ -392,7 +391,7 @@ internal sealed class CommunicationPreferenceService(
             LegacyRows(await userService.GetRawUserInfoAsync(userId, ct)));
         return
         [
-            new UserDataSlice(CommunicationPreferencesSlice, rows.Select(cp => new
+            new UserDataSlice(CommunicationPreferencesSlice, rows.OrderBy(cp => cp.Category).Select(cp => new
             {
                 cp.Category,
                 cp.OptedOut,
