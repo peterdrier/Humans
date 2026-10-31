@@ -161,7 +161,6 @@ internal sealed class AssemblyVoteService(
             IsOfficial: roster?.IsOfficial ?? false,
             CanCastBallot: roster is not null && vote.AcceptsBallotsAt(now),
             vote.Options
-                .OrderBy(o => o.Order)
                 .Select(o => new AssemblyVoteOptionView(
                     o.Key, Resolve(o.Label, vote.OfficialCulture), o.Order))
                 .ToList(),

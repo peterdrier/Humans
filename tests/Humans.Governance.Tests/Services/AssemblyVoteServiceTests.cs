@@ -99,7 +99,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public async Task BallotForm_MalformedRank_DoesNotReplaceTheStoredRanking(string scenario)
     {
         var ct = TestContext.Current.CancellationToken;
-        var vote = await _fx.AddVoteAsync(kind: AssemblyVoteKind.RankedChoice, options: [("a", 0), ("b", 1)]);
+        var vote = await _fx.AddVoteAsync(kind: AssemblyVoteKind.RankedChoice, options: [("b", 1), ("a", 0)]);
         var userId = Guid.NewGuid();
         var denied = scenario.StartsWith("denied", StringComparison.Ordinal);
         if (!denied)
@@ -155,6 +155,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             var redisplayed = result.Should().BeOfType<ViewResult>().Which.Model
                 .Should().BeOfType<AssemblyVoteDetailViewModel>().Which;
             redisplayed.SelectedChoice.Should().Be(AssemblyBallotChoice.Ranked);
+            redisplayed.RankedOptions.Select(option => option.OptionKey).Should().Equal("a", "b");
             controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Governance_Votes_BallotInvalid");
             (await _fx.Db.AssemblyBallotHistories.CountAsync(ct)).Should().Be(historyBefore);
             _fx.Audit.ReceivedCalls().Should().BeEmpty();
