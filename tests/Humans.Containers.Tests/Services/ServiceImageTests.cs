@@ -120,6 +120,7 @@ public sealed class ServiceImageTests
 
         result.CampId.Should().Be(CampId);
         result.Images.Should().HaveCount(3);
+        result.Images.Select(image => image.SortOrder).Should().BeEquivalentTo([0, 1, 2]);
         result.Images.Should().AllSatisfy(i =>
         {
             i.Url.Should().StartWith($"/uploads/containers/{result.Id}/");
@@ -436,7 +437,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_SurfacesTheLegacyImageFirstAsGuidEmpty()
+    public async Task GetByIdAsync_SurfacesLegacyIdentityAndGalleryPositions()
     {
         var container = await SeedContainerAsync(
             legacyImagePath: "uploads/containers/id/main.jpg", galleryImages: 2);
@@ -444,8 +445,11 @@ public sealed class ServiceImageTests
         var dto = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
 
         dto!.Images.Should().HaveCount(3);
-        dto.Images[0].Id.Should().Be(Guid.Empty);
-        dto.Images[0].Url.Should().Be("/uploads/containers/id/main.jpg");
+        var legacy = dto.Images.Should().ContainSingle(image => image.Id == Guid.Empty).Which;
+        legacy.Url.Should().Be("/uploads/containers/id/main.jpg");
+        legacy.SortOrder.Should().Be(int.MinValue);
+        dto.Images.Where(image => image.Id != Guid.Empty).Select(image => image.SortOrder)
+            .Should().BeEquivalentTo([0, 1]);
     }
 
     [HumansFact]

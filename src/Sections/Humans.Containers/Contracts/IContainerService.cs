@@ -47,7 +47,10 @@ public record ContainerImageUpload(Stream Content, string ContentType, string Fi
 /// <summary>
 /// <see cref="Id"/> is <see cref="Guid.Empty"/> for the legacy single image held in the <c>containers</c> columns.
 /// </summary>
-public record ContainerImageDto(Guid Id, string Url, string? FileName);
+public record ContainerImageDto(Guid Id, string Url, string? FileName)
+{
+    public int SortOrder { get; init; }
+}
 
 public record ContainerDto(
     Guid Id,

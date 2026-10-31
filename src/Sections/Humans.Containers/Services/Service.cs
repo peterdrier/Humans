@@ -494,11 +494,11 @@ internal sealed class Service(
         // Guid.Empty addresses it so callers see one uniform, removable gallery.
         if (c.ImageStoragePath is not null)
         {
-            gallery.Add(new ContainerImageDto(Guid.Empty, $"/{c.ImageStoragePath}", c.ImageFileName));
+            gallery.Add(new ContainerImageDto(Guid.Empty, $"/{c.ImageStoragePath}", c.ImageFileName)
+                { SortOrder = int.MinValue });
         }
         gallery.AddRange(images
-            .OrderBy(i => i.SortOrder)
-            .Select(i => new ContainerImageDto(i.Id, $"/{i.StoragePath}", i.FileName)));
+            .Select(i => new ContainerImageDto(i.Id, $"/{i.StoragePath}", i.FileName) { SortOrder = i.SortOrder }));
 
         return new ContainerDto(c.Id, c.CampId, c.Name, c.Description, gallery, c.CreatedAt, c.UpdatedAt);
     }

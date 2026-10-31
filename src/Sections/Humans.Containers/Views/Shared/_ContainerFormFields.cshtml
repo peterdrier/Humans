@@ -17,7 +17,7 @@
     @if (c is not null && c.Images.Count > 0)
     {
         <div class="d-flex flex-wrap gap-3 mb-2">
-            @foreach (var img in c.Images)
+            @foreach (var img in c.Images.OrderBy(image => image.SortOrder))
             {
                 <div class="text-center">
                     <img src="@img.Url" alt="@img.FileName" style="height:64px;object-fit:cover;border-radius:4px;" />

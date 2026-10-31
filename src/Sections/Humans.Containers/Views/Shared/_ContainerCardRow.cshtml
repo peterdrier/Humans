@@ -6,7 +6,7 @@
     <div style="width:48px;height:48px;flex-shrink:0;" class="d-flex align-items-center justify-content-center position-relative">
         @if (c.Images.Count > 0)
         {
-            <img src="@c.Images[0].Url" alt="@c.Name"
+            <img src="@(c.Images.MinBy(image => image.SortOrder)!.Url)" alt="@c.Name"
                  style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;"
                  data-bs-toggle="modal" data-bs-target="#lightboxModal-@c.Id" />
             @if (c.Images.Count > 1)
