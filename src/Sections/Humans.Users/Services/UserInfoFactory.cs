@@ -46,8 +46,6 @@ internal static class UserInfoFactory
             .ToList();
 
         var languageInfos = profileLanguages
-            .OrderByDescending(l => l.Proficiency)
-            .ThenBy(l => l.LanguageCode, StringComparer.OrdinalIgnoreCase)
             .Select(l => new ProfileLanguageInfo(l.Id, l.LanguageCode, l.Proficiency))
             .ToList();
 

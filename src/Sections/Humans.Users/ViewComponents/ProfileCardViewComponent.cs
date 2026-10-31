@@ -130,7 +130,10 @@ public sealed class ProfileCardViewComponent(
                 Description = cv.Description
             }).ToList(),
             Teams = displayableTeams,
-            Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
+            Languages = (profile?.Languages ?? [])
+                .OrderByDescending(pl => pl.Proficiency)
+                .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
+                .Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
                 LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),

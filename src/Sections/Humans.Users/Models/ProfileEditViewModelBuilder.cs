@@ -76,7 +76,10 @@ internal static class ProfileEditViewModelBuilder
                 EventName = cv.EventName,
                 Description = cv.Description
             }).ToList(),
-            EditableLanguages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageEditViewModel
+            EditableLanguages = (profile?.Languages ?? [])
+                .OrderByDescending(pl => pl.Proficiency)
+                .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
+                .Select(pl => new ProfileLanguageEditViewModel
             {
                 Id = pl.Id,
                 LanguageCode = pl.LanguageCode,
