@@ -76,7 +76,7 @@ public class ShiftDashboardControllerTests
     }
 
     [HumansFact]
-    public async Task Index_OrdersDepartmentCoverageAndPinsDirectSubgroupFirst()
+    public async Task Index_OrdersCoverageAndCoordinatorActivityForDisplay()
     {
         var settings = Event;
         var empty = new PeriodStaffing(0, 0, 0, 0, 0);
@@ -99,6 +99,22 @@ public class ShiftDashboardControllerTests
                 Subgroup("Direct", true, 3, 3)
             ])
         ]);
+        var recent = Instant.FromUtc(2026, 7, 1, 12, 0);
+        var older = recent.Minus(Duration.FromDays(20));
+        CoordinatorActivityRow Activity(string name, IReadOnlyList<CoordinatorLogin> coordinators,
+            params CoordinatorActivityRow[] children) =>
+            new(Guid.NewGuid(), name, coordinators, 1, 1 + children.Sum(c => c.AggregatePendingCount), children);
+        var activity = new[]
+        {
+            Activity("Recent", [new(Guid.NewGuid(), recent)]),
+            Activity("Parent", [new(Guid.NewGuid(), recent)],
+                Activity("Recent child", [new(Guid.NewGuid(), recent)]),
+                Activity("Old child", [new(Guid.NewGuid(), recent), new(Guid.NewGuid(), older)])),
+            Activity("Z Never", [new(Guid.NewGuid(), null)]),
+            Activity("A Empty", [])
+        };
+        _management.GetCoordinatorActivityAsync(settings.Id, null, null, Arg.Any<CancellationToken>())
+            .Returns(activity);
         _settings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(settings);
         _management.GetStaffingSnapshotAsync(settings.Id, null, null, null, Arg.Any<CancellationToken>())
             .Returns(ShiftStaffingSnapshot.Empty);
@@ -115,6 +131,14 @@ public class ShiftDashboardControllerTests
         Assert.Equal(new[] { "Direct", "Plumbing", "Zero", "Power" },
             model.Overview.Departments[0].Subgroups.Select(s => s.Name), StringComparer.Ordinal);
         Assert.Equal(new[] { "Filled", "Zero", "Empty" }, original.Departments.Select(d => d.DepartmentName), StringComparer.Ordinal);
+        Assert.Equal(new[] { "A Empty", "Z Never", "Parent", "Recent" },
+            model.CoordinatorActivity.Select(r => r.TeamName), StringComparer.Ordinal);
+        var parent = model.CoordinatorActivity[2];
+        Assert.Equal(new[] { "Old child", "Recent child" }, parent.Subgroups.Select(r => r.TeamName), StringComparer.Ordinal);
+        Assert.Equal(new[] { older, recent }, parent.Subgroups[0].Coordinators.Select(c => c.LastLoginAt!.Value));
+        Assert.Equal(activity[1].AggregatePendingCount, parent.AggregatePendingCount);
+        Assert.Equal(new[] { "Recent", "Parent", "Z Never", "A Empty" },
+            activity.Select(r => r.TeamName), StringComparer.Ordinal);
     }
 
     private ShiftDashboardController Controller() => new(

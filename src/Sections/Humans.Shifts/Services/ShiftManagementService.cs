@@ -1624,7 +1624,6 @@ internal sealed class ShiftManagementService(
                             c.UserId,
                             user?.LastLoginAt);
                     })
-                    .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
                     .ToList());
 
         CoordinatorActivityRow BuildRow(Guid teamId)
@@ -1638,8 +1637,6 @@ internal sealed class ShiftManagementService(
 
             var subgroups = childIds
                 .Select(BuildRow)
-                .OrderBy(SubtreeOldestLogin)
-                .ThenBy(r => r.TeamName, StringComparer.Ordinal)
                 .ToList();
 
             var aggregate = ownPending + subgroups.Sum(s => s.AggregatePendingCount);
@@ -1656,26 +1653,7 @@ internal sealed class ShiftManagementService(
         return rootIds
             .Select(BuildRow)
             .Where(r => r.AggregatePendingCount > 0)
-            .OrderBy(SubtreeOldestLogin)
-            .ThenBy(r => r.TeamName, StringComparer.Ordinal)
             .ToList();
-
-        static Instant SubtreeOldestLogin(CoordinatorActivityRow row)
-        {
-            var oldest = Instant.MaxValue;
-            var found = false;
-            void Walk(CoordinatorActivityRow r)
-            {
-                foreach (var c in r.Coordinators)
-                {
-                    var lv = c.LastLoginAt ?? Instant.MinValue;
-                    if (!found || lv < oldest) { oldest = lv; found = true; }
-                }
-                foreach (var sub in r.Subgroups) Walk(sub);
-            }
-            Walk(row);
-            return found ? oldest : Instant.MinValue;
-        }
     }
 
     public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(

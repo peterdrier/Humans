@@ -80,7 +80,7 @@ internal sealed class ShiftDashboardPageBuilder(
                     })
                     .ToList()
             },
-            CoordinatorActivity = coordinatorActivity,
+            CoordinatorActivity = OrderCoordinatorRows(coordinatorActivity),
             Trends = trends,
             DailyDepartmentStaffing = dailyDeptStaffing.Select(day => day with
             {
@@ -98,6 +98,34 @@ internal sealed class ShiftDashboardPageBuilder(
             IsDevelopment = environment.IsDevelopment(),
             Countdown = BuildCountdown(es)
         };
+    }
+
+    private static IReadOnlyList<CoordinatorActivityRow> OrderCoordinatorRows(
+        IReadOnlyList<CoordinatorActivityRow> rows) => rows
+        .OrderBy(SubtreeOldestLogin)
+        .ThenBy(r => r.TeamName, StringComparer.Ordinal)
+        .Select(r => r with
+        {
+            Coordinators = r.Coordinators.OrderBy(c => c.LastLoginAt ?? Instant.MinValue).ToList(),
+            Subgroups = OrderCoordinatorRows(r.Subgroups)
+        })
+        .ToList();
+
+    private static Instant SubtreeOldestLogin(CoordinatorActivityRow row)
+    {
+        var oldest = Instant.MaxValue;
+        var found = false;
+        void Walk(CoordinatorActivityRow r)
+        {
+            foreach (var c in r.Coordinators)
+            {
+                var lv = c.LastLoginAt ?? Instant.MinValue;
+                if (!found || lv < oldest) { oldest = lv; found = true; }
+            }
+            foreach (var sub in r.Subgroups) Walk(sub);
+        }
+        Walk(row);
+        return found ? oldest : Instant.MinValue;
     }
 
     private BuildDayCountdown BuildCountdown(BurnSettingsInfo eventSettings)

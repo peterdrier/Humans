@@ -474,7 +474,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCoordinatorActivity_SortsByOldestLoginFirst()
+    public async Task GetCoordinatorActivity_CarriesCoordinatorLoginTimes()
     {
         var es = await SeedEventAsync();
         var teamA = await SeedTeamAsync("A");
@@ -488,7 +488,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var shiftB = await SeedShiftAsync(rotaB, dayOffset: 1, min: 1, max: 3);
         await SeedSignupsAsync(shiftB, SignupStatus.Pending, count: 1);
 
-        // A has a recent login; B has an old login → B should come first.
+        // A has a recent login; B has an old login.
         var coordA = await SeedUserAsync("a-coord", TestNow.Minus(Duration.FromHours(1)));
         var coordB = await SeedUserAsync("b-coord", TestNow.Minus(Duration.FromDays(20)));
         await SeedCoordinatorAsync(teamA, coordA);
@@ -497,8 +497,10 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var result = await _service.GetCoordinatorActivityAsync(es.Id);
 
         result.Should().HaveCount(2);
-        result[0].TeamName.Should().Be("B");
-        result[1].TeamName.Should().Be("A");
+        result.Single(r => string.Equals(r.TeamName, "A", StringComparison.Ordinal))
+            .Coordinators.Should().ContainSingle().Which.LastLoginAt.Should().Be(coordA.LastLoginAt);
+        result.Single(r => string.Equals(r.TeamName, "B", StringComparison.Ordinal))
+            .Coordinators.Should().ContainSingle().Which.LastLoginAt.Should().Be(coordB.LastLoginAt);
     }
 
     [HumansFact]
