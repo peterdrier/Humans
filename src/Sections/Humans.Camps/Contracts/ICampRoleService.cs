@@ -40,9 +40,6 @@ internal interface ICampRoleService : IApplicationService
 
     Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Cascade hook for leaving a camp or withdrawing a membership request.</summary>
-    Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
-
     /// <summary>Per-season fill summary across all active role definitions, keyed by <c>CampSeasonId</c>.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default);

@@ -145,21 +145,6 @@ internal sealed partial class CampRepository
         return true;
     }
 
-    public async Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Load-then-RemoveRange so unit tests using the EF InMemory provider
-        // still cover the path. ExecuteDeleteAsync would be cheaper at scale
-        // but is not supported by the InMemory provider.
-        var toDelete = await ctx.CampRoleAssignments
-            .Where(a => a.CampMemberId == campMemberId)
-            .ToListAsync(ct);
-        if (toDelete.Count == 0) return 0;
-        ctx.CampRoleAssignments.RemoveRange(toDelete);
-        await ctx.SaveChangesAsync(ct);
-        return toDelete.Count;
-    }
-
     public async Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {

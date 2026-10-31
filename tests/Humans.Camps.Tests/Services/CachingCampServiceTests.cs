@@ -594,7 +594,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampRoleService.ReactivateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).ReactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
         { nameof(ICampRoleService.AssignAsync), (t, c, se, ct) => ((ICampRoleService)t._service).AssignAsync(se, Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct) },
         { nameof(ICampRoleService.UnassignAsync), (t, c, se, ct) => ((ICampRoleService)t._service).UnassignAsync(Guid.NewGuid(), TestActorId, ct) },
-        { nameof(ICampRoleService.RemoveAllForMemberAsync), (t, c, se, ct) => ((ICampRoleService)t._service).RemoveAllForMemberAsync(Guid.NewGuid(), TestActorId, ct) },
     };
 
     private static readonly CampRoleDefinitionInput RoleInput =
@@ -619,7 +618,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         await roles.AssignAsync(season.Id, Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct);
         await roles.UpdateDefinitionAsync(Guid.NewGuid(), RoleInput, TestActorId, ct);
         await roles.UnassignAsync(Guid.NewGuid(), TestActorId, ct);
-        await roles.RemoveAllForMemberAsync(Guid.NewGuid(), TestActorId, ct);
         await roles.DeactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct);
 
         _ = await _service.GetCampsForYearAsync(2026, ct);
@@ -856,7 +854,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _roleInner.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(AssignCampRoleOutcome.Assigned);
         _roleInner.UnassignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
-        _roleInner.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(1);
     }
 
     private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(

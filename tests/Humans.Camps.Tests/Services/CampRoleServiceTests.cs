@@ -681,25 +681,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task RemoveAllForMember_deletes_all_assignments_for_one_member()
-    {
-        var (_, season) = await SeedCampWithSeasonAsync();
-        var def1 = await SeedDefinitionAsync();
-        var def2 = await SeedDefinitionAsync("LNT");
-        var member = await SeedActiveMemberAsync(season.Id);
-
-        await CampsDb.CampRoleAssignments.AddRangeAsync(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var deletedCount = await _service.RemoveAllForMemberAsync(member.Id, _actorUserId, Xunit.TestContext.Current.CancellationToken);
-
-        deletedCount.Should().Be(2);
-        (await CampsDb.CampRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task GetExpected_returns_one_key_per_active_role_and_in_scope_year_with_assignees()
     {
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);

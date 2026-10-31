@@ -216,7 +216,8 @@ internal partial interface ICampRepository : IRepository
     /// <summary>All of a user's memberships, across years and statuses, with camp/season loaded for GDPR export.</summary>
     Task<IReadOnlyList<CampMember>> GetAllMembershipsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    Task SaveMemberAsync(CampMember member, CancellationToken ct = default);
+    /// <summary>Saves membership changes and optionally removes its role assignments atomically. Returns the assignments removed.</summary>
+    Task<int> SaveMemberAsync(CampMember member, CancellationToken ct = default, bool removeRoleAssignments = false);
 
     /// <summary>
     /// Returns user ids of humans with a pending request for the given season.

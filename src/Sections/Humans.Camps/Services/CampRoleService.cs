@@ -336,20 +336,6 @@ internal sealed class CampRoleService(
         return true;
     }
 
-    public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var deleted = await repo.DeleteAllForMemberAsync(campMemberId, ct);
-        if (deleted > 0)
-        {
-            await auditLog.LogAsync(
-                CampsAuditActions.CampRoleUnassigned,
-                nameof(CampMember), campMemberId,
-                $"Cascade-removed {deleted} role assignment(s) for camp member.",
-                actorUserId);
-        }
-        return deleted;
-    }
-
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default)
     {

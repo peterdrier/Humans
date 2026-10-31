@@ -611,7 +611,7 @@ internal sealed partial class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
-    public async Task SaveMemberAsync(CampMember member, CancellationToken ct = default)
+    public async Task<int> SaveMemberAsync(CampMember member, CancellationToken ct = default, bool removeRoleAssignments = false)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampMembers.Attach(member);
@@ -620,7 +620,12 @@ internal sealed partial class CampRepository : ICampRepository
         ctx.Entry(member).Property(m => m.CampSeasonId).IsModified = false;
         ctx.Entry(member).Property(m => m.UserId).IsModified = false;
         ctx.Entry(member).Property(m => m.RequestedAt).IsModified = false;
+        var assignments = removeRoleAssignments
+            ? await ctx.CampRoleAssignments.Where(a => a.CampMemberId == member.Id).ToListAsync(ct)
+            : [];
+        ctx.CampRoleAssignments.RemoveRange(assignments);
         await ctx.SaveChangesAsync(ct);
+        return assignments.Count;
     }
 
     public async Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(

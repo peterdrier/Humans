@@ -578,10 +578,6 @@ internal sealed class CachingCampService(
     Task<bool> ICampRoleService.UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct) =>
         MutateRolesAsync(inner => inner.UnassignAsync(assignmentId, actorUserId, ct), deleted => deleted);
 
-    // Also the Leave/Withdraw/Remove cascade: CampService reaches it through this decorator.
-    Task<int> ICampRoleService.RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct) =>
-        MutateRolesAsync(inner => inner.RemoveAllForMemberAsync(campMemberId, actorUserId, ct), deleted => deleted > 0);
-
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         ICampRoleService.GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct) =>
         WithInnerRolesAsync(inner => inner.GetDirectoryRoleSummariesAsync(eventSettingsId, ct));

@@ -190,7 +190,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Lead-add-active-member shortcut: leads can also add members without assigning a role at `/Camps/{slug}/Members/Add` (creates `CampMember(Active)` without going through the request/approve flow). Audited as `CampMemberAddedByLead`.
 - Role-staffing compliance matrix at `/Camps/Admin/Compliance` (`CampComplianceController`) shows a grid of all active barrios (Active/Full) for the chosen year (defaults to current public year): rows are barrios with a member-count column, columns are the active role definitions, and each cell renders the assignees' avatars plus a dashed placeholder for every unfilled required slot. A barrio is flagged when any role's holder count is below its `MinimumRequired`. Access is gated by the `CampsPolicies.Compliance` policy — CampsAdmin/Admin or any team/sub-team coordinator — broader than the CampsAdmin-only camp-management surface.
 - All role visibility is **auth-gated**. The public Camp Details page does not render role assignments — only authenticated users see the roles section.
-- Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member via `ICampRoleService.RemoveAllForMemberAsync`.
+- Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member in the same repository save as the membership status change; audits follow the save.
 - Role email lists (the derived Google Groups `barrios-{year}-{slug}`) fall back to the camp's barrio lead(s): for a **non-Lead** role, any camp that has a Lead for that year but no direct assignee for the role contributes its Lead(s) as stand-in recipients, so messages to an unfilled role still reach the camp's lead instead of nobody (`CampRoleService.GetExpectedAsync`).
 
 ### US-20.13: Tell Humans I'm in a camp this season
@@ -356,7 +356,7 @@ CampRoleAssignment
 
 - Unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold the same role twice in the same season.
 - Service precondition: the linked `CampMember` must have `Status = Active` for the same `CampSeasonId`.
-- Cascades: removing a `CampMember` (Leave / Withdraw / Remove paths) calls `ICampRoleService.RemoveAllForMemberAsync` to clear assignments before the soft-delete.
+- Cascades: removing a `CampMember` (Leave / Withdraw / Remove paths) clears assignments atomically with the soft-delete, then records role-removal and membership audits.
 - The catalogue ships empty. There are no default role definitions — CampsAdmin creates every row via the management UI.
 
 ### Enums

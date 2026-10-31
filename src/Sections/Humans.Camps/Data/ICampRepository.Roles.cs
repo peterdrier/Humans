@@ -39,9 +39,6 @@ internal partial interface ICampRepository
 
     Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken ct = default);
 
-    /// <summary>Hard delete. Returns the count removed.</summary>
-    Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
-
     /// <summary>Every assignment ever made for the user, for the GDPR export.</summary>
     Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
         Guid userId, CancellationToken ct = default);

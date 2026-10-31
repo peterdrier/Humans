@@ -13,6 +13,7 @@ using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -45,8 +46,6 @@ public sealed class CampServiceTests : CampsTestHarness
         var repo = new CampRepository(CampsDbFactory);
 
         _campRoleService = Substitute.For<ICampRoleService>();
-        _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(0));
 
         // City Planning is its own assembly: its tests own "the rows actually go"; what
         // Camps must prove is that DeleteCampAsync asks for the deletion, with the right
@@ -2115,79 +2114,125 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task LeaveCamp_cascades_role_assignment_cleanup()
+    public async Task RemoveCampMember_keeps_roles_when_membership_save_fails()
     {
-        var camp = new Camp { Id = Guid.NewGuid(), Slug = "leave-cascade" };
+        var ct = TestContext.Current.CancellationToken;
+        var factory = new TestDbContextFactory<CampsDbContext>(new DbContextOptionsBuilder<CampsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(new RejectMemberRemovalSave())
+            .Options);
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "failed-removal" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
-        var userId = Guid.NewGuid();
         var member = new CampMember
         {
-            Id = Guid.NewGuid(),
-            CampSeasonId = season.Id,
-            UserId = userId,
-            Status = CampMemberStatus.Active,
-            RequestedAt = Clock.GetCurrentInstant(),
-            ConfirmedAt = Clock.GetCurrentInstant(),
-            ConfirmedByUserId = Guid.NewGuid(),
+            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active, RequestedAt = Clock.GetCurrentInstant(),
         };
-        CampsDb.Camps.Add(camp); CampsDb.CampSeasons.Add(season); CampsDb.CampMembers.Add(member);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var definition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Safety" };
+        var assignment = new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(), CampMemberId = member.Id, CampSeasonId = season.Id,
+            CampRoleDefinitionId = definition.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = TestActorId,
+        };
+        await using (var seed = await factory.CreateDbContextAsync(ct))
+        {
+            seed.Camps.Add(camp);
+            seed.CampSeasons.Add(season);
+            seed.CampMembers.Add(member);
+            seed.CampRoleDefinitions.Add(definition);
+            seed.CampRoleAssignments.Add(assignment);
+            await seed.SaveChangesAsync(ct);
+        }
+        var repo = new CampRepository(factory);
+        var service = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
+            NullLogger<CampService>.Instance);
 
-        var result = await _service.LeaveCampAsync(member.Id, userId, TestContext.Current.CancellationToken);
+        Func<Task> remove = async () => { await service.RemoveCampMemberAsync(camp.Id, member.Id, TestActorId, ct); };
+
+        await remove.Should().ThrowAsync<InvalidOperationException>().WithMessage("Membership save failed");
+        await using var verify = await factory.CreateDbContextAsync(ct);
+        (await verify.CampMembers.SingleAsync(ct)).Status.Should().Be(CampMemberStatus.Active);
+        (await verify.CampRoleAssignments.Select(a => a.Id).ToListAsync(ct)).Should().Equal(assignment.Id);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class RejectMemberRemovalSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context?.ChangeTracker.Entries<CampMember>()
+                .Any(entry => entry.State == EntityState.Modified && entry.Entity.Status == CampMemberStatus.Removed) == true)
+                throw new InvalidOperationException("Membership save failed");
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("Leave")]
+    [InlineData("Withdraw")]
+    [InlineData("Remove")]
+    public async Task Member_removal_cascades_only_its_roles_and_audits_after_saving(string operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "member-cascade" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
+            Status = string.Equals(operation, "Withdraw", StringComparison.Ordinal) ? CampMemberStatus.Pending : CampMemberStatus.Active,
+            RequestedAt = Clock.GetCurrentInstant(),
+        };
+        var otherMember = new CampMember
+        {
+            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active, RequestedAt = Clock.GetCurrentInstant(),
+        };
+        var definition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Safety" };
+        CampsDb.Camps.Add(camp);
+        CampsDb.CampSeasons.Add(season);
+        CampsDb.CampMembers.AddRange(member, otherMember);
+        CampsDb.CampRoleDefinitions.Add(definition);
+        foreach (var holder in new[] { member, otherMember })
+        {
+            CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(), CampMemberId = holder.Id, CampSeasonId = season.Id,
+                CampRoleDefinitionId = definition.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = TestActorId,
+            });
+        }
+        var secondDefinition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "LNT" };
+        CampsDb.CampRoleDefinitions.Add(secondDefinition);
+        CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(), CampMemberId = member.Id, CampSeasonId = season.Id,
+            CampRoleDefinitionId = secondDefinition.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = TestActorId,
+        });
+        await SaveAllAsync(ct);
+        var actor = string.Equals(operation, "Remove", StringComparison.Ordinal) ? TestActorId : member.UserId;
+        AuditLog.When(a => a.LogAsync(CampsAuditActions.CampRoleUnassigned, nameof(CampMember), member.Id,
+            Arg.Any<string>(), actor, null, null)).Do(_ =>
+            {
+                using var saved = CampsDbFactory.CreateDbContext();
+                saved.CampMembers.Single(m => m.Id == member.Id).Status.Should().Be(CampMemberStatus.Removed);
+                saved.CampRoleAssignments.Any(a => a.CampMemberId == member.Id).Should().BeFalse();
+            });
+
+        var result = operation switch
+        {
+            "Leave" => await _service.LeaveCampAsync(member.Id, member.UserId, ct),
+            "Withdraw" => await _service.WithdrawCampMembershipRequestAsync(member.Id, member.UserId, ct),
+            _ => await _service.RemoveCampMemberAsync(camp.Id, member.Id, actor, ct),
+        };
 
         result.Succeeded.Should().BeTrue();
-
-        await _campRoleService.Received(1).RemoveAllForMemberAsync(
-            member.Id, userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task WithdrawCampMembershipRequest_cascades_role_assignment_cleanup()
-    {
-        var camp = new Camp { Id = Guid.NewGuid(), Slug = "withdraw-cascade" };
-        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
-        var userId = Guid.NewGuid();
-        var member = new CampMember
-        {
-            Id = Guid.NewGuid(),
-            CampSeasonId = season.Id,
-            UserId = userId,
-            Status = CampMemberStatus.Pending,
-            RequestedAt = Clock.GetCurrentInstant(),
-        };
-        CampsDb.Camps.Add(camp); CampsDb.CampSeasons.Add(season); CampsDb.CampMembers.Add(member);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        await _service.WithdrawCampMembershipRequestAsync(member.Id, userId, TestContext.Current.CancellationToken);
-
-        await _campRoleService.Received(1).RemoveAllForMemberAsync(
-            member.Id, userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RemoveCampMemberAsync_CascadesRoleAssignments()
-    {
-        // Remove cascades role assignments (section invariant) via TransitionMemberToRemovedAsync.
-        var camp = new Camp { Id = Guid.NewGuid(), Slug = "remove-cascade" };
-        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
-        var memberId = Guid.NewGuid();
-        var member = new CampMember
-        {
-            Id = memberId,
-            CampSeasonId = season.Id,
-            UserId = Guid.NewGuid(),
-            Status = CampMemberStatus.Active,
-            RequestedAt = Clock.GetCurrentInstant(),
-            ConfirmedAt = Clock.GetCurrentInstant(),
-            ConfirmedByUserId = Guid.NewGuid(),
-        };
-        CampsDb.Camps.Add(camp); CampsDb.CampSeasons.Add(season); CampsDb.CampMembers.Add(member);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        await _service.RemoveCampMemberAsync(camp.Id, memberId, Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        await _campRoleService.Received(1).RemoveAllForMemberAsync(
-            memberId, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        ClearAllTrackers();
+        (await CampsDb.CampRoleAssignments.Select(a => a.CampMemberId).ToListAsync(ct)).Should().Equal(otherMember.Id);
+        (await CampsDb.CampMembers.SingleAsync(m => m.Id == member.Id, ct)).Status.Should().Be(CampMemberStatus.Removed);
+        await AuditLog.Received(1).LogAsync(CampsAuditActions.CampRoleUnassigned, nameof(CampMember), member.Id,
+            "Cascade-removed 2 role assignment(s) for camp member.", actor, null, null);
     }
 
     [HumansTheory]

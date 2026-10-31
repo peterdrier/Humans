@@ -1244,12 +1244,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         bool cascadeRoleAssignments,
         CancellationToken cancellationToken)
     {
-        if (cascadeRoleAssignments)
-        {
-            await _campRoleService.Value.RemoveAllForMemberAsync(
-                member.Id, actorUserId, cancellationToken);
-        }
-
         // A grant whose holder already entered the event is consumed: keep the
         // flag on the Removed row so the slot-cap count still includes it —
         // otherwise removing the member frees the slot for a second entry.
@@ -1261,7 +1255,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         member.RemovedAt = now;
         member.RemovedByUserId = actorUserId;
         member.HasEarlyEntry = retainConsumedEeGrant;
-        await _repo.SaveMemberAsync(member, cancellationToken);
+        var removedAssignments = await _repo.SaveMemberAsync(member, cancellationToken, cascadeRoleAssignments);
+
+        if (removedAssignments > 0)
+        {
+            await _auditLog.LogAsync(
+                CampsAuditActions.CampRoleUnassigned, nameof(CampMember), member.Id,
+                $"Cascade-removed {removedAssignments} role assignment(s) for camp member.", actorUserId);
+        }
 
         await _auditLog.LogAsync(
             auditAction, nameof(CampMember), member.Id,
