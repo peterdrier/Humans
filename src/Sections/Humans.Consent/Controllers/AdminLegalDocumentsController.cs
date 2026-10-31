@@ -27,7 +27,10 @@ internal sealed class AdminLegalDocumentsController(
         {
             FilterTeamId = teamId,
             Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
-            Documents = documents.Select(d => new LegalDocumentListItemViewModel
+            Documents = documents
+                .OrderBy(d => d.TeamName, StringComparer.Ordinal)
+                .ThenBy(d => d.Name, StringComparer.Ordinal)
+                .Select(d => new LegalDocumentListItemViewModel
             {
                 Id = d.Id,
                 Name = d.Name,

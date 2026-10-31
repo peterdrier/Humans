@@ -156,6 +156,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 ## Invariants
 
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
+- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The service returns document data without display ordering.
 
 - Legal-document forms require explicit required/active flags and grace-period days; omission redisplays field errors before any write and cannot reactivate a document, change its consent requirement or reset its grace period. Explicit false flags remain valid.
 

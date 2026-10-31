@@ -69,8 +69,6 @@ internal sealed partial class LegalDocumentSyncService(
                     lastSyncedAt,
                     d.Versions.Count);
             })
-            .OrderBy(item => item.TeamName, StringComparer.Ordinal)
-            .ThenBy(item => item.Name, StringComparer.Ordinal)
             .ToList();
     }
 
