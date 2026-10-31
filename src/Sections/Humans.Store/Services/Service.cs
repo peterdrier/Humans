@@ -863,49 +863,32 @@ internal sealed class Service(
             .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
             .ToList();
         var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
-        var totalsByOrder = PriceAll(campOrdersInYear.Concat(teamOrders), context);
+        var counterparties = campOrdersInYear
+            .Select(o => (Order: o, Type: OrderCounterpartyType.Camp,
+                Id: o.CampSeasonId!.Value, Name: seasonsForYear[o.CampSeasonId.Value].Name))
+            .Concat(teamOrders.Select(o => (Order: o, Type: OrderCounterpartyType.Team,
+                Id: o.TeamId!.Value, Name: teamNames.GetValueOrDefault(o.TeamId.Value, "(unknown team)"))))
+            .ToList();
+        var totalsByOrder = PriceAll(counterparties.Select(c => c.Order), context);
         var productNames = products.ToDictionary(p => p.Id, p => p.Name);
 
-        var byCounterparty = new List<OrderSummaryDto>();
-
-        foreach (var o in campOrdersInYear)
+        var byCounterparty = counterparties.Select(c =>
         {
-            var totals = totalsByOrder[o.Id];
-            var sid = o.CampSeasonId!.Value;
-            var campName = seasonsForYear[sid].Name;
-            byCounterparty.Add(new OrderSummaryDto(
-                o.Id,
-                OrderCounterpartyType.Camp,
-                sid,
-                campName,
-                o.State,
+            var totals = totalsByOrder[c.Order.Id];
+            var billable = c.Type == OrderCounterpartyType.Camp;
+            return new OrderSummaryDto(
+                c.Order.Id, c.Type, c.Id, c.Name, c.Order.State,
                 totals.TotalDueEur,
-                totals.PaymentsTotalEur,
-                totals.BalanceEur));
-        }
-        foreach (var o in teamOrders)
-        {
-            var totals = totalsByOrder[o.Id];
-            var tid = o.TeamId!.Value;
-            var teamName = teamNames.TryGetValue(tid, out var n) ? n : "(unknown team)";
-            byCounterparty.Add(new OrderSummaryDto(
-                o.Id,
-                OrderCounterpartyType.Team,
-                tid,
-                teamName,
-                o.State,
-                totals.TotalDueEur,
-                0m, // team orders never have payments
-                0m));
-        }
+                billable ? totals.PaymentsTotalEur : 0m,
+                billable ? totals.BalanceEur : 0m);
+        }).ToList();
 
         // By-item aggregates camp AND team orders so suppliers see the full demand.
-        var allLineProjections = campOrdersInYear
-            .Concat(teamOrders)
-            .SelectMany(o =>
+        var allLineProjections = counterparties
+            .SelectMany(c =>
             {
-                var lineTotals = totalsByOrder[o.Id].Lines.ToDictionary(t => t.LineId);
-                return o.Lines.Select(l => new { l.ProductId, l.Qty, lineTotals[l.Id].TotalEur });
+                var lineTotals = totalsByOrder[c.Order.Id].Lines.ToDictionary(t => t.LineId);
+                return c.Order.Lines.Select(l => new { l.ProductId, l.Qty, lineTotals[l.Id].TotalEur });
             })
             .ToList();
 
@@ -925,35 +908,17 @@ internal sealed class Service(
             .OrderBy(c => c.ProductName, StringComparer.Ordinal)
             .ToList();
 
-        var counterpartyRows = new List<CrossTabRow>();
-        foreach (var g in campOrdersInYear.GroupBy(o => o.CampSeasonId!.Value))
-        {
-            var perProduct = g
-                .SelectMany(o => o.Lines)
-                .GroupBy(l => l.ProductId)
-                .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
-            var total = perProduct.Values.Sum();
-            counterpartyRows.Add(new CrossTabRow(
-                OrderCounterpartyType.Camp,
-                g.Key,
-                seasonsForYear[g.Key].Name,
-                total,
-                perProduct));
-        }
-        foreach (var g in teamOrders.GroupBy(o => o.TeamId!.Value))
-        {
-            var perProduct = g
-                .SelectMany(o => o.Lines)
-                .GroupBy(l => l.ProductId)
-                .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
-            var total = perProduct.Values.Sum();
-            counterpartyRows.Add(new CrossTabRow(
-                OrderCounterpartyType.Team,
-                g.Key,
-                teamNames.TryGetValue(g.Key, out var n) ? n : "(unknown team)",
-                total,
-                perProduct));
-        }
+        var counterpartyRows = counterparties
+            .GroupBy(c => (c.Type, c.Id))
+            .Select(g =>
+            {
+                var perProduct = g
+                    .SelectMany(c => c.Order.Lines)
+                    .GroupBy(l => l.ProductId)
+                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+                return new CrossTabRow(
+                    g.Key.Type, g.Key.Id, g.First().Name, perProduct.Values.Sum(), perProduct);
+            }).ToList();
         return new SummaryDto(
             year,
             byCounterparty,
