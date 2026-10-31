@@ -807,13 +807,13 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReorderImages(string slug, List<Guid> imageIds)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
         }
 
-        await _campService.ReorderImagesAsync(camp.Id, imageIds);
+        await _campService.ReorderImagesAsync(camp.Id, imageIds, actorUserId: user.Id);
         SetSuccess(campsLocalizer["Camps_Flash_ImageOrderUpdated"].Value);
 
         return RedirectToAction(nameof(Edit), new { slug });

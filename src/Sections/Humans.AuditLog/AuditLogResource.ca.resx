@@ -81,6 +81,7 @@
   <data name="Enum_AuditAction_CampPrimaryLeadTransferred" xml:space="preserve"><value>Responsable principal del campament transferit</value></data>
   <data name="Enum_AuditAction_CampImageUploaded" xml:space="preserve"><value>S'ha penjat la imatge del campament</value></data>
   <data name="Enum_AuditAction_CampImageDeleted" xml:space="preserve"><value>S'ha suprimit la imatge del campament</value></data>
+  <data name="Enum_AuditAction_CampImagesReordered" xml:space="preserve"><value>Imatges del campament reordenades</value></data>
   <data name="Enum_AuditAction_ShiftSignupConfirmed" xml:space="preserve"><value>Inscripció al torn confirmada</value></data>
   <data name="Enum_AuditAction_ShiftSignupRefused" xml:space="preserve"><value>Inscripció al torn rebutjada</value></data>
   <data name="Enum_AuditAction_ShiftSignupVoluntold" xml:space="preserve"><value>Inscripció al torn assignada per la coordinació</value></data>

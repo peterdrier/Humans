@@ -81,6 +81,7 @@
   <data name="Enum_AuditAction_CampPrimaryLeadTransferred" xml:space="preserve"><value>Hauptleitung des Camps übertragen</value></data>
   <data name="Enum_AuditAction_CampImageUploaded" xml:space="preserve"><value>Camp-Bild hochgeladen</value></data>
   <data name="Enum_AuditAction_CampImageDeleted" xml:space="preserve"><value>Camp-Bild gelöscht</value></data>
+  <data name="Enum_AuditAction_CampImagesReordered" xml:space="preserve"><value>Camp-Bilder neu geordnet</value></data>
   <data name="Enum_AuditAction_ShiftSignupConfirmed" xml:space="preserve"><value>Schichtanmeldung bestätigt</value></data>
   <data name="Enum_AuditAction_ShiftSignupRefused" xml:space="preserve"><value>Schichtanmeldung abgelehnt</value></data>
   <data name="Enum_AuditAction_ShiftSignupVoluntold" xml:space="preserve"><value>Schicht durch Koordination zugeteilt</value></data>

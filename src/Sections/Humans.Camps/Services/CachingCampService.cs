@@ -334,10 +334,10 @@ internal sealed class CachingCampService(
         });
 
     public Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
+        Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken));
+            await WithInnerAsync(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, actorUserId, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
         });
 

@@ -1016,8 +1016,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _imageGallery.DeleteImageAsync(scopedCampId, imageId, actorUserId, cancellationToken);
 
     public Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
-        _imageGallery.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
+        Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _imageGallery.ReorderImagesAsync(campId, imageIdsInOrder, actorUserId, cancellationToken);
 
     public async Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(
         CancellationToken cancellationToken = default)

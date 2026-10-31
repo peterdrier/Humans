@@ -236,7 +236,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         third.HasEarlyEntry = true;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        await _service.ReorderImagesAsync(camp.Id, [], TestContext.Current.CancellationToken);
+        await _service.ReorderImagesAsync(camp.Id, [], TestActorId, TestContext.Current.CancellationToken);
 
         var refreshed = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
         var refreshedSeason = refreshed
@@ -571,7 +571,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.RemoveHistoricalNameAsync), (t, c, se, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), ct) },
         { nameof(ICampManagement.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], ct) },
+        { nameof(ICampManagement.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], TestActorId, ct) },
         { nameof(ICampManagement.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(EventIdFor(2026), new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
         // Seasons without an event id take their year's open event, so registration and event changes can remap them.
         { nameof(ICampManagement.OpenSeasonAsync), (t, c, se, ct) => t._service.OpenSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },

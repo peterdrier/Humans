@@ -125,8 +125,13 @@ internal sealed class CampImageGallery(
     }
 
     public async Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default)
+        Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         await repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
+
+        await auditLog.LogAsync(
+            CampsAuditActions.CampImagesReordered, nameof(Camp), campId,
+            $"Requested image display order: {string.Join(", ", imageIdsInOrder)}",
+            actorUserId);
     }
 }

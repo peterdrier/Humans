@@ -2458,6 +2458,38 @@ public sealed class CampServiceTests : CampsTestHarness
         unchanged.TimesAtNowhere.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task ReorderImages_saves_order_and_audits_the_acting_manager()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var camp = await CreateTestCampAsync();
+        var first = (await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, TestActorId, ct)).Image!;
+        var second = (await _service.UploadImageAsync(camp.Id, Stream.Null, "second.jpg", "image/jpeg", 1, TestActorId, ct)).Image!;
+        AuditLog.ClearReceivedCalls();
+
+        await _service.ReorderImagesAsync(camp.Id, [second.Id, first.Id], TestActorId, ct);
+
+        var saved = await CampsDb.CampImages.AsNoTracking().OrderBy(image => image.SortOrder).ToListAsync(ct);
+        saved.Select(image => image.Id).Should().Equal(second.Id, first.Id);
+        await AuditLog.Received(1).LogAsync(CampsAuditActions.CampImagesReordered, nameof(Camp), camp.Id,
+            $"Requested image display order: {second.Id}, {first.Id}", TestActorId);
+    }
+
+    [HumansFact]
+    public async Task ReorderImages_does_not_audit_a_failed_save()
+    {
+        var repo = Substitute.For<ICampRepository>();
+        repo.ReorderImagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Save failed")));
+        var gallery = new CampImageGallery(repo, _fileStorage, Clock, AuditLog, NullLogger.Instance);
+
+        var act = () => gallery.ReorderImagesAsync(Guid.NewGuid(), [], TestActorId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]

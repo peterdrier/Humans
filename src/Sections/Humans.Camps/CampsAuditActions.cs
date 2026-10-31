@@ -27,6 +27,8 @@ internal sealed class CampsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition CampImageDeleted = new("CampImageDeleted");
 
+    public static readonly AuditActionDefinition CampImagesReordered = new("CampImagesReordered");
+
     public static readonly AuditActionDefinition CampMemberRequested = new("CampMemberRequested");
 
     public static readonly AuditActionDefinition CampMemberApproved = new("CampMemberApproved");
