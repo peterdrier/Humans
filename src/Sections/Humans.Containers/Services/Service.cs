@@ -158,14 +158,7 @@ internal sealed class Service(
         var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
-        var imagePaths = (await repo.GetImagesAsync([id], ct))
-            .Select(image => image.StoragePath)
-            .ToList();
-        if (container.ImageStoragePath is not null)
-            imagePaths.Add(container.ImageStoragePath);
-
-        // Orphaned placement-image files tolerated at this scale; see Docs/Containers.md.
-        await repo.DeleteAsync(id, ct);
+        var imagePaths = await repo.DeleteAsync(id, ct);
 
         await auditLog.LogAsync(
             ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,

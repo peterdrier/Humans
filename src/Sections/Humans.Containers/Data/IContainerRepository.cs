@@ -13,7 +13,7 @@ internal interface IContainerRepository : IRepository
     Task<Container> AddAsync(Container container, IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default);
     Task<Container> UpdateAsync(Container container, IReadOnlyCollection<ContainerImage> newImages,
         IReadOnlyCollection<Guid> removeImageIds, CancellationToken ct = default);
-    Task DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<string>> DeleteAsync(Guid id, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContainerImage>> GetImagesAsync(
         IReadOnlyCollection<Guid> containerIds, CancellationToken ct = default);

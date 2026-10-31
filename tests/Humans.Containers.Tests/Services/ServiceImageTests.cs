@@ -470,13 +470,8 @@ public sealed class ServiceImageTests
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg");
         var repo = Substitute.For<IContainerRepository>();
         repo.GetByIdAsync(container.Id, Arg.Any<CancellationToken>()).Returns(container);
-        repo.GetImagesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new List<ContainerImage>
-            {
-                new() { Id = Guid.NewGuid(), ContainerId = container.Id, StoragePath = "uploads/containers/gallery.jpg", ContentType = "image/jpeg", FileName = "gallery.jpg" }
-            });
         var original = new IOException("Database delete failed");
-        repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException(original));
+        repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException<IReadOnlyList<string>>(original));
         var service = new Service(repo, _fileStorage, Substitute.For<ICampService>(), _auditLog, new FakeClock(StartTime), _logger);
 
         var act = () => service.DeleteAsync(container.Id, Guid.NewGuid(), ct);
@@ -491,6 +486,17 @@ public sealed class ServiceImageTests
     {
         var ct = TestContext.Current.CancellationToken;
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg", galleryImages: 2);
+        var placementPath = $"uploads/containers/{container.Id}/placement.jpg";
+        await using (var db = new ContainersDbContext(_containersOptions))
+        {
+            db.ContainerPlacements.Add(new ContainerPlacement
+            {
+                ContainerId = container.Id, Year = 2026,
+                PlacementImageStoragePath = placementPath,
+                CreatedAt = StartTime, UpdatedAt = StartTime
+            });
+            await db.SaveChangesAsync(ct);
+        }
         var actorId = Guid.NewGuid();
         var metadataDeletedBeforeCleanup = false;
         var auditedBeforeCleanup = false;
@@ -499,7 +505,8 @@ public sealed class ServiceImageTests
             .Returns(async _ =>
             {
                 await using var db = new ContainersDbContext(_containersOptions);
-                metadataDeletedBeforeCleanup = await db.Containers.CountAsync(ct) == 0;
+                metadataDeletedBeforeCleanup = await db.Containers.CountAsync(ct) == 0
+                    && await db.ContainerPlacements.CountAsync(ct) == 0;
                 auditedBeforeCleanup = _auditLog.ReceivedCalls().Any(call =>
                     call.GetArguments()[0] is AuditActionDefinition action && action == ContainersAuditActions.ContainerDeleted);
                 await Task.FromException(cleanupFailure);
@@ -519,15 +526,35 @@ public sealed class ServiceImageTests
             call.GetArguments()[0] is Microsoft.Extensions.Logging.LogLevel level && level == Microsoft.Extensions.Logging.LogLevel.Error
             && ReferenceEquals(call.GetArguments()[3], cleanupFailure)).Should().ContainSingle();
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/legacy.jpg", Arg.Any<CancellationToken>());
+        await _fileStorage.Received(1).DeleteAsync(placementPath, CancellationToken.None);
         for (var i = 0; i < 2; i++)
             await _fileStorage.Received(1).DeleteAsync($"uploads/containers/{container.Id}/seed-{i}.jpg", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task DeleteAsync_RemovesLegacyAndGalleryImageFiles()
+    public async Task DeleteAsync_RemovesAllOwnedImageFilesAcrossPlacementYears()
     {
         var container = await SeedContainerAsync(
             legacyImagePath: "uploads/containers/id/main.jpg", galleryImages: 2);
+
+        var other = await SeedContainerAsync();
+        await using (var db = new ContainersDbContext(_containersOptions))
+        {
+            foreach (var year in new[] { 2025, 2026 })
+                db.ContainerPlacements.Add(new ContainerPlacement
+                {
+                    ContainerId = container.Id, Year = year,
+                    PlacementImageStoragePath = $"uploads/containers/{container.Id}/placement-{year}.jpg",
+                    CreatedAt = StartTime, UpdatedAt = StartTime
+                });
+            db.ContainerPlacements.Add(new ContainerPlacement
+            {
+                ContainerId = other.Id, Year = 2026,
+                PlacementImageStoragePath = $"uploads/containers/{other.Id}/placement.jpg",
+                CreatedAt = StartTime, UpdatedAt = StartTime
+            });
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
 
         await _sut.DeleteAsync(container.Id, actorUserId: Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
 
@@ -536,6 +563,14 @@ public sealed class ServiceImageTests
             $"uploads/containers/{container.Id}/seed-0.jpg", Arg.Any<CancellationToken>());
         await _fileStorage.Received(1).DeleteAsync(
             $"uploads/containers/{container.Id}/seed-1.jpg", Arg.Any<CancellationToken>());
+        foreach (var year in new[] { 2025, 2026 })
+            await _fileStorage.Received(1).DeleteAsync(
+                $"uploads/containers/{container.Id}/placement-{year}.jpg", CancellationToken.None);
+        await _fileStorage.DidNotReceive().DeleteAsync(
+            $"uploads/containers/{other.Id}/placement.jpg", Arg.Any<CancellationToken>());
+        await using var saved = new ContainersDbContext(_containersOptions);
+        (await saved.ContainerPlacements.ToListAsync(TestContext.Current.CancellationToken))
+            .Should().ContainSingle().Which.ContainerId.Should().Be(other.Id);
     }
 
     [HumansTheory]

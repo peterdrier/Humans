@@ -57,13 +57,13 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
         return container;
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    public async Task<IReadOnlyList<string>> DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var container = await ctx.Containers.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (container is null)
         {
-            return;
+            return [];
         }
 
         // No FK constraint on ContainerPlacement.ContainerId — delete placements explicitly.
@@ -85,8 +85,15 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
             ctx.ContainerImages.RemoveRange(images);
         }
 
+        var imagePaths = images.Select(image => image.StoragePath)
+            .Concat(placements.Select(placement => placement.PlacementImageStoragePath).OfType<string>())
+            .ToList();
+        if (container.ImageStoragePath is not null)
+            imagePaths.Add(container.ImageStoragePath);
+
         ctx.Containers.Remove(container);
         await ctx.SaveChangesAsync(ct);
+        return imagePaths;
     }
 
     public async Task<IReadOnlyList<ContainerImage>> GetImagesAsync(
