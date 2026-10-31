@@ -90,7 +90,6 @@ internal sealed class Service(
 
     public async Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default) =>
         (await repo.GetAccountsAsync(ct))
-            .OrderBy(a => a.Number)
             .Select(a => new HoldedChartAccountInfo(
                 a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Group, a.Archived, a.Balance))
             .ToList();

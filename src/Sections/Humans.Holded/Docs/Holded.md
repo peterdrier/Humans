@@ -132,6 +132,8 @@ shown here.
 
 ## Invariants
 
+- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
+
 - Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
 
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
