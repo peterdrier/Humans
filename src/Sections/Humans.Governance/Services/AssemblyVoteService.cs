@@ -726,7 +726,6 @@ internal sealed class AssemblyVoteService(
             vote.AssemblyDate,
             vote.ClosesAt,
             vote.Options
-                .OrderBy(o => o.Order)
                 .Select(o => new AssemblyVoteDraftOption(
                     o.Key, o.Order, o.Label.Values.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)))
                 .ToList());

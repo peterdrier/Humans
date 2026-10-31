@@ -879,8 +879,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var vote = await _fx.AddVoteAsync(status: AssemblyVoteStatus.Draft,
             kind: AssemblyVoteKind.RankedChoice, options: [("a", 0), ("b", 1)]);
+        var draft = _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["a", "b"]);
         var model = AssemblyVoteDraftFormViewModel.FromDraft(vote.Id,
-            _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["a", "b"]));
+            draft with { Options = draft.Options.Reverse().ToList() });
+        model.Options.Select(option => option.Key).Should().Equal("a", "b");
         model.Kind = AssemblyVoteKind.YesNo; // The default left by a failed Kind binding is itself valid.
         var actorId = Guid.NewGuid();
         var http = new DefaultHttpContext
