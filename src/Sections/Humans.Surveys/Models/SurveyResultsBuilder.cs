@@ -26,7 +26,7 @@ internal static class SurveyResultsBuilder
             Funnel = view.Funnel,
             Scope = scoped.Scope,
             SelectedResponseCount = scoped.SelectedResponseCount,
-            Questions = view.Questions.Select(BuildQuestion).ToList(),
+            Questions = view.Questions.OrderBy(q => q.PageNumber).ThenBy(q => q.Order).Select(BuildQuestion).ToList(),
             Respondents = view.IdentifiedRespondents
                 .OrderBy(respondent => respondent.SubmittedAt)
                 .ThenBy(respondent => respondent.ResponseId)

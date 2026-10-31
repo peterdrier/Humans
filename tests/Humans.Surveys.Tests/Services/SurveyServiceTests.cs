@@ -4150,6 +4150,8 @@ public class SurveyServiceTests
         result.ResponseRate.Should().BeApproximately(2d / 4d, 0.0001);
 
         var choice = result.Questions.Single(q => q.QuestionId == choiceId);
+        result.Questions.Select(question => (question.QuestionId, question.PageNumber, question.Order))
+            .Should().BeEquivalentTo(new[] { (choiceId, 1, 1), (ratingId, 1, 2), (textId, 1, 3) });
         choice.OptionCounts.Should().HaveCount(3);
         choice.OptionCounts.Select(o => o.Value).Should().ContainInOrder("yes", "no", "maybe");
         choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Count.Should().Be(2);

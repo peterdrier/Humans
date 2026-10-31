@@ -1353,8 +1353,11 @@ internal sealed class SurveyService(
             ? []
             : survey.Questions
                 .Where(q => q.Type != SurveyQuestionType.Information)
-                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-                .Select(q => SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture))
+                .Select(q => SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture) with
+                {
+                    PageNumber = q.PageNumber,
+                    Order = q.Order,
+                })
                 .ToList();
 
         var funnel = new SurveyFunnel(

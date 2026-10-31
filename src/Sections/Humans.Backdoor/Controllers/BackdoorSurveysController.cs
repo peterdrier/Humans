@@ -155,7 +155,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
                 slugStarted = results.Funnel.SlugStarted,
                 slugFinished = results.Funnel.SlugFinished,
             },
-            questions = results.Questions.Select(q => new
+            questions = results.Questions.OrderBy(q => q.PageNumber).ThenBy(q => q.Order).Select(q => new
             {
                 id = q.QuestionId,
                 prompt = q.Prompt,

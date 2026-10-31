@@ -42,7 +42,11 @@ public sealed record QuestionAggregate(
     IReadOnlyList<RatingBucket> RatingDistribution,
     double? RatingAverage,
     IReadOnlyList<string> FreeTextAnswers,
-    GridAggregate? Grid = null);
+    GridAggregate? Grid = null)
+{
+    public int PageNumber { get; init; }
+    public int Order { get; init; }
+}
 
 /// <summary><see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
 public sealed record OptionCount(string Value, string Label, int Count, double Percent);

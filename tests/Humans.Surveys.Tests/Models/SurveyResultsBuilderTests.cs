@@ -45,13 +45,15 @@ public sealed class SurveyResultsBuilderTests
             Guid.NewGuid(), "Results", SurveyStatus.Closed, 2, 2, 1,
             new SurveyFunnel(2, 2, 0, 0),
             [
-                new QuestionAggregate(Guid.NewGuid(), "Rating", SurveyQuestionType.Rating, [], [], 3.5, []),
-                new QuestionAggregate(Guid.NewGuid(), "Unanswered", SurveyQuestionType.Rating, [], [], null, []),
+                new QuestionAggregate(Guid.NewGuid(), "Unanswered", SurveyQuestionType.Rating, [], [], null, []) { PageNumber = 2, Order = 0 },
+                new QuestionAggregate(Guid.NewGuid(), "Rating", SurveyQuestionType.Rating, [], [], 3.5, []) { PageNumber = 1, Order = 2 },
+                new QuestionAggregate(Guid.NewGuid(), "Earlier", SurveyQuestionType.Rating, [], [], null, []) { PageNumber = 1, Order = 1 },
             ], []);
 
         var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 2, SurveyResultsScope.Combined));
 
-        model.Questions[0].RatingAverage.Should().Be(expected);
-        model.Questions[1].RatingAverage.Should().BeNull();
+        model.Questions.Select(question => question.Prompt).Should().Equal("Earlier", "Rating", "Unanswered");
+        model.Questions[1].RatingAverage.Should().Be(expected);
+        model.Questions[2].RatingAverage.Should().BeNull();
     }
 }
