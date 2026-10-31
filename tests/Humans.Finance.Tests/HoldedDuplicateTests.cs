@@ -63,13 +63,6 @@ public class HoldedDuplicateTests
     /// <summary>The single-GET shape of a document: the one read that returns <c>notes</c>.</summary>
     private static HoldedPurchaseDocumentDto FullDoc(string id, string? notes = null, bool noNotes = false) => new()
     {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 120m,
-        Tax = 0m,
-        Total = 120m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 120m,
         Notes = noNotes ? null : notes ?? $"Expense report {ReportId}",
     };
 

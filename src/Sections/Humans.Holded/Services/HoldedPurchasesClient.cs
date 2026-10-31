@@ -85,16 +85,8 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
 
             return new HoldedPurchaseDocumentDto
             {
-                Id = Prop(node, "id")?.GetValue<string>() ?? "",
-                DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
-                Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
-                Tax = ReadDecimalV2(Prop(node, "tax")),
-                Total = ReadDecimalV2(Prop(node, "total")),
-                PaymentsTotal = ReadDecimalV2(Prop(node, "payments_total")),
-                PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
                 ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
                 Notes = Prop(node, "notes")?.GetValue<string>() is { Length: > 0 } notes ? notes : null,
-                Tags = ReadTags(Prop(node, "tags")),
                 Payments = ReadPaymentsDetail(Prop(node, "payments_detail")),
             };
         }

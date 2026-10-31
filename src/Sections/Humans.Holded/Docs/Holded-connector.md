@@ -43,6 +43,8 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 ## Invariants
 
+- The single purchase-document read carries only approval time, notes and payment details. Its callers already know the requested id; totals and tags belong to the list read. Unused detail fields are ignored rather than parsed.
+
 - `HoldedClient` remains the typed-client entry point. Its internal operation clients share one
   `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
   call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
@@ -120,8 +122,7 @@ options. They add no interfaces or DI registrations, and the public contract sta
 
 **Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
 `CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
-`ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
-`IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
+`ExpenseReportBackgroundProcessor` for the push), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`) and Store
 (`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over

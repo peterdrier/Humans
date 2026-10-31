@@ -154,16 +154,28 @@ public class HoldedClientTests
         var client = Make(handler);
         var doc = await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
 
-        doc.Id.Should().Be("doc-123");
-        doc.DocNumber.Should().Be("F260009");
-        doc.PaymentsPending.Should().Be(0);
         doc.ApprovedAt.Should().NotBeNull();
-        doc.Tags.Should().ContainSingle("camp-build-camp");
         // The live payments_detail shape (2026-10-18): a 2-dp amount string, a plain date, bank_id.
         doc.Payments.Should().HaveCount(2);
         doc.Payments[0].Should().Be(new HoldedPaymentDetailDto(
             "6ad492bfadfbf95ccf087fde", 17.00m, new LocalDate(2026, 10, 16), "69d65af9b42dd1dd620d9330"));
         doc.Payments[1].BankId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetPurchaseDocumentAsync_IgnoresUnusedDocumentFields()
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
+            {"id":42,"document_number":{},"subtotal":"invalid","tax":[],"total":{},
+             "payments_total":false,"payments_pending":[],"tags":[{}],
+             "approved_at":"2026-05-10T09:00:00","notes":"Expense report reference"}
+            """)));
+
+        var doc = await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        doc.ApprovedAt.Should().NotBeNull();
+        doc.Notes.Should().Be("Expense report reference");
+        doc.Payments.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -199,7 +211,7 @@ public class HoldedClientTests
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":42,"document_number":"F001"}"""));
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"notes":42}"""));
         var client = Make(handler);
 
         var act = async () => await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);

@@ -378,13 +378,6 @@ public class ExpenseReconTests
 
     private static HoldedPurchaseDocumentDto FullDoc(string id, string? notes) => new()
     {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 100m,
-        Tax = 0m,
-        Total = 100m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 0m,
         Notes = notes,
     };
 

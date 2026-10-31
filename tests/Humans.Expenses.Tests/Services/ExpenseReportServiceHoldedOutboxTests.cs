@@ -327,13 +327,6 @@ public class ExpenseReportServiceHoldedOutboxTests
 
     private static HoldedPurchaseDocumentDto MakePurchaseDoc(Instant? approvedAt = null) => new()
     {
-        Id = "doc-1",
-        DocNumber = "",
-        Subtotal = 0m,
-        Tax = 0m,
-        Total = 0m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 0m,
         ApprovedAt = approvedAt,
     };
 

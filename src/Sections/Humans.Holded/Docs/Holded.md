@@ -184,6 +184,8 @@ shown here.
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`) for the mirror, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+Purchase-document detail reads expose only approval time, notes and payment details. Document totals, identifiers and tags come from the purchase list when needed; the detail parser ignores those unused fields.
+
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md); the single-mirror design is
