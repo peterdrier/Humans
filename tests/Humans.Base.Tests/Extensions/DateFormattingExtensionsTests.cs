@@ -61,6 +61,7 @@ public sealed class DateFormattingExtensionsTests
         date.ToInvariantLongDate().Should().Be("5 June 2026");
         date.ToSepaDateTime().Should().Be("2026-06-05T12:34:56");
         date.ToFileTimestamp().Should().Be("2026-06-05-1234");
+        DateFormattingExtensions.IcalBasicDateTimePattern.Format(localDateTime).Should().Be("20260605T123456");
         instant.ToIso8601().Should().Be("2026-06-05T10:34:56Z");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
         CultureInfo.CurrentUICulture.Name.Should().Be(culture);

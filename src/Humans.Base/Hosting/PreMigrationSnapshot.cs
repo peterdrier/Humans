@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
+using Humans.Base.Extensions;
+using NodaTime;
 using Npgsql;
 
 namespace Humans.Base.Hosting;
@@ -92,11 +94,9 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
         _attempted = true;
 
         var database = _connection.Database!;
-        var dump = Path.Combine(
-            SnapshotDirectory,
-            string.Create(
-                CultureInfo.InvariantCulture,
-                $"{database}-{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}.dump"));
+        var timestamp = DateFormattingExtensions.IcalBasicDateTimePattern.Format(
+            LocalDateTime.FromDateTime(DateTime.UtcNow));
+        var dump = Path.Combine(SnapshotDirectory, $"{database}-{timestamp}Z.dump");
         var path = dump + UnfinishedSuffix;
 
         var stopwatch = Stopwatch.StartNew();
