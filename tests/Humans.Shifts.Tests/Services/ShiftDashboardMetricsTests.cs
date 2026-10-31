@@ -649,7 +649,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDepartmentsWithRotas_ReturnsRotaOwningTeamsInNameOrder()
+    public async Task GetDepartmentsWithRotas_ReturnsOnlyRotaOwningTeams()
     {
         var es = await SeedEventAsync();
         foreach (var name in new[] { "Sanctuary", "Gate", "Rangers" })
@@ -658,7 +658,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         var result = await _service.GetDepartmentsWithRotasAsync(es.Id);
 
-        result.Select(r => r.TeamName).Should().Equal("Gate", "Rangers", "Sanctuary");
+        result.Select(r => r.TeamName).Should().BeEquivalentTo("Gate", "Rangers", "Sanctuary");
     }
 
     [HumansFact]

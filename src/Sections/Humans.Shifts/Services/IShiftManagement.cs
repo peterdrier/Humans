@@ -21,7 +21,7 @@ internal interface IShiftManagement
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
-    /// <summary>Parent teams with active rotas in the event.</summary>
+    /// <summary>Rota-owning teams in the event; callers choose display ordering.</summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId, CancellationToken ct = default);
 

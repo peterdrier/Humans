@@ -241,6 +241,7 @@ internal sealed class ShiftBrowsePageBuilder(
 
         var depts = await shiftManagement.GetDepartmentsWithRotasAsync(eventSettingsId, ct);
         return depts
+            .OrderBy(d => d.TeamName, StringComparer.Ordinal)
             .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
             .ToList();
     }

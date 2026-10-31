@@ -51,6 +51,7 @@ internal sealed class ShiftDashboardPageBuilder(
         {
             Shifts = shifts.ToList(),
             Departments = deptTuples
+                .OrderBy(d => d.TeamName, StringComparer.Ordinal)
                 .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
                 .ToList(),
             SelectedDepartmentId = request.DepartmentId,

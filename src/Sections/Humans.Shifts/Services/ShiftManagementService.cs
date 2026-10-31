@@ -1341,7 +1341,6 @@ internal sealed class ShiftManagementService(
         return teams.Values
             .Where(t => rotaOwningIds.Contains(t.Id))
             .Select(t => (t.Id, t.Name))
-            .OrderBy(x => x.Name, StringComparer.Ordinal)
             .ToList();
     }
 
