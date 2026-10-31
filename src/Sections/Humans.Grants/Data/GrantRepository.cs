@@ -53,12 +53,29 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateProgramAsync(GrantProgram program, CancellationToken ct = default)
+    public async Task UpdateProgramAsync(
+        GrantProgram program, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Scalars only: the detached graph may carry managers and grants that other calls own.
+        // Apply scalar fields and explicit manager deltas without attaching the detached grant graph.
         var tracked = await ctx.Programs.FirstAsync(p => p.Id == program.Id, ct);
         ctx.Entry(tracked).CurrentValues.SetValues(program);
+        if (toRemove.Count > 0)
+        {
+            var rows = await ctx.Managers
+                .Where(m => m.ProgramId == program.Id && toRemove.Contains(m.UserId))
+                .ToListAsync(ct);
+            ctx.Managers.RemoveRange(rows);
+        }
+        foreach (var manager in toAdd)
+            ctx.Managers.Add(new GrantProgramManager
+            {
+                ProgramId = program.Id,
+                UserId = manager.UserId,
+                AddedByUserId = manager.AddedByUserId,
+                AddedAt = manager.AddedAt
+            });
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -72,29 +89,6 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
             program.EventSettingsId = eventByProgram[program.Id];
         await ctx.SaveChangesAsync(ct);
         return programs.Count;
-    }
-
-    public async Task SetManagersAsync(
-        Guid programId, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (toRemove.Count > 0)
-        {
-            var rows = await ctx.Managers
-                .Where(m => m.ProgramId == programId && toRemove.Contains(m.UserId))
-                .ToListAsync(ct);
-            ctx.Managers.RemoveRange(rows);
-        }
-        foreach (var manager in toAdd)
-            ctx.Managers.Add(new GrantProgramManager
-            {
-                ProgramId = programId,
-                UserId = manager.UserId,
-                AddedByUserId = manager.AddedByUserId,
-                AddedAt = manager.AddedAt
-            });
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task AddGrantsAsync(IReadOnlyList<Grant> grants, CancellationToken ct = default)

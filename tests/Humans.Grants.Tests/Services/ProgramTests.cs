@@ -1,11 +1,14 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Grants.Data;
 using Humans.Grants.Domain;
 using Humans.Grants.Services;
 using Humans.Grants.Tests.Infrastructure;
 using Humans.Settings.Contracts;
 using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NodaTime;
 using NSubstitute;
 
@@ -101,6 +104,44 @@ public sealed class ProgramTests : GrantsTestHarness
             Arg.Any<string>(), actor, newManager, AuditEntityTypes.User);
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, oldManager, AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task Update_ManagerSaveFailure_DoesNotCommitProgramFieldsOrAudit()
+    {
+        var actor = SeedUser("Board");
+        var oldManager = SeedUser("Old");
+        var newManager = SeedUser("New");
+        var program = await SeedProgramAsync(managers: oldManager);
+        var options = new DbContextOptionsBuilder<GrantsDbContext>(
+                (DbContextOptions<GrantsDbContext>)Db.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailManagerSave())
+            .Options;
+        var service = new GrantService(
+            new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
+            Users, UserEmails, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+
+        Func<Task> update = () => service.UpdateProgramAsync(
+            program.Id, Save("Renamed", managers: newManager), actor, Ct);
+
+        await update.Should().ThrowAsync<IOException>();
+        await using var db = OpenContext();
+        var saved = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
+        saved.Name.Should().Be(program.Name);
+        saved.Managers.Select(m => m.UserId).Should().Equal(oldManager);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class FailManagerSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<GrantProgramManager>()
+                .Any(e => e.State is EntityState.Added or EntityState.Deleted))
+                throw new IOException("Manager persistence failed.");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 
     [HumansFact]

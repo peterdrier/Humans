@@ -81,7 +81,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Expiry is computed at read time from `ExpiresOn ?? program.GrantsExpireOn` against today in Europe/Madrid; no job flips state.
 - Revoking keeps the row (who, when, why); a revoked grant cannot be resent or revoked again.
 - Manual and source issuance share one persist/audit/notice pipeline. Persistence retains caller cancellation; after commit, audit and notices finish independently of browser cancellation. Their distinct batch and source-reference audit descriptions are preserved.
-- Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`).
+- Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
 - Grant reads, GDPR exports (held grants and programs created), and issue/revoke/resend audits use the program's current Settings event year, falling back to its stored year when the event is unavailable. Audit year resolution finishes before the mutation commits.
 - A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend.
 - Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all six cultures.
