@@ -43,7 +43,6 @@ internal sealed class EventParticipationService(
         var shadowed = rows.Select(r => (r.UserId, r.Year)).ToHashSet();
         return [.. rows.Where(r => r.Status is not null)
             .Concat(legacy.Where(l => !shadowed.Contains((l.UserId, l.Year))))
-            .OrderBy(r => r.Year)
             .Select(ToInfo)];
     }
 
@@ -192,7 +191,7 @@ internal sealed class EventParticipationService(
         var rows = await GetParticipationsAsync(userId, ct);
         return
         [
-            new UserDataSlice(EventParticipationsSlice, rows.Select(ep => new
+            new UserDataSlice(EventParticipationsSlice, rows.OrderBy(ep => ep.Year).Select(ep => new
             {
                 ep.Year,
                 Status = ep.Status.ToString(),
