@@ -41,8 +41,6 @@ internal sealed partial class WorkgroupService
                 m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt))
             .ToList(),
         w.LogEntries
-            .OrderByDescending(e => e.OccurredOn)
-            .ThenByDescending(e => e.CreatedAt)
             .Select(e => new WorkgroupLogEntryInfo(
                 e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
                 e.SurveyId, e.CreatedAt, e.UpdatedAt))

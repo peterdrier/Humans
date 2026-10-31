@@ -524,6 +524,7 @@ display-name reads.
 - **Member ordering** — views show coordinators before other members, then by join date. Coordinator names and selection slots keep join-date order; the details page reuses one ordered member list for its roster and member selectors.
 - **Document ordering** — views order documents newest first. The document page sorts comments once: populated categories follow their earliest comment, and each thread keeps chronological order.
 - **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started meeting directly, and Calendar consumers order feed items.
+- **Log ordering** — the details timeline orders log entries by occurrence date, then creation time, both descending. The snapshot does not impose log display order; rhythm calculations select their latest qualifying activity explicitly.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,

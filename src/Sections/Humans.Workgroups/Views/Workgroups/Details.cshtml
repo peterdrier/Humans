@@ -12,7 +12,7 @@
 
     IEnumerable<(LocalDate Date, WorkgroupLogEntryInfo? Log, WorkgroupMeetingInfo? Meeting)> Timeline()
     {
-        foreach (var e in w.LogEntries)
+        foreach (var e in w.LogEntries.OrderByDescending(e => e.OccurredOn).ThenByDescending(e => e.CreatedAt))
         {
             // The allocation is hidden from Volunteers; its History entry carries the figures.
             if (e.Kind == WorkgroupLogKind.BudgetSet && !Model.CanSeeBudget) continue;
