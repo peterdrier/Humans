@@ -494,7 +494,7 @@ internal sealed class AssemblyVoteService(
         }
 
         var (rounds, winner, rankedVerdict, notes) = AssemblyVoteCounting.CountInstantRunoff(
-            cast, vote.Options.OrderBy(o => o.Order).ToList());
+            cast, vote.Options.ToList());
 
         return new AssemblyVoteAudienceResult(
             audience.Count, cast.Count, null, rounds, winner, rankedVerdict, notes);

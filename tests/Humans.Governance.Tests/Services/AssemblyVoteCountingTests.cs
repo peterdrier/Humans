@@ -165,7 +165,7 @@ public sealed class AssemblyVoteCountingTests
     [HumansFact]
     public void CountInstantRunoff_TieBreak_AuthoredOrderWhenPreviousRoundAlsoLevel()
     {
-        var options = Options(("a", 0), ("b", 1), ("c", 2));
+        var options = Options(("c", 2), ("a", 0), ("b", 1));
         // Round 1 (no previous round to break by): a=2, b=1, c=1 — b and c tie for fewest,
         // and there is no earlier round to break the tie, so authored order decides: b
         // (order 1) comes before c (order 2) and is eliminated.
