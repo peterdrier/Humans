@@ -193,7 +193,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - New signatures use the resolved survivor ID, including when a widget submits an archived account ID. Required-consent checks and post-save suspension-notification cleanup use that same ID; existing immutable signatures keep their original attribution.
 
 - Once a consent record is saved, required-consent checks, suspension-notification resolution, suspension restoration, and inline cache refreshes finish independently of request cancellation. The write evicts every merge-chain cache entry before the required-consent check, so suspension cleanup sees the new signature even when the cache was warm. Validation and the consent write retain the caller token.
-- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed reload therefore leaves no alias serving the pre-submit consent set; the failure propagates and later reads reload the committed state.
+- A successful consent submission evicts every affected merge-chain cache key before inline reloads start. A failed reload therefore leaves no alias serving the pre-submit consent set; the failure is logged, the submission still reports success, and later reads reload the committed state.
 
 ## Negative Access Rules
 
