@@ -46,18 +46,20 @@ public sealed class MembershipTierServiceTests : IDisposable
         return userId;
     }
 
-    private async Task<MemberApplication> SeedApprovedAsync(Guid userId, MembershipTier tier, LocalDate? expires)
+    private async Task<MemberApplication> SeedApprovedAsync(
+        Guid userId, MembershipTier tier, LocalDate? expires, Instant? resolvedAt = null)
     {
+        var approvedAt = resolvedAt ?? Now - Duration.FromDays(20);
         var app = new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             MembershipTier = tier,
             Motivation = "m",
-            SubmittedAt = Now - Duration.FromDays(30),
-            UpdatedAt = Now - Duration.FromDays(30),
+            SubmittedAt = approvedAt - Duration.FromDays(10),
+            UpdatedAt = approvedAt - Duration.FromDays(10),
         };
-        app.Approve(Guid.NewGuid(), null, new FakeClock(Now - Duration.FromDays(20)));
+        app.Approve(Guid.NewGuid(), null, new FakeClock(approvedAt));
         app.TermExpiresAt = expires;
         _db.Applications.Add(app);
         await _db.SaveChangesAsync(Ct);
@@ -142,6 +144,25 @@ public sealed class MembershipTierServiceTests : IDisposable
         fallback.GrantedByApplicationId.Should().Be(colaborador.Id);
         fallback.ExpiresAt.Should().Be(Today.PlusDays(400));
         (await _sut.GetTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Volunteer);
+    }
+
+    [HumansFact]
+    public async Task Expire_FallbackGrantUsesAnActiveApproval_InsteadOfALaterExpiredRenewal()
+    {
+        var userId = SeedUser();
+        await SeedRowAsync(userId, MembershipTier.Asociado);
+        var active = await SeedApprovedAsync(userId, MembershipTier.Colaborador, null,
+            Instant.FromUtc(2021, 6, 1, 0, 0));
+        await SeedApprovedAsync(userId, MembershipTier.Colaborador, new LocalDate(2025, 12, 31),
+            Instant.FromUtc(2023, 6, 1, 0, 0));
+
+        var downgrades = await _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
+
+        downgrades.Should().ContainSingle().Which.Should().Be((userId, MembershipTier.Colaborador));
+        var row = await RowAsync(userId);
+        row!.Tier.Should().Be(MembershipTier.Colaborador);
+        row.GrantedByApplicationId.Should().Be(active.Id);
+        row.ExpiresAt.Should().BeNull();
     }
 
     [HumansFact]

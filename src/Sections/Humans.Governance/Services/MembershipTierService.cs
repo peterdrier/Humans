@@ -48,7 +48,7 @@ internal sealed class MembershipTierService(
             var newTier = otherTierByUser.GetValueOrDefault(userId, MembershipTier.Volunteer);
             var granting = newTier == MembershipTier.Volunteer
                 ? null
-                : LatestApproved(await applications.GetByUserIdAsync(userId, ct), newTier);
+                : LatestActiveApproved(await applications.GetByUserIdAsync(userId, ct), newTier, today);
             await repo.UpsertAsync(new MembershipTierRecord
             {
                 UserId = userId,
@@ -62,8 +62,10 @@ internal sealed class MembershipTierService(
         return result;
     }
 
-    private static MemberApplication? LatestApproved(IEnumerable<MemberApplication> apps, MembershipTier tier) =>
-        apps.Where(a => a.Status == ApplicationStatus.Approved && a.MembershipTier == tier)
+    private static MemberApplication? LatestActiveApproved(
+        IEnumerable<MemberApplication> apps, MembershipTier tier, LocalDate today) =>
+        apps.Where(a => a.Status == ApplicationStatus.Approved && a.MembershipTier == tier
+                && (a.TermExpiresAt is null || a.TermExpiresAt >= today))
             .MaxBy(a => a.ResolvedAt);
 
     public async Task ReassignAsync(
