@@ -220,19 +220,17 @@ internal sealed class AttendeeContactImportService(
                 return;
 
             case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
-                var replacement = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
-                    decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
-                    decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
-                AttachResolvedAttendees(resolved, replacement.UserId, state);
-                if (replacement.Created) state.Created++;
-                state.Replaced++;
-                return;
-
             case AttendeeImportOutcome.CreateNewUser:
-                var createdUser = await provisioning.FindOrCreateUserByEmailAsync(
-                    decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
-                AttachResolvedAttendees(resolved, createdUser.UserId, state);
-                if (createdUser.Created) state.Created++;
+                var replacing = decision.Outcome == AttendeeImportOutcome.DeleteUnverifiedThenCreate;
+                var provisioned = replacing
+                    ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                        decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
+                        decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct)
+                    : await provisioning.FindOrCreateUserByEmailAsync(
+                        decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
+                AttachResolvedAttendees(resolved, provisioned.UserId, state);
+                if (provisioned.Created) state.Created++;
+                if (replacing) state.Replaced++;
                 return;
         }
     }

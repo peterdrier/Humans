@@ -248,28 +248,21 @@ internal sealed class MailerLiteImportService(
                         }
 
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
-                        {
-                            // Not grouped with TargetUserId's addresses: replacement provisions a separate contact
-                            // (provUserId), whose preference this write targets.
-                            var (provUserId, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
-                                d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
-                                subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
-                            if (provCreated) created++;
-                            var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
-                            if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
-                            else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
-                            replacedUnverified++;
-                            break;
-                        }
-
                     case SubscriberOutcome.CreateNewHuman:
                         {
-                            var (provUserId, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
-                                subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
+                            var replacing = d.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail;
+                            // A replacement provisions a separate contact, so target its returned id, not TargetUserId.
+                            var (provUserId, provCreated) = replacing
+                                ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                                    d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
+                                    subscriber.Email, displayName: null, ContactSource.MailerLite, ct)
+                                : await provisioning.FindOrCreateUserByEmailAsync(
+                                    subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
                             var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
                             if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
                             else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
+                            if (replacing) replacedUnverified++;
                             break;
                         }
                 }
