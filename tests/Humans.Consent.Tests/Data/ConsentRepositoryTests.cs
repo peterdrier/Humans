@@ -193,7 +193,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(userId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken); // other user
+        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
 
         var count = await _repo.GetCountForUserIdsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
@@ -215,7 +215,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var sourceId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(targetId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(sourceId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken); // unrelated user
+        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
 
         var count = await _repo.GetCountForUserIdsAsync([targetId, sourceId], Xunit.TestContext.Current.CancellationToken);
 
@@ -334,7 +334,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(BuildRecord(userA, versionY), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(userB, versionX), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(userA, versionOutside), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionX), Xunit.TestContext.Current.CancellationToken); // different user
+        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionX), Xunit.TestContext.Current.CancellationToken);
 
         var pairs = await _repo.GetPairsForUsersAndVersionsAsync([userA, userB], [versionX, versionY], Xunit.TestContext.Current.CancellationToken);
 

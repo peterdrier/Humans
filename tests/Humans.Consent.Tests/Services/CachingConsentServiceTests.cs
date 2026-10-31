@@ -89,7 +89,6 @@ public sealed class CachingConsentServiceTests
 
         var sut = CreateSut();
 
-        // Warm the cache.
         _ = await sut.GetConsentMapForUsersAsync(userIds, TestContext.Current.CancellationToken);
         _inner.ClearReceivedCalls();
 
@@ -146,7 +145,7 @@ public sealed class CachingConsentServiceTests
             .Returns(hitStub);
 
         var sut = CreateSut();
-        _ = await sut.GetConsentMapForUsersAsync(hitIds, TestContext.Current.CancellationToken); // warm
+        _ = await sut.GetConsentMapForUsersAsync(hitIds, TestContext.Current.CancellationToken);
 
         var missStub = missIds.ToDictionary(
             id => id,

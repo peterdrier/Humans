@@ -23,9 +23,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new LegalDocumentRepository(new TestDbContextFactory<LegalDbContext>(options));
 
-        // LegalDocument.TeamId is a bare cross-section Guid — the team row is never
-        // persisted here and the entity is internal to Humans.Teams, so the id is all
-        // this fixture ever needed.
+        // TeamId is a bare cross-section Guid; no team row needed.
     }
 
     public void Dispose()
@@ -113,7 +111,6 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         await SeedDocumentAsync("Privacy");
         await SeedDocumentAsync("CoC");
 
-        // Different team — a bare Guid; no Team row exists in this model.
         var otherTeamId = Guid.NewGuid();
         _dbContext.LegalDocuments.Add(new LegalDocument
         {
@@ -224,7 +221,6 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         var ok = await _repo.AddVersionAsync(doc.Id, newVersion, "newsha", now, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeTrue();
 
-        // Fresh read confirms parent fields were updated atomically.
         var reloaded = await _repo.GetByIdAsync(doc.Id, Xunit.TestContext.Current.CancellationToken);
         reloaded!.CurrentCommitSha.Should().Be("newsha");
         reloaded.Versions.Should().ContainSingle();

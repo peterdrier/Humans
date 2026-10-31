@@ -13,3 +13,9 @@
 |---|---|---|---|
 | `ConsentReviewCardViewComponent` (consent check, rejection) | `UserPartSlots.AdminDetail` | `Admin` view mode on `/Users/Admin/{id}`: `UsersAdmin, Board, Admin` (the host page's policy) | in-component view-mode check + host policy |
 | `RejectionReasonViewComponent` | `UserPartSlots.AccountStatus` | The member themself, on their own account-status wall, only while Rejected | `Self` view mode; the Gdpr host renders the slot for `UserState.Rejected` only |
+
+## Policies registered here
+
+| Policy | Roles | Consumed by |
+|---|---|---|
+| `PolicyNames.ConsentCoordinatorBoardOrAdmin` | `ConsentCoordinator, Board, Admin` | Onboarding's review queue (`OnboardingReviewController`); registered in `Section.cs` because the role is Consent's |
