@@ -12,32 +12,18 @@ internal static class GoogleCredentialLoader
         CancellationToken ct,
         params string[] scopes)
     {
-        GoogleCredential credential;
+        await using Stream stream = !string.IsNullOrEmpty(settings.ServiceAccountKeyJson)
+            ? new MemoryStream(System.Text.Encoding.UTF8.GetBytes(settings.ServiceAccountKeyJson))
+            : !string.IsNullOrEmpty(settings.ServiceAccountKeyPath)
+                ? File.OpenRead(settings.ServiceAccountKeyPath)
+                : throw new InvalidOperationException(
+                    "Google Workspace credentials not configured. " +
+                    "Set GoogleWorkspace:ServiceAccountKeyPath or GoogleWorkspace:ServiceAccountKeyJson.");
 
-        if (!string.IsNullOrEmpty(settings.ServiceAccountKeyJson))
-        {
-            using var stream = new MemoryStream(
-                System.Text.Encoding.UTF8.GetBytes(settings.ServiceAccountKeyJson));
-            credential = (await CredentialFactory
-                .FromStreamAsync<ServiceAccountCredential>(stream, ct)
-                .ConfigureAwait(false))
-                .ToGoogleCredential();
-        }
-        else if (!string.IsNullOrEmpty(settings.ServiceAccountKeyPath))
-        {
-            await using var stream = File.OpenRead(settings.ServiceAccountKeyPath);
-            credential = (await CredentialFactory
-                .FromStreamAsync<ServiceAccountCredential>(stream, ct)
-                .ConfigureAwait(false))
-                .ToGoogleCredential();
-        }
-        else
-        {
-            throw new InvalidOperationException(
-                "Google Workspace credentials not configured. " +
-                "Set GoogleWorkspace:ServiceAccountKeyPath or GoogleWorkspace:ServiceAccountKeyJson.");
-        }
-
+        var credential = (await CredentialFactory
+            .FromStreamAsync<ServiceAccountCredential>(stream, ct)
+            .ConfigureAwait(false))
+            .ToGoogleCredential();
         return credential.CreateScoped(scopes);
     }
 }
