@@ -191,6 +191,7 @@ All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a re
 The section has no key-authed route of its own. Its machine read surface is `INotificationInboxRead`
 (`Humans.Notifications.Contracts`), served by Backdoor at `GET /api/backdoor/notifications` for the key's owner; see
 [`features/notification-api.md`](features/notification-api.md).
+The read snapshot carries meter priority without sorting either collection. Backdoor owns newest-first row and highest-priority-first meter ordering in its JSON projection.
 
 ### Touch-and-clean guidance
 

@@ -16,7 +16,6 @@ internal sealed class NotificationInboxRead(
             var result = await inbox.GetInboxAsync(userId, search: null, filter: "all", tab: "unread", ct);
             notifications = result.NeedsAttention
                 .Concat(result.Informational)
-                .OrderByDescending(n => n.CreatedAt)
                 .Select(n => new UnreadNotificationDto(
                     n.CreatedAt, n.Source, n.Title, n.ActionUrl, n.Priority, n.Class, !n.IsRead))
                 .ToList();
@@ -26,8 +25,7 @@ internal sealed class NotificationInboxRead(
         return new NotificationInboxSnapshot(
             notifications,
             meters
-                .OrderByDescending(m => m.Priority)
-                .Select(m => new NotificationMeterDto(m.Title, m.Count, m.ActionUrl))
+                .Select(m => new NotificationMeterDto(m.Title, m.Count, m.ActionUrl) { Priority = m.Priority })
                 .ToList());
     }
 }
