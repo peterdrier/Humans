@@ -119,7 +119,7 @@ internal static class ExpenseRecon
             .ToDictionary(g => g.Key, g => g.First().ContactName, StringComparer.Ordinal);
         var byName = nameById.Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
             .ToLookup(kv => kv.Value.Trim(), kv => kv.Key, StringComparer.OrdinalIgnoreCase);
-        var contacts = Service.MemberContacts(
+        var contacts = HoldedDuplicateMatcher.MemberContacts(
             bookings.Select(b => (b.CreditorUserId, b.HoldedContactId)), bindings,
             id => nameById.GetValueOrDefault(id), byName);
 

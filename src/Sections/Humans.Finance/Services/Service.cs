@@ -1312,43 +1312,13 @@ internal sealed class Service(
     private static Dictionary<Guid, IReadOnlySet<string>> MemberContacts(
         IReadOnlyList<ExpenseHoldedBooking> bookings, IReadOnlyList<HoldedCreditorContact> bindings,
         IReadOnlyDictionary<string, HoldedContactDto> contactById) =>
-        MemberContacts(
+        HoldedDuplicateMatcher.MemberContacts(
             bookings.Select(b => (b.CreditorUserId, b.HoldedContactId)), bindings,
             id => contactById.GetValueOrDefault(id)?.Name,
             contactById.Values
                 .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
                             && !string.IsNullOrWhiteSpace(c.Name))
                 .ToLookup(c => c.Name!.Trim(), c => c.Id, StringComparer.OrdinalIgnoreCase));
-
-    /// <summary><paramref name="twinsByName"/> holds the contacts a same-named twin may be, keyed by trimmed name
-    /// (case-insensitive); <paramref name="nameOf"/> names any contact.</summary>
-    internal static Dictionary<Guid, IReadOnlySet<string>> MemberContacts(
-        IEnumerable<(Guid CreditorUserId, string? HoldedContactId)> named,
-        IReadOnlyList<HoldedCreditorContact> bindings,
-        Func<string, string?> nameOf,
-        ILookup<string, string> twinsByName)
-    {
-        var boundUserByContact = bindings
-            .Where(b => !string.IsNullOrEmpty(b.HoldedContactId))
-            .GroupBy(b => b.HoldedContactId, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First().UserId, StringComparer.Ordinal);
-        var bindingByUser = bindings.ToDictionary(b => b.UserId);
-
-        var result = new Dictionary<Guid, IReadOnlySet<string>>();
-        foreach (var group in named.GroupBy(b => b.CreditorUserId))
-        {
-            var set = new HashSet<string>(StringComparer.Ordinal);
-            if (bindingByUser.GetValueOrDefault(group.Key)?.HoldedContactId is { Length: > 0 } bound) set.Add(bound);
-            set.UnionWith(group.Where(b => !string.IsNullOrEmpty(b.HoldedContactId)).Select(b => b.HoldedContactId!));
-            foreach (var id in set.ToList())
-                if (nameOf(id) is { } name && !string.IsNullOrWhiteSpace(name))
-                    foreach (var twin in twinsByName[name.Trim()])
-                        if (!boundUserByContact.TryGetValue(twin, out var other) || other == group.Key)
-                            set.Add(twin);
-            result[group.Key] = set;
-        }
-        return result;
-    }
 
     public async Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default)
     {
