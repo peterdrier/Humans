@@ -314,15 +314,17 @@ public class TicketTailorServiceTests
         tickets[0].AttendeeEmail.Should().Be("jane@example.com");
     }
 
-    [HumansFact]
-    public async Task GetEventSummaryAsync_ParsesEventResponse()
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(96)]
+    public async Task GetEventSummaryAsync_ParsesEventResponse(int issued)
     {
         var handler = new RecordingHttpHandler();
         var responseContent = handler.EnqueueResponse(HttpStatusCode.OK, new
         {
             name = "Elsewhere 2026",
             total_holds = 0,
-            total_issued_tickets = 96,
+            total_issued_tickets = issued,
             total_orders = 88,
             ticket_types = new[]
             {
@@ -342,8 +344,8 @@ public class TicketTailorServiceTests
         summary.EventName.Should().Be("Elsewhere 2026");
         responseContent.WasDisposed.Should().BeTrue();
         summary.TotalCapacity.Should().Be(2000);
-        summary.TicketsSold.Should().Be(96);
-        summary.TicketsRemaining.Should().Be(1904);
+        summary.TicketsSold.Should().Be(issued);
+        summary.TicketsRemaining.Should().Be(2000 - issued);
     }
 
     [HumansFact]
@@ -351,6 +353,28 @@ public class TicketTailorServiceTests
     {
         var handler = new RecordingHttpHandler();
         var content = handler.EnqueueResponse(HttpStatusCode.OK, null);
+        var service = TicketTailorTestHost.CreateService(handler);
+
+        var load = () => service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        await load.Should().ThrowAsync<HttpRequestException>();
+        content.WasDisposed.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("name", null)]
+    [Xunit.InlineData("name", "null")]
+    [Xunit.InlineData("name", "\" \"")]
+    [Xunit.InlineData("total_issued_tickets", null)]
+    [Xunit.InlineData("total_issued_tickets", "null")]
+    [Xunit.InlineData("total_issued_tickets", "\"many\"")]
+    public async Task GetEventSummaryAsync_RejectsIncompleteEventSummary(string field, string? jsonValue)
+    {
+        var document = JsonNode.Parse("""{"name":"Elsewhere 2026","total_issued_tickets":0,"ticket_groups":[]}""")!.AsObject();
+        if (jsonValue is null) document.Remove(field);
+        else document[field] = JsonNode.Parse(jsonValue);
+        var handler = new RecordingHttpHandler();
+        var content = handler.EnqueueResponse(HttpStatusCode.OK, document);
         var service = TicketTailorTestHost.CreateService(handler);
 
         var load = () => service.GetEventSummaryAsync("ev_test", Xunit.TestContext.Current.CancellationToken);
