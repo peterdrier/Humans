@@ -20,17 +20,10 @@ internal sealed class GoogleAdminService(
 {
     private const string NobodiesTeamDomain = "nobodies.team";
 
-    // Null when the address isn't linked. Same verified > UpdatedAt > UserId tie-break as
-    // GetWorkspaceAccountListAsync, so the audit subject matches /Google/Accounts.
     private async Task<Guid?> TryFindLinkedUserIdAsync(string email, CancellationToken ct)
     {
         var matches = await userEmailService.MatchByEmailsAsync([email], ct);
-        return matches
-            .OrderByDescending(m => m.IsVerified)
-            .ThenByDescending(m => m.UpdatedAt)
-            .ThenBy(m => m.UserId)
-            .Select(m => (Guid?)m.UserId)
-            .FirstOrDefault();
+        return UserEmailMatchOwner.ByEmail(matches).GetValueOrDefault(email)?.UserId;
     }
 
     public async Task<WorkspaceAccountListResult> GetWorkspaceAccountListAsync(
