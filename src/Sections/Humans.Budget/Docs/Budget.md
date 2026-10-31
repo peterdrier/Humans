@@ -195,6 +195,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
+
 - Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. Year-by-id retains archived years for historical report labels.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).

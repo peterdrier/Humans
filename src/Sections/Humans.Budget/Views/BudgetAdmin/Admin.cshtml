@@ -44,7 +44,7 @@
     </div>
 }
 
-@foreach (var budgetYear in Model)
+@foreach (var budgetYear in Model.OrderByDescending(y => y.Year, StringComparer.Ordinal))
 {
     var yearEditId = $"year-edit-{budgetYear.Id.ToString("N")}";
     var yearGroupsId = $"year-groups-{budgetYear.Id.ToString("N")}";

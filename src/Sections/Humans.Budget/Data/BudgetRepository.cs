@@ -30,10 +30,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (!includeArchived)
             query = query.Where(y => !y.IsDeleted);
 
-        return await query
-            // arch:db-sort-ok budget year list chronology
-            .OrderByDescending(y => y.Year)
-            .ToListAsync(ct);
+        return await query.ToListAsync(ct);
     }
 
     public async Task<BudgetYear?> GetYearByIdAsync(Guid id, CancellationToken ct = default)

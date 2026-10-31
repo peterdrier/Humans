@@ -22,7 +22,7 @@
                     <i class="fa-solid fa-calendar me-1"></i>Switch Year
                 </button>
                 <ul class="dropdown-menu">
-                    @foreach (var y in allYears)
+                    @foreach (var y in allYears.OrderByDescending(y => y.Year, StringComparer.Ordinal))
                     {
                         <li>
                             <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == year.Id ? "active" : "")">
