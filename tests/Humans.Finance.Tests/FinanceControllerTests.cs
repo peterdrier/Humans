@@ -89,6 +89,23 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task HoldedUnmatched_OrdersDocumentsNewestFirst()
+    {
+        _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedUnmatchedRow("old", "F1", "Acme", null, 10m, "No account, no tag", "https://holded/old")
+                { Date = new LocalDate(2026, 1, 1) },
+            new HoldedUnmatchedRow("new", "F2", "Acme", null, 20m, "No account, no tag", "https://holded/new")
+                { Date = new LocalDate(2026, 6, 1) },
+        ]);
+
+        var result = await MakeController().HoldedUnmatched();
+
+        var rows = result.Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeAssignableTo<IReadOnlyList<HoldedUnmatchedRow>>().Which;
+        rows.Select(d => d.HoldedDocId).Should().Equal("new", "old");
+    }
+
+    [HumansFact]
     public async Task CashFlow_NoActiveYear_RedirectsToBudgetOverview()
     {
         var controller = MakeControllerWithHttpContext(Guid.NewGuid());

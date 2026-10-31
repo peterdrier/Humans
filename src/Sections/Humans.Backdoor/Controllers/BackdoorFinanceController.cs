@@ -206,7 +206,7 @@ internal sealed class BackdoorFinanceController(
             lastError = syncInfo.LastError,
             lastSyncedDocCount = syncInfo.LastSyncedDocCount,
             creditorBindingCount = syncInfo.CreditorBindingCount,
-            unmatched = unmatched.Select(u => new
+            unmatched = unmatched.OrderByDescending(u => u.Date).Select(u => new
             {
                 holdedDocId = u.HoldedDocId,
                 docNumber = u.DocNumber,

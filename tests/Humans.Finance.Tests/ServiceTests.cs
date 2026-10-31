@@ -1885,6 +1885,7 @@ public class HoldedFinanceServiceTests
             ("account-only", "Account not mapped"),
             ("tags-only", "Tags not matched"));
         rows[0].HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-doc-neither");
+        rows.Should().OnlyContain(r => r.Date == new LocalDate(2026, 4, 1));
     }
 
     private static HoldedExpenseDoc UnmatchedDoc(string docNumber, string? account, string tagsJson) => new()

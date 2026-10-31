@@ -615,7 +615,10 @@ public class BackdoorFinanceControllerTests
         _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
             new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, 4));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1"),
+            new HoldedUnmatchedRow("d0", "F250001", "Acme", "Old supplies", 20m, "No account, no tag", "https://holded/d0")
+                { Date = new LocalDate(2026, 1, 1) },
+            new HoldedUnmatchedRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1")
+                { Date = new LocalDate(2026, 6, 1) },
         ]);
 
         var result = await _sut.HoldedSync(Xunit.TestContext.Current.CancellationToken);
@@ -624,6 +627,9 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""status"":""Idle""");
         json.Should().Contain(@"""creditorBindingCount"":4");
         json.Should().Contain(@"""docNumber"":""F260001""");
+        using var payload = JsonDocument.Parse(json);
+        payload.RootElement.GetProperty("unmatched").EnumerateArray()
+            .Select(d => d.GetProperty("holdedDocId").GetString()).Should().Equal("d1", "d0");
     }
 
     [HumansFact]
