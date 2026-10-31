@@ -23,7 +23,7 @@ Repository: `IExpenseRepository`.
 Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
 `IUserService`, `IFinanceService` / `IFinanceWrite` (Finance section — `GetIbanAsync` /
 `SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IUserEmailService`, `IEmailService`, `IAuditLogService`,
-`IHoldedClient`, `IHoldedFinanceService` (Finance section — creditor balance exposure to
+`IHoldedService.IsConfigured`, `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`
 (Preapprovals section — `GetGrantAsync` / `ListClaimableForUserAsync` for the grant a report
@@ -81,7 +81,7 @@ dependency so Finance can inject it without a DI cycle.
 | HoldedExpenseOutboxEvents | R (latest create event per report) |
 
 Cross-section calls via `IUserService` (resolves the submitter to the survivor after a merge,
-the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedClient.IsConfigured` (the
+the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedService.IsConfigured` (the
 `NotConfigured` sync state). No `IMemoryCache`.
 
 ---

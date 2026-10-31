@@ -68,7 +68,7 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
             _auditLogService,
-            Substitute.For<IHoldedClient>(),
+            Substitute.For<IHoldedService>(),
             _holdedFinance,
             _finance,
             Substitute.For<IFinanceWrite>(),

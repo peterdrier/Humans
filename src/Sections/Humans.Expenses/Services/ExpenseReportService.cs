@@ -31,7 +31,7 @@ internal sealed class ExpenseReportService(
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
-    IHoldedClient holdedClient,
+    IHoldedService holded,
     IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IFinanceWrite financeWrite,
@@ -135,7 +135,7 @@ internal sealed class ExpenseReportService(
                 .Sum(a => a.Booked);
 
     private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent) =>
-        ResolveSyncState(outboxEvent, holdedClient.IsConfigured);
+        ResolveSyncState(outboxEvent, holded.IsConfigured);
 
     internal static ExpenseHoldedSyncState ResolveSyncState(
         HoldedExpenseOutboxEvent? outboxEvent, bool holdedConfigured)

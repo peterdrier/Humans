@@ -8,7 +8,7 @@ namespace Humans.Expenses.Services;
 internal sealed class ExpenseHoldedBookingService(
     IExpenseRepository repo,
     IUserService userService,
-    IHoldedClient holdedClient) : IExpenseHoldedBookingService
+    IHoldedService holded) : IExpenseHoldedBookingService
 {
     public async Task<IReadOnlyList<ExpenseHoldedBooking>> GetHoldedBookingsAsync(CancellationToken ct = default)
     {
@@ -34,7 +34,7 @@ internal sealed class ExpenseHoldedBookingService(
         var reports = await repo.GetAllAsync(ct);
         var creditors = await CreditorsAsync(reports, ct);
         var outbox = await repo.GetLatestOutboxByReportAsync(ct);
-        var configured = holdedClient.IsConfigured;
+        var configured = holded.IsConfigured;
 
         var lines = new List<ExpenseHoldedReconLine>();
         foreach (var report in reports)

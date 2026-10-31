@@ -68,6 +68,7 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IFinanceWrite _financeWrite = Substitute.For<IFinanceWrite>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly IHoldedFinanceWrite _holdedFinanceWrite = Substitute.For<IHoldedFinanceWrite>();
@@ -95,6 +96,7 @@ public sealed partial class ExpenseReportServiceTests
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so the
         // substitute has to claim a key or it returns before touching anything.
         _holdedClient.IsConfigured.Returns(true);
+        _holdedService.IsConfigured.Returns(true);
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
@@ -111,7 +113,7 @@ public sealed partial class ExpenseReportServiceTests
             _emailService,
             TestExpensesEmails.Create(),
             AuditLog,
-            _holdedClient,
+            _holdedService,
             _holdedFinance,
             _finance,
             _financeWrite,
@@ -903,7 +905,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1024,7 +1026,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1146,7 +1148,7 @@ public sealed partial class ExpenseReportServiceTests
         var repo = new ExpenseRepository(factory);
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
             _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
-            _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
+            _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         var ct = TestContext.Current.CancellationToken;
         var actor = Guid.NewGuid();
@@ -1458,7 +1460,7 @@ public sealed partial class ExpenseReportServiceTests
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
             _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
-            _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
+            _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
@@ -1866,7 +1868,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1895,7 +1897,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1934,7 +1936,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
