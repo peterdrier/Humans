@@ -97,7 +97,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/LinkGroupToTeam` | POST | Admin | Link an unlinked domain group to a team |
 | `/Google/CheckEmailRenames` | POST | Admin | Detect OAuth email renames |
 | `/Google/EmailRenames` | GET | Admin | PRG landing for email rename results |
-| `/Google/EmailFlagViolations` | GET | Admin | List users with `IsPrimary` flag violations |
+| `/Google/EmailFlagViolations` | GET | Admin | List users with `IsPrimary` flag violations; the controller orders by burner name with ordinal comparison ignoring case, retaining request cancellation through the Users diagnostic and bulk name read |
 | `/Google/Accounts` | GET | Admin | @nobodies.team Workspace account list (2FA, recovery email) |
 | `/Google/Accounts/Provision` | POST | Admin | Provision standalone @nobodies.team account |
 | `/Google/Accounts/Suspend` | POST | Admin | Suspend a Workspace account |

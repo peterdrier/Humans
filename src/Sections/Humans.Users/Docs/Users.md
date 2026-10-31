@@ -467,6 +467,8 @@ Lower values are more restrictive. A viewer with access level X can see fields w
 
 ### UserEmail
 
+The email-flag diagnostic returns violations without display ordering. Its Google admin consumer resolves names through the existing Users bulk read and orders the page.
+
 **Table:** `user_emails`
 
 Per-user email addresses (login, verified, notifications). `UserEmail` has no `User` nav.

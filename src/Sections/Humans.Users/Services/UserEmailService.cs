@@ -554,7 +554,7 @@ internal sealed class UserEmailService(
         var infos = await userService.GetAllUserInfosAsync(cancellationToken);
 
         var violations = new List<UserEmailFlagViolation>();
-        foreach (var info in infos.OrderBy(i => i.BurnerName, StringComparer.OrdinalIgnoreCase))
+        foreach (var info in infos)
         {
             if (info.UserEmails.Count == 0) continue;
 

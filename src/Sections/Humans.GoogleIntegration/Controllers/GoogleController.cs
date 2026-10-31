@@ -734,7 +734,11 @@ internal sealed class GoogleController(
         CancellationToken ct)
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
-        return View(violations);
+        if (violations.Count == 0) return View(violations);
+
+        var people = await UserService.GetUserInfosAsync(violations.Select(v => v.UserId).ToList(), ct);
+        return View(violations.OrderBy(v => people.GetValueOrDefault(v.UserId)?.BurnerName,
+            StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     [HttpGet("")]
