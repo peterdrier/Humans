@@ -204,7 +204,8 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
             dropped.Add(drop.Id);
         }
 
-        // A survivor already managing the same program keeps one row.
+        // A survivor already managing the same program keeps one row. Re-key the new row's actor here:
+        // the actor-column query below reads the store and cannot see this newly added manager.
         var sourceManagers = await ctx.Managers.Where(m => m.UserId == sourceUserId).ToListAsync(ct);
         var targetPrograms = await ctx.Managers.Where(m => m.UserId == targetUserId)
             .Select(m => m.ProgramId).ToListAsync(ct);
@@ -216,7 +217,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
                 {
                     ProgramId = row.ProgramId,
                     UserId = targetUserId,
-                    AddedByUserId = row.AddedByUserId,
+                    AddedByUserId = row.AddedByUserId == sourceUserId ? targetUserId : row.AddedByUserId,
                     AddedAt = row.AddedAt
                 });
         }

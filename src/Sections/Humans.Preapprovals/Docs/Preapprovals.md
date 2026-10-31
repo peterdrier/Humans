@@ -199,8 +199,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   (created, managed, decided; null when empty). Export follows the resolved identity chain,
   so archived IDs return the same grants and decisions. Erasure deletes Applied and
   manager rows and keeps every decided grant (Art. 17(3)(b), fiscal retention). Merge re-keys every
-  user-id column, dedups manager rows, collapses duplicate pending applications to the older
-  one with an audit entry.
+  user-id column (including who added a moved manager), preserves other authors and the original
+  manager-added timestamp, dedups manager rows, and collapses duplicate pending applications to the
+  older one with an audit entry.
 
 ## Cross-Section Dependencies
 
