@@ -68,9 +68,18 @@ internal sealed class ShiftDashboardPageBuilder(
             Overview = overview,
             CoordinatorActivity = coordinatorActivity,
             Trends = trends,
-            DailyDepartmentStaffing = dailyDeptStaffing,
+            DailyDepartmentStaffing = dailyDeptStaffing.Select(day => day with
+            {
+                Departments = day.Departments.OrderBy(d => d.DepartmentName, StringComparer.Ordinal).ToList()
+            }).ToList(),
             ShiftDurationBreakdown = shiftDurationBreakdown,
-            CoverageHeatmap = coverageHeatmap,
+            CoverageHeatmap = coverageHeatmap with
+            {
+                Rotas = coverageHeatmap.Rotas
+                    .OrderBy(r => r.DepartmentName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(r => r.RotaName, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+            },
             TrendWindow = request.TrendWindow,
             IsDevelopment = environment.IsDevelopment(),
             Countdown = BuildCountdown(es)

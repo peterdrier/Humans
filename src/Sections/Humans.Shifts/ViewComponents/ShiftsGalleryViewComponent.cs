@@ -39,7 +39,7 @@ internal sealed class ShiftsGalleryViewComponent(
             {
                 sampleDeptId = depts[0].TeamId;
                 var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
-                rota = rotas.Select(r => r.Rota).FirstOrDefault();
+                rota = rotas.Select(r => r.Rota).OrderBy(r => r.Name, StringComparer.Ordinal).FirstOrDefault();
             }
 
             var sampleRotaShifts = new List<ShiftDisplayItem>();

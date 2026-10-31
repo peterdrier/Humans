@@ -358,7 +358,6 @@ internal sealed class ShiftManagementService(
     {
         var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
         return rotas
-            .OrderBy(r => r.Name, StringComparer.Ordinal)
             .Select(r => new ShiftAdminRota(
                 ToRotaInfo(r),
                 [.. r.Shifts.Select(s => new ShiftAdminShift(
@@ -1823,7 +1822,6 @@ internal sealed class ShiftManagementService(
             }
 
             var depts = byDept.Values
-                .OrderBy(v => v.Name, StringComparer.Ordinal)
                 .Select(v => new DepartmentDayCount(v.Name, v.Count))
                 .ToList();
 
@@ -1922,11 +1920,6 @@ internal sealed class ShiftManagementService(
                 departmentName,
                 cells));
         }
-
-        rows = rows
-            .OrderBy(r => r.DepartmentName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(r => r.RotaName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
 
         return new CoverageHeatmap(days, rows);
     }
