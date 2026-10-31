@@ -27,7 +27,7 @@ internal sealed partial class WorkgroupService(
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
     IHoldedFinanceWrite finance,
-    IHoldedClient holded,
+    IHoldedService holded,
     INotificationService notifications,
     IEmailService email,
     WorkgroupsEmails emailFactory,
@@ -636,12 +636,17 @@ internal sealed partial class WorkgroupService(
         return new(account);
     }
 
-    public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default)
     {
-        try { return await holded.ListExpenseAccountsAsync(ct); }
+        try
+        {
+            return (await holded.GetChartAsync(ct))
+                .Where(a => a.Number is >= 60000000 and <= 69999999 && !a.Archived)
+                .ToList();
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Holded chart unavailable; the link-existing picker is empty");
+            logger.LogWarning(ex, "Holded mirror unavailable; the link-existing picker is empty");
             return [];
         }
     }

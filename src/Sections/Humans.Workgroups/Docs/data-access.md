@@ -8,7 +8,7 @@
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedService.cs
 -->
 
 # Workgroups — Data Access
@@ -52,7 +52,7 @@ Repository: `IWorkgroupRepository`.
 
 Cross-section calls: `IUserService`, `IUserEmailService`, `IRoleAssignmentService`,
 `ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IHoldedFinanceWrite`,
-`IHoldedClient`, `INotificationService`, `IEmailService`, the section's own
+`IHoldedService`, `INotificationService`, `IEmailService`, the section's own
 `WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).
 The inner service has no `IMemoryCache`. `ITeamService` is used by
 `WorkgroupsController` and `WorkgroupDriveAccessSource` (Board membership), not the service.

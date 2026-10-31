@@ -152,9 +152,9 @@
                 <div class="form-check mb-2"><input class="form-check-input" type="radio" name="AccountMode" id="mode-link" value="link" /><label class="form-check-label" for="mode-link">Link an existing account</label></div>
                 <select class="form-select mb-3" name="ExistingAccountNum" style="max-width: 480px;">
                     <option value="">— choose —</option>
-                    @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.AccountNum))
+                    @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.Number))
                     {
-                        <option value="@a.AccountNum">@a.AccountNum — @a.Name</option>
+                        <option value="@a.Number">@a.Number — @a.Name</option>
                     }
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary">Save budget</button>

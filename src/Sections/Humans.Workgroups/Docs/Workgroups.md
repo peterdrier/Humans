@@ -6,7 +6,7 @@
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
   src/Sections/Humans.Calendar/Contracts/ICalendarFeedContributor.cs
@@ -464,8 +464,8 @@ should end is the Board's decision, taken on the register in front of them.
   with one delivery per live recipient even when multiple requested ids resolve to them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
 - **Finance**: `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync` /
-  `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedClient.ListExpenseAccountsAsync`
-  for the admin picker only.
+  `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Account creation and linking still go through Finance.
 
 ## GDPR
 
@@ -523,7 +523,7 @@ display-name reads.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedClient`.
+  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
   `IGovernanceService` is used by `WorkgroupsController` only.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

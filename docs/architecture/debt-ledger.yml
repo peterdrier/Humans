@@ -164,7 +164,8 @@ inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-10-30
     id: CENTRAL-105
-    what: "IHoldedClient is still public because four sections call the Holded connector directly instead of through IHoldedService / IHoldedWrite (the single-mirror refactor, phase 1 built that face). Remaining callers: Finance (Service, HoldedDocumentSync, SepaBankBooking), Expenses (ExpenseHoldedPublisher, ExpenseReportBackgroundProcessor, ExpenseHoldedBookingService, ExpenseReportService for IsConfigured), Store (Service, StoreInvoiceIssuer), Workgroups (WorkgroupService). Each later phase moves one section's callers onto IHoldedService/IHoldedWrite and deletes its own Holded copies; when none remain, IHoldedClient goes internal. Design: the single-mirror section-flow records (holded-, pleo-, expenses-, finance-section.html, 2026-10-30)."
+    status: partial
+    what: "IHoldedClient is still public because sections call the Holded connector directly instead of through IHoldedService / IHoldedWrite (the single-mirror refactor, phase 1 built that face). Remaining callers: Finance (Service, HoldedDocumentSync, SepaBankBooking), Expenses (ExpenseHoldedPublisher, ExpenseReportBackgroundProcessor, ExpenseHoldedBookingService, ExpenseReportService for IsConfigured), Store (Service, StoreInvoiceIssuer). Workgroups now reads active expense accounts through IHoldedService.GetChartAsync. Each later phase moves one section's callers onto IHoldedService/IHoldedWrite and deletes its own Holded copies; when none remain, IHoldedClient goes internal. Design: the single-mirror section-flow records (holded-, pleo-, expenses-, finance-section.html, 2026-10-30)."
     review: panel
   - added: 2026-10-21
     id: CENTRAL-89
