@@ -70,7 +70,9 @@ internal interface IWorkgroupRepository : IRepository
 
     Task AddDocumentAsync(WorkgroupDocument document, CancellationToken ct = default);
 
-    Task UpdateDocumentAsync(WorkgroupDocument document, CancellationToken ct = default);
+    /// <summary>Document fields and optional system log entries in one save.</summary>
+    Task UpdateDocumentAsync(
+        WorkgroupDocument document, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null);
 
     Task AddCommentAsync(WorkgroupDocumentComment comment, CancellationToken ct = default);
 

@@ -192,11 +192,13 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
                     c.Arg<IReadOnlyList<WorkgroupLogEntry>?>(), c.Arg<IReadOnlyList<WorkgroupMember>?>());
                 await cancellation.CancelAsync();
             });
-        repository.UpdateDocumentAsync(Arg.Any<WorkgroupDocument>(), Arg.Any<CancellationToken>())
+        repository.UpdateDocumentAsync(Arg.Any<WorkgroupDocument>(), Arg.Any<CancellationToken>(),
+                Arg.Any<IReadOnlyList<WorkgroupLogEntry>?>())
             .Returns(async c =>
             {
                 c.Arg<CancellationToken>().Should().Be(cancellation.Token);
-                await real.UpdateDocumentAsync(c.Arg<WorkgroupDocument>(), c.Arg<CancellationToken>());
+                await real.UpdateDocumentAsync(c.Arg<WorkgroupDocument>(), c.Arg<CancellationToken>(),
+                    c.Arg<IReadOnlyList<WorkgroupLogEntry>?>());
                 await cancellation.CancelAsync();
             });
         repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())

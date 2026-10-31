@@ -265,16 +265,6 @@ internal sealed partial class WorkgroupService
             UpdatedAt = now
         };
 
-    private Task AddSystemEntryAsync(
-        Workgroup w,
-        WorkgroupLogKind kind,
-        Instant now,
-        string? body,
-        CancellationToken ct,
-        Guid? authorUserId = null,
-        Guid? documentId = null) =>
-        repository.AddLogEntryAsync(SystemEntry(w.Id, kind, now, body, authorUserId, documentId), ct);
-
     /// <summary>
     /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
     /// rather than shadowing the form.

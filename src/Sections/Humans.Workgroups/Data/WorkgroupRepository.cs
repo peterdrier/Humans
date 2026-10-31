@@ -167,11 +167,13 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateDocumentAsync(WorkgroupDocument document, CancellationToken ct = default)
+    public async Task UpdateDocumentAsync(
+        WorkgroupDocument document, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(document);
         ctx.Entry(document).State = EntityState.Modified;
+        if (logEntries is not null) ctx.LogEntries.AddRange(logEntries);
         await ctx.SaveChangesAsync(ct);
     }
 

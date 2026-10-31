@@ -254,11 +254,10 @@ internal sealed partial class WorkgroupService
         document.DispositionAt = now;
         document.DispositionByUserId = actorUserId;
         document.UpdatedAt = now;
-        await repository.UpdateDocumentAsync(document, ct);
+        await repository.UpdateDocumentAsync(document, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.DispositionRecorded, now,
+                $"{disposition}: {note.Trim()}", documentId: document.Id)]);
         ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DispositionRecorded, now,
-            $"{disposition}: {note.Trim()}", ct, documentId: document.Id);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupDispositionRecorded, workgroup,
             $"Recorded {disposition} on '{document.Title}': {note.Trim()}", actorUserId,
             AuditEntityTypes.WorkgroupDocument, document.Id);
