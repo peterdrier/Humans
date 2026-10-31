@@ -182,24 +182,9 @@ internal sealed class SurveyService(
         var surveyId = Guid.NewGuid();
         var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
-        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing: null, ct);
-        if (prepared.Error is not null) return new(Error: prepared.Error);
-        List<SurveyQuestion> questions;
-        try
-        {
-            questions = MapQuestions(surveyId, prepared.Input);
-            error = SurveyDefinitionValidation.Validate(questions, input);
-            if (error is not null)
-            {
-                await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-                return new(Error: error);
-            }
-        }
-        catch
-        {
-            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-            throw;
-        }
+        var (questions, newStoragePaths, questionError) = await PrepareQuestionsAsync(
+            surveyId, input, existing: null, allowRankedAvailabilityChanges: false, ct);
+        if (questionError is not null) return new(Error: questionError);
 
         var survey = new Survey
         {
@@ -216,7 +201,7 @@ internal sealed class SurveyService(
         }
         catch
         {
-            await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
+            await CleanupFailedInformationImageUploadAsync(surveyId, newStoragePaths);
             throw;
         }
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
@@ -265,45 +250,9 @@ internal sealed class SurveyService(
         }
         var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
-        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing, ct);
-        if (prepared.Error is not null) return new(Error: prepared.Error);
-        List<SurveyQuestion> questions;
-        try
-        {
-            questions = MapQuestions(surveyId, prepared.Input);
-            if (!allowRankedAvailabilityChanges)
-            {
-                var existingById = existing.Questions.ToDictionary(question => question.Id);
-                foreach (var question in questions.Where(question => question.Type == SurveyQuestionType.RankedChoice))
-                {
-                    if (existingById.TryGetValue(question.Id, out var persisted))
-                    {
-                        question.RankedUnavailableOptionValues =
-                            persisted.RankedUnavailableOptionValues?.ToList();
-                    }
-                }
-            }
-            error = SurveyDefinitionValidation.Validate(questions, input);
-            if (error is not null)
-            {
-                await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-                return new(Error: error);
-            }
-            if (await repo.HasSavedAnswersAsync(surveyId, ct))
-            {
-                error = SurveyDefinitionValidation.ValidateRankedDefinitionFrozen(existing.Questions, questions);
-                if (error is not null)
-                {
-                    await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-                    return new(Error: error);
-                }
-            }
-        }
-        catch
-        {
-            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-            throw;
-        }
+        var (questions, newStoragePaths, questionError) = await PrepareQuestionsAsync(
+            surveyId, input, existing, allowRankedAvailabilityChanges, ct);
+        if (questionError is not null) return new(Error: questionError);
 
         var survey = new Survey { Id = surveyId };
         ApplyEditableFields(survey, input, questions, invitationEmailSubject, invitationEmailMessage, publicSlug, now);
@@ -316,11 +265,47 @@ internal sealed class SurveyService(
         }
         catch
         {
-            await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
+            await CleanupFailedInformationImageUploadAsync(surveyId, newStoragePaths);
             throw;
         }
         await auditLog.LogAsync(SurveysAuditActions.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
         return new(surveyId);
+    }
+
+    private async Task<(List<SurveyQuestion> Questions, IReadOnlyList<string> NewStoragePaths, SurveyAuthoringError? Error)>
+        PrepareQuestionsAsync(
+            Guid surveyId, SurveyEditInput input, Survey? existing, bool allowRankedAvailabilityChanges, CancellationToken ct)
+    {
+        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing, ct);
+        if (prepared.Error is not null) return ([], [], prepared.Error);
+        try
+        {
+            var questions = MapQuestions(surveyId, prepared.Input);
+            if (existing is not null && !allowRankedAvailabilityChanges)
+            {
+                var existingById = existing.Questions.ToDictionary(question => question.Id);
+                foreach (var question in questions.Where(question => question.Type == SurveyQuestionType.RankedChoice))
+                {
+                    if (existingById.TryGetValue(question.Id, out var persisted))
+                    {
+                        question.RankedUnavailableOptionValues =
+                            persisted.RankedUnavailableOptionValues?.ToList();
+                    }
+                }
+            }
+            var error = SurveyDefinitionValidation.Validate(questions, input);
+            if (error is null && existing is not null && await repo.HasSavedAnswersAsync(surveyId, ct))
+                error = SurveyDefinitionValidation.ValidateRankedDefinitionFrozen(existing.Questions, questions);
+            if (error is null) return (questions, prepared.NewStoragePaths, null);
+
+            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            return ([], [], error);
+        }
+        catch
+        {
+            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            throw;
+        }
     }
 
     private static void ApplyEditableFields(
