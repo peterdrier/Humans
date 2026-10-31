@@ -51,7 +51,7 @@ internal interface IGrantRepository : IRepository
 
     /// <summary>
     /// Re-keys grant, manager and actor columns. Where both hold a live grant in one program, the newer is revoked so
-    /// the survivor keeps one. Returns the ids revoked. Idempotent.
+    /// the survivor keeps one. Revocation and re-keying commit in one transaction. Returns the ids revoked. Idempotent.
     /// </summary>
     Task<IReadOnlyList<Guid>> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant now, CancellationToken ct = default);

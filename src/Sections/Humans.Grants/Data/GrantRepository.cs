@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Grants.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -138,10 +139,14 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
     public async Task<IReadOnlyList<Guid>> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant now, CancellationToken ct = default)
     {
+        using var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled);
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Two live grants in one program would break the one-live-grant index once re-keyed:
-        // the newer is revoked and saved first, so the re-key below never collides.
+        // the newer is revoked and saved first, so the re-key below never collides. Both saves share the
+        // transaction: a failed re-key must not leave a revoked grant on an account that never merged.
         var sourceGrants = await ctx.Grants.Where(g => g.UserId == sourceUserId).ToListAsync(ct);
         var targetLive = await ctx.Grants.Where(g => g.UserId == targetUserId && g.RevokedAt == null).ToListAsync(ct);
         var revoked = new List<Guid>();
@@ -188,6 +193,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
             g.RevokedByUserId = targetUserId;
 
         await ctx.SaveChangesAsync(ct);
+        scope.Complete();
         return revoked;
     }
 

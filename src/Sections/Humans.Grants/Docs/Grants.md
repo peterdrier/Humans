@@ -98,7 +98,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 - When a grant is issued (by hand or source) or its notice resent: an email (`grant_issued` template, System category) in the person's language and an Informational `GrantReceived` notice linking to `/Profile/Me`; `NotifiedAt` is stamped.
 - When a grant is revoked: an email (`grant_revoked`) with the reason if given, and an Informational `GrantRevoked` notice.
-- When two accounts merge: grants and manager rows move to the surviving account; a duplicate live grant in the same program is revoked ("Duplicate after account merge") and audited.
+- When two accounts merge: grants and manager rows move to the surviving account; a duplicate live grant in the same program is revoked ("Duplicate after account merge") and audited. Duplicate revocation is saved before re-keying to respect the one-live-grant index, with both saves in one transaction: a failed re-key rolls back the revocation and emits no success audit.
 - A sign-in cookie issued before a merge still carries the archived id; every authorization check and the "My grants" card resolve it through Users to the surviving account, so the person keeps their access and card. The program index matches manager rows against every id the viewer has held, so programs authorized through an archived manager id remain discoverable.
 - When a person is erased: their grants and manager rows are deleted; their id stays on programs created and grants issued or revoked (`GrantDecisions` slice).
 
