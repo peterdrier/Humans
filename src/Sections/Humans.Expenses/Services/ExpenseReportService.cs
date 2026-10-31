@@ -166,8 +166,8 @@ internal sealed class ExpenseReportService(
         var queue = await repo.GetForReviewQueueAsync(ct);
         if (isFinanceAdmin) return queue;
 
-        // Filtering the whole queue in memory beats a per-audience query at this scale and keeps the repository's
-        // order. Drafts and withdrawals are excluded upstream for everyone.
+        // Filtering the whole queue in memory beats a per-audience query at this scale.
+        // Drafts and withdrawals are excluded upstream for everyone.
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
         var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);

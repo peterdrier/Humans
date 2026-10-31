@@ -50,8 +50,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status != ExpenseReportStatus.Draft
                      && r.Status != ExpenseReportStatus.Withdrawn)
-            // arch:db-sort-ok finance review queue — newest submissions on top so reviewers see fresh work first
-            .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }

@@ -738,7 +738,9 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = await IsFinanceAdminAsync();
-            var reports = await service.GetReviewQueueAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted);
+            var reports = (await service.GetReviewQueueAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted))
+                .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
+                .ToList();
             var submitterNames = await ResolveSubmitterNamesAsync(reports, HttpContext.RequestAborted);
             return View(new ExpenseReviewViewModel
             {
