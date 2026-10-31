@@ -197,7 +197,7 @@ Stored as string via `HasConversion<string>()`.
 
 - The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
 
-- Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. Year-by-id retains archived years for historical report labels.
+- Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. After selecting the active ID, the repository reuses its year-by-id hydration path for groups, categories, line items and ticketing projections. Year-by-id retains archived years for historical report labels.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A Closed year is read-only: year-metadata rename returns an internal refusal result; other repository mutations, including the ticketing sync pair, refuse with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
