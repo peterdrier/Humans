@@ -26,4 +26,20 @@ internal static class GoogleCredentialLoader
             .ToGoogleCredential();
         return credential.CreateScoped(scopes);
     }
+
+    internal static async Task<string?> GetServiceAccountJsonAsync(
+        GoogleWorkspaceSettings settings, CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(settings.ServiceAccountKeyJson))
+        {
+            return settings.ServiceAccountKeyJson;
+        }
+
+        if (!string.IsNullOrEmpty(settings.ServiceAccountKeyPath))
+        {
+            return await File.ReadAllTextAsync(settings.ServiceAccountKeyPath, ct);
+        }
+
+        return null;
+    }
 }

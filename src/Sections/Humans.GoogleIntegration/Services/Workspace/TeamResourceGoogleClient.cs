@@ -101,16 +101,7 @@ internal sealed class TeamResourceGoogleClient(
             return _serviceAccountEmail;
         }
 
-        string? json = null;
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            json = _settings.ServiceAccountKeyJson;
-        }
-        else if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            json = await File.ReadAllTextAsync(_settings.ServiceAccountKeyPath, ct);
-        }
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
 
         if (json is not null)
         {

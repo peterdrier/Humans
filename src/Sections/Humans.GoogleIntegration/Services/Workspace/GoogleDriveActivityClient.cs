@@ -35,7 +35,7 @@ internal sealed class GoogleDriveActivityClient(
             return _serviceAccountEmail;
         }
 
-        var json = await GetServiceAccountJsonAsync(ct);
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
         if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
@@ -57,7 +57,7 @@ internal sealed class GoogleDriveActivityClient(
             return _serviceAccountClientId;
         }
 
-        var json = await GetServiceAccountJsonAsync(ct);
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
         if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
@@ -223,20 +223,5 @@ internal sealed class GoogleDriveActivityClient(
         });
 
         return _directoryService;
-    }
-
-    private async Task<string?> GetServiceAccountJsonAsync(CancellationToken ct)
-    {
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            return _settings.ServiceAccountKeyJson;
-        }
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            return await System.IO.File.ReadAllTextAsync(_settings.ServiceAccountKeyPath, ct);
-        }
-
-        return null;
     }
 }
