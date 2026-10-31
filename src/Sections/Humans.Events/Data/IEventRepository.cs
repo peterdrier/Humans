@@ -40,6 +40,8 @@ internal interface IEventRepository : IRepository
     Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
     Task AddEventAsync(Event guideEvent, CancellationToken ct = default);
     Task SaveEventAsync(Event guideEvent, CancellationToken ct = default);
+    /// <summary>Commits all validated import additions and edits together; no-op when both lists are empty.</summary>
+    Task SaveImportedEventsAsync(IReadOnlyList<Event> created, IReadOnlyList<Event> updated, CancellationToken ct = default);
     /// <summary>Only rows still without an event id are written. Returns the rows written.</summary>
     Task<int> AssignEventSettingsIdsAsync(IReadOnlyDictionary<Guid, Guid> eventSettingsIdByEventId, CancellationToken ct = default);
 
