@@ -28,9 +28,9 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Tests.Controllers;
 
 /// <summary>
-/// Gates: <c>Review</c> (GET) and <c>Submit</c> (POST) redirect Stub-state
-/// profiles (null legal name) to <c>/Profile/Me/Edit</c> rather than rendering
-/// the signing form or persisting a <c>ConsentRecord</c>.
+/// Gates: <c>Review</c> (GET) and <c>Submit</c> (POST) redirect a profile missing a
+/// required name to <c>/Profile/Me/Edit</c> rather than rendering the signing form or
+/// persisting a <c>ConsentRecord</c>.
 /// </summary>
 public sealed class ConsentControllerTests
 {
@@ -96,6 +96,41 @@ public sealed class ConsentControllerTests
         }));
         Assert.Equal("Consent_SubmitError", controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage]);
         await _onboardingService.DidNotReceiveWithAnyArgs().ConsentSignedAsync(default);
+    }
+
+    [HumansFact]
+    public async Task Submit_VersionNotFound_ShowsSubmitError()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(false, ErrorKey: "NotFound"));
+        var controller = BuildSut(userId);
+
+        await controller.Submit(new ConsentSubmitModel { DocumentVersionId = versionId, ExplicitConsent = true });
+
+        Assert.Equal("Consent_SubmitError", controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage]);
+    }
+
+    [HumansFact]
+    public async Task Submit_RecordedButOnboardingReportFails_ShowsThankYouNotError()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(true, DocumentName: "Privacy"));
+        _onboardingService.ConsentSignedAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("onboarding down")));
+        var controller = BuildSut(userId);
+
+        await controller.Submit(new ConsentSubmitModel { DocumentVersionId = versionId, ExplicitConsent = true });
+
+        Assert.Equal("Consent_ThankYou", controller.TempData[Humans.Base.Constants.TempDataKeys.SuccessMessage]);
+        Assert.False(controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.ErrorMessage));
     }
 
     private static ProfileInfo StubProfile() => UserFixtures.Profile();
@@ -190,7 +225,6 @@ public sealed class ConsentControllerTests
     [InlineData("IndexViewer")]
     [InlineData("IndexDashboard")]
     [InlineData("ReviewViewer")]
-    [InlineData("ReviewProfile")]
     [InlineData("ReviewDetail")]
     public async Task ConsentPages_StopLoadingAfterRequestCancellation(string boundary)
     {
@@ -204,9 +238,8 @@ public sealed class ConsentControllerTests
         {
             ct.ThrowIfCancellationRequested();
             reads++;
-            if (abandon && ((reads == 1 && (string.Equals(boundary, "IndexDashboard", StringComparison.Ordinal)
-                    || string.Equals(boundary, "ReviewProfile", StringComparison.Ordinal)))
-                || (reads == 2 && string.Equals(boundary, "ReviewDetail", StringComparison.Ordinal))))
+            if (abandon && reads == 1 && (string.Equals(boundary, "IndexDashboard", StringComparison.Ordinal)
+                    || string.Equals(boundary, "ReviewDetail", StringComparison.Ordinal)))
                 await request.CancelAsync();
             return WrapInUserInfo(userId, ActiveProfile());
         }
@@ -246,7 +279,6 @@ public sealed class ConsentControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Edit", redirect.ActionName);
         Assert.Equal("Profile", redirect.ControllerName);
-        // Service must NOT be called when gated.
         await _consentService.DidNotReceive().GetConsentReviewDetailAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }

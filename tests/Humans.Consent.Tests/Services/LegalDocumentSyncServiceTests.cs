@@ -53,7 +53,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team);
 
-        // Team-name stitch: return the seed team when queried.
         _teamService
             .GetTeamsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>

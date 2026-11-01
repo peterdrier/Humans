@@ -1,16 +1,12 @@
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
-using Humans.Consent.Contracts;
+using Humans.Consent.Services;
 
 namespace Humans.Consent.Jobs;
 
-/// <summary>
-/// Public because Shell names the concrete type at registration; HUM0034 makes any other public type in a
-/// section assembly an error.
-/// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SyncLegalDocumentsJob(
+internal sealed class SyncLegalDocumentsJob(
     ILegalDocumentSyncRunner runner,
     IHumansMetrics metrics,
     ILogger<SyncLegalDocumentsJob> logger,
