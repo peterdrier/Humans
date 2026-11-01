@@ -25,7 +25,12 @@ tests when a production-code fix warrants them, as part of that fix; prefer
 existing coverage when sufficient. Never weaken checks. Batch simple, verified
 instances of the same correction into one coherent commit; validate all affected sections and applicable rung
 checks once per completed batch. Keep complex or approval-dependent changes
-separate. Freeze membership before editing and stop adding candidates at the
+separate. Before editing, discover related instances across the owning section
+and shared consumers, and state the candidates and shared validation plan.
+Include verified compatible siblings; justify splitting them by semantics, risk,
+review scope, or time remaining. For a singleton, state the searched scope.
+Carry deferred candidates forward and record split reasons in the report.
+Freeze membership before editing and stop adding candidates at the
 deadline. Run the full non-integration suite once in the final wrapper gate,
 not repeatedly per commit. Test-only work cannot qualify a run for publication.
 
@@ -42,3 +47,9 @@ using recorded, explicit cleanup and gate-repair session IDs. Include linked
 subagents; never infer the run from the reporting chat's current session. Keep
 repair breakdowns separate. Label costs as Standard API equivalents, not actual
 subscription charges. Reporting failure must not block fix publication.
+
+**Scheduled runner version:** The installed launcher fetches the clone's origin
+main before each start and extracts matching cron tools and prompts into a
+versioned release outside the disposable clone. Keep that release for the run;
+fetch failures stop startup without stale fallback. Merged worker changes take
+effect next run; launcher/service changes require reinstallation.

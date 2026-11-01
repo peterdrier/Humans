@@ -13,7 +13,6 @@ internal sealed class ConsentReviewConfiguration : IEntityTypeConfiguration<Cons
         builder.HasKey(r => r.UserId);
         builder.Property(r => r.UserId).ValueGeneratedNever();
 
-        // Stored by name.
         builder.Property(r => r.Status)
             .HasConversion<string>()
             .HasMaxLength(20);
