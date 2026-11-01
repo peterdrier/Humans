@@ -224,6 +224,20 @@ public sealed class FeedbackRepositoryTests : IDisposable
                 CreatedAt = now,
                 UpdatedAt = now,
                 ResolvedAt = now
+            },
+            new FeedbackReport  // WontFix with a later reporter message -> not actionable
+            {
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "d",
+                PageUrl = "/d",
+                Status = FeedbackStatus.WontFix,
+                CreatedAt = now,
+                UpdatedAt = now,
+                ResolvedAt = now,
+                LastAdminMessageAt = now,
+                LastReporterMessageAt = now + Duration.FromMinutes(5)
             });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
