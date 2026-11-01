@@ -12,7 +12,8 @@
         }
         else
         {
-            @foreach (var t in Model.Tickets)
+            @foreach (var t in Model.Tickets.OrderBy(t => t.Status == TicketAttendeeStatus.Void ? 1 : 0)
+                .ThenBy(t => t.AttendeeName, StringComparer.OrdinalIgnoreCase))
             {
                 <vc:ticket-stub stub="@t" />
             }

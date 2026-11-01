@@ -733,12 +733,21 @@ public class EventsControllerTests
     {
         var eventId = StubEvent(submitterId: Guid.NewGuid(), campId: null, EventStatus.ResubmitRequested);
         StubEditableGuideSettings();
+        var firstCategory = new EventCategoryView(Guid.NewGuid(), "First", "first", false, 1, true);
+        var secondCategory = firstCategory with { Id = Guid.NewGuid(), DisplayOrder = 2 };
+        var firstVenue = new EventVenueView(Guid.NewGuid(), "First", null, null, 1, true);
+        var secondVenue = firstVenue with { Id = Guid.NewGuid(), DisplayOrder = 2 };
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([secondCategory, firstCategory]);
+        _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns([secondVenue, firstVenue]);
         var controller = BuildController(Guid.NewGuid(), RoleNames.Admin);
 
         var result = await controller.Edit(eventId);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be("IndividualEventForm");
+        var model = view.Model.Should().BeOfType<IndividualEventFormViewModel>().Subject;
+        model.Categories.Select(c => c.Id).Should().Equal(firstCategory.Id, secondCategory.Id);
+        model.Venues.Select(v => v.Id).Should().Equal(firstVenue.Id, secondVenue.Id);
     }
 
     [HumansFact]

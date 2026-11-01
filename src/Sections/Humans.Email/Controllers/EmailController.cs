@@ -41,7 +41,7 @@ internal sealed class EmailController(
             OutboxBatchSize = emailSettings.Value.OutboxBatchSize,
             IsPaused = stats.IsPaused,
             Messages = stats.RecentMessages.ToList(),
-            DailyCounts = dailyCounts.ByDay.ToList(),
+            DailyCounts = dailyCounts.ByDay.OrderByDescending(r => r.Date).ToList(),
             TopTemplates = dailyCounts.TopTemplates.ToList(),
         };
 

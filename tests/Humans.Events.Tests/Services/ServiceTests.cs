@@ -10,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using AwesomeAssertions;
 using Humans.Base.Csv;
 using Humans.Email.Contracts;
@@ -1498,6 +1500,75 @@ public sealed class EventServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task BulkImportAsync_CommitsCreatesAndEditsTogether(bool failSave)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var factory = new TestDbContextFactory<EventGuideDbContext>(new DbContextOptionsBuilder<EventGuideDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(new RejectFinalImportRow(failSave)).Options);
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        var campId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var submitter = Guid.NewGuid();
+        var existing = new[]
+        {
+            ExistingEvent(campId, category.Id, EventStatus.Approved),
+            ExistingEvent(campId, category.Id, EventStatus.Approved),
+        };
+        await using (var seed = await factory.CreateDbContextAsync(ct))
+        {
+            seed.EventCategories.Add(category);
+            seed.Events.AddRange(existing);
+            await seed.SaveChangesAsync(ct);
+        }
+        var importer = new EventBulkImporter(new EventRepository(factory), _clock, _localizer);
+        var import = () => importer.ImportAsync(campId, submitter, eventId,
+            [Row(id: existing[0].Id, title: "First revised event"),
+             Row(id: existing[1].Id, title: "Second revised event", rowNumber: 3),
+             Row(title: "Failing import row", rowNumber: 4)],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, ct);
+
+        if (failSave)
+        {
+            await import.Should().ThrowAsync<InvalidOperationException>().WithMessage("Bulk event save failed");
+            await using var verify = await factory.CreateDbContextAsync(ct);
+            var saved = await verify.Events.ToListAsync(ct);
+            saved.Select(e => e.Id).Should().BeEquivalentTo(existing.Select(e => e.Id));
+            saved.Should().OnlyContain(e => string.Equals(e.Title, "My Event", StringComparison.Ordinal) && e.Status == EventStatus.Approved);
+        }
+        else
+        {
+            var result = await import();
+            result.HasErrors.Should().BeFalse();
+            result.CreatedCount.Should().Be(1);
+            result.UpdatedCount.Should().Be(2);
+            await using var verify = await factory.CreateDbContextAsync(ct);
+            var saved = await verify.Events.ToListAsync(ct);
+            saved.Should().HaveCount(3).And.OnlyContain(e => e.Status == EventStatus.Pending && e.CategoryId == category.Id);
+            foreach (var original in existing)
+                saved.Single(e => e.Id == original.Id).SubmitterUserId.Should().Be(original.SubmitterUserId);
+            var created = saved.Single(e => string.Equals(e.Title, "Failing import row", StringComparison.Ordinal));
+            created.SubmitterUserId.Should().Be(submitter);
+            created.EventSettingsId.Should().Be(eventId);
+            saved.Select(e => e.Title).Should().BeEquivalentTo(["First revised event", "Second revised event", "Failing import row"]);
+        }
+    }
+
+    private sealed class RejectFinalImportRow(bool reject) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (reject && eventData.Context?.ChangeTracker.Entries<Event>()
+                .Any(entry => entry.State == EntityState.Added
+                    && string.Equals(entry.Entity.Title, "Failing import row", StringComparison.Ordinal)) == true)
+                throw new InvalidOperationException("Bulk event save failed");
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task BulkImportAsync_CreatesOrEditsColumnsWithoutReplacingExistingIdentity(bool update)
     {
         OpenSubmissionWindow();
@@ -1979,6 +2050,17 @@ public sealed class EventServiceTests
         public Task SaveEventAsync(Event guideEvent, CancellationToken ct = default)
         {
             SaveChangesCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task SaveImportedEventsAsync(
+            IReadOnlyList<Event> created, IReadOnlyList<Event> updated, CancellationToken ct = default)
+        {
+            if (created.Count > 0 || updated.Count > 0)
+            {
+                Events.AddRange(created);
+                SaveChangesCount++;
+            }
             return Task.CompletedTask;
         }
 

@@ -264,7 +264,6 @@ internal sealed class TeamPageService(
 
             var coordinators = team.Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(MapTeamDetailMemberSummary)
                 .ToList();
 
@@ -309,8 +308,6 @@ internal sealed class TeamPageService(
         return new TeamDetailResult(
             Team: MapTeamSummary(team, parent?.IsHidden == true && !canSeeHiddenTeams ? null : parent),
             Members: team.Members
-                .OrderBy(m => m.Role)
-                .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(MapTeamDetailMemberSummary)
                 .ToList(),
             ChildTeams: EnumerateChildren(team, teamsById)

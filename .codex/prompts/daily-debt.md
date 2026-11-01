@@ -17,7 +17,7 @@ on the supplied branch. Start: __WORK_STARTED_UTC__. Work deadline:
 __WORK_DEADLINE_UTC__ (Unix seconds __WORK_DEADLINE_EPOCH__); maximum work
 window __TIME_BUDGET__. Final validation/publication may extend past it.
 
-**Each round is one coherent fix or batch.** Investigate, implement, validate,
+**Each round is one discovered batch, or an individually justified fix.** Investigate, implement, validate,
 and commit it, then call `update_goal` with `complete` and return a cumulative
 Markdown report covering every round so far. The working tree must be clean.
 Do not start another batch in this turn. The wrapper checks live account quota
@@ -212,14 +212,30 @@ strings together, then fix several equivalent cancellation boundaries in a
 separate commit. Same-theme batches may span sections through existing public
 interfaces; section ownership still applies to every candidate.
 
-- Start from a live candidate and use the rung's Finds command plus nearby
-  call sites to collect related instances. Keep discovery brief and the batch
-  small enough to review and finish as one task; do not inventory the whole
-  repository or wait for a minimum batch size. Preserve ladder priority so
-  cheap cleanup frees time for substantial production work.
-- Verify every instance against current code before accepting it. Group by
-  the same correction and compatible risk, not just a filename, analyzer,
-  or broad theme. Keep unrelated corrections in separate commits.
+- Before editing a simple correction, search for its other instances in the
+  owning section and shared consumers, using the rung's Finds command. Finish
+  this bounded discovery pass before taking the first candidate to validation.
+  Preserve ladder priority; do not inventory the whole repository.
+- State the batch plan in commentary: correction, searched scope, verified
+  candidates, excluded candidates with reasons, and the combined validation
+  commands. Group by the same correction, compatible risk, and shared tests.
+  Prefer section-sized batches; shared components can form their own batch.
+- Include all verified, compatible instances in that scope. A filename, method,
+  or individual finding is not a batch boundary. Do not stop discovery merely
+  because the first fix is ready. There is no minimum batch size: if the search
+  finds only one eligible instance, say which scope was searched.
+- Splitting known related candidates into separate commits/rounds requires a
+  concrete reason: different semantics or invariants, uncertain behavior,
+  authorization, transaction or migration risk, excessive review scope, or the
+  remaining work window. Record that reason in the cumulative report. "Separate
+  files" and "one fix per commit" are not reasons.
+- Carry deferred candidates and their reasons into the next round's plan.
+  Before searching again, reuse that inventory; do not rediscover and validate
+  one sibling at a time. Freeze membership before editing. Newly discovered
+  siblings go into the next batch unless needed to make the current fix correct.
+- Inspect every ordering change's callers and ordering semantics individually,
+  then batch straightforward display-sort moves within the section. Business
+  ordering, pagination, and transaction-sensitive changes need separate judgment.
 - Localizations still need the admin/operator exemption checked per route,
   existing keys reused where appropriate, and all six cultures for every
   string. Run resource parity once for the batch, plus affected section tests.
@@ -240,7 +256,10 @@ interfaces; section ownership still applies to every candidate.
 Freeze batch membership before editing. Check the clock during discovery;
 when the deadline passes, stop adding candidates and finish only the current
 batch. Report each corrected item and its ledger id/file under the shared
-commit and validation, so fewer commits do not hide what changed.
+commit and validation, including any reasons for splitting related candidates.
+Run each required suite/check once against the completed batch; combine compatible
+filters for the same test project. Rerun only when a failure or subsequent edit
+requires it. Individual regression reproduction is still appropriate when needed.
 
 ## Optional Luna helpers
 

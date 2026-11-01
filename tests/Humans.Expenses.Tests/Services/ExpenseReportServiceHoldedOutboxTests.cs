@@ -37,6 +37,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IExpenseRepository _repo;
     private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
+    private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedClient _holdedClient;
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IHoldedFinanceService _holdedFinance;
@@ -74,6 +75,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so every test
         // that expects a push has to say the client is configured.
         _holdedClient.IsConfigured.Returns(true);
+        _holdedService.IsConfigured.Returns(true);
         _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
 
@@ -116,7 +118,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
             _auditLog,
-            _holdedClient,
+            _holdedService,
             _holdedFinance,
             _finance,
             Substitute.For<IFinanceWrite>(),
@@ -149,7 +151,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var legacy = MakeReport("doc-legacy");
         _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report, legacy]);
 
-        var bookings = await new ExpenseHoldedBookingService(_repo, _userService, _holdedClient).GetHoldedBookingsAsync(TestContext.Current.CancellationToken);
+        var bookings = await new ExpenseHoldedBookingService(_repo, _userService, _holdedService).GetHoldedBookingsAsync(TestContext.Current.CancellationToken);
 
         bookings.Should().HaveCount(2);
         bookings[0].Should().Be(new ExpenseHoldedBooking(
@@ -170,7 +172,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         report = report with { Lines = [report.Lines[0] with { HoldedDocId = "doc-a" }] };
         _repo.GetAllAsync(Arg.Any<CancellationToken>()).Returns([report]);
 
-        var bookings = await new ExpenseHoldedBookingService(_repo, _userService, _holdedClient).GetHoldedBookingsAsync(TestContext.Current.CancellationToken);
+        var bookings = await new ExpenseHoldedBookingService(_repo, _userService, _holdedService).GetHoldedBookingsAsync(TestContext.Current.CancellationToken);
 
         bookings.Should().ContainSingle().Which.CreditorUserId.Should().Be(survivor.Id);
     }
@@ -197,7 +199,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetLatestOutboxByReportAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, HoldedExpenseOutboxEvent> { [report.Id] = failed });
 
-        var lines = await new ExpenseHoldedBookingService(_repo, _userService, _holdedClient)
+        var lines = await new ExpenseHoldedBookingService(_repo, _userService, _holdedService)
             .GetHoldedReconLinesAsync(TestContext.Current.CancellationToken);
 
         lines.Should().HaveCount(2);
@@ -228,7 +230,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetLatestOutboxByReportAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, HoldedExpenseOutboxEvent>());
 
-        var lines = await new ExpenseHoldedBookingService(_repo, _userService, _holdedClient)
+        var lines = await new ExpenseHoldedBookingService(_repo, _userService, _holdedService)
             .GetHoldedReconLinesAsync(TestContext.Current.CancellationToken);
 
         lines.Should().HaveCount(2);
@@ -1145,6 +1147,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     {
         // Every call would 401 — a permanent error — so draining would write off the whole queue.
         _holdedClient.IsConfigured.Returns(false);
+        _holdedService.IsConfigured.Returns(false);
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, TestContext.Current.CancellationToken);
 
@@ -1324,6 +1327,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     {
         // Otherwise a PR-preview environment shows "Queued" forever for a queue nothing drains.
         _holdedClient.IsConfigured.Returns(false);
+        _holdedService.IsConfigured.Returns(false);
         var report = MakeReport();
         _repo.GetLatestOutboxForReportAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc));

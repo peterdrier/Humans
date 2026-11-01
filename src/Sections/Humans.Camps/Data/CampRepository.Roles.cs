@@ -1,3 +1,4 @@
+using System.Transactions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -117,21 +118,37 @@ internal sealed partial class CampRepository
                         && a.CampMemberId == campMemberId, ct);
     }
 
-    public async Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default)
+    public async Task<(bool Assigned, CampMemberInsertResult? Membership)> AddAssignmentAsync(
+        CampRoleAssignment assignment, CancellationToken ct = default, Guid? addUserId = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        CampMemberInsertResult? membership = null;
+        if (addUserId is { } userId)
+        {
+            membership = await PrepareActiveMembershipAsync(
+                ctx, assignment.CampSeasonId, userId, assignment.AssignedAt, assignment.AssignedByUserId, ct);
+            assignment = new CampRoleAssignment
+            {
+                Id = assignment.Id,
+                CampSeasonId = assignment.CampSeasonId,
+                CampRoleDefinitionId = assignment.CampRoleDefinitionId,
+                CampMemberId = membership.MemberId,
+                AssignedAt = assignment.AssignedAt,
+                AssignedByUserId = assignment.AssignedByUserId,
+            };
+        }
         ctx.CampRoleAssignments.Add(assignment);
         try
         {
             await ctx.SaveChangesAsync(ct);
-            return true;
+            return (true, membership);
         }
         catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
         { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_camp_role_assignments_unique" })
         {
             // Unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId) —
             // caller treats false as "already holds role".
-            return false;
+            return (false, null);
         }
     }
 
@@ -143,21 +160,6 @@ internal sealed partial class CampRepository
         ctx.CampRoleAssignments.Remove(assignment);
         await ctx.SaveChangesAsync(ct);
         return true;
-    }
-
-    public async Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Load-then-RemoveRange so unit tests using the EF InMemory provider
-        // still cover the path. ExecuteDeleteAsync would be cheaper at scale
-        // but is not supported by the InMemory provider.
-        var toDelete = await ctx.CampRoleAssignments
-            .Where(a => a.CampMemberId == campMemberId)
-            .ToListAsync(ct);
-        if (toDelete.Count == 0) return 0;
-        ctx.CampRoleAssignments.RemoveRange(toDelete);
-        await ctx.SaveChangesAsync(ct);
-        return toDelete.Count;
     }
 
     public async Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
@@ -235,6 +237,9 @@ internal sealed partial class CampRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
+        using var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled);
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         // Tracked — these rows are re-pointed (UserId) or deleted below.
@@ -242,7 +247,10 @@ internal sealed partial class CampRepository
             .Where(m => m.UserId == sourceUserId)
             .ToListAsync(ct);
         if (sourceMembers.Count == 0)
+        {
+            scope.Complete();
             return;
+        }
 
         var sourceSeasonIds = sourceMembers.Select(m => m.CampSeasonId).Distinct().ToList();
 
@@ -326,9 +334,8 @@ internal sealed partial class CampRepository
             }
         }
 
-        // Phase 1: commit re-points + role moves/removals BEFORE deleting the colliding
-        // source members, so the CampRoleAssignment -> CampMember cascade can't take a
-        // just-moved role down with its old (source) member.
+        // Save role moves/removals BEFORE deleting colliding members, so the cascade cannot delete moved roles.
+        // Both saves share the transaction: failed member removal must roll back the role and membership fold.
         await ctx.SaveChangesAsync(ct);
 
         if (collidingMemberToTarget.Count > 0)
@@ -337,5 +344,6 @@ internal sealed partial class CampRepository
                 sourceMembers.Where(m => collidingMemberToTarget.ContainsKey(m.Id)));
             await ctx.SaveChangesAsync(ct);
         }
+        scope.Complete();
     }
 }

@@ -40,7 +40,7 @@ public interface IHoldedService : IApplicationService
     Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
         IReadOnlySet<int> accounts, LocalDate from, LocalDate to, CancellationToken ct = default);
 
-    /// <summary>The whole chart from the mirror, archived accounts included, ordered by number.</summary>
+    /// <summary>The whole chart from the mirror, archived accounts included. Consumers choose display order.</summary>
     Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default);
 
     /// <summary>False when a sweep was already running and this one was skipped. <paramref name="full"/> false:

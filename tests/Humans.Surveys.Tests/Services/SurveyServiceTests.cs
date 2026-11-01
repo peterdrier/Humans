@@ -4103,7 +4103,7 @@ public class SurveyServiceTests
         survey.Questions = new List<SurveyQuestion>
         {
             ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1,
-                ("yes", "Yes", 1), ("no", "No", 2), ("maybe", "Maybe", 3)),
+                ("maybe", "Maybe", 3), ("yes", "Yes", 1), ("no", "No", 2)),
             RatingQuestion(ratingId, surveyId, 2, 1, 5),
             TextQuestion(textId, surveyId, 3),
         };
@@ -4150,8 +4150,11 @@ public class SurveyServiceTests
         result.ResponseRate.Should().BeApproximately(2d / 4d, 0.0001);
 
         var choice = result.Questions.Single(q => q.QuestionId == choiceId);
+        result.Questions.Select(question => (question.QuestionId, question.PageNumber, question.Order))
+            .Should().BeEquivalentTo(new[] { (choiceId, 1, 1), (ratingId, 1, 2), (textId, 1, 3) });
         choice.OptionCounts.Should().HaveCount(3);
-        choice.OptionCounts.Select(o => o.Value).Should().ContainInOrder("yes", "no", "maybe");
+        choice.OptionCounts.Select(o => (o.Value, o.Order)).Should().BeEquivalentTo(
+            new[] { ("yes", 1), ("no", 2), ("maybe", 3) });
         choice.OptionCounts.Single(o => string.Equals(o.Value, "yes", StringComparison.Ordinal)).Count.Should().Be(2);
         choice.OptionCounts.Single(o => string.Equals(o.Value, "no", StringComparison.Ordinal)).Count.Should().Be(1);
         var maybe = choice.OptionCounts.Single(o => string.Equals(o.Value, "maybe", StringComparison.Ordinal));
@@ -4368,7 +4371,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_orders_identified_respondents_by_submission_time()
+    public async Task GetResultsAsync_preserves_identified_respondent_metadata()
     {
         var surveyId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
@@ -4379,16 +4382,12 @@ public class SurveyServiceTests
         var now = _clock.GetCurrentInstant();
         var earlierUser = Guid.NewGuid();
         var laterUser = Guid.NewGuid();
+        var laterResponse = SubmittedResponse(surveyId, ResponseAnonymity.Identified,
+            SurveyInputMethod.UserSpecificLink, now, laterUser);
+        var earlierResponse = SubmittedResponse(surveyId, ResponseAnonymity.Identified,
+            SurveyInputMethod.UserSpecificLink, now - Duration.FromMinutes(5), earlierUser);
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new List<SurveyResponse>
-            {
-                SubmittedResponse(
-                    surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
-                    now, laterUser),
-                SubmittedResponse(
-                    surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
-                    now - Duration.FromMinutes(5), earlierUser),
-            });
+            .Returns(new List<SurveyResponse> { laterResponse, earlierResponse });
         _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -4401,10 +4400,12 @@ public class SurveyServiceTests
 
         var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
 
-        result!.IdentifiedRespondents.Select(respondent => respondent.Name)
-            .Should().ContainInOrder("Earlier", "Later");
-        result.IdentifiedRespondents.Select(respondent => respondent.SubmittedAt)
-            .Should().BeInAscendingOrder();
+        result!.IdentifiedRespondents.Select(respondent =>
+                (respondent.ResponseId, respondent.UserId, respondent.Name, respondent.SubmittedAt))
+            .Should().BeEquivalentTo([
+                (earlierResponse.Id, earlierUser, "Earlier", earlierResponse.SubmittedAt),
+                (laterResponse.Id, laterUser, "Later", laterResponse.SubmittedAt),
+            ]);
     }
 
     [HumansFact]
@@ -5568,7 +5569,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetPendingApprovalQueueAsync_returns_only_pending_surveys_oldest_first_with_author_names()
+    public async Task GetPendingApprovalQueueAsync_returns_only_pending_surveys_with_author_names_and_timestamps()
     {
         var authorA = Guid.NewGuid();
         var authorB = Guid.NewGuid();
@@ -5585,9 +5586,11 @@ public class SurveyServiceTests
 
         var result = await CreateService().GetPendingApprovalQueueAsync(TestContext.Current.CancellationToken);
 
-        result.Select(r => r.Id).Should().Equal(older.Id, newer.Id);
+        result.Select(r => r.Id).Should().BeEquivalentTo([older.Id, newer.Id]);
         result.Should().NotContain(r => r.Id == draft.Id);
         result.Single(r => r.Id == older.Id).CreatedByName.Should().Be(authorAInfo.BurnerName);
+        result.Single(r => r.Id == older.Id).SubmittedAt.Should().Be(older.SubmittedAt);
+        result.Single(r => r.Id == newer.Id).SubmittedAt.Should().Be(newer.SubmittedAt);
     }
 
     [HumansFact]

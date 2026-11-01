@@ -26,8 +26,8 @@ internal sealed class EventBulkImporter(
         if (errors.Count > 0)
             return new BulkImportResult(errors, 0, 0);
 
-        var created = 0;
-        var updated = 0;
+        var created = new List<Event>();
+        var updated = new List<Event>();
         foreach (var row in rows)
         {
             var category = categories.First(c => string.Equals(c.Name, row.Category, StringComparison.OrdinalIgnoreCase));
@@ -91,17 +91,16 @@ internal sealed class EventBulkImporter(
             {
                 // Existing rows always update: even Draft/Rejected rows are already stored.
                 target.Resubmit(clock);
-                await repo.SaveEventAsync(target, ct);
-                updated++;
+                updated.Add(target);
             }
             else
             {
                 target.Submit(clock);
-                await repo.AddEventAsync(target, ct);
-                created++;
+                created.Add(target);
             }
         }
 
-        return new BulkImportResult([], created, updated);
+        await repo.SaveImportedEventsAsync(created, updated, ct);
+        return new BulkImportResult([], created.Count, updated.Count);
     }
 }

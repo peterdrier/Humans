@@ -29,7 +29,7 @@ public sealed class MembershipTierServiceTests : IDisposable
             new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         _db = factory.CreateDbContext();
         _sut = new MembershipTierService(
-            new MembershipTierRepository(factory), new ApplicationRepository(factory), _users, _clock);
+            new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _clock);
     }
 
     public void Dispose() => _db.Dispose();
@@ -46,18 +46,20 @@ public sealed class MembershipTierServiceTests : IDisposable
         return userId;
     }
 
-    private async Task<MemberApplication> SeedApprovedAsync(Guid userId, MembershipTier tier, LocalDate? expires)
+    private async Task<MemberApplication> SeedApprovedAsync(
+        Guid userId, MembershipTier tier, LocalDate? expires, Instant? resolvedAt = null)
     {
+        var approvedAt = resolvedAt ?? Now - Duration.FromDays(20);
         var app = new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             MembershipTier = tier,
             Motivation = "m",
-            SubmittedAt = Now - Duration.FromDays(30),
-            UpdatedAt = Now - Duration.FromDays(30),
+            SubmittedAt = approvedAt - Duration.FromDays(10),
+            UpdatedAt = approvedAt - Duration.FromDays(10),
         };
-        app.Approve(Guid.NewGuid(), null, new FakeClock(Now - Duration.FromDays(20)));
+        app.Approve(Guid.NewGuid(), null, new FakeClock(approvedAt));
         app.TermExpiresAt = expires;
         _db.Applications.Add(app);
         await _db.SaveChangesAsync(Ct);
@@ -65,9 +67,16 @@ public sealed class MembershipTierServiceTests : IDisposable
         return app;
     }
 
-    private async Task SeedRowAsync(Guid userId, MembershipTier tier)
+    private async Task SeedRowAsync(Guid userId, MembershipTier tier, MemberApplication? application = null)
     {
-        _db.MembershipTiers.Add(new MembershipTierRecord { UserId = userId, Tier = tier, GrantedAt = Now });
+        _db.MembershipTiers.Add(new MembershipTierRecord
+        {
+            UserId = userId,
+            Tier = tier,
+            GrantedAt = Now,
+            ExpiresAt = application?.TermExpiresAt,
+            GrantedByApplicationId = application?.Id,
+        });
         await _db.SaveChangesAsync(Ct);
         _db.ChangeTracker.Clear();
     }
@@ -112,24 +121,6 @@ public sealed class MembershipTierServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Grant_WritesTheApplicationsTierTermAndId()
-    {
-        var id = SeedUser();
-        var app = await SeedApprovedAsync(id, MembershipTier.Colaborador, new LocalDate(2027, 12, 31));
-
-        await _sut.GrantAsync(app, Ct);
-
-        var row = await RowAsync(id);
-        row!.Tier.Should().Be(MembershipTier.Colaborador);
-        row.GrantedAt.Should().Be(Now);
-        row.ExpiresAt.Should().Be(new LocalDate(2027, 12, 31));
-        row.GrantedByApplicationId.Should().Be(app.Id);
-
-        await _sut.SyncExpiryAsync(app.Id, new LocalDate(2028, 12, 31), Ct);
-        (await RowAsync(id))!.ExpiresAt.Should().Be(new LocalDate(2028, 12, 31));
-    }
-
-    [HumansFact]
     public async Task Expire_DowngradesLapsedHolders_KeepsInTermOnes_HonorsAnotherInTermTier()
     {
         var lapsed = SeedUser();
@@ -159,6 +150,25 @@ public sealed class MembershipTierServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task Expire_FallbackGrantUsesAnActiveApproval_InsteadOfALaterExpiredRenewal()
+    {
+        var userId = SeedUser();
+        await SeedRowAsync(userId, MembershipTier.Asociado);
+        var active = await SeedApprovedAsync(userId, MembershipTier.Colaborador, null,
+            Instant.FromUtc(2021, 6, 1, 0, 0));
+        await SeedApprovedAsync(userId, MembershipTier.Colaborador, new LocalDate(2025, 12, 31),
+            Instant.FromUtc(2023, 6, 1, 0, 0));
+
+        var downgrades = await _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
+
+        downgrades.Should().ContainSingle().Which.Should().Be((userId, MembershipTier.Colaborador));
+        var row = await RowAsync(userId);
+        row!.Tier.Should().Be(MembershipTier.Colaborador);
+        row.GrantedByApplicationId.Should().Be(active.Id);
+        row.ExpiresAt.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Merge_MovesTheSourceTier_WhenTheSurvivorHasNone()
     {
         var source = SeedUser();
@@ -181,7 +191,7 @@ public sealed class MembershipTierServiceTests : IDisposable
         var source = SeedUser();
         var target = SeedUser();
         var granting = await SeedApprovedAsync(source, MembershipTier.Asociado, Today.PlusDays(600));
-        if (!sourceDowngraded) await _sut.GrantAsync(granting, Ct);
+        if (!sourceDowngraded) await SeedRowAsync(source, granting.MembershipTier, granting);
         if (sourceDowngraded) await SeedRowAsync(source, MembershipTier.Volunteer);
         if (survivorDowngraded) await SeedRowAsync(target, MembershipTier.Volunteer);
 

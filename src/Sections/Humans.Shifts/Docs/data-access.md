@@ -76,7 +76,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 | VolunteerEventProfiles | R/W (via repo, incl. GDPR erasure) |
 | VolunteerTagPreferences | R/W (via repo, incl. GDPR erasure) |
 | GeneralAvailability | R/W (via `IVolunteerTrackingRepository`; R for GDPR export, W for GDPR erasure) |
-| VolunteerBuildStatuses | W (via `IVolunteerTrackingRepository`, GDPR erasure) |
+| VolunteerBuildStatuses | R/W (via `IVolunteerTrackingRepository`; R for GDPR export, W for GDPR erasure) |
 
 Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `EventCalendarResolver`, nobodies-collective/Humans#1630),

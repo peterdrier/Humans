@@ -31,27 +31,21 @@ internal sealed partial class WorkgroupService
         w.RegisteredAt,
         w.EndedAt,
         w.Members
-            .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
-            .ThenBy(m => m.JoinedAt)
             .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone outside the repository; the log keeps the history.
         w.Meetings
             .Where(m => m.DeletedAt is null)
-            .OrderBy(m => m.StartUtc)
             .Select(m => new WorkgroupMeetingInfo(
                 m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
                 m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt))
             .ToList(),
         w.LogEntries
-            .OrderByDescending(e => e.OccurredOn)
-            .ThenByDescending(e => e.CreatedAt)
             .Select(e => new WorkgroupLogEntryInfo(
                 e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
                 e.SurveyId, e.CreatedAt, e.UpdatedAt))
             .ToList(),
         w.Documents
-            .OrderByDescending(d => d.CreatedAt)
             .Select(ToInfo)
             .ToList(),
         w.BudgetAmount,
@@ -79,7 +73,6 @@ internal sealed partial class WorkgroupService
         d.CreatedAt,
         d.UpdatedAt,
         d.Comments
-            .OrderBy(c => c.CreatedAt)
             .Select(c => new WorkgroupCommentInfo(
                 c.Id, c.DocumentId, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
                 c.Disposition, c.Response, c.RespondedByUserId, c.RespondedAt, c.HiddenAt,
@@ -268,16 +261,6 @@ internal sealed partial class WorkgroupService
             CreatedAt = now,
             UpdatedAt = now
         };
-
-    private Task AddSystemEntryAsync(
-        Workgroup w,
-        WorkgroupLogKind kind,
-        Instant now,
-        string? body,
-        CancellationToken ct,
-        Guid? authorUserId = null,
-        Guid? documentId = null) =>
-        repository.AddLogEntryAsync(SystemEntry(w.Id, kind, now, body, authorUserId, documentId), ct);
 
     /// <summary>
     /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
@@ -541,12 +524,11 @@ internal sealed partial class WorkgroupService
     }
 
     /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
-    private async Task ClosePendingRequestsAsync(Workgroup w, Instant now, CancellationToken ct)
+    private static IReadOnlyList<WorkgroupMember> ClosePendingRequests(Workgroup w, Instant now)
     {
         var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
-        if (pending.Count == 0) return;
         foreach (var m in pending) m.LeftAt = now;
-        await repository.UpdateMembersAsync(pending, ct);
+        return pending;
     }
 
     /// <summary>The one place a group ends, whether a member marked it done or the Secretary closed it.</summary>
@@ -563,13 +545,11 @@ internal sealed partial class WorkgroupService
         w.Reasons = Trimmed(reasons) ?? w.Reasons;
         w.EndedAt = now;
         w.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(w, ct);
+        await repository.UpdateWorkgroupAsync(w, ct,
+            [SystemEntry(w.Id, WorkgroupLogKind.Ended, now, Trimmed(reasons) ?? reason.ToString(),
+                authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId)],
+            ClosePendingRequests(w, now));
         ct = CancellationToken.None;
-        await ClosePendingRequestsAsync(w, now, ct);
-
-        await AddSystemEntryAsync(w, WorkgroupLogKind.Ended, now,
-            Trimmed(reasons) ?? reason.ToString(), ct,
-            authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId);
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
 

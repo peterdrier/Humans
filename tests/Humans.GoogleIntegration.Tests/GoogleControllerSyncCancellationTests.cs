@@ -2,6 +2,7 @@ using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.GoogleIntegration.Controllers;
+using Humans.GoogleIntegration.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -87,9 +88,16 @@ public class GoogleControllerSyncCancellationTests
         }
         else
         {
+            var second = new WorkspaceAccountInfo("Zara@nobodies.team", "Zara", "", false,
+                DateTime.UnixEpoch, null, null, null, false, false);
+            var first = second with { PrimaryEmail = "aaron@nobodies.team" };
             _admin.GetWorkspaceAccountListAsync(Arg.Any<CancellationToken>())
-                .Returns(new WorkspaceAccountListResult([], 0, 0, 0, 0, 0, 0, 0));
-            (await controller.Accounts()).Should().BeOfType<ViewResult>();
+                .Returns(new WorkspaceAccountListResult([second, first], 2, 2, 0, 0, 2, 0, 2));
+            var view = (await controller.Accounts()).Should().BeOfType<ViewResult>().Subject;
+            var model = view.Model.Should().BeOfType<WorkspaceEmailListViewModel>().Subject;
+            model.Accounts.Select(a => a.PrimaryEmail).Should().Equal(first.PrimaryEmail, second.PrimaryEmail);
+            model.TotalAccounts.Should().Be(2);
+            model.MissingTwoFactorCount.Should().Be(2);
             await _admin.Received(1).GetWorkspaceAccountListAsync(ct);
         }
     }

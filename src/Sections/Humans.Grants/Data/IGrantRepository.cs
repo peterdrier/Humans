@@ -30,16 +30,13 @@ internal interface IGrantRepository : IRepository
 
     Task AddProgramAsync(GrantProgram program, CancellationToken ct = default);
 
-    /// <summary>Scalar columns only; managers go through <see cref="SetManagersAsync"/>.</summary>
-    Task UpdateProgramAsync(GrantProgram program, CancellationToken ct = default);
+    /// <summary>Program fields and manager changes in one save.</summary>
+    Task UpdateProgramAsync(
+        GrantProgram program, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
+        CancellationToken ct = default);
 
     /// <summary>Stamps each listed program that has no event id yet; returns the rows written.</summary>
     Task<int> AssignEventIdsAsync(IReadOnlyDictionary<Guid, Guid> eventByProgram, CancellationToken ct = default);
-
-    /// <summary>One save.</summary>
-    Task SetManagersAsync(
-        Guid programId, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
-        CancellationToken ct = default);
 
     /// <summary>One save: all or nothing.</summary>
     Task AddGrantsAsync(IReadOnlyList<Grant> grants, CancellationToken ct = default);
@@ -54,7 +51,7 @@ internal interface IGrantRepository : IRepository
 
     /// <summary>
     /// Re-keys grant, manager and actor columns. Where both hold a live grant in one program, the newer is revoked so
-    /// the survivor keeps one. Returns the ids revoked. Idempotent.
+    /// the survivor keeps one. Revocation and re-keying commit in one transaction. Returns the ids revoked. Idempotent.
     /// </summary>
     Task<IReadOnlyList<Guid>> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant now, CancellationToken ct = default);

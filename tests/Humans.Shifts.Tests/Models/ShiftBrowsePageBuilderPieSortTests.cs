@@ -5,8 +5,7 @@ using Humans.Shifts.Models;
 namespace Humans.Shifts.Tests.Models;
 
 /// <summary>
-/// The service returns <c>TeamName</c> order; the page builder places each promoted
-/// sub-team next to its parent.
+/// The page builder orders departments by name and places each promoted sub-team next to its parent.
 /// </summary>
 public class ShiftBrowsePageBuilderPieSortTests
 {

@@ -328,6 +328,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(4);
+        result.ToDictionary(f => f.Id, f => f.DisplayOrder).Should().BeEquivalentTo(
+            Db.ContactFields.Where(f => f.ProfileId == profile.Id).ToDictionary(f => f.Id, f => f.DisplayOrder));
     }
 
     #endregion

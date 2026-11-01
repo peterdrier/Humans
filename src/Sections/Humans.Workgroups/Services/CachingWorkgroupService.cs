@@ -193,7 +193,7 @@ internal sealed class CachingWorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
 
-    public Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
+    public Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.ListExpenseAccountsAsync(ct));
 
     public Task<WorkgroupMutationResult> RecordDispositionAsync(

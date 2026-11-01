@@ -493,14 +493,54 @@ public class CalendarControllerICalTests
         model.ToUtc.InZone(zone).Date.Should().Be(LocalDate.FromDateTime(date.AddDays(1)));
     }
 
-    [HumansFact]
-    public async Task Index_uses_the_browser_timezone_for_calendar_windows()
+    [HumansTheory]
+    [Xunit.InlineData("America/Los_Angeles", 6, true)]
+    [Xunit.InlineData("Europe/Madrid", 6, false)]
+    [Xunit.InlineData("Pacific/Auckland", 6, false)]
+    [Xunit.InlineData("Europe/Madrid", 5, true)]
+    public async Task Index_orders_mixed_sources_in_the_browser_timezone(
+        string timezone, int contributedDay, bool contributionFirst)
     {
-        _session.SetString(DateTimeDisplayExtensions.SessionKey, "America/Los_Angeles");
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, timezone);
+        var allDay = new CalendarOccurrence(Guid.NewGuid(), null, null, true, "All-day", null, null, null,
+            Guid.NewGuid(), "Team", false, null, new LocalDate(2026, 6, 6), new LocalDate(2026, 6, 7));
+        var start = Instant.FromUtc(2026, 6, contributedDay, 0, 0);
+        var contributed = new CalendarOccurrence(Guid.Empty, start, start.Plus(Duration.FromHours(1)), false,
+            "Contributed", null, null, null, Guid.Empty, "", false, start, Source: "Workgroups");
+        IReadOnlyList<CalendarOccurrence> unordered = contributionFirst ? [allDay, contributed] : [contributed, allDay];
+        _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(unordered);
 
         var model = await IndexModelAsync();
 
-        model.ViewerTimezoneLabel.Should().Be("America/Los_Angeles");
+        model.ViewerTimezoneLabel.Should().Be(timezone);
+        model.Occurrences.Select(o => o.Title).Should().Equal(contributionFirst
+            ? ["Contributed", "All-day"] : ["All-day", "Contributed"]);
+    }
+
+    [HumansFact]
+    public async Task Event_selects_the_next_five_occurrences_from_unsorted_results()
+    {
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Recurring", null, null, null, teamId, _now, _now.Plus(Duration.FromHours(1)),
+            false, "FREQ=DAILY", "UTC", _now, _now));
+        var occurrences = Enumerable.Range(1, 6).Reverse().Select(day =>
+        {
+            var start = _now.Plus(Duration.FromDays(day));
+            return new CalendarOccurrence(id, start, start.Plus(Duration.FromHours(1)), false,
+                "Recurring", null, null, null, teamId, "Team", true, start);
+        }).ToList();
+        _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<DateTimeZone>(), teamId, Arg.Any<CancellationToken>()).Returns(occurrences);
+
+        var result = await CreateController().Event(id, Xunit.TestContext.Current.CancellationToken);
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CalendarEventViewModel>().Subject;
+
+        model.UpcomingOccurrences.Select(o => o.OccurrenceStartUtc).Should()
+            .Equal(Enumerable.Range(1, 5).Select(day => (Instant?)_now.Plus(Duration.FromDays(day))));
     }
 
     [HumansFact]

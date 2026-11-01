@@ -71,13 +71,12 @@ internal static class AssemblyVoteCounting
         IReadOnlyCollection<CountableBallot> ballots,
         IReadOnlyList<AssemblyVoteOption> options)
     {
-        var order = options.OrderBy(o => o.Order)
-            .Select((o, i) => (o.Key, Index: i))
-            .ToDictionary(x => x.Key, x => x.Index, StringComparer.Ordinal);
-
         var continuing = options.OrderBy(o => o.Order)
             .Select(o => o.Key)
             .ToList();
+        var order = continuing
+            .Select((key, i) => (Key: key, Index: i))
+            .ToDictionary(x => x.Key, x => x.Index, StringComparer.Ordinal);
 
         // Abstentions and ballots with no usable ranking never enter the runoff.
         var rankings = ballots

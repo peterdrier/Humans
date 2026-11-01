@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -202,8 +203,13 @@ internal sealed class TicketSyncService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
+        // Both repositories own Tickets tables; a transfer failure must not leave ownership half reassigned.
+        using var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled);
         await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
         await transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
+        scope.Complete();
     }
 
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)

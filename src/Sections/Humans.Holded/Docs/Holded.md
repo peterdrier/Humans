@@ -33,8 +33,8 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   returns are deleted (an empty fetch still deletes). Never append-only: a line Holded deleted
   or reclassified would linger forever.
 - **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
-  identities and amounts, complete pagination, typed write responses, the `unconfirmed:`
-  references, the 429 policy) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
+  identities (including expense-account, contact and sales-document IDs) and amounts (including the pending balance on approved purchases), complete pagination, typed write responses, the `unconfirmed:`
+  references, the 429 policy with fractional HTTP-date waits) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
   depends on one consequence: no short or fabricated page ever reaches replace semantics.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
@@ -161,6 +161,12 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 ## Invariants
 
+- The Accounts controller orders PGC groups by leading digit and each group's accounts by number. Service grouping, filters and totals do not impose display order; summary counts are independent of row order.
+
+- The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets newest first. Services supply the state and aggregated counts without display ordering.
+
+- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
+
 - Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
 
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
@@ -213,6 +219,8 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`) for the mirror, `IHoldedWrite` (+ its outcome records) for writes, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
+
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
 **Owned tables:** the four above
 **Target shape:** [`health.md`](health.md); the single-mirror design is

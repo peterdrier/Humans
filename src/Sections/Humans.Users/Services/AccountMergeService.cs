@@ -106,6 +106,9 @@ internal sealed class AccountMergeService(
         if (archived.IsMerged)
             return new(Refusal: $"Archived user {archivedUserId} is already tombstoned (merged into {archived.MergedToUserId}).");
 
+        ct.ThrowIfCancellationRequested();
+        // Section writes commit independently: finish the fold even if the admin stops watching.
+        ct = CancellationToken.None;
         var now = clock.GetCurrentInstant();
 
         logger.LogInformation(
