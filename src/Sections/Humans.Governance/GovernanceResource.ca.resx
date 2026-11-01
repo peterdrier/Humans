@@ -137,6 +137,7 @@
   <data name="Governance_Statutes" xml:space="preserve">
     <value>Estatuts</value>
   </data>
+  <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contingut no disponible.</value></data>
   <data name="Governance_MemberCounts" xml:space="preserve">
     <value>Comunitat</value>
   </data>
