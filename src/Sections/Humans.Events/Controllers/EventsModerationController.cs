@@ -262,6 +262,7 @@ internal sealed class EventsModerationController(
     private async Task PopulateAdminFormAsync(AdminEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
         var categories = (await guide.GetActiveCategoriesAsync(ct))
+            .OrderBy(c => c.DisplayOrder)
             .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         // Keep the event's current category selectable even if it has since been
         // deactivated — otherwise editing an unrelated field would silently drop it.
@@ -276,6 +277,7 @@ internal sealed class EventsModerationController(
         if (!model.IsCampEvent)
         {
             var venues = (await guide.GetActiveVenuesAsync(ct))
+                .OrderBy(v => v.DisplayOrder)
                 .Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
             if (model.VenueId is { } venueId && venueId != Guid.Empty && venues.All(v => v.Id != venueId))
             {

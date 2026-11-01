@@ -151,6 +151,7 @@ Both kinds of submission are managed from a single page — **My Event Submissio
 - Downloading the template produces a CSV pre-filled with the barrio's non-Withdrawn events; comment lines at the top explain the format, valid categories, and the Id rule
 - Parsing and row-validation errors use the uploader’s UI culture; CSV column names and syntax tokens remain unchanged
 - Upload is all-or-nothing: if any row fails validation, no events are saved and a per-row error table is shown inline in the barrio block
+- All validated additions and edits commit in one repository save. A storage failure preserves existing titles, moderation status and identity, and creates no new events.
 - New rows (empty `Id`) are submitted as new events in `Pending` status; no submission email is sent (bulk upload may create many events at once)
 - Existing rows (non-empty `Id`) that are unchanged are skipped — status is preserved; rows with changed fields update the matched event and re-queue it for moderation
 - Rows referencing a `Withdrawn` event are rejected (Withdrawn events cannot be reactivated via bulk upload)

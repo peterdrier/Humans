@@ -41,12 +41,12 @@ internal sealed record HoldedDuplicateMember(
 
 /// <summary>Computed live from Holded's purchase list and Expenses' line bookings.</summary>
 /// <remarks>
-/// <paramref name="EmptyUnboundContactIds"/> are creditor-range contacts bound to nobody with no documents. Holded has
+/// <paramref name="EmptyUnboundContacts"/> are creditor-range contacts bound to nobody with no documents. Holded has
 /// no archive call, so they are listed for a human. When <paramref name="Error"/> is set the lists are empty.
 /// </remarks>
 internal sealed record HoldedDuplicatesVm(
     IReadOnlyList<HoldedDuplicateMember> Members,
-    IReadOnlyList<string> EmptyUnboundContactIds,
+    IReadOnlyList<(int AccountNum, string Summary)> EmptyUnboundContacts,
     string? Error)
 {
     public int DocumentCount => Members.Sum(m => m.DeletableCount);

@@ -6,7 +6,7 @@
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Contracts/IHoldedService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
   src/Sections/Humans.Calendar/Contracts/ICalendarFeedContributor.cs
@@ -126,6 +126,8 @@ predicate reads that column.
 
 Meeting URLs accept up to 2000 characters. The service validates the limit for creates
 and edits; form failures preserve the entered values and show a localized error.
+Meeting date/time inputs use the shared invariant formatters and remain UTC, with
+ISO dates and 24-hour times regardless of request culture.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 
@@ -275,9 +277,9 @@ Settings and Register an existing group on first setup or after clearing the que
 
 - The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
 
-- Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then persists the binding, system log and audit. Amount-only saves retain cancellation until their save succeeds, then finish the log and audit independently.
+- Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then saves the budget/binding and system log together before auditing. Amount-only saves retain cancellation until their combined save succeeds; audit finishes independently.
 
-- Joining, leaving and changing coordinators keep preparation and the membership save cancellable. Once membership commits, system logs, handover/coordinator audits, notices and Drive sync requests finish independently of browser cancellation. Document publishing, comment-window changes, delivery and comment replies follow the same boundary: their save remains cancellable, then system logs and notices finish independently. Referral, refusal, withdrawal, reactivation, member/Secretary endings and Board disposition use this boundary too, including their audits and account activation changes. Register edits finish their scope-change log after saving; recorded status requests finish their coordinator notice.
+- Membership requests, admission, leaving and changing coordinators keep preparation and persistence cancellable. Admission, departure, coordinator selection and handover persist their member rows and required system log entries together; a failed log write leaves the roster unchanged. After commit, handover/coordinator audits, notices and Drive sync requests finish independently of browser cancellation. Document publishing, comment-window changes, delivery and Board disposition save document fields and their required system log together; a failed log write leaves the document unchanged. These saves remain cancellable, then notices and audits finish independently. Comment replies save their comment rows before notifying authors. Registration, referral, refusal, withdrawal, reactivation, member/Secretary endings and scope edits persist the group fields and system log together. Withdrawal and endings close pending membership requests in that same save. Audits, notices and account activation changes follow commit independently of browser cancellation. Recorded status requests finish their coordinator notice after saving.
 
 - Member and admin action and form refusals preserve typed drafts and remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only typed section refusals carrying untranslated resource keys and arguments become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
 - Redirecting member actions reject malformed bound input after authorization and resource ownership checks, before any write. Invalid coordinator selections cannot save a valid subset, and invalid completion reasons cannot default to delivered; refusals return 400 and log a warning. Completion reasons, individual/category comment-response dispositions and Board dispositions must be posted explicitly; omitted choices cannot become delivered, pending or accepted. Explicit zero-valued choices remain valid. Admin binding refusals also log a Warning after actor resolution.
@@ -296,7 +298,7 @@ Settings and Register an existing group on first setup or after clearing the que
   sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
   reason. A plain member gets `NotACoordinator`. Neither `SetCoordinatorsAsync` nor a
   last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
-  withdrawing the group closes its pending requests (`ClosePendingRequestsAsync`), so
+  withdrawing the group closes its pending requests (`ClosePendingRequests`), so
   nothing waits on a group nobody can decide for.
 - **A sensitive group's content is its members'.** `IsSensitive` hides roster, documents,
   meetings and history from everyone but members and Board/Admin: the page shows the
@@ -464,8 +466,8 @@ should end is the Board's decision, taken on the register in front of them.
   with one delivery per live recipient even when multiple requested ids resolve to them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
 - **Finance**: `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync` /
-  `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedClient.ListExpenseAccountsAsync`
-  for the admin picker only.
+  `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Account creation and linking still go through Finance.
 
 ## GDPR
 
@@ -519,11 +521,15 @@ display-name reads.
   entry for the whole register, cleared on every write. The shared guarded loader prevents
   loads begun before a clear from repopulating it with the old register. Nothing time-derived is cached —
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
+- **Member ordering** — views show coordinators before other members, then by join date. Coordinator names and selection slots keep join-date order; the details page reuses one ordered member list for its roster and member selectors.
+- **Document ordering** — views order documents newest first. The document page sorts comments once: populated categories follow their earliest comment, and each thread keeps chronological order.
+- **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started meeting directly, and Calendar consumers order feed items.
+- **Log ordering** — the details timeline orders log entries by occurrence date, then creation time, both descending. The snapshot does not impose log display order; rhythm calculations select their latest qualifying activity explicitly.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
 - **Cross-section calls** — `IUserService`, `IUserEmailService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedClient`.
+  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
   `IGovernanceService` is used by `WorkgroupsController` only.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

@@ -86,9 +86,9 @@
                 <div class="form-check mb-2"><input class="form-check-input" type="radio" asp-for="Budget.AccountMode" id="mode-link" value="link" /><label class="form-check-label" for="mode-link">Link an existing account</label></div>
                 <select asp-for="Budget.ExistingAccountNum" class="form-select" style="max-width: 480px;">
                     <option value="">— choose —</option>
-                    @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.AccountNum))
+                    @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.Number))
                     {
-                        <option value="@a.AccountNum">@a.AccountNum — @a.Name</option>
+                        <option value="@a.Number">@a.Number — @a.Name</option>
                     }
                 </select>
                 <span asp-validation-for="Budget.ExistingAccountNum" class="text-danger"></span>

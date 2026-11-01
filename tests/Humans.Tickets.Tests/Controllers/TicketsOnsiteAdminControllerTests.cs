@@ -82,7 +82,7 @@ public class TicketsOnsiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsRowsByCheckedInAt_Descending()
+    public async Task Index_SortsRowsNewestFirstAndAllNameListsIgnoringCase()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
@@ -93,17 +93,18 @@ public class TicketsOnsiteAdminControllerTests
         var shifts = Substitute.For<ISettingsService>();
         shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026));
 
+        var names = new[] { "Zulu", "alpha" };
         var roster = Substitute.For<IOnsiteRosterService>();
         roster.GetRosterAsync(2026, null, null, null, Arg.Any<CancellationToken>())
             .Returns(new OnsiteRosterResult(
                 Rows: new List<OnsiteRosterRow>
                 {
-                    new(aliceId, earlier, [], [], []),
-                    new(bobId, later, [], [], []),
+                    new(aliceId, earlier, names, names, names),
+                    new(bobId, later, names, names, names),
                 },
-                AvailableCamps: [],
-                AvailableTeams: [],
-                AvailableRoles: []));
+                AvailableCamps: names,
+                AvailableTeams: names,
+                AvailableRoles: names));
 
         var ctrl = NewController(users, shifts, roster);
 
@@ -114,6 +115,16 @@ public class TicketsOnsiteAdminControllerTests
         vm.Rows.Should().HaveCount(2);
         vm.Rows[0].UserId.Should().Be(bobId);
         vm.Rows[1].UserId.Should().Be(aliceId);
+        foreach (var row in vm.Rows)
+        {
+            row.CampNames.Should().Equal("alpha", "Zulu");
+            row.TeamNames.Should().Equal("alpha", "Zulu");
+            row.RoleNames.Should().Equal("alpha", "Zulu");
+        }
+        vm.AvailableCamps.Should().Equal("alpha", "Zulu");
+        vm.AvailableTeams.Should().Equal("alpha", "Zulu");
+        vm.AvailableRoles.Should().Equal("alpha", "Zulu");
+        names.Should().Equal("Zulu", "alpha");
     }
 
     [HumansFact]

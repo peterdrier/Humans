@@ -141,7 +141,6 @@ internal sealed class TicketQueryService(
                     EffectiveRate = totalAmt > 0 ? Math.Round(totalStripe / totalAmt * 100, 2) : 0,
                 };
             })
-            .OrderByDescending(f => f.TotalStripeFees)
             .ToList();
 
         var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync();
@@ -248,6 +247,7 @@ internal sealed class TicketQueryService(
             {
                 CampaignId = c.CampaignId,
                 CampaignTitle = c.CampaignTitle,
+                CreatedAt = c.CreatedAt,
                 TotalGrants = c.TotalGrants,
                 Redeemed = c.Redeemed,
                 Unused = c.TotalGrants - c.Redeemed,
@@ -325,13 +325,13 @@ internal sealed class TicketQueryService(
                 var monday = date.PlusDays(-(int)date.DayOfWeek + 1);
                 return monday;
             })
-            .OrderBy(g => g.Key)
             .Select(g =>
             {
                 var monday = g.Key;
                 var sunday = monday.PlusDays(6);
                 return new WeeklySalesAggregate
                 {
+                    WeekStart = monday,
                     WeekLabel = $"{monday.ToWeekdayDayMonth()} – {sunday.ToWeekdayDayMonth()}",
                     TicketsSold = g.Sum(o => o.AttendeeCount),
                     GrossRevenue = g.Sum(o => o.TotalAmount),
@@ -350,7 +350,6 @@ internal sealed class TicketQueryService(
                 var quarter = (date.Month - 1) / 3 + 1;
                 return (date.Year, quarter);
             })
-            .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.quarter)
             .Select(g => new QuarterlySalesAggregate
             {
                 QuarterLabel = $"Q{g.Key.quarter} {g.Key.Year}",
@@ -371,7 +370,6 @@ internal sealed class TicketQueryService(
             .ToDictionary(g => g.Key, g => g.ToList());
         var paidByMonth = orders.GroupBy(o => MonthKey(o.PurchasedAt)).ToDictionary(g => g.Key, g => g.ToList());
         var monthlySales = paidByMonth.Keys.Union(refundedByMonth.Keys)
-            .OrderBy(k => k)
             .Select(k =>
             {
                 var paid = paidByMonth.GetValueOrDefault(k) ?? [];
@@ -411,7 +409,6 @@ internal sealed class TicketQueryService(
                 TicketsSold = g.Count(),
                 FaceValue = g.Sum(a => a.Price),
             })
-            .OrderByDescending(t => t.FaceValue)
             .ToList();
 
         return new TicketSalesAggregates
@@ -457,14 +454,13 @@ internal sealed class TicketQueryService(
                 return new DiscountCampaignAggregate
                 {
                     CampaignTitle = c.CampaignTitle,
+                    CreatedAt = c.CreatedAt,
                     CodesGranted = c.TotalGrants,
                     CodesUsed = usage.Used,
                     AverageDiscount = usage.Used > 0 ? Math.Round(usage.Total / usage.Used, 2) : 0m,
                     TotalDiscount = usage.Total,
                 };
             })
-            .OrderByDescending(r => r.TotalDiscount)
-            .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var unattributed = paidDiscountOrders
@@ -670,7 +666,6 @@ internal sealed class TicketQueryService(
         var availableTeams = rows
             .SelectMany(r => r.TeamNames)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new WhoHasntBoughtResult
@@ -792,8 +787,6 @@ internal sealed class TicketQueryService(
             .ToDictionary(g => g.Key, g => g.First().Id);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
-            .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
-            .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
             .Select(a => new UserTicketHoldingRow(
                 a.Id,
                 a.AttendeeName,

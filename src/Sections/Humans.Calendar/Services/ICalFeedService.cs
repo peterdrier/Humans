@@ -45,7 +45,7 @@ internal sealed class ICalFeedService(
             items.AddRange(contributed);
         }
 
-        return items.OrderBy(i => i.Start).ToList();
+        return items;
     }
 
     public async Task<bool> HasFeedAsync(Guid userId, CancellationToken ct = default) =>
@@ -72,7 +72,7 @@ internal sealed class ICalFeedService(
         var calendar = new Ical.Net.Calendar { ProductId = "-//Nobodies Collective//Humans//EN" };
         calendar.AddProperty("X-WR-CALNAME", "Nobodies");
 
-        foreach (var item in items)
+        foreach (var item in items.OrderBy(i => i.Start))
         {
             calendar.Events.Add(new CalendarEvent
             {

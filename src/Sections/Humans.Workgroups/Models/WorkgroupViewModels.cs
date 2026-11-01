@@ -120,7 +120,7 @@ internal sealed class WorkgroupPageViewModel
     public required bool CanSeeBudget { get; init; }
 
     /// <summary>Empty unless the viewer can administer.</summary>
-    public IReadOnlyList<HoldedExpenseAccountDto> ExpenseAccounts { get; init; } = [];
+    public IReadOnlyList<HoldedChartAccountInfo> ExpenseAccounts { get; init; } = [];
 
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
@@ -344,7 +344,7 @@ internal sealed class RegisterExistingViewModel
     public WorkgroupBudgetFormViewModel Budget { get; set; } = new();
 
     [BindNever]
-    public IReadOnlyList<HoldedExpenseAccountDto> ExpenseAccounts { get; set; } = [];
+    public IReadOnlyList<HoldedChartAccountInfo> ExpenseAccounts { get; set; } = [];
 }
 
 internal sealed class WorkgroupsSettingsViewModel

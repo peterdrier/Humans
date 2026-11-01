@@ -87,7 +87,6 @@ internal sealed class UserEmailService(
 
         return info.UserEmails
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
-            .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailDto(
                 e.Id,
                 e.Email,
@@ -554,7 +553,7 @@ internal sealed class UserEmailService(
         var infos = await userService.GetAllUserInfosAsync(cancellationToken);
 
         var violations = new List<UserEmailFlagViolation>();
-        foreach (var info in infos.OrderBy(i => i.BurnerName, StringComparer.OrdinalIgnoreCase))
+        foreach (var info in infos)
         {
             if (info.UserEmails.Count == 0) continue;
 

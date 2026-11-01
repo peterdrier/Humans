@@ -68,6 +68,7 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IFinanceWrite _financeWrite = Substitute.For<IFinanceWrite>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly IHoldedFinanceWrite _holdedFinanceWrite = Substitute.For<IHoldedFinanceWrite>();
@@ -95,6 +96,7 @@ public sealed partial class ExpenseReportServiceTests
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so the
         // substitute has to claim a key or it returns before touching anything.
         _holdedClient.IsConfigured.Returns(true);
+        _holdedService.IsConfigured.Returns(true);
 
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
@@ -111,7 +113,7 @@ public sealed partial class ExpenseReportServiceTests
             _emailService,
             TestExpensesEmails.Create(),
             AuditLog,
-            _holdedClient,
+            _holdedService,
             _holdedFinance,
             _finance,
             _financeWrite,
@@ -903,7 +905,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1024,7 +1026,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1146,7 +1148,7 @@ public sealed partial class ExpenseReportServiceTests
         var repo = new ExpenseRepository(factory);
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
             _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
-            _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
+            _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         var ct = TestContext.Current.CancellationToken;
         var actor = Guid.NewGuid();
@@ -1458,7 +1460,7 @@ public sealed partial class ExpenseReportServiceTests
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
             _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
-            _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
+            _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;
         _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
@@ -1866,7 +1868,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1895,7 +1897,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1934,7 +1936,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _userEmailService, _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedClient, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -3697,6 +3699,11 @@ public sealed partial class ExpenseReportServiceTests
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Draft, submitter, null, 1, 50m, 100m);
 
+        ExpenseReportDto? atAudit = null;
+        AuditLog.LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
+                Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User)
+            .Returns(async _ => { atAudit = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken); });
+
         await using var stream = new MemoryStream([1, 2, 3]);
         var result = await _sut.AttachFileToLineWithResultAsync(
             reportId, submitter, false, lines[0], "receipt.pdf", "application/pdf", stream, TestContext.Current.CancellationToken);
@@ -3707,6 +3714,49 @@ public sealed partial class ExpenseReportServiceTests
         line.Declined.Should().BeFalse();
         line.DeclinedReason.Should().BeNull();
         loaded.Total.Should().Be(150m);
+        atAudit.Should().NotBeNull();
+        atAudit!.Total.Should().Be(150m);
+        atAudit.Lines.Single(l => l.Id == lines[0]).Declined.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ReplacingTheFileOfADeclinedLine_ReacceptanceSaveFailure_PreservesPreviousReceipt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var submitter = Guid.NewGuid();
+        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
+            ExpenseReportStatus.Draft, submitter, null, 1, 50m, 100m);
+        var previous = MakeAttachment(submitter);
+        await _expenseRepo.ReplaceLineAttachmentAsync(reportId, lines[0], previous, ct);
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions)
+            .AddInterceptors(new FailReceiptReacceptance()).Options;
+        var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
+        var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
+            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
+            Options.Create(new TravelReimbursementConfig()));
+        string? newKey = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { newKey = call.Arg<string>(); return Task.CompletedTask; });
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await service.AttachFileToLineWithResultAsync(reportId, submitter, false,
+            lines[0], "replacement.pdf", "application/pdf", stream, ct);
+
+        result.Succeeded.Should().BeFalse();
+        var loaded = (await service.GetAsync(reportId, ct))!;
+        var line = loaded.Lines.Single(l => l.Id == lines[0]);
+        line.AttachmentId.Should().Be(previous.Id);
+        line.DeclinedReason.Should().Be("Not eligible");
+        line.DeclinedAt.Should().Be(FakeNow);
+        loaded.Total.Should().Be(100m);
+        await using var context = new ExpensesDbContext(_expensesOptions);
+        (await context.ExpenseAttachments.ToListAsync(ct)).Should().ContainSingle(a => a.Id == previous.Id);
+        await _fileStorage.DidNotReceive().DeleteAsync(
+            ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
+        await _fileStorage.Received(1).DeleteAsync(newKey!, CancellationToken.None);
+        await AuditLog.DidNotReceive().LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
+            Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User);
     }
 
     [HumansFact]
@@ -3960,7 +4010,7 @@ public sealed partial class ExpenseReportServiceTests
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, TestContext.Current.CancellationToken);
 
         // Contact enrichment is delegated to Finance with the legal name, burner and iban
-        // (the contact payload itself — Name/TradeName/CustomId — is covered in HoldedFinanceServiceTests).
+        // (the contact payload itself — Name/TradeName — is covered in HoldedFinanceServiceTests).
         await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
             userId, legalName, burnerName, iban,
             Arg.Any<string?>(), Arg.Any<int?>(), ExpenseReportBackgroundProcessor.OutboxJobName,
@@ -4179,6 +4229,23 @@ public sealed partial class ExpenseReportServiceTests
         UploadedByUserId = uploaderId,
         UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
     };
+    private sealed class FailReceiptReacceptance : SaveChangesInterceptor
+    {
+        private bool _armed = true;
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (_armed && eventData.Context!.ChangeTracker.Entries<ExpenseLine>()
+                .Any(e => !e.Entity.Declined && e.Property(l => l.DeclinedAt).IsModified))
+            {
+                _armed = false;
+                throw new IOException("receipt reacceptance save failed");
+            }
+            return ValueTask.FromResult(result);
+        }
+    }
+
     private sealed class FailAfterCommit : SaveChangesInterceptor
     {
         public bool Armed { get; set; }

@@ -28,7 +28,7 @@
                     {
                         <tr><td colspan="4" class="text-center text-muted py-4">No ballots cast.</td></tr>
                     }
-                    @foreach (var ballot in Model.Ballots)
+                    @foreach (var ballot in Model.Ballots.OrderByDescending(b => b.IsOfficial).ThenBy(b => b.DisplayName, StringComparer.CurrentCulture))
                     {
                         <tr>
                             <td>@ballot.DisplayName</td>

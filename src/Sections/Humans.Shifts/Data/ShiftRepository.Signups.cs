@@ -185,13 +185,16 @@ internal sealed partial class ShiftRepository
             .ExecuteDeleteAsync(ct);
     }
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task<(int Count, IReadOnlyList<Guid> EventIds)> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        var sourceRows = await _dbContext.ShiftSignups
-            .Where(s => s.UserId == sourceUserId)
+        var affected = await _dbContext.ShiftSignups
+            .Include(s => s.Shift).ThenInclude(s => s.Rota)
+            .Where(s => s.UserId == sourceUserId || s.EnrolledByUserId == sourceUserId
+                || s.ReviewedByUserId == sourceUserId)
             .ToListAsync(ct);
+        var eventIds = affected.Select(s => s.Shift.Rota.EventSettingsId).Distinct().ToList();
 
         var targetShiftIds = await _dbContext.ShiftSignups
             .Where(s => s.UserId == targetUserId)
@@ -199,23 +202,28 @@ internal sealed partial class ShiftRepository
             .ToListAsync(ct);
         var targetShiftIdSet = new HashSet<Guid>(targetShiftIds);
 
-        foreach (var src in sourceRows)
+        foreach (var signup in affected)
         {
-            if (targetShiftIdSet.Contains(src.ShiftId))
+            if (signup.UserId == sourceUserId)
             {
-                // The target already holds this shift; its slot stands.
-                _dbContext.ShiftSignups.Remove(src);
+                if (targetShiftIdSet.Contains(signup.ShiftId))
+                {
+                    // The target already holds this shift; its slot stands.
+                    _dbContext.ShiftSignups.Remove(signup);
+                    continue;
+                }
+                signup.UserId = targetUserId;
             }
-            else
-            {
-                src.UserId = targetUserId;
-                src.UpdatedAt = updatedAt;
-            }
+            if (signup.EnrolledByUserId == sourceUserId)
+                signup.EnrolledByUserId = targetUserId;
+            if (signup.ReviewedByUserId == sourceUserId)
+                signup.ReviewedByUserId = targetUserId;
+            signup.UpdatedAt = updatedAt;
         }
 
         await _dbContext.SaveChangesAsync(ct);
 
-        return sourceRows.Count;
+        return (affected.Count, eventIds);
     }
 
     public async Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default)

@@ -943,12 +943,12 @@ public class VolunteerTrackingServiceTests
         public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
 
         public Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
-            Guid eventSettingsId,
+            Guid? eventSettingsId,
             IReadOnlyCollection<Guid>? userIds = null,
             CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
                 BuildStatuses
-                    .Where(b => b.EventSettingsId == eventSettingsId
+                    .Where(b => (eventSettingsId is null || b.EventSettingsId == eventSettingsId)
                         && (userIds is null || userIds.Contains(b.UserId)))
                     .ToList());
 

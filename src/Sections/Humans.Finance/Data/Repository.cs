@@ -92,8 +92,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseDocs.AsNoTracking()
             .Where(d => d.MatchStatus == HoldedMatchStatus.Unmatched)
-            // arch:db-sort-ok newest-first — unmatched review list, most recent docs surface first
-            .OrderByDescending(d => d.Date)
             .ToListAsync(ct);
     }
 

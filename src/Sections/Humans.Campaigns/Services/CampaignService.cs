@@ -214,8 +214,7 @@ internal sealed class CampaignService(
             return null;
 
         var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive)
-            .OrderBy(t => t.Name, StringComparer.Ordinal);
+            .Where(t => t.IsActive);
         var teamOptions = teams
             .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
             .ToList();
@@ -600,14 +599,14 @@ internal sealed class CampaignService(
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var summaries = summaryRows
-            .OrderByDescending(s => s.CreatedAt)
             .Select(s =>
             {
                 grantsByCampaign.TryGetValue(s.CampaignId, out var grants);
                 var total = grants?.Count ?? 0;
                 var redeemed = grants?.Count(g => g.RedeemedAt is not null) ?? 0;
                 return new CampaignCodeTrackingSummary(
-                    s.CampaignId, s.CampaignTitle, total, redeemed);
+                    s.CampaignId, s.CampaignTitle, total, redeemed)
+                { CreatedAt = s.CreatedAt };
             })
             .ToList();
 

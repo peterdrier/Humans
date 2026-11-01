@@ -872,10 +872,28 @@ public class GateServiceTests
         jobs.Select(j => (string)j.Args[0]).Should().Equal("vt-A", "vt-B");
         foreach (var job in jobs)
         {
-            job.Method.Name.Should().Be(nameof(GateVendorCheckInJob.ExecuteBackfillAsync));
+            job.Method.Name.Should().Be(nameof(GateVendorCheckInJob.ExecuteAsync));
             job.Args[1].Should().Be(admittedAt.ToUnixTimeSeconds());
             job.Args[2].Should().Be(CancellationToken.None);
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task VendorMirror_UsesOriginalAdmitTimeWhenProvided(bool backfill)
+    {
+        var vendor = Substitute.For<ITicketVendorMirror>();
+        _config["Gate:VendorMirrorEnabled"] = "true";
+        var originalAdmit = Clock.GetCurrentInstant() - Duration.FromHours(1);
+        var job = new GateVendorCheckInJob(vendor, Clock, _config,
+            NullLogger<GateVendorCheckInJob>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        await job.ExecuteAsync("vt-A", backfill ? originalAdmit.ToUnixTimeSeconds() : null, ct);
+
+        await vendor.Received(1).CreateCheckInAsync("vt-A",
+            backfill ? originalAdmit : Clock.GetCurrentInstant(), ct);
     }
 
     [HumansTheory]

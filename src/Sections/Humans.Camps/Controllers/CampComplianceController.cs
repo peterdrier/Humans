@@ -30,12 +30,17 @@ internal sealed class CampComplianceController(
             : null;
         if (matrix is null) return NotFound();
 
+        var columns = matrix.Roles.Select((role, index) => (Role: role, Index: index))
+            .OrderBy(column => column.Role.SortOrder)
+            .ThenBy(column => column.Role.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         return View(new CampComplianceViewModel
         {
             Event = matrix.Event,
             EventOptions = settings.Events,
-            Roles = matrix.Roles
-                .Select(r => new CampComplianceRoleColumn(r.Id, r.Name, r.MinimumRequired))
+            Roles = columns
+                .Select(column => new CampComplianceRoleColumn(column.Role.Id, column.Role.Name, column.Role.MinimumRequired))
                 .ToList(),
             Rows = matrix.Rows
                 .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
@@ -44,9 +49,9 @@ internal sealed class CampComplianceController(
                     r.CampSlug,
                     r.JoinedMemberCount,
                     r.TargetMemberCount,
-                    r.AssigneeUserIdsByRole
-                        .Select((assignees, i) => new CampComplianceRoleCell(
-                            assignees, matrix.Roles[i].MinimumRequired))
+                    columns
+                        .Select(column => new CampComplianceRoleCell(
+                            r.AssigneeUserIdsByRole[column.Index], column.Role.MinimumRequired))
                         .ToList()))
                 .ToList(),
         });

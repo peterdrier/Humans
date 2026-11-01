@@ -195,6 +195,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 - `IssuesService` (`Humans.Issues.Services`, `internal sealed`) depends only on Application-layer abstractions and its own repository — no `DbContext`, no `IDbContextFactory<>`.
 - `IIssuesRepository` (impl `src/Sections/Humans.Issues/Data/IssuesRepository.cs`) is the only code path that touches `issues` and `issue_comments` via `DbContext`. Singleton + `IDbContextFactory<IssuesDbContext>` per `design-rules.md §15b`.
+- **Issue lookup:** reads and mutations share the detached issue-with-comments query. Saves attach that aggregate to their own context; no tracking context spans the service operation.
+
 - **Aggregate-local navs kept:** `Issue.Comments ↔ IssueComment.Issue`. Both sides live in Issues-owned tables, so `.Include(i => i.Comments)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Issues are per-section queues triaged by handlers, not a hot bulk-read path. Same rationale as Feedback / User / Governance.
 - **No cross-domain navs:** `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser` do not exist as nav properties. The repository does not `.Include()` them; `IssuesService` resolves display data in memory via `IUserService.GetUserInfosAsync` (design-rules §6b). There is no FK to configure — `ReporterUserId`/`AssigneeUserId`/`ResolvedByUserId`/`SenderUserId` are bare columns.

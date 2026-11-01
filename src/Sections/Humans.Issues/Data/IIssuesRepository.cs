@@ -10,10 +10,8 @@ internal interface IIssuesRepository : IRepository
 {
     Task AddIssueAsync(Issue issue, CancellationToken ct = default);
 
+    /// <summary>Detached issue with comments, also used by mutations that attach it when saving.</summary>
     Task<Issue?> GetByIdAsync(Guid id, CancellationToken ct = default);
-
-    /// <summary>Comments loaded.</summary>
-    Task<Issue?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 
     Task<IReadOnlyList<Issue>> GetListAsync(
         IssueListFilter filter,

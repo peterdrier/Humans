@@ -43,11 +43,19 @@ internal interface IWorkgroupRepository : IRepository
     /// <summary>Inserts the group with the rows created in the same act (members, the log entry).</summary>
     Task AddWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default);
 
-    Task UpdateWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default);
+    /// <summary>Group fields, optional system log entries and explicit member changes in one save.</summary>
+    Task UpdateWorkgroupAsync(
+        Workgroup workgroup, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null,
+        IReadOnlyList<WorkgroupMember>? membersToUpdate = null);
 
-    Task AddMemberAsync(WorkgroupMember member, CancellationToken ct = default);
+    /// <summary>Membership and its optional system log entries in one save.</summary>
+    Task AddMemberAsync(
+        WorkgroupMember member, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null);
 
-    Task UpdateMembersAsync(IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default);
+    /// <summary>Membership changes and their optional system log entries in one save.</summary>
+    Task UpdateMembersAsync(
+        IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default,
+        IReadOnlyList<WorkgroupLogEntry>? logEntries = null);
 
     Task AddMeetingAsync(WorkgroupMeeting meeting, CancellationToken ct = default);
 
@@ -62,7 +70,9 @@ internal interface IWorkgroupRepository : IRepository
 
     Task AddDocumentAsync(WorkgroupDocument document, CancellationToken ct = default);
 
-    Task UpdateDocumentAsync(WorkgroupDocument document, CancellationToken ct = default);
+    /// <summary>Document fields and optional system log entries in one save.</summary>
+    Task UpdateDocumentAsync(
+        WorkgroupDocument document, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null);
 
     Task AddCommentAsync(WorkgroupDocumentComment comment, CancellationToken ct = default);
 

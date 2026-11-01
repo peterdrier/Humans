@@ -17,9 +17,7 @@ internal static class RequiredConsentRows
         var rows = new List<RequiredConsentRow>(documents.Count);
         foreach (var doc in documents)
         {
-            var currentVersion = doc.Versions
-                .Where(v => v.EffectiveFrom <= now)
-                .MaxBy(v => v.EffectiveFrom);
+            var currentVersion = doc.CurrentVersionAt(now);
 
             if (currentVersion is null)
                 continue;

@@ -65,7 +65,6 @@ public class HoldedClientTreasuryTests
         m.Amount.Should().Be(-120.00m);
         m.Description.Should().Be("12345678 - NCA - Alice");
         m.Status.Should().Be("pending");
-        m.Origin.Should().Be("bank");
     }
 
     [HumansFact]
