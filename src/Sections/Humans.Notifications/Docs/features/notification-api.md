@@ -26,7 +26,7 @@ X-Api-Key: <personal key>
       "date": "2026-04-10T09:00:00Z",
       "source": "ConsentReviewNeeded",
       "subject": "Consent review pending: Alice",
-      "link": "/OnboardingReview",
+      "link": "/Consent/ReviewQueue",
       "priority": "high",
       "class": "actionable",
       "unread": true

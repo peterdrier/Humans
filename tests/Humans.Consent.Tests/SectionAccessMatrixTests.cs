@@ -2,7 +2,7 @@ using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Models;
 
-namespace Humans.Onboarding.Tests;
+namespace Humans.Consent.Tests;
 
 public class SectionAccessMatrixTests
 {
@@ -10,12 +10,12 @@ public class SectionAccessMatrixTests
         ((ISectionAccessMatrix)new Section()).AccessMatrices.Should().ContainSingle().Subject;
 
     [HumansFact]
-    public void Contributes_the_OnboardingReview_matrix_under_the_key_the_page_calls_it_with()
+    public void Contributes_the_ConsentReview_matrix_under_the_key_the_page_calls_it_with()
     {
         var matrix = Matrix();
 
-        matrix.Key.Should().Be("OnboardingReview");
-        matrix.SectionName.Should().Be("Onboarding Review");
+        matrix.Key.Should().Be("ConsentReview");
+        matrix.SectionName.Should().Be("Consent Review");
         matrix.Order.Should().Be(50);
         matrix.Roles.Should().Equal("ConsentCoordinator", "ShiftsAdmin", "Board");
     }
@@ -30,7 +30,7 @@ public class SectionAccessMatrixTests
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
             .Should().Equal(
-                "View onboarding queue: ConsentCoordinator=Allowed, ShiftsAdmin=Allowed, Board=Allowed",
+                "View review queue: ConsentCoordinator=Allowed, ShiftsAdmin=Allowed, Board=Allowed",
                 "Clear consent checks: ConsentCoordinator=Allowed, ShiftsAdmin=Denied, Board=Allowed",
                 "Flag / reject signup: ConsentCoordinator=Allowed, ShiftsAdmin=Denied, Board=Allowed",
                 "Board voting: ConsentCoordinator=Denied, ShiftsAdmin=Denied, Board=Allowed");

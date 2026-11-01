@@ -3,10 +3,9 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Authorization;
+using Humans.Consent.Controllers;
+using Humans.Consent.Services;
 using Humans.Onboarding.Contracts;
-using Humans.Onboarding.Controllers;
-using Humans.Onboarding.Services;
-using Humans.Onboarding.Tests.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -17,29 +16,30 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Onboarding.Tests.Controllers;
+namespace Humans.Consent.Tests.Controllers;
 
 /// <summary>
-/// The Consent Coordinator review queue, the section's only privileged surface.
+/// The Consent Coordinator review queue.
 /// </summary>
 /// <remarks>
 /// A Volunteer Coordinator may read the queue but not act on it. That is a per-action policy
 /// attribute, so a reflection assertion catches an action that forgot it. Each action must report
 /// what happened: the queue is the only place a human sees the outcome.
 /// </remarks>
-public class OnboardingReviewControllerTests
+public class ConsentReviewQueueControllerTests
 {
-    private readonly IOnboardingService _onboarding = Substitute.For<IOnboardingService>();
+    private readonly IConsentReviewQueueService _queue = Substitute.For<IConsentReviewQueueService>();
+    private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+    private readonly IStringLocalizer<ConsentResource> _localizer =
+        Substitute.For<IStringLocalizer<ConsentResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
 
     private readonly Guid _reviewerId = Guid.NewGuid();
     private readonly Guid _subjectId = Guid.NewGuid();
 
-    public OnboardingReviewControllerTests()
+    public ConsentReviewQueueControllerTests()
     {
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(ci =>
@@ -47,7 +47,7 @@ public class OnboardingReviewControllerTests
         _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _userService.GetUserInfoAsync(_reviewerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubs.MakeUserInfo(_reviewerId, displayName: "Reviewer"));
+            .Returns(MakeUserInfo(_reviewerId));
     }
 
     /// <summary>
@@ -72,7 +72,7 @@ public class OnboardingReviewControllerTests
     [HumansFact]
     public void TheQueueItselfIsReadableByEveryReviewQueueRole()
     {
-        var onTheClass = typeof(OnboardingReviewController)
+        var onTheClass = typeof(ConsentReviewQueueController)
             .GetCustomAttributes<AuthorizeAttribute>()
             .Select(a => a.Policy)
             .ToList();
@@ -91,35 +91,35 @@ public class OnboardingReviewControllerTests
     {
         var survivorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(_subjectId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubs.MakeUserInfo(survivorId, displayName: "Survivor"));
+            .Returns(MakeUserInfo(survivorId));
 
         var ctrl = BuildSut();
         var result = await ctrl.Detail(_subjectId, TestContext.Current.CancellationToken);
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Which;
-        redirect.ActionName.Should().Be(nameof(OnboardingReviewController.Detail));
+        redirect.ActionName.Should().Be(nameof(ConsentReviewQueueController.Detail));
         redirect.RouteValues.Should().ContainKey("userId").WhoseValue.Should().Be(survivorId);
-        await _onboarding.DidNotReceiveWithAnyArgs().GetReviewDetailAsync(default);
+        await _queue.DidNotReceiveWithAnyArgs().GetReviewDetailAsync(default);
     }
 
     [HumansFact]
     public async Task Clear_TellsTheCoordinatorWhenTheHumanWasAlreadyRejected()
     {
-        _onboarding.ClearConsentCheckAsync(_subjectId, _reviewerId, null, Arg.Any<CancellationToken>())
+        _queue.ClearAsync(_subjectId, _reviewerId, null, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(false, "AlreadyRejected"));
 
         var ctrl = BuildSut();
         var result = await ctrl.Clear(_subjectId, notes: null);
 
         result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(OnboardingReviewController.Index));
-        ctrl.TempData["ErrorMessage"].Should().Be("Onboarding_ReviewAlreadyRejected");
+            .Which.ActionName.Should().Be(nameof(ConsentReviewQueueController.Index));
+        ctrl.TempData["ErrorMessage"].Should().Be("Consent_Queue_AlreadyRejected");
     }
 
     [HumansFact]
     public async Task Clear_SurvivesAThrowingServiceAndSaysSoRatherThan500ing()
     {
-        _onboarding.ClearConsentCheckAsync(_subjectId, _reviewerId, null, Arg.Any<CancellationToken>())
+        _queue.ClearAsync(_subjectId, _reviewerId, null, Arg.Any<CancellationToken>())
             .Returns<OnboardingResult>(_ => throw new InvalidOperationException("boom"));
 
         var ctrl = BuildSut();
@@ -132,15 +132,15 @@ public class OnboardingReviewControllerTests
     [HumansFact]
     public async Task Flag_RecordsTheReviewerAndTheNotes()
     {
-        _onboarding.FlagConsentCheckAsync(_subjectId, _reviewerId, "needs a chat", Arg.Any<CancellationToken>())
+        _queue.FlagAsync(_subjectId, _reviewerId, "needs a chat", Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
         var ctrl = BuildSut();
         var result = await ctrl.Flag(_subjectId, notes: "needs a chat");
 
         result.Should().BeOfType<RedirectToActionResult>();
-        ctrl.TempData["SuccessMessage"].Should().Be("Onboarding_ReviewFlagged");
-        await _onboarding.Received(1).FlagConsentCheckAsync(
+        ctrl.TempData["SuccessMessage"].Should().Be("Consent_Queue_Flagged");
+        await _queue.Received(1).FlagAsync(
             _subjectId, _reviewerId, "needs a chat", Arg.Any<CancellationToken>());
     }
 
@@ -150,16 +150,15 @@ public class OnboardingReviewControllerTests
     /// happened — all, some, none — or a half-done sweep reads as a finished one.
     /// </summary>
     [HumansTheory]
-    [InlineData(3, 3, "SuccessMessage", "Onboarding_ReviewBulkCleared")]
-    [InlineData(3, 1, "SuccessMessage", "Onboarding_ReviewBulkClearedPartial")]
-    [InlineData(3, 0, "InfoMessage", "Onboarding_ReviewBulkClearedNone")]
+    [InlineData(3, 3, "SuccessMessage", "Consent_Queue_BulkCleared")]
+    [InlineData(3, 1, "SuccessMessage", "Consent_Queue_BulkClearedPartial")]
+    [InlineData(3, 0, "InfoMessage", "Consent_Queue_BulkClearedNone")]
     public async Task BulkClear_DistinguishesAllFromSomeFromNone(
         int selected, int approved, string slot, string expectedKey)
     {
         var ids = Enumerable.Range(0, selected).Select(_ => Guid.NewGuid()).ToList();
-        _onboarding.BulkClearConsentChecksAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), _reviewerId, Arg.Any<CancellationToken>())
-            .Returns(new BulkOnboardingResult(approved));
+        _queue.BulkClearAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _reviewerId, Arg.Any<CancellationToken>())
+            .Returns(approved);
 
         var ctrl = BuildSut();
         await ctrl.BulkClear(ids, TestContext.Current.CancellationToken);
@@ -172,9 +171,8 @@ public class OnboardingReviewControllerTests
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
-        _onboarding.BulkClearConsentChecksAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), _reviewerId, cancellation.Token)
-            .Returns(Task.FromException<BulkOnboardingResult>(new OperationCanceledException(cancellation.Token)));
+        _queue.BulkClearAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _reviewerId, cancellation.Token)
+            .Returns(Task.FromException<int>(new OperationCanceledException(cancellation.Token)));
 
         var act = () => BuildSut().BulkClear([_subjectId], cancellation.Token);
 
@@ -194,16 +192,17 @@ public class OnboardingReviewControllerTests
     }
 
     private static IEnumerable<MethodInfo> MutatingActions() =>
-        typeof(OnboardingReviewController)
+        typeof(ConsentReviewQueueController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.IsDefined(typeof(HttpPostAttribute)));
 
-    private OnboardingReviewController BuildSut(bool signedIn = true)
+    private ConsentReviewQueueController BuildSut(bool signedIn = true)
     {
-        var ctrl = new OnboardingReviewController(
+        var ctrl = new ConsentReviewQueueController(
             _userService,
+            _queue,
             _onboarding,
-            NullLogger<OnboardingReviewController>.Instance,
+            NullLogger<ConsentReviewQueueController>.Instance,
             _localizer,
             _sharedLocalizer);
 
@@ -224,5 +223,13 @@ public class OnboardingReviewControllerTests
         // Pre-set Url so RedirectToAction doesn't resolve IUrlHelperFactory from RequestServices.
         ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
+    }
+
+    private static UserInfo MakeUserInfo(Guid userId)
+    {
+        var profile = UserFixtures.Profile(burnerName: "User", isApproved: true);
+        return UserInfo.Create(
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = profile.BurnerName, State = UserFixtures.StateFor(profile) },
+            [], [], [], profile: profile, []);
     }
 }

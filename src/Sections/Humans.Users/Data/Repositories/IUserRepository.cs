@@ -19,6 +19,9 @@ internal partial interface IUserRepository : IRepository
 
     Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default);
 
+    /// <summary>True only when this call set the mark; false when already marked or the user doesn't exist.</summary>
+    Task<bool> SetMarkedFakeAsync(Guid userId, Instant at, CancellationToken ct = default);
+
     Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default);

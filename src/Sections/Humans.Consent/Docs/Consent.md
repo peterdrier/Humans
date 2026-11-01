@@ -23,7 +23,7 @@ Out of scope: deciding who is a member (Governance), suspending for missing cons
 - A **Legal Document** is a named, team-scoped document (e.g., "Privacy Policy", "Volunteer Agreement"). Documents on the Volunteers system team apply to every active human. Each document points at a folder in the configured GitHub repository and is synced from there by `LegalDocumentSyncService` / `SyncLegalDocumentsJob`.
 - A **Document Version** is a specific revision of a legal document with an `EffectiveFrom` instant and a multi-language `Content` dictionary keyed by language code (Spanish `"es"` is canonical/legally binding). When the GitHub commit SHA for the canonical file changes, the sync produces a new version; if `RequiresReConsent` is true, affected users are re-notified.
 - A **Consent Record** is an append-only audit entry linking a user to a specific document version with timestamp, IP, user-agent, content hash, and an `ExplicitConsent` flag. Consent records can never be updated or deleted — only new records can be inserted.
-- **Consent Check** is an audit/annotation track Consent owns in `consent_reviews` (`ConsentReviewInfo.Status`; Users decomposition commit 12 moved it off `profiles`). After a human signs all required documents, the status flips to `Pending` and the human appears in the Consent Coordinator review queue. CC actions (Clear / Flag / Reject) maintain the annotation but do NOT gate admission to the Volunteers team — admission is automatic once profile + consents are complete.
+- **Consent Check** is an audit/annotation track Consent owns in `consent_reviews` (`ConsentReviewInfo.Status`; Users decomposition commit 12 moved it off `profiles`). After a human signs all required documents, the status flips to `Pending` and the human appears in the Consent Coordinator review queue. Fake accounts (Users' `UserInfo.IsFake`: the gate terminal, dev personas) never appear in it. CC actions (Clear / Flag / Reject) maintain the annotation but do NOT gate admission to the Volunteers team — admission is automatic once profile + consents are complete.
 - The **Statutes** page (`/Legal`) is a separate, anonymous read of the association's statutes pulled directly from GitHub by `LegalDocumentService` (with in-memory caching) — it does not go through the `legal_documents` table.
 
 ## Data Model
@@ -116,13 +116,14 @@ Per-user reads on `consent_records` chain-follow merge tombstones via `UserInfo.
 
 ## Routing
 
-Three controllers serve this section.
+Five controllers serve this section.
 
 | Controller | Route prefix | Auth |
 |------------|-------------|------|
 | `LegalController` | `/Legal/{slug?}` | `[AllowAnonymous]` — Statutes page only |
 | `ConsentController` | `/Consent` (conventional) | `[Authorize]` |
 | `MyDataController` | `/Consent/MyData` | `[Authorize]` |
+| `ConsentReviewQueueController` | `/Consent/ReviewQueue` | `PolicyNames.ReviewQueueAccess`; every POST also `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `AdminLegalDocumentsController` | `/Legal/Admin/Documents` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
 
 **Consent routes:**
@@ -133,6 +134,17 @@ Three controllers serve this section.
 | `/Consent/Review?id={versionId}` | GET | Document review before consent |
 | `/Consent/Submit` | POST | Record consent |
 | `/Consent/MyData` | GET | My Data page shell: Gdpr's export/deletion actions, the pending-deletion status (read from `UserInfo`) and the member's signed documents (consent history). Carries `[AllowBeforeActiveMembership]` so non-Active members reach it |
+
+**Review queue routes** (the Consent Coordinator's desk; the policy is Shell's, in `AuthorizationPolicyExtensions`):
+
+| Route | Method | Action |
+|-------|--------|--------|
+| `/Consent/ReviewQueue` | GET | Pending and flagged reviews |
+| `/Consent/ReviewQueue/{userId}` | GET | Detail. A merged-away id redirects to the survivor's route, so the forms post the id the page shows |
+| `/Consent/ReviewQueue/{userId}/Clear` | POST | Clear |
+| `/Consent/ReviewQueue/BulkClear` | POST | Bulk clear; an aborted request propagates cancellation rather than showing a failure toast |
+| `/Consent/ReviewQueue/{userId}/Flag` | POST | Flag |
+| `/Consent/ReviewQueue/{userId}/Reject` | POST | Reject, through `IOnboardingIntake.RejectSignupAsync` |
 
 **Admin routes:**
 
@@ -155,7 +167,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 |-------|--------------|
 | Anyone (including anonymous) | View `/Legal` Statutes page |
 | Any authenticated human | View own consent dashboard at `/Consent`. Sign or re-sign document versions. Accessible during onboarding (before becoming an active member) |
-| ConsentCoordinator, ShiftsAdmin, Board, Admin | Read access to the onboarding review queue at `/OnboardingReview` (`PolicyNames.ReviewQueueAccess`) |
+| ConsentCoordinator, ShiftsAdmin, Board, Admin | Read access to the review queue at `/Consent/ReviewQueue` (`PolicyNames.ReviewQueueAccess`) |
 | ConsentCoordinator, Board, Admin | Clear, Flag, or Reject consent checks (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | Board, Admin | Manage legal documents and document versions at `/Legal/Admin/Documents` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
 
@@ -206,6 +218,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - Regular humans **cannot** manage legal documents or document versions.
 - ConsentCoordinator **cannot** manage legal documents or versions — they can only review and clear/flag consent checks.
+- ShiftsAdmin **cannot** clear, flag, or reject in the review queue: `PolicyNames.ReviewQueueAccess` lets them read it, and every POST requires `PolicyNames.ConsentCoordinatorBoardOrAdmin`.
 ### ConsentReminder
 
 **Table:** `consent_reminders` — when the re-consent reminder email last went to a member: one row per user id, written by `ConsentReminderService` (the only writer, through `IConsentReminderRepository`) for `SendReConsentReminderJob`.
@@ -226,8 +239,8 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 ## Triggers
 
 - When a human signs all required global documents: their consent check status transitions to Pending. `ConsentService.SubmitConsentAsync` fires no per-user team sync — Volunteers admission is reconciled by the scheduled `SystemTeamSyncJob.SyncVolunteersTeamAsync` pass on name + consents (eventually consistent). App access never depended on Volunteers membership.
-- When a Consent Coordinator clears a consent check: the review's `IsApproved` is set to true and `Status = Cleared` (`IConsentWrite.RecordConsentCheckAsync`), and Consent writes the `ConsentCheckCleared` audit row itself (callers add none). This is an audit annotation only — `ClearConsentCheckAsync` provisions no team; Volunteers membership and app access are independent of CC review.
-- When a Consent Coordinator flags a consent check: the review's `IsApproved` is set to false and `Status = Flagged`, with a `ConsentCheckFlagged` audit row from the same write. This is an audit annotation only — `FlagConsentCheckAsync` provisions/deprovisions no team; Volunteers membership and app access are unaffected. `RejectSignupAsync` (the review's `RejectedAt` here, `UserState.Rejected` in Users) is the CC's only actual kick-out lever.
+- When a Consent Coordinator clears a consent check: the review's `IsApproved` is set to true and `Status = Cleared` (`IConsentWrite.RecordConsentCheckAsync`), and Consent writes the `ConsentCheckCleared` audit row itself (callers add none). This is an audit annotation only — clearing provisions no team; Volunteers membership and app access are independent of CC review.
+- When a Consent Coordinator flags a consent check: the review's `IsApproved` is set to false and `Status = Flagged`, with a `ConsentCheckFlagged` audit row from the same write. This is an audit annotation only — flagging provisions/deprovisions no team; Volunteers membership and app access are unaffected. `RejectSignupAsync` (the review's `RejectedAt` here, `UserState.Rejected` in Users) is the CC's only actual kick-out lever.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
 - Re-consent reminder emails render in each recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences.
 - The reminder job skips a member stamped in `consent_reminders` within `ConsentReminderCooldownDays` and stamps each member it reminds. It attempts every eligible recipient before reporting per-recipient preparation, enqueue, or cooldown-stamp failures. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown.
@@ -247,7 +260,8 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - **AuditLog:** `IAuditLogService` records legal-document administration and version publication through its existing write contract.
 - **Notifications:** `Humans.Notifications.Contracts.INotificationEmitter` (in-app fan-out from `LegalDocumentSyncService`). Consent resolves no notifications itself: once all required consents are complete, `ConsentService` calls `IHumanLifecycleService.RestoreConsentSuspensionAsync`, and Users resolves its own `AccessSuspended` notifications there. Its sources are declared in `ConsentNotificationSources` (`src/Sections/Humans.Consent/ConsentNotificationSources.cs`), one `NotificationSourceDefinition` each: `ReConsentRequired` (actionable, to the active members of the document's team: required doc updated); `LegalDocumentPublished` (actionable, to the active members of the document's team: new required doc published); `ConsentReviewNeeded` (actionable, to consentCoordinator role: retired, purged nightly).
 - **Human Lifecycle:** `IHumanLifecycleService.RestoreConsentSuspensionAsync` — `ConsentService` lifts a consent suspension once all required consents are complete; that call also resolves the `AccessSuspended` notification, inside Users. `ConsentService` does not depend on `ISystemTeamSync` — a consent submit provisions no system-team membership; the scheduled `SystemTeamSyncJob` reconciles Volunteers/Coordinators on name + consents.
-- **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
+- **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete. The review queue reads `IMembershipCalculator.GetMembershipSnapshotAsync` (signed / required counts) and `IGovernanceService` (membership tiers, pending tier applications).
+- **Onboarding:** the review queue's Reject calls `IOnboardingIntake.RejectSignupAsync`, which records the rejection here and carries out the state change, team de-provisioning and notice.
 - **Gdpr:** the My Data page posts to Gdpr's `MemberDataController` (export, request deletion) and `UserController` (cancel deletion); Consent references Gdpr's project only for those routes and its existing contributor types. Pending-deletion dates come from `UserInfo`.
 - **Users/Identity:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target, and the read resolves a tombstone id forward to its survivor. Consent records are immutable per §12 and stay at source. When `LegalDocumentSyncService` publishes a new / re-consent-required version, the in-app notices go to the document's team members (`ITeamService.GetTeamAsync`), resolved through `IUserService.GetUserInfosAsync` and filtered to `IsActive`, the same audience as the email pass (`LegalDocumentSyncRunner`); notices are grouped by supported recipient language in all six cultures (English fallback), with delivery failures isolated per group.
 
@@ -271,7 +285,7 @@ A delayed per-key or bulk consent load cannot republish its old result after an 
   - **Per-user** — `CachingConsentService` (Singleton in `Humans.Consent.Services`) wraps `ConsentService` (inner, keyed Scoped). Holds `UserConsentInfo` (the user's explicitly consented version-id set, with the merge source-id chain unioned at warm time) keyed by user id. Serves `GetConsentedVersionIdsAsync` and `GetConsentMapForUsersAsync` from cache. Required-consent row composition delegates to the inner service, which owns the legal-document and clock reads. Lazy per-user warm. **Synchronous refresh on `SubmitConsentAsync`**: the decorator override refreshes the user (and any merged-source-id tombstones) via `ReplaceAsync` inline before returning, so the controller's next-page consent-banner check observes the fresh state. Each entry carries the merge-chain ids it was built over; the inner service supplies current chains through its internal `GetUserIdChainsAsync` bulk read. The decorator resolves no Users or legal-document service. A read whose current list differs reloads it, so after an account merge tombstones the source, both the survivor's and the source id's entries rebuild against the new chain on their next read, with no signal from Users.
   - `LegalDocumentService` (Statutes page) keeps its own `IMemoryCache` for the GitHub-fetched anonymous statutes content (zero DB access, pure I/O cache).
   - Architecture tests pin the consent decorator's shape: `ConsentArchitectureTests.{CachingConsentService_DeclaresSubmitConsentAsync, IConsentManagement_And_IConsentService_ResolveToSameSingleton}`.
-- **Public contract.** `IConsentService` (8 methods: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync`, `GetConsentReviewDetailAsync`, `GetConsentReviewAsync`, `GetConsentReviewsAsync`) is the public contract — only Consent projections, no EF entities. The two review reads pass through `CachingConsentService` uncached. `IConsentWrite` (`RecordConsentCheckAsync`, `SetConsentCheckPendingAsync`, `RecordRejectionAsync`) is the review's write, for Onboarding's coordinator actions and the Tickets/Development seeders; `ConsentReviewInfo`, `ConsentCheckStatus` and the queue predicates `ConsentReviewPredicates.NeedsConsentReview` / `IsConsentCheckFlagged` sit beside it. `IConsentSubmission` carries the one write that leaves the section (`SubmitConsentAsync`), for Shell's onboarding widget and `DevPersonaSeeder`. Both sit on `Humans.Consent.Contracts` alongside `ILegalDocumentService` (statutes), `ILegalDocumentSyncService` (one member, `GetRequiredDocumentVersionsForTeamAsync`, for Governance's membership calculator; the reminder job and metrics snapshot use the internal `ILegalDocumentSyncManagement`) and `ConsentReviewFormViewModel` (the model Shell builds for the section's `_ConsentReviewBody` partial). The internal `IConsentManagement : IConsentService, IConsentSubmission` adds `GetConsentDashboardAsync` and the decorator’s live merge-chain lookup; the admin legal-document surface, the GitHub connector, the sync runner (`ILegalDocumentSyncRunner`, the body of `SyncLegalDocumentsJob`) and the sync service's write half never leave.
+- **Public contract.** `IConsentService` (8 methods: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync`, `GetConsentReviewDetailAsync`, `GetConsentReviewAsync`, `GetConsentReviewsAsync`) is the public contract — only Consent projections, no EF entities. The two review reads pass through `CachingConsentService` uncached. `IConsentWrite` (`RecordConsentCheckAsync`, `SetConsentCheckPendingAsync`, `RecordRejectionAsync`) is the review's write, for this section's review queue and Onboarding's reject and review threshold; `ConsentReviewInfo`, `ConsentCheckStatus` and the queue predicates `ConsentReviewPredicates.NeedsConsentReview` / `IsConsentCheckFlagged` sit beside it. `IConsentSubmission` carries the one write that leaves the section (`SubmitConsentAsync`), for Shell's onboarding widget and `DevPersonaSeeder`. Both sit on `Humans.Consent.Contracts` alongside `ILegalDocumentService` (statutes), `ILegalDocumentSyncService` (one member, `GetRequiredDocumentVersionsForTeamAsync`, for Governance's membership calculator; the reminder job and metrics snapshot use the internal `ILegalDocumentSyncManagement`) and `ConsentReviewFormViewModel` (the model Shell builds for the section's `_ConsentReviewBody` partial). The internal `IConsentManagement : IConsentService, IConsentSubmission` adds `GetConsentDashboardAsync` and the decorator’s live merge-chain lookup; the admin legal-document surface, the GitHub connector, the sync runner (`ILegalDocumentSyncRunner`, the body of `SyncLegalDocumentsJob`) and the sync service's write half never leave.
 - **Aggregate-local navs still declared (not cross-section):**
   - `ConsentRecord.DocumentVersion` — walked by `ConsentRepository.GetAllForUserIdsAsync` (`.ThenInclude(v => v.LegalDocument)`) to surface document name + version on the consent-history view. This is aggregate-local for `consent_records` → `document_versions` → `legal_documents`; not a cross-section nav.
   - `DocumentVersion.ConsentRecords` — declared and configured (`DocumentVersionConfiguration`); not navigated by any current service path.

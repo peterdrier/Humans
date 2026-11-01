@@ -5,8 +5,8 @@
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
   src/Sections/Humans.Shifts/Views/ShiftProfile/ShiftInfo.cshtml
   src/Sections/Humans.Consent/Views/Consent/**
-  src/Sections/Humans.Onboarding/Views/OnboardingReview/Index.cshtml
-  src/Sections/Humans.Onboarding/Views/OnboardingReview/Detail.cshtml
+  src/Sections/Humans.Consent/Views/ConsentReviewQueue/Index.cshtml
+  src/Sections/Humans.Consent/Views/ConsentReviewQueue/Detail.cshtml
   src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
   src/Sections/Humans.Onboarding/Views/Welcome/**
   src/Sections/Humans.Onboarding/Controllers/OnboardingWidgetController.cs
@@ -14,7 +14,7 @@
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Onboarding/Controllers/GuestController.cs
   src/Humans.Web/Controllers/HomeController.cs
-  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Sections/Humans.Consent/Controllers/ConsentReviewQueueController.cs
   src/Sections/Humans.Onboarding/Services/**
   src/Sections/Humans.Auth/Services/MagicLinkService.cs
   src/Sections/Humans.Consent/Services/**
@@ -110,7 +110,7 @@ Until you enter that name the app stays shut: every page sends you back to the n
 
 ## As a [Coordinator](Glossary.md#coordinator)
 
-If you hold the **Consent Coordinator** role, your work in onboarding is reviewing the queue at `/OnboardingReview` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
+If you hold the **Consent Coordinator** role, your work in onboarding is reviewing the queue at `/Consent/ReviewQueue` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
 
 If you hold the **Shifts Admin** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject — those actions all require Consent Coordinator (or Board / Admin).
 
@@ -118,7 +118,7 @@ If you hold the **Shifts Admin** role, you have read-only access to the same que
 
 Board members and Admins can do everything a Consent Coordinator can, plus:
 
-- **Resolve flagged profiles.** Board/Admin can clear or reject flagged reviews from `/OnboardingReview`; human admins can reject a signup from `/Users/Admin/{id}`.
+- **Resolve flagged profiles.** Board/Admin can clear or reject flagged reviews from `/Consent/ReviewQueue`; human admins can reject a signup from `/Users/Admin/{id}`.
 - **Vote on tier applications.** Board votes on Colaborador / Asociado applications at `/Governance/BoardVoting`; Admin can finalize a vote, set the meeting date, and override.
 - **Review the full onboarding pipeline.** See [humans](Glossary.md#human) at every stage, including those stuck waiting on documents or a coordinator.
 

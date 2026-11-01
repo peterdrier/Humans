@@ -392,7 +392,7 @@ public sealed class Section :
     IEnumerable<UserPart> IUserPart.Parts() =>
     [
         new(UserPartSlots.BoardVoteApplicant, typeof(ProfileCardViewComponent)),
-        new(UserPartSlots.OnboardingReviewApplicant, typeof(ProfileCardViewComponent)),
+        new(UserPartSlots.ConsentReviewApplicant, typeof(ProfileCardViewComponent)),
         new(UserPartSlots.TicketTransferParty, typeof(HumanSummaryViewComponent)),
     ];
 }

@@ -270,4 +270,114 @@
     <value>Das Abbrechen stellt Ihre früheren Teammitgliedschaften nicht wieder her. Sie müssen den Teams erneut beitreten.</value>
   </data>
   <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Grund:</value></data>
+  <data name="Consent_Queue_Title" xml:space="preserve">
+    <value>Onboarding-Prüfwarteschlange</value>
+  </data>
+  <data name="Consent_Queue_NoPending" xml:space="preserve">
+    <value>Keine Humans warten auf eine Prüfung.</value>
+  </data>
+  <data name="Consent_Queue_PendingSection" xml:space="preserve">
+    <value>Ausstehende Prüfung</value>
+  </data>
+  <data name="Consent_Queue_FlaggedSection" xml:space="preserve">
+    <value>Zur Nachverfolgung markiert</value>
+  </data>
+  <data name="Consent_Queue_FlaggedBadge" xml:space="preserve">
+    <value>Markiert</value>
+  </data>
+  <data name="Consent_Queue_NewHumanSummary" xml:space="preserve">
+    <value>Neuer Human – Zusammenfassung</value>
+  </data>
+  <data name="Consent_Queue_LegalName" xml:space="preserve">
+    <value>Bürgerlicher Name</value>
+  </data>
+  <data name="Consent_Queue_HasApplication" xml:space="preserve">
+    <value>Hat Antrag</value>
+  </data>
+  <data name="Consent_Queue_Signed" xml:space="preserve">
+    <value>unterzeichnet</value>
+  </data>
+  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
+    <value>Antragsmotivation</value>
+  </data>
+  <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
+    <value>Frühere Prüfnotizen</value>
+  </data>
+  <data name="Consent_Queue_Actions" xml:space="preserve">
+    <value>Aktionen</value>
+  </data>
+  <data name="Consent_Queue_NotesPlaceholder" xml:space="preserve">
+    <value>Optionale Notizen...</value>
+  </data>
+  <data name="Consent_Queue_ClearButton" xml:space="preserve">
+    <value>Freigeben &amp; Genehmigen</value>
+  </data>
+  <data name="Consent_Queue_ClearHelp" xml:space="preserve">
+    <value>Genehmigt die Profilüberprüfung. Der Human tritt Freiwilligen bei, wenn auch die rechtlichen Dokumente unterzeichnet sind.</value>
+  </data>
+  <data name="Consent_Queue_ClearConfirm" xml:space="preserve">
+    <value>Die Profilüberprüfung dieses Humans wird freigegeben. Fortfahren?</value>
+  </data>
+  <data name="Consent_Queue_FlagButton" xml:space="preserve">
+    <value>Zur Prüfung markieren</value>
+  </data>
+  <data name="Consent_Queue_FlagReasonPlaceholder" xml:space="preserve">
+    <value>Grund der Markierung...</value>
+  </data>
+  <data name="Consent_Queue_FlagConfirm" xml:space="preserve">
+    <value>Dieser Human wird zur weiteren Prüfung markiert. Fortfahren?</value>
+  </data>
+  <data name="Consent_Queue_AlreadyCleared" xml:space="preserve">
+    <value>Dieser Human wurde bereits freigegeben.</value>
+  </data>
+  <data name="Consent_Queue_Cleared" xml:space="preserve">
+    <value>Profilüberprüfung freigegeben.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearedNone" xml:space="preserve">
+    <value>Keine ausgewählten Humans wurden freigegeben.</value>
+  </data>
+  <data name="Consent_Queue_BulkCleared" xml:space="preserve">
+    <value>{0} ausgewählte Humans freigegeben.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearedPartial" xml:space="preserve">
+    <value>{0} von {1} ausgewählten freigegeben — die anderen sind nicht mehr berechtigt.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearButton" xml:space="preserve">
+    <value>Alle ausgewählten freigeben</value>
+  </data>
+  <data name="Consent_Queue_Flagged" xml:space="preserve">
+    <value>Human zur weiteren Prüfung markiert.</value>
+  </data>
+  <data name="Consent_Queue_RejectButton" xml:space="preserve">
+    <value>Anmeldung ablehnen</value>
+  </data>
+  <data name="Consent_Queue_RejectReasonPlaceholder" xml:space="preserve">
+    <value>Ablehnungsgrund...</value>
+  </data>
+  <data name="Consent_Queue_RejectConfirm" xml:space="preserve">
+    <value>Sind Sie sicher, dass Sie die Anmeldung dieses Humans ablehnen möchten? Dies kann nicht rückgängig gemacht werden.</value>
+  </data>
+  <data name="Consent_Queue_RejectHelp" xml:space="preserve">
+    <value>Die Ablehnung verweigert die Anmeldung dieses Humans dauerhaft und sendet eine Benachrichtigungs-E-Mail.</value>
+  </data>
+  <data name="Consent_Queue_Rejected" xml:space="preserve">
+    <value>Die Anmeldung wurde abgelehnt.</value>
+  </data>
+  <data name="Consent_Queue_AlreadyRejected" xml:space="preserve">
+    <value>Dieser Human wurde bereits abgelehnt.</value>
+  </data>
+  <data name="Consent_Queue_LegalDocuments" xml:space="preserve">
+    <value>Rechtliche Dokumente</value>
+  </data>
+  <data name="Consent_Queue_DocsComplete" xml:space="preserve">
+    <value>Vollständig</value>
+  </data>
+  <data name="Consent_Queue_DocsPending" xml:space="preserve">
+    <value>Ausstehend</value>
+  </data>
+  <data name="Consent_Queue_DocsNote" xml:space="preserve">
+    <value>Die Profilüberprüfung kann unabhängig erfolgen. Der Human tritt Freiwilligen bei, wenn alle Dokumente unterzeichnet sind.</value>
+  </data>
+  <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Prüfen</value></data>
+  <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>{0} auswählen</value></data>
 </root>

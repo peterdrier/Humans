@@ -1,6 +1,6 @@
-## Onboarding Review
+## Consent Review
 
-The onboarding review queue shows new humans who have signed up and need their consent documents reviewed before becoming active.
+The consent review queue shows new humans who have signed up and need their consent documents reviewed before becoming active.
 
 ### Review Process
 

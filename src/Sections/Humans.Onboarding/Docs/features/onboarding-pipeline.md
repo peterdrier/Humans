@@ -7,11 +7,11 @@
   src/Humans.Web/Controllers/HomeController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Consent/Controllers/ConsentController.cs
-  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Sections/Humans.Consent/Controllers/ConsentReviewQueueController.cs
   src/Sections/Humans.Onboarding/Controllers/OnboardingWidgetController.cs
   src/Sections/Humans.Governance/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Views/Home/**
-  src/Sections/Humans.Onboarding/Views/OnboardingReview/**
+  src/Sections/Humans.Consent/Views/ConsentReviewQueue/**
   src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
   src/Sections/Humans.Onboarding/Views/Shared/Components/OnboardingProgressBanner/**
   src/Sections/Humans.Onboarding/ViewComponents/OnboardingProgressBannerViewComponent.cs
@@ -162,7 +162,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 - Coordinator reviews profile (can proceed regardless of legal document status)
 - Review queue shows legal document progress (X/Y signed) for context
 - **Clear**: ConsentCheckStatus = Cleared, IsApproved = true — annotation only; no team sync, no access change. Volunteers-team admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
-- **Bulk Clear**: Coordinators can multi-select rows and clear them in one action. The server re-checks each selection against the live queue — eligibility is *membership of that queue* (`Pending` **or** `Flagged`), so a flagged row is bulk-clearable exactly as it is clearable one at a time; anything no longer in the queue (already cleared, profile rejected) is dropped. Each survivor then goes through the single-row `ClearConsentCheckAsync`, whose own refusals are logged and counted as skips. There is **no server-side legal-name check** in this path: the view withholds the checkbox from a nameless row, so the constraint is presentational only. The flash reads "Approved {0} of {1} selected — the others are no longer eligible."
+- **Bulk Clear**: Coordinators can multi-select rows and clear them in one action. The server re-checks each selection against the live queue — eligibility is *membership of that queue* (`Pending` **or** `Flagged`), so a flagged row is bulk-clearable exactly as it is clearable one at a time; anything no longer in the queue (already cleared, profile rejected) is dropped. Each survivor then goes through the single-row clear (`ConsentReviewQueueService.ClearAsync`), whose own refusals are logged and counted as skips. There is **no server-side legal-name check** in this path: the view withholds the checkbox from a nameless row, so the constraint is presentational only. The flash reads "Approved {0} of {1} selected — the others are no longer eligible."
 - **Flag**: ConsentCheckStatus = Flagged with notes — an audit annotation only; it does NOT block app access or Volunteers admission (Reject, which sets `RejectedAt`, is the kick-out lever). Can be resolved later.
 
 `IsApproved = true` is set on clearance even if legal docs are incomplete — it is a CC audit annotation, not an activation signal. App access came earlier at name entry (`UserState == Active`), and Volunteers-team admission is reconciled by `SystemTeamSyncJob` on **name + consents** (`HasRequiredNameFields && !IsSuspended && !review.IsRejected && HasAllRequiredConsents`); `IsApproved` / `ConsentCheckStatus` are not consulted.
