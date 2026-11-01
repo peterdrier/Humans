@@ -80,7 +80,7 @@ internal sealed class WorkgroupsController(
         var tiers = await governance.GetMembershipTiersAsync(ct);
         var canSeeBudget = canAdminister
             || tiers.GetValueOrDefault(user.Id) is MembershipTier.Colaborador or MembershipTier.Asociado;
-        IReadOnlyList<HoldedExpenseAccountDto> accounts = canAdminister
+        IReadOnlyList<HoldedChartAccountInfo> accounts = canAdminister
             ? await workgroups.ListExpenseAccountsAsync(ct)
             : [];
 

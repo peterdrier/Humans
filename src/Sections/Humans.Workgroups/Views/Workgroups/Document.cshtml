@@ -3,7 +3,8 @@
     var w = Model.Workgroup;
     var d = Model.Document;
     ViewData["Title"] = d.Title;
-    var categories = d.Comments.Select(c => c.Category).Concat(d.CommentCategories).Distinct().ToList();
+    var comments = d.Comments.OrderBy(c => c.CreatedAt).ToList();
+    var categories = comments.Select(c => c.Category).Concat(d.CommentCategories).Distinct().ToList();
 }
 
 <nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
@@ -141,7 +142,7 @@ else
 {
     @foreach (var category in categories)
     {
-        var inCategory = d.Comments.Where(c => c.Category == category).OrderBy(c => c.CreatedAt).ToList();
+        var inCategory = comments.Where(c => c.Category == category).ToList();
         if (inCategory.Count == 0) { continue; }
         <h3 class="h6 mt-3">@category <span class="badge bg-secondary">@inCategory.Count</span></h3>
         <ul class="list-group mb-3">

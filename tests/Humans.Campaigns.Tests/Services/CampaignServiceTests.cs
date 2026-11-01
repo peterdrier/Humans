@@ -714,7 +714,7 @@ public sealed class CampaignServiceTests
         page.SelectedTeamId.Should().Be(alpha.Id);
         page.Preview.Should().NotBeNull();
         page.Preview!.EligibleCount.Should().Be(1);
-        page.Teams.Select(t => t.Name).Should().ContainInOrder("Alpha Team", "Beta Team");
+        page.Teams.Select(t => t.Name).Should().BeEquivalentTo("Alpha Team", "Beta Team");
         page.CanSendWave.Should().BeTrue();
     }
 
@@ -1176,7 +1176,8 @@ public sealed class CampaignServiceTests
         var tracking = await _service.GetCodeTrackingAsync(Xunit.TestContext.Current.CancellationToken);
 
         tracking.Campaigns.Should().ContainSingle(summary =>
-            summary.CampaignId == campaign.Id && summary.TotalGrants == 1 && summary.Redeemed == 1);
+            summary.CampaignId == campaign.Id && summary.TotalGrants == 1 && summary.Redeemed == 1
+            && summary.CreatedAt == campaign.CreatedAt);
         tracking.Grants.Should().ContainSingle(grant =>
             grant.CampaignId == campaign.Id && grant.RecipientName == "Tracker" &&
             grant.Code == "TRACK-CODE" && grant.RedeemedAt == redeemedAt);

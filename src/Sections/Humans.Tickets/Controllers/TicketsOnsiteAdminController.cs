@@ -31,6 +31,12 @@ internal sealed class TicketsOnsiteAdminController(
 
         var rows = result.Rows
             .OrderByDescending(r => r.CheckedInAt)
+            .Select(r => r with
+            {
+                CampNames = r.CampNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
+                TeamNames = r.TeamNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
+                RoleNames = r.RoleNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList()
+            })
             .ToList();
 
         var vm = new OnsiteRosterViewModel(
@@ -38,9 +44,9 @@ internal sealed class TicketsOnsiteAdminController(
             CampFilter: camp,
             TeamFilter: team,
             RoleFilter: role,
-            AvailableCamps: result.AvailableCamps,
-            AvailableTeams: result.AvailableTeams,
-            AvailableRoles: result.AvailableRoles,
+            AvailableCamps: result.AvailableCamps.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
+            AvailableTeams: result.AvailableTeams.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
+            AvailableRoles: result.AvailableRoles.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
             Rows: rows);
 
         return View("~/Views/Tickets/Admin/Onsite.cshtml", vm);

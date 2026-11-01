@@ -13,7 +13,10 @@ public sealed record HoldedActualDoc(
 
 public sealed record HoldedUnmatchedRow(
     string HoldedDocId, string DocNumber, string ContactName, string? Description, decimal Total,
-    string Reason, string HoldedUrl);
+    string Reason, string HoldedUrl)
+{
+    public LocalDate Date { get; init; }
+}
 
 public sealed record HoldedSyncResult(int DocCount, int Matched, int Unmatched);
 

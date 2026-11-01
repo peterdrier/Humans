@@ -242,6 +242,17 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SaveImportedEventsAsync(
+        IReadOnlyList<Event> created, IReadOnlyList<Event> updated, CancellationToken ct = default)
+    {
+        if (created.Count == 0 && updated.Count == 0) return;
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        foreach (var guideEvent in updated)
+            ctx.Entry(guideEvent).State = EntityState.Modified;
+        ctx.Events.AddRange(created);
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<int> AssignEventSettingsIdsAsync(
         IReadOnlyDictionary<Guid, Guid> eventSettingsIdByEventId, CancellationToken ct = default)
     {

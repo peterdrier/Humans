@@ -60,33 +60,40 @@ internal static class ProfileEditViewModelBuilder
                 && string.IsNullOrEmpty(profile?.LastName)
                 && string.IsNullOrEmpty(profile?.EmergencyContactName),
             ContactFields = BuildLegacyContactFields(profile),
-            EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default).Select(cf => new ContactFieldEditViewModel
-            {
-                Id = cf.Id,
-                FieldType = cf.FieldType,
-                CustomLabel = cf.CustomLabel,
-                Value = cf.Value,
-                Visibility = cf.Visibility,
-                DisplayOrder = cf.DisplayOrder
-            }).ToList(),
-            EditableVolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryEditViewModel
-            {
-                Id = cv.Id,
-                DateString = cv.Date.ToInvariantDate(),
-                EventName = cv.EventName,
-                Description = cv.Description
-            }).ToList(),
-            EditableLanguages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageEditViewModel
-            {
-                Id = pl.Id,
-                LanguageCode = pl.LanguageCode,
-                Proficiency = pl.Proficiency
-            }).ToList()
+            EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default)
+                .OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldEditViewModel
+                {
+                    Id = cf.Id,
+                    FieldType = cf.FieldType,
+                    CustomLabel = cf.CustomLabel,
+                    Value = cf.Value,
+                    Visibility = cf.Visibility,
+                    DisplayOrder = cf.DisplayOrder
+                }).ToList(),
+            EditableVolunteerHistory = (profile?.VolunteerHistory ?? [])
+                .OrderByDescending(cv => cv.Date)
+                .Select(cv => new VolunteerHistoryEntryEditViewModel
+                {
+                    Id = cv.Id,
+                    DateString = cv.Date.ToInvariantDate(),
+                    EventName = cv.EventName,
+                    Description = cv.Description
+                }).ToList(),
+            EditableLanguages = (profile?.Languages ?? [])
+                .OrderByDescending(pl => pl.Proficiency)
+                .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
+                .Select(pl => new ProfileLanguageEditViewModel
+                {
+                    Id = pl.Id,
+                    LanguageCode = pl.LanguageCode,
+                    Proficiency = pl.Proficiency
+                }).ToList()
         };
     }
 
     public static IReadOnlyList<ContactFieldViewModel> BuildLegacyContactFields(ProfileInfo? profile)
-        => (profile?.ContactFields ?? []).Where(cf => cf.FieldType == default).Select(cf => new ContactFieldViewModel
+        => (profile?.ContactFields ?? []).Where(cf => cf.FieldType == default)
+        .OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldViewModel
         {
             Id = cf.Id,
             FieldType = cf.FieldType,

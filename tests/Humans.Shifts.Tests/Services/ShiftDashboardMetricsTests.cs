@@ -332,7 +332,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_WithSubteamRotas_ProducesSubgroupsWithDirectPinned()
+    public async Task GetDashboardOverview_WithSubteamRotas_ProducesSubgroupsWithDirectTotals()
     {
         var es = await SeedEventAsync();
         var infra = await SeedTeamAsync("Infrastructure");
@@ -367,14 +367,11 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         infraRow.FilledSlots.Should().Be(5); // 1 direct + 2 power shifts × 2 confirmed
         infraRow.Subgroups.Should().HaveCount(3);
 
-        // "Direct" pinned first regardless of fill %.
-        infraRow.Subgroups[0].IsDirect.Should().BeTrue();
-        infraRow.Subgroups[0].Name.Should().Be("Direct");
-
-        // Remaining subgroups sorted by lowest slot fill % first:
-        // Plumbing (0/6 = 0%) before Power (4/6 ≈ 67%).
-        infraRow.Subgroups[1].Name.Should().Be("Plumbing");
-        infraRow.Subgroups[2].Name.Should().Be("Power");
+        var direct = infraRow.Subgroups.Single(s => s.IsDirect);
+        direct.Name.Should().Be("Direct");
+        direct.FilledSlots.Should().Be(1);
+        infraRow.Subgroups.Single(s => string.Equals(s.Name, "Plumbing", StringComparison.Ordinal)).FilledSlots.Should().Be(0);
+        infraRow.Subgroups.Single(s => string.Equals(s.Name, "Power", StringComparison.Ordinal)).FilledSlots.Should().Be(4);
 
         // Invariant: subgroup totals sum to department totals.
         infraRow.Subgroups.Sum(s => s.TotalShifts).Should().Be(infraRow.TotalShifts);
@@ -389,7 +386,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_DepartmentsSortedByLowestFillPercentFirst()
+    public async Task GetDashboardOverview_DepartmentsCarryTheirSlotTotals()
     {
         var es = await SeedEventAsync();
         var gate = await SeedTeamAsync("Gate");
@@ -407,8 +404,8 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var result = await _service.GetDashboardOverviewAsync(es.Id);
 
         result.Departments.Should().HaveCount(2);
-        result.Departments[0].DepartmentName.Should().Be("Kitchen"); // 0% fill comes first
-        result.Departments[1].DepartmentName.Should().Be("Gate");
+        result.Departments.Single(d => string.Equals(d.DepartmentName, "Kitchen", StringComparison.Ordinal)).FilledSlots.Should().Be(0);
+        result.Departments.Single(d => string.Equals(d.DepartmentName, "Gate", StringComparison.Ordinal)).FilledSlots.Should().Be(1);
     }
 
     [HumansFact]
@@ -477,7 +474,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCoordinatorActivity_SortsByOldestLoginFirst()
+    public async Task GetCoordinatorActivity_CarriesCoordinatorLoginTimes()
     {
         var es = await SeedEventAsync();
         var teamA = await SeedTeamAsync("A");
@@ -491,7 +488,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var shiftB = await SeedShiftAsync(rotaB, dayOffset: 1, min: 1, max: 3);
         await SeedSignupsAsync(shiftB, SignupStatus.Pending, count: 1);
 
-        // A has a recent login; B has an old login → B should come first.
+        // A has a recent login; B has an old login.
         var coordA = await SeedUserAsync("a-coord", TestNow.Minus(Duration.FromHours(1)));
         var coordB = await SeedUserAsync("b-coord", TestNow.Minus(Duration.FromDays(20)));
         await SeedCoordinatorAsync(teamA, coordA);
@@ -500,8 +497,10 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var result = await _service.GetCoordinatorActivityAsync(es.Id);
 
         result.Should().HaveCount(2);
-        result[0].TeamName.Should().Be("B");
-        result[1].TeamName.Should().Be("A");
+        result.Single(r => string.Equals(r.TeamName, "A", StringComparison.Ordinal))
+            .Coordinators.Should().ContainSingle().Which.LastLoginAt.Should().Be(coordA.LastLoginAt);
+        result.Single(r => string.Equals(r.TeamName, "B", StringComparison.Ordinal))
+            .Coordinators.Should().ContainSingle().Which.LastLoginAt.Should().Be(coordB.LastLoginAt);
     }
 
     [HumansFact]
@@ -649,7 +648,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDepartmentsWithRotas_ReturnsRotaOwningTeamsInNameOrder()
+    public async Task GetDepartmentsWithRotas_ReturnsOnlyRotaOwningTeams()
     {
         var es = await SeedEventAsync();
         foreach (var name in new[] { "Sanctuary", "Gate", "Rangers" })
@@ -658,7 +657,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         var result = await _service.GetDepartmentsWithRotasAsync(es.Id);
 
-        result.Select(r => r.TeamName).Should().Equal("Gate", "Rangers", "Sanctuary");
+        result.Select(r => r.TeamName).Should().BeEquivalentTo("Gate", "Rangers", "Sanctuary");
     }
 
     [HumansFact]

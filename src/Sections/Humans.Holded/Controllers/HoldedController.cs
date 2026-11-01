@@ -19,17 +19,28 @@ internal sealed class HoldedController(
     ILogger<HoldedController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken ct) =>
-        View(await admin.GetSummaryAsync(ct));
+    public async Task<IActionResult> Index(CancellationToken ct)
+    {
+        var summary = await admin.GetSummaryAsync(ct);
+        return View(summary with { SyncStates = summary.SyncStates.OrderBy(s => s.Kind, StringComparer.Ordinal).ToList() });
+    }
 
     [HttpGet("Accounts")]
     public async Task<IActionResult> Accounts(
-        bool archived = false, bool empty = false, bool mismatched = false, CancellationToken ct = default) =>
-        View(await admin.GetAccountsPageAsync(new HoldedAccountsFilter(archived, empty, mismatched), ct));
+        bool archived = false, bool empty = false, bool mismatched = false, CancellationToken ct = default)
+    {
+        var page = await admin.GetAccountsPageAsync(new HoldedAccountsFilter(archived, empty, mismatched), ct);
+        return View(page with
+        {
+            Groups = page.Groups.OrderBy(group => group.Digit)
+                .Select(group => group with { Accounts = group.Accounts.OrderBy(account => account.Number).ToList() })
+                .ToList()
+        });
+    }
 
     [HttpGet("Calls")]
     public async Task<IActionResult> Calls(CancellationToken ct) =>
-        View(await admin.GetCallsByMonthAsync(ct));
+        View((await admin.GetCallsByMonthAsync(ct)).OrderByDescending(m => m.Year).ThenByDescending(m => m.Month).ToList());
 
     /// <summary>Any account in the chart. Figures are in the association's point of view (+ money in, − money
     /// out), not Holded's raw debit/credit sign.</summary>

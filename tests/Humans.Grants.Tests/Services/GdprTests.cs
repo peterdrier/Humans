@@ -1,10 +1,14 @@
+using System.Transactions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Grants.Services;
+using Humans.Grants.Data;
 using Humans.Grants.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NSubstitute;
 
 namespace Humans.Grants.Tests.Services;
@@ -136,6 +140,61 @@ public sealed class GdprTests : GrantsTestHarness
         await using var read = OpenContext();
         var row = await read.Managers.SingleAsync(Ct);
         (row.ProgramId, row.UserId, row.AddedByUserId).Should().Be((program.Id, to, to));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Merge_StagesShareATransaction_ThatCommitsOnlyWhenBothSucceed(bool failSecondSave)
+    {
+        var from = SeedUser("From");
+        var to = SeedUser("To");
+        var actor = SeedUser("Admin");
+        var program = await SeedProgramAsync(managers: from);
+        await SeedGrantAsync(program, to);
+        await SeedGrantAsync(program, from);
+        var probe = new MergeTransactionProbe(failSecondSave);
+        var options = new DbContextOptionsBuilder<GrantsDbContext>(
+                (DbContextOptions<GrantsDbContext>)Db.GetService<IDbContextOptions>())
+            .AddInterceptors(probe).Options;
+        var service = new GrantService(
+            new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
+            Users, UserEmails, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+
+        if (failSecondSave)
+        {
+            Func<Task> merge = () => service.ReassignAsync(from, to, actor, Clock.GetCurrentInstant(), Ct);
+            await merge.Should().ThrowAsync<IOException>();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            await service.ReassignAsync(from, to, actor, Clock.GetCurrentInstant(), Ct);
+        }
+
+        probe.TransactionIds.Should().HaveCount(2).And.NotContainNulls();
+        probe.TransactionIds.Distinct(StringComparer.Ordinal).Should().ContainSingle();
+        probe.CompletedStatus.Should().Be(failSecondSave ? TransactionStatus.Aborted : TransactionStatus.Committed);
+        Transaction.Current.Should().BeNull();
+    }
+
+    private sealed class MergeTransactionProbe(bool failSecondSave) : SaveChangesInterceptor
+    {
+        public List<string?> TransactionIds { get; } = [];
+        public TransactionStatus? CompletedStatus { get; private set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var transaction = Transaction.Current;
+            if (TransactionIds.Count == 0 && transaction is not null)
+                transaction.TransactionCompleted += (_, completed) =>
+                    CompletedStatus = completed.Transaction!.TransactionInformation.Status;
+            TransactionIds.Add(transaction?.TransactionInformation.LocalIdentifier);
+            if (failSecondSave && TransactionIds.Count == 2)
+                throw new IOException("merge re-key save failed");
+            return ValueTask.FromResult(result);
+        }
     }
 
     [HumansFact]

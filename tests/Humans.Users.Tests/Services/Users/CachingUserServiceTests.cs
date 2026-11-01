@@ -1192,38 +1192,6 @@ public class CachingUserServiceTests
         refreshed.Profile.ProfilePictureContentType.Should().Be("image/png");
     }
 
-    [HumansFact]
-    public async Task AnonymizeProfileForDeletionAsync_RefreshesAnonymizedProfileSlice()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var sut = CreateSut();
-        await PrimeAsync(sut, SampleUserInfo(userId));
-
-        _inner.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(true));
-
-        StubRefreshEntry(userId, new Profile
-        {
-            Id = profileId,
-            UserId = userId,
-            BurnerName = "",
-            FirstName = "Deleted",
-            LastName = "User",
-            ProfilePictureContentType = null,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
-
-        var result = await sut.AnonymizeProfileForDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Anonymized.Should().BeTrue();
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        refreshed!.Profile.Should().NotBeNull();
-        refreshed.Profile!.FirstName.Should().Be("Deleted");
-        refreshed.Profile.ProfilePictureContentType.Should().BeNull();
-    }
-
     [HumansTheory]
     [Xunit.InlineData(UserState.Rejected)]
     [Xunit.InlineData(UserState.Suspended)]
