@@ -47,3 +47,9 @@ using recorded, explicit cleanup and gate-repair session IDs. Include linked
 subagents; never infer the run from the reporting chat's current session. Keep
 repair breakdowns separate. Label costs as Standard API equivalents, not actual
 subscription charges. Reporting failure must not block fix publication.
+
+**Scheduled runner version:** The installed launcher fetches the clone's origin
+main before each start and extracts matching cron tools and prompts into a
+versioned release outside the disposable clone. Keep that release for the run;
+fetch failures stop startup without stale fallback. Merged worker changes take
+effect next run; launcher/service changes require reinstallation.
