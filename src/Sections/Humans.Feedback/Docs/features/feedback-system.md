@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Feedback/**
-  src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs
+  src/Humans.Base/ViewComponents/AdminNavComposition.cs
+  src/Humans.Web/Middleware/PrivateUploadMiddleware.cs
   src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
 -->
 <!-- freshness:flag-on-change
@@ -13,7 +14,7 @@
 
 ## Business Context
 
-Humans need a way to report bugs, request features, and ask questions directly from the app. A unified feedback page lets reporters track their own submissions and have conversations with admins, while FeedbackAdmin users see all reports and can triage them. Claude Code has API access to query and manage reports programmatically.
+Humans once reported bugs, requested features and asked questions here; Issues now takes all new reports. The archive of reports already filed stays so that Admins can finish triaging them and reply to their reporters. Claude Code has API access to query and manage those reports programmatically.
 
 ## User Stories
 
@@ -25,7 +26,7 @@ There is no creation path of any kind; reporting goes to `/Issues`.
 
 **As** an Admin, **I want** to view and manage all feedback reports, **so that** I can triage and respond to user issues.
 
-**Since #977:** full `Admin` only. `FeedbackAdmin` alone no longer reaches any Feedback screen, and neither does a report's own reporter — there is no "regular users see only their own" view left, and no "My Feedback" dropdown link.
+**Since nobodies-collective/Humans#977:** full `Admin` only. `FeedbackAdmin` alone reaches no Feedback screen, and neither does a report's own reporter — there is no "regular users see only their own" view left, and no "My Feedback" dropdown link.
 
 **Acceptance Criteria:**
 - Unified page at `/Feedback` — every report, Admin only
@@ -35,7 +36,7 @@ There is no creation path of any kind; reporting goes to `/Issues`.
 - Update status (Open/Acknowledged/Resolved/Won't Fix)
 - Assign a report to a user and/or a team
 - Link GitHub issue number
-- Conversation thread with bidirectional messaging (see US-27.5)
+- Conversation thread: historical reporter messages plus admin replies (see US-27.5)
 - Nav badge on "Feedback" link showing count of actionable items (reports needing admin reply)
 - Accessible from the admin nav for Admin only
 
@@ -59,20 +60,20 @@ There is no creation path of any kind; reporting goes to `/Issues`.
 
 ### US-27.4: Email Notifications
 
-**As** a feedback reporter, **I want** to receive email notifications when an admin replies to my feedback, **so that** I know my feedback was heard and can continue the conversation.
+**As** a feedback reporter, **I want** to receive email notifications when an admin replies to my feedback, **so that** I know my feedback was heard.
 
 **Acceptance Criteria:**
 - Email sent via outbox pattern (not inline) when an admin posts a message
 - Localized in reporter's preferred language (all six supported cultures)
 - Includes the admin's reply content
-- The email template renders no link (the `reportLink` argument is unused) and the in-app notification carries no action URL, because `/Feedback/{id}` is Admin-only. The reply text in the email is the reporter's only copy
+- The email template renders no link and the in-app notification carries no action URL, because `/Feedback/{id}` is Admin-only. The reply text in the email is the reporter's only copy
 - `LastAdminMessageAt` timestamp updated on the report
 
 ### US-27.5: Conversation History
 
 **As** a feedback reporter or admin, **I want** to have a conversation thread on a feedback report, **so that** we can discuss the issue back and forth without switching to email.
 
-**Since #977:** one-directional — every message posted now is an admin reply. Reporters cannot post follow-ups; historical reporter messages are still displayed.
+**Since nobodies-collective/Humans#977:** one-directional — every message posted now is an admin reply. Reporters cannot post follow-ups; historical reporter messages are still displayed.
 
 **Acceptance Criteria:**
 - `FeedbackMessage` entity tracks individual messages (content, sender, timestamp)
@@ -89,19 +90,19 @@ Entities: `FeedbackReport` and `FeedbackMessage` (owned by this section).
 
 Key fields: Id, UserId, Category (enum→string), Description, PageUrl, UserAgent, AdditionalContext (auto-populated with user roles at submission), Screenshot* (FileName/StoragePath/ContentType), Status (enum→string), Source (`FeedbackSource`: UserReport / AgentUnresolved, enum→string with an out-of-range EF sentinel), GitHubIssueNumber, AgentConversationId (bare Guid, no EF FK), AssignedToUserId, AssignedToTeamId (both bare Guids, no nav), LastReporterMessageAt, LastAdminMessageAt, CreatedAt, UpdatedAt, ResolvedAt, ResolvedByUserId.
 
-`Source` and `AgentConversationId` are vestigial **for new rows**: the agent's `route_to_feedback` auto-create flow is gone and no creation path remains, so nothing writes `AgentUnresolved` any more. Existing databases still hold historical rows with `Source = AgentUnresolved` and a populated `AgentConversationId`, and those stay queryable through the Feedback admin filter — do not assume `Source == UserReport` when reading.
+`Source` and `AgentConversationId` are vestigial **for new rows**: the agent's `route_to_feedback` auto-create flow is gone and no creation path remains, so nothing writes `AgentUnresolved`. Existing databases still hold historical rows with `Source = AgentUnresolved` and a populated `AgentConversationId`, and those stay queryable through the Feedback admin filter — do not assume `Source == UserReport` when reading.
 
 **Table:** `feedback_messages`
 
 Key fields: Id, FeedbackReportId (FK), SenderUserId (nullable, bare cross-section Guid column — no FK constraint, no nav), Content (authored as Markdown, rendered sanitized), CreatedAt.
 
-Relationship: `FeedbackReport` has many `FeedbackMessage` (cascade delete). `SenderUserId` is nullable to support system/API messages.
+Relationship: `FeedbackReport` has many `FeedbackMessage` (cascade delete). `SenderUserId` is nullable because GDPR erasure detaches a person from replies they left on someone else's report.
 
 **Screenshot storage:** `IFileStorage` keys of historical uploads (`uploads/feedback/{reportId}/{guid}.{ext}`). Detail views link these historical files; Shell's private-upload gate enforces `AdminOnly` before static serving and disables caching. GDPR erasure deletes them via `DeleteAsync` before removing their report rows, so storage failures leave the keys available for retry.
 
 ## Authorization Matrix
 
-As shipped since #977 — the policy sits on `FeedbackController` itself, so every action inherits it:
+As shipped since nobodies-collective/Humans#977 — the policy sits on `FeedbackController` itself, so every action inherits it:
 
 | Endpoint | Auth |
 |----------|------|
@@ -114,9 +115,7 @@ As shipped since #977 — the policy sits on `FeedbackController` itself, so eve
 | `GET /api/backdoor/feedback` | API key (`X-Api-Key` header) |
 | `* /api/backdoor/feedback/*` | API key (`X-Api-Key` header) |
 
-`POST /Feedback` is gone — the controller has no root-`POST` route at all.
-
-**FeedbackAdmin role:** grants **no** Feedback access (#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin` and `RoleChecks.IsFeedbackAdmin` do not exist.
+**FeedbackAdmin role:** grants **no** Feedback access (nobodies-collective/Humans#977). The role name is kept because the Staff page, `GuideRolePrivilegeMap`, the authorization pill-filter label map, and `AnyAdminRole` still reference it; `PolicyNames.FeedbackAdminOrAdmin` and `RoleChecks.IsFeedbackAdmin` do not exist.
 
 ## URL Routes
 
@@ -149,7 +148,7 @@ The feedback API enables a Claude Code workflow for processing feedback during d
 
 ## Navigation
 
-Since #977:
+Since nobodies-collective/Humans#977:
 
 - **Admin:** "Feedback queue" tab in the admin shell's Issues group (the sidebar shows one row per group with a summed pill; `AdminTabsViewComponent` renders the group's tabs, this one with the actionable count), contributed via `Section`'s `ISectionAdminNav` (`PillCounts.FeedbackQueueAsync`) and merged by `AdminNavComposition` with every other section's `ISectionAdminNav`, plus the `/Admin` dashboard tile via `ISectionAdminTiles` — both `AdminOnly`
 - **Everyone else:** nothing — no dropdown link, no Help-widget entry; the widget's report action is "Create issue"
@@ -157,8 +156,8 @@ Since #977:
 ## Related Features
 
 - Email outbox (`EmailOutboxMessage`) — used for admin reply notification emails
-- Audit log (`AuditLogEntry`) — tracks status changes
+- Audit log (`AuditLogEntry`) — records status, assignment and GitHub-link changes and each queued reply email
 - `ISectionAdminNav` / `PillCounts.FeedbackQueueAsync` — Feedback's contribution to the admin nav (tab and sidebar group pill), composed by `AdminNavComposition`. The count itself is still cached inline in `FeedbackService.GetActionableCountAsync` (`FeedbackService.BadgeCacheKey`, 2-min TTL) and evicted by that service
-- Role management — FeedbackAdmin role assignable via `/Admin/Roles`
+- Role management — FeedbackAdmin role assignable via `/Auth/Admin/Roles`
 
 Triage mutations return explicit missing/refused/success results. Missing reports map to 404; dependency failures follow the logged error path, regardless of exception wording. Undefined statuses leave the report and audit unchanged.

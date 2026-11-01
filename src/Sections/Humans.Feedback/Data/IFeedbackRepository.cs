@@ -39,7 +39,7 @@ internal interface IFeedbackRepository : IRepository
     /// </summary>
     Task<int> GetActionableCountAsync(CancellationToken ct = default);
 
-    /// <summary>Unordered: the service sorts by display name.</summary>
+    /// <summary>Unordered: the controller sorts by display name.</summary>
     Task<IReadOnlyList<(Guid UserId, int Count)>> GetReporterCountsAsync(
         CancellationToken ct = default);
 

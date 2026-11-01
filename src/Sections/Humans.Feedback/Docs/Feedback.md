@@ -1,11 +1,12 @@
 <!-- freshness:triggers
   src/Sections/Humans.Feedback/**
   src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
-  src/Humans.Base/Constants/RoleNames.cs
+  src/Humans.Web/Middleware/PrivateUploadMiddleware.cs
+  src/Sections/Humans.Agent/Services/AgentUserSnapshotProvider.cs
   src/Humans.Base/Caching/CacheKeys.cs
 -->
 <!-- freshness:flag-on-change
-  Feedback report lifecycle, screenshot validation, message thread invariants, and admin-vs-reporter authorization — review when Feedback service/entities/controllers change.
+  Feedback report lifecycle, admin reply delivery, message thread invariants, Admin-only access and the screenshot gate — review when Feedback service/entities/controllers change.
 -->
 
 # Feedback — Section Invariants
@@ -71,7 +72,7 @@ Conversation thread between reporter and admins. Aggregate-local (same section a
 |----------|------|---------|
 | Id | Guid | PK |
 | FeedbackReportId | Guid | FK → FeedbackReport, Cascade on delete |
-| SenderUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property**; null when posted via API key (no user session) |
+| SenderUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property**; null once GDPR erasure detaches its author from someone else's report |
 | Content | string | Message body, authored as Markdown and rendered sanitized (max 5000) |
 | CreatedAt | Instant | When the message was posted |
 | EmailEnqueuePending | bool? | True until a new admin reply is handed to Email; null on historical messages, false after handoff or missing-address skip |
@@ -113,7 +114,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 | Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`; the index and detail GETs pass the browser abort token through their viewer, report, team, assignee, and reporter reads. |
 | API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/backdoor/feedback`. The controller lives in `Humans.Backdoor` and calls this section through `IFeedbackTriage` (nobodies-collective/Humans#1128); the key resolves to a human, so an API reply is attributed exactly like one typed in the UI. No report-creation endpoint. |
 
-`FeedbackRoles.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` was deleted with the lockdown.
+`FeedbackRoles.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **grants no Feedback access**.
 
 ## Invariants
 
@@ -125,7 +126,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
 - Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.
 - The index controller resolves reporter labels from `UserInfo.BurnerName`, orders them alphabetically and builds native select options with counts and the selected filter. The service returns reporter ids and counts only; no reporter name is copied into a view-model identity field.
-- Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
+- Only Admin can see feedback reports — including a report's own reporter, who has no route into the section.
 - Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
 - "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
 - A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable. The list’s 12-unit assignee-name previews preserve whole UTF-16 surrogate pairs; tooltips retain the complete names.
@@ -174,7 +175,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 - `IFeedbackRepository` (impl `src/Sections/Humans.Feedback/Data/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<FeedbackDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
 - **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
-- **No cross-domain navs:** every cross-section reference is a bare Guid FK column — no `HasOne(...)` relationship, no cross-section FK constraint, nothing to `.Include()` (nobodies-collective/Humans#996). The service stitches display data in memory from `IUserService.GetUserInfosAsync`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
+- **No cross-domain navs:** every cross-section reference is a bare Guid FK column — no `HasOne(...)` relationship, no cross-section FK constraint, nothing to `.Include()` (nobodies-collective/Humans#996). The service stitches display data in memory from `IUserService.GetUserInfosAsync` and `ITeamService` (design-rules §6b); `FeedbackReplyDelivery` resolves the reporter's email through `IUserEmailService`. Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
 - **Nav-badge cache invalidation** stays inside `FeedbackService`: it is the key's only reader and the only writer that can move the count, so no other section evicts it.
 - **Architecture test** — `tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs` pins: triage takes `IUserService` / `ITeamService`, delivery takes `IUserEmailService`, and `AuditEntityTypes` members are string literals. Everything else is delegated to the solution-wide analyzers/rules. (`FeedbackService` *does* take `IMemoryCache` for its inline badge-count cache — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`, so the no-`IMemoryCache` check is delegated to that rule rather than pinned here.)
 

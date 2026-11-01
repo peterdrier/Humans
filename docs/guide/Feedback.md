@@ -13,7 +13,7 @@
 
 # Feedback
 
-> **Feedback is retired.** It no longer accepts new reports — Issues superseded it. To report a bug, request a feature, or ask a question, use the help button's **Create issue** action or go to `/Issues`. What remains here is the historical archive and its admin triage screens.
+> **Feedback is retired.** It accepts no new reports — Issues superseded it. To report a bug, request a feature, or ask a question, use the help button's **Create issue** action or go to `/Issues`. What remains here is the historical archive and its admin triage screens.
 
 ## What this section is for
 
@@ -36,7 +36,7 @@ If an admin replies to one of your historical reports you still get an email wit
 
 ## As a Board member / Admin
 
-These screens require the full **Admin** role. `FeedbackAdmin` on its own no longer grants any feedback access.
+These screens require the full **Admin** role. `FeedbackAdmin` on its own grants no feedback access.
 
 ### Triage the queue
 
@@ -44,7 +44,7 @@ Go to `/Feedback`. You see every report ever filed. The admin nav shows a badge 
 
 ### Reply to a reporter
 
-In the detail view, post a message in the conversation thread using the Markdown editor — formatting renders in the reporter's email and in the thread itself. Every message posted now is an admin reply: it stamps the report's last-admin-reply time, queues an email to the reporter, and sends them a notification. Reporters can no longer post follow-ups, so the thread is one-directional from here on — historical reporter messages are still shown.
+In the detail view, post a message in the conversation thread using the Markdown editor — formatting renders in the reporter's email and in the thread itself. Every message posted now is an admin reply: it stamps the report's last-admin-reply time, queues an email to the reporter, and sends them a notification. Reporters cannot post follow-ups; historical reporter messages are still shown.
 
 ### Assign a report
 
