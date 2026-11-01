@@ -1,6 +1,6 @@
 # Tasks — a module for organising work
 
-**Status: draft for discussion — nothing here is implemented.** Items marked **[OPEN]** are undecided. Related specs: [Teams on tasks](2026-10-19-teams-on-tasks-design.md) (the first host) and [Concerns](2026-10-19-concerns-design.md).
+**Status: draft for discussion — nothing here is implemented.** Items marked **[OPEN]** are undecided. Related specs: [Teams on tasks](2026-10-19-teams-on-tasks-design.md) (the first host), [Concerns](2026-10-19-concerns-design.md), [Capacity and care](2026-11-01-capacity-and-care-design.md) (availability, load, recognition) and [Build and strike planning](2026-11-01-build-and-strike-planning-design.md) (on-site tasks as a planning tool).
 
 Inspired by Orchard's task-centred model (`Local/Orchard/docs/spec.md`), scaled down: no branches, packs, input rounds or modules.
 
@@ -20,6 +20,7 @@ What we gain:
 6. **Visible progress.** Milestones, timelines and a production view across the org let people see that their work matters and let gaps show early.
 7. **Continuity.** Yearly roll-forward, re-affirmation instead of re-recruitment, shadows carried forward, task notes — knowledge stops evaporating when someone steps back.
 8. **Trust stays intact.** Anything that grants access is confirmed or endorsed, every grant is audited, nothing acts invisibly.
+9. **Sustainable load.** People declare availability once per event year; coordinators see who has room; suggestions fit what someone can take on; a confirmation appears before anyone goes over capacity. No sanctions, only signals (see [Capacity and care](2026-11-01-capacity-and-care-design.md)).
 
 How we'll know it works, all computed from existing state: the share of tasks with two or more holders; how long critical tasks stay understaffed; how many pick-ups come from people with no prior involvement in that container.
 
@@ -29,6 +30,9 @@ How we'll know it works, all computed from existing state: the share of tasks wi
 - **Container and host.** Every task belongs to exactly one *container* — its **home**, a team or a working group — supplied by a *host* section. The host decides what holding a slot means; Tasks never references a host.
 - **Slot** — a place on a task. **Primary** slots carry the work; **secondary** slots are learn-alongside/backup (shadow, deputy). Secondary slots never count toward capacity and grant no capability, unless the host says otherwise for its staffing task. A slot records how it ended: *completed*, *handed over*, *released*, *removed*, *expired* (not re-affirmed or inactive), or *task cancelled*.
 - **Needed / Capacity** — at least *Needed* holders (the staffing floor; criticality applies to it), up to *Capacity*. Same shape as Shifts' `MinVolunteers`/`MaxVolunteers`.
+- **Availability** — a person's declaration, once per event year: hours per week before the event, and day-level availability for the on-site phases. It drives capacity bands, never assignment (see Capacity and care).
+- **Crew need** — for on-site tasks, people needed per day. A planning number that sizes daily shifts; it creates no slots and counts toward no one's load (see Build and strike planning).
+- **Lead-by date** — when an on-site task must have a lead, by default the start of build minus a buffer.
 - **Standing vs one-off** — effort shape *ongoing* (owns a thing, never completes) is standing; *one-off* completes.
 - **Subtask** — a piece broken off a task, one level deep. Own slots, window and status; an unclaimed subtask is a concrete, grabbable ask. The parent's progress rolls up from its subtasks. A task may also carry a **checklist** of simple micro-steps with no assignee.
 - **Dependency** — a finish-to-start link: a task *waits on* another, possibly in another container. It shows as blocked until the predecessor is done.
@@ -75,7 +79,7 @@ Teams is the first host; working groups are the second (one-off containers; **[O
 
 ## Tasks
 
-**Fields:** container, title, description, criticality (reuse `SlotPriority`), effort shape + estimated hours, needed, capacity, secondary slots, requirements, openness, status, tags, parent task, checklist, predecessors, public flag, optional **window**, optional milestone / `eventSettingsId`, optional project(s) and department affiliation, optional capabilities, optional origin (production-calendar item), `featured` and `needsAttention` flags.
+**Fields:** container, title, description, criticality (reuse `SlotPriority`), effort shape + estimated hours, needed, capacity, secondary slots, requirements, openness, status, tags, parent task, checklist, predecessors, public flag, optional **window**, optional milestone / `eventSettingsId`, optional project(s) and department affiliation, optional capabilities, optional origin (production-calendar item), `featured` and `needsAttention` flags, and for on-site tasks optional **crew need** and **lead-by date**. Estimated hours mean the **lead's own time**; crew person-hours are derived from crew need and never count toward a holder's load.
 
 **Window** — when the task is live: optional start and end in the date shape. Choosing a phase fills in references to its start and end; a task can span several phases; phase filters match any overlapping window. No window = standing / whole year.
 
@@ -94,9 +98,9 @@ The host may add a confirmation of its own (Teams: sensitive teams keep the dete
 
 **Requirements:** typed individual-gate predicates — tier, language, **consent / legal document** (e.g. a confidentiality document before a data-access capability).
 
-**Default list order:** understaffed first → Critical → compatibility → soonest due. Compatibility ranks, never filters or hides; v1 uses requirements, language and tier from Users contracts only. Filters: criticality, window/phase, due-before, effort, "fits me", include filled/done.
+**Default list order:** understaffed first → Critical → compatibility → soonest due. Compatibility ranks, never filters or hides; v1 uses requirements, language and tier from Users contracts only. **Suggestion surfaces** ("fits me", nudges, nomination pools) additionally fit a person's remaining capacity, offering only small tasks near capacity; the browse list itself never hides anything (see Capacity and care). Filters: criticality, window/phase, due-before, effort, "fits me", include filled/done.
 
-**Sole-holder flag.** A person holding a staffing task sees a flag on any other task they hold alone, nudging them to spread the work.
+**Sole-holder flag.** A person holding a staffing task sees a flag on any other task they hold alone, nudging them to spread the work. It belongs to the family of load nudges, with the over-capacity confirmation on every claim path (see Capacity and care).
 
 **Audited:** created, slot requested/approved/taken/released, completed, cancelled, flags changed.
 
@@ -110,7 +114,7 @@ When someone asks to pick up a task that needs confirmation, the confirmer sees 
 - **A reason to talk, never an automatic rejection.** The confirmer can schedule a call from the request (below). Nothing about a track record rejects anyone.
 - **A ground for approval.** *Proven-open* is a per-task or per-container setting: anyone with at least N completed tasks (default 2, in any container) and no run of K or more consecutive drops (default 3) is confirmed instantly; everyone else goes to the confirmer as usual. The thresholds are settings. **[OPEN — to settle as a group: the window, N, K, and exactly what counts as a handover.]**
 - **Pick-up call.** One action from a request opens a private meeting between the confirmer and the requester, scheduled through the Meetings poll (see Meetings: private calls), linked to the request. It replaces an ad hoc interview.
-- **Visibility.** People see their own track record in full. The confirmer sees it only for requests to their container. Nobody else does, and it feeds no leaderboard.
+- **Visibility.** People see their own track record in full. The confirmer sees it only for requests to their container. Nobody else does. The track record, with its drops and bails, feeds no leaderboard and no recognition; the opt-in recognition in Capacity and care counts completions and shift hours only. Declining a suggestion is not a slot outcome and never enters it.
 - **Data protection.** The track record is derived from slot and signup records, so existing export and erasure cover it. Automation only ever approves; a negative outcome always involves a person.
 
 **Needs from Shifts.** The track record depends on better attendance data than Shifts keeps today (an unmarked past shift reads as attended, and a bail records no time of its own). Those changes are proposed in [Shifts improvements](2026-10-19-shifts-improvements-design.md).
@@ -140,7 +144,7 @@ Any signed-in human can propose a task to a container: a title and rough descrip
 - **Board** — a container's tasks as columns by status; holders and staffing holders drag to change status.
 - **Timeline** — windows and milestones in phase lanes with dependencies drawn, per container, and across containers on the production view.
 - **Calendar** — tasks and milestones by date. Tasks you hold with dates join your personal iCal feed through Calendar's contributor seam.
-- **Workload** — for staffing holders: per person, estimated hours of held tasks against declared availability, as a coarse *has room / about right / over* unless the person chose to show numbers. **[OPEN: needs an availability signal; Shifts' general availability is day-level and build-period only.]**
+- **Workload** — for staffing holders: per person, estimated hours of held tasks against declared availability, as a coarse capacity band unless the person chose to show numbers. The availability signal is the yearly declaration, and the view extends the existing `/Shifts/Dashboard` workload rather than adding a second one (see Capacity and care).
 - **My tasks** — everything I hold or follow across containers, as a card on the member dashboard through the existing dashboard-card seam.
 - Not adopted: table, mind map, map.
 
@@ -165,6 +169,7 @@ A container can lack a confirmer. Proposal **[OPEN — thresholds undecided]**:
 - **Unanswered requests escalate.** Untouched after N days (default 7), a request moves one step down the cascade and enters the needs-attention queue.
 - **Unfilled staffing task** opens a vacancy notice, is Critical, needs-attention and featured, and the container shows on the production view under "without staffing coordination". Any staffing-task holder of the same host may endorse a candidate.
 - **Critical understaffing raises itself.** A Critical task below *needed* for N days (default 14) enters the queue automatically.
+- **On-site tasks are judged by their lead-by date,** not their own window: a task with no lead as that date approaches enters the queue, and a readiness milestone and the production view count the leaderless ones (see Build and strike planning).
 
 ### Responsiveness
 
@@ -257,6 +262,7 @@ When one team needs specific pieces of information from other teams — power ne
 When a new event year is created (Settings change notification):
 - **Standing tasks** — each holder is asked to **re-affirm**. Re-affirming keeps the slot and any capability, including staffing, with no endorsement or confirmation. Declined or unanswered after the grace period **[OPEN: default 30 days, with reminders]** releases the slot; the task shows understaffed and staffing holders are told.
 - **One-off event tasks** roll forward with empty slots.
+- **Availability** is asked again in the same prompt, since last year's declaration is stale.
 
 **Roll-forward.** A staffing-task holder (or a `production.manage` holder) picks event-scoped tasks and milestones from a past year and rolls them into a target event: preview, then confirm.
 - Tasks copy with empty primary slots, Active; secondary holders carry as suggestions. Standing tasks are not cloned, and cloning follows the home (see Projects, working groups and cloning). Generated production tasks regenerate from the production calendar.
@@ -279,7 +285,7 @@ When a new event year is created (Settings change notification):
 
 ## Ownership
 
-- **Tasks** (new section, `Humans.Tasks` + `Humans.Tasks.Contracts`) owns tasks, slots, candidacies/endorsements, milestones, projects (the lens, its milestone and event year), capability grants, notes and flags. **Calendar** owns phases and production items; **Meetings** (its own spec) owns meetings, agendas, notes and polls. Each section owns its capability declarations. Hosts own what holding means.
+- **Tasks** (new section, `Humans.Tasks` + `Humans.Tasks.Contracts`) owns tasks, slots, candidacies/endorsements, milestones, projects (the lens, its milestone and event year), capability grants, notes and flags, and the availability declaration, size preference, decline reasons, check-in flags and recognition opt-ins (Capacity and care). On-site days are read from Shifts through its contract. **Calendar** owns phases and production items; **Meetings** (its own spec) owns meetings, agendas, notes and polls. Each section owns its capability declarations. Hosts own what holding means.
 - Public surface kept narrow: `ITasksService` reads (task/milestone summaries, involvement, capability checks); a narrow write contract for slot removal carrying a decision record (Concerns) and for the host-driven standing-task creation. No entity leaves a section.
 - Dependency direction: hosts and consumers → Tasks.Contracts; Tasks → Calendar read contract, Settings, Users.Contracts, Audit, Notifications. Tasks references no host.
 
