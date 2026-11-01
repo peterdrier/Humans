@@ -28,7 +28,8 @@ public sealed class Section :
     ISectionDataMigrations,
     ISectionJobs,
     ISectionPolicies,
-    IUserPart
+    IUserPart,
+    ISectionChrome
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -171,4 +172,7 @@ public sealed class Section :
         new(UserPartSlots.AdminDetail, typeof(ConsentReviewCardViewComponent)),
         new(UserPartSlots.AccountStatus, typeof(RejectionReasonViewComponent)),
     ];
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(ConsentGalleryViewComponent))];
 }
