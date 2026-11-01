@@ -7,21 +7,21 @@ This page walks you through your first session in the Humans app: signing up, co
 Go to `/Account/Login`. You have two ways in:
 
 - **Sign in with Google.** Your display name comes across automatically. If your email was already imported from a mailing list, Google sign-in claims that existing record rather than creating a duplicate.
-- **Email me a login link.** Type your address and the system mails you a one-time magic link that expires in 15 minutes. If you do not have an account yet, the same flow creates one and asks you to pick a display name.
+- **Send me a login link.** Type your address and the system mails you a one-time magic link that expires in 15 minutes. If you do not have an account yet, the same flow creates one and asks for a burner name and your first and last name.
 
-If you land on `/Guest`, that means you are signed in but have no profile yet — step 2 is next. The full signup pipeline is documented in [Onboarding](Onboarding.md). Can't get in, or stuck on the login link? See [Signing in & getting unstuck](SigningIn.md).
+Once you are in, a short guided flow at `/OnboardingWidget` walks you through your names, the shifts that most need people (optional), and the required documents. Until your burner name and legal name are saved, every page sends you to the name form. The full signup pipeline is documented in [Onboarding](Onboarding.md). Can't get in, or stuck on the login link? See [Signing in & getting unstuck](SigningIn.md).
 
 ## 2. Complete your profile
 
-Open `/Profile/Me/Edit` (the Home dashboard also nudges you here via its Getting Started checklist). You fill in:
+Open `/Profile/Me/Edit` (the Home dashboard's "Things to do" list also nudges you here). You fill in:
 
-- Your name, pronouns, city, country, bio, and birthday (month and day).
+- Your burner name and legal first and last name, pronouns, city, country, bio, and birthday (month and day).
 - A profile picture, if you want one.
-- Any contact fields you want to share — Phone, Signal, Telegram, WhatsApp, Discord, or a custom "Other" handle. Each field has its own **visibility** setting: Board only, Coordinators and Board, My teams, or All active humans. You pick one per field when you add it.
+- Any contact fields you want to share — Phone, Signal, Telegram, WhatsApp, Discord, or a custom "Other" handle. Each field has its own **visibility** setting: Board only, Coordinators + Board, My teams (plus coordinators and Board), or All active humans. You pick one per field when you add it.
 - An emergency contact (optional, recommended).
 - Your skills and shift preferences (you'll be nudged through `/Shifts/ShiftInfo` separately). **Fill these in honestly and fully** — coordinators search by skill to find the right person for a role, so a thin profile is harder to place.
 
-During this one-shot setup there is also a tier selector. Leave it on **Volunteer** unless you specifically want to apply for Colaborador or Asociado — those are separate tier applications reviewed by the Board and they never block your Volunteer access. Details in [Profiles](Profiles.md).
+During this one-shot setup a membership tier card explains the tiers. You are a **Volunteer** by default; its apply link is only for Colaborador or Asociado — separate tier applications reviewed by the Board that never block your Volunteer access. Details in [Profiles](Profiles.md).
 
 ## 3. Consent to legal documents
 
@@ -80,7 +80,7 @@ If an Admin has provisioned a `@nobodies.team` Google Workspace account for you,
 | [#🤝-recruitment-relationships](https://discord.gg/pcq2DRH6) on Discord | Quick questions and connecting with the team |
 | [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord | Humans app feedback and bug reports |
 
-You can also use the round help button (question mark, bottom right of the app) for anything related to the app itself — it offers the AI helper, issue filing, and feedback.
+You can also use the round help button (question mark, bottom right of the app) for anything related to the app itself — it offers the AI helper and issue filing.
 
 ## Key terms
 

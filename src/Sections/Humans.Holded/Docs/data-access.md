@@ -50,6 +50,12 @@ accounts, calls by month, account statements, entries). No
 `SyncLedgerAsync` runs (the nightly Hangfire job and an admin-triggered
 sync can otherwise race the replace-window).
 
+### HoldedWrite (Scoped — implements `IHoldedWrite`)
+
+Repository: `IHoldedMirrorRepository`. Reads `HoldedAccounts` (an expense account's Holded id by
+number) and upserts it after creating an expense account. Calls `IHoldedClient` for every lookup and
+write, and `IHoldedService.SyncLedgerAsync` after a delete. No other tables.
+
 ---
 
 

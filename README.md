@@ -4,19 +4,21 @@ Membership management system for Nobodies Collective, a Spanish nonprofit organi
 
 ## Features
 
-- **Member Management**: Profile management, role assignments, contact fields, birthday tracking, and membership status
-- **Applications & Governance**: Colaborador/Asociado applications, Board voting, and temporal governance roles
-- **Volunteer Operations**: Shift browsing, urgent staffing, shift signups, coordinator tooling, and camp registration
-- **Compliance**: GDPR consent tracking, legal document sync from GitHub, re-consent workflows, and audit logs
-- **Integrations**: Google OAuth, Google Workspace provisioning, Drive and Groups sync, ticket vendor sync, and campaign codes
-- **Admin & Finance**: Member administration, feedback triage, email outbox, budget management, and reporting
+- **Members**: Guided Volunteer onboarding, profiles with burner and legal names, contact fields with per-field visibility, role assignments, and account merging
+- **Governance**: Colaborador/Asociado applications with Board voting, binding assembly votes, and the working-groups register
+- **Volunteer Operations**: Teams and sub-teams, shifts and rotas, Early Entry, cantina rosters, camp (barrio) registration, City Planning and container maps, and rideshare
+- **Event & Tickets**: Ticket vendor sync and transfers, ticket scanner and gate admissions, campaign codes and grants, event guide, community calendar with iCal feeds, and a Stripe-backed store
+- **Finance**: Budgets, expense reports, pre-approvals, Holded accounting sync, and SEPA payouts
+- **Compliance**: GDPR consent tracking, data export and erasure, legal document sync from GitHub, re-consent workflows, and audit logs
+- **Communication & Support**: Email outbox, in-app notifications, MailerLite audiences, surveys, in-app Issues, an AI help agent, and the in-app Guide
+- **Integrations**: Google OAuth and magic-link sign-in, Google Workspace provisioning, and Drive and Groups sync
 - **Observability**: OpenTelemetry traces/metrics, Prometheus endpoint, health checks, and structured logging
 
 ## Technology Stack
 
 - .NET 10 SDK
 - PostgreSQL with EF Core
-- ASP.NET Core Identity with Google OAuth
+- ASP.NET Core Identity with Google OAuth and email magic links
 - Hangfire for background jobs
 - NodaTime for date/time handling
 - Stateless for state machine
@@ -33,12 +35,13 @@ Membership management system for Nobodies Collective, a Spanish nonprofit organi
 ### Development Setup
 
 1. Clone the repository
-2. Copy `.env.example` to `.env` and configure Google OAuth credentials
-3. Run PostgreSQL locally or use Docker:
+2. Run PostgreSQL locally or use Docker. Compose reads `.env` (copy `.env.example`) and won't start without `POSTGRES_PASSWORD`; the default connection string in `appsettings.json` expects the password `humans`:
 
 ```bash
 docker-compose up -d db
 ```
+
+3. Set secrets for `dotnet run` with user secrets or environment variables (see [Configuration](#configuration)) — `dotnet run` does not read `.env`. In Development, dev login (`DevAuth:Enabled`) adds persona sign-in buttons to `/Account/Login`.
 
 4. Run the web app. It applies pending migrations on startup:
 
@@ -73,45 +76,74 @@ This starts:
 humans/
 ├── src/
 │   ├── Humans.Base/             # Base — primitives, shared contracts, EF/hosting seam
+│   ├── Humans.Analyzers/        # Roslyn analyzers enforcing the architecture rules
 │   ├── Sections/                # Humans.<Section>[.Contracts] — one project per section
-│   └── Humans.Web/              # ASP.NET Core host: controllers, views, composition root
+│   └── Humans.Web/              # Shell: ASP.NET Core host, layouts, composition root
 ├── tests/
 │   ├── Humans.Base.Tests/
-│   ├── Humans.<Section>.Tests/
-│   └── Humans.Integration.Tests/
+│   ├── Humans.<Section>.Tests/  # one per section
+│   ├── Humans.Web.Tests/        # architecture tests
+│   ├── Humans.Integration.Tests/ # opt-in: HUMANS_INTEGRATION_TESTS=1
+│   ├── Humans.Testing/          # shared test helpers
+│   └── e2e/                     # Playwright smoke tests
 └── docker-compose.yml
 ```
 
 ## Configuration
 
-### Required Environment Variables
+Defaults live in `src/Humans.Web/appsettings.json`; override them with user secrets or environment variables (`Section__Key`). Board and Admin can see every key the running app reads, and whether it is set, at `/Debug/Configuration`.
 
-| Variable | Description |
-|----------|-------------|
+### Required
+
+| Setting | Description |
+|---------|-------------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
 | `Authentication__Google__ClientId` | Google OAuth client ID |
 | `Authentication__Google__ClientSecret` | Google OAuth client secret |
 
-### Optional Configuration
+### Optional
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `Email__Username` / `Email__Password` | empty | SMTP credentials for outbound mail |
-| `GoogleWorkspace__ServiceAccountKeyJson` | empty | Google Workspace service account key |
-| `GitHub__AccessToken` | empty | GitHub token for legal document sync |
-| `GoogleMaps__ApiKey` | empty | Maps API key for profile locations and maps |
-| `TicketVendor__Provider` | `TicketTailor` | Ticket vendor integration provider |
-| `OpenTelemetry__OtlpEndpoint` | `http://localhost:4317` | OTLP collector endpoint for tracing |
+| Setting | Description |
+|---------|-------------|
+| `Email__Username` / `Email__Password` | SMTP credentials for outbound mail (host and sender are in `appsettings.json`) |
+| `GoogleMaps__ApiKey` | Maps and Places for profile locations and maps |
+| `GoogleWorkspace__ServiceAccountKeyJson` or `__ServiceAccountKeyPath` | Service account for Workspace provisioning and Drive/Groups sync |
+| `GitHub__AccessToken` | Raises the GitHub API rate limit for legal document sync |
+| `Anthropic__ApiKey` | In-app AI help agent |
+| `TICKET_VENDOR_API_KEY` | Ticket vendor API key (`TicketVendor__*` sets provider and event) |
+| `STRIPE_TICKETS_KEY`, `STRIPE_STORE_KEY`, `STRIPE_STORE_WEBHOOK_SECRET` | Stripe keys for tickets and the store |
+| `HOLDED_API_KEY_V2` | Holded accounting API |
+| `MAILERLITE_API_KEY` or `MailerLite__ApiKey` | MailerLite audiences |
+| `ORS_API_KEY` | OpenRouteService geocoding and routes for Rideshare |
+| `Sepa__*`, `SEPA_CREDITOR_IBAN` | Creditor details for SEPA payout files |
+| `OpenTelemetry__OtlpEndpoint` | OTLP collector endpoint (default `http://localhost:4317`) |
+
+### Docker Compose
+
+`docker-compose.yml` builds the app container's environment from `.env` (template: `.env.example`):
+
+| `.env` variable | App setting |
+|-----------------|-------------|
+| `POSTGRES_PASSWORD` (required) | Database password, used in `ConnectionStrings__DefaultConnection` and by the `db` container |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | `Authentication__Google__ClientId` / `__ClientSecret` |
+| `GOOGLE_MAPS_API_KEY` | `GoogleMaps__ApiKey` |
+| `EMAIL_USERNAME` / `EMAIL_PASSWORD` | `Email__Username` / `Email__Password` |
+| `GITHUB_ACCESS_TOKEN` | `GitHub__AccessToken` |
+| `GOOGLE_SA_KEY_JSON` | `GoogleWorkspace__ServiceAccountKeyJson` |
+
+`.env.example` also lists `ORS_API_KEY` and `GOOGLE_SA_KEY_PATH`, which `docker-compose.yml` does not pass to the app. Any other setting needs its own `environment:` entry.
 
 ## API Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
+| `/health` | Detailed health report |
 | `/health/live` | Liveness probe |
 | `/health/ready` | Readiness probe |
 | `/metrics` | Prometheus metrics |
-| `/hangfire` | Hangfire dashboard (admin only) |
+| `/hangfire` | Hangfire dashboard (Admin; read-only for Board) |
 | `/api/version` | Build metadata and commit info |
+| `/api/camps/{year}` | Public camp (barrio) listing for a year |
 
 ## Legal Documents
 
@@ -119,82 +151,28 @@ Legal documents are sourced from [nobodies-collective/legal](https://github.com/
 
 When legal documents are updated:
 1. Members are notified and must re-consent
-2. Members without valid consent are marked as Inactive
-3. Access is restricted until re-consent is provided
+2. Members who have not re-consented when the document's grace period ends are suspended
+3. Access returns once they re-consent
 
 ## Selected Milestones
 
-The project grew quickly from the initial member portal into a broader operational system. Selected milestones:
+The project grew quickly from the initial member portal into a broader operational system. Selected milestones, one row per month of 2026:
 
-| Date | Milestone |
-|------|-----------|
-| **Feb 4** | Project inception — member profiles, admin dashboard, Google Places location autocomplete |
-| **Feb 5** | Self-organizing teams, GDPR compliance suite (consent tracking, data export, right-to-deletion), legal document sync from GitHub, Google Workspace integration |
-| **Feb 7** | Google resource management GUI, nightly Drive/Groups reconciliation job, comprehensive audit logging |
-| **Feb 8** | Multi-language support across 5 locales (EN, ES, DE, IT, FR) with language chooser |
-| **Feb 9** | Profile picture uploads with multi-format conversion, Google sync audit trail with per-resource views |
-| **Feb 10** | Visual rebrand to "Humans" with Da Vinci Renaissance identity; legal document redesign with team-scoped, multi-language admin CRUD |
-| **Feb 11** | Interactive volunteer map with Google Maps, consolidated contact fields, birthday tracking |
-| **Feb 15** | Custom Prometheus metrics for membership and compliance, email preview system, outbox-backed Google sync dispatcher |
-| **Feb 18** | Onboarding redesign epic — membership tiers (Colaborador/Asociado), consent-check gating, Board voting workflow, term lifecycle management |
-| **Mar 5** | Service-layer architecture extraction across all controllers, E.164 phone validation, admin sorting and filtering |
-| **Mar 9** | Google Groups via Cloud Identity API, configurable sync modes (Manual/Preview/Auto), enhanced map with avatar popups and location clustering |
-| **Mar 11** | Team role slots — named positions within teams with markdown descriptions and Lead auto-provisioning; in-memory caching layer |
-| **Mar 13** | Camps — full event camp registration system with approval workflow, co-leads, and public JSON API |
-| **Mar 14** | Email outbox with retry and crash recovery, campaign system with CSV import and discount code distribution |
-| **Mar 15** | Ticket vendor integration (TicketTailor sync), membership status partition model, admin log viewer |
-| **Mar 16** | Shift management foundation and team hierarchy/coordinator workflows |
-| **Mar 18** | Feedback system and shift sign-up visibility work |
-| **Mar 19** | Volunteer management refinements and ticket/vendor follow-up changes |
-| **Mar 22** | Playwright E2E smoke-test coverage and section-based test structure |
-| **Mar 23** | Auth/Google sync hardening, feedback triage workflow, and session polish |
-| **Mar 24** | Feedback upgrade rollout and communication preference work |
-| **Mar 27** | Budget phase 1 foundation and related finance scaffolding |
-| **Mar 30-31** | Documentation refresh, repo stats update, and docs index expansion |
-| **Apr 1** | Notification inbox — full in-app notification center; staff directory and About pages |
-| **Apr 2** | Duplicate account detection and resolution workflow; community-focused homepage redesign |
-| **Apr 3** | Authorization overhaul foundation — auth inventory, Playwright auth test suite, sub-team manager role |
-| **Apr 4** | Catalan (ca) as sixth locale; communication preferences redesign; consolidated Finance view; authorization policy rollout across controllers |
-| **Apr 6** | City Planning — interactive polygon map for laying out barrios; EF query monitoring dashboard |
-| **Apr 7** | Resource-based authorization with scoped coordinator and camp-lead permissions |
-| **Apr 8** | Profileless (guest) account support — guest dashboard, GDPR-safe deletion; Google sync hardening |
-| **Apr 10** | Full i18n pass across user-facing views in 5 locales; GDPR export covering all user-linked entities; breadcrumbs on 29 dead-end pages |
-| **Apr 13** | Service-ownership migration continued (CityPlanning, Shifts, Tickets/Budget/Campaigns); event participation tracking with self-service opt-out |
-| **Apr 15** | Architecture docs reorganization; Governance migrated to the repository/store/decorator pattern |
-| **Apr 21-22** | Clean Architecture mega-migration — 20+ services extracted to the Application layer with the repository/store/decorator pattern across every section; Volunteer Coordinator dashboard |
-| **Apr 25** | In-app user Guide section; per-season camp membership; xUnit v3 upgrade |
-| **Apr 26** | Ticket scanner phase 1 — in-browser barcode decode; per-camp role assignments; City Planning GeoJSON bulk import |
-| **Apr 29** | Admin shell and left-nav redesign; filesystem-backed profile pictures; shifts browse UX overhaul with calendar availability picker |
-| **Apr 30** | Volunteer admission ungated from Consent Coordinator approval; email-identity decoupling begins |
-| **May 2** | Issues section launched (succeeds Feedback); account-merge fold-into-target redesign; hidden teams split into an admin-only section |
-| **May 3** | Barrios section — lead listings, role slots, lead-status tracking; Agent phase 1 — in-app AI assistant; post-purchase /Welcome landing |
-| **May 4** | Store section — catalog admin CRUD; 2FA status and backup codes on Accounts admin |
-| **May 9** | Email-identity decoupling completed — grid, link surface, admin parity; global person search consolidated |
-| **May 10** | Ticket transfer wizard between humans; global search across humans, teams, camps, and shifts; unified `<vc:human>` view component |
-| **May 11** | Expenses and Holded sections launched (budget actuals, category spend, SEPA batches); Roslyn analyzers replace IL-scan architecture tests |
-| **May 12** | MailerLite section — import, outbound sends, audience framework |
-| **May 13** | UserInfo cached read-model spanning User and Profile; Google Group membership sync orchestrator |
-| **May 15** | Event Guide — submission, moderation, browse, schedule, and admin; City Planning container placement map |
-| **May 16-17** | Cache migration sprint — every major section served from in-memory decorated caches; linked OAuth accounts dashboard; shift workload aggregations |
-| **May 18** | On-site ticket check-in view; Agent admin status page (usage, spend, refusals) |
-| **May 19** | CampLead folded into role assignments; Marketing/HasShift/HasTicket MailerLite audiences |
-| **May 22-23** | Cross-section read boundaries (`I<Section>ServiceRead`) introduced; burner + legal name model replaces DisplayName; shift availability calendar |
-| **May 25** | Architecture ratchet baselines converted to compile-time Roslyn analyzers; dietary and medical data moved to Profile |
-| **May 26** | Holded expense actuals matching and creditor balances; Early Entry cross-source roster with ticket stub self-view |
-| **May 27** | Repository consolidation across shifts, camps, profile, and user-email; WYSIWYG Markdown editor |
-| **May 29-30** | Surface-reduction sweep across Budget, Google, Users, Email, and Tickets sections; admin nav realigned to section structure |
-| **Jun 1** | Cross-section callers rerouted through read interfaces; Teams as an Early Entry provider |
-| **Jun 4** | Store — Stripe payment reconciliation admin and order repricing with audit trail; per-day instant shift signup toggle |
-| **Jun 5** | Barrios compliance page redesigned as a role-staffing matrix |
-| **Jun 6** | Account merge consolidated into one ordered engine and admin surface; expense travel lines (mileage/per-diem) with personal IOU view |
-| **Jun 7** | People/team/camp search made relevance-ranked, uncapped, and cache-only |
-| **Jun 9-10** | Survey section — first-party GDPR-compliant surveys; personal iCal feed for shifts and events; gate-terminal kiosk login for the ticket scanner |
-| **Jun 11** | Stripe async-payment checkout state machine; post-event shift stats dashboard; per-occurrence event favourites |
-| **Jun 12** | Ticket scanner manual barcode entry; 3,700-string i18n sweep across public pages and enums |
+| Month | Milestones |
+|-------|------------|
+| **Feb** | Project inception (Feb 4) — member profiles, self-organizing teams, GDPR suite (consent tracking, data export, right to deletion), legal document sync from GitHub, Google Workspace provisioning with nightly Drive/Groups reconciliation, audit logging, five locales, volunteer map, the "Humans" rebrand, and the onboarding redesign with Colaborador/Asociado tiers and Board voting |
+| **Mar** | Service-layer extraction; Google Groups via Cloud Identity with configurable sync modes; team role slots; Camps registration with a public JSON API; email outbox; campaigns with discount-code distribution; TicketTailor sync; shift management and coordinator workflows; feedback system; budget phase 1; Playwright E2E smoke tests |
+| **Apr** | Notification inbox; duplicate-account detection; authorization overhaul with resource-based coordinator and camp-lead permissions; Catalan as sixth locale; City Planning barrio map; guest (profileless) accounts; full GDPR export; repository/store/decorator pattern across every section; in-app Guide; ticket scanner; admin shell redesign; Volunteer admission ungated from Consent Coordinator approval |
+| **May** | Issues section (succeeds Feedback); Barrios lead tooling; in-app AI Agent; Store; Expenses and Holded sections; MailerLite; Event Guide; ticket transfers; global search; email-identity decoupling; in-memory cached reads across sections; burner + legal name model; Early Entry roster; Roslyn analyzers replace IL-scan architecture tests |
+| **Jun** | Stripe payment reconciliation and async-payment checkout for the Store; Surveys section; personal iCal feeds; gate-terminal kiosk login and manual barcode entry; post-event shift stats; Holded creditor statements and daybook ledger; community knowledge base for the Agent; 3,700-string i18n sweep; Gate Admissions with staff PINs; automated TicketTailor void-and-reissue for transfers |
+| **Jul** | Gate terminal hardening for the event — PIN audit, supervisor override, kiosk sign-out; logged-in-since survey audience |
+| **Aug** | Holded API v2 section with full ledger mirror and reconciliation; SEPA payouts of member creditor balances; complete, test-enforced GDPR erasure; 14-day persistent login sessions; survey grid questions, previews and ranked-choice voting; expense invoice lines with proofs; Feedback retired in favour of Issues; `/Tour` landing page |
+| **Sep** | Assembly votes; Asociado ballots stored without voter links; Rideshare section; Workgroups register; app-wide `/Settings` tabs; unified Markdown email composer; member-side reskin to the design system; accountant exports (monthly ticket income, donor list); Store deposit returns and refunds |
+| **Oct** | Pre-approvals and Grants sections (with a Low Income stub); workgroup budgets, join requests and Drive access; calendar timezone and recurrence pickers; public `/Teams/Tree`; off-season member dashboard; Google Activity Log; expense-vs-Holded reconciliation report; event guide, grants, barrio seasons and rideshare scoped to an event; audited reveals for health data |
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for workflow and guidelines.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for workflow and guidelines.
 
 ## License
 
