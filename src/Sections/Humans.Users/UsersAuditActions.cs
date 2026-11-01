@@ -53,4 +53,6 @@ internal sealed class UsersAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition DuplicateAccountFlagged = new("DuplicateAccountFlagged");
 
     public static readonly AuditActionDefinition StubProfileBackfilled = new("StubProfileBackfilled");
+
+    public static readonly AuditActionDefinition AccountMarkedFake = new("AccountMarkedFake");
 }

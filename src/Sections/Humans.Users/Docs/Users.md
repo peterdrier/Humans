@@ -72,6 +72,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | MergedToUserId | Guid? | Self-referential FK → User. Set on this row when `AccountMergeService.AcceptAsync` folds it into the target. Source rows are tombstones — they outlive their target's lifecycle (`OnDelete: Restrict`) so append-only history (audit log, consent records, budget audit log) stays attributable. Filtered index `IX_users_MergedToUserId` (WHERE NOT NULL) backs the chain-follow lookup. |
 | MergedAt | Instant? | When the merge tombstone was applied. Null while live. |
 | State | UserState | Lifecycle state and the single source of truth for access, suspension included (`Bare`, `Active`, `DeletePending`, `Suspended`, `Rejected`, `Deleted`, `Merged`, `AdminSuspended`). Required string column (`HasConversion<string>()`, physical default `Bare`); written at each transition and never derived on read. The full app is reachable only when `State == Active`. |
+| MarkedFakeAt | Instant? | Set once when the account is not a real person (the gate terminal, dev personas); null for every member. Read as `UserInfo.IsFake`. Orthogonal to `State`, so a fake account still moves through the same states. Written only by `IUserWrite.MarkFakeAsync`, idempotent, audited once (`UsersAuditActions.AccountMarkedFake`). Queues and counts of people skip fake accounts by reading `IsFake`. |
 
 **Shadow columns (no C# property):** `users.GoogleEmail` is kept on disk as an EF shadow property (`UserConfiguration.cs`); no production code reads or writes it any more (nobodies-collective/Humans#1102 retired the last reader) and the column drop is deferred to a later PR per `memory/architecture/no-drops-until-prod-verified.md`. The canonical read path is `UserInfo.GoogleEmail` (derived from `UserEmail.IsGoogle`). `user_emails` carries no shadow columns; display sorting is alphabetical on `Email`. Analyzer `HUM0001` (`UserEmailLegacyFieldAnalyzer`) rejects any reference to the legacy properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
 
@@ -183,6 +184,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 | Admin | Trigger account merge flows on the unified **Account Merges** page (`/Users/Admin/AccountMerges`, `UsersAdminAccountMergesController`); `AccountMergeService` + `DuplicateAccountService` are Users-section services. Outside Production only: purge a human via `UsersAdminController.PurgeHuman` (`POST /Users/Admin/{id}/Purge`). |
 
 ## Invariants
+
+- A fake account (`UserInfo.IsFake`) is marked by the section that creates it, through `IUserWrite.MarkFakeAsync`: Tickets' gate-terminal seeder on every password set, Development's persona seeder on every role-persona sign-in. Guests stay unmarked so onboarding can be tested end to end. The marker grants and blocks nothing; the gate terminal's login, route restriction and policies still key on `SystemUserIds.GateTerminal`.
 
 - Base’s shared Human component reads `UserInfo.ProfilePictureUrl`, matching profile summaries: uploaded pictures use the canonical versioned route and humans without uploads retain their fallback picture.
 

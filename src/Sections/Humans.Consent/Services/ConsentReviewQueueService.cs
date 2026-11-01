@@ -45,6 +45,9 @@ internal sealed class ConsentReviewQueueService(
     {
         ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
 
+        // Nobody to review behind a fake account (gate terminal, dev personas).
+        all = all.Where(u => !u.IsFake).ToList();
+
         var flagged = all
             .Where(u => u.IsConsentCheckFlagged(ReviewOf(u)))
             .OrderBy(u => u.Profile!.CreatedAt)

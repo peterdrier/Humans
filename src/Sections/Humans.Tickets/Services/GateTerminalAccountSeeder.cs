@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -12,14 +11,14 @@ namespace Humans.Tickets.Services;
 internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);
 
 /// <summary>
-/// A real User row, not a person, created on the first password set. Its consent check is cleared so it never sits
-/// in the Consent Coordinator review queue.
+/// A real User row, not a person, created on the first password set and marked fake in Users, which keeps it out of
+/// the Consent Coordinator review queue.
 /// </summary>
 internal sealed class GateTerminalAccountSeeder(
     UserManager<User> userManager,
     IServiceScopeFactory scopeFactory,
     IProfileEditorService profileEditorService,
-    IConsentWrite consentWrite,
+    IUserWrite userWrite,
     IAuditLogService auditLogService,
     IClock clock,
     ILogger<GateTerminalAccountSeeder> logger)
@@ -47,6 +46,9 @@ internal sealed class GateTerminalAccountSeeder(
             user = await ProvisionAsync(user, actorUserId);
         if (user is null)
             return IdentityResult.Failed(new IdentityError { Description = "Gate account provisioning failed." });
+
+        // Every set, not just provisioning: an account provisioned before the marker existed gets it on rotation.
+        await userWrite.MarkFakeAsync(SystemUserIds.GateTerminal, actorUserId, "System gate-terminal account, not a person");
 
         // Profile/onboarding writes use their own contexts. A fresh Identity scope
         // prevents its tracked pre-setup User from overwriting the saved names/state.
@@ -117,19 +119,6 @@ internal sealed class GateTerminalAccountSeeder(
             logger.LogWarning("Gate terminal profile save refused: {ErrorKey}", profileSave.ErrorKey);
             return null;
         }
-
-        // Keep the account out of the Consent Coordinator review queue.
-        var consentResult = await consentWrite.RecordConsentCheckAsync(
-            SystemUserIds.GateTerminal,
-            ConsentCheckStatus.Cleared,
-            actorUserId,
-            "System gate-terminal account — not a person");
-        if (!consentResult.Success)
-        {
-            logger.LogWarning("Gate terminal consent-check clear failed: {ErrorKey}", consentResult.ErrorKey);
-            return null;
-        }
-
 
         logger.LogWarning("Gate terminal account provisioned by {ActorUserId}", actorUserId);
         return user;
