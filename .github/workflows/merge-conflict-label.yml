@@ -16,7 +16,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: merge-conflict-label
+  group: merge-conflict-label-${{ github.event.pull_request.number || 'sweep' }}
   cancel-in-progress: false
 
 jobs:
