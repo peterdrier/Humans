@@ -109,6 +109,28 @@ public sealed class ConsentReviewQueueServiceTests
         data.Pending.Should().NotContain(u => u.Id == rejectedFlaggedId);
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(ConsentCheckStatus.Flagged)]
+    public async Task GetReviewQueueAsync_FakeAccount_IsExcluded(ConsentCheckStatus? status)
+    {
+        // Gate terminal and dev personas: nobody to review, so neither list nor the nav badge shows them.
+        var fakeId = Guid.NewGuid();
+        var profile = UserFixtures.Profile(
+            burnerName: "Gate Terminal",
+            firstName: "Gate",
+            lastName: "Terminal",
+            createdAt: Instant.FromUnixTimeSeconds(1));
+        Review(fakeId, status);
+
+        StubReviewQueueDependencies([MakeUserInfo(fakeId, profile) with { IsFake = true }]);
+
+        var data = await BuildSut().GetReviewQueueAsync(TestContext.Current.CancellationToken);
+
+        data.Pending.Should().BeEmpty();
+        data.Flagged.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task GetReviewQueueAsync_MergedTombstoneNeedingReview_IsExcludedFromPending()
     {

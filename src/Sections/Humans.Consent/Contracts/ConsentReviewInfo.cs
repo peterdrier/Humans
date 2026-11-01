@@ -27,22 +27,25 @@ public sealed record ConsentReviewInfo(
 /// <summary>Shared by the queue, its nav pill, the notification meter and the dashboards so they can't drift.</summary>
 public static class ConsentReviewPredicates
 {
-    /// <summary>Active (which excludes merged/deleted tombstones), named, and not yet approved.</summary>
+    /// <summary>
+    /// Active (which excludes merged/deleted tombstones), a real person (not Users' <c>IsFake</c>), named, and not yet
+    /// approved.
+    /// </summary>
     public static bool NeedsConsentReview(this UserInfo user, ConsentReviewInfo review)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(review);
-        return user.IsActive && user.HasRequiredNameFields && !review.IsApproved;
+        return user.IsActive && !user.IsFake && user.HasRequiredNameFields && !review.IsApproved;
     }
 
     /// <summary>
     /// Unresolved Flagged check. Excludes rejected members (Clear is blocked on them, so they'd be unresolvable)
-    /// and merged/deleted tombstones.
+    /// merged/deleted tombstones, and fake accounts.
     /// </summary>
     public static bool IsConsentCheckFlagged(this UserInfo user, ConsentReviewInfo review)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentNullException.ThrowIfNull(review);
-        return review.Status == ConsentCheckStatus.Flagged && !review.IsRejected && !user.IsTombstone;
+        return review.Status == ConsentCheckStatus.Flagged && !review.IsRejected && !user.IsTombstone && !user.IsFake;
     }
 }

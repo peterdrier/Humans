@@ -91,6 +91,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<bool> SetMarkedFakeAsync(Guid userId, Instant at, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(
             Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
             CancellationToken ct = default) =>

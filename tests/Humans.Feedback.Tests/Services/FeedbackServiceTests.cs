@@ -754,6 +754,27 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansFact]
+    public async Task DeleteAllScreenshotsAsync_ListsStoredFiles_ThenDeletesThemAndThePrefix()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        const string stored = "uploads/feedback/a/shot.png";
+        const string missing = "uploads/feedback/b/shot.png";
+        (await SeedReportAsync(Guid.NewGuid(), "one", "/one")).ScreenshotStoragePath = stored;
+        (await SeedReportAsync(Guid.NewGuid(), "two", "/two")).ScreenshotStoragePath = missing;
+        await SeedReportAsync(Guid.NewGuid(), "none", "/none");
+        await SaveAllAsync(ct);
+        _fileStorage.TryReadAsync(stored, Arg.Any<CancellationToken>()).Returns([1]);
+        _fileStorage.TryReadAsync(missing, Arg.Any<CancellationToken>()).Returns((byte[]?)null);
+
+        (await _service.GetStoredScreenshotKeysAsync(ct)).Should().Equal(stored);
+        (await _service.DeleteAllScreenshotsAsync(ct)).Should().Be(1);
+
+        await _fileStorage.Received(1).DeleteAsync(stored, ct);
+        await _fileStorage.DidNotReceive().DeleteAsync(missing, Arg.Any<CancellationToken>(), Arg.Any<bool>());
+        await _fileStorage.Received(1).DeleteAsync("uploads/feedback", ct, recursiveDirectory: true);
+    }
+
+    [HumansFact]
     public async Task ReassignAsync_RepointsReportsAndMessages_ToTargetUser()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
