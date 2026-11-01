@@ -10,7 +10,13 @@
 
 # Consent — Section Invariants
 
-Legal documents synced from GitHub, per-version consent records (append-only), the Consent Coordinator audit/review queue.
+Consent is where the association proves, to a regulator or a court, that every member agreed to the current text of every document that applies to them. It keeps the legal documents in step with the legal team's GitHub repository, shows each member what they still owe, records each signature as a permanent tamper-proof entry, and reminds members before a deadline lapses. It also stores the Consent Coordinator's verdict on each new member (cleared, flagged, rejected with a reason).
+
+Good looks like: a signature can never be altered or lost, a member is never asked to sign something they already signed (including under a merged account), and a new document version reaches the right people the night it is published.
+
+Deliberate choices: Spanish is the binding text and the only one hashed; completing consents never gates app access and provisions nothing (the system-team sync reconciles membership); the Coordinator's verdict is an annotation, not a gate.
+
+Out of scope: deciding who is a member (Governance), suspending for missing consents (Users), the Coordinator's review queue and workflow (Onboarding), sending mail (Email).
 
 ## Concepts
 
