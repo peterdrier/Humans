@@ -641,7 +641,15 @@ internal sealed partial class LegalDocumentSyncService(
     {
         try
         {
-            var recipientsByLanguage = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
+            var team = await teamService.GetTeamAsync(document.TeamId, cancellationToken).ConfigureAwait(false);
+            if (team is null)
+                return;
+            var memberIds = team.Members.Select(m => m.UserId).Distinct().ToList();
+            if (memberIds.Count == 0)
+                return;
+            var recipientsByLanguage = (await userService.GetUserInfosAsync(memberIds, cancellationToken).ConfigureAwait(false))
+                .Values
+                .DistinctBy(u => u.Id)
                 .Where(u => u.IsActive)
                 .GroupBy(u => u.PreferredLanguage.IsSupportedCultureCode() ? u.PreferredLanguage : "en", StringComparer.Ordinal);
             foreach (var group in recipientsByLanguage)
