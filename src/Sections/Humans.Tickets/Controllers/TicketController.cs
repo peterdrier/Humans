@@ -111,7 +111,7 @@ internal sealed class TicketController(
             CodesRedeemed = data.CodesRedeemed,
             CodesUnused = data.CodesUnused,
             RedemptionRate = data.RedemptionRate,
-            Campaigns = data.Campaigns,
+            Campaigns = data.Campaigns.OrderByDescending(c => c.CreatedAt).ToList(),
             Codes = data.Codes,
             Search = search,
         };
@@ -140,7 +140,7 @@ internal sealed class TicketController(
             FilterTeam = filterTeam,
             FilterTier = filterTier,
             FilterTicketStatus = filterTicketStatus,
-            AvailableTeams = result.AvailableTeams,
+            AvailableTeams = result.AvailableTeams.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(),
         };
 
         return View(model);
@@ -153,11 +153,16 @@ internal sealed class TicketController(
 
         var model = new TicketSalesAggregatesViewModel
         {
-            WeeklySales = aggregates.WeeklySales,
-            QuarterlySales = aggregates.QuarterlySales,
-            MonthlySales = aggregates.MonthlySales,
-            ByTicketType = aggregates.ByTicketType,
-            ByDiscountCampaign = aggregates.ByDiscountCampaign,
+            WeeklySales = aggregates.WeeklySales.OrderBy(week => week.WeekStart).ToList(),
+            QuarterlySales = aggregates.QuarterlySales.OrderBy(quarter => quarter.Year).ThenBy(quarter => quarter.Quarter).ToList(),
+            MonthlySales = aggregates.MonthlySales.OrderBy(month => month.MonthLabel, StringComparer.Ordinal).ToList(),
+            ByTicketType = aggregates.ByTicketType.OrderByDescending(t => t.FaceValue).ToList(),
+            ByDiscountCampaign = aggregates.ByDiscountCampaign
+                .OrderBy(r => r.CodesGranted is null)
+                .ThenByDescending(r => r.TotalDiscount)
+                .ThenBy(r => r.CampaignTitle, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToList(),
         };
 
         return View(model);
@@ -311,7 +316,7 @@ internal sealed class TicketController(
             csv.WriteRow("Month", "Orders", "Tickets", "Gross Collected", "Standalone Donations", "VIP Donations",
                 "Ticket Income incl VAT", "VAT 10%", "Ticket Income ex VAT", "Stripe Fees", "Ticket Tailor Fees",
                 "Stripe Fee VAT", "Withheld Tax", "Refunded Orders Gross");
-            foreach (var m in months)
+            foreach (var m in months.OrderBy(month => month.MonthLabel, StringComparer.Ordinal))
             {
                 WriteAccountantRow(csv, m.MonthLabel, m.OrderCount, m.TicketsSold, m.GrossRevenue, m.Donations,
                     m.VipDonations, m.TicketIncomeInclVat, m.VatAmount, m.TicketIncomeExVat, m.StripeFees,

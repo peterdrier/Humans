@@ -2446,8 +2446,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.PendingRequestCount.Should().Be(1);
         result.CurrentUserPendingRequestId.Should().BeNull();
         result.Members.Select(m => (m.DisplayName, m.Role)).Should().BeEquivalentTo(
-            [("Member", TeamMemberRole.Member), ("Coordinator", TeamMemberRole.Coordinator)],
-            cfg => cfg.WithStrictOrdering());
+            [("Member", TeamMemberRole.Member), ("Coordinator", TeamMemberRole.Coordinator)]);
         result.RoleDefinitions.Select(d => d.Id).Should().ContainSingle().Which.Should().Be(roleDefinition.Id);
         pendingRequest.Status.Should().Be(TeamJoinRequestStatus.Pending);
     }

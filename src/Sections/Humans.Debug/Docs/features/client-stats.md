@@ -67,7 +67,7 @@ No persistence, no EF entity, no table.
 
 **Page-view tally:**
 ```
-response produced → ClientStatsMiddleware (after UseAuthorization)
+response produced → ClientStatsMiddleware (between UseAuthentication and UseAuthorization)
   → only if GET + status 2xx/3xx + text/html        (excludes assets, JSON,
                                                        failed POSTs, re-executed
                                                        error pages)

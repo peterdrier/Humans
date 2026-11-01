@@ -2,10 +2,14 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
+using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NodaTime;
 using NSubstitute;
 
@@ -127,6 +131,50 @@ public sealed class ProgramTests : PreapprovalsTestHarness
             .Should().BeEquivalentTo([kept, added]);
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditEntityTypes.User);
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditEntityTypes.User);
+    }
+
+    [HumansFact]
+    public async Task Edit_ManagerSaveFailure_PreservesFieldsAndManagersWithoutNoticesOrAudit()
+    {
+        var actor = SeedUser("Board");
+        var oldManager = SeedUser("Old");
+        var newManager = SeedUser("New");
+        var program = await SeedProgramAsync(managers: oldManager);
+        await SeedGrantAsync(program);
+        var options = new DbContextOptionsBuilder<PreapprovalsDbContext>(
+                (DbContextOptions<PreapprovalsDbContext>)Db.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailManagerSave())
+            .Options;
+        var service = new PreapprovalService(
+            new PreapprovalRepository(new TestDbContextFactory<PreapprovalsDbContext>(options)),
+            Users, UserEmails, Finance, Notifications, NotificationResolve,
+            Email, EmailFactory, AuditLog, Clock, Logger);
+
+        Func<Task> update = () => service.UpdateProgramAsync(program.Id,
+            Save(name: "Renamed", claimBy: program.ClaimBy.PlusDays(10), managers: newManager), actor, Ct);
+
+        await update.Should().ThrowAsync<IOException>();
+        await using var db = OpenContext();
+        var saved = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
+        saved.Name.Should().Be(program.Name);
+        saved.ClaimBy.Should().Be(program.ClaimBy);
+        saved.Managers.Select(m => m.UserId).Should().Equal(oldManager);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationResolve.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class FailManagerSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<ProgramManager>()
+                .Any(e => e.State is EntityState.Added or EntityState.Deleted))
+                throw new IOException("Manager persistence failed.");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 
     [HumansFact]

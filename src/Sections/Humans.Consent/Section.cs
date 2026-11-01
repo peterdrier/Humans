@@ -152,7 +152,7 @@ public sealed class Section :
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {
-        // 04:00, 30 minutes before Users' SuspendNonCompliantMembersJob.
+        // Both at 04:00, 30 minutes before Users' SuspendNonCompliantMembersJob.
         yield return new RecurringJobDescriptor(
             "consent-reconsent-reminders", typeof(SendReConsentReminderJob), "0 4 * * *");
 

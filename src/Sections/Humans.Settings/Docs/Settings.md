@@ -192,7 +192,7 @@ keep in step by hand. Derive it from the call sites, not from here.
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
 | in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes |
-| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and forwards the change through its keyed inner to `IShiftManagement.InvalidateDashboardCaches` for that event's coordinator-dashboard aggregates), and Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`). Settings names no consumer and references no consuming section |
+| out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and forwards the change through its keyed inner to `IShiftManagement.InvalidateDashboardCaches` for that event's coordinator-dashboard aggregates), Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`), Camps' `CachingCampService` (open seasons derive from Settings' events), and Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 
@@ -206,9 +206,9 @@ writes `IAuditLogService` entries on event-settings saves)
 **Owned tables:** `system_settings`, `settings_event`
 **Status:** (A) — own project, own context, repository-only data access; no
 caching decorator (low-traffic key reads, admin-only screens).
-**Contributes:** `SectionSettings : ISectionSettings` — the `/Settings#event`
-tab, rendered by `EventSettingsTabViewComponent`; `SectionChrome : ISectionChrome` —
-the `/Settings` link in the signed-in user menu (`user-menu` slot). Also owns
+**Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
+tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` —
+the `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav` — the admin shell's "Event settings" tab. Also owns
 composing every section's `ISectionSettings` contributions into the `/Settings`
 tab strip (`SettingsTabComposition`, `SettingsTabsViewComponent`) — Settings
 owns all of settings management, contributed tabs included, not just its own.

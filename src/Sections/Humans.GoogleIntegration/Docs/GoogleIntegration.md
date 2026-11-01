@@ -23,6 +23,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 - **Reconciliation** compares the expected Google resource state (based on team membership) against the actual Google resource state, detecting drift.
 - **Google Group membership sources** implement `IGoogleGroupMembershipSource`. Each source claims group keys and returns expected user IDs only; `IGoogleGroupSync` owns email hydration, user/profile filtering, Google API diffing, collision handling, and mutation.
 - **Drive access sources** implement `IGoogleDriveAccessSource`. Teams claims linked Drive resources, unions members across shared resources and rolls active child-team members into parent claims; Workgroups claims its folders. Sources return user IDs, permission levels, optional team-link metadata and an optional `ResourceName`. Registered resources carry their full Drive path as their name (refreshed daily by `UpdateDriveFolderPathsAsync`); a folder with no `GoogleResource` row (Workgroups' folders) gets the same path walk (`DriveFolderPath`) per reconciliation pass, falling back to the source's `ResourceName`, so removal emails, the sync log and the sync page never show a raw file id. `IGoogleDriveSync` owns user/email hydration, multi-source unions, diffing, mutations and sync logs for both. Manual results retain linked-resource metadata; the daily job runs one Drive pass. `GoogleWorkspaceSyncService` retains provisioning, immediate join grants and outbox dispatch; those grants use the same source-owned permission levels. Consumer sections use `RequestSyncAsync` to enqueue a scoped reconciliation, `CreateSubfolderAsync` to provision folders and `IsFolderReachableAsync` to check a folder setting before saving it.
+- Initial Drive resource lookups reuse `DriveFolderPath` with the fetched leaf metadata. Shared Drive roots are named through `drives.get`, including roots whose file metadata omits `driveId`. Incomplete ancestor walks fall back to the item’s own name, never a partial path suffix.
 - The **sync outbox** queues resource-level sync events for processing by a background job.
 
 ## Data Model
@@ -97,7 +98,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/LinkGroupToTeam` | POST | Admin | Link an unlinked domain group to a team |
 | `/Google/CheckEmailRenames` | POST | Admin | Detect OAuth email renames |
 | `/Google/EmailRenames` | GET | Admin | PRG landing for email rename results |
-| `/Google/EmailFlagViolations` | GET | Admin | List users with `IsPrimary` flag violations |
+| `/Google/EmailFlagViolations` | GET | Admin | List users with `IsPrimary` flag violations; the controller orders by burner name with ordinal comparison ignoring case, retaining request cancellation through the Users diagnostic and bulk name read |
 | `/Google/Accounts` | GET | Admin | @nobodies.team Workspace account list (2FA, recovery email) |
 | `/Google/Accounts/Provision` | POST | Admin | Provision standalone @nobodies.team account |
 | `/Google/Accounts/Suspend` | POST | Admin | Suspend a Workspace account |
@@ -129,6 +130,12 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Invariants
 
+- Cloud Translation returns exactly one non-null translated text per input, in input order. Missing data, missing/null segments or missing/null `translatedText` fail the complete translation call before callers can store incomplete text. Explicit empty strings remain valid.
+
+- Domain-group reads impose no display order. The All Groups view orders linked groups first, then email ignoring case; batch settings remediation explicitly uses that same sequence.
+
+- Password-reset and backup-code audits resolve the linked member through the same `UserEmailMatchOwner.ByEmail` picker as account listings and syncs, including Gmail-alias identity and verified/newest/stable-id precedence. Unlinked addresses retain an empty audit entity id.
+
 - Workspace provisioning and account linking check Users' verified-email addition result before identity reconciliation, team resync, success audits or credential notices. A refusal aborts the workflow through its existing failure handling; a duplicate address without a refusal remains an idempotent no-op. Provisioning still captures the recovery address before creating the Workspace account or adding its email row.
 
 - Activity-log resource-name filtering combines linked resource ids with a case-insensitive literal match on unlinked descriptions. Escaped matching runs before the database row limit; the growing log is never loaded into memory for this search.
@@ -141,7 +148,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 - Workspace accounts, per-resource/per-human audit frames and Sync Outbox reads pass the browser abort token to every data lookup. Account-list caller cancellation logs a warning without an exception stack and propagates; dependency cancellation remains an error with generic feedback.
 
-- The Workspace accounts page renders existing `WorkspaceAccountInfo` rows directly, preserving service email ordering and status, member-link, 2FA and recovery fields.
+- The Workspace accounts controller orders existing `WorkspaceAccountInfo` rows by primary email with ordinal comparison ignoring case. The service supplies account facts and counts without display ordering; status, member-link, 2FA and recovery fields are preserved.
 
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
 - Preview requests reject redirects and display the load failure; login or access-denied pages cannot become sync previews.

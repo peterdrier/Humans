@@ -107,7 +107,13 @@ public sealed class ClientStatsTracker : IClientStatsTracker
         => map.AddOrUpdate(key, 1, static (_, v) => v + 1);
 
     private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : value[..maxLength];
+    {
+        if (value.Length <= maxLength) return value;
+        var length = maxLength;
+        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
+            length--;
+        return value[..length];
+    }
 
     private static IReadOnlyList<ClientStatCount> Rank(ConcurrentDictionary<string, long> map)
         => map.Select(kv => new ClientStatCount(kv.Key, kv.Value))

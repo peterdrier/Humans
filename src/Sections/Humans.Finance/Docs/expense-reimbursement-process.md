@@ -29,6 +29,8 @@ Happy path. When something needs fixing it gets more complicated.
 2. **The department coordinator approves it**, setting a max if the report goes over what's
    allocated — the coordinator knows their department better than the treasurer does. Only when
    the category has a budget coordinator; with none assigned the report goes straight to step 3.
+   A report filed against a pre-approval has no category, so the program's named managers do this
+   first review in the coordinator's place.
    This step is the expected route, not an enforced gate: the treasurer can approve straight from
    Submitted when there is a rush, and the approval's audit entry records that they did.
 3. **The treasurer (finance admin) also approves it.**
@@ -87,7 +89,7 @@ It's not exactly cake, but the shape is deliberate: **appropriate controls where
 robbed, automation everywhere else.**
 
 - Human approval before anything reaches the books (steps 2–3): the treasurer always, plus the
-  coordinator wherever the category has one.
+  coordinator (or, for a pre-approved report, the program's manager) wherever there is one.
 - The bank upload (step 7) — the one step that irreversibly moves money — stays manual, with the
   treasurer and a second verifier checking the totals.
 - Settlement booking (step 10) posts unattended only when the bank line's own text names the

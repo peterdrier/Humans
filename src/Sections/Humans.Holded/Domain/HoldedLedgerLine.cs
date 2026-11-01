@@ -27,6 +27,13 @@ internal sealed class HoldedLedgerLine
 
     public decimal Credit { get; set; }
 
+    /// <summary>Holded's journal-entry id (<c>id</c>): the same on every line of one entry, so not a line key.</summary>
+    public string? EntryId { get; set; }
+
+    /// <summary>Holded's manual tick in its ledger view (<c>checked</c>), not bank reconciliation. Nullable so the
+    /// column could be added to the existing table; null means the line was last synced before Humans read it.</summary>
+    public bool? Checked { get; set; }
+
     public Instant LastSyncedAt { get; set; }
 
     public Instant CreatedAt { get; init; }

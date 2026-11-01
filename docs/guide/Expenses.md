@@ -19,7 +19,7 @@ Finance handles the approval and pays you by bank transfer, and the org's accoun
 - **New report** (`/Expenses/New`) — start a new draft
 - **Report detail** (`/Expenses/{id}`) — one report: its items, receipts, status, and history
 - **Edit a draft** (`/Expenses/{id}/Edit`) — change a report while it's still a draft
-- **Review queue** (`/Expenses/Review`) — reports waiting for your sign-off or approval; one page shared by coordinators, Finance Admin, and Admin, scoped to what each can act on
+- **Review queue** (`/Expenses/Review`) — reports waiting for your sign-off or approval; one page shared by coordinators, pre-approval program managers, Finance Admin, and Admin, scoped to what each can act on
 
 ## As a Volunteer
 
@@ -29,7 +29,7 @@ Go to `/Expenses/New` to start a draft. Pick the account the spending books to �
 
 ### File against a pre-approval
 
-If the association pre-approved your spending (a creativity grant or a travel allowance), the open pre-approvals are listed on **My expenses** and on `/Preapprovals`. Use **File expense** next to one, or pick it on the New form: the account and the payout cap come from the pre-approval, and the report goes straight to Finance without a coordinator's sign-off. You have to submit before the pre-approval's claim-by date; a report sent back to you for fixes may still be resubmitted after it. Withdrawing a report before it's approved frees the pre-approval up again.
+If the association pre-approved your spending (a creativity grant or a travel allowance), the open pre-approvals are listed on **My expenses** and on `/Preapprovals`. Use **File expense** next to one, or pick it on the New form: the account and the payout cap come from the pre-approval. There is no budget category, so a named manager of the pre-approval's program does the first review in a coordinator's place, then Finance approves. You have to submit before the pre-approval's claim-by date; a report sent back to you for fixes may still be resubmitted after it. Withdrawing a report before it's approved frees the pre-approval up again.
 
 ### Add items and attach receipts
 
@@ -63,7 +63,7 @@ Once one of your reports has reached the org's accounting system, **My expenses*
 
 When you set a cap, the original receipts total remains visible while the lower cap becomes the payable amount.
 
-If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Review` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. While a report is waiting for you, you can also **decline** an individual item (with a reason) or undo that decline. This step only happens when the report's category actually has a coordinator assigned.
+If you coordinate a budget category, expense reports in that category come to you for sign-off first. Go to `/Expenses/Review` to see what's waiting. From a report, **endorse** it to pass it on to Finance, or **reject** it with a reason — endorsing lets you optionally cap the amount that gets paid out. While a report is waiting for you, you can also **decline** an individual item (with a reason) or undo that decline. This step only happens when the report's category actually has a coordinator assigned. A named manager of a pre-approval's program does the same first review for reports filed against that program's pre-approvals — they see them in the same queue and cannot review other programs' reports.
 
 Coordinators can't approve — that requires Finance Admin.
 

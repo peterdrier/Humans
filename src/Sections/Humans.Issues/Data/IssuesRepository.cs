@@ -24,14 +24,6 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .FirstOrDefaultAsync(i => i.Id == id, ct);
     }
 
-    public async Task<Issue?> FindForMutationAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Issues
-            .Include(i => i.Comments)
-            .FirstOrDefaultAsync(i => i.Id == id, ct);
-    }
-
     public async Task<IReadOnlyList<Issue>> GetListAsync(
         IssueListFilter f,
         IReadOnlySet<string>? sectionFilter,

@@ -31,7 +31,11 @@ internal sealed class GovernanceVotesController(
         if (GetCurrentUserId() is not { } userId) return Challenge();
 
         var votes = await voteService.GetVotesForMemberAsync(userId, ct);
-        return View("~/Views/Governance/Votes/Index.cshtml", new AssemblyVoteListViewModel { Votes = votes });
+        return View("~/Views/Governance/Votes/Index.cshtml", new AssemblyVoteListViewModel
+        {
+            Votes = votes.OrderByDescending(v => v.Status == AssemblyVoteStatus.Open)
+                .ThenByDescending(v => v.ClosesAt).ToList()
+        });
     }
 
     [HttpGet("{voteId:guid}")]

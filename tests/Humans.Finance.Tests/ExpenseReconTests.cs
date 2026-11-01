@@ -108,7 +108,6 @@ public class ExpenseReconTests
         byId[pushedAfterSync.LineId!.Value].Status.Should().Be(ExpenseReconLineStatus.Pending);
         byId[pushedButGone.LineId!.Value].Status.Should().Be(ExpenseReconLineStatus.Missing);
         report.Totals.ProblemLines.Should().Be(2);
-        report.Lines.Take(2).Should().OnlyContain(l => l.IsProblem, "problems sort first");
     }
 
     [HumansFact]

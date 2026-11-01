@@ -129,7 +129,7 @@ Two parallel tracks (either order):
 **Trigger:** First Google OAuth login
 **Actions:**
 - User record created
-- Profile record created (empty, MembershipTier = Volunteer)
+- Profile record created (empty); a member with no Governance tier row is a Volunteer
 - Redirected to Profile Setup (onboarding mode)
 
 ### Stage 2: Profile Setup (One-Shot Onboarding)
@@ -197,7 +197,7 @@ Step selection first resolves the surviving user and checks saved required names
 
 `OnboardingWidgetController.Index` is the canonical entry point. It calls `IOnboardingWidgetState.GetCurrentStepAsync` and redirects to the action for the user's next incomplete step (or `Home/Index` once everything is done). Layouts, the post-signup redirect, and the onboarding banner all link to `Index` rather than to a specific step, so a refresh / direct nav lands on whichever step is current.
 
-The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a global action filter, `src/Humans.Web/Authorization/NameRequiredFilter.cs`) redirects any authenticated user without a real `BurnerName` (a Stub profile, or an Active profile with blank required names) straight to `OnboardingWidget/Names`, so a nameless user can't reach any non-exempt route before naming themselves. It runs after authentication and only redirects — it never blocks sign-in — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, opening on the next request once names are saved. It covers OAuth first sign-in, the magic-link `ExistingUser` branch, and legacy blank-name accounts (nobodies-collective/Humans#812). Exempt: the `Account` and `Language` controllers wholesale, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`.
+The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a global action filter, `src/Humans.Web/Authorization/NameRequiredFilter.cs`) redirects any authenticated user without a real `BurnerName` (a Stub profile, or an Active profile with blank required names) straight to `OnboardingWidget/Names`, so a nameless user can't reach any non-exempt route before naming themselves. It runs after authentication and only redirects — it never blocks sign-in — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, opening on the next request once names are saved. It covers OAuth first sign-in, the magic-link `ExistingUser` branch, and legacy blank-name accounts (nobodies-collective/Humans#812). Exempt: the `Account` and `Language` controllers wholesale, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, and any other `[AllowAnonymous]` endpoint (all but `Home/Index`).
 
 ### Persistent banner
 

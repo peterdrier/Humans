@@ -53,6 +53,12 @@ No repository, no tables, no cache. Computes `/Finance/CashFlow` from
 `VatRate` and `ExpectedDate`) and `ITicketService.GetTicketOrdersAsync` (paid
 orders' gross revenue for the runway). Injected by `FinanceController` only.
 
+### CreditorMatchService (Scoped, section-internal)
+
+No repository, no tables, no cache. Matches Holded creditor ledger lines against
+expense reports for `/Finance` via `IHoldedService.GetLedgerLinesAsync` and
+`IExpenseReportService.GetReviewQueueAsync`. Injected by `FinanceController` only.
+
 ### Service (Scoped)
 
 Repository: `IHoldedRepository`.

@@ -20,6 +20,10 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("repeated-cursor")]
     [Xunit.InlineData("wrong-group-page")]
     [Xunit.InlineData("invalid-last-page")]
+    [Xunit.InlineData("missing-group-id")]
+    [Xunit.InlineData("blank-group-id")]
+    [Xunit.InlineData("missing-group-name")]
+    [Xunit.InlineData("blank-group-name")]
     public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
@@ -48,6 +52,10 @@ public class MailerLiteClientRetryTests
         {
             "null-groups" => "null",
             "null-group-item" => """{"data":[null],"meta":{"current_page":1,"last_page":1}}""",
+            "missing-group-id" => HumansGroupPage.Replace("\"id\":\"42\",", "", StringComparison.Ordinal),
+            "blank-group-id" => HumansGroupPage.Replace("\"id\":\"42\"", "\"id\":\"  \"", StringComparison.Ordinal),
+            "missing-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\",", "", StringComparison.Ordinal),
+            "blank-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\"", "\"name\":\"  \"", StringComparison.Ordinal),
             "wrong-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal),
             "invalid-last-page" => HumansGroupPage.Replace("\"last_page\":1", "\"last_page\":0", StringComparison.Ordinal),
             _ => HumansGroupPage,
@@ -64,6 +72,36 @@ public class MailerLiteClientRetryTests
             emails.Add(subscriber.Email);
         emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
         (await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle(g => g.Id == "42");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(",\"status\":null")]
+    [Xunit.InlineData(",\"status\":\"\"")]
+    [Xunit.InlineData(",\"status\":\"  \\t\"")]
+    public async Task RefreshAsync_RejectsMissingStatusAndPreservesSnapshot(string statusProperty)
+    {
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
+        var fetchedAt = client.LastFetchedAt;
+        handler.EnqueueJson(HttpStatusCode.OK,
+            "{\"data\":[{\"id\":\"sub-2\",\"email\":\"bob@example.org\"" + statusProperty + "}],\"meta\":{\"next_cursor\":null}}");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+
+        var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<System.Text.Json.JsonException>()
+            .WithMessage("subscriber.status missing");
+        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
+        client.LastFetchedAt.Should().Be(fetchedAt);
+        var emails = new List<string>();
+        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
+            emails.Add(subscriber.Email);
+        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
     }
 
     [HumansFact]

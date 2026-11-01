@@ -21,7 +21,7 @@ internal interface IShiftManagement
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
-    /// <summary>Parent teams with active rotas in the event.</summary>
+    /// <summary>Rota-owning teams in the event; callers choose display ordering.</summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId, CancellationToken ct = default);
 
@@ -96,8 +96,8 @@ internal interface IShiftManagement
 
     /// <summary>
     /// One pie per top-level department or promoted sub-team; other sub-teams roll up to their parent. AdminOnly shifts and
-    /// hidden rotas are excluded. Rows come in <c>TeamName</c> order; the view model places promoted sub-teams by their
-    /// parent.
+    /// hidden rotas are excluded. Rows have no display order; the view model orders departments and places promoted
+    /// sub-teams by their parent.
     /// </summary>
     Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
         Guid eventSettingsId,

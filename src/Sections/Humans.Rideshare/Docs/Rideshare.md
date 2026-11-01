@@ -3,7 +3,7 @@
   tests/Humans.Rideshare.Tests/RideshareArchitectureTests.cs
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
-  src/Sections/Humans.Notifications.Contracts/RideshareNotificationSources.cs
+  src/Sections/Humans.Rideshare/RideshareNotificationSources.cs
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
@@ -221,8 +221,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | `/Rideshare/Mine` | GET | `AppAccess` | Own offers, requests, and interests received/sent |
 | `/Rideshare/Interest` | POST | `AppAccess` | Express interest in a trip, optionally answering a request's pin |
 | `/Rideshare/Interest/{id}/Accept`, `/Decline`, `/Withdraw` | POST | `AppAccess` | Interest lifecycle transitions |
-| `/Rideshare/Admin` | GET/POST | `RidesharePolicies.Manage` | Set the active event's destination + travel windows; season statistics |
-| `/Rideshare/Admin/Day?date=` | GET | `RidesharePolicies.Manage` | Operational day roster: every trip happening that day, any status, with its accepted riders |
+| `/Rideshare/Admin` | GET / POST | GET `RidesharePolicies.Read`; POST `RidesharePolicies.Manage` | Set the active event's destination + travel windows (POST); view them and season statistics |
+| `/Rideshare/Admin/Day?date=` | GET | `RidesharePolicies.Read` | Operational day roster: every trip happening that day, any status, with its accepted riders |
 | `/api/rideshare/board?date=&direction=` | GET | `AppAccess` | GeoJSON FeatureCollection of joinable trips, active requests, and the destination |
 
 ## Actors & Roles
@@ -243,7 +243,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
 - **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or event) and the reason or rule key, never the exception.
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
-- **Members-only board.** Every route requires `AppAccess` or `RidesharePolicies.Manage`; there is no anonymous or public access.
+- **Members-only board.** Every route requires `AppAccess` or `RidesharePolicies.Read`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request.
@@ -276,7 +276,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - A human **cannot** express interest in their own trip.
 - A human **cannot** accept or decline an interest on a posting they do not own.
 - A human **cannot** withdraw an interest they neither authored nor own the posting for.
-- Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster.
+- Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster. Board can read those pages but **cannot** save settings.
 - The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does. The board list, map and current driver’s offer selector share the snapshot’s joinable-trip filter (active, seats available, direction and travel date).
 - The declined party **cannot** see a reason for the decline — none is stored.
 

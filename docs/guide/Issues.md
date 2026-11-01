@@ -67,7 +67,7 @@ If you hold a role that owns an area, that area's queue is yours. You see it at 
 | Tickets | Tickets Admin |
 | Camps | Camps Admin |
 | Teams | Teams Admin |
-| Shifts | No-Info Admin |
+| Shifts | Shifts NoInfo |
 | Onboarding | Consent Coordinator, Shifts Admin, Users Admin |
 | Profiles | Users Admin |
 | Budget | Finance Admin |

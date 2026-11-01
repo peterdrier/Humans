@@ -21,7 +21,7 @@ public sealed class UserCalendarViewComponent(
             var ct = HttpContext.RequestAborted;
             var user = await users.GetUserInfoAsync(userId, ct);
             model.HasFeedToken = await feed.HasFeedAsync(user?.Id ?? userId, ct);
-            model.Items = await feed.GetFeedItemsAsync(user?.Id ?? userId, ct);
+            model.Items = (await feed.GetFeedItemsAsync(user?.Id ?? userId, ct)).OrderBy(i => i.Start).ToList();
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
         {

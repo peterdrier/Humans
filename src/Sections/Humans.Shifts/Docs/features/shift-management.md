@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
-  src/Humans.Base/Authorization/ShiftsRoles.cs
+  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
   src/Sections/Humans.Shifts/Domain/Rota.cs
@@ -71,6 +71,8 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Range signup and coordinator range assignment also detect selected all-day shifts that overlap each other on the same date. Conflict-skipping paths omit that entire date with a warning; signup without conflict skipping refuses the range.
 - AdminOnly shifts hidden from non-privileged users
 - EE freeze blocks non-privileged build shift signups after early entry close
+
+Browse signup display ordering is shared by the browse page, row refresh, onboarding list and gallery through `ShiftBrowseMapper`: Confirmed before Pending, then ordinal name comparison ignoring case.
 
 ### US-25.4: Coordinator Approves/Refuses Signups
 **As a** department coordinator
@@ -197,22 +199,23 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | `/Shifts/Summary[/{teamSlug}[/{rotaGuid}]]` | Read-only Shift Summary by Camp — confirmed-hour/count totals per human and per camp, at global / team-set / single-rota scope (`ShiftsPolicies.DepartmentRead` policy) |
 | `/Shifts/Preferences/Tags` | POST: Save volunteer tag preferences |
 | `/Shifts/Settings` | POST only: Admin saves Shifts' own knobs, posted from the `/Settings#shifts` tab |
-| `/Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department and period (`ShiftsPolicies.Manage` policy) |
+| `/Shifts/Dashboard/PostEventStats` | Post-event stats: completion/no-show rates by department and period (`ShiftsPolicies.Read` policy) |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |
 | `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |
 | `/Human/{id}/Admin` | Shift signups ViewComponent (admin view of user's shifts) |
 
 ## Coordinator Dashboard
 
-**Purpose:** Give Shifts Admins, NoInfoAdmins, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
+**Purpose:** Give Shifts Admins, Shifts NoInfo holders, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
 
 **Route:** `/Shifts/Dashboard` — the four dashboard panels render above the urgent-shifts filter.
 
 **Panels:**
 
 - **Overview counters** — five cards: shifts filled (with per-period Build/Event/Strike fill chips coloured ≥80% green / 60–79% amber / <60% red), ticket holders, ticket holding volunteers (primary-bordered emphasis card; sub-line shows how many ticket-holding humans haven't signed up), non-ticket signups, stale pending (warning-bordered when > 0).
-- **Departments table** — one row per parent team, sorted by ascending fill %. Clicking a row expands to either three period sub-rows (Build/Event/Strike) when the department has no subteams, or a subgroup table showing each subteam (plus a "Direct" row for rotas attached to the parent itself) with per-period fill % chips.
-- **Coordinator activity** — teams that have ≥1 pending signup, one row each listing coordinator names, oldest login across that team's coordinators (rendered red if > 7 days or never), and pending signup count. Hidden entirely if no team has pending signups.
+- **Duration breakdown** — the dashboard page builder places the all-day bucket first, then hourly buckets in ascending duration.
+- **Departments table** — one row per parent team, sorted in the dashboard page builder by ascending slot fill %, then ordinal name. Subgroups pin Direct first, then use ascending slot fill % and ordinal name. Clicking a row expands to either three period sub-rows (Build/Event/Strike) when the department has no subteams, or a subgroup table showing each subteam (plus a "Direct" row for rotas attached to the parent itself) with per-period fill % chips.
+- **Coordinator activity** — teams that have ≥1 pending signup, one row each listing coordinator names, oldest login across that team's coordinators (rendered red if > 7 days or never), and pending signup count. The page builder orders roots/subgroups by the oldest login anywhere in the subtree, then ordinal team name; missing logins and coordinator-free subtrees come first. Each coordinator list is oldest-first. Hidden entirely if no team has pending signups.
 - **Trends chart** — line chart with three series (new signups, new ticket sales, distinct logins / DAU) over a selectable window (7/30/90 days, All). Window toggle re-renders via `asp-route-trendWindow=`. DAU series is dashed with a tooltip noting that only the last login per human is stored (older buckets undercount).
 - **Urgency accordion** — one collapsible item per (Rota, Department) summarising slot coverage across all matching shifts (total confirmed / min–max, day count, priority). Expand to see per-day rows; the per-row Voluntell action is gated by `ShiftsPolicies.Manage` so subteam managers (when the page is reached via the wider `ShiftsPolicies.DepartmentRead` policy) see the rows but no action column.
 
@@ -236,7 +239,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
 - **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
 
-**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats`, `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsNoInfo, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
+**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin, Board, ShiftsNoInfo, ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsNoInfo, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
 
 **Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
 

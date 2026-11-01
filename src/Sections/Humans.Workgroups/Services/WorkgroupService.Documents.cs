@@ -75,11 +75,10 @@ internal sealed partial class WorkgroupService
         document.Status = WorkgroupDocumentStatus.Published;
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
-        await repository.UpdateDocumentAsync(document, ct);
+        await repository.UpdateDocumentAsync(document, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.DocumentPublished, now,
+                document.Title, authorUserId: actorUserId, documentId: document.Id)]);
         ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.DocumentPublished, now,
-            document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
@@ -117,11 +116,10 @@ internal sealed partial class WorkgroupService
         document.CommentsCloseAt = window.ClosesAt;
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
-        await repository.UpdateDocumentAsync(document, ct);
+        await repository.UpdateDocumentAsync(document, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.CommentPeriodOpened, now,
+                document.Title, authorUserId: actorUserId, documentId: document.Id)]);
         ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodOpened, now,
-            document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
@@ -142,11 +140,9 @@ internal sealed partial class WorkgroupService
         document.CommentsCloseAt = now;
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
-        await repository.UpdateDocumentAsync(document, ct);
-        ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CommentPeriodClosed, now,
-            document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
+        await repository.UpdateDocumentAsync(document, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.CommentPeriodClosed, now,
+                document.Title, authorUserId: actorUserId, documentId: document.Id)]);
         return new();
     }
 
@@ -168,11 +164,10 @@ internal sealed partial class WorkgroupService
         document.DeliveredAt = now;
         document.UpdatedByUserId = actorUserId;
         document.UpdatedAt = now;
-        await repository.UpdateDocumentAsync(document, ct);
+        await repository.UpdateDocumentAsync(document, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Delivered, now,
+                document.Title, authorUserId: actorUserId, documentId: document.Id)]);
         ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.Delivered, now,
-            document.Title, ct, authorUserId: actorUserId, documentId: document.Id);
 
         var info = ToInfo(workgroup);
         await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupDocumentActivity,

@@ -51,11 +51,13 @@ To get a preview on a fork PR, a maintainer deploys it manually: first run the *
 
 ## Development Setup
 
-See the [README](README.md#development-setup) for local setup instructions.
+See the [README](../README.md#development-setup) for local setup instructions.
 
 ## Code Standards
 
-- Follow the project rules cataloged in `memory/INDEX.md` (atomic, one rule per file under `memory/<bucket>/`). Read the architecture story in `docs/architecture/design-rules.md` and the reviewer reject rules in `docs/architecture/code-review-rules.md`.
+- Start with [`AGENTS.md`](../AGENTS.md) and Peter's rules ([`docs/architecture/peters-hard-rules.md`](../docs/architecture/peters-hard-rules.md), [`docs/architecture/peters-working-rules.md`](../docs/architecture/peters-working-rules.md)), which win over everything else.
+- Follow the project rules cataloged in `memory/INDEX.md` (atomic, one rule per file under `memory/<bucket>/`). The regulations behind the hard rules are in `docs/architecture/design-rules.md`; the reviewer reject rules are in `docs/architecture/code-review-rules.md`.
+- Every user-facing string goes in the section's resx files, in all six cultures (en, es, de, it, fr, ca); admin-only pages are exempt
 - Every new page must have a navigation link (no orphan pages)
 - Use `nameof()` and constants instead of magic strings
 - Use NodaTime for all date/time handling

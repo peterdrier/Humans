@@ -29,9 +29,10 @@
   below it and leave the block *that* opens unscoped.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
-  role sees that block. Every parenthetical must be a key in
-  `GuideRolePrivilegeMap` — an unmapped one resolves to no privilege and the
-  block silently reaches nobody it was written for.
+  role sees that block. Every parenthetical must be a role title in Auth's
+  `RoleCatalog` (or `Camp Lead`), which `GuideRolePrivilegeMap` resolves — an
+  unmapped one resolves to no privilege and the block silently reaches nobody
+  it was written for.
 - `Camp Lead` is the one parenthetical that names a **per-camp** role rather
   than a system role. It maps to the `CampLead` privilege token, which
   `GuideRoleResolver` sets from `ICampLeadDirectory.IsLeadAnywhereAsync`.
@@ -98,14 +99,14 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - **Teams**: `GuideRoleResolver` calls `ITeamService.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampService.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
-- **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against `RoleNames` constants to build `SystemRoles` set.
-- **Base (inward, publishing)**: `ISectionAnnotations` (`ISectionAnnotations`) publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
-- **Base (inward, publishing)**: `ISectionNav` (`ISectionNav`) contributes a single `Guide` item to the member top nav, with no `Visible` predicate — `/Guide` is `[AllowAnonymous]`, so the link is the anonymous reader's way in.
+- **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against every role name in Auth's `RoleCatalog` (`GuideRolePrivilegeMap.MappedRoles`) to build the `SystemRoles` set.
+- **Base (inward, publishing)**: `Section`'s `ISectionAnnotations` publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
+- **Base (inward, publishing)**: `Section`'s `ISectionNav` contributes a single `Guide` item to the member top nav, with no `Visible` predicate — `/Guide` is `[AllowAnonymous]`, so the link is the anonymous reader's way in.
 - **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
 
-**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter` (static), `GuideFilter` (static), `GuideRolePrivilegeMap` (static) — all `internal` in `Humans.Guide.Services`
+**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter`, `GuideRolePrivilegeMap` (catalog-backed), `GuideFilter` (static) — all `internal` in `Humans.Guide.Services`
 **Owned tables:** None — orchestrator over the Base GitHub content source + `IMemoryCache`
 **Status:** (A) Migrated — `src/Sections/Humans.Guide` (nobodies-collective/Humans#866, G5). No repository and no `DbContext` (no tables), `GuideResource` owns localized navigation copy (fallback pages reuse Base’s shared resources), and `Contracts/` is an empty folder: nothing outside the section reads a guide page.
 

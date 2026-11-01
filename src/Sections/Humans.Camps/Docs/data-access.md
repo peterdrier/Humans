@@ -5,7 +5,7 @@
 Folder: `src/Sections/Humans.Camps/Services/`, repository under `Data/`.
 **DbContext:** `CampsDbContext`. `CampRepository` injects
 `IDbContextFactory<CampsDbContext>` directly. Owns `Camps`, `CampSeasons`,
-`CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`,
+`CampHistoricalNames`, `CampImages`, `CampSettings`, `CampEventSettings`, `CampMembers`,
 `CampRoleDefinitions`, `CampRoleAssignments`.
 
 Lead authority is `CampRoleAssignment` (against the `SpecialRole=Lead`
@@ -41,6 +41,7 @@ Repository: `ICampRepository`.
 | CampHistoricalNames | R/W |
 | CampImages | R/W |
 | CampSettings | R/W |
+| CampEventSettings | R/W (per-event registration-open flag) |
 | CampMembers | R/W |
 
 The `Camp.CampInfo` projection is evicted by the decorator after the inner
@@ -87,6 +88,29 @@ identities for the role drill-down), `IAuditLogService`,
 role writes. Implements
 `IGoogleGroupMembershipSource` (camp-role Google group membership). No
 direct `IMemoryCache`.
+
+### CampImageGallery (constructed by CampService, not DI-registered)
+
+Repository: `ICampRepository` (shared with its owner).
+
+| Table | R/W |
+|-------|-----|
+| CampImages | R/W (count, add, delete, reorder) |
+
+Camp image upload/delete/reorder. Cross-section calls via `IFileStorage`
+and `IAuditLogService`. No cache.
+
+### CampMembershipNotices (constructed by CampService, not DI-registered)
+
+Repository: `ICampRepository` (shared with its owner).
+
+| Table | R/W |
+|-------|-----|
+| Camps | R (camp + seasons for the notice text) |
+| CampMembers | R (pending requesters of a closed season) |
+
+Notifies pending requesters when a season closes. Cross-section calls via
+`IUserService` (preferred culture) and `INotificationEmitter`. No cache.
 
 ### CampContactService (Scoped)
 

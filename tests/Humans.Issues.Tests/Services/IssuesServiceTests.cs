@@ -1163,7 +1163,7 @@ public sealed class IssuesServiceTests
         var repo = Substitute.For<IIssuesRepository>();
         var issue = new Issue { Id = Guid.NewGuid(), Status = IssueStatus.Open, Section = "Tickets" };
         var failure = new InvalidOperationException("Required persistence property not found.");
-        repo.FindForMutationAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(_ => failDuringLookup
+        repo.GetByIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(_ => failDuringLookup
             ? Task.FromException<Issue?>(failure) : Task.FromResult<Issue?>(issue));
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var service = new IssuesApplicationService(
@@ -1199,7 +1199,7 @@ public sealed class IssuesServiceTests
         var snapshot = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var repo = Substitute.For<IIssuesRepository>();
         var issue = new Issue { Id = Guid.NewGuid(), ReporterUserId = Admin.UserId, Status = IssueStatus.Open };
-        repo.FindForMutationAsync(issue.Id, ct).Returns(issue);
+        repo.GetByIdAsync(issue.Id, ct).Returns(issue);
         repo.CountActionableAsync(null, null, ct).Returns(snapshot.Task, Task.FromResult(0));
         var service = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
@@ -1229,7 +1229,7 @@ public sealed class IssuesServiceTests
         var handler = SeedUser();
         var assignee = SeedUser();
         var repo = Substitute.For<IIssuesRepository>();
-        repo.FindForMutationAsync(issueId, request.Token).Returns(issue);
+        repo.GetByIdAsync(issueId, request.Token).Returns(issue);
         repo.AddIssueAsync(Arg.Any<Issue>(), request.Token).Returns(async call =>
         {
             issue = call.Arg<Issue>();

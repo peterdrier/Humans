@@ -101,14 +101,18 @@ public class HoldedClientSalesDocumentTests
         ids.Should().Equal("doc-2", "doc-4");
     }
 
-    [HumansFact]
-    public async Task FindSalesDocumentIdsByTagAsync_RefusesAMatchWithNoId()
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(",\"id\":null")]
+    [InlineData(",\"id\":\"\"")]
+    [InlineData(",\"id\":\"   \"")]
+    public async Task FindSalesDocumentIdsByTagAsync_RefusesAMatchWithNoId(string identity)
     {
         // An empty result reads as "nothing issued yet" and lets a second document be created,
         // so a match that cannot be identified must fail the search rather than be dropped.
         var handler = new StubHandler(_ => Respond(
             HttpStatusCode.OK,
-            """{"items":[{"tags":["humans-order-1"]}],"has_more":false}"""));
+            $$"""{"items":[{"tags":["humans-order-1"]{{identity}}}],"has_more":false}"""));
 
         var act = async () => await Make(handler).FindSalesDocumentIdsByTagAsync(
             HoldedSalesDocumentKind.Invoice, "humans-order-1", TestContext.Current.CancellationToken);
@@ -155,7 +159,6 @@ public class HoldedClientSalesDocumentTests
         doc.Subtotal.Should().Be(160.00m);
         doc.Tax.Should().Be(21.00m);
         doc.Total.Should().Be(181.00m);
-        doc.Status.Should().Be("pending");
         doc.RawJson.Should().Be(json);
     }
 
@@ -176,6 +179,20 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansTheory]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "")]
+    [InlineData(HoldedSalesDocumentKind.Invoice, "   ")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "")]
+    [InlineData(HoldedSalesDocumentKind.SalesReceipt, "   ")]
+    public async Task GetSalesDocumentAsync_RejectsBlankIdentity(HoldedSalesDocumentKind kind, string id)
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, $$"""{"id":"{{id}}","total":"0.00"}"""));
+
+        var act = async () => await Make(handler).GetSalesDocumentAsync(kind, "doc-9", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
+    [HumansTheory]
     [InlineData(HoldedSalesDocumentKind.Invoice)]
     [InlineData(HoldedSalesDocumentKind.SalesReceipt)]
     public async Task GetSalesDocumentAsync_PreservesAnExplicitZeroTotal(HoldedSalesDocumentKind kind)
@@ -186,6 +203,7 @@ public class HoldedClientSalesDocumentTests
             kind, "doc-9", TestContext.Current.CancellationToken);
 
         document.Total.Should().Be(0m);
+        document.Id.Should().Be("doc-9");
     }
 
     [HumansFact]

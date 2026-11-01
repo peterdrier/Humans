@@ -2,11 +2,13 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `DebugController` | Class | `Admin` | `PolicyNames.AdminOnly` |
-| `DebugController` actions — `Logs`, `HttpErrors`, `Maintenance`, `ClearHangfireLocks`, `Configuration`, `DbStats`/`ResetDbStats`, `CacheStats`/`ResetCacheStats`, `ClientStats`, `Timings`, `Sections`, `FormatGallery`, `Translations` | Action | `Admin` | `PolicyNames.AdminOnly` (all inherit the class-level policy) |
+| `DebugController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `DebugController` actions — `Logs`, `HttpErrors`, `Maintenance`, `Configuration`, `DbStats`, `CacheStats`, `ClientStats`, `Timings`, `Sections`, `FormatGallery`, `Translations` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` (all inherit the class-level policy; read-only) |
+| `DebugController.ClearHangfireLocks` / `ResetDbStats` / `ResetCacheStats` | Action | `Admin` | `PolicyNames.AdminOnly` (the mutating POSTs) |
 | `DebugController.DbVersion` | Action | `AllowAnonymous` | Override |
-| `UsersDebugController` (`Index`) | Class | `Admin` | `PolicyNames.AdminOnly` (`/Debug/Users`) |
-| `DataMigrationsController` (`Index`, `Apply`) | Class | `Admin` | `PolicyNames.AdminOnly` (`/Debug/DataMigrations`; `Apply` is `[ValidateAntiForgeryToken]`) |
+| `UsersDebugController` (`Index`) | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`/Debug/Users`) |
+| `DataMigrationsController` (`Index`) | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`/Debug/DataMigrations`) |
+| `DataMigrationsController.Apply` | Action | `Admin` | `PolicyNames.AdminOnly` (`[ValidateAntiForgeryToken]`) |
 | `GET /api/data-migrations` (minimal API, `ISectionEndpoints`) | Endpoint | `AllowAnonymous` | Keys, pending counts and done flags only — never row data |
 | `ColorPaletteController` | Class | `AllowAnonymous` | — (design reference page: palette, controls, typography; linked from the admin sidebar "Debug" group) |
 | `WidgetGalleryController` | Class | `Board`, `Admin` | `PolicyNames.BoardOrAdmin` (Board-or-Admin catalog of reusable UI widgets; companion to `/ColorPalette`) |

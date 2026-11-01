@@ -10,7 +10,7 @@ what's overdue.
 | Process | Last Run | Next Due | Cadence | Est. Cost | Notes |
 |---------|----------|----------|---------|-----------|-------|
 | NuGet vulnerability check | 2026-10-21 | 2026-10-28 | Weekly | — | `dotnet list package --vulnerable`. 2026-10-21: 0 vulnerable (incl. transitive). |
-| Freshness sweep (diff) | 2026-10-21 | 2026-10-22 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-10-21: mostly Users-decomposition drift; pruned the per-section DbContext and G5 design specs. |
+| Freshness sweep (diff) | 2026-10-30 | 2026-10-31 | Daily | — | `/freshness-sweep` — report at `docs/freshness/last-report.md`; narrative lives in each sweep's PR body. 2026-10-30: Board read-only access, section-owned roles and authenticated-by-default drift; pruned the workgroup-budget plan. |
 | Section doctor | 2026-08-17 | — | 1–2×/day | — | `/section-doctor` — frozen row (nobodies-collective/Humans#1069); each run writes `docs/health/runs/<date>-<Section>.md`. |
 | Debt sweep | 2026-10-04 | 2026-10-05 | Daily | — | Nightly [debt workflow](../../.codex/prompts/daily-debt.md); central and section debt ledgers. 2026-10-06 ledger review with Peter — central 40→18 and section 94→49 rows, 10 issues filed (#1919–#1928), 53 rows unblocked under standing policy. |
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |

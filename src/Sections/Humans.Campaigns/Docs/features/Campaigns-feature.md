@@ -46,7 +46,7 @@ Commits are per-grant: if the enqueue throws for one human, that failure is logg
 
 ## Admin UI
 
-Route: `/Campaigns/Admin` — Admin role, except the detail page and API code generation, which also accept TicketsAdmin.
+Route: `/Campaigns/Admin` — Admin role, except the detail page, which also accepts TicketsAdmin and Board (read-only), and API code generation, which also accepts TicketsAdmin.
 
 Pages:
 - Campaign list with status and code/grant counts
@@ -70,7 +70,7 @@ Humans can view their campaign codes on their profile page. The profile page sho
 
 ## Authorization
 
-- `/Campaigns/Admin` routes: `Admin` role required (`PolicyNames.AdminOnly`), except `GET /Campaigns/Admin/{id}` (detail) and `POST /Campaigns/Admin/{id}/GenerateCodes`, which use `TicketsPolicies.Manage`
+- `/Campaigns/Admin` routes: `Admin` role required (`PolicyNames.AdminOnly`), except `GET /Campaigns/Admin/{id}` (detail), which uses `TicketsPolicies.Read` (TicketsAdmin, Board, Admin), and `POST /Campaigns/Admin/{id}/GenerateCodes`, which uses `TicketsPolicies.Manage` (TicketsAdmin, Admin)
 - `/Email/Unsubscribe/{token}`: public (no authentication required)
 - Profile code lookup: authenticated user, own profile only
 

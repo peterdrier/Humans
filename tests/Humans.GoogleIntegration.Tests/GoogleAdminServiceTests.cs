@@ -517,17 +517,25 @@ public class GoogleAdminServiceTests
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailMatch(
-                    "ben.tree@nobodies.team", linkedUserId,
+                    "bentree@gmail.com", Guid.NewGuid(),
+                    IsPrimary: true, IsVerified: false,
+                    UpdatedAt: Instant.FromUtc(2026, 10, 3, 0, 0)),
+                new UserEmailMatch(
+                    "ben.tree@gmail.com", Guid.NewGuid(),
+                    IsPrimary: true, IsVerified: true,
+                    UpdatedAt: Instant.FromUtc(2026, 10, 1, 0, 0)),
+                new UserEmailMatch(
+                    "ben.tree+burn@googlemail.com", linkedUserId,
                     IsPrimary: false, IsVerified: true,
-                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
+                    UpdatedAt: Instant.FromUtc(2026, 10, 2, 0, 0))
             ]);
 
-        await _service.ResetPasswordAsync("ben.tree@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+        await _service.ResetPasswordAsync("bentree@gmail.com", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         await _auditLogService.Received(1).LogAsync(
             GoogleIntegrationAuditActions.WorkspaceAccountPasswordReset,
             "WorkspaceAccount", linkedUserId,
-            Arg.Is<string>(s => s.Contains("ben.tree@nobodies.team")),
+            Arg.Is<string>(s => s.Contains("bentree@gmail.com")),
             _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

@@ -44,6 +44,7 @@ internal sealed class ShiftSignupService(
     internal const string ShiftSignups = "ShiftSignups";
     internal const string VolunteerEventProfiles = "VolunteerEventProfiles";
     internal const string GeneralAvailability = "GeneralAvailability";
+    internal const string VolunteerBuildStatuses = "VolunteerBuildStatuses";
     internal const string ShiftTagPreferences = "ShiftTagPreferences";
 
     // Lazy, to break the DI cycle with TeamService.
@@ -330,14 +331,7 @@ internal sealed class ShiftSignupService(
 
         if (shift.GetAbsoluteEnd(calendar) > now)
         {
-            try
-            {
-                await SendAssignmentNoticeAsync(userId, "Shifts_Notification_AssignedDay", shift.Rota.Name, shift.DayOffset);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} shift {ShiftId}", userId, shiftId);
-            }
+            await SendAssignmentNoticeAsync(userId, signup.Id, "Shifts_Notification_AssignedDay", shift.Rota.Name, shift.DayOffset);
         }
 
         return SignupResult.Ok(signup.Id);
@@ -447,15 +441,8 @@ internal sealed class ShiftSignupService(
 
         if (assignable.Any(s => s.GetAbsoluteEnd(calendar) > now))
         {
-            try
-            {
-                await SendAssignmentNoticeAsync(userId, assignable.Count == 1
-                    ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", rota.Name, assignable.Count);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} rota {RotaId}", userId, rotaId);
-            }
+            await SendAssignmentNoticeAsync(userId, firstSignup!.Id, assignable.Count == 1
+                ? "Shifts_Notification_AssignedRangeSingular" : "Shifts_Notification_AssignedRange", rota.Name, assignable.Count);
         }
 
         return SignupResult.Ok(firstSignup!.Id, warning);
@@ -955,7 +942,6 @@ internal sealed class ShiftSignupService(
     {
         var signups = (await repo.GetForUsersAsync([userId], ct: ct))
             .Where(s => s.Status == SignupStatus.NoShow)
-            .OrderByDescending(s => s.ReviewedAt)
             .ToList();
 
         var calendarsById = new Dictionary<Guid, EventSettingsInfo>();
@@ -1053,19 +1039,26 @@ internal sealed class ShiftSignupService(
         return user is null || user.IsTombstone ? null : user.Id;
     }
 
-    private async Task SendAssignmentNoticeAsync(Guid userId, string resourceKey, params object[] args)
+    private async Task SendAssignmentNoticeAsync(Guid userId, Guid signupId, string resourceKey, params object[] args)
     {
-        var culture = await GetRecipientCultureAsync(userId);
-        var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
-        await notificationService.SendAsync(
-            ShiftsNotificationSources.ShiftAssigned,
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            title,
-            [userId],
-            body: null,
-            actionUrl: "/Shifts",
-            actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
+        try
+        {
+            var culture = await GetRecipientCultureAsync(userId);
+            var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
+            await notificationService.SendAsync(
+                ShiftsNotificationSources.ShiftAssigned,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                title,
+                [userId],
+                body: null,
+                actionUrl: "/Shifts",
+                actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} signup {SignupId}", userId, signupId);
+        }
     }
 
     private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
@@ -1190,9 +1183,12 @@ internal sealed class ShiftSignupService(
             volunteerEventProfile is null ? [] : [volunteerEventProfile];
         var generalAvailability = await trackingRepo.GetAvailabilityForUserAsync(userId, ct: ct);
         var tagPreferences = await repo.GetVolunteerTagPreferencesForUsersAsync([userId], ct);
+        var exportUserIds = (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+        var buildStatuses = await trackingRepo.GetBuildStatusesForEventAsync(null, exportUserIds, ct);
 
         var distinctEventSettingsIds = signups.Select(ss => ss.Shift.Rota.EventSettingsId)
             .Concat(generalAvailability.Select(ga => ga.EventSettingsId))
+            .Concat(buildStatuses.Select(bs => bs.EventSettingsId))
             .Distinct();
         var eventNamesById = new Dictionary<Guid, string>();
         foreach (var id in distinctEventSettingsIds)
@@ -1239,7 +1235,22 @@ internal sealed class ShiftSignupService(
             TagName = vtp.ShiftTag.Name
         }).ToList());
 
-        return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
+        var buildStatusSlice = new UserDataSlice(VolunteerBuildStatuses, buildStatuses.Select(bs => new
+        {
+            bs.EventSettingsId,
+            EventName = eventNamesById.GetValueOrDefault(bs.EventSettingsId, string.Empty),
+            BarrioSetupStartDate = bs.BarrioSetupStartDate.ToInvariantDate(),
+            bs.Notes,
+            SetAt = bs.SetAt.ToIso8601(),
+            DayOffs = bs.DayOffs.Select(day => new
+            {
+                day.DayOffset,
+                day.Reason,
+                MarkedAt = day.MarkedAt.ToIso8601()
+            }).ToList()
+        }).ToList());
+
+        return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice, buildStatusSlice];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
@@ -1253,6 +1264,7 @@ internal sealed class ShiftSignupService(
                 "a coordinator wrote on any signup is cleared.",
             [VolunteerEventProfiles] = null,
             [GeneralAvailability] = null,
+            [VolunteerBuildStatuses] = null,
             [ShiftTagPreferences] = null
         };
 
@@ -1423,8 +1435,7 @@ internal sealed class ShiftSignupService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        var eventIds = await GetSignupEventIdsAsync([sourceUserId], ct);
-        var movedCount = await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        var (movedCount, eventIds) = await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         viewInvalidator.InvalidateUser(sourceUserId);
         viewInvalidator.InvalidateUser(targetUserId);

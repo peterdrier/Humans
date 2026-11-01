@@ -39,6 +39,7 @@ Several system operations need to run automatically without user interaction: sy
 | HoldedExpenseOutboxJob | Every 5 minutes | Drain the Holded expense outbox: push approved expense reports to Holded as purchase documents |
 | HoldedDocSyncJob | Daily 2:45 AM | `holded-doc-sync` (Finance): nightly pull of Holded purchase docs into budget-category actuals; skips with an info log when no Holded API key is configured |
 | HoldedSyncJob | Daily 3:00 AM | `holded-sync` (Holded): a trailing 45-day sweep of the full daybook ledger — every account, not just creditors — followed by per-account reconciliation (full-history backfill only on a cold cache or via the on-demand `POST /Holded/FullSync`) |
+| ExpenseReconJob | Daily 3:30 AM | `expense-recon` (Finance): after the doc sync and the ledger sweep, recompute the expense-report vs Holded reconciliation report from the local mirrors and log its problem and warning totals (the report itself is `/Finance/ExpenseRecon`) |
 | GateRetentionJob | Daily 3:45 AM | Purge `gate_scan_events` older than `Gate:RetentionDays` (default 365; ≤ 0 disables the purge) |
 | GateVendorCheckInJob | On demand (enqueued) | Best-effort mirror of a gate admit to the ticket vendor (TicketTailor check-in); fire-and-forget from the gate controller, no retries (vendor check-ins aren't idempotent), gated by `Gate:VendorMirrorEnabled` (default off) |
 | AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |
@@ -46,7 +47,7 @@ Several system operations need to run automatically without user interaction: sy
 | WorkgroupRhythmJob | Daily 6:00 AM | Workgroups' daily reporting-rhythm pass (design §13) |
 | PreapprovalRemindersJob | Daily 5:00 AM | `preapprovals-reminders`: 14-day and 3-day claim-deadline reminders to Open pre-approval holders, each recorded once per `(grant, kind, deadline)` in `pre_reminders_sent`; never changes a grant |
 | SepaBankBookingJob | Every 2 hours at :17 | `sepa-bank-booking`: the SEPA bank-line sweep — book the transfers whose Sabadell line has landed and retry pending reconciles |
-| FeedbackService (`feedback-reply-emails`) | Every minute | Retry durable feedback replies whose Email handoff has not yet been acknowledged |
+| FeedbackReplyDelivery (`feedback-reply-emails`) | Every minute | Retry durable feedback replies whose Email handoff has not yet been acknowledged |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
 

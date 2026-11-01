@@ -143,12 +143,19 @@ public sealed class ExpensesControllerPreapprovalTests
     {
         var own = Grant("Own", Today.PlusDays(10));
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([own]);
+        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>()).Returns([
+            new HoldedExpenseAccountOption(62900001, "other", "Alpha", false, true),
+            new HoldedExpenseAccountOption(62900003, "z", "Zulu", true, true),
+            new HoldedExpenseAccountOption(62900005, "a5", "Alpha", true, true),
+            new HoldedExpenseAccountOption(62900004, "a4", "alpha", true, true),
+        ]);
 
         var model = (await Build().New()).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseNewViewModel>().Subject;
 
         model.PreapprovalGrantId.Should().BeNull();
         model.Grants.Should().ContainSingle().Which.Id.Should().Be(own.Id);
+        model.Accounts.Select(a => a.AccountNum).Should().Equal(62900004, 62900005, 62900003, 62900001);
         await _preapprovals.DidNotReceive().GetGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -205,9 +212,10 @@ public sealed class ExpensesControllerPreapprovalTests
     {
         var revoked = Grant("Bus", Today.PlusDays(10), GrantStatus.Revoked);
         var held = Grant("Art", Today.PlusDays(10), GrantStatus.Claimed);
-        var onRevoked = ReviewRow(revoked.Id);
-        var onHeld = ReviewRow(held.Id);
-        var plain = ReviewRow(null);
+        var now = TestClock.GetCurrentInstant();
+        var onRevoked = ReviewRow(revoked.Id) with { SubmittedAt = now.Minus(Duration.FromDays(2)) };
+        var onHeld = ReviewRow(held.Id) with { CreatedAt = now.Minus(Duration.FromDays(1)) };
+        var plain = ReviewRow(null) with { SubmittedAt = now };
         _reports.GetReviewQueueAsync(_actorId, false, Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
@@ -218,6 +226,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var model = (await Build().Review()).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseReviewViewModel>().Subject;
 
+        model.Reports.Select(r => r.Id).Should().Equal(plain.Id, onHeld.Id, onRevoked.Id);
         model.Grants.Keys.Should().BeEquivalentTo([onRevoked.Id, onHeld.Id]);
         model.IsRevoked(onRevoked.Id).Should().BeTrue();
         model.IsRevoked(onHeld.Id).Should().BeFalse();

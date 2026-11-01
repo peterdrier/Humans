@@ -80,7 +80,7 @@
                             <td colspan="6" class="p-0">
                                 <table class="table table-sm mb-0 ms-4" style="width: calc(100% - 2rem);">
                                     <tbody>
-                                        @foreach (var cat in periodRow.Categories)
+                                        @foreach (var cat in periodRow.Categories.OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase))
                                         {
                                             <tr class="text-muted small">
                                                 <td>
@@ -142,7 +142,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var cat in Model.Unscheduled.Categories)
+                    @foreach (var cat in Model.Unscheduled.Categories.OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase))
                     {
                         <tr>
                             <td>

@@ -97,7 +97,4 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Show allergies and intolerances</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Allergy and intolerance details are hidden. Showing them is recorded in the audit log.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Showing them is recorded in the audit log.</value></data>
-  <data name="Cantina_Dietary_RevealsTitle" xml:space="preserve"><value>Who has looked at this</value></data>
-  <data name="Cantina_Dietary_RevealsEmpty" xml:space="preserve"><value>Nobody has looked at your allergy and intolerance answers.</value></data>
-  <data name="Cantina_Dietary_RevealedBy" xml:space="preserve"><value>Looked at by</value></data>
 </root>

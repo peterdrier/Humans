@@ -6,7 +6,7 @@
 | `SurveyAdminController` | Class | Any signed-in Human with an approved profile | `PolicyNames.AppAccess` (survey authoring at `/Survey/Admin` — author-scoped index, `Create`, `Edit`, `Save`, `Submit`, `Preview`, `PreviewPage`, `PreviewThankYou`, `PreviewEmail`, `SendPreviewEmail`, `Results`, `ExportCsv`, `ExportJson` inherit the class policy, then `SurveyOperationRequirement` enforces per-survey access — see handler below) |
 | `SurveyAdminController` | Action | `SurveysAdmin, Board, Admin` | `SurveysPolicies.Read` (`Queue`, `Official`, `Send` GET); Board sees the queue and recipients without the approve, reject, open or send controls |
 | `SurveyAdminController` | Action | `SurveysAdmin, Admin` | `SurveysPolicies.Manage` (`Approve`, `Reject`, `Open`, `Close`, `Send` POST (`SendInvites`), `RankedAvailability`) |
-| `BackdoorSurveysController` (in `Humans.Backdoor`) | Class | `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent read API at `/api/backdoor/surveys` — `List`, `Definition`, `Responses`, `Aggregates`; reads this section through `ISurveyAnalysisRead`) |
+| `BackdoorSurveysController` (in `Humans.Backdoor`) | Class | `[AllowAnonymous]` + `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent read API at `/api/backdoor/surveys` — `List`, `Definition`, `Responses`, `Aggregates`; reads this section through `ISurveyAnalysisRead`) |
 
 ## Resource-Based Authorization Handler
 

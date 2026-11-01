@@ -8,8 +8,7 @@ namespace Humans.Notifications.Contracts;
 public interface INotificationInboxRead : IApplicationService
 {
     /// <summary>
-    /// Unread rows newest first, then visible meters highest priority first. A principal without a user id gets
-    /// no rows.
+    /// Unread rows and visible meters. A principal without a user id gets no rows.
     /// </summary>
     Task<NotificationInboxSnapshot> GetUnreadInboxAsync(ClaimsPrincipal user, CancellationToken ct = default);
 }
@@ -28,4 +27,7 @@ public sealed record UnreadNotificationDto(
     NotificationClass Class,
     bool IsUnread);
 
-public sealed record NotificationMeterDto(string Title, int Count, string ActionUrl);
+public sealed record NotificationMeterDto(string Title, int Count, string ActionUrl)
+{
+    public int Priority { get; init; }
+}

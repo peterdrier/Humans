@@ -62,7 +62,7 @@ account has nowhere to go on the report.
 | Name | string(200) | "2026 Creativity" |
 | Description | string(2000)? | Shown on the public program page and the apply form |
 | Kind | enum `ProgramKind` | `FixedPerPerson` (every grant is `PerPersonAmount`) / `PerGrantAmount` (amount set on each grant) |
-| PerPersonAmount | decimal(18,2)? | Required when `FixedPerPerson`; refused otherwise. Must be greater than zero |
+| PerPersonAmount | decimal(18,2)? | Required when `FixedPerPerson`; refused otherwise. Every amount (this, the ceiling, and each grant's `MaxAmount` / `RequestedAmount`) must be greater than zero, fit `decimal(18,2)` and carry at most two decimals |
 | TotalCeiling | decimal(18,2)? | Null = no ceiling. Creativity: 25 000 → 50 000 → 60 000, edited in place; each edit audited so the history is in the log |
 | HoldedAccountNumber | int | From `IHoldedFinanceService.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
@@ -104,7 +104,7 @@ job.
 | ProgramId | Guid | FK |
 | BeneficiaryUserId | Guid | Bare Guid |
 | Label | string(200)? | The art project name; null for travel |
-| MaxAmount | decimal(18,2) | Copied from `PerPersonAmount` for `FixedPerPerson`; entered for `PerGrantAmount`. Must be greater than zero (service-side, every path: issue, approve, edit); the ceiling sum is only meaningful with positive rows. Editable by a program manager or above while the grant is `Open` or `Claimed` (1 000 becomes 1 500), audited with old and new value and checked against the ceiling. Never rewritten by the system: a revoked or unclaimed grant keeps its amount, so "6 000 of 25 000 was not claimed" is readable later |
+| MaxAmount | decimal(18,2) | Copied from `PerPersonAmount` for `FixedPerPerson`; entered for `PerGrantAmount`. Must be greater than zero, within `decimal(18,2)` and at most two decimals (service-side, every path: issue, approve, edit); the ceiling sum is only meaningful with positive rows. Editable by a program manager or above while the grant is `Open` or `Claimed` (1 000 becomes 1 500), audited with old and new value and checked against the ceiling. Never rewritten by the system: a revoked or unclaimed grant keeps its amount, so "6 000 of 25 000 was not claimed" is readable later |
 | Status | enum `GrantStatus` | `Applied` / `Open` / `Claimed` / `Consumed` / `Declined` / `Revoked` |
 | ApplicationNote | string(2000)? | What the applicant wrote; null when issued directly |
 | RequestedAmount | decimal(18,2)? | What the applicant asked for (`PerGrantAmount` programs), greater than zero; the manager may approve less |

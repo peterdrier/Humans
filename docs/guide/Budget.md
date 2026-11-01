@@ -31,8 +31,8 @@ Only one Budget Year can be **Active** at a time. Years progress **Draft -> Acti
 
 - `/Budget/Summary` — public summary: doughnut charts, total cards, utilisation bar. Every authenticated human.
 - `/Budget` — coordinator view: non-restricted department budgets with inline line-item editing where you have access.
-- `/Finance` — consolidated Finance index: accordion, summary cards, charts. FinanceAdmin and Admin only.
-- `/Finance/CashFlow` — weekly or monthly cash-flow projection. FinanceAdmin and Admin only.
+- `/Finance` — consolidated Finance index: accordion, summary cards, charts. FinanceAdmin and Admin; Board can read it but change nothing.
+- `/Finance/CashFlow` — weekly or monthly cash-flow projection. FinanceAdmin and Admin; Board can read it but change nothing.
 - Category and line-item editors open from the accordion via **Manage Line Items**; the audit log (filtered by year) from the Finance toolbar.
 
 ## As a Volunteer
@@ -71,7 +71,7 @@ Each category shows budget vs actual with the unallocated remainder. Auto-genera
 
 (assumes Coordinator knowledge)
 
-Financial structure, year lifecycle, restricted groups, and the audit log live with FinanceAdmin and Admin; only they see restricted groups and salaries. Board approves the total; day-to-day editing is done by FinanceAdmin.
+Financial structure, year lifecycle, restricted groups, and the audit log live with FinanceAdmin and Admin, who alone can change them. Board can open every one of these pages read-only — including restricted groups and salaries — but edits nothing. Board approves the total; day-to-day editing is done by FinanceAdmin.
 
 **FinanceAdmin is the app's Treasurer role.** Assignments live on the human detail page (see [Governance](Governance.md)) and are granted by Board or Admin.
 

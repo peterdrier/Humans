@@ -61,6 +61,36 @@ public class HoldedClientTransportTests
         requestCount.Should().Be(2);
     }
 
+    [HumansFact]
+    public async Task Retry_after_HTTP_date_preserves_a_fractional_wait()
+    {
+        var requestCount = 0;
+        var retryAt = new DateTimeOffset(2026, 8, 10, 12, 0, 1, TimeSpan.Zero);
+        var clock = new FakeClock(Instant.FromDateTimeOffset(retryAt) - Duration.FromMilliseconds(900));
+        var handler = new StubHandler(_ =>
+        {
+            requestCount++;
+            if (requestCount > 1) return Respond(HttpStatusCode.OK, """{"items":[]}""");
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(retryAt);
+            return response;
+        });
+        var client = Make(handler, clock: clock);
+        using var request = new CancellationTokenSource();
+        var pending = client.ListExpenseAccountsAsync(request.Token);
+
+        await request.CancelAsync();
+        try
+        {
+            await pending;
+            Xunit.Assert.Fail("The future Retry-After date must delay the second request.");
+        }
+        catch (OperationCanceledException)
+        {
+            requestCount.Should().Be(1);
+        }
+    }
+
     [HumansTheory]
     [Xunit.InlineData(HoldedSalesDocumentKind.Invoice)]
     [Xunit.InlineData(HoldedSalesDocumentKind.SalesReceipt)]

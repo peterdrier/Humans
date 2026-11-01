@@ -2,6 +2,7 @@
   src/Sections/Humans.Debug/**
   src/Humans.Base/ViewComponents/AdminNavComposition.cs
   src/Humans.Web/Middleware/ClientStatsMiddleware.cs
+  src/Humans.Web/Services/ClientStatsTracker.cs
   src/Humans.Web/Program.cs
 -->
 
@@ -27,25 +28,25 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/Debug/Logs` | GET | Admin | In-memory warning/error log buffer; optional `minLevel` query param filters to `Warning`, `Error`, or `Fatal` |
-| `/Debug/HttpErrors` | GET | Admin | Rolling buffer of the last 1000 error responses (status > 399); per-request detail with timestamp, code, method, URL, IP, user, and classified client label |
-| `/Debug/Configuration` | GET | Admin | Auto-discovered configuration status; sensitive values masked |
+| `/Debug/Logs` | GET | Board, Admin | In-memory warning/error log buffer; optional `minLevel` query param filters to `Warning`, `Error`, or `Fatal` |
+| `/Debug/HttpErrors` | GET | Board, Admin | Rolling buffer of the last 1000 error responses (status > 399); per-request detail with timestamp, code, method, URL, IP, user, and classified client label |
+| `/Debug/Configuration` | GET | Board, Admin | Auto-discovered configuration status; sensitive values masked |
 | `/Debug/DbVersion` | GET | Anonymous | Migration status JSON for deployment tooling |
-| `/Debug/DbStats` | GET | Admin | Query statistics |
+| `/Debug/DbStats` | GET | Board, Admin | Query statistics |
 | `/Debug/DbStats/Reset` | POST | Admin | Reset query statistics |
-| `/Debug/CacheStats` | GET | Admin | Cache hit/miss/size statistics |
+| `/Debug/CacheStats` | GET | Board, Admin | Cache hit/miss/size statistics |
 | `/Debug/CacheStats/Reset` | POST | Admin | Reset cache statistics |
-| `/Debug/ClientStats` | GET | Admin | Browser/device/status-code telemetry |
-| `/Debug/FormatGallery` | GET | Admin | Date/time formatting reference |
-| `/Debug/Translations` | GET | Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total, jump list, and per set its missing-by-language counts and orphan keys |
-| `/Debug/Maintenance` | GET | Admin | Maintenance operations |
+| `/Debug/ClientStats` | GET | Board, Admin | Browser/device/status-code telemetry |
+| `/Debug/FormatGallery` | GET | Board, Admin | Date/time formatting reference |
+| `/Debug/Translations` | GET | Board, Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total, jump list, and per set its missing-by-language counts and orphan keys |
+| `/Debug/Maintenance` | GET | Board, Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
-| `/Debug/Users` | GET | Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
-| `/Debug/DataMigrations` | GET | Admin | Every registered data migration, one tab per key: section, title, what it retires, pending count and every pending row |
+| `/Debug/Users` | GET | Board, Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
+| `/Debug/DataMigrations` | GET | Board, Admin | Every registered data migration, one tab per key: section, title, what it retires, pending count and every pending row |
 | `/Debug/DataMigrations/Apply` | POST | Admin | Run one migration (`key`) for the acting admin; `data-confirm`, antiforgery, audited `DataMigrationApplied`; redirects back to that migration's tab |
 | `/api/data-migrations` | GET | Anonymous | Data-migration progress JSON — keys, pending counts, done flags; never row data |
-| `/Debug/Timings` | GET | Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
-| `/Debug/Sections` | GET | Admin | The DI-published section catalog: every discovered section with its tables, contracts, resx set, seams, dependencies, and which of guide page / agent doc key / issue queue it has |
+| `/Debug/Timings` | GET | Board, Admin | Operation timing table: per-operation call count, last/avg/min/max ms, total ms, last-called timestamp; ordered by total cost descending |
+| `/Debug/Sections` | GET | Board, Admin | The DI-published section catalog: every discovered section with its tables, contracts, resx set, seams, dependencies, and which of guide page / agent doc key / issue queue it has |
 | `/Debug/WidgetGallery` | GET | Board, Admin | Catalog of every reusable widget rendered against sample data and live keys |
 | `/ColorPalette` | GET | Anonymous | Static design reference: colour tokens, controls, typography |
 
@@ -53,9 +54,10 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 | Actor | Capabilities |
 |-------|--------------|
-| Admin | Full access to every page |
+| Board | Reads every page; no POST |
+| Admin | Full access to every page, including every POST |
 | Anyone | `/Debug/DbVersion` (migration names and counts), `/api/data-migrations` (data-migration keys and counts) and `/ColorPalette` (static markup, no data) |
-| All other roles | Nothing else - an authenticated non-Admin gets `302 -> /Account/AccessDenied` on every admin-gated page (cookie authentication's `AccessDeniedPath`, app-wide) |
+| All other roles | Nothing else - an authenticated user who is neither Board nor Admin gets `302 -> /Account/AccessDenied` on every admin-gated page (cookie authentication's `AccessDeniedPath`, app-wide) |
 
 ## Invariants
 
@@ -70,7 +72,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Negative Access Rules
 
-- A non-Admin user cannot reach admin-gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (local-only, `Humans.Integration.Tests`).
+- A user who is neither Board nor Admin cannot reach gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (local-only, `Humans.Integration.Tests`).
 - Debug pages cannot change domain state except through a data migration's own Apply, which is Admin-only (Board reads the screen), antiforgery-protected, and audited. Operational writes must stay explicitly named maintenance actions.
 - `/api/data-migrations` never returns row data — no user id, email or legacy value. Pinned by `DataMigrationsTests`.
 - No type in the section may bind `IStringLocalizer<T>` for any `T` but `SharedResource`. Debug carries no resource set of its own - every string is English developer copy - and the one localizer it binds is the shared set read as *data* by `/Debug/Translations`. That page reads every section's set the same way, through the untyped `IStringLocalizerFactory` and the catalog's `SectionInfo.ResourceType`, never by referencing the section. Enforced by `DebugArchitectureTests`.
@@ -79,12 +81,15 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 The telemetry trackers are fed passively by `ClientStatsMiddleware` (page views; error responses for the `/Debug/HttpErrors` buffer) and a `MeterListener` over the ASP.NET Core hosting meter (status codes). 429s are recorded via the rate limiter's `OnRejected` callback in `Program.cs` rather than `ClientStatsMiddleware` (the limiter rejects before the middleware runs). The write triggers are `ClearHangfireLocks`, an explicit maintenance POST, and `/Debug/DataMigrations/Apply`, which runs one section's migration.
 
+The HTTP-error buffer caps URLs at 200 UTF-16 units and user-agent strings at 150, without splitting Unicode surrogate pairs.
+
 ## Data migrations
 
 The single screen and status endpoint for every section's legacy → new copy, as `memory/process/no-data-backfills.md` requires (review every row → confirm → audit), so no section ever ships its own Temp backfill screen.
 
 - **Seam:** a section implements `ISectionDataMigrations` (`Humans.Base.Interfaces`) at its project root (`ISectionDataMigrations`) and returns `DataMigration` records: a stable section-first `Key` (`finance.iban-to-payment-details`), `Section`, `Title`, `Retires` (what the retirement PR deletes), a `Status` delegate returning `DataMigrationStatus` (column headings plus **every** pending row — no sampling, no paging) and an `Apply` delegate taking the actor and returning rows written. The delegates resolve the owning section's own services from the request scope, so the copy stays inside the owner; Debug only calls the interface. Discovered like every other contribution seam.
-- **Host:** `DataMigrationService` (scoped, the one registration in `Section.Register`) lists the migrations ordered by section then key, reads their status, and applies one by key — then writes `DebugAuditActions.DataMigrationApplied` (entity type `DataMigration`, description naming key, section and rows written, the acting admin as actor). An unknown key writes and audits nothing (404 on the screen).
+- **Host:** `DataMigrationService` (scoped, the one registration in `Section.Register`) collects the migrations, reads their status, and applies one by key — then writes `DebugAuditActions.DataMigrationApplied` (entity type `DataMigration`, description naming key, section and rows written, the acting admin as actor). An unknown key writes and audits nothing (404 on the screen).
+- **Ordering:** the screen controller and status endpoint each order reports by ordinal section, then key. Status collection does not impose presentation ordering.
 - **Screen:** `/Debug/DataMigrations` (`DataMigrationsController`, `BoardOrAdmin` to read, `AdminOnly` to apply, linked from the Debug admin group) shows each migration with its pending rows and an **Apply (N)** button (`data-confirm`, `[ValidateAntiForgeryToken]`). Every migration is idempotent: a second apply finds nothing pending, and a done migration shows a Done badge instead of the button.
 - **Endpoint:** `GET /api/data-migrations` (`SectionEndpoints : ISectionEndpoints`, `AllowAnonymous`) returns `{ "version": "...", "migrations": [ { "key": "...", "pending": 0, "done": true } ] }` — the `version` is `/api/version`'s. A development session polls production's endpoint to learn when a migration is done; that reading is the approval for its retirement and drop PRs (`memory/architecture/no-drops-until-prod-verified.md`).
 - **Why the counts are safe to publish:** they are membership-shaped aggregates (how many profiles still hold a legacy value) with no row data — no id, name, address or value — and say nothing about any one member. Row data stays behind `BoardOrAdmin` on the screen.

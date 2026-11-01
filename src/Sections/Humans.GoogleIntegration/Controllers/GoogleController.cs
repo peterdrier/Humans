@@ -198,7 +198,10 @@ internal sealed class GoogleController(
                 return RedirectToAction(nameof(AllGroups));
             }
 
-            var drifted = result.Groups.Where(g => g.HasDrift).ToList();
+            var drifted = result.Groups.Where(g => g.HasDrift)
+                .OrderBy(g => g.LinkedTeamId is null)
+                .ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             if (drifted.Count == 0)
             {
                 SetInfo("No drifted groups found — nothing to remediate.");
@@ -412,7 +415,7 @@ internal sealed class GoogleController(
 
         var model = new WorkspaceEmailListViewModel
         {
-            Accounts = result.Accounts,
+            Accounts = result.Accounts.OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase).ToList(),
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,
             SuspendedAccounts = result.SuspendedAccounts,
@@ -734,7 +737,11 @@ internal sealed class GoogleController(
         CancellationToken ct)
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
-        return View(violations);
+        if (violations.Count == 0) return View(violations);
+
+        var people = await UserService.GetUserInfosAsync(violations.Select(v => v.UserId).ToList(), ct);
+        return View(violations.OrderBy(v => people.GetValueOrDefault(v.UserId)?.BurnerName,
+            StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     [HttpGet("")]

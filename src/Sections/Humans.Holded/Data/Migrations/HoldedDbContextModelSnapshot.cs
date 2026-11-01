@@ -18,7 +18,7 @@ namespace Humans.Holded.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -107,6 +107,9 @@ namespace Humans.Holded.Data.Migrations
                     b.Property<int>("AccountNum")
                         .HasColumnType("integer");
 
+                    b.Property<bool?>("Checked")
+                        .HasColumnType("boolean");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -121,6 +124,10 @@ namespace Humans.Holded.Data.Migrations
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
+
+                    b.Property<string>("EntryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<int>("EntryNumber")
                         .HasColumnType("integer");

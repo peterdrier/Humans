@@ -292,7 +292,15 @@ public class BackdoorSurveysControllerTests
         _surveys.GetResultsAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResultsView(
             id, "T", SurveyStatus.Closed, 10, 4, 0.4,
             new SurveyFunnel(LinkStarted: 6, LinkFinished: 3, SlugStarted: 2, SlugFinished: 1),
-            [], []));
+            [
+                new QuestionAggregate(Guid.NewGuid(), "Later page", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 2, Order = 0 },
+                new QuestionAggregate(Guid.NewGuid(), "Later question", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 1, Order = 2 },
+                new QuestionAggregate(Guid.NewGuid(), "First", SurveyQuestionType.SingleChoice, [
+                    new OptionCount("maybe", "Maybe", 0, 0) { Order = 3 },
+                    new OptionCount("yes", "Yes", 3, 75) { Order = 1 },
+                    new OptionCount("no", "No", 1, 25) { Order = 2 },
+                ], [], null, []) { PageNumber = 1, Order = 1 },
+            ], []));
 
         var result = await _sut.Aggregates(id, Xunit.TestContext.Current.CancellationToken);
 
@@ -302,5 +310,14 @@ public class BackdoorSurveysControllerTests
         var funnel = value.GetType().GetProperty("funnel")!.GetValue(value)!;
         funnel.GetType().GetProperty("linkStarted")!.GetValue(funnel).Should().Be(6);
         funnel.GetType().GetProperty("slugFinished")!.GetValue(funnel).Should().Be(1);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(value));
+        var questions = json.RootElement.GetProperty("questions").EnumerateArray().ToList();
+        questions.Select(question => question.GetProperty("prompt").GetString())
+            .Should().Equal("First", "Later question", "Later page");
+        var options = questions[0].GetProperty("optionCounts").EnumerateArray().ToList();
+        options.Select(option => option.GetProperty("value").GetString()).Should().Equal("yes", "no", "maybe");
+        options.SelectMany(option => option.EnumerateObject()).Select(property => property.Name).Should().NotContain("order");
+        questions.SelectMany(question => question.EnumerateObject()).Select(property => property.Name)
+            .Should().NotContain(new[] { "pageNumber", "order" });
     }
 }

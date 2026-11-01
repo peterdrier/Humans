@@ -6,7 +6,7 @@ Folder: `src/Sections/Humans.Rideshare/Services/` (namespace `Humans.Rideshare.S
 **DbContext:** `RideshareDbContext`. `RideshareRepository`
 (`src/Sections/Humans.Rideshare/Data/RideshareRepository.cs`) injects
 `IDbContextFactory<RideshareDbContext>` directly, one context per call, `AsNoTracking` on reads.
-Owns `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings`.
+Owns `rideshare_trips`, `rideshare_requests`, `rideshare_interests`, `rideshare_settings`.
 
 The inner `IRideshareService` is wrapped by `Humans.Rideshare.Services.CachingRideshareService`
 (Singleton decorator). It owns one `TrackedCache<Guid, RideshareSnapshot>`
@@ -19,10 +19,10 @@ Repository: `IRideshareRepository`.
 
 | Table | R/W |
 |-------|-----|
-| RideshareTrips | R/W |
-| RideshareRequests | R/W |
-| RideshareInterests | R/W |
-| RideshareSettings | R/W |
+| rideshare_trips | R/W |
+| rideshare_requests | R/W |
+| rideshare_interests | R/W |
+| rideshare_settings | R/W |
 
 Cross-section calls: `IUserService`, `ISettingsService`, `INotificationEmitter`,
 `IAuditLogService`, `IClock` (NodaTime), plus the section-internal `IRouteProvider`

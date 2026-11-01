@@ -39,15 +39,19 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Every call is metered into the singleton `IHoldedCallLog` (in-memory queue) with its
   `X-RateLimit-*` headers; the Holded section drains it to `holded_api_calls`. The plan-tier
   budget (~2,000 calls/month) is the real allowance — `GET /usage`'s `limit` is Holded's
-  billable-overage ceiling, displayed but never budgeted against.
+  billable-overage ceiling, not the plan budget; the usage read exposes only its period and call count.
 
 ## Invariants
 
+- Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
+- Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
 - `HoldedClient` remains the typed-client entry point. Its internal operation clients share one
   `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
   call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
-  GETs. Every write, including a bodyless sales-approval POST, surfaces it as transient immediately.
+  GETs. HTTP-date waits retain their fractional remaining seconds and round up to the delay's millisecond
+  precision, so a future retry date is never rounded down to an immediate retry; past dates still retry immediately. Every write, including a bodyless sales-approval POST,
+  surfaces it as transient immediately.
 - Cursor pagination (`{items, cursor, has_more}`, `limit` ≤ 200) runs to completion or
   **throws** — a truncated list is never returned, because list results feed replace-semantics
   reconciliation where a short fetch would delete live rows.
@@ -63,11 +67,16 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   new `payments_detail` entry matching amount, date and treasury on a re-read of the document
   (the POST answers `{"status":"paid"}` alone); an entry's id comes from its own response body.
   Callers must not repeat a posting because its reference is unconfirmed.
-- Expense-account `account_num` and chart account `id` are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
+- Expense-account `account_num` and `id`, and chart account `id`, are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
 - Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
-- Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. An absent `payments_pending` reads as 0, the safe direction (refuses a booking rather than over-paying).
+- Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. Approved (`draft: false`) purchase documents require a non-null `payments_pending`; a missing balance fails the complete read with `HoldedPermanentException`. Otherwise Finance could omit an unpaid invoice and post a journal remainder instead. Drafts and unknown approval states may omit the balance and read as 0; neither is bookable.
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
+- Contact and sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists skip and log unidentified rows while retaining valid contacts. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
+- A `ledger-entries` item is exactly `id, entry_number, line, date, type, description,
+  doc_description, account, debit, credit, tags[], checked`. `id` is the journal entry's id
+  (shared by all its lines) and is read as `EntryId`; `checked` (Holded's manual ledger tick)
+  as `Checked`, false when absent. `doc_description` and `tags` are not read.
 - `ledger-entries` dates arrive as `DD/MM/YYYY` (parsed via `HoldedLedgerDatePattern` in
   `DateFormattingExtensions`); purchases/contacts dates are ISO. Decimals arrive as strings.
 - The live `ledger-entries` API's `end_date` is **exclusive** — an entry dated `end_date` itself
@@ -114,7 +123,8 @@ one `HoldedTransport`. Operation clients own their wire payloads, parsing and en
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
 options. They add no interfaces or DI registrations, and the public contract stays unchanged.
 
-**Consumers outside the section:** Expenses (`ExpenseHoldedPublisher` and
+**Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
+`CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
 `ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
 `IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
 (`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.

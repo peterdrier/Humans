@@ -89,7 +89,6 @@ public sealed class CachingConsentServiceTests
 
         var sut = CreateSut();
 
-        // Warm the cache.
         _ = await sut.GetConsentMapForUsersAsync(userIds, TestContext.Current.CancellationToken);
         _inner.ClearReceivedCalls();
 
@@ -146,7 +145,7 @@ public sealed class CachingConsentServiceTests
             .Returns(hitStub);
 
         var sut = CreateSut();
-        _ = await sut.GetConsentMapForUsersAsync(hitIds, TestContext.Current.CancellationToken); // warm
+        _ = await sut.GetConsentMapForUsersAsync(hitIds, TestContext.Current.CancellationToken);
 
         var missStub = missIds.ToDictionary(
             id => id,
@@ -331,9 +330,9 @@ public sealed class CachingConsentServiceTests
         var sut = CreateSut();
         await sut.GetConsentMapForUsersAsync(user.AllUserIds, TestContext.Current.CancellationToken);
 
-        var submit = () => sut.SubmitConsentAsync(
+        var result = await sut.SubmitConsentAsync(
             userId, versionId, true, "1.2.3.4", "agent", TestContext.Current.CancellationToken);
-        await submit.Should().ThrowAsync<InvalidOperationException>().WithMessage("reload unavailable");
+        result.Success.Should().BeTrue("the consent is recorded; a failed reload must not report it as failed");
 
         foreach (var id in user.AllUserIds)
             sut.ContainsKey(id).Should().BeFalse("no merge-chain alias may retain the pre-submit consent set");

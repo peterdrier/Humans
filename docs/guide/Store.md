@@ -18,12 +18,12 @@ Store Admin and Finance Admin look after the catalogue, keep an eye on orders, a
 
 - **Camp orders** (`/Store`) — browse this year's catalogue and manage your camp's orders
 - **Order detail** (`/Store/Order/{id}`) — an order's items, balance, and payment status; pay by card from here
-- **Catalogue** (`/Store/Admin/Catalog`) — create and manage products (Store Admin)
+- **Catalogue** (`/Store/Admin/Catalog`) — create and manage products (Store Admin; Board read-only)
 - **Add / edit a product** (`/Store/Admin/Catalog/Edit`) — product form: name, description, price, VAT, optional deposit, ordering deadline, Holded revenue account (Store Admin)
-- **Summary report** (`/Store/Admin/Summary`) — totals by camp and by product for a year (Store Admin, Finance Admin, Admin)
-- **Stripe payments** (`/Store/Admin/Payments`) — reconcile card payments against the ledger and record any that weren't picked up automatically (Store Admin, Finance Admin, Admin)
-- **Order years** (`/Store/Admin/OrderYears`) — give legacy orders with no recorded year their year, resolved from their camp season (Store Admin, Finance Admin, Admin)
-- **Payment methods** (`/Store/Admin/PaymentMethods`) — fill in the method name on older payment rows that lack it (Store Admin, Finance Admin, Admin)
+- **Summary report** (`/Store/Admin/Summary`) — totals by camp and by product for a year (Store Admin, Finance Admin, Admin; Board read-only)
+- **Stripe payments** (`/Store/Admin/Payments`) — reconcile card payments against the ledger and record any that weren't picked up automatically (Store Admin, Finance Admin, Admin; Board read-only)
+- **Order years** (`/Store/Admin/OrderYears`) — give legacy orders with no recorded year their year, resolved from their camp season (Store Admin, Finance Admin, Admin; Board read-only)
+- **Payment methods** (`/Store/Admin/PaymentMethods`) — fill in the method name on older payment rows that lack it (Store Admin, Finance Admin, Admin; Board read-only)
 
 ## Ordering for your camp (camp leads)
 
@@ -51,7 +51,7 @@ From your order's detail page, use **Pay** to pay by card — the payment is rec
 
 ## As a Board member / Admin (Store Admin)
 
-The tasks below need the **Store Admin**, **Finance Admin**, or **Admin** role. Within the Store, a Store Admin can do everything a Finance Admin can. All of these pages are reached from the Store section of the admin sidebar.
+The tasks below need the **Store Admin**, **Finance Admin**, or **Admin** role. Board members can open the catalogue, summary, payments, order-years and payment-methods pages read-only, but can't change anything. Within the Store, a Store Admin can do everything a Finance Admin can. All of these pages are reached from the Store section of the admin sidebar.
 
 ### Manage the catalogue
 

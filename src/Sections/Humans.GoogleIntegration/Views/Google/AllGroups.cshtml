@@ -130,7 +130,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var group in Model.Groups)
+                    @foreach (var group in Model.Groups.OrderBy(g => g.LinkedTeamId is null).ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase))
                     {
                         <tr class="@(group.ErrorMessage is not null ? "table-danger" : "")">
                             <td class="sticky-col-email">
