@@ -72,10 +72,14 @@ public class AttendeeContactImportServiceApplyTests
             actorId);
     }
 
-    [HumansFact]
-    public async Task Apply_CreateNewUser_CallsProvisioningWithAttendeeName_AndTicketTailorSource()
+    [HumansTheory]
+    [Xunit.InlineData("none")]
+    [Xunit.InlineData("provisioning")]
+    [Xunit.InlineData("attendee-save")]
+    public async Task Apply_CreateNewUser_CompletesLinksParticipationAndAuditDespiteRequestCancellation(string cancelAt)
     {
         var harness = new ApplyHarness();
+        using var request = new CancellationTokenSource();
         var attendeeId = Guid.NewGuid();
         var newUserId = Guid.NewGuid();
         var attendee = new TicketAttendee
@@ -90,7 +94,25 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
                 "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(newUserId, Created: true));
+            .Returns(async call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                if (string.Equals(cancelAt, "provisioning", StringComparison.Ordinal)) await request.CancelAsync();
+                return new AccountProvisioningResult(newUserId, Created: true);
+            });
+        harness.TicketRepo.UpsertAttendeesAsync(Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                if (string.Equals(cancelAt, "attendee-save", StringComparison.Ordinal)) await request.CancelAsync();
+            });
+        harness.UsersWrite.RecordParticipationAsync(
+                newUserId, 2026, ParticipationStatus.Ticketed, null, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
 
         var plan = new AttendeeImportPlan([
                 new AttendeeImportDecision(
@@ -100,17 +122,48 @@ public class AttendeeContactImportServiceApplyTests
             ],
             1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var actorId = Guid.NewGuid();
+        var importToken = string.Equals(cancelAt, "none", StringComparison.Ordinal) ? CancellationToken.None : request.Token;
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, actorId, importToken);
 
+        await harness.TicketRepo.Received(1).GetUnmatchedActiveAttendeesAsync("evt_active", importToken);
+        await harness.TicketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(rows => rows.Count == 1 && rows[0].MatchedUserId == newUserId),
+            CancellationToken.None);
+        await harness.Audit.Received(1).LogAsync(
+            TicketsAuditActions.TicketContactsImported, "Tickets", Guid.Empty,
+            Arg.Is<string>(summary => summary.Contains("created=1")), actorId);
         result.UsersCreated.Should().Be(1);
         attendee.MatchedUserId.Should().Be(newUserId);
 
         await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
-            "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
+            "fresh@x.com", "Fresh Face", ContactSource.TicketTailor, CancellationToken.None);
 
         await harness.UsersWrite.Received(1).RecordParticipationAsync(
             newUserId, 2026, ParticipationStatus.Ticketed,
-            null, Arg.Any<CancellationToken>());
+            null, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task Apply_CancelledDuringPreflight_StopsBeforeWritesAndAudit()
+    {
+        var harness = new ApplyHarness();
+        using var request = new CancellationTokenSource();
+        harness.TicketRepo.GetUnmatchedActiveAttendeesAsync("evt_active", request.Token)
+            .Returns(async _ =>
+            {
+                await request.CancelAsync();
+                return (IReadOnlyList<TicketAttendee>)Array.Empty<TicketAttendee>();
+            });
+
+        var apply = () => harness.Service.ApplyAsync(new AttendeeImportPlan([], 0), new HashSet<Guid>(), Guid.NewGuid(), request.Token);
+
+        await apply.Should().ThrowAsync<OperationCanceledException>();
+        harness.Provisioning.ReceivedCalls().Should().BeEmpty();
+        harness.UsersWrite.ReceivedCalls().Should().BeEmpty();
+        harness.Audit.ReceivedCalls().Should().BeEmpty();
+        await harness.TicketRepo.DidNotReceive().UpsertAttendeesAsync(
+            Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

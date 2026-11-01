@@ -106,12 +106,7 @@ internal sealed class AssemblyVoteService(
                 await repository.GetParticipationAsync(vote.Id, ct)));
         }
 
-        // Open votes first, then most recently closing. A few rows a year — ordering in
-        // memory is cheaper to read than to express in SQL.
-        return items
-            .OrderByDescending(i => i.Status == AssemblyVoteStatus.Open)
-            .ThenByDescending(i => i.ClosesAt)
-            .ToList();
+        return items;
     }
 
     public async Task<AssemblyVoteDetail?> GetVoteForMemberAsync(
@@ -166,7 +161,6 @@ internal sealed class AssemblyVoteService(
             IsOfficial: roster?.IsOfficial ?? false,
             CanCastBallot: roster is not null && vote.AcceptsBallotsAt(now),
             vote.Options
-                .OrderBy(o => o.Order)
                 .Select(o => new AssemblyVoteOptionView(
                     o.Key, Resolve(o.Label, vote.OfficialCulture), o.Order))
                 .ToList(),
@@ -500,7 +494,7 @@ internal sealed class AssemblyVoteService(
         }
 
         var (rounds, winner, rankedVerdict, notes) = AssemblyVoteCounting.CountInstantRunoff(
-            cast, vote.Options.OrderBy(o => o.Order).ToList());
+            cast, vote.Options.ToList());
 
         return new AssemblyVoteAudienceResult(
             audience.Count, cast.Count, null, rounds, winner, rankedVerdict, notes);
@@ -574,8 +568,6 @@ internal sealed class AssemblyVoteService(
                 x.Ballot!.Choice,
                 x.Ballot.Ranking,
                 x.Ballot.Revision))
-            .OrderByDescending(r => r.IsOfficial)
-            .ThenBy(r => r.DisplayName, StringComparer.CurrentCulture)
             .ToList();
     }
 
@@ -714,7 +706,7 @@ internal sealed class AssemblyVoteService(
                 await repository.GetParticipationAsync(vote.Id, ct)));
         }
 
-        return items.OrderByDescending(i => i.ClosesAt).ToList();
+        return items;
     }
 
     public async Task<AssemblyVoteDraft?> GetDraftAsync(Guid voteId, CancellationToken ct = default)
@@ -734,7 +726,6 @@ internal sealed class AssemblyVoteService(
             vote.AssemblyDate,
             vote.ClosesAt,
             vote.Options
-                .OrderBy(o => o.Order)
                 .Select(o => new AssemblyVoteDraftOption(
                     o.Key, o.Order, o.Label.Values.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)))
                 .ToList());

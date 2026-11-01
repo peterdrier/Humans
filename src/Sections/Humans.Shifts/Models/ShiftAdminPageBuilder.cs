@@ -29,7 +29,9 @@ internal sealed class ShiftAdminPageBuilder(
 {
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request, CancellationToken ct = default)
     {
-        var rotas = await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id, ct);
+        var rotas = (await shiftManagement.GetRotasByDepartmentAsync(request.Department.Id, request.EventSettings.Id, ct))
+            .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
+            .ToList();
         var staffing = await BuildStaffingSummaryAsync(rotas, request.IncompleteOnboarding, ct);
         var allUserIds = GetRelevantUserIds(rotas, staffing.PendingSignups);
         var userLookup = allUserIds.Count == 0

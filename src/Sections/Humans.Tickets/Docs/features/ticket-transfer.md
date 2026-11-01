@@ -98,6 +98,8 @@ Member request and cancellation errors are localized in all six cultures. Unknow
   (ticket already voided) shows a **Retry reissue** button that re-issues straight from the held seat — one
   click, no dashboard step — or the admin can finish in TicketTailor and **Mark successful**. Such a request
   **cannot be cancelled, rejected, or re-processed** (that would strand or double-void the held seat).
+  A successful issue response must contain a nonblank ticket ID and explicit `valid` status. Missing or
+  invalid status follows the same partial-failure path; no valid replacement is invented locally.
 - **Mark transfer successful** sets `Approved` with no vendor call (manual void+reissue, or closing out a
   partial automated attempt); **Cancel transfer** requires a reason and sets `Rejected`. All three are
   policy-gated to `TicketsPolicies.Manage` and audit-logged.

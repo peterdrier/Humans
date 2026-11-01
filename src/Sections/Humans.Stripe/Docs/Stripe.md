@@ -72,11 +72,12 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   which walks nested generics and arrays.
 - `Humans.Stripe` is the only production project with a `Stripe.net` package reference.
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
+- Webhook parsing rejects malformed JSON, unsupported payload shapes, missing event identity/type/data, and checkout events carrying a non-session object. These return null with a Warning, including when the signature is valid; diagnostics do not log payload contents. Signature verification still precedes deserialization, and unrelated well-formed event types remain ignorable.
 - Checkout Session creation is `[ExternalWrite]`; a state-changing caller detaches request
   cancellation at the call boundary.
 - Reads return `null` only for what the section checks: the key is unset or lacks its scope
   (`permission_error`); for `ParseStoreCheckoutEvent`, the signing secret is unset, the signature
-  is invalid or the session lacks EUR; for `GetPaymentDetailsAsync` alone, the PaymentIntent has
+  is invalid, its payload is malformed/incomplete, or the session lacks EUR; for `GetPaymentDetailsAsync` alone, the PaymentIntent has
   no charge or its balance transaction is not available yet after asynchronous capture. **Every
   other Stripe failure propagates** — an authentication error, a rate limit, a transport failure,
   cancellation — and `ParseStoreCheckoutEvent` never throws. An empty list means Stripe answered

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
+using Humans.Holded.Controllers;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using Humans.Holded.Models;
@@ -10,6 +11,8 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Holded.Tests;
 
@@ -34,16 +37,21 @@ public sealed class HoldedAdminOverviewTests
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
         _callLog.DrainAll().Returns([]);
         _client.GetUsageAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36, Limit = 2_000_000 });
+            .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36 });
         _client.IsConfigured.Returns(true);
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
             Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
     }
 
     /// <summary>Every non-archived row of /Holded/Accounts, empty ones included, in page order.</summary>
-    private async Task<IReadOnlyList<HoldedAccountRow>> ChartRowsAsync(CancellationToken ct) =>
-        (await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowEmpty: true), ct))
-            .Groups.SelectMany(g => g.Accounts).ToList();
+    private async Task<IReadOnlyList<HoldedAccountRow>> ChartRowsAsync(CancellationToken ct)
+    {
+        var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
+            NullLogger<HoldedController>.Instance);
+        var page = (await controller.Accounts(empty: true, ct: ct)).Should().BeOfType<ViewResult>().Which.Model
+            .Should().BeOfType<HoldedAccountsPage>().Which;
+        return page.Groups.SelectMany(group => group.Accounts).ToList();
+    }
 
     private static HoldedApiCall Call(Instant at, string endpoint) => new()
     {
@@ -102,7 +110,10 @@ public sealed class HoldedAdminOverviewTests
             Call(Instant.FromUtc(2026, 8, 4, 10, 0), "ListLedgerEntriesAsync"),
         ], ct);
 
-        var calls = await _service.GetCallsByMonthAsync(ct);
+        var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
+            NullLogger<HoldedController>.Instance);
+        var calls = (await controller.Calls(ct)).Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeAssignableTo<IReadOnlyList<HoldedMonthlyCalls>>().Which;
 
         calls.Should().HaveCount(2);
         calls[0].Year.Should().Be(2026);
@@ -173,11 +184,11 @@ public sealed class HoldedAdminOverviewTests
 
         var page = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowEmpty: true), ct);
 
-        page.Groups.Select(g => g.Name).Should().Equal(
+        page.Groups.Select(g => g.Name).Should().BeEquivalentTo([
             "Receivables and payables",
             "Financial accounts",
             "Purchases and expenses",
-            "Sales and income");
+            "Sales and income"]);
     }
 
     [HumansFact]
@@ -292,10 +303,16 @@ public sealed class HoldedAdminOverviewTests
         state.LastCount = 17;
         state.LastError = "57200001: holded 418840.54, local 771074.85";
         await _repo.SaveSyncStateAsync(state, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.FullSync, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
 
-        var summary = await _service.GetSummaryAsync(ct);
+        var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
+            NullLogger<HoldedController>.Instance);
+        var summary = (await controller.Index(ct)).Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeOfType<HoldedSummary>().Which;
 
-        var row = summary.SyncStates.Should().ContainSingle().Subject;
+        summary.SyncStates.Select(row => row.Kind).Should().Equal("Accounts", "FullSync", "Ledger");
+        var row = summary.SyncStates.Single(row => string.Equals(row.Kind, "Ledger", StringComparison.Ordinal));
         row.Kind.Should().Be("Ledger");
         row.Status.Should().Be("Idle");
         row.LastCount.Should().Be(17);

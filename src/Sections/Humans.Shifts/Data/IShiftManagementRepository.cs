@@ -19,7 +19,9 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>Also deletes every Shifts-owned row beneath it. Returns the number of event rows deleted.</summary>
     Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
 
-    Task SaveRotaAsync(Rota rota, EntityMutationMode mode, CancellationToken ct = default);
+    /// <summary>One save for rota fields and optional tag replacement. Null keeps tags; empty clears them; unknown ids are ignored.</summary>
+    Task SaveRotaAsync(
+        Rota rota, EntityMutationMode mode, CancellationToken ct = default, IReadOnlyList<Guid>? tagIds = null);
 
     /// <summary>
     /// Writes only <c>TeamId</c> and <c>UpdatedAt</c>, so concurrent edits to other fields aren't clobbered. False when
@@ -39,9 +41,6 @@ internal partial interface IShiftManagementRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
         string query, Guid eventSettingsId, int max, CancellationToken ct = default);
-
-    /// <summary>Replaces existing tags. Unknown tag ids are ignored.</summary>
-    Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default);
 
     Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default);
 

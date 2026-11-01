@@ -30,10 +30,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (!includeArchived)
             query = query.Where(y => !y.IsDeleted);
 
-        return await query
-            // arch:db-sort-ok budget year list chronology
-            .OrderByDescending(y => y.Year)
-            .ToListAsync(ct);
+        return await query.ToListAsync(ct);
     }
 
     public async Task<BudgetYear?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
@@ -67,16 +64,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (activeId is null)
             return null;
 
-        // Display sort (SortOrder) is applied by the controllers and views, not here.
-        return await ctx.BudgetYears
-            .AsNoTracking()
-            // arch:db-sort-ok budget tree persisted SortOrder
-            .Include(y => y.Groups.OrderBy(g => g.SortOrder))
-                .ThenInclude(g => g.Categories)
-                    .ThenInclude(c => c.LineItems)
-            .Include(y => y.Groups)
-                .ThenInclude(g => g.TicketingProjection)
-            .FirstOrDefaultAsync(y => y.Id == activeId.Value, ct);
+        return await GetYearByIdAsync(activeId.Value, ct);
     }
 
     public async Task CreateYearWithScaffoldAsync(
@@ -813,15 +801,19 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId, ct);
     }
 
-    public async Task<bool> UpdateTicketingProjectionAsync(
+    public async Task<int> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
         Guid actorUserId,
         Instant now,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        LocalDate? refreshFromDate = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == update.BudgetGroupId, ct)
+        var group = await ctx.BudgetGroups
+            .Include(g => g.Categories).ThenInclude(category => category.LineItems)
+            .Include(g => g.TicketingProjection)
+            .FirstOrDefaultAsync(g => g.Id == update.BudgetGroupId, ct)
             ?? throw new InvalidOperationException($"Budget group {update.BudgetGroupId} not found");
 
         if (!group.IsTicketingGroup)
@@ -829,8 +821,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         await EnsureYearNotClosedAsync(ctx, group.BudgetYearId, ct);
 
-        var projection = await ctx.TicketingProjections
-            .FirstOrDefaultAsync(p => p.BudgetGroupId == update.BudgetGroupId, ct)
+        var projection = group.TicketingProjection
             ?? throw new InvalidOperationException("No ticketing projection found for this group.");
 
         projection.StartDate = update.StartDate;
@@ -844,12 +835,22 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         projection.TicketTailorFeePercent = update.TicketTailorFeePercent;
         projection.UpdatedAt = now;
 
+        var created = 0;
+        if (refreshFromDate is { } today)
+        {
+            var (revenueCategory, feesCategory) = FindTicketingCategories(group);
+            if (revenueCategory is not null && feesCategory is not null)
+                created = MaterializeProjectedWeeks(ctx, projection, revenueCategory, feesCategory, today, now);
+        }
+
         AddDescriptionAudit(ctx, group.BudgetYearId, nameof(TicketingProjection), projection.Id,
-            "Updated ticketing projection parameters",
+            refreshFromDate is null
+                ? "Updated ticketing projection parameters"
+                : $"Updated ticketing projection parameters; refreshed {created} projected line item(s)",
             actorUserId, now);
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return created;
     }
 
     public async Task<int> SyncTicketingActualsAsync(

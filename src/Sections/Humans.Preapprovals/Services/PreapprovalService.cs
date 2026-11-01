@@ -167,7 +167,7 @@ internal sealed partial class PreapprovalService(
         p.HoldedAccountId, p.AcceptsApplications, p.ClaimBy, p.Status, p.CreatedByUserId, p.CreatedAt,
         p.UpdatedAt,
         p.Managers.Select(m => m.UserId).ToList(),
-        p.Grants.OrderBy(g => g.CreatedAt).Select(g => ToInfo(g, p)).ToList());
+        p.Grants.Select(g => ToInfo(g, p)).ToList());
 
     private static GrantInfo ToInfo(PreapprovalGrant g) => ToInfo(g, g.Program);
 

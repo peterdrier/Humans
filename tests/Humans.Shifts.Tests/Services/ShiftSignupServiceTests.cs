@@ -151,6 +151,58 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_IncludesBuildStatusesAcrossEventsAndMergeIdentities(bool archivedId)
+    {
+        var (firstEvent, _, _) = SeedShiftScenario(SignupPolicy.Public);
+        var (secondEvent, _, _) = SeedShiftScenario(SignupPolicy.Public);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var coordinator = Guid.NewGuid();
+        ShiftsDb.VolunteerBuildStatuses.AddRange(
+            new VolunteerBuildStatus
+            {
+                Id = Guid.NewGuid(),
+                UserId = source,
+                EventSettingsId = firstEvent.Id,
+                BarrioSetupStartDate = new LocalDate(2026, 6, 20),
+                Notes = "Setup plan",
+                SetByUserId = coordinator,
+                SetAt = TestNow,
+                DayOffs = [new DayOffEntry(-3, "Rest", coordinator, TestNow)]
+            },
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = target, EventSettingsId = secondEvent.Id },
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSettingsId = firstEvent.Id, Notes = "Other human" });
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var info = UserInfoStubHelpers.MakeUserInfo(target) with { MergedUserIds = [source] };
+        _users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(info);
+        _users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(info);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var service = new ShiftSignupService(_repo, new VolunteerTrackingRepository(ShiftsDb), _shiftMgmt,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().With(_teamService).Build(), Clock,
+            NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+
+        var slices = await service.ContributeForUserAsync(archivedId ? source : target, TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle(x => string.Equals(x.SectionName, "VolunteerBuildStatuses", StringComparison.Ordinal)).Which;
+        var rows = System.Text.Json.JsonSerializer.SerializeToElement(slice.Data).EnumerateArray().ToList();
+        rows.Should().HaveCount(2);
+        rows.Select(x => x.GetProperty("EventSettingsId").GetGuid()).Should().BeEquivalentTo([firstEvent.Id, secondEvent.Id]);
+        var setup = rows.Single(x => x.GetProperty("EventSettingsId").GetGuid() == firstEvent.Id);
+        setup.GetProperty("BarrioSetupStartDate").GetString().Should().Be("2026-06-20");
+        setup.GetProperty("Notes").GetString().Should().Be("Setup plan");
+        setup.GetProperty("SetAt").GetString().Should().Be("2026-06-15T12:00:00Z");
+        var dayOff = setup.GetProperty("DayOffs").EnumerateArray().Single();
+        dayOff.GetProperty("DayOffset").GetInt32().Should().Be(-3);
+        dayOff.GetProperty("Reason").GetString().Should().Be("Rest");
+        dayOff.GetProperty("MarkedAt").GetString().Should().Be("2026-06-15T12:00:00Z");
+        service.ErasureDeclaration.Should().ContainKey("VolunteerBuildStatuses");
+        service.ErasureDeclaration["VolunteerBuildStatuses"].Should().BeNull();
+    }
+
+    [HumansTheory]
     [InlineData("signup", "signup", true)]
     [InlineData("signup", "signup", false)]
     [InlineData("range", "voluntell-range", true)]
@@ -2314,6 +2366,59 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             Arg.Is<string>(s => s.Contains("Reassigned 1")),
             actorUserId,
             targetUserId, nameof(User));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reassign_MovesActorReferences_AndRefreshesTheirEventCaches(bool ownsDuplicateSignup)
+    {
+        var (eventSettings, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var otherActor = Guid.NewGuid();
+        var enrolled = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
+        enrolled.EnrolledByUserId = source;
+        enrolled.ReviewedByUserId = otherActor;
+        var reviewed = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.NoShow);
+        reviewed.EnrolledByUserId = otherActor;
+        reviewed.ReviewedByUserId = source;
+        reviewed.ReviewedAt = TestNow - Duration.FromHours(2);
+        reviewed.StatusReason = "Absent";
+        var survivor = SeedSignup(target, shift.Id, SignupStatus.Confirmed);
+        survivor.EnrolledByUserId = otherActor;
+        var duplicate = ownsDuplicateSignup ? SeedSignup(source, shift.Id, SignupStatus.Pending) : null;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        await _views.PrimeUserAsync(enrolled.UserId, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        var management = Substitute.For<IShiftManagement>();
+        var service = new ShiftSignupService(_repo, Substitute.For<IVolunteerTrackingRepository>(), management,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        var mergedAt = TestNow + Duration.FromHours(1);
+        var actor = Guid.NewGuid();
+
+        await service.ReassignAsync(source, target, actor, mergedAt, TestContext.Current.CancellationToken);
+        await service.ReassignAsync(source, target, actor, mergedAt, TestContext.Current.CancellationToken);
+
+        var rows = await ShiftsDb.ShiftSignups.AsNoTracking().ToDictionaryAsync(x => x.Id, TestContext.Current.CancellationToken);
+        rows[enrolled.Id].UserId.Should().Be(enrolled.UserId);
+        rows[enrolled.Id].EnrolledByUserId.Should().Be(target);
+        rows[enrolled.Id].ReviewedByUserId.Should().Be(otherActor);
+        rows[enrolled.Id].UpdatedAt.Should().Be(mergedAt);
+        rows[reviewed.Id].EnrolledByUserId.Should().Be(otherActor);
+        rows[reviewed.Id].ReviewedByUserId.Should().Be(target);
+        rows[reviewed.Id].ReviewedAt.Should().Be(TestNow - Duration.FromHours(2));
+        rows[reviewed.Id].Status.Should().Be(SignupStatus.NoShow);
+        rows[reviewed.Id].StatusReason.Should().Be("Absent");
+        rows[survivor.Id].EnrolledByUserId.Should().Be(otherActor);
+        if (duplicate is not null) rows.Should().NotContainKey(duplicate.Id);
+        (await _views.IsUserCachedAsync(enrolled.UserId)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        management.Received(1).InvalidateDashboardCaches(eventSettings.Id);
+        await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupReassigned, nameof(User), target,
+            Arg.Is<string>(text => text.Contains(ownsDuplicateSignup ? "Reassigned 3" : "Reassigned 2")),
+            actor, target, nameof(User));
     }
 
     [HumansFact]

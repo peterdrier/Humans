@@ -471,8 +471,8 @@ internal sealed class EventsController(
         var model = new BrowseViewModel
         {
             TimeZoneId = eventSettings?.TimeZoneId,
-            Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList(),
-            Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList(),
+            Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList(),
+            Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList(),
             Days = eventDays,
             FilterDays = filterDays ?? [],
             FilterCategoryId = categoryId,
@@ -545,8 +545,8 @@ internal sealed class EventsController(
         var categories = await guide.GetActiveCategoriesAsync(ct);
         var venues = await guide.GetActiveVenuesAsync(ct);
 
-        model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
-        model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
+        model.Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        model.Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
         model.EventDays = BuildEventDayOptions(burn);
@@ -897,7 +897,7 @@ internal sealed class EventsController(
     private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
         var categories = await guide.GetActiveCategoriesAsync(ct);
-        model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        model.Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
         model.EventDays = BuildEventDayOptions(burn);

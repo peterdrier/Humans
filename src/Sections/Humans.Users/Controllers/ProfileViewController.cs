@@ -129,7 +129,7 @@ internal sealed class ProfileViewController(
             ? new Dictionary<Guid, UserInfo>()
             : await _userService.GetUserInfosAsync(reviewerIds, ct);
 
-        return (true, noShows.Select(s =>
+        return (true, noShows.OrderByDescending(s => s.ReviewedAt).Select(s =>
         {
             var signupTz = DateTimeZoneProviders.Tzdb[s.TimeZoneId];
             var zoned = s.ShiftStart.InZone(signupTz);

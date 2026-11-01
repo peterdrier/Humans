@@ -1,7 +1,8 @@
 @model IReadOnlyList<TicketStubInfo>
 
 <div class="d-flex flex-wrap gap-3 mt-3">
-    @foreach (var stub in Model)
+    @foreach (var stub in Model.OrderBy(t => t.Status == TicketAttendeeStatus.Void ? 1 : 0)
+        .ThenBy(t => t.AttendeeName, StringComparer.OrdinalIgnoreCase))
     {
         <vc:ticket-stub stub="@stub" />
     }

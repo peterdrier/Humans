@@ -293,6 +293,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 - Only roster rows with `IsOfficial = true` contribute to the official result; indicative ballots are tallied separately and never merged.
 - The roster is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official), and the Volunteers team for `AllMembers`; it is never recomputed. A person appearing in more than one source gets one row, official if any source is official.
 - A ballot can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision` and append history; nothing is ever deleted.
+- List ordering is presentation-owned: member list Open-first then latest closing, admin list latest closing, member task entries latest closing.
 - Content (`Title`, `OfficialText`, options, `Kind`, `RequiredMajority`, audiences, disclosure) is immutable once Open.
 - No read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, and `Peek` always writes its audit entry and peek row in the same unit of work as the read.
 - The audit entry for a ballot event names actor and vote, never the choice. The choice lives only in `assembly_ballots` / `assembly_ballot_history`.

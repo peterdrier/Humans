@@ -118,8 +118,8 @@ recorded, not a structural need.
   wants the attempt recorded, not swallowed.
 - `AdminEnrolled` on `gate_staff_pins` deliberately has no EF default value — every write sets
   it explicitly (bool-sentinel pitfall).
-- `GateVendorCheckInJob` method signatures are frozen (Hangfire serializes method references);
-  the backfill variant is a separate method on purpose.
+- `GateVendorCheckInJob.ExecuteAsync` serves live and backfill mirrors; the optional timestamp preserves the
+  original admit time for backfills. No compatibility entry points are kept for queued jobs (standing policy D13).
 - The mirror ledger marks live admits only while `Gate:VendorMirrorEnabled` is on — marking
   while off would hide exactly the rows the backfill exists to recover.
 - Kiosk JS: quiet-timer submit (no reliance on wedge Enter-suffix), anti-mistap arming delay,

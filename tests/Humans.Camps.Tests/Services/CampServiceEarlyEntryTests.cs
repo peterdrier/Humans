@@ -32,8 +32,6 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         var repo = new CampRepository(CampsDbFactory);
 
         _campRoleService = Substitute.For<ICampRoleService>();
-        _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(0));
 
         _userService = Substitute.For<IUserService>();
 

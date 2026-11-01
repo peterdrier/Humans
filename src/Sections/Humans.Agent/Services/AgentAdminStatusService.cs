@@ -52,7 +52,6 @@ internal sealed class AgentAdminStatusService(
             .Where(r => r.CreatedAt >= window7d && !string.IsNullOrEmpty(r.RefusalReason))
             .GroupBy(r => r.RefusalReason!, StringComparer.Ordinal)
             .Select(g => new AgentRefusalBucket(g.Key, g.Count()))
-            .OrderByDescending(b => b.Count)
             .ToList();
         var refusals7dCount = refusals7d.Sum(b => b.Count);
 

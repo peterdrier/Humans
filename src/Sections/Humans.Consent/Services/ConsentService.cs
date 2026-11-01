@@ -53,9 +53,7 @@ internal sealed class ConsentService(
 
                 foreach (var doc in g)
                 {
-                    var currentVersion = doc.Versions
-                        .Where(v => v.EffectiveFrom <= now)
-                        .MaxBy(v => v.EffectiveFrom);
+                    var currentVersion = doc.CurrentVersionAt(now);
 
                     if (currentVersion is not null)
                     {

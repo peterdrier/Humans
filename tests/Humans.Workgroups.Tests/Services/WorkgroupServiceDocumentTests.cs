@@ -6,6 +6,8 @@ using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NodaTime;
 using Humans.Workgroups.Data;
 using Humans.Users.Contracts;
@@ -18,6 +20,68 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 {
+    [HumansTheory]
+    [InlineData("publish")]
+    [InlineData("open")]
+    [InlineData("close")]
+    [InlineData("deliver")]
+    [InlineData("disposition")]
+    public async Task Document_LogSaveFailure_LeavesDocumentUnchanged(string action)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var status = action switch
+        {
+            "publish" => WorkgroupDocumentStatus.Draft,
+            "disposition" => WorkgroupDocumentStatus.Delivered,
+            _ => WorkgroupDocumentStatus.Published
+        };
+        var document = await AddDocumentAsync(group.Id, status, categories: ["Scope"],
+            opensAt: now - Duration.FromDays(1), closesAt: now - Duration.FromHours(1));
+        var options = new DbContextOptionsBuilder<WorkgroupsDbContext>(
+                (DbContextOptions<WorkgroupsDbContext>)Db.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailDocumentLogSave()).Options;
+        var service = NewService(new WorkgroupRepository(new TestDbContextFactory<WorkgroupsDbContext>(options)));
+        Func<Task> mutate = action switch
+        {
+            "publish" => () => service.PublishDocumentAsync(document.Id, actor, Ct),
+            "open" => () => service.OpenCommentsAsync(document.Id, actor,
+                new WorkgroupCommentWindow(now, now + Duration.FromDays(1), ["Timeline"]), Ct),
+            "close" => () => service.CloseCommentsAsync(document.Id, actor, Ct),
+            "deliver" => () => service.DeliverDocumentAsync(document.Id, actor, Ct),
+            _ => () => service.RecordDispositionAsync(document.Id, actor, WorkgroupDisposition.Accepted, "Agreed", Ct)
+        };
+
+        await mutate.Should().ThrowAsync<IOException>();
+
+        await using var db = OpenContext();
+        var saved = await db.Documents.AsNoTracking().SingleAsync(Ct);
+        saved.Status.Should().Be(document.Status);
+        saved.CommentCategories.Should().Equal(document.CommentCategories);
+        saved.CommentsOpenAt.Should().Be(document.CommentsOpenAt);
+        saved.CommentsCloseAt.Should().Be(document.CommentsCloseAt);
+        saved.DeliveredAt.Should().Be(document.DeliveredAt);
+        saved.Disposition.Should().Be(document.Disposition);
+        saved.DispositionNote.Should().Be(document.DispositionNote);
+        saved.DispositionAt.Should().Be(document.DispositionAt);
+        saved.DispositionByUserId.Should().Be(document.DispositionByUserId);
+        (await db.LogEntries.CountAsync(Ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class FailDocumentLogSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<WorkgroupLogEntry>().Any(e => e.State == EntityState.Added))
+                throw new IOException("Document log persistence failed.");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
     [HumansTheory]
     [InlineData("publish")]
     [InlineData("open")]
@@ -51,11 +115,13 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
             .Returns(c => real.GetDocumentAsync(document.Id, c.Arg<CancellationToken>()));
         repository.GetCommentAsync(comment.Id, Arg.Any<CancellationToken>())
             .Returns(c => real.GetCommentAsync(comment.Id, c.Arg<CancellationToken>()));
-        repository.UpdateDocumentAsync(Arg.Any<WorkgroupDocument>(), Arg.Any<CancellationToken>())
+        repository.UpdateDocumentAsync(Arg.Any<WorkgroupDocument>(), Arg.Any<CancellationToken>(),
+                Arg.Any<IReadOnlyList<WorkgroupLogEntry>?>())
             .Returns(async c =>
             {
                 c.Arg<CancellationToken>().Should().Be(cancellation.Token);
-                await real.UpdateDocumentAsync(c.Arg<WorkgroupDocument>(), c.Arg<CancellationToken>());
+                await real.UpdateDocumentAsync(c.Arg<WorkgroupDocument>(), c.Arg<CancellationToken>(),
+                    c.Arg<IReadOnlyList<WorkgroupLogEntry>?>());
                 await cancellation.CancelAsync();
             });
         repository.UpdateCommentsAsync(Arg.Any<IReadOnlyList<WorkgroupDocumentComment>>(), Arg.Any<CancellationToken>())

@@ -31,19 +31,19 @@
             <div class="row g-3 mb-3">
                 <div class="col-6 col-md-3">
                     <label class="form-label">@Localizer["Workgroups_Field_StartDate"]</label>
-                    <input type="date" class="form-control" id="startDate" value="@Model.StartUtc.ToDateTimeUtc().ToString("yyyy-MM-dd")" required />
+                    <input type="date" class="form-control" id="startDate" value="@Model.StartUtc.ToDateTimeUtc().ToInvariantDate()" required />
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label">@Localizer["Workgroups_Field_StartTime"]</label>
-                    <input type="time" class="form-control" id="startTime" value="@Model.StartUtc.ToDateTimeUtc().ToString("HH:mm")" required />
+                    <input type="time" class="form-control" id="startTime" value="@Model.StartUtc.ToDateTimeUtc().ToInvariantTime()" required />
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label">@Localizer["Workgroups_Field_EndDate"]</label>
-                    <input type="date" class="form-control" id="endDate" value="@Model.EndUtc.ToDateTimeUtc().ToString("yyyy-MM-dd")" required />
+                    <input type="date" class="form-control" id="endDate" value="@Model.EndUtc.ToDateTimeUtc().ToInvariantDate()" required />
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label">@Localizer["Workgroups_Field_EndTime"]</label>
-                    <input type="time" class="form-control" id="endTime" value="@Model.EndUtc.ToDateTimeUtc().ToString("HH:mm")" required />
+                    <input type="time" class="form-control" id="endTime" value="@Model.EndUtc.ToDateTimeUtc().ToInvariantTime()" required />
                 </div>
             </div>
             <div class="form-text mb-3">@Localizer["Workgroups_Field_TimesAreUtc"]</div>

@@ -69,8 +69,6 @@ internal sealed partial class LegalDocumentSyncService(
                     lastSyncedAt,
                     d.Versions.Count);
             })
-            .OrderBy(item => item.TeamName, StringComparer.Ordinal)
-            .ThenBy(item => item.Name, StringComparer.Ordinal)
             .ToList();
     }
 
@@ -403,9 +401,7 @@ internal sealed partial class LegalDocumentSyncService(
 
     private static RequiredDocumentVersionSnapshot? ToLatestRequiredVersionSnapshot(LegalDocument document, Instant now)
     {
-        var version = document.Versions
-            .Where(v => v.EffectiveFrom <= now)
-            .MaxBy(v => v.EffectiveFrom);
+        var version = CurrentVersionAt(document, now);
         return version is null ? null : new(
             version.Id,
             version.LegalDocumentId,
@@ -641,7 +637,15 @@ internal sealed partial class LegalDocumentSyncService(
     {
         try
         {
-            var recipientsByLanguage = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
+            var team = await teamService.GetTeamAsync(document.TeamId, cancellationToken).ConfigureAwait(false);
+            if (team is null)
+                return;
+            var memberIds = team.Members.Select(m => m.UserId).Distinct().ToList();
+            if (memberIds.Count == 0)
+                return;
+            var recipientsByLanguage = (await userService.GetUserInfosAsync(memberIds, cancellationToken).ConfigureAwait(false))
+                .Values
+                .DistinctBy(u => u.Id)
                 .Where(u => u.IsActive)
                 .GroupBy(u => u.PreferredLanguage.IsSupportedCultureCode() ? u.PreferredLanguage : "en", StringComparer.Ordinal);
             foreach (var group in recipientsByLanguage)

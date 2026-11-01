@@ -103,7 +103,7 @@ after the retention window.
   (`/Gate/Admin/VendorCheckInBackfill`, `AdminOnly`, temp — remove after use) recovers admits from
   the last 30 days (`GateService.GetVendorCheckInBackfillAsync`) that never mirrored: it diffs
   local admits against the vendor's check-in status, supports a single test send before the bulk
-  run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteBackfillAsync`,
+  run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteAsync` with its optional admit timestamp,
   unix seconds), and skips anything the ledger already claimed until the ticket sync confirms it.
   `GateService` owns the pending/sent split and `EnqueueVendorCheckInBackfillAsync` rechecks the
   current diff, refuses sends while mirroring is disabled, and atomically claims each ticket

@@ -111,7 +111,7 @@ public sealed class TicketQueryService_HoldingsTests
     }
 
     [HumansFact]
-    public async Task IncludesVoidedTicketsButSortsThemLast()
+    public async Task IncludesActiveAndVoidedTickets()
     {
         var orderId = Guid.NewGuid();
         var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
@@ -141,8 +141,8 @@ public sealed class TicketQueryService_HoldingsTests
         var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.Tickets.Should().HaveCount(2);
-        result.Tickets[0].Status.Should().Be(TicketAttendeeStatus.Valid);
-        result.Tickets[1].Status.Should().Be(TicketAttendeeStatus.Void);
+        result.Tickets.Should().ContainSingle(t => t.Status == TicketAttendeeStatus.Valid);
+        result.Tickets.Should().ContainSingle(t => t.Status == TicketAttendeeStatus.Void);
     }
 
     [HumansFact]

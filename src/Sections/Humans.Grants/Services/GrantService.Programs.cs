@@ -88,18 +88,13 @@ internal sealed partial class GrantService
 
         var now = clock.GetCurrentInstant();
         program.UpdatedAt = now;
-        await repository.UpdateProgramAsync(program, ct);
-        // The program committed; finish manager changes and audit independently of the browser.
-        ct = CancellationToken.None;
-
         var wanted = save.ManagerUserIds.Distinct().ToList();
         var current = program.Managers.Select(m => m.UserId).ToList();
         var added = wanted.Except(current).ToList();
         var removed = current.Except(wanted).ToList();
-        if (added.Count > 0 || removed.Count > 0)
-            await repository.SetManagersAsync(program.Id,
-                added.Select(id => new GrantProgramManager { UserId = id, AddedByUserId = actorUserId, AddedAt = now }).ToList(),
-                removed, ct);
+        await repository.UpdateProgramAsync(program,
+            added.Select(id => new GrantProgramManager { UserId = id, AddedByUserId = actorUserId, AddedAt = now }).ToList(),
+            removed, ct);
 
         if (changes.Count > 0)
             await AuditProgramAsync(GrantsAuditActions.GrantProgramEdited, program,

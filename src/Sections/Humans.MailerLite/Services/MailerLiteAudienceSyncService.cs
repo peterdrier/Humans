@@ -79,15 +79,11 @@ internal sealed class MailerLiteAudienceSyncService(
                 "Audience {Audience}: dropped {Count} candidates with no notification-target email",
                 audience.Key, droppedNoEmail);
 
-        var groups = await ml.ListGroupsAsync(ct);
-        var group = groups.FirstOrDefault(g => string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal))
+        var snapshot = await BuildSnapshotAsync(ct);
+        var group = snapshot.Groups.FirstOrDefault(g => string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal))
             ?? await ml.CreateGroupAsync(audience.MailerLiteGroupName, ct);
 
-        // Single snapshot reused for diff + apply; per-write methods don't invalidate the subscriber cache.
-        var subscribers = new List<MailerLiteSubscriber>();
-        await foreach (var s in ml.ListSubscribersAsync(ct)) subscribers.Add(s);
-        var byEmail = subscribers.ToDictionary(s => MailerLiteEmailNormalization.Normalize(s.Email), s => s, StringComparer.Ordinal);
-        var currentGroupMemberIds = subscribers
+        var currentGroupMemberIds = snapshot.ByEmail.Values
             .Where(s => s.GroupIds.Contains(group.Id, StringComparer.Ordinal))
             .Select(s => s.Id)
             .ToHashSet(StringComparer.Ordinal);
@@ -100,7 +96,7 @@ internal sealed class MailerLiteAudienceSyncService(
         foreach (var (_, email) in userEmailMap)
         {
             var norm = MailerLiteEmailNormalization.Normalize(email);
-            if (!byEmail.TryGetValue(norm, out var sub))
+            if (!snapshot.ByEmail.TryGetValue(norm, out var sub))
             {
                 toBulkImport.Add(email);
                 continue;

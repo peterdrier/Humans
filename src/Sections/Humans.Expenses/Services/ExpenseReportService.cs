@@ -31,7 +31,7 @@ internal sealed class ExpenseReportService(
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
-    IHoldedClient holdedClient,
+    IHoldedService holded,
     IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IFinanceWrite financeWrite,
@@ -135,7 +135,7 @@ internal sealed class ExpenseReportService(
                 .Sum(a => a.Booked);
 
     private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent) =>
-        ResolveSyncState(outboxEvent, holdedClient.IsConfigured);
+        ResolveSyncState(outboxEvent, holded.IsConfigured);
 
     internal static ExpenseHoldedSyncState ResolveSyncState(
         HoldedExpenseOutboxEvent? outboxEvent, bool holdedConfigured)
@@ -166,8 +166,8 @@ internal sealed class ExpenseReportService(
         var queue = await repo.GetForReviewQueueAsync(ct);
         if (isFinanceAdmin) return queue;
 
-        // Filtering the whole queue in memory beats a per-audience query at this scale and keeps the repository's
-        // order. Drafts and withdrawals are excluded upstream for everyone.
+        // Filtering the whole queue in memory beats a per-audience query at this scale.
+        // Drafts and withdrawals are excluded upstream for everyone.
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
         var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
@@ -735,7 +735,8 @@ internal sealed class ExpenseReportService(
         ExpenseAttachment? replacedAttachment = null;
         try
         {
-            var replacement = await repo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct);
+            var replacement = await repo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct,
+                declineState: line.Declined ? (clock.GetCurrentInstant(), null, null, null) : null);
             if (!replacement.Found)
             {
                 // The line disappeared before the save; no metadata was written.
@@ -764,10 +765,13 @@ internal sealed class ExpenseReportService(
             var metadataRemoved = true;
             try
             {
-                // Restore the complete previous metadata and linkage atomically, including
-                // when the failed save committed before throwing. Keep its file until audit succeeds.
+                // Restore metadata, linkage and any decline/total change atomically, including when the failed
+                // save committed before throwing. Keep the old file until audit succeeds.
                 var rollback = await repo.ReplaceLineAttachmentAsync(
-                    reportId, lineId, previousAttachment, CancellationToken.None);
+                    reportId, lineId, previousAttachment, CancellationToken.None,
+                    declineState: line.Declined
+                        ? (report.UpdatedAt, line.DeclinedReason, line.DeclinedByUserId, line.DeclinedAt)
+                        : null);
                 metadataRemoved = rollback.Found;
             }
             catch (Exception ex)
@@ -808,13 +812,6 @@ internal sealed class ExpenseReportService(
                 logger.LogWarning(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
             }
         }
-
-        // A new file answers a decline: the line is back in the total. Cleared only once the upload and its audit
-        // have stuck, so a rolled-back upload never leaves a declined line payable.
-        if (line.Declined)
-            await repo.SetLineDeclinedAsync(
-                reportId, lineId, declined: false, reason: null, byUserId: null,
-                clock.GetCurrentInstant(), CancellationToken.None);
 
         return null;
     }
