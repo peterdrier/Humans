@@ -32,7 +32,7 @@
       acyclic: ConsentService resolves required teams and completion through
       IMembershipCalculator, and declares its notification sources and emits through
       Humans.Notifications.Contracts. Humans.Governance references Humans.Consent back (for
-      ConsentResource, step 3b), which is fine — Humans.Governance.Contracts names no
+      ConsentResource), which is fine — Humans.Governance.Contracts names no
       Consent type.
     -->
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />

@@ -68,6 +68,7 @@
   <data name="Governance_BoardReviews" xml:space="preserve"><value>The board reviews applications based on community involvement and alignment with the collective's mission.</value></data>
   <data name="Governance_NoteNotRequired" xml:space="preserve"><value>Note: You don't need to be an asociado to access resources or participate in events.</value></data>
   <data name="Governance_Statutes" xml:space="preserve"><value>Statutes</value></data>
+  <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Content not available.</value></data>
   <data name="Governance_MemberCounts" xml:space="preserve"><value>Community</value></data>
   <data name="Governance_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Governance_Asociados" xml:space="preserve"><value>Asociados</value></data>
