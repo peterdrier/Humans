@@ -24,6 +24,17 @@ when a code fix warrants them; prefer existing coverage when sufficient.
 Scoped tests validate each change; the wrapper runs the full non-integration
 suite once at the end. Test-only changes do not qualify a run for publication.
 
+## Batching
+
+Repeated simple corrections start with discovery across the owning section and
+shared consumers. The worker states the candidates, exclusions, and shared
+validation plan before editing, then validates and commits the completed batch.
+Known related fixes require a concrete risk/scope reason to split into separate
+rounds; singleton batches state the searched scope. Deferred candidates carry
+forward so subsequent rounds reuse the investigation. Ordering moves still need
+each consumer inspected; transactions, authorization, and migrations retain
+individual scrutiny. The cumulative report lists items and split reasons.
+
 ## Work window and completion
 
 `TIME_BUDGET` defaults to `12h` and cannot exceed 12 hours. The worker finishes
