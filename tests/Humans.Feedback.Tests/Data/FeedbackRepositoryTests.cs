@@ -66,7 +66,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task FindForMutationAsync_ReturnsTrackedEntity()
+    public async Task FindForMutationAsync_ThenSaveTrackedReportAsync_PersistsTheChange()
     {
         var reportId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -86,7 +86,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var result = await _repo.FindForMutationAsync(reportId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        // Mutate and save through the repository.
         result.Status = FeedbackStatus.Resolved;
         await _repo.SaveTrackedReportAsync(result, Xunit.TestContext.Current.CancellationToken);
 
