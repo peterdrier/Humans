@@ -262,9 +262,8 @@ internal sealed class ShiftManagementService(
         rota.UpdatedAt = clock.GetCurrentInstant();
         try
         {
-            await repo.SaveRotaAsync(rota, EntityMutationMode.Add);
-            if (tagIds is { Count: > 0 })
-                await repo.SetRotaTagsAsync(rota.Id, tagIds);
+            await repo.SaveRotaAsync(rota, EntityMutationMode.Add,
+                tagIds: tagIds is { Count: > 0 } ? tagIds : null);
         }
         finally
         {
@@ -287,9 +286,7 @@ internal sealed class ShiftManagementService(
         rota.UpdatedAt = clock.GetCurrentInstant();
         try
         {
-            await repo.SaveRotaAsync(rota, EntityMutationMode.Update);
-            if (input.TagIds is not null)
-                await repo.SetRotaTagsAsync(rota.Id, input.TagIds);
+            await repo.SaveRotaAsync(rota, EntityMutationMode.Update, tagIds: input.TagIds);
         }
         finally
         {
@@ -361,7 +358,6 @@ internal sealed class ShiftManagementService(
     {
         var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
         return rotas
-            .OrderBy(r => r.Name, StringComparer.Ordinal)
             .Select(r => new ShiftAdminRota(
                 ToRotaInfo(r),
                 [.. r.Shifts.Select(s => new ShiftAdminShift(
@@ -1010,14 +1006,8 @@ internal sealed class ShiftManagementService(
                         {
                             UserInfo? user = null;
                             userLookup?.TryGetValue(ss.UserId, out user);
-                            return (
-                                ss.UserId,
-                                DisplayName: user?.BurnerName ?? string.Empty,
-                                ss.Status);
+                            return new ShiftSignupInfo(ss.UserId, user?.BurnerName ?? string.Empty, ss.Status);
                         })
-                        .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
-                        .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
-                        .Select(ss => new ShiftSignupInfo(ss.UserId, ss.DisplayName, ss.Status))
                         .ToList()
                     : [];
                 return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups);
@@ -1318,7 +1308,6 @@ internal sealed class ShiftManagementService(
         // Display order (sub-team beside parent) lives in the view model.
         return pieTeams
             .Where(t => requested.GetValueOrDefault(t.Id) > 0)
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new DepartmentCoveragePie(
                 TeamId: t.Id,
                 TeamName: t.Name,
@@ -1345,7 +1334,6 @@ internal sealed class ShiftManagementService(
         return teams.Values
             .Where(t => rotaOwningIds.Contains(t.Id))
             .Select(t => (t.Id, t.Name))
-            .OrderBy(x => x.Name, StringComparer.Ordinal)
             .ToList();
     }
 
@@ -1445,19 +1433,15 @@ internal sealed class ShiftManagementService(
             staffing.TotalSlots > 0 ? 100.0 * staffing.FilledSlots / staffing.TotalSlots : 0d;
     }
 
+    private static Guid DepartmentIdOf(Guid teamId, IReadOnlyDictionary<Guid, TeamInfo> teams) =>
+        teams.TryGetValue(teamId, out var team) ? team.ParentTeamId ?? team.Id : teamId;
+
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,
         Dictionary<Guid, int> confirmedCounts,
         EventSettingsInfo es,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
-        Guid DeptIdOf(Shift s)
-        {
-            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team))
-                return s.Rota.TeamId; // Team row vanished — fall back to the rota's team id.
-            return team.ParentTeamId ?? team.Id;
-        }
-
         string NameOf(Guid teamId) =>
             teamLookup.TryGetValue(teamId, out var t) ? t.Name : string.Empty;
 
@@ -1465,7 +1449,7 @@ internal sealed class ShiftManagementService(
             teamLookup.TryGetValue(teamId, out var t) ? t.Slug : null;
 
         var groups = shifts
-            .GroupBy(DeptIdOf)
+            .GroupBy(s => DepartmentIdOf(s.Rota.TeamId, teamLookup))
             .ToList();
 
         var rows = new List<DepartmentStaffingRow>();
@@ -1503,12 +1487,6 @@ internal sealed class ShiftManagementService(
                         dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
                         dAgg.Build, dAgg.Event, dAgg.Strike));
                 }
-
-                subgroups = subgroups
-                    .OrderByDescending(r => r.IsDirect)
-                    .ThenBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
-                    .ThenBy(r => r.Name, StringComparer.Ordinal)
-                    .ToList();
             }
 
             rows.Add(new DepartmentStaffingRow(
@@ -1518,10 +1496,7 @@ internal sealed class ShiftManagementService(
                 subgroups));
         }
 
-        return rows
-            .OrderBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
-            .ThenBy(r => r.DepartmentName, StringComparer.Ordinal)
-            .ToList();
+        return rows;
     }
 
     private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
@@ -1639,7 +1614,6 @@ internal sealed class ShiftManagementService(
                             c.UserId,
                             user?.LastLoginAt);
                     })
-                    .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
                     .ToList());
 
         CoordinatorActivityRow BuildRow(Guid teamId)
@@ -1653,8 +1627,6 @@ internal sealed class ShiftManagementService(
 
             var subgroups = childIds
                 .Select(BuildRow)
-                .OrderBy(SubtreeOldestLogin)
-                .ThenBy(r => r.TeamName, StringComparer.Ordinal)
                 .ToList();
 
             var aggregate = ownPending + subgroups.Sum(s => s.AggregatePendingCount);
@@ -1671,26 +1643,7 @@ internal sealed class ShiftManagementService(
         return rootIds
             .Select(BuildRow)
             .Where(r => r.AggregatePendingCount > 0)
-            .OrderBy(SubtreeOldestLogin)
-            .ThenBy(r => r.TeamName, StringComparer.Ordinal)
             .ToList();
-
-        static Instant SubtreeOldestLogin(CoordinatorActivityRow row)
-        {
-            var oldest = Instant.MaxValue;
-            var found = false;
-            void Walk(CoordinatorActivityRow r)
-            {
-                foreach (var c in r.Coordinators)
-                {
-                    var lv = c.LastLoginAt ?? Instant.MinValue;
-                    if (!found || lv < oldest) { oldest = lv; found = true; }
-                }
-                foreach (var sub in r.Subgroups) Walk(sub);
-            }
-            Walk(row);
-            return found ? oldest : Instant.MinValue;
-        }
     }
 
     public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
@@ -1828,7 +1781,6 @@ internal sealed class ShiftManagementService(
             }
 
             var depts = byDept.Values
-                .OrderBy(v => v.Name, StringComparer.Ordinal)
                 .Select(v => new DepartmentDayCount(v.Name, v.Count))
                 .ToList();
 
@@ -1928,11 +1880,6 @@ internal sealed class ShiftManagementService(
                 cells));
         }
 
-        rows = rows
-            .OrderBy(r => r.DepartmentName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(r => r.RotaName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
         return new CoverageHeatmap(days, rows);
     }
 
@@ -2006,8 +1953,6 @@ internal sealed class ShiftManagementService(
                 DurationHours: g.Key.Hours,
                 TotalSlots: g.Sum(s => s.MaxVolunteers),
                 FilledSlots: g.Sum(FilledSlotsOn)))
-            .OrderByDescending(r => r.IsAllDay)
-            .ThenBy(r => r.DurationHours)
             .ToList();
 
         return grouped;
@@ -2129,12 +2074,6 @@ internal sealed class ShiftManagementService(
         var teamIdsOnRotas = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIdsOnRotas, ct);
 
-        Guid DeptIdOf(Shift s)
-        {
-            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return s.Rota.TeamId;
-            return team.ParentTeamId ?? team.Id;
-        }
-
         string DeptNameOf(Guid deptId) =>
             teamLookup.TryGetValue(deptId, out var t) ? t.Name : string.Empty;
 
@@ -2149,7 +2088,7 @@ internal sealed class ShiftManagementService(
 
         foreach (var shift in allShifts)
         {
-            var deptId = DeptIdOf(shift);
+            var deptId = DepartmentIdOf(shift.Rota.TeamId, teamLookup);
             var period = shift.GetShiftPeriod(es);
 
             if (!deptBuckets.TryGetValue(deptId, out var periodBucket))

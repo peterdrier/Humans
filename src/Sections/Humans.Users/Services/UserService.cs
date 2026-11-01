@@ -218,6 +218,12 @@ internal sealed class UserService(
         await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
     }
 
+    public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
+    {
+        if (await repo.SetMarkedFakeAsync(userId, clock.GetCurrentInstant(), ct))
+            await audit.LogAsync(UsersAuditActions.AccountMarkedFake, nameof(User), userId, reason, actorUserId);
+    }
+
     public Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default) =>
@@ -480,7 +486,7 @@ internal sealed class UserService(
         await repo.UpdateAsync(profile, ct);
     }
 
-    public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
+    internal async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
         CancellationToken ct = default)
     {

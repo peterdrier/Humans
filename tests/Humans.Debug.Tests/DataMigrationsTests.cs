@@ -109,11 +109,14 @@ public class DataMigrationsTests
     [HumansFact]
     public async Task Screen_lists_the_reports()
     {
+        var original = _migrations.Migrations().Single();
+        _migrations.Additional = [original with { Key = "zz.alpha", Section = "Alpha" }, original with { Key = "aa.fake" }];
         var result = await Controller(_actorId).Index(Ct);
 
-        result.Should().BeOfType<ViewResult>()
-            .Which.Model.Should().BeAssignableTo<IReadOnlyList<DataMigrationReport>>()
-            .Which.Should().ContainSingle(r => string.Equals(r.Migration.Key, Key, StringComparison.Ordinal) && r.Status.Pending == 2);
+        var reports = result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeAssignableTo<IReadOnlyList<DataMigrationReport>>().Which;
+        reports.Select(report => report.Migration.Key).Should().Equal("zz.alpha", "aa.fake", Key);
+        reports.Should().ContainSingle(r => string.Equals(r.Migration.Key, Key, StringComparison.Ordinal) && r.Status.Pending == 2);
     }
 
     [HumansFact]
@@ -154,6 +157,8 @@ public class DataMigrationsTests
     [HumansFact]
     public async Task Endpoint_publishes_keys_counts_and_done_but_never_row_data()
     {
+        var original = _migrations.Migrations().Single();
+        _migrations.Additional = [original with { Key = "zz.alpha", Section = "Alpha" }, original with { Key = "aa.fake" }];
         var http = new DefaultHttpContext { RequestServices = _services };
         http.Response.Body = new MemoryStream();
 
@@ -165,7 +170,11 @@ public class DataMigrationsTests
 
         using var json = JsonDocument.Parse(body);
         json.RootElement.EnumerateObject().Select(p => p.Name).Should().Equal("version", "migrations");
-        var migration = json.RootElement.GetProperty("migrations").EnumerateArray().Should().ContainSingle().Subject;
+        var migrations = json.RootElement.GetProperty("migrations").EnumerateArray().ToList();
+        migrations.Select(migration => migration.GetProperty("key").GetString()).Should().Equal("zz.alpha", "aa.fake", Key);
+        foreach (var item in migrations)
+            item.EnumerateObject().Select(property => property.Name).Should().Equal("key", "pending", "done");
+        var migration = migrations.Single(item => string.Equals(item.GetProperty("key").GetString(), Key, StringComparison.Ordinal));
         migration.EnumerateObject().Select(p => p.Name).Should().Equal("key", "pending", "done");
         migration.GetProperty("key").GetString().Should().Be(Key);
         migration.GetProperty("pending").GetInt32().Should().Be(2);
@@ -203,6 +212,7 @@ public class DataMigrationsTests
     {
         public int ApplyCalls { get; private set; }
         public Guid? LastActor { get; private set; }
+        public IReadOnlyList<DataMigration> Additional { get; set; } = [];
 
         public IEnumerable<DataMigration> Migrations() =>
         [
@@ -217,6 +227,7 @@ public class DataMigrationsTests
                     pending.Clear();
                     return Task.FromResult(written);
                 }),
+            .. Additional,
         ];
     }
 }

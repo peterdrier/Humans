@@ -40,116 +40,17 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Onboarding_ReviewTitle" xml:space="preserve">
-    <value>Cola de revisión de incorporación</value>
-  </data>
-  <data name="Onboarding_ReviewNoPending" xml:space="preserve">
-    <value>Ningún humano está esperando revisión.</value>
-  </data>
-  <data name="Onboarding_ReviewPendingSection" xml:space="preserve">
-    <value>Pendientes de revisión</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve">
-    <value>Marcados para seguimiento</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve">
-    <value>Marcado</value>
-  </data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
     <value>Resumen del perfil</value>
-  </data>
-  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve">
-    <value>Resumen del nuevo human</value>
   </data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve">
     <value>Nombre legal</value>
   </data>
-  <data name="Onboarding_ReviewHasApplication" xml:space="preserve">
-    <value>Tiene solicitud</value>
-  </data>
-  <data name="Onboarding_ReviewSigned" xml:space="preserve">
-    <value>firmados</value>
-  </data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
     <value>Motivación de la solicitud</value>
   </data>
-  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve">
-    <value>Notas de revisión anteriores</value>
-  </data>
-  <data name="Onboarding_ReviewActions" xml:space="preserve">
-    <value>Acciones</value>
-  </data>
   <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
     <value>Notas opcionales...</value>
-  </data>
-  <data name="Onboarding_ReviewClearButton" xml:space="preserve">
-    <value>Aprobar y activar</value>
-  </data>
-  <data name="Onboarding_ReviewClearHelp" xml:space="preserve">
-    <value>Aprueba la revisión del perfil. El humano se unirá a Voluntarios cuando los documentos legales también estén firmados.</value>
-  </data>
-  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve">
-    <value>Esto aprobará la revisión del perfil de este humano. ¿Continuar?</value>
-  </data>
-  <data name="Onboarding_ReviewFlagButton" xml:space="preserve">
-    <value>Marcar para revisión</value>
-  </data>
-  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve">
-    <value>Motivo del marcado...</value>
-  </data>
-  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve">
-    <value>Esto marcará a este humano para revisión adicional. ¿Continuar?</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve">
-    <value>Este humano ya ha sido aprobado.</value>
-  </data>
-  <data name="Onboarding_ReviewCleared" xml:space="preserve">
-    <value>Revisión de perfil aprobada.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve">
-    <value>No se aprobó ningún humano seleccionado.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve">
-    <value>Se aprobaron {0} humanos seleccionados.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve">
-    <value>Se aprobaron {0} de {1} seleccionados — los demás ya no son elegibles.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve">
-    <value>Aprobar todos los seleccionados</value>
-  </data>
-  <data name="Onboarding_ReviewFlagged" xml:space="preserve">
-    <value>Humano marcado para revisión adicional.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectButton" xml:space="preserve">
-    <value>Rechazar registro</value>
-  </data>
-  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve">
-    <value>Motivo del rechazo...</value>
-  </data>
-  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve">
-    <value>¿Está seguro de que desea rechazar el registro de este human? Esta acción no se puede deshacer.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve">
-    <value>Rechazar denegará permanentemente el registro de este human y enviará un email de notificación.</value>
-  </data>
-  <data name="Onboarding_ReviewRejected" xml:space="preserve">
-    <value>El registro ha sido rechazado.</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve">
-    <value>Este human ya ha sido rechazado.</value>
-  </data>
-  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve">
-    <value>Documentos legales</value>
-  </data>
-  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve">
-    <value>Completo</value>
-  </data>
-  <data name="Onboarding_ReviewDocsPending" xml:space="preserve">
-    <value>Pendiente</value>
-  </data>
-  <data name="Onboarding_ReviewDocsNote" xml:space="preserve">
-    <value>La revisión del perfil puede realizarse de forma independiente. El humano se unirá a Voluntarios cuando todos los documentos estén firmados.</value>
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Completa la configuración de tu cuenta para acceder a los turnos y las funciones de equipo.</value>
@@ -296,8 +197,6 @@
   <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
     <value>Los equipos que hacen que todo funcione — sonido, seguridad, construcción, todo</value>
   </data>
-  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Revisar</value></data>
-  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Seleccionar {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>¿Seguro que quieres solicitar la eliminación de la cuenta? Puedes cancelarlo antes de la fecha de eliminación.</value></data>
   <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
     <value>Acerca de su registro</value>

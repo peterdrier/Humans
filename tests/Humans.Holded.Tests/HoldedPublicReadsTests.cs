@@ -170,12 +170,13 @@ public sealed class HoldedPublicReadsTests
 
         var chart = await _service.GetChartAsync(ct);
 
-        chart.Select(a => a.Number).Should().Equal(57000000, 57200001, 62900001);
-        chart[0].EnglishName.Should().Be("Cash, euros");
-        chart[1].EnglishName.Should().BeNull("a bank's own name is not the standard one");
-        chart[2].EnglishName.Should().BeNull("629 category accounts keep their name");
-        chart[2].Archived.Should().BeTrue();
-        chart[1].HoldedBalance.Should().Be(1_000m);
+        chart.Select(a => a.Number).Should().BeEquivalentTo([57000000, 57200001, 62900001]);
+        var byNumber = chart.ToDictionary(a => a.Number);
+        byNumber[57000000].EnglishName.Should().Be("Cash, euros");
+        byNumber[57200001].EnglishName.Should().BeNull("a bank's own name is not the standard one");
+        byNumber[62900001].EnglishName.Should().BeNull("629 category accounts keep their name");
+        byNumber[62900001].Archived.Should().BeTrue();
+        byNumber[57200001].HoldedBalance.Should().Be(1_000m);
         typeof(HoldedChartAccountInfo).GetProperties().Select(p => p.Name).Should().NotContain("HoldedId");
     }
 
@@ -196,9 +197,9 @@ public sealed class HoldedPublicReadsTests
 
         var page = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);
 
-        page.Groups.Select(g => (g.Digit, g.Name)).Should().Equal(
-            (4, "Receivables and payables"), (5, "Financial accounts"));
-        var bank = page.Groups[1];
+        page.Groups.Select(g => (g.Digit, g.Name)).Should().BeEquivalentTo([
+            (4, "Receivables and payables"), (5, "Financial accounts")]);
+        var bank = page.Groups.Single(group => group.Digit == 5);
         bank.Accounts.Select(a => a.Number).Should().Equal(57200001);
         bank.HoldedBalance.Should().Be(500m);
         bank.MirrorBalance.Should().Be(400m);
@@ -208,7 +209,8 @@ public sealed class HoldedPublicReadsTests
         page.HiddenEmpty.Should().Be(1);
 
         var all = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(ShowArchived: true, ShowEmpty: true), ct);
-        all.Groups[1].Accounts.Select(a => a.Number).Should().Equal(57200001, 57200002, 57200003);
+        all.Groups.Single(group => group.Digit == 5).Accounts.Select(a => a.Number)
+            .Should().BeEquivalentTo([57200001, 57200002, 57200003]);
 
         var mismatched = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(Mismatched: true), ct);
         mismatched.Groups.SelectMany(g => g.Accounts).Select(a => a.Number).Should().Equal(57200001);

@@ -111,7 +111,7 @@ internal sealed class CalendarController : HumansControllerBase
         var from = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = gridEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, zone, teamId, ct);
+        var occ = OrderForDisplay(await _calendarRead.GetOccurrencesInWindowAsync(from, to, zone, teamId, ct), zone);
 
         return new CalendarMonthViewModel(
             Month: ym,
@@ -182,7 +182,7 @@ internal sealed class CalendarController : HumansControllerBase
             return BadRequest();
         }
 
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, zone, teamId, ct);
+        var occ = OrderForDisplay(await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, zone, teamId, ct), zone);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
     }
 
@@ -206,7 +206,7 @@ internal sealed class CalendarController : HumansControllerBase
         var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
         var to = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
 
-        var occ = await _calendarRead.GetOccurrencesInWindowAsync(from, to, zone, teamId, ct);
+        var occ = OrderForDisplay(await _calendarRead.GetOccurrencesInWindowAsync(from, to, zone, teamId, ct), zone);
 
         ViewData["TeamName"] = team.Name;
         return View(new CalendarMonthViewModel(
@@ -225,7 +225,8 @@ internal sealed class CalendarController : HumansControllerBase
         var zone = GetViewerZone();
         var now = _clock.GetCurrentInstant();
         var horizon = now.Plus(Duration.FromDays(180));
-        var upcoming = (await _calendarRead.GetOccurrencesInWindowAsync(now, horizon, zone, ev.OwningTeamId, ct))
+        var upcoming = OrderForDisplay(
+                await _calendarRead.GetOccurrencesInWindowAsync(now, horizon, zone, ev.OwningTeamId, ct), zone)
             .Where(o => o.EventId == id)
             .Take(5)
             .ToList();
@@ -504,6 +505,13 @@ internal sealed class CalendarController : HumansControllerBase
             result.ErrorMessage?.StartsWith("Calendar_", StringComparison.Ordinal) == true
                 ? _localizer[result.ErrorMessage] : result.ErrorMessage ?? _localizer["Calendar_SaveFailed"]);
     }
+
+    /// <summary>All-day dates stay floating; timed items sort by their viewer-local date, then instant.</summary>
+    private static IReadOnlyList<CalendarOccurrence> OrderForDisplay(
+        IEnumerable<CalendarOccurrence> occurrences, DateTimeZone viewerZone) => occurrences
+        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(viewerZone).Date)
+        .ThenBy(o => o.OccurrenceStartUtc)
+        .ToList();
 
     private DateTimeZone GetViewerZone() =>
         HttpContext.Session.GetUserTimeZone("Europe/Madrid");

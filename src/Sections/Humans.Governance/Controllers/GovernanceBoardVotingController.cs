@@ -28,6 +28,7 @@ internal sealed class GovernanceBoardVotingController(
         var viewModel = new BoardVotingDashboardViewModel
         {
             BoardMembers = boardMembers
+                .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Select(m => new BoardVoteMemberViewModel
                 {
                     UserId = m.UserId

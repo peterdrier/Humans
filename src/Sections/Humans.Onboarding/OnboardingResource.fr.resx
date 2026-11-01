@@ -40,116 +40,17 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Onboarding_ReviewTitle" xml:space="preserve">
-    <value>File d'attente d'intégration</value>
-  </data>
-  <data name="Onboarding_ReviewNoPending" xml:space="preserve">
-    <value>Aucun human n'attend de révision.</value>
-  </data>
-  <data name="Onboarding_ReviewPendingSection" xml:space="preserve">
-    <value>En attente d'examen</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve">
-    <value>Signalé pour suivi</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve">
-    <value>Signalé</value>
-  </data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
     <value>Résumé du profil</value>
-  </data>
-  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve">
-    <value>Résumé du nouveau human</value>
   </data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve">
     <value>Nom légal</value>
   </data>
-  <data name="Onboarding_ReviewHasApplication" xml:space="preserve">
-    <value>A une candidature</value>
-  </data>
-  <data name="Onboarding_ReviewSigned" xml:space="preserve">
-    <value>signé(s)</value>
-  </data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
     <value>Motivation de la candidature</value>
   </data>
-  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve">
-    <value>Notes d'examen précédentes</value>
-  </data>
-  <data name="Onboarding_ReviewActions" xml:space="preserve">
-    <value>Actions</value>
-  </data>
   <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
     <value>Notes facultatives...</value>
-  </data>
-  <data name="Onboarding_ReviewClearButton" xml:space="preserve">
-    <value>Valider &amp; Approuver</value>
-  </data>
-  <data name="Onboarding_ReviewClearHelp" xml:space="preserve">
-    <value>Approuve la révision du profil. Le human rejoindra les Bénévoles lorsque les documents légaux seront également signés.</value>
-  </data>
-  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve">
-    <value>La révision du profil de ce human sera validée. Continuer ?</value>
-  </data>
-  <data name="Onboarding_ReviewFlagButton" xml:space="preserve">
-    <value>Signaler pour examen</value>
-  </data>
-  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve">
-    <value>Motif du signalement...</value>
-  </data>
-  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve">
-    <value>Ce human sera signalé pour examen complémentaire. Continuer ?</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve">
-    <value>Ce human a déjà été validé.</value>
-  </data>
-  <data name="Onboarding_ReviewCleared" xml:space="preserve">
-    <value>Révision du profil validée.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve">
-    <value>Aucun human sélectionné n'a été validé.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve">
-    <value>{0} humans sélectionnés validés.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve">
-    <value>{0} sur {1} sélectionnés validés — les autres ne sont plus éligibles.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve">
-    <value>Valider tous les sélectionnés</value>
-  </data>
-  <data name="Onboarding_ReviewFlagged" xml:space="preserve">
-    <value>Human signalé pour examen complémentaire.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectButton" xml:space="preserve">
-    <value>Refuser l'inscription</value>
-  </data>
-  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve">
-    <value>Motif du refus...</value>
-  </data>
-  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve">
-    <value>Êtes-vous sûr de vouloir refuser l'inscription de ce human ? Cette action est irréversible.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve">
-    <value>Le refus refusera définitivement l'inscription de ce human et enverra un email de notification.</value>
-  </data>
-  <data name="Onboarding_ReviewRejected" xml:space="preserve">
-    <value>L'inscription a été refusée.</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve">
-    <value>Ce human a déjà été refusé.</value>
-  </data>
-  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve">
-    <value>Documents légaux</value>
-  </data>
-  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve">
-    <value>Complet</value>
-  </data>
-  <data name="Onboarding_ReviewDocsPending" xml:space="preserve">
-    <value>En attente</value>
-  </data>
-  <data name="Onboarding_ReviewDocsNote" xml:space="preserve">
-    <value>La révision du profil peut se faire indépendamment. Le human rejoindra les Bénévoles lorsque tous les documents seront signés.</value>
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Terminez la configuration de votre compte pour accéder aux créneaux et aux fonctionnalités d'équipe.</value>
@@ -296,8 +197,6 @@
   <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
     <value>Les équipes qui font tourner la machine — son, sécurité, construction, tout</value>
   </data>
-  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Examiner</value></data>
-  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Sélectionner {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Voulez-vous vraiment demander la suppression du compte ? Vous pouvez annuler avant la date de suppression.</value></data>
   <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
     <value>Concernant votre inscription</value>

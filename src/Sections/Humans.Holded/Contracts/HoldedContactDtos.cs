@@ -8,8 +8,6 @@ public sealed record HoldedContactInput
     public required string Name { get; init; }
     /// <summary>Burner/display name. Only ever set alongside a legal <see cref="Name"/>.</summary>
     public string? TradeName { get; init; }
-    /// <summary>The Humans UserId. Not sent: v2's contacts POST has no <c>custom_id</c> (read-only on GET).</summary>
-    public string? CustomId { get; init; }
     /// <summary>Decides the account series Holded mints: <c>creditor</c> 410xxxxx, <c>supplier</c> 400xxxxx,
     /// <c>client</c>/<c>debtor</c> 430xxxxx. Expense-report members are creditors, apart from the 400 proveedores
     /// paid by invoice; Store's factura counterparties are clients.</summary>

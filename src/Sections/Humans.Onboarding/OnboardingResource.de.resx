@@ -40,116 +40,17 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Onboarding_ReviewTitle" xml:space="preserve">
-    <value>Onboarding-Prüfwarteschlange</value>
-  </data>
-  <data name="Onboarding_ReviewNoPending" xml:space="preserve">
-    <value>Keine Humans warten auf eine Prüfung.</value>
-  </data>
-  <data name="Onboarding_ReviewPendingSection" xml:space="preserve">
-    <value>Ausstehende Prüfung</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve">
-    <value>Zur Nachverfolgung markiert</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve">
-    <value>Markiert</value>
-  </data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
     <value>Profilübersicht</value>
-  </data>
-  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve">
-    <value>Neuer Human – Zusammenfassung</value>
   </data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve">
     <value>Bürgerlicher Name</value>
   </data>
-  <data name="Onboarding_ReviewHasApplication" xml:space="preserve">
-    <value>Hat Antrag</value>
-  </data>
-  <data name="Onboarding_ReviewSigned" xml:space="preserve">
-    <value>unterzeichnet</value>
-  </data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
     <value>Antragsmotivation</value>
   </data>
-  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve">
-    <value>Frühere Prüfnotizen</value>
-  </data>
-  <data name="Onboarding_ReviewActions" xml:space="preserve">
-    <value>Aktionen</value>
-  </data>
   <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
     <value>Optionale Notizen...</value>
-  </data>
-  <data name="Onboarding_ReviewClearButton" xml:space="preserve">
-    <value>Freigeben &amp; Genehmigen</value>
-  </data>
-  <data name="Onboarding_ReviewClearHelp" xml:space="preserve">
-    <value>Genehmigt die Profilüberprüfung. Der Human tritt Freiwilligen bei, wenn auch die rechtlichen Dokumente unterzeichnet sind.</value>
-  </data>
-  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve">
-    <value>Die Profilüberprüfung dieses Humans wird freigegeben. Fortfahren?</value>
-  </data>
-  <data name="Onboarding_ReviewFlagButton" xml:space="preserve">
-    <value>Zur Prüfung markieren</value>
-  </data>
-  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve">
-    <value>Grund der Markierung...</value>
-  </data>
-  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve">
-    <value>Dieser Human wird zur weiteren Prüfung markiert. Fortfahren?</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve">
-    <value>Dieser Human wurde bereits freigegeben.</value>
-  </data>
-  <data name="Onboarding_ReviewCleared" xml:space="preserve">
-    <value>Profilüberprüfung freigegeben.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve">
-    <value>Keine ausgewählten Humans wurden freigegeben.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve">
-    <value>{0} ausgewählte Humans freigegeben.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve">
-    <value>{0} von {1} ausgewählten freigegeben — die anderen sind nicht mehr berechtigt.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve">
-    <value>Alle ausgewählten freigeben</value>
-  </data>
-  <data name="Onboarding_ReviewFlagged" xml:space="preserve">
-    <value>Human zur weiteren Prüfung markiert.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectButton" xml:space="preserve">
-    <value>Anmeldung ablehnen</value>
-  </data>
-  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve">
-    <value>Ablehnungsgrund...</value>
-  </data>
-  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve">
-    <value>Sind Sie sicher, dass Sie die Anmeldung dieses Humans ablehnen möchten? Dies kann nicht rückgängig gemacht werden.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve">
-    <value>Die Ablehnung verweigert die Anmeldung dieses Humans dauerhaft und sendet eine Benachrichtigungs-E-Mail.</value>
-  </data>
-  <data name="Onboarding_ReviewRejected" xml:space="preserve">
-    <value>Die Anmeldung wurde abgelehnt.</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve">
-    <value>Dieser Human wurde bereits abgelehnt.</value>
-  </data>
-  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve">
-    <value>Rechtliche Dokumente</value>
-  </data>
-  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve">
-    <value>Vollständig</value>
-  </data>
-  <data name="Onboarding_ReviewDocsPending" xml:space="preserve">
-    <value>Ausstehend</value>
-  </data>
-  <data name="Onboarding_ReviewDocsNote" xml:space="preserve">
-    <value>Die Profilüberprüfung kann unabhängig erfolgen. Der Human tritt Freiwilligen bei, wenn alle Dokumente unterzeichnet sind.</value>
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Schließe die Einrichtung deines Kontos ab, um auf Schichten und Teamfunktionen zuzugreifen.</value>
@@ -296,8 +197,6 @@
   <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
     <value>Die Crews, die alles am Laufen halten — Sound, Sicherheit, Aufbau, alles</value>
   </data>
-  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Prüfen</value></data>
-  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>{0} auswählen</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Möchtest du wirklich die Löschung deines Kontos beantragen? Du kannst bis zum Löschdatum abbrechen.</value></data>
   <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
     <value>Bezüglich Ihrer Anmeldung</value>

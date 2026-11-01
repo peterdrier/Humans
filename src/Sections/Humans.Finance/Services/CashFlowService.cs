@@ -136,8 +136,6 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
                 GroupName = cg.Key.GroupName,
                 Amount = cg.Sum(x => x.Amount)
             })
-            .OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

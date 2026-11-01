@@ -344,11 +344,14 @@ public sealed class ConsentReviewServiceTests : IDisposable
         active.NeedsConsentReview(none with { IsApproved = true }).Should().BeFalse();
         tombstone.NeedsConsentReview(none).Should().BeFalse();
         (active with { State = UserState.Rejected }).NeedsConsentReview(none).Should().BeFalse();
+        // Fake accounts (gate terminal, dev personas) never count, so the queue, pill and meters agree.
+        (active with { IsFake = true }).NeedsConsentReview(none).Should().BeFalse();
 
         active.IsConsentCheckFlagged(flagged).Should().BeTrue();
         active.IsConsentCheckFlagged(flagged with { IsApproved = true }).Should().BeTrue();
         active.IsConsentCheckFlagged(flagged with { RejectedAt = Earlier }).Should().BeFalse();
         tombstone.IsConsentCheckFlagged(flagged).Should().BeFalse();
+        (active with { IsFake = true }).IsConsentCheckFlagged(flagged).Should().BeFalse();
     }
 
     [HumansFact]

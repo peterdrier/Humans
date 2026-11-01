@@ -20,7 +20,9 @@ internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSu
 
         string id = root.GetProperty("id").GetString() ?? throw new JsonException("subscriber.id missing");
         string email = root.GetProperty("email").GetString() ?? throw new JsonException("subscriber.email missing");
-        string status = root.TryGetProperty("status", out var st) ? st.GetString() ?? "" : "";
+        var status = ReadString(root, "status");
+        if (string.IsNullOrWhiteSpace(status))
+            throw new JsonException("subscriber.status missing");
         string source = root.TryGetProperty("source", out var sr) ? sr.GetString() ?? "" : "";
 
         Instant? subscribedAt = ParseDate(root, "subscribed_at");

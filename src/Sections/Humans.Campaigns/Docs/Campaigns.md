@@ -97,6 +97,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Invariants
 
+- Code-tracking summaries carry campaign creation time without display ordering. Tickets owns newest-campaign ordering and its report tie-breakers; grant counts and redemption matching are independent of summary order.
+
 - Create/edit validate trimmed title (200), description (2000), email subject (1000) and Reply-To (320) lengths before persistence. Nonblank Reply-To must be an email address; blank stays optional. Invalid forms redisplay field errors and preserve existing campaign data.
 - Placeholder expansion can make a valid subject template exceed the email queue's 1000-character limit. All campaign sends retain the complete rendered subject as an HTML-encoded leading body paragraph in that case, while shortening the subject header to 1000 Unicode characters including an ellipsis. Shorter subjects and their bodies remain unchanged; codes are preserved even when the authored body omits `{{Code}}`.
 
@@ -146,7 +148,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 - **Gdpr:** `IUserDataContributor` (grant export resolves archived account IDs to the survivor; erasure keeps its per-ID scope) and `IUserMerge` (`Humans.Gdpr.Contracts`), both implemented by `CampaignService`.
 - **AuditLog:** `IAuditLogService.LogAsync` records persisted admin mutations.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients. Its sources are declared in `CampaignsNotificationSources` (`src/Sections/Humans.Campaigns/CampaignsNotificationSources.cs`), one `NotificationSourceDefinition` each: `CampaignReceived` (informational, to campaign recipients: campaign code granted).
-- **Teams:** `ITeamService.GetTeamsAsync` (Send Wave team picker) and `ITeamService.GetTeamAsync` (team-scoped wave targeting).
+- **Teams:** `ITeamService.GetTeamsAsync` (Send Wave team picker) and `ITeamService.GetTeamAsync` (team-scoped wave targeting). The Send Wave view orders active team options by name with ordinal comparison; the service returns the available options without display ordering.
 
 ## Architecture
 

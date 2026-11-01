@@ -34,7 +34,11 @@ internal sealed record ActiveRequiredLegalDocumentSnapshot(
     Guid TeamId,
     string TeamName,
     Instant LastSyncedAt,
-    IReadOnlyList<LegalDocumentVersionSnapshot> Versions);
+    IReadOnlyList<LegalDocumentVersionSnapshot> Versions)
+{
+    public LegalDocumentVersionSnapshot? CurrentVersionAt(Instant now) =>
+        Versions.Where(version => version.EffectiveFrom <= now).MaxBy(version => version.EffectiveFrom);
+}
 
 internal sealed record LegalDocumentSnapshot(
     Guid Id,

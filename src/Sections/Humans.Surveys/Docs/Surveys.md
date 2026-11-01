@@ -180,6 +180,11 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
+- Question aggregates carry authored page and position metadata without display sorting. The results builder and Backdoor aggregate projection order questions by page, then position. Choice option counts likewise carry authored positions for these consumers to order; grid columns remain aligned with their cells.
+- Identified response data includes submission time and response-id metadata without display ordering. The results builder orders respondents by submission time, then response id. Anonymous/unattributed ballot ordering and identity-disclosure gates are unchanged.
+
+- The approval-queue controller orders pending submissions oldest first, with undated rows first, on both GET and rejection redisplay. The service supplies pending items and author names without display sorting.
+
 - Invited wizard starts reject invalid model binding and undefined anonymity values with HTTP 400 before creating drafts, marking an invitation started or storing wizard state. A malformed privacy choice never silently uses the model’s Identified default.
 
 - UI resource keys use the section prefix `Surveys_` in all six cultures; reflection-resolved `Enum_` keys retain their type-based names.

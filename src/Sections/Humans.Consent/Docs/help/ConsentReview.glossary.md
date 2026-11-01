@@ -1,4 +1,4 @@
-## Onboarding Review Glossary
+## Consent Review Glossary
 
 | Term | Definition |
 |------|-----------|

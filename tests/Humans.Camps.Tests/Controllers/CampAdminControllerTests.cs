@@ -26,6 +26,29 @@ public class CampAdminControllerTests
 {
     private static readonly Guid ActiveEventId = Guid.NewGuid();
 
+    [HumansFact]
+    public async Task Roles_orders_active_and_deactivated_definitions_by_position_then_name()
+    {
+        var camps = Substitute.For<ICampManagement>();
+        camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        var roles = Substitute.For<ICampRoleService>();
+        CampRoleDefinitionInfo Definition(string name, int order, bool active) =>
+            new(Guid.NewGuid(), name, "", null, 1, 1, order, default, default,
+                active ? null : Instant.FromUtc(2026, 1, 1, 0, 0), CampSpecialRole.None);
+        roles.ListDefinitionsAsync(true, Arg.Any<CancellationToken>()).Returns([
+            Definition("Zebra", 1, true), Definition("Old Zebra", 1, false),
+            Definition("Alpha", 1, true), Definition("Old Alpha", 1, false),
+            Definition("Priority", -1, true), Definition("Old Priority", -1, false),
+        ]);
+        var controller = CreateController(camps, roles, Substitute.For<IUserService>(), Guid.NewGuid());
+
+        var result = await controller.Roles(TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CampRoleDefinitionListViewModel>().Which;
+        model.Active.Select(role => role.Name).Should().Equal("Priority", "Alpha", "Zebra");
+        model.Deactivated.Select(role => role.Name).Should().Equal("Old Priority", "Old Alpha", "Old Zebra");
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]

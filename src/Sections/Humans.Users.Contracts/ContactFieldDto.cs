@@ -6,7 +6,10 @@ public record ContactFieldDto(
     ContactFieldType FieldType,
     string Label,
     string Value,
-    ContactFieldVisibility Visibility);
+    ContactFieldVisibility Visibility)
+{
+    public int DisplayOrder { get; init; }
+}
 
 public record ContactFieldEditDto(
     Guid? Id,

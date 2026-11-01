@@ -79,7 +79,7 @@ internal sealed class TicketTransferController(
         var earlyEntry = await earlyEntryService.GetForUserAsync(userId, ct);
         return new TicketTransferWizardViewModel
         {
-            MyTickets = mine,
+            MyTickets = mine.OrderBy(t => t.Ticket.AttendeeName, StringComparer.OrdinalIgnoreCase).ToList(),
             MyTransfers = transfers,
             HolderEarlyEntry = earlyEntry?.EarliestEntryDate,
             Confirm = confirm,

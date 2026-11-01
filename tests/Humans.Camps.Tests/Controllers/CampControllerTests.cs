@@ -612,10 +612,10 @@ public class CampControllerTests
                     _camps.RemoveCampMemberAsync(camp.Id, targetId, actorId).Returns(CampMembershipMutationResult.Failure(key));
                     result = controller.RemoveMembership(camp.Slug, targetId); break;
                 case "AddHistoricalName":
-                    _camps.AddHistoricalNameAsync(camp.Id, "Previous Name").Returns(CampUpdateResult.Failure(key));
+                    _camps.AddHistoricalNameAsync(camp.Id, "Previous Name", actorId).Returns(CampUpdateResult.Failure(key));
                     result = controller.AddHistoricalName(camp.Slug, "Previous Name"); break;
                 case "RemoveHistoricalName":
-                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId).Returns(CampUpdateResult.Failure(key));
+                    _camps.RemoveHistoricalNameAsync(camp.Id, targetId, actorId).Returns(CampUpdateResult.Failure(key));
                     result = controller.RemoveHistoricalName(camp.Slug, targetId); break;
                 case "DeleteImage":
                     _camps.DeleteImageAsync(camp.Id, targetId, actorUserId: Arg.Any<Guid>()).Returns(CampUpdateResult.Failure(key));
@@ -723,22 +723,41 @@ public class CampControllerTests
     [HumansFact]
     public async Task Index_BuildsPublicDirectory_FromCachedCampInfoRead()
     {
-        var matching = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, kidsWelcome: YesNoMaybe.Yes);
+        var matching = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, kidsWelcome: YesNoMaybe.Yes) with
+        {
+            Images = [new(Guid.NewGuid(), "/later.jpg", 3), new(Guid.NewGuid(), "/cover.jpg", 1)],
+        };
         var filteredOut = MakeCamp("zeta", "Zeta Camp", CampSeasonStatus.Full, kidsWelcome: YesNoMaybe.No);
         var pending = MakeCamp("pending", "Pending Camp", CampSeasonStatus.Pending);
         StubCampReadModel([matching, filteredOut, pending]);
+        _roles.GetDirectoryRoleSummariesAsync(EventIdFor(2026), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>
+            {
+                [matching.Seasons.Single().Id] = [
+                    new("Zebra", 2, 3) { SortOrder = 1 },
+                    new("Alpha", 0, 1) { SortOrder = 1 },
+                    new("Priority", 1, 1) { SortOrder = -1 },
+                ],
+            });
         var controller = BuildController();
 
-        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true }, TestContext.Current.CancellationToken);
+        var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true, ShowLeadPositions = true }, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampIndexViewModel>().Subject;
         vm.Year.Should().Be(2026);
         vm.Camps.Should().ContainSingle(c => c.Id == matching.Id);
+        vm.Camps.Single().ImageUrl.Should().Be("/cover.jpg");
+        vm.Camps.Single().LeadPositionPills.Select(pill => pill.Name).Should().Equal("Priority", "Alpha", "Zebra");
         vm.MyCamps.Should().BeEmpty();
         ((int)controller.ViewBag.PendingCount).Should().Be(1);
         await _camps.Received(1).GetSettingsAsync(Arg.Any<CancellationToken>());
         await _camps.Received(1).GetCampsForEventAsync(EventIdFor(2026), Arg.Any<CancellationToken>());
+
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([matching]);
+        var apiResult = await new CampApiController(_camps).GetCamps(2026, TestContext.Current.CancellationToken);
+        apiResult.Should().BeOfType<OkObjectResult>().Which.Value.Should()
+            .BeAssignableTo<IReadOnlyList<CampPublicSummary>>().Which.Single().ImageUrl.Should().Be("/cover.jpg");
     }
 
     [HumansFact]
@@ -1029,7 +1048,11 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CampRolesPanelData(season.Id, [])));
+            .Returns(new CampRolesPanelData(season.Id, [
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [], 1, false, 0),
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Alpha", SortOrder = 1 }, [], 1, false, 0),
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Priority", SortOrder = -1 }, [], 1, false, 0),
+            ]));
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(
                 new Dictionary<Guid, ShiftUserSummary>
@@ -1052,6 +1075,7 @@ public class CampControllerTests
 
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
+        vm.RolesPanel!.Rows.Select(row => row.Name).Should().Equal("Priority", "Alpha", "Zebra");
         vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
         vm.ActiveMembers.Single(m => m.UserId == oneShiftMemberId).EventShiftSignupCount.Should().Be(1);
         vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupCount.Should().Be(5);
@@ -1226,7 +1250,10 @@ public class CampControllerTests
             Guid.NewGuid(), memberUserId, CampMemberStatus.Active,
             Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 2, 0, 0),
             HasEarlyEntry: true);
-        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, members: [member]);
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, members: [member]) with
+        {
+            Images = [new(Guid.NewGuid(), "/later.jpg", 3), new(Guid.NewGuid(), "/cover.jpg", 1)],
+        };
         StubCampReadModel([camp]);
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CampInfo?>(camp));
@@ -1239,6 +1266,7 @@ public class CampControllerTests
         var result = await BuildController().Details(camp.Slug, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<ViewResult>().Subject.Model!;
+        vm.Should().BeOfType<CampDetailViewModel>().Which.ImageUrls.Should().Equal("/cover.jpg", "/later.jpg");
         var leaves = new List<(string Path, object? Value)>();
         CollectLeaves(vm, "vm", leaves, []);
 

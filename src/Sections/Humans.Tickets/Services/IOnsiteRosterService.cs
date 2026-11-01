@@ -5,7 +5,7 @@ namespace Humans.Tickets.Services;
 
 internal interface IOnsiteRosterService : IApplicationService
 {
-    /// <summary>Filters match names case-insensitively. Rows are unordered: the caller sorts.</summary>
+    /// <summary>Filters and name deduplication are case-insensitive. Rows and name lists are unordered: the caller sorts.</summary>
     Task<OnsiteRosterResult> GetRosterAsync(
         int year,
         string? campFilter,

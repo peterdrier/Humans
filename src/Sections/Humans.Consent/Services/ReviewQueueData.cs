@@ -2,7 +2,7 @@ using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Onboarding.Services;
+namespace Humans.Consent.Services;
 
 internal sealed record ReviewQueueData(
     List<UserInfo> Pending,

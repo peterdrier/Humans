@@ -64,8 +64,6 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 return Task.FromResult(map);
             });
 
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns([]);
 
         _cache = new CachingLegalDocumentSyncService(
             new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
@@ -105,9 +103,9 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var currentId = Guid.NewGuid();
         foreach (var (documentId, id, effectiveFrom) in new[]
         {
+            (document.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1))),
             (document.Id, Guid.NewGuid(), now.Minus(Duration.FromDays(1))),
             (document.Id, currentId, now),
-            (document.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1))),
             (futureOnly.Id, Guid.NewGuid(), now.Plus(Duration.FromDays(1)))
         })
         {
@@ -666,7 +664,10 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 State = id == inactiveId ? UserState.Rejected : UserState.Active
             },
             [], [], [], UserFixtures.Profile(), [])).ToList();
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
+        var outsiderId = Guid.NewGuid();
+        StubTeamRecipients(users, [UserInfo.Create(
+            new User { Id = outsiderId, PreferredLanguage = "es", State = UserState.Active },
+            [], [], [], UserFixtures.Profile(), [])]);
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "sha-1");
         if (update)
         {
@@ -706,7 +707,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         ((IReadOnlyList<Guid>)english[4]!).Should().BeEquivalentTo(englishIds);
         english[3].Should().Be(update ? "Privacy has been updated — re-consent required" : "New legal document published: Privacy");
         english[7].Should().Be("Review & Consent");
-        await _userService.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
+        notices.SelectMany(args => (IReadOnlyList<Guid>)args[4]!).Should().NotContain(outsiderId,
+            because: "only members of the document's team are notified");
     }
 
     [HumansFact]
@@ -851,8 +853,20 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             externalLogins: [],
             profile: profile,
             communicationPreferences: []);
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns([user]);
+        StubTeamRecipients([user], []);
+    }
+
+    private void StubTeamRecipients(IReadOnlyList<UserInfo> members, IReadOnlyList<UserInfo> outsiders)
+    {
+        _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
+        {
+            Members = members.Select(u => new TeamMemberInfo(
+                Guid.NewGuid(), u.Id, "Member", u.Email, null, TeamMemberRole.Member, default)).ToList()
+        });
+        var everyone = members.Concat(outsiders).ToDictionary(u => u.Id);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ci.ArgAt<IReadOnlyCollection<Guid>>(0)
+                .Where(everyone.ContainsKey).ToDictionary(id => id, id => everyone[id])));
     }
 
     private void StubGitHubFolder(string folderPath, string content, string sha, string commitMessage)

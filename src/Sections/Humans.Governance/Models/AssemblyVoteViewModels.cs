@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Governance.Models;
 
-/// <summary>Votes list page. The service already orders open votes first.</summary>
+/// <summary>Votes list page. The controller orders open votes first.</summary>
 internal sealed class AssemblyVoteListViewModel
 {
     public IReadOnlyList<AssemblyVoteListItem> Votes { get; init; } = [];

@@ -109,13 +109,13 @@ public sealed class ProfileCardViewComponent(
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
             ViewMode = viewMode,
             CanViewLegalName = canViewLegalName,
-            UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
+            UserEmails = visibleEmails.OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).Select(e => new UserEmailDisplayViewModel
             {
                 Email = e.Email,
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility
             }).ToList(),
-            ContactFields = contactFields.Select(cf => new ContactFieldViewModel
+            ContactFields = contactFields.OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldViewModel
             {
                 Id = cf.Id,
                 FieldType = cf.FieldType,
@@ -123,19 +123,24 @@ public sealed class ProfileCardViewComponent(
                 Value = cf.Value,
                 Visibility = cf.Visibility
             }).ToList(),
-            VolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryViewModel
-            {
-                Date = cv.Date,
-                EventName = cv.EventName,
-                Description = cv.Description
-            }).ToList(),
+            VolunteerHistory = (profile?.VolunteerHistory ?? [])
+                .OrderByDescending(cv => cv.Date)
+                .Select(cv => new VolunteerHistoryEntryViewModel
+                {
+                    Date = cv.Date,
+                    EventName = cv.EventName,
+                    Description = cv.Description
+                }).ToList(),
             Teams = displayableTeams,
-            Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
-            {
-                LanguageCode = pl.LanguageCode,
-                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
-                Proficiency = pl.Proficiency
-            }).ToList(),
+            Languages = (profile?.Languages ?? [])
+                .OrderByDescending(pl => pl.Proficiency)
+                .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
+                .Select(pl => new ProfileLanguageDisplayViewModel
+                {
+                    LanguageCode = pl.LanguageCode,
+                    LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                    Proficiency = pl.Proficiency
+                }).ToList(),
             PreferredLanguage = info.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)

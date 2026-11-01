@@ -16,7 +16,10 @@ internal sealed class DataMigrationsController(
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct) =>
-        View(await dataMigrations.GetReportsAsync(ct));
+        View((await dataMigrations.GetReportsAsync(ct))
+            .OrderBy(report => report.Migration.Section, StringComparer.Ordinal)
+            .ThenBy(report => report.Migration.Key, StringComparer.Ordinal)
+            .ToList());
 
     [HttpPost("Apply")]
     [Authorize(Policy = PolicyNames.AdminOnly)]

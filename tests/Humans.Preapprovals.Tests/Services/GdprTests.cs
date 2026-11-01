@@ -88,19 +88,24 @@ public sealed class GdprTests : PreapprovalsTestHarness
         (await db.Grants.FindAsync([open.Id], Ct))!.BeneficiaryUserId.Should().Be(person, "decided grants keep the beneficiary id under Art. 17(3)(b)");
     }
 
-    [HumansFact]
-    public async Task Merge_RekeysEveryColumn_DedupsManagers_CollapsesDuplicateApplications()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Merge_RekeysEveryColumn_DedupsManagers_CollapsesDuplicateApplications(bool selfAddedManager)
     {
         var from = SeedUser("Old");
         var to = SeedUser("New");
         var programA = await SeedProgramAsync(name: "A", managers: [from, to]);
         var programB = await SeedProgramAsync(name: "B", managers: from);
+        var managerAuthor = selfAddedManager ? from : programB.CreatedByUserId;
+        var managerAddedAt = programB.Managers.Single().AddedAt;
         var openUnderOld = await SeedGrantAsync(programA, from);
         var decidedByOld = await SeedGrantAsync(programB);
         await using (var db = OpenContext())
         {
             (await db.Grants.FindAsync([decidedByOld.Id], Ct))!.DecidedByUserId = from;
             (await db.Programs.FindAsync([programB.Id], Ct))!.CreatedByUserId = from;
+            (await db.Managers.SingleAsync(m => m.ProgramId == programB.Id && m.UserId == from, Ct)).AddedByUserId = managerAuthor;
             await db.SaveChangesAsync(Ct);
         }
         var olderApplication = await SeedGrantAsync(programA, to, status: GrantStatus.Applied);
@@ -116,6 +121,9 @@ public sealed class GdprTests : PreapprovalsTestHarness
         (await check.Programs.AnyAsync(p => p.CreatedByUserId == from, Ct)).Should().BeFalse();
         (await check.Managers.AnyAsync(m => m.UserId == from || m.AddedByUserId == from, Ct)).Should().BeFalse();
         (await check.Managers.Where(m => m.UserId == to).Select(m => m.ProgramId).ToListAsync(Ct)).Should().BeEquivalentTo([programA.Id, programB.Id]);
+        var movedManager = await check.Managers.SingleAsync(m => m.ProgramId == programB.Id && m.UserId == to, Ct);
+        movedManager.AddedByUserId.Should().Be(selfAddedManager ? to : managerAuthor);
+        movedManager.AddedAt.Should().Be(managerAddedAt);
         (await check.Grants.Select(g => g.Id).ToListAsync(Ct)).Should().BeEquivalentTo([openUnderOld.Id, decidedByOld.Id, olderApplication.Id, soleApplication.Id]);
         (await check.Grants.FindAsync([soleApplication.Id], Ct))!.BeneficiaryUserId.Should().Be(to);
         await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived,

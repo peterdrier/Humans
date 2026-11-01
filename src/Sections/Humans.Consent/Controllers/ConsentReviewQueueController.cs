@@ -2,23 +2,24 @@ using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Onboarding.Models;
+using Humans.Consent.Models;
+using Humans.Consent.Services;
 using Humans.Onboarding.Contracts;
-using Humans.Onboarding.Services;
 using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 
-namespace Humans.Onboarding.Controllers;
+namespace Humans.Consent.Controllers;
 
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
-[Route("[controller]")]
-internal sealed class OnboardingReviewController(
+[Route("Consent/ReviewQueue")]
+internal sealed class ConsentReviewQueueController(
     IUserService userService,
-    IOnboardingService onboardingService,
-    ILogger<OnboardingReviewController> logger,
-    IStringLocalizer<OnboardingResource> localizer,
+    IConsentReviewQueueService reviewQueue,
+    IOnboardingIntake onboarding,
+    ILogger<ConsentReviewQueueController> logger,
+    IStringLocalizer<ConsentResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
 {
     private readonly IUserService _userService = userService;
@@ -26,9 +27,9 @@ internal sealed class OnboardingReviewController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var data = await onboardingService.GetReviewQueueAsync(ct);
+        var data = await reviewQueue.GetReviewQueueAsync(ct);
 
-        var viewModel = new OnboardingReviewIndexViewModel
+        var viewModel = new ConsentReviewQueueIndexViewModel
         {
             PendingReviews = data.Pending.Select(u => MapToItem(u, data)).ToList(),
             FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data)).ToList()
@@ -49,14 +50,14 @@ internal sealed class OnboardingReviewController(
         if (detailUser.Id != userId)
             return RedirectToAction(nameof(Detail), new { userId = detailUser.Id });
 
-        var detail = await onboardingService.GetReviewDetailAsync(userId, ct);
+        var detail = await reviewQueue.GetReviewDetailAsync(userId, ct);
         var (profile, consentCount, requiredConsentCount, pendingApplicationMotivation) =
             (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplicationMotivation);
 
         if (profile is null)
             return NotFound();
 
-        var viewModel = new OnboardingReviewDetailViewModel
+        var viewModel = new ConsentReviewQueueDetailViewModel
         {
             UserId = userId,
             Email = detailUser.Email ?? string.Empty,
@@ -88,20 +89,20 @@ internal sealed class OnboardingReviewController(
 
         try
         {
-            var result = await onboardingService.ClearConsentCheckAsync(
+            var result = await reviewQueue.ClearAsync(
                 userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
                 SetError(result.ErrorKey switch
                 {
-                    "AlreadyRejected" => localizer["Onboarding_ReviewAlreadyRejected"].Value,
+                    "AlreadyRejected" => localizer["Consent_Queue_AlreadyRejected"].Value,
                     _ => sharedLocalizer["Common_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(localizer["Onboarding_ReviewCleared"].Value);
+            SetSuccess(localizer["Consent_Queue_Cleared"].Value);
         }
         catch (Exception ex)
         {
@@ -122,9 +123,8 @@ internal sealed class OnboardingReviewController(
 
         try
         {
-            var result = await onboardingService.BulkClearConsentChecksAsync(
-                selectedUserIds, currentUser.Id, ct);
-            SetBulkClearResultMessage(result, selectedUserIds.Count);
+            var cleared = await reviewQueue.BulkClearAsync(selectedUserIds, currentUser.Id, ct);
+            SetBulkClearResultMessage(cleared, selectedUserIds.Count);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -143,19 +143,19 @@ internal sealed class OnboardingReviewController(
         return RedirectToAction(nameof(Index));
     }
 
-    private void SetBulkClearResultMessage(BulkOnboardingResult result, int selectedCount)
+    private void SetBulkClearResultMessage(int cleared, int selectedCount)
     {
-        if (result.ApprovedCount == 0)
+        if (cleared == 0)
         {
-            SetInfo(localizer["Onboarding_ReviewBulkClearedNone"].Value);
+            SetInfo(localizer["Consent_Queue_BulkClearedNone"].Value);
         }
-        else if (result.ApprovedCount < selectedCount)
+        else if (cleared < selectedCount)
         {
-            SetSuccess(localizer["Onboarding_ReviewBulkClearedPartial", result.ApprovedCount, selectedCount].Value);
+            SetSuccess(localizer["Consent_Queue_BulkClearedPartial", cleared, selectedCount].Value);
         }
         else
         {
-            SetSuccess(localizer["Onboarding_ReviewBulkCleared", result.ApprovedCount].Value);
+            SetSuccess(localizer["Consent_Queue_BulkCleared", cleared].Value);
         }
     }
 
@@ -170,7 +170,7 @@ internal sealed class OnboardingReviewController(
 
         try
         {
-            var result = await onboardingService.FlagConsentCheckAsync(
+            var result = await reviewQueue.FlagAsync(
                 userId, currentUser.Id, notes);
 
             if (!result.Success)
@@ -179,7 +179,7 @@ internal sealed class OnboardingReviewController(
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(localizer["Onboarding_ReviewFlagged"].Value);
+            SetSuccess(localizer["Consent_Queue_Flagged"].Value);
         }
         catch (Exception ex)
         {
@@ -200,7 +200,7 @@ internal sealed class OnboardingReviewController(
 
         try
         {
-            var result = await onboardingService.RejectSignupAsync(
+            var result = await onboarding.RejectSignupAsync(
                 userId, currentUser.Id, reason);
 
             SetRejectSignupResultMessage(result);
@@ -217,20 +217,20 @@ internal sealed class OnboardingReviewController(
     {
         if (result.Success)
         {
-            SetSuccess(localizer["Onboarding_ReviewRejected"].Value);
+            SetSuccess(localizer["Consent_Queue_Rejected"].Value);
             return;
         }
 
         SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
-            ? localizer["Onboarding_ReviewAlreadyRejected"].Value
+            ? localizer["Consent_Queue_AlreadyRejected"].Value
             : sharedLocalizer["Common_Error"].Value);
     }
 
-    private static OnboardingReviewItemViewModel MapToItem(UserInfo info, ReviewQueueData data)
+    private static ConsentReviewQueueItemViewModel MapToItem(UserInfo info, ReviewQueueData data)
     {
         var progress = data.ConsentProgress.GetValueOrDefault(info.Id);
         var profile = info.Profile!;
-        return new OnboardingReviewItemViewModel
+        return new ConsentReviewQueueItemViewModel
         {
             UserId = info.Id,
             LegalName = profile.FullName,

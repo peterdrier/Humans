@@ -14,6 +14,11 @@ or not, can read the association's statutes. It also keeps the Consent Coordinat
 each new member (cleared, flagged, rejected with a reason) and shows the member their rejection
 reason, while the review queue itself lives in Onboarding.
 
+It also runs the Consent Coordinator's desk: the queue of new humans waiting to be looked at,
+and clear, bulk clear and flag, which write the coordinator's verdict to `consent_reviews`.
+Those are notes for the record. Reject is the one verb with consequences (account state,
+teams, the person's notice), so the desk hands it to `IOnboardingIntake.RejectSignupAsync`.
+
 ## The shapes
 
 | Shape | Question it answers | Surface |
@@ -24,6 +29,7 @@ reason, while the review queue itself lives in Onboarding.
 | Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncService` + internal reads, all views over one cached active+required set |
 | Keep documents current | "Has the source changed? Pull it." | the internal sync surface, the sync runner, the sync and reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
+| Coordinator review | "Who is waiting for a coordinator, and what do I do about them?" | `IConsentReviewQueueService` (internal), `/Consent/ReviewQueue` and `/Consent/ReviewQueue/{userId}`; reject goes to `IOnboardingIntake.RejectSignupAsync` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
 | Coordinator verdict | "Was this member cleared, flagged or rejected, and why?" | `IConsentService.GetConsentReviewAsync`/`GetConsentReviewsAsync`, `IConsentWrite`, two user-part view components |
 
@@ -49,6 +55,9 @@ Three aggregates and one content proxy, each with a single writer:
   profile fallback until the `consent.profile-review` copy retires), `ConsentReminderRepository` +
   `ConsentReminderService` (the reminder cooldown stamp).
 - **Statutes proxy**: `LegalDocumentService`, GitHub to IMemoryCache, no DB.
+- **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers,
+  pending applications) and the membership calculator, and writes through the section's own
+  `IConsentWrite`. It owns no repository.
 - Controllers translate only; jobs are schedule + metric + failure boundary over the sync runner
   and the reminder pass. Both jobs are internal: the section registers and schedules them itself.
 
@@ -81,8 +90,11 @@ Three aggregates and one content proxy, each with a single writer:
 
 ## Seams
 
-- **The Consent Coordinator review queue** lives in Onboarding (`/OnboardingReview`); this
-  section stores the verdicts and registers the policy that gates the queue.
+- **The Consent Coordinator review queue** lives here (`/Consent/ReviewQueue`), next to the
+  `consent_reviews` table it writes. Reject is Onboarding's orchestration
+  (`IOnboardingIntake.RejectSignupAsync`); Onboarding also sets the `Pending` status at the
+  review threshold through `IConsentWrite`. Fake accounts (Users' `UserInfo.IsFake`) never
+  count, through `ConsentReviewPredicates`.
 - **Retiring the legacy review fallback** waits on the `consent.profile-review` data migration in
   production; then `LegacyReview` and the profile review columns go.
 - `ILegalDocumentSyncService` cannot fold inward while Governance's `MembershipCalculator`

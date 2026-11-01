@@ -115,9 +115,9 @@ public abstract class WorkgroupsTestHarness : IDisposable
         AuditLog = Substitute.For<IAuditLogService>();
         Logger = new CapturingLogger<WorkgroupService>();
 
-        Holded = Substitute.For<IHoldedClient>();
-        Holded.ListExpenseAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountDto>>([]));
+        Holded = Substitute.For<IHoldedService>();
+        Holded.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedChartAccountInfo>>([]));
     }
 
     /// <summary>Null means "unset" — registration then refuses with RootFolderNotConfigured.</summary>
@@ -136,7 +136,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected IGoogleSyncService GoogleSyncRead { get; }
     private protected IGoogleSyncWrite GoogleSync { get; }
     private protected IHoldedFinanceWrite Finance { get; }
-    private protected IHoldedClient Holded { get; }
+    private protected IHoldedService Holded { get; }
     private protected INotificationService Notifications { get; }
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }

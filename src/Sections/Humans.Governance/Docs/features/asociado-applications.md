@@ -240,6 +240,8 @@ When an Application is approved:
 7. Individual BoardVote records deleted
 8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 
+Steps 1–5 and 7 commit together before team sync, audit and notices. A failed tier grant leaves the application Submitted and retains its Board votes.
+
 ## Business Rules
 
 1. **No Application for Volunteers**: Only Colaborador and Asociado require applications

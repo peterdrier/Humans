@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Onboarding.Contracts;
 using Humans.Tickets.Services;
@@ -19,7 +18,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     private readonly UserManager<User> _credentialUsers = Substitute.For<UserManager<User>>(
         Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
     private readonly IProfileEditorService _profiles = Substitute.For<IProfileEditorService>();
-    private readonly IConsentWrite _consent = Substitute.For<IConsentWrite>();
+    private readonly IUserWrite _userWrite = Substitute.For<IUserWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ServiceProvider _credentialServices;
     private User? _storedUser;
@@ -54,8 +53,6 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
                 _storedUser.LastName = "Terminal";
                 return new ProfileEditResult(true);
             });
-        _consent.RecordConsentCheckAsync(Arg.Any<Guid>(), Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(true));
     }
 
     [HumansTheory]
@@ -95,22 +92,14 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task ConsentAnnotationFailure_LeavesSetupRetryableWithoutSettingPassword()
+    public async Task InitialPasswordSet_MarksTheAccountFake()
     {
-        _consent.RecordConsentCheckAsync(Arg.Any<Guid>(), Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(false, "ConsentCheckFailed"), new OnboardingResult(true));
-        var service = NewService();
         var actor = Guid.NewGuid();
 
-        Assert.False((await service.SetPasswordAsync("password", actor)).Succeeded);
-        Assert.Null(_storedUser!.PasswordHash);
-        Assert.Empty(_audit.ReceivedCalls());
+        Assert.True((await NewService().SetPasswordAsync("password", actor)).Succeeded);
 
-        Assert.True((await service.SetPasswordAsync("password", actor)).Succeeded);
-        Assert.NotNull(_storedUser.PasswordHash);
-        await _users.Received(1).CreateAsync(Arg.Any<User>());
-        await _consent.Received(2).RecordConsentCheckAsync(
-            SystemUserIds.GateTerminal, ConsentCheckStatus.Cleared, Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _userWrite.Received(1).MarkFakeAsync(
+            SystemUserIds.GateTerminal, actor, Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -122,8 +111,10 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
 
         Assert.Equal("password-set", _storedUser.PasswordHash);
         Assert.Empty(_profiles.ReceivedCalls());
-        Assert.Empty(_consent.ReceivedCalls());
         await _users.DidNotReceive().CreateAsync(Arg.Any<User>());
+        // An account provisioned before the marker existed picks it up on rotation.
+        await _userWrite.Received(1).MarkFakeAsync(
+            SystemUserIds.GateTerminal, Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -167,7 +158,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
 
     private GateTerminalAccountSeeder NewService() => new(
         _users, _credentialServices.GetRequiredService<IServiceScopeFactory>(),
-        _profiles, _consent, _audit,
+        _profiles, _userWrite, _audit,
         Clock, NullLogger<GateTerminalAccountSeeder>.Instance);
 
     protected override void Dispose(bool disposing)

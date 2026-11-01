@@ -24,7 +24,12 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         WorkgroupInfo Group(string name, bool sensitive) => new(Guid.NewGuid(), name.ToLowerInvariant(), name, "Purpose",
             "A report", Humans.Workgroups.Domain.WorkgroupDeliverableKind.Report, Humans.Workgroups.Domain.WorkgroupAudience.Board,
             null, Humans.Workgroups.Domain.WorkgroupStatus.Active, null, null, null, null, null, now, now, null,
-            [], [meeting], [], [document], null, null, null, sensitive);
+            [],
+            [
+                meeting with { Id = Guid.NewGuid(), StartUtc = now.Plus(Duration.FromDays(5)), EndUtc = now.Plus(Duration.FromDays(5)).Plus(Duration.FromHours(1)) },
+                meeting with { Id = Guid.NewGuid(), StartUtc = now.Minus(Duration.FromDays(1)), EndUtc = now.Minus(Duration.FromDays(1)).Plus(Duration.FromHours(1)) },
+                meeting,
+            ], [], [document], null, null, null, sensitive);
         var workgroups = Substitute.For<IWorkgroupService>();
         workgroups.GetRegisterAsync(Arg.Any<CancellationToken>())
             .Returns([Group("Open", false), Group("Secret", true)]);
@@ -41,7 +46,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
 
         var model = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
             .Should().BeOfType<GovernanceWorkgroupsViewModel>().Which;
-        model.Active.Single(w => string.Equals(w.Name, "Open", StringComparison.Ordinal)).NextMeeting(now).Should().NotBeNull();
+        model.Active.Single(w => string.Equals(w.Name, "Open", StringComparison.Ordinal)).NextMeeting(now).Should().Be(meeting);
         model.Active.Single(w => string.Equals(w.Name, "Open", StringComparison.Ordinal)).IsOpenForComment(now).Should().BeTrue();
         model.Active.Single(w => string.Equals(w.Name, "Secret", StringComparison.Ordinal)).NextMeeting(now).Should().BeNull();
         model.Active.Single(w => string.Equals(w.Name, "Secret", StringComparison.Ordinal)).IsOpenForComment(now).Should().BeFalse();

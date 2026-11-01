@@ -339,6 +339,41 @@ internal sealed class FeedbackService(
         cache.Remove(BadgeCacheKey);
     }
 
+    /// <summary>Screenshot keys the reports point at whose file still exists in storage.</summary>
+    internal async Task<IReadOnlyList<string>> GetStoredScreenshotKeysAsync(CancellationToken ct)
+    {
+        var stored = new List<string>();
+        foreach (var key in await GetScreenshotKeysAsync(ct))
+        {
+            if (await fileStorage.TryReadAsync(key, ct) is not null)
+                stored.Add(key);
+        }
+
+        return stored;
+    }
+
+    /// <summary>
+    /// Deletes every report's screenshot, then the whole <c>uploads/feedback</c> prefix so files no report points
+    /// at go too. Returns how many referenced files existed.
+    /// </summary>
+    internal async Task<int> DeleteAllScreenshotsAsync(CancellationToken ct)
+    {
+        var stored = await GetStoredScreenshotKeysAsync(ct);
+        foreach (var key in stored)
+            await fileStorage.DeleteAsync(key, ct);
+        await fileStorage.DeleteAsync("uploads/feedback", ct, recursiveDirectory: true);
+        return stored.Count;
+    }
+
+    private async Task<IReadOnlyList<string>> GetScreenshotKeysAsync(CancellationToken ct)
+    {
+        var reports = await repository.GetListAsync(
+            status: null, category: null, reporterUserId: null, assignedToUserId: null, assignedToTeamId: null,
+            unassignedOnly: null, limit: int.MaxValue, ct: ct);
+        return [.. reports.Select(r => r.ScreenshotStoragePath).OfType<string>().Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+    }
+
     private async Task<FeedbackCrossDomainLookups> StitchCrossDomainNavsAsync(
         IReadOnlyList<FeedbackReport> reports, CancellationToken ct)
     {

@@ -71,7 +71,7 @@ internal sealed class EventsDashboardController(IEventManagement guide, ICampSer
         }
 
         var categories = await guide.GetActiveCategoriesAsync(ct);
-        model.CoverageByCategory = categories.Select(cat =>
+        model.CoverageByCategory = categories.OrderBy(c => c.DisplayOrder).Select(cat =>
         {
             var catEvents = allEvents.Where(e => e.CategoryId == cat.Id).ToList();
             return new CategoryCoverageRow
