@@ -40,24 +40,18 @@ public class BackdoorIssuesControllerTests
     {
         var status = JsonSerializer.Deserialize<UpdateIssueStatusModel>("{\"Status\":" + value + "}")!;
         var create = JsonSerializer.Deserialize<ApiCreateIssueModel>("{\"Category\":" + value + "}")!;
-        var feedback = JsonSerializer.Deserialize<UpdateFeedbackStatusModel>("{\"Status\":" + value + "}")!;
         create.ReporterUserId = KeyOwnerId;
         create.Title = "Title";
         create.Description = "Description";
 
         Validator.TryValidateObject(status, new ValidationContext(status), [], validateAllProperties: true).Should().Be(valid);
         Validator.TryValidateObject(create, new ValidationContext(create), [], validateAllProperties: true).Should().Be(valid);
-        Validator.TryValidateObject(feedback, new ValidationContext(feedback), [], validateAllProperties: true).Should().Be(valid);
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Json_triage_status_requires_explicit_status(bool feedback)
+    [HumansFact]
+    public void Json_triage_status_requires_explicit_status()
     {
-        Action deserialize = feedback
-            ? () => JsonSerializer.Deserialize<UpdateFeedbackStatusModel>("{}")
-            : () => JsonSerializer.Deserialize<UpdateIssueStatusModel>("{}");
+        Action deserialize = () => JsonSerializer.Deserialize<UpdateIssueStatusModel>("{}");
 
         deserialize.Should().Throw<JsonException>().Which.Message.Should().Contain("Status");
     }

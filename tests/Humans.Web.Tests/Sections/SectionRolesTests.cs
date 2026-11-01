@@ -39,7 +39,6 @@ public class SectionRolesTests
         "TicketsAdmin", "TicketAdmin",
         "ConsentCoordinator",
         "EventsAdmin",
-        "FeedbackAdmin",
         "FinanceAdmin",
         "StoreAdmin",
         "CantinaAdmin",

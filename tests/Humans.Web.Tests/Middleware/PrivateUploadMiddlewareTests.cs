@@ -15,16 +15,14 @@ namespace Humans.Web.Tests.Middleware;
 public sealed class PrivateUploadMiddlewareTests
 {
     [HumansTheory]
-    [InlineData(null, false)]
-    [InlineData("Volunteer", false)]
-    [InlineData("FeedbackAdmin", false)]
-    [InlineData("Admin", true)]
-    public async Task FeedbackScreenshots_RequireTheReportAdminPolicy(string? role, bool allowed)
+    [InlineData(null)]
+    [InlineData("Volunteer")]
+    [InlineData("Admin")]
+    public async Task FeedbackScreenshots_AreNeverServed(string? role)
     {
         var (context, served, _) = await RunAsync("/uploads/feedback/report/screenshot.png", role);
-        served.Should().Be(allowed);
-        context.Response.StatusCode.Should().Be(allowed ? 200 : 404);
-        context.Response.Headers.CacheControl.ToString().Should().Be("private, no-store");
+        served.Should().BeFalse();
+        context.Response.StatusCode.Should().Be(404);
     }
 
     [HumansTheory]

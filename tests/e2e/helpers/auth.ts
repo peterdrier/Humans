@@ -15,7 +15,7 @@ const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-d
 export const PERSONAS = [
   'volunteer', 'board', 'consent-coordinator', 'teams-admin',
   'camps-admin', 'tickets-admin', 'shifts-no-info', 'shifts-admin',
-  'users-admin', 'finance-admin', 'feedback-admin', 'city-planning',
+  'users-admin', 'finance-admin', 'city-planning',
   'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
   'early-entry-admin', 'barrio-1-lead',
 ] as const;

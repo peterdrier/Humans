@@ -57,7 +57,7 @@ Not every multi-step cross-repository orchestration needs one, though. `AccountM
 ## Cross-Section FK Columns
 
 <!-- wheat: docs/plans/2026-06-13-q3-transition-plan.md §FK-cut carve-out -->
-A bare `Guid` cross-section FK column gets no index for free. EF auto-created `IX_<table>_<column>` for each cross-section relationship and removed it along with the constraint in nobodies-collective/Humans#992, so any cross-section FK column a query filters or sorts on needs an explicit `HasIndex(...)` in its configuration — `CampMemberConfiguration`, `CampaignGrantConfiguration`, `BudgetAuditLogConfiguration` and `FeedbackReportConfiguration` are the pattern. A missing index here is a production regression that no test surfaces.
+A bare `Guid` cross-section FK column gets no index for free. EF auto-created `IX_<table>_<column>` for each cross-section relationship and removed it along with the constraint in nobodies-collective/Humans#992, so any cross-section FK column a query filters or sorts on needs an explicit `HasIndex(...)` in its configuration — `CampMemberConfiguration`, `CampaignGrantConfiguration` and `BudgetAuditLogConfiguration` are the pattern. A missing index here is a production regression that no test surfaces.
 
 ## Caching
 
@@ -205,7 +205,6 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Shifts/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
 | `Humans.Shifts/wwwroot/js/shifts.js` | Day-signup toggle without reload | Progressive enhancement |
 | `Humans.Notifications/Views/Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
-| `Humans.Feedback/Views/Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
 | `Humans.Issues/Views/Issues/Index.cshtml` | Master-detail panel loaded via Razor partial (`?partial=true`) | Partial-via-AJAX |
 | `Humans.GoogleIntegration/Views/Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
 | `Humans.Scanner/wwwroot/js/scanner/tickets.js` (`Views/Scanner/Tickets.cshtml`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |

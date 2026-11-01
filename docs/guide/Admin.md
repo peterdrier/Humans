@@ -36,7 +36,7 @@ Admin is layered. **UsersAdmin** does human management — the list, detail, rol
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, open feedback, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs above the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs above the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
 - `/Users/Admin` — humans list (Board, UsersAdmin, Admin); filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Email/Admin/{id}/Outbox` — per-human email outbox.
@@ -55,13 +55,13 @@ Admin pages are not visible to you.
 
 ## As a Coordinator
 
-The Coordinator role does not include global admin access; the domain-specific admin roles (Teams Admin, Camps Admin, Tickets Admin, Finance Admin, and so on) are separate and covered in their respective section guides. Feedback Admin is the exception — the role is still assignable but grants nothing since Feedback was retired.
+The Coordinator role does not include global admin access; the domain-specific admin roles (Teams Admin, Camps Admin, Tickets Admin, Finance Admin, and so on) are separate and covered in their respective section guides.
 
 ## As a Board member / Admin
 
 ### Work the dashboard
 
-Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, open feedback, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it: the open-feedback tile is **Admin only** — Board members and domain admins don't see it, since Feedback triage itself is Admin only. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees most sections, read-only apart from the Board's own decisions; a domain admin sees just their own area.
+Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees most sections, read-only apart from the Board's own decisions; a domain admin sees just their own area.
 
 ### Manage humans
 
@@ -94,7 +94,7 @@ See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
 Board can open these pages and read them; every action on them is **Admin only**.
 
 - **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked.
-- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue, feedback and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
+- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
@@ -114,5 +114,4 @@ Board can open these pages and read them; every action on them is **Admin only**
 - [Profiles](Profiles.md) — the humans list and per-human detail page are the Profiles admin surface.
 - [Teams](Teams.md) — Teams Admin and Coordinator duties live here; system team sync is triggered from the Google overview page (`/Google`).
 - [Google Integration](GoogleIntegration.md) — sync settings, workspace accounts, and sync audit views.
-- [Feedback](Feedback.md) — retired and closed to new reports; full Admins triage the historical queue. All admins use the shared notification inbox.
 - [Governance](Governance.md) — role assignments (Admin, Board, UsersAdmin, Coordinator roles) and tier application vote finalization.

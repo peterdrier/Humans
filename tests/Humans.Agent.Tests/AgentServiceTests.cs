@@ -1172,7 +1172,7 @@ public class AgentServiceTests
                 [],
                 [],
                 [],
-                [], [],
+                [],
                 []));
         var preload = Substitute.For<IAgentPreloadCorpusBuilder>();
         preload.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>()).Returns("");

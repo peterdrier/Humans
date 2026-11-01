@@ -5,7 +5,7 @@ omitted by design — a section's internal wiring belongs to the section; this m
 coupling between sections.
 
 Backdoor is a leaf machine API section. Its controllers also consume Agent
-(`IAgentTranscriptRead`), Feedback (`IFeedbackTriage`), Issues (`IIssueTriage`),
+(`IAgentTranscriptRead`), Issues (`IIssueTriage`),
 and Surveys (`ISurveyAnalysisRead`). Those controller dependencies are outside
 this service-to-service diagram; the Backdoor node below represents only
 `BackdoorApiKeyService`.
@@ -39,7 +39,6 @@ graph LR
     classDef google fill:#0ea5e9,color:#fff
     classDef monitor fill:#0369a1,color:#fff
     classDef onboarding fill:#a3e635,color:#000
-    classDef feedback fill:#d946ef,color:#fff
     classDef auth fill:#facc15,color:#000
     classDef users fill:#94a3b8,color:#000
     classDef budget fill:#64748b,color:#fff
@@ -173,8 +172,6 @@ graph LR
     Onboard[OnboardingService]:::onboarding
     OnboardWidget[OnboardingWidgetState]:::onboarding
 
-    Feedback[FeedbackService]:::feedback
-    FeedbackReply[FeedbackReplyDelivery]:::feedback
 
     Budget[BudgetService]:::budget
     TicketBudget[TicketingBudgetService]:::budget
@@ -270,7 +267,6 @@ graph LR
     AgentSnap --> Team
     AgentSnap --> AppDec
     AgentSnap --> Consent
-    AgentSnap --> Feedback
     AgentSnap --> TicketQ
     AgentSnap --> ShiftView
     AgentSnap --> SettingsSvc
@@ -518,15 +514,6 @@ graph LR
     OnboardWidget --> SettingsSvc
     OnboardWidget --> Consent
 
-    %% Feedback
-    Feedback --> User
-    Feedback --> Team
-    Feedback --> Audit
-    FeedbackReply --> User
-    FeedbackReply --> UEmail
-    FeedbackReply --> Email
-    FeedbackReply --> NotifEmitter
-    FeedbackReply --> Audit
 
     %% Budget
     Budget --> Team

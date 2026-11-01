@@ -23,7 +23,6 @@ internal static class GuideFiles
         "Email",
         "Campaigns",
         "Issues",
-        "Feedback",
         "Governance",
         "Budget",
         "Expenses",

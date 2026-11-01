@@ -3,7 +3,6 @@
   src/Humans.Base/Services/GitHubCommunityKbContentSource.cs
   src/Humans.Base/Configuration/CommunityKbSettings.cs
   src/Sections/Humans.Backdoor/Controllers/BackdoorAgentController.cs
-  src/Sections/Humans.Feedback/Domain/FeedbackReport.cs
 -->
 <!-- freshness:flag-on-change
   Agent conversation/message/settings invariants, preload-corpus tiers + the tool surface (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue / get_audit_history), the community knowledge base (separate nobodies-collective/knowledge-base repo, cached in RAM, admin-reloadable), rate-limit/abuse gating, and the admin status/reload/prompt-preview surface — review when agent services, stores, the tool catalog, the preload/community-KB readers, or the agent controllers change.
@@ -47,7 +46,7 @@ Conversational helper backed by Anthropic Claude. Available to any authenticated
 | Content | string | Message text or tool result |
 | FetchedDocs | string[]? | Section/feature slugs the tool dispatcher loaded for this turn |
 | RefusalReason | string? | Set when the turn was refused (rate limit, abuse, disabled, etc.) |
-| HandedOffToFeedbackId | Guid? | Legacy. Was populated when `route_to_feedback` auto-created a FeedbackReport. New turns leave it null — see "Issue handoff" below. Column kept for historical rows. |
+| HandedOffToFeedbackId | Guid? | Legacy. Was populated when `route_to_feedback` auto-created a Feedback report; Feedback and its tables are gone, so the id points at nothing. New turns leave it null. |
 | PromptTokens / OutputTokens / CachedTokens | int | Anthropic usage; stored PromptTokens includes fresh input and cache writes, while CachedTokens counts cache reads |
 | Model | string | Model id used for the turn |
 | DurationMs | int | Wall-clock duration of the turn |
@@ -62,10 +61,6 @@ Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holdin
 ### Rate-limit counters (in-memory)
 
 Per-user message and token counters live in the Singleton `IAgentRateLimitStore`. Phase 1 has no persisted `agent_rate_limits` table — counters reset whenever the process restarts. Phase 2 revisits persistence if abuse traffic warrants it. Turns for the same user are serialized within the process, across request scopes: each waits before reading current settings, conversation history and quotas, and releases only after normal or failed/disconnected-turn usage is recorded. Waiting honours request cancellation and times out after five minutes; cancellation while waiting writes nothing. Different users can stream independently.
-
-### FeedbackReport additions (cross-section, legacy)
-
-`FeedbackReport.Source` (`FeedbackSource` enum: `UserReport`, `AgentUnresolved`) and `FeedbackReport.AgentConversationId` (plain nullable Guid column, no EF FK constraint, no nav property). Owned by Feedback section. The Agent no longer writes these — historical rows produced by the original `route_to_feedback` auto-create flow remain queryable through the Feedback admin filter. Cross-section linkage was by FK column only.
 
 The member history page uses localized labels, including the link to each transcript, in all six supported cultures.
 
@@ -148,13 +143,12 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 - Admin settings saves require a resolved actor and record `AgentSettingsUpdated` after persistence and store refresh, including the selected settings values. The singleton uses `EntityType = "AgentSettings"`, `EntityId = Guid.Empty`, with its numeric id in the description. The model name is required and limited to the database’s 64 characters; invalid forms show their validation errors before writing. The form offers the models Anthropic's Models API lists for the configured key (fetched on each render with a 5-second limit, newest first) with each one's price from `AgentPricing`, and always includes the saved model; if the list call fails, the saved model is the only option and the form says so.
 - All seven settings fields must be posted explicitly. Missing fields redisplay validation errors before updating the singleton; omitting retention cannot set it to zero and purge existing conversations. Explicit false and zero remain accepted.
 - On `AgentSettings` update: `IAgentSettingsStore` reloads the singleton; next request sees the new value.
-- On user deletion: no cross-section cascade. Agent owns no FK to `users`; orphaned `agent_conversations` rows are cleaned up by `AgentConversationRetentionJob` within `RetentionDays`. `FeedbackReport.AgentConversationId` is owned by Feedback and is left as-is (the column may dangle if the conversation was purged; readers must tolerate `null` lookups).
+- On user deletion: no cross-section cascade. Agent owns no FK to `users`; orphaned `agent_conversations` rows are cleaned up by `AgentConversationRetentionJob` within `RetentionDays`.
 
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `AgentAuditActions` (`src/Sections/Humans.Agent/AgentAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `AgentSettingsUpdated`.
 - **Issues** — agent handoff produces a client-side issue proposal (title/category/description) that pre-fills the Issues modal (`POST /Issues`). The agent does not write Issue rows itself.
-- **Feedback** — `IFeedbackService.GetOpenFeedbackIdsForUserAsync` (in Feedback's `Contracts/` folder) is called live by `AgentUserSnapshotProvider` to surface a user's open feedback items in the per-turn context. Additionally, historical `FeedbackReport.Source = AgentUnresolved` rows (from the original server-side handoff flow) remain readable via the Feedback admin queue; Agent no longer creates new `FeedbackReport` rows.
 - **Consent (Legal)** — the Consent section's `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer — a URL-only dependency; Agent injects nothing from Consent for it.
 - **Users / Auth / Teams / Governance / Consent / Tickets / Shifts** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IUserService.GetUserInfoAsync`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetTeamsAsync`, `IGovernanceService.GetMembershipTierAsync` (tier), `IConsentService.GetPendingDocumentNamesAsync` (surfaces pending docs in snapshot — not a gate) and `IConsentService.GetConsentReviewAsync` (approved flag), `ITicketService.GetUserTicketHoldingsAsync` (`OpenTicketOrderIds`), `IShiftView.GetUserAsync`, and `ISettingsService.GetActiveEventSettingsAsync`. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` is also called — see Feedback bullet above.
 - **Base (inward, publishing)** — `ISectionAnnotations` (`ISectionAnnotations`) publishes one "Agent doc key" annotation per `AgentSectionKeys.All` canonical key into `ISectionCatalog`, so `/Debug/Sections` shows where the assistant answers from a first-party doc and where it falls back to the community FAQ (nobodies-collective/Humans#1509). Canonical keys only, not aliases: an alias is a spelling the model uses, not a section with a doc. The key set stays a deliberate subset — operator-only sections are off it — and the catalog checks it, never derives it. A `SectionCatalogTests` case pins that every canonical key names a real section.

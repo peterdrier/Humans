@@ -18,7 +18,6 @@ using Humans.Base.Hosting;
 using Humans.CityPlanning.Data;
 using Humans.Containers.Data;
 using Humans.Expenses.Data;
-using Humans.Feedback.Data;
 using Humans.Governance.Data;
 using Humans.Issues.Data;
 using Humans.Finance.Data;
@@ -153,11 +152,6 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "ticket_orders",
             CreateSectionContext<TicketsDbContext>,
             "SELECT count(*) FROM ticket_sync_state"),
-        new(
-            "Feedback",
-            "feedback_reports",
-            CreateSectionContext<FeedbackDbContext>,
-            null),
         new(
             "CityPlanning",
             "city_planning_settings",

@@ -163,7 +163,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Open feedback", "Feedback's AdminOnly contributed tile must render for an Admin");
         html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
 
         // The tag helper strips the attribute from elements it lets through, so one that keeps it was never bound.

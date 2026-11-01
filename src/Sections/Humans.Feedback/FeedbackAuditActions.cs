@@ -2,7 +2,7 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Feedback;
 
-/// <summary>The audit actions Feedback writes. Names are stored on audit rows: never rename one.</summary>
+/// <summary>Retired: nothing writes these since Feedback was removed; declared so stored audit rows keep resolving.</summary>
 internal sealed class FeedbackAuditActions : AuditActionContributor
 {
     public static readonly AuditActionDefinition FeedbackResponseSent = new("FeedbackResponseSent");

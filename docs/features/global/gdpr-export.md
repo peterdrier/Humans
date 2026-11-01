@@ -9,7 +9,6 @@
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
-  src/Sections/Humans.Feedback/Services/FeedbackService.cs
   src/Sections/Humans.Notifications/Services/NotificationInboxService.cs
   src/Sections/Humans.Tickets/Services/TicketQueryService.cs
   src/Sections/Humans.Campaigns/Services/CampaignService.cs
@@ -182,8 +181,6 @@ archived account and the survivor.
 | `GeneralAvailability` | `ShiftSignupService` | Array of `{ EventName, AvailableDayOffsets, UpdatedAt }`. |
 | `ShiftTagPreferences` | `ShiftSignupService` | Array of `{ TagName }`. |
 | `Events` | `CachingEventService` (delegates to `EventService`) | Single object with `{ SubmittedEvents: [{ Id, CampId, GuideSharedVenueId, CategoryId, Title, Description, LocationNote, Host, StartAt, DurationMinutes, IsRecurring, RecurrenceDays, PriorityRank, Status, SubmittedAt, LastUpdatedAt }], Favourites: [{ GuideEventId, DayOffset, CreatedAt }], Preference: { ExcludedCategorySlugs, UpdatedAt }, AdditionalPreferences: [{ UserId, ExcludedCategorySlugs, UpdatedAt }] }` — the events the human submitted, their favourites and category-exclusion preference; `Preference` is null when no preference row exists, and `AdditionalPreferences` holds preferences of archived accounts merged into this one. |
-| `FeedbackReports` | `FeedbackService` | Array of feedback reports with nested `Messages[]`. |
-| `FeedbackReplies` | `FeedbackService` | Array of `{ FeedbackReportId, Content, EmailEnqueuePending, CreatedAt }` — the user's replies on other people's reports. |
 | `Issues` | `IssuesService` | Array of `{ Title, Description, Category, Section, Status, PageUrl, UserAgent, AdditionalContext, CreatedAt, ResolvedAt, Comments: [{ Content, IsFromUser, CreatedAt }] }` — issues filed by the user including their comments. |
 | `IssueComments` | `IssuesService` | Array of `{ IssueId, Content, CreatedAt }` — the user's comments on other people's issues. |
 | `Notifications` | `NotificationInboxService` | Array of `{ Title, Body, ActionUrl, Priority, Source, CreatedAt, ReadAt, ResolvedAt }`. |

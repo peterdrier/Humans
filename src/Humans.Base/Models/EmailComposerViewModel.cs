@@ -80,7 +80,7 @@ public class EmailComposerViewModel
     /// Distinguishes this instance's preview modal from any others on the same page. Needed only
     /// when a page hosts more than one composer at once (survey invitation's per-culture tabs) or
     /// supplies its own page-level modal that an AJAX-injected composer must target instead of
-    /// rendering a redundant, inert copy (Feedback/Issues detail panels, whose own markup never
+    /// rendering a redundant, inert copy (the Issues detail panel, whose own markup never
     /// executes). Null uses the classic shared "emailPreviewModal" id.
     /// </summary>
     public string? PreviewModalId { get; init; }
