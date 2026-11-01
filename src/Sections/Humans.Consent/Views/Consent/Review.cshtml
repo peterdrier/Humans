@@ -34,9 +34,8 @@
                 DocumentVersionId = Model.DocumentVersionId,
                 Content = Model.Content,
                 ChangesSummary = Model.ChangesSummary,
-                SubmitAction = "Submit",
-                SubmitController = "Consent",
                 SubmitButtonText = Localizer["Consent_Review_GiveConsent"].Value,
+                ReturnUrl = Model.ReturnUrl,
                 CancelHref = Url.Action("Index"),
                 CancelText = Localizer["Consent_Review_BackToList"].Value,
             })" />

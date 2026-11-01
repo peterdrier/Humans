@@ -19,7 +19,6 @@ public class OnboardingLocalizerBindingTests
     private static readonly Dictionary<string, string> ResourceFiles = new(StringComparer.Ordinal)
     {
         ["OnboardingResource"] = "Sections/Humans.Onboarding/OnboardingResource.resx",
-        ["ConsentResource"] = "Sections/Humans.Consent/ConsentResource.resx",
         ["SharedResource"] = "Humans.Base/Resources/SharedResource.resx",
     };
 

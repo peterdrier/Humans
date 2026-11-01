@@ -1,27 +1,15 @@
-@inject IStringLocalizer<ConsentResource> ConsentLocalizer
+@using Humans.Consent.ViewComponents
 @model ConsentsStepViewModel
-@{ ViewData["Title"] = string.Format(ConsentLocalizer["Consent_Review_Title"].Value, Model.DocumentName); }
+@{ ViewData["Title"] = Model.Document.DocumentName; }
 
 <div class="row justify-content-center">
     <div class="col-lg-10">
-        <p class="text-muted small mb-2">@ConsentLocalizer["Consent_Review_Progress", Model.CurrentIndex, Model.TotalRequired]</p>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h1 class="mb-0">@Model.DocumentName</h1>
-                <span class="badge bg-info">@ConsentLocalizer["Consent_Version"] @Model.VersionNumber</span>
-            </div>
-        </div>
-
-
-
-        <partial name="_ConsentReviewBody" model="@(new ConsentReviewFormViewModel
+        @await Component.InvokeAsync(typeof(ConsentSigningStepViewComponent), new
         {
-            DocumentVersionId = Model.DocumentVersionId,
-            Content = Model.Content,
-            ChangesSummary = Model.ChangesSummary,
-            SubmitAction = "SignConsent",
-            SubmitController = "OnboardingWidget",
-            SubmitButtonText = ConsentLocalizer["Consent_Review_GiveConsent"].Value,
-        })" />
+            document = Model.Document,
+            currentIndex = Model.CurrentIndex,
+            totalRequired = Model.TotalRequired,
+            returnUrl = Url.Action(nameof(OnboardingWidgetController.Index), "OnboardingWidget"),
+        })
     </div>
 </div>

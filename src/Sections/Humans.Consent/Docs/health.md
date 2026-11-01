@@ -100,9 +100,9 @@ contract fold-inward).
 - **Keyed-Scoped inner + Singleton decorator** DI dance for both caches; the inner sync
   service implements two interfaces and `IAdminLegalDocumentService` resolves to the same
   keyed instance so admin and sync writes share one writer (#751).
-- **`ConsentReviewFormViewModel` sits on the contracts leaf** so Shell's onboarding widget
-  can construct it and render the section's `_ConsentReviewBody` partial — the widget step
-  view binds a Shell type the section cannot name.
+- **`ConsentSigningStepViewComponent` is public** so the onboarding widget can embed the
+  signing step; the form model and `_ConsentReviewBody` stay internal, and the form always
+  posts to `/Consent/Submit`.
 - **`_ConsentReviewBody` uses `ResourceManager` directly** to hand per-language checkbox
   strings to inline JS that re-localises when the reader switches language tabs.
 - **Jobs are `public`** (HUM0034 exception) because Shell names the concrete types at

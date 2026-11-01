@@ -1,4 +1,4 @@
-@model Humans.Consent.Contracts.ConsentReviewFormViewModel
+@model ConsentReviewFormViewModel
 @{
     var orderedLanguages = Model.Content
         .OrderByDisplayLanguage(canonicalFirst: true)
@@ -49,8 +49,12 @@ else
 
 <div class="card mt-4">
     <div class="card-body">
-        <form asp-action="@Model.SubmitAction" asp-controller="@Model.SubmitController" method="post">
+        <form asp-action="Submit" asp-controller="Consent" method="post">
             <input type="hidden" name="DocumentVersionId" value="@Model.DocumentVersionId" />
+            @if (!string.IsNullOrEmpty(Model.ReturnUrl))
+            {
+                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+            }
 
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" name="ExplicitConsent" value="true" id="explicitConsent"

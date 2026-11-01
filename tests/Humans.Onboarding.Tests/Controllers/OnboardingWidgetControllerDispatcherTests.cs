@@ -28,11 +28,8 @@ public class OnboardingWidgetControllerDispatcherTests
     private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<ConsentResource> _consentLocalizer =
-        Substitute.For<IStringLocalizer<ConsentResource>>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
         Substitute.For<IStringLocalizer<OnboardingResource>>();
@@ -41,13 +38,11 @@ public class OnboardingWidgetControllerDispatcherTests
     {
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _consentLocalizer[Arg.Any<string>()].Returns(ci =>
-            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, NodaTime.SystemClock.Instance, _localizer, _consentLocalizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, NodaTime.SystemClock.Instance, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],

@@ -1,0 +1,16 @@
+@model Humans.Consent.ViewComponents.ConsentSigningStepViewModel
+
+<p class="text-muted small mb-2">@Localizer["Consent_Review_Progress", Model.CurrentIndex, Model.TotalRequired]</p>
+<div class="mb-3">
+    <h1 class="mb-0">@Model.Document.DocumentName</h1>
+    <span class="badge bg-info">@Localizer["Consent_Version"] @Model.Document.VersionNumber</span>
+</div>
+
+<partial name="_ConsentReviewBody" model="@(new ConsentReviewFormViewModel
+{
+    DocumentVersionId = Model.Document.DocumentVersionId,
+    Content = new Dictionary<string, string>(Model.Document.Content, StringComparer.Ordinal),
+    ChangesSummary = Model.Document.ChangesSummary,
+    SubmitButtonText = Localizer["Consent_Review_GiveConsent"].Value,
+    ReturnUrl = Model.ReturnUrl,
+})" />
