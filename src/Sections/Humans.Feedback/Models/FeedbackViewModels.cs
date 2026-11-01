@@ -32,7 +32,6 @@ internal sealed class FeedbackListItemViewModel
     public Guid ReporterUserId { get; set; }
     public string PageUrl { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
-    public bool HasScreenshot { get; set; }
     public int MessageCount { get; set; }
     public bool NeedsReply { get; set; }
     public int? GitHubIssueNumber { get; set; }
@@ -60,7 +59,6 @@ internal sealed class FeedbackDetailViewModel
     public Guid? AssignedToUserId { get; set; }
     public string? AssignedToName { get; set; }
     public Guid? AssignedToTeamId { get; set; }
-    public string? AssignedToTeamName { get; set; }
     public List<AssigneeOption> AssigneeOptions { get; set; } = [];
     public IReadOnlyList<TeamInfo> TeamOptions { get; set; } = [];
     public List<FeedbackMessageViewModel> Messages { get; set; } = [];
@@ -68,9 +66,7 @@ internal sealed class FeedbackDetailViewModel
 
 internal sealed class FeedbackMessageViewModel
 {
-    public Guid Id { get; set; }
     public string SenderName { get; set; } = string.Empty;
-    public Guid? SenderUserId { get; set; }
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public bool IsReporter { get; set; }

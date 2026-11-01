@@ -91,7 +91,6 @@ internal sealed class FeedbackController(
                 ReporterUserId = r.UserId,
                 PageUrl = r.PageUrl,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc(),
-                HasScreenshot = r.ScreenshotStoragePath is not null,
                 MessageCount = r.Messages.Count,
                 GitHubIssueNumber = r.GitHubIssueNumber,
                 NeedsReply = r.NeedsReply,
@@ -259,12 +258,9 @@ internal sealed class FeedbackController(
             AssignedToUserId = report.AssignedToUserId,
             AssignedToName = report.AssignedToName,
             AssignedToTeamId = report.AssignedToTeamId,
-            AssignedToTeamName = report.AssignedToTeamName,
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
-                Id = m.Id,
                 SenderName = m.SenderName ?? "Unknown",
-                SenderUserId = m.SenderUserId,
                 Content = m.Content,
                 EmailEnqueuePending = m.EmailEnqueuePending,
                 CreatedAt = m.CreatedAt.ToDateTimeUtc(),
