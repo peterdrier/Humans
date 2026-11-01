@@ -19,6 +19,7 @@ two accounts merge.
 | Triage read | UI `GET /Feedback`, `GET /Feedback/{id}`; `IFeedbackTriage.GetFeedbackListAsync` / `GetFeedbackByIdAsync` | One question ("show me the queue / this report") with two skins: admin UI and key-authed Backdoor API |
 | Triage write | UI `POST /Feedback/{id}/{Message,Status,Assignment,GitHubIssue}`; matching `IFeedbackTriage` methods | Same four verbs in both skins; every one audited, attributed to the acting human |
 | Actionable-count signal | `FeedbackService.GetActionableCountAsync` (section-internal) | Feeds nav pill + `/Admin` tile; cached 2 min in-service |
+| Reply delivery | `FeedbackReplyDelivery` (`feedback-reply-emails`, every minute) | Hands committed admin replies to Email; the request path and the job share one pipeline |
 | Per-user open ids | `IFeedbackService.GetOpenFeedbackIdsForUserAsync` | Agent user snapshot only |
 | GDPR | `IUserDataContributor` export + erase | Erase deletes own reports (+screenshots), detaches authorship elsewhere |
 | Merge fold | `IUserMerge.ReassignAsync` | Re-FK both tables, called inside Profiles' merge transaction |
@@ -27,28 +28,37 @@ two accounts merge.
 
 These shapes need exactly: one admin controller + two views (queue with detail partial), one
 service implementing the four outward roles (`IFeedbackService`, `IFeedbackTriage`,
-`IUserDataContributor`, `IUserMerge`), one repository over the two owned tables
-(`feedback_reports`, `feedback_messages`), the nav/tile contributions, and the resx set. No
-caching decorator, no orchestration, no jobs. The section is already this shape; the target is
+`IUserDataContributor`, `IUserMerge`), one reply-delivery class that is also the retry job, one
+repository over the two owned tables (`feedback_reports`, `feedback_messages`), the nav/tile
+contributions, and the resx set. No caching decorator, no orchestration. The section is already this shape; the target is
 holding it there while the archive ages — surface should only ever shrink.
 
 ## 4. Invariants
 
-- No code path creates a `FeedbackReport` — no service method, repository write, route, or view.
-- Every `/Feedback` UI route and count render is full-`Admin`; `FeedbackAdmin` alone reaches
+- Every `/Feedback` UI route and count render is full-`Admin`
+  (`src/Sections/Humans.Feedback/Controllers/FeedbackController.cs:16`); `FeedbackAdmin` alone reaches
   nothing, reporters reach nothing. The one exception is the Backdoor API skin
   (`/api/backdoor/feedback`, owned by the Backdoor section): personal-key auth via
   `BackdoorApiKeyAuthFilter`, acting human resolved from the key.
-- Every message posted now is an admin reply: stamps `LastAdminMessageAt`, emails the reporter,
-  dispatches an in-app notification — and the email sends **before** persisting so an SMTP
-  failure leaves nothing committed (retry-safe).
-- Status leaving Resolved/WontFix clears `ResolvedAt`/`ResolvedByUserId`; entering them sets both.
+- No code path creates a `FeedbackReport` — the repository has no report insert
+  (`src/Sections/Humans.Feedback/Data/IFeedbackRepository.cs:8`).
+- Every message posted now is an admin reply: it commits with `LastAdminMessageAt` and
+  `EmailEnqueuePending = true` in one save, and only then is handed to Email; a failed handoff
+  stays pending and the minute job retries it
+  (`src/Sections/Humans.Feedback/Services/FeedbackService.cs:155`,
+  `src/Sections/Humans.Feedback/Services/FeedbackReplyDelivery.cs:46`).
+- A reply is queued to Email at most once: the reply id is the Email `DeliveryId`
+  (`src/Sections/Humans.Feedback/Services/FeedbackReplyDelivery.cs:94`).
+- Status leaving Resolved/WontFix clears `ResolvedAt`/`ResolvedByUserId`; entering them sets both
+  (`src/Sections/Humans.Feedback/Services/FeedbackService.cs:81`).
 - Needs-reply is derived, never stored: reporter message newer than last admin reply, or Open with
-  no admin reply ever; the badge count uses the same rule and excludes Resolved/WontFix.
+  no admin reply ever (`src/Sections/Humans.Feedback/Services/FeedbackService.cs:439`); the badge
+  count uses the same rule and excludes Resolved/WontFix
+  (`src/Sections/Humans.Feedback/Data/FeedbackRepository.cs:87`).
 - Status, assignment and GitHub-link changes are audit-logged with the acting user ("API" only as
-  the nobody-fallback).
+  the nobody-fallback) (`src/Sections/Humans.Feedback/Services/FeedbackService.cs:238`).
 - Erasure keeps replies the person left on other people's reports (authorship detached) — GDPR
-  Art. 17(3)(b).
+  Art. 17(3)(b) (`src/Sections/Humans.Feedback/Data/FeedbackRepository.cs:154`).
 
 ## 5. Seams
 
@@ -67,7 +77,9 @@ None. The section is retired and closed; no specified-but-unbuilt work reserves 
 
 ## Load-bearing weirdness
 
-- **Email-before-persist in `PostMessageAsync`** — deliberate ordering for retryability, not a bug.
+- **Commit-then-handoff in `PostMessageAsync`** — the reply is saved before Email sees it, so a
+  failed handoff never loses the reply; `FeedbackReplyDelivery` holds a process-local lock and
+  re-reads the pending flag so the request and the minute job never queue the same reply twice.
 - **`FeedbackSource` EF sentinel `(FeedbackSource)(-1)`** — out-of-range on purpose; the CLR
   default tripped EF's sentinel detection and silently dropped explicit `UserReport` assignments.
 - **`AuditEntityTypes.FeedbackReport` is a persisted string literal** — a data contract with
