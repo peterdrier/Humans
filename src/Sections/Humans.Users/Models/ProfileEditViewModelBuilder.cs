@@ -62,32 +62,32 @@ internal static class ProfileEditViewModelBuilder
             ContactFields = BuildLegacyContactFields(profile),
             EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default)
                 .OrderBy(cf => cf.DisplayOrder).Select(cf => new ContactFieldEditViewModel
-            {
-                Id = cf.Id,
-                FieldType = cf.FieldType,
-                CustomLabel = cf.CustomLabel,
-                Value = cf.Value,
-                Visibility = cf.Visibility,
-                DisplayOrder = cf.DisplayOrder
-            }).ToList(),
+                {
+                    Id = cf.Id,
+                    FieldType = cf.FieldType,
+                    CustomLabel = cf.CustomLabel,
+                    Value = cf.Value,
+                    Visibility = cf.Visibility,
+                    DisplayOrder = cf.DisplayOrder
+                }).ToList(),
             EditableVolunteerHistory = (profile?.VolunteerHistory ?? [])
                 .OrderByDescending(cv => cv.Date)
                 .Select(cv => new VolunteerHistoryEntryEditViewModel
-            {
-                Id = cv.Id,
-                DateString = cv.Date.ToInvariantDate(),
-                EventName = cv.EventName,
-                Description = cv.Description
-            }).ToList(),
+                {
+                    Id = cv.Id,
+                    DateString = cv.Date.ToInvariantDate(),
+                    EventName = cv.EventName,
+                    Description = cv.Description
+                }).ToList(),
             EditableLanguages = (profile?.Languages ?? [])
                 .OrderByDescending(pl => pl.Proficiency)
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageEditViewModel
-            {
-                Id = pl.Id,
-                LanguageCode = pl.LanguageCode,
-                Proficiency = pl.Proficiency
-            }).ToList()
+                {
+                    Id = pl.Id,
+                    LanguageCode = pl.LanguageCode,
+                    Proficiency = pl.Proficiency
+                }).ToList()
         };
     }
 

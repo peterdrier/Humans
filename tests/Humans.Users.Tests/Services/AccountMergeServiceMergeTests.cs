@@ -164,8 +164,11 @@ public class AccountMergeServiceMergeTests
             });
         var pending = new AccountMergeRequest
         {
-            Id = Guid.NewGuid(), SourceUserId = src, TargetUserId = tgt,
-            Status = AccountMergeRequestStatus.Pending, CreatedAt = _clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            SourceUserId = src,
+            TargetUserId = tgt,
+            Status = AccountMergeRequestStatus.Pending,
+            CreatedAt = _clock.GetCurrentInstant(),
         };
         _mergeRepo.GetPendingAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {

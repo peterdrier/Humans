@@ -52,11 +52,11 @@ internal static class AdminHumanDetailViewModelBuilder
                 .OrderByDescending(pl => pl.Proficiency)
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
-            {
-                LanguageCode = pl.LanguageCode,
-                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
-                Proficiency = pl.Proficiency
-            }).ToList(),
+                {
+                    LanguageCode = pl.LanguageCode,
+                    LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                    Proficiency = pl.Proficiency
+                }).ToList(),
             OAuthEmail = info.Email,
             UserEmails = userEmails
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)

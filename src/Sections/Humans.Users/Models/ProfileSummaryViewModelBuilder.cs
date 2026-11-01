@@ -43,11 +43,11 @@ internal static class ProfileSummaryViewModelBuilder
                 .OrderByDescending(pl => pl.Proficiency)
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
-            {
-                LanguageCode = pl.LanguageCode,
-                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
-                Proficiency = pl.Proficiency
-            }).ToList(),
+                {
+                    LanguageCode = pl.LanguageCode,
+                    LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                    Proficiency = pl.Proficiency
+                }).ToList(),
             CampName = camp?.Season?.Name,
             CampRoles = camp?.Roles ?? []
         };

@@ -163,9 +163,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         ShiftsDb.VolunteerBuildStatuses.AddRange(
             new VolunteerBuildStatus
             {
-                Id = Guid.NewGuid(), UserId = source, EventSettingsId = firstEvent.Id,
-                BarrioSetupStartDate = new LocalDate(2026, 6, 20), Notes = "Setup plan",
-                SetByUserId = coordinator, SetAt = TestNow,
+                Id = Guid.NewGuid(),
+                UserId = source,
+                EventSettingsId = firstEvent.Id,
+                BarrioSetupStartDate = new LocalDate(2026, 6, 20),
+                Notes = "Setup plan",
+                SetByUserId = coordinator,
+                SetAt = TestNow,
                 DayOffs = [new DayOffEntry(-3, "Rest", coordinator, TestNow)]
             },
             new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = target, EventSettingsId = secondEvent.Id },

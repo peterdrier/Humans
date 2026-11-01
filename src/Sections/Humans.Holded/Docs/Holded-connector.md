@@ -45,8 +45,6 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 - Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
 - Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
-- The single purchase-document read carries only approval time, notes and payment details. Its callers already know the requested id; totals and tags belong to the list read. Unused detail fields are ignored rather than parsed.
-
 - `HoldedClient` remains the typed-client entry point. Its internal operation clients share one
   `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
   call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
@@ -92,7 +90,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   and logged, except a **pending outgoing** one: it could be a SEPA rival, so it fails the read with
   a `HoldedPermanentException` whose `BankMovementId` names it, unless the caller passes that id in
   `skipUnreadableDateIds` (Finance does so after three stuck sweep runs, peterdrier/Humans#1946).
-- Currency is EUR-only. Purchase-list and sales-document reads reject explicit non-EUR or blank currency with `HoldedPermanentException`; no foreign amount becomes a euro budget actual, payment or invoice comparison. Missing/null currency retains the existing EUR fallback; reported EUR is case-insensitive. Unsupported purchases fail the complete list rather than being filtered out. Multi-currency conversion is out of scope.
+- Currency is EUR-only. Multi-currency is out of scope.
 - Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
   documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —
   7.5% is `s_iva_75`.
@@ -127,7 +125,8 @@ options. They add no interfaces or DI registrations, and the public contract sta
 
 **Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
 `CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
-`ExpenseReportBackgroundProcessor` for the push), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`) and Store
+`ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
+`IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
 (`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over

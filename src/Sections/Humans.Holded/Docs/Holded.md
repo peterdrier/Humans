@@ -35,7 +35,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
   identities (including expense-account, contact and sales-document IDs) and amounts (including the pending balance on approved purchases), complete pagination, typed write responses, the `unconfirmed:`
   references, the 429 policy with fractional HTTP-date waits) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
-  depends on one consequence: no short or fabricated page ever reaches replace semantics. Document reads reject explicit non-EUR or blank currencies before totals reach Finance or Store; omitted currency retains the EUR fallback.
+  depends on one consequence: no short or fabricated page ever reaches replace semantics.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
@@ -220,8 +220,6 @@ Audit entries stay with the calling section, which knows why it wrote.
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`) for the mirror, `IHoldedWrite` (+ its outcome records) for writes, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
-
-Purchase-document detail reads expose only approval time, notes and payment details. Document totals, identifiers and tags come from the purchase list when needed; the detail parser ignores those unused fields.
 
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
 **Owned tables:** the four above

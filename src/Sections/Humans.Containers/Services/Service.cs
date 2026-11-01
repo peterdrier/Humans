@@ -495,7 +495,7 @@ internal sealed class Service(
         if (c.ImageStoragePath is not null)
         {
             gallery.Add(new ContainerImageDto(Guid.Empty, $"/{c.ImageStoragePath}", c.ImageFileName)
-                { SortOrder = int.MinValue });
+            { SortOrder = int.MinValue });
         }
         gallery.AddRange(images
             .Select(i => new ContainerImageDto(i.Id, $"/{i.StoragePath}", i.FileName) { SortOrder = i.SortOrder }));

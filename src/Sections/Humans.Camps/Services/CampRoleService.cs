@@ -380,7 +380,8 @@ internal sealed class CampRoleService(
                 .Select(def => new CampDirectoryRoleSummary(
                     def.Name,
                     countLookup[season.CampSeasonId].FirstOrDefault(r => r.DefinitionId == def.Id).Count,
-                    def.SlotCount) { SortOrder = def.SortOrder })
+                    def.SlotCount)
+                { SortOrder = def.SortOrder })
                 .ToList());
     }
 

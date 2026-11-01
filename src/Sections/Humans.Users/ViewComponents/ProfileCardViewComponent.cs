@@ -126,21 +126,21 @@ public sealed class ProfileCardViewComponent(
             VolunteerHistory = (profile?.VolunteerHistory ?? [])
                 .OrderByDescending(cv => cv.Date)
                 .Select(cv => new VolunteerHistoryEntryViewModel
-            {
-                Date = cv.Date,
-                EventName = cv.EventName,
-                Description = cv.Description
-            }).ToList(),
+                {
+                    Date = cv.Date,
+                    EventName = cv.EventName,
+                    Description = cv.Description
+                }).ToList(),
             Teams = displayableTeams,
             Languages = (profile?.Languages ?? [])
                 .OrderByDescending(pl => pl.Proficiency)
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
-            {
-                LanguageCode = pl.LanguageCode,
-                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
-                Proficiency = pl.Proficiency
-            }).ToList(),
+                {
+                    LanguageCode = pl.LanguageCode,
+                    LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                    Proficiency = pl.Proficiency
+                }).ToList(),
             PreferredLanguage = info.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)

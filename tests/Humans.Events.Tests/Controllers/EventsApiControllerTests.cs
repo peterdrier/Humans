@@ -186,7 +186,7 @@ public class EventsApiControllerTests
         var earlyCamp = Guid.NewGuid();
         var lateCamp = string.Equals(route, "Barrio", StringComparison.Ordinal) ? earlyCamp : Guid.NewGuid();
         var early = MakeEvent(earlyCamp, Guid.NewGuid(), null) with
-            { StartAt = Instant.FromUtc(2026, 8, 1, 10, 0) };
+        { StartAt = Instant.FromUtc(2026, 8, 1, 10, 0) };
         var late = MakeEvent(lateCamp, Guid.NewGuid(), null);
         StubApprovedEvents(late, early);
         var controller = BuildController();

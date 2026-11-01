@@ -605,7 +605,8 @@ internal sealed class CampaignService(
                 var total = grants?.Count ?? 0;
                 var redeemed = grants?.Count(g => g.RedeemedAt is not null) ?? 0;
                 return new CampaignCodeTrackingSummary(
-                    s.CampaignId, s.CampaignTitle, total, redeemed) { CreatedAt = s.CreatedAt };
+                    s.CampaignId, s.CampaignTitle, total, redeemed)
+                { CreatedAt = s.CreatedAt };
             })
             .ToList();
 

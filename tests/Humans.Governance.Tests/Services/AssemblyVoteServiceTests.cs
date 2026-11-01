@@ -68,7 +68,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         {
             var controller = new GovernanceVotesAdminController(_fx.Users, votes,
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
-                { ControllerContext = context };
+            { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
             ordered = view.Model.Should().BeOfType<AssemblyVoteAdminListViewModel>().Subject.Votes;
@@ -78,7 +78,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             var controller = new GovernanceVotesController(_fx.Users, votes,
                 Substitute.For<IStringLocalizer<GovernanceResource>>(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
-                { ControllerContext = context };
+            { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
             ordered = view.Model.Should().BeOfType<AssemblyVoteListViewModel>().Subject.Votes;

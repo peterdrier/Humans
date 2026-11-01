@@ -495,9 +495,11 @@ public sealed class ServiceImageTests
         {
             db.ContainerPlacements.Add(new ContainerPlacement
             {
-                ContainerId = container.Id, Year = 2026,
+                ContainerId = container.Id,
+                Year = 2026,
                 PlacementImageStoragePath = placementPath,
-                CreatedAt = StartTime, UpdatedAt = StartTime
+                CreatedAt = StartTime,
+                UpdatedAt = StartTime
             });
             await db.SaveChangesAsync(ct);
         }
@@ -547,15 +549,19 @@ public sealed class ServiceImageTests
             foreach (var year in new[] { 2025, 2026 })
                 db.ContainerPlacements.Add(new ContainerPlacement
                 {
-                    ContainerId = container.Id, Year = year,
+                    ContainerId = container.Id,
+                    Year = year,
                     PlacementImageStoragePath = $"uploads/containers/{container.Id}/placement-{year}.jpg",
-                    CreatedAt = StartTime, UpdatedAt = StartTime
+                    CreatedAt = StartTime,
+                    UpdatedAt = StartTime
                 });
             db.ContainerPlacements.Add(new ContainerPlacement
             {
-                ContainerId = other.Id, Year = 2026,
+                ContainerId = other.Id,
+                Year = 2026,
                 PlacementImageStoragePath = $"uploads/containers/{other.Id}/placement.jpg",
-                CreatedAt = StartTime, UpdatedAt = StartTime
+                CreatedAt = StartTime,
+                UpdatedAt = StartTime
             });
             await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }

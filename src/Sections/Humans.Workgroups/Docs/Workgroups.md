@@ -298,7 +298,7 @@ Settings and Register an existing group on first setup or after clearing the que
   sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
   reason. A plain member gets `NotACoordinator`. Neither `SetCoordinatorsAsync` nor a
   last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
-  withdrawing the group closes its pending requests (`ClosePendingRequestsAsync`), so
+  withdrawing the group closes its pending requests (`ClosePendingRequests`), so
   nothing waits on a group nobody can decide for.
 - **A sensitive group's content is its members'.** `IsSensitive` hides roster, documents,
   meetings and history from everyone but members and Board/Admin: the page shows the

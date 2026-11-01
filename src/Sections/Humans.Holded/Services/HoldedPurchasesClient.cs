@@ -85,8 +85,16 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
 
             return new HoldedPurchaseDocumentDto
             {
+                Id = Prop(node, "id")?.GetValue<string>() ?? "",
+                DocNumber = Prop(node, "document_number")?.GetValue<string>() ?? "",
+                Subtotal = ReadDecimalV2(Prop(node, "subtotal")),
+                Tax = ReadDecimalV2(Prop(node, "tax")),
+                Total = ReadDecimalV2(Prop(node, "total")),
+                PaymentsTotal = ReadDecimalV2(Prop(node, "payments_total")),
+                PaymentsPending = ReadDecimalV2(Prop(node, "payments_pending")),
                 ApprovedAt = ParseApprovedAt(Prop(node, "approved_at")?.GetValue<string>()),
                 Notes = Prop(node, "notes")?.GetValue<string>() is { Length: > 0 } notes ? notes : null,
+                Tags = ReadTags(Prop(node, "tags")),
                 Payments = ReadPaymentsDetail(Prop(node, "payments_detail")),
             };
         }
@@ -258,7 +266,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
             ? ReadRequiredDecimalV2(Prop(n, "payments_pending"), "payments_pending")
             : ReadDecimalV2(Prop(n, "payments_pending")),
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
-        Currency = ReadEuroCurrency(Prop(n, "currency")),
+        Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),
         Lines = Arr(Prop(n, "lines")).Select(p => new HoldedPurchaseLineDto
         {

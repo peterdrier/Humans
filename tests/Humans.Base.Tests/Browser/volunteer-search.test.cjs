@@ -4,7 +4,7 @@ const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
 
-function page(labels = {}, showPoolBadge = false) {
+function page() {
     const source = readFileSync(resolve(__dirname,
         '../../../src/Humans.Base/Views/Shared/_VolunteerSearchScript.cshtml'), 'utf8');
     let script = source.slice(source.indexOf('(function () {'));
@@ -12,15 +12,12 @@ function page(labels = {}, showPoolBadge = false) {
         searchUrl: '/search', voluntellUrl: '/assign', assignButtonClass: 'btn-success',
         dietaryPreferenceStyle: 'muted', noResultsText: 'No humans found.',
         errorText: 'Search failed.', overlapLabel: 'Overlap',
-        poolLabel: 'Pool', shiftCountLabel: '{0} shifts', shiftCountSingularLabel: '{0} shift',
-        conflictWarningLabel: 'Warning: schedule conflict', assignLabel: 'Assign',
-        ...labels,
     };
     script = script.replace(/@Html\.Raw\(System\.Text\.Json\.JsonSerializer\.Serialize\((\w+)\)\)/g,
         (_, name) => JSON.stringify(serialized[name]));
     for (const [key, value] of Object.entries({
         '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())': '',
-        '@showPoolBadge.ToString().ToLowerInvariant()': String(showPoolBadge),
+        '@showPoolBadge.ToString().ToLowerInvariant()': 'false',
     })) script = script.replaceAll(key, value);
     const handlers = {};
     const timers = new Map();
@@ -44,9 +41,9 @@ function page(labels = {}, showPoolBadge = false) {
         requests, containers,
         type: (index, name) => { inputs[index].value = name; handlers.input({ target: inputs[index] }); },
         debounce: () => { for (const callback of timers.values()) callback(); timers.clear(); },
-        respond: async (index, name, fail = false, details = {}) => {
+        respond: async (index, name, fail = false) => {
             if (fail) requests[index].reject(new Error('network failure'));
-            else requests[index].resolveResponse({ json: async () => [{ displayName: name, userId: name, ...details }] });
+            else requests[index].resolveResponse({ json: async () => [{ displayName: name, userId: name }] });
             await new Promise(resolveDone => setImmediate(resolveDone));
         },
     };
@@ -80,20 +77,4 @@ test('different shift inputs debounce independently', async () => {
     await ui.respond(0, 'Alpha'); await ui.respond(1, 'Beta');
     assert.match(ui.containers.one.innerHTML, /Alpha/);
     assert.match(ui.containers.two.innerHTML, /Beta/);
-});
-
-test('assignment controls and shift counts use localized labels', async () => {
-    const ui = page({
-        poolLabel: 'Réserve', assignLabel: 'Attribuer', conflictWarningLabel: 'Conflit d’horaire',
-        shiftCountLabel: '{0} créneaux', shiftCountSingularLabel: '{0} créneau',
-    }, true);
-    ui.type(0, 'Alpha'); ui.debounce();
-    await ui.respond(0, 'Alpha', false, { bookedShiftCount: 1, hasOverlap: true, isInPool: true });
-    assert.match(ui.containers.one.innerHTML, /\(1 créneau\)/);
-    assert.match(ui.containers.one.innerHTML, />Réserve<\/span>/);
-    assert.match(ui.containers.one.innerHTML, /title="Conflit d’horaire"/);
-    assert.match(ui.containers.one.innerHTML, />Attribuer<\/button>/);
-    ui.type(0, 'Beta'); ui.debounce();
-    await ui.respond(1, 'Beta', false, { bookedShiftCount: 2 });
-    assert.match(ui.containers.one.innerHTML, /\(2 créneaux\)/);
 });

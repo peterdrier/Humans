@@ -2142,7 +2142,9 @@ public sealed class CampServiceTests : CampsTestHarness
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId }.ToUserInfo());
         var definition = new CampRoleDefinition
         {
-            Id = Guid.NewGuid(), Name = "Safety", SlotCount = expected == AssignCampRoleOutcome.SlotCapReached ? 0 : 1,
+            Id = Guid.NewGuid(),
+            Name = "Safety",
+            SlotCount = expected == AssignCampRoleOutcome.SlotCapReached ? 0 : 1,
             DeactivatedAt = expected == AssignCampRoleOutcome.RoleDeactivated ? Clock.GetCurrentInstant() : null,
         };
         CampsDb.Camps.Add(camp);
@@ -2175,14 +2177,20 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "atomic-role" };
         var season = new CampSeason
         {
-            Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026,
-            EventSettingsId = Event2026.Id, Status = CampSeasonStatus.Active,
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            Year = 2026,
+            EventSettingsId = Event2026.Id,
+            Status = CampSeasonStatus.Active,
         };
         var userId = Guid.NewGuid();
         var member = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
-            Status = CampMemberStatus.Pending, RequestedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = userId,
+            Status = CampMemberStatus.Pending,
+            RequestedAt = Clock.GetCurrentInstant(),
         };
         var definition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Safety", SlotCount = 1 };
         await using (var seed = await factory.CreateDbContextAsync(ct))
@@ -2251,14 +2259,21 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var member = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
-            Status = CampMemberStatus.Active, RequestedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active,
+            RequestedAt = Clock.GetCurrentInstant(),
         };
         var definition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Safety" };
         var assignment = new CampRoleAssignment
         {
-            Id = Guid.NewGuid(), CampMemberId = member.Id, CampSeasonId = season.Id,
-            CampRoleDefinitionId = definition.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = TestActorId,
+            Id = Guid.NewGuid(),
+            CampMemberId = member.Id,
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = definition.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = TestActorId,
         };
         await using (var seed = await factory.CreateDbContextAsync(ct))
         {
@@ -2307,14 +2322,19 @@ public sealed class CampServiceTests : CampsTestHarness
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
         var member = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
             Status = string.Equals(operation, "Withdraw", StringComparison.Ordinal) ? CampMemberStatus.Pending : CampMemberStatus.Active,
             RequestedAt = Clock.GetCurrentInstant(),
         };
         var otherMember = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
-            Status = CampMemberStatus.Active, RequestedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active,
+            RequestedAt = Clock.GetCurrentInstant(),
         };
         var definition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Safety" };
         CampsDb.Camps.Add(camp);
@@ -2325,16 +2345,24 @@ public sealed class CampServiceTests : CampsTestHarness
         {
             CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
             {
-                Id = Guid.NewGuid(), CampMemberId = holder.Id, CampSeasonId = season.Id,
-                CampRoleDefinitionId = definition.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = TestActorId,
+                Id = Guid.NewGuid(),
+                CampMemberId = holder.Id,
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = definition.Id,
+                AssignedAt = Clock.GetCurrentInstant(),
+                AssignedByUserId = TestActorId,
             });
         }
         var secondDefinition = new CampRoleDefinition { Id = Guid.NewGuid(), Name = "LNT" };
         CampsDb.CampRoleDefinitions.Add(secondDefinition);
         CampsDb.CampRoleAssignments.Add(new CampRoleAssignment
         {
-            Id = Guid.NewGuid(), CampMemberId = member.Id, CampSeasonId = season.Id,
-            CampRoleDefinitionId = secondDefinition.Id, AssignedAt = Clock.GetCurrentInstant(), AssignedByUserId = TestActorId,
+            Id = Guid.NewGuid(),
+            CampMemberId = member.Id,
+            CampSeasonId = season.Id,
+            CampRoleDefinitionId = secondDefinition.Id,
+            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedByUserId = TestActorId,
         });
         await SaveAllAsync(ct);
         var actor = string.Equals(operation, "Remove", StringComparison.Ordinal) ? TestActorId : member.UserId;

@@ -128,6 +128,23 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
             }
         }
 
+        // Same rule as availability: source-only rows move, the survivor's row wins a collision.
+        var sourceStatuses = await db.VolunteerBuildStatuses
+            .Where(b => b.UserId == sourceUserId)
+            .ToListAsync(ct);
+        var targetStatusEventIds = (await db.VolunteerBuildStatuses
+            .Where(b => b.UserId == targetUserId)
+            .Select(b => b.EventSettingsId)
+            .ToListAsync(ct)).ToHashSet();
+
+        foreach (var src in sourceStatuses)
+        {
+            if (targetStatusEventIds.Contains(src.EventSettingsId))
+                db.VolunteerBuildStatuses.Remove(src);
+            else
+                src.UserId = targetUserId;
+        }
+
         await db.SaveChangesAsync(ct);
     }
 

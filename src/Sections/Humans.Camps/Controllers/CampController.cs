@@ -151,11 +151,11 @@ internal sealed class CampController(
             LeadPositionPills = roleSummaries is not null && roleSummaries.TryGetValue(season.Id, out var summaries)
             ? summaries.OrderBy(s => s.SortOrder).ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(s => new CampLeadPositionPillViewModel
-            {
-                Name = s.Name,
-                FilledCount = s.Filled,
-                SlotCount = s.SlotCount
-            }).ToList()
+                {
+                    Name = s.Name,
+                    FilledCount = s.Filled,
+                    SlotCount = s.SlotCount
+                }).ToList()
             : []
         };
 
@@ -521,20 +521,20 @@ internal sealed class CampController(
         var rows = panelData.Rows
             .OrderBy(r => r.Definition.SortOrder).ThenBy(r => r.Definition.Name, StringComparer.OrdinalIgnoreCase)
             .Select(r => new CampRoleRowViewModel
-        {
-            DefinitionId = r.Definition.Id,
-            Name = r.Definition.Name,
-            Description = r.Definition.Description,
-            SlotCount = r.Definition.SlotCount,
-            MinimumRequired = r.Definition.MinimumRequired,
-            FilledSlots = r.FilledSlots
+            {
+                DefinitionId = r.Definition.Id,
+                Name = r.Definition.Name,
+                Description = r.Definition.Description,
+                SlotCount = r.Definition.SlotCount,
+                MinimumRequired = r.Definition.MinimumRequired,
+                FilledSlots = r.FilledSlots
                 .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
                 .ToList(),
-            EmptySlotCount = r.EmptySlotCount,
-            OverCapacity = r.OverCapacity,
-            CurrentCount = r.CurrentCount,
-            IsLeadRole = r.Definition.SpecialRole == CampSpecialRole.Lead,
-        }).ToList();
+                EmptySlotCount = r.EmptySlotCount,
+                OverCapacity = r.OverCapacity,
+                CurrentCount = r.CurrentCount,
+                IsLeadRole = r.Definition.SpecialRole == CampSpecialRole.Lead,
+            }).ToList();
 
         return new CampRolesPanelViewModel
         {

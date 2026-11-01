@@ -501,8 +501,12 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options);
         var application = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = Guid.NewGuid(), MembershipTier = MembershipTier.Asociado,
-            Motivation = "Motivation", SubmittedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            MembershipTier = MembershipTier.Asociado,
+            Motivation = "Motivation",
+            SubmittedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
         var voterId = Guid.NewGuid();
         await using (var seed = await factory.CreateDbContextAsync(ct))
@@ -510,12 +514,17 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             seed.Applications.Add(application);
             seed.BoardVotes.Add(new BoardVote
             {
-                Id = Guid.NewGuid(), ApplicationId = application.Id, BoardMemberUserId = voterId,
-                Vote = VoteChoice.Yay, VotedAt = Clock.GetCurrentInstant(),
+                Id = Guid.NewGuid(),
+                ApplicationId = application.Id,
+                BoardMemberUserId = voterId,
+                Vote = VoteChoice.Yay,
+                VotedAt = Clock.GetCurrentInstant(),
             });
             if (existingTier) seed.MembershipTiers.Add(new MembershipTierRecord
             {
-                UserId = application.UserId, Tier = MembershipTier.Volunteer, GrantedAt = Clock.GetCurrentInstant(),
+                UserId = application.UserId,
+                Tier = MembershipTier.Volunteer,
+                GrantedAt = Clock.GetCurrentInstant(),
             });
             await seed.SaveChangesAsync(ct);
         }
@@ -570,7 +579,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             GovernanceDb.MembershipTiers.Add(new MembershipTierRecord
             {
-                UserId = userId, Tier = MembershipTier.Volunteer,
+                UserId = userId,
+                Tier = MembershipTier.Volunteer,
                 GrantedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
             });
             await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -1547,13 +1557,19 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var now = Clock.GetCurrentInstant();
         app.StateHistory.Add(new ApplicationStateHistory
         {
-            ApplicationId = app.Id, Status = ApplicationStatus.Submitted,
-            ChangedAt = now - Duration.FromDays(2), ChangedByUserId = userId, Notes = "Oldest",
+            ApplicationId = app.Id,
+            Status = ApplicationStatus.Submitted,
+            ChangedAt = now - Duration.FromDays(2),
+            ChangedByUserId = userId,
+            Notes = "Oldest",
         });
         app.StateHistory.Add(new ApplicationStateHistory
         {
-            ApplicationId = app.Id, Status = ApplicationStatus.Submitted,
-            ChangedAt = now - Duration.FromDays(1), ChangedByUserId = userId, Notes = "Middle",
+            ApplicationId = app.Id,
+            Status = ApplicationStatus.Submitted,
+            ChangedAt = now - Duration.FromDays(1),
+            ChangedByUserId = userId,
+            Notes = "Middle",
         });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -1771,8 +1787,12 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var oldExpiry = new LocalDate(2029, 12, 31);
         var application = new MemberApplication
         {
-            Id = Guid.NewGuid(), UserId = Guid.NewGuid(), MembershipTier = MembershipTier.Asociado,
-            Motivation = "Motivation", SubmittedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            MembershipTier = MembershipTier.Asociado,
+            Motivation = "Motivation",
+            SubmittedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant(),
         };
         application.Approve(Guid.NewGuid(), null, Clock);
         application.TermExpiresAt = oldExpiry;
@@ -1781,8 +1801,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             seed.Applications.Add(application);
             seed.MembershipTiers.Add(new MembershipTierRecord
             {
-                UserId = application.UserId, Tier = application.MembershipTier,
-                GrantedAt = Clock.GetCurrentInstant(), ExpiresAt = oldExpiry, GrantedByApplicationId = application.Id,
+                UserId = application.UserId,
+                Tier = application.MembershipTier,
+                GrantedAt = Clock.GetCurrentInstant(),
+                ExpiresAt = oldExpiry,
+                GrantedByApplicationId = application.Id,
             });
             await seed.SaveChangesAsync(ct);
         }
@@ -1811,8 +1834,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         {
             GovernanceDb.MembershipTiers.Add(new MembershipTierRecord
             {
-                UserId = drifted.UserId, Tier = MembershipTier.Asociado, GrantedAt = grantedAt,
-                ExpiresAt = drifted.TermExpiresAt, GrantedByApplicationId = grantId,
+                UserId = drifted.UserId,
+                Tier = MembershipTier.Asociado,
+                GrantedAt = grantedAt,
+                ExpiresAt = drifted.TermExpiresAt,
+                GrantedByApplicationId = grantId,
             });
             await SaveAllAsync(TestContext.Current.CancellationToken);
         }

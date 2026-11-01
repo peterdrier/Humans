@@ -49,6 +49,13 @@ public class HoldedOutboxDuplicateGuardTests
         _holded.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new HoldedPurchaseDocumentDto
             {
+                Id = "doc",
+                DocNumber = "",
+                Subtotal = 0m,
+                Tax = 0m,
+                Total = 0m,
+                PaymentsTotal = 0m,
+                PaymentsPending = 0m,
                 ApprovedAt = null,
             });
 

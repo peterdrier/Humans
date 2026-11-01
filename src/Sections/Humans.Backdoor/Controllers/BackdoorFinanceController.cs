@@ -248,24 +248,24 @@ internal sealed class BackdoorFinanceController(
             },
             lines = r.Lines.OrderByDescending(l => l.IsProblem).ThenBy(l => l.Status)
                 .ThenByDescending(l => l.DocumentDate).Select(l => new
-            {
-                expenseReportId = l.ExpenseReportId,
-                lineId = l.LineId,
-                creditorUserId = l.CreditorUserId,
-                memberName = l.MemberName,
-                description = l.Description,
-                expectedAmount = l.ExpectedAmount,
-                documentDate = l.DocumentDate.ToInvariantDate(),
-                pushState = l.PushState,
-                status = l.Status.ToString(),
-                isProblem = l.IsProblem,
-                holdedDocId = l.HoldedDocId,
-                holdedDocNumber = l.HoldedDocNumber,
-                holdedTotal = l.HoldedTotal,
-                holdedContactName = l.HoldedContactName,
-                duplicateDocIds = l.DuplicateDocIds,
-                excessAmount = l.ExcessAmount,
-            }),
+                {
+                    expenseReportId = l.ExpenseReportId,
+                    lineId = l.LineId,
+                    creditorUserId = l.CreditorUserId,
+                    memberName = l.MemberName,
+                    description = l.Description,
+                    expectedAmount = l.ExpectedAmount,
+                    documentDate = l.DocumentDate.ToInvariantDate(),
+                    pushState = l.PushState,
+                    status = l.Status.ToString(),
+                    isProblem = l.IsProblem,
+                    holdedDocId = l.HoldedDocId,
+                    holdedDocNumber = l.HoldedDocNumber,
+                    holdedTotal = l.HoldedTotal,
+                    holdedContactName = l.HoldedContactName,
+                    duplicateDocIds = l.DuplicateDocIds,
+                    excessAmount = l.ExcessAmount,
+                }),
             orphans = r.Orphans.OrderByDescending(o => o.Date).Select(o => new
             {
                 holdedDocId = o.HoldedDocId,
@@ -279,23 +279,23 @@ internal sealed class BackdoorFinanceController(
             }),
             members = r.Members.OrderByDescending(m => m.IsWarning)
                 .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase).Select(m => new
-            {
-                userId = m.UserId,
-                memberName = m.MemberName,
-                supplierAccountNum = m.SupplierAccountNum,
-                ledgerBalance = m.LedgerBalance,
-                expectedBalance = m.ExpectedBalance,
-                difference = m.Difference,
-                status = m.Status.ToString(),
-                isWarning = m.IsWarning,
-                openTransfers = m.OpenTransfers.Select(t => new
                 {
-                    transferId = t.TransferId,
-                    fileName = t.FileName,
-                    generatedAt = t.GeneratedAt.ToIso8601(),
-                    amount = t.Amount,
+                    userId = m.UserId,
+                    memberName = m.MemberName,
+                    supplierAccountNum = m.SupplierAccountNum,
+                    ledgerBalance = m.LedgerBalance,
+                    expectedBalance = m.ExpectedBalance,
+                    difference = m.Difference,
+                    status = m.Status.ToString(),
+                    isWarning = m.IsWarning,
+                    openTransfers = m.OpenTransfers.Select(t => new
+                    {
+                        transferId = t.TransferId,
+                        fileName = t.FileName,
+                        generatedAt = t.GeneratedAt.ToIso8601(),
+                        amount = t.Amount,
+                    }),
                 }),
-            }),
         });
     }
 

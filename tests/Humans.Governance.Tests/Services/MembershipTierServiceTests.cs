@@ -71,8 +71,11 @@ public sealed class MembershipTierServiceTests : IDisposable
     {
         _db.MembershipTiers.Add(new MembershipTierRecord
         {
-            UserId = userId, Tier = tier, GrantedAt = Now,
-            ExpiresAt = application?.TermExpiresAt, GrantedByApplicationId = application?.Id,
+            UserId = userId,
+            Tier = tier,
+            GrantedAt = Now,
+            ExpiresAt = application?.TermExpiresAt,
+            GrantedByApplicationId = application?.Id,
         });
         await _db.SaveChangesAsync(Ct);
         _db.ChangeTracker.Clear();

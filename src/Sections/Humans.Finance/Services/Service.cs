@@ -379,7 +379,8 @@ internal sealed class Service(
                 d.Description,
                 d.Total,
                 ReasonFor(d),
-                HoldedDocUrl(d.HoldedDocId)) { Date = d.Date })
+                HoldedDocUrl(d.HoldedDocId))
+            { Date = d.Date })
             .ToList();
     }
 

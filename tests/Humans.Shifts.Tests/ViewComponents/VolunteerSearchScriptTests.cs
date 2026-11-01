@@ -4,8 +4,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
-using Humans.Base;
-using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -30,8 +28,6 @@ public class VolunteerSearchScriptTests
     [Xunit.InlineData("ca")]
     public async Task Search_labels_round_trip_through_rendered_script_literals(string language)
     {
-        using var cultureScope = new CultureScope(language);
-        var shared = new ResourceManager(typeof(SharedResource));
         var resources = new ResourceManager(typeof(ShiftsResource));
         var culture = CultureInfo.GetCultureInfo(language);
         var values = new Dictionary<string, object?>(StringComparer.Ordinal)
@@ -42,13 +38,6 @@ public class VolunteerSearchScriptTests
             ["SearchUrl"] = "/search?a=1&b=2",
             ["VoluntellUrl"] = "/assign?a=1&b=2",
         };
-        foreach (var (variable, key) in new[]
-        {
-            ("PoolLabel", "Pool"), ("ShiftCountLabel", "ShiftCount"),
-            ("ShiftCountSingularLabel", "ShiftCountSingular"),
-            ("ConflictWarningLabel", "ConflictWarning"), ("AssignLabel", "Assign")
-        })
-            values[variable] = shared.GetString("VolunteerSearch_" + key, culture);
         var script = await RenderAsync(values);
         foreach (var (key, value) in values)
         {

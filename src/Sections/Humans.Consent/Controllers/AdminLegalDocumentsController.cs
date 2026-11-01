@@ -31,18 +31,18 @@ internal sealed class AdminLegalDocumentsController(
                 .OrderBy(d => d.TeamName, StringComparer.Ordinal)
                 .ThenBy(d => d.Name, StringComparer.Ordinal)
                 .Select(d => new LegalDocumentListItemViewModel
-            {
-                Id = d.Id,
-                Name = d.Name,
-                TeamName = d.TeamName,
-                TeamId = d.TeamId,
-                IsRequired = d.IsRequired,
-                IsActive = d.IsActive,
-                GracePeriodDays = d.GracePeriodDays,
-                CurrentVersion = d.CurrentVersion,
-                LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc(),
-                VersionCount = d.VersionCount
-            }).ToList()
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    TeamName = d.TeamName,
+                    TeamId = d.TeamId,
+                    IsRequired = d.IsRequired,
+                    IsActive = d.IsActive,
+                    GracePeriodDays = d.GracePeriodDays,
+                    CurrentVersion = d.CurrentVersion,
+                    LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc(),
+                    VersionCount = d.VersionCount
+                }).ToList()
         };
 
         return View("~/Views/AdminLegalDocuments/LegalDocuments.cshtml", viewModel);
