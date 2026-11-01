@@ -110,7 +110,7 @@ public sealed class FeedbackServiceTests
             NullLogger<FeedbackServiceImpl>.Instance);
     }
 
-    // Feedback no longer accepts new reports, so every fixture below seeds historical rows
+    // Feedback accepts no new reports, so every fixture below seeds historical rows
     // straight into the DB.
     [HumansFact]
     public void FeedbackSurface_ExposesNoReportCreationMethod()

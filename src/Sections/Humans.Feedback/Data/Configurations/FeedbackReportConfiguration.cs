@@ -46,8 +46,7 @@ internal sealed class FeedbackReportConfiguration : IEntityTypeConfiguration<Fee
             .IsRequired();
 
         // Sentinel (FeedbackSource)(-1), not a real member: with the CLR default (UserReport == 0) as sentinel, EF
-        // silently drops an explicit `Source = UserReport` in favor of the DB default. The DB default backfilled
-        // existing rows.
+        // silently drops an explicit `Source = UserReport` in favor of the DB default.
         builder.Property(f => f.Source)
             .HasConversion<string>()
             .HasMaxLength(32)

@@ -114,7 +114,7 @@ internal sealed class FeedbackReplyDelivery(
             var notification = emailMessages.FeedbackResponseNotification(
                 language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
 
-            // No action link: /Feedback/{id} is Admin-only now, so the reporter would land on a 403.
+            // No action link: /Feedback/{id} is Admin-only, so the reporter would land on a 403.
             // The response text itself reaches them in the FeedbackResponse email.
             await notificationService.SendAsync(
                 FeedbackNotificationSources.FeedbackResponse,

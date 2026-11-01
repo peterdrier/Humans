@@ -156,7 +156,6 @@ internal sealed class FeedbackRepository(IDbContextFactory<FeedbackDbContext> fa
             ctx.Entry(m).Property(nameof(FeedbackMessage.SenderUserId)).CurrentValue = null;
         }
 
-        // Triage fields on other people's reports.
         var triaged = await ctx.FeedbackReports
             .Where(r => r.ResolvedByUserId == userId || r.AssignedToUserId == userId)
             .ToListAsync(ct);
