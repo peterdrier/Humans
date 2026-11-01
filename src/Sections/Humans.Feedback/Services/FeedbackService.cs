@@ -161,7 +161,7 @@ internal sealed class FeedbackService(
         logger.LogInformation(
             "Feedback admin reply posted on {ReportId} by {UserId}", reportId, senderUserId);
         return new(true, Message: new FeedbackMessageInfo(
-            message.Id, message.FeedbackReportId, message.SenderUserId,
+            message.Id, message.SenderUserId,
             SenderName: null, message.Content, message.CreatedAt, message.EmailEnqueuePending == true));
     }
 
@@ -425,7 +425,6 @@ internal sealed class FeedbackService(
             report.CreatedAt,
             report.UpdatedAt,
             report.ResolvedAt,
-            report.ResolvedByUserId,
             report.AssignedToUserId,
             report.AssignedToTeamId,
             lookups.DisplayUsers.TryGetValue(report.UserId, out var reporter) ? reporter.Name : report.UserId.ToString(),
@@ -446,7 +445,6 @@ internal sealed class FeedbackService(
         IReadOnlyDictionary<Guid, DisplayUser> displayUsers) =>
         new(
             message.Id,
-            message.FeedbackReportId,
             message.SenderUserId,
             ResolveName(message.SenderUserId, displayUsers),
             message.Content,

@@ -92,7 +92,7 @@ public class BackdoorFeedbackControllerTests
         var id = Guid.NewGuid();
         _feedback.PostMessageAsync(id, KeyOwnerId, "Looking into it", Arg.Any<CancellationToken>())
             .Returns(new FeedbackMutationResult(true, Message: new FeedbackMessageInfo(
-                Guid.NewGuid(), id, KeyOwnerId, "Admin", "Looking into it",
+                Guid.NewGuid(), KeyOwnerId, "Admin", "Looking into it",
                 Instant.FromUtc(2026, 9, 3, 10, 0))));
 
         var result = await _sut.PostMessage(id, new PostFeedbackMessageModel { Content = "Looking into it" });

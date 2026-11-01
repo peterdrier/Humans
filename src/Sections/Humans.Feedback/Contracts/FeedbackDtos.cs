@@ -20,7 +20,6 @@ public sealed record FeedbackReportInfo(
     Instant CreatedAt,
     Instant UpdatedAt,
     Instant? ResolvedAt,
-    Guid? ResolvedByUserId,
     Guid? AssignedToUserId,
     Guid? AssignedToTeamId,
     string ReporterName,
@@ -33,7 +32,6 @@ public sealed record FeedbackReportInfo(
 
 public sealed record FeedbackMessageInfo(
     Guid Id,
-    Guid FeedbackReportId,
     Guid? SenderUserId,
     string? SenderName,
     string Content,
