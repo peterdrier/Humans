@@ -11,7 +11,6 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.Feedback;
@@ -25,7 +24,6 @@ public sealed class Section :
     ISectionJobs,
     ISectionDataMigrations
 {
-    private const string ScreenshotsPrefix = "uploads/feedback";
 
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -78,37 +76,20 @@ public sealed class Section :
     }
 
     // Feedback is being removed and its tables dropped; those rows are the only index to these files, so the
-    // whole prefix goes first: a reporter's screenshots must not outlive the report that pointed to them.
+    // screenshots go first: a reporter's screenshots must not outlive the report that pointed to them.
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new("feedback.delete-screenshots", "Feedback",
             "Delete every Feedback screenshot before the section and its tables are removed",
             "The Feedback section and its tables",
-            ScreenshotsStatusAsync, DeleteScreenshotsAsync),
+            ScreenshotsStatusAsync,
+            (sp, _, ct) => sp.GetRequiredService<FeedbackService>().DeleteAllScreenshotsAsync(ct)),
     ];
 
-    private static Task<DataMigrationStatus> ScreenshotsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        Task.FromResult(new DataMigrationStatus(["File"],
-            [.. ScreenshotFiles(sp).Select(f => (IReadOnlyList<string>)[f])]));
-
-    private static async Task<int> DeleteScreenshotsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
+    private static async Task<DataMigrationStatus> ScreenshotsStatusAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var count = ScreenshotFiles(sp).Count;
-        await sp.GetRequiredService<IFileStorage>().DeleteAsync(ScreenshotsPrefix, ct, recursiveDirectory: true);
-        return count;
-    }
-
-    // Lists the directory, not the rows, so orphaned files go too. IFileStorage has no listing, yet the operator
-    // must see each pending file before confirming; the root matches FileSystemFileStorage's.
-    private static List<string> ScreenshotFiles(IServiceProvider sp)
-    {
-        var root = Path.Combine(sp.GetRequiredService<IHostEnvironment>().ContentRootPath, "wwwroot");
-        var dir = Path.Combine(root, ScreenshotsPrefix.Replace('/', Path.DirectorySeparatorChar));
-        return Directory.Exists(dir)
-            ? [.. Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
-                .Select(f => Path.GetRelativePath(root, f).Replace(Path.DirectorySeparatorChar, '/'))
-                .Order(StringComparer.Ordinal)]
-            : [];
+        var keys = await sp.GetRequiredService<FeedbackService>().GetStoredScreenshotKeysAsync(ct);
+        return new DataMigrationStatus(["File"], [.. keys.Select(k => (IReadOnlyList<string>)[k])]);
     }
 }
 
