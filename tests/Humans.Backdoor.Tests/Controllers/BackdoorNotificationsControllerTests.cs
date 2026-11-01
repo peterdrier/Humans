@@ -36,7 +36,7 @@ public class BackdoorNotificationsControllerTests
             [
                 new UnreadNotificationDto(
                     createdAt, "ConsentReviewNeeded", "Consent review pending: Alice",
-                    "/OnboardingReview", NotificationPriority.High, NotificationClass.Actionable, true),
+                    "/Consent/ReviewQueue", NotificationPriority.High, NotificationClass.Actionable, true),
             ],
             [new NotificationMeterDto("Ticket sync error", 1, "/Tickets")]));
 
@@ -48,7 +48,7 @@ public class BackdoorNotificationsControllerTests
         notification.GetProperty("date").GetDateTime().Should().Be(createdAt);
         notification.GetProperty("source").GetString().Should().Be("ConsentReviewNeeded");
         notification.GetProperty("subject").GetString().Should().Be("Consent review pending: Alice");
-        notification.GetProperty("link").GetString().Should().Be("/OnboardingReview");
+        notification.GetProperty("link").GetString().Should().Be("/Consent/ReviewQueue");
         notification.GetProperty("priority").GetString().Should().Be("high");
         notification.GetProperty("class").GetString().Should().Be("actionable");
         notification.GetProperty("unread").GetBoolean().Should().BeTrue();

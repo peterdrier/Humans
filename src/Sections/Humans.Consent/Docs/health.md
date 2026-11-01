@@ -12,6 +12,11 @@ records each agreement as a permanent tamper-proof entry, and nags the people af
 a document changes. Admins manage the document set from a GUI. Anyone — signed in or not —
 can read the association's statutes.
 
+It also runs the Consent Coordinator's desk: the queue of new humans waiting to be looked at,
+and clear, bulk clear and flag, which write the coordinator's verdict to `consent_reviews`.
+Those are notes for the record. Reject is the one verb with consequences (account state,
+teams, the person's notice), so the desk hands it to `IOnboardingIntake.RejectSignupAsync`.
+
 ## The shapes
 
 | Shape | Question it answers | Surface |
@@ -21,6 +26,7 @@ can read the association's statutes.
 | Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncService` + internal dashboard/version reads — all views over one cached active+required set |
 | Keep documents current | "Has the source changed? Pull it." | internal sync surface (`SyncAllDocumentsAsync`, `SyncDocumentAsync`), `ILegalDocumentSyncRunner` (job body), the sync + reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
+| Coordinator review | "Who is waiting for a coordinator, and what do I do about them?" | `IConsentReviewQueueService` (internal), `/Consent/ReviewQueue` and `/Consent/ReviewQueue/{userId}`; reject goes to `IOnboardingIntake.RejectSignupAsync` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
 | Cache freshness | "This data changed" | No signals in or out: the per-user cache reloads an entry built over a stale merge chain; the sole legal-document writer evicts its own decorator's cache after each write |
 
@@ -43,6 +49,9 @@ The shapes imply exactly two aggregates and one content proxy, each with a singl
   submit).
 - **Statutes proxy** — `LegalDocumentService`: GitHub → IMemoryCache, no DB. Separate on
   purpose; only the name is unfortunate (see weirdness).
+- **Review queue** — `ConsentReviewQueueService` composes the queue from Users, Governance
+  (tiers, pending applications) and the membership calculator, and writes through the
+  section's own `IConsentWrite`. It owns no repository.
 - Controllers translate only; jobs are schedule + metric + failure boundary over
   `ILegalDocumentSyncRunner` / the reminder pass.
 - Contracts leaf carries only what outside callers use.
@@ -69,14 +78,34 @@ contract fold-inward).
 - After every persisted document write the global cache is invalidated before the call
   returns; after a successful submit the user's cache entry is refreshed before the
   controller redirects (the next-page banner must not read stale state).
-- Auth: `/Consent` any authenticated human; `/Legal` anonymous; `/Legal/Admin/*` Board or
+- **Clear and Flag change nothing but the record *for a Volunteer*.** No team sync, no email,
+  no access change. They are *not* inert for a Colaborador/Asociado: `RecordConsentCheckAsync`
+  sets `IsApproved = (status == Cleared)` and `SystemTeamSyncJob` gates the two tier teams on
+  that flag, so `Cleared → Flagged` drops a tier member from their tier team on the next sync.
+- **A flagged, unresolved person stays in the review queue** even if an override set
+  `IsApproved`. A rejected person leaves it: Clear is refused on them, so the row would be
+  unresolvable. A merged tombstone never appears. Bulk clear clears only selected ids that are
+  queue rows. (`ConsentReviewPredicates`; `ConsentReviewQueueService`.)
+- Auth: `/Consent/ReviewQueue` read by ConsentCoordinator, ShiftsAdmin, Board, Admin; its
+  writes by ConsentCoordinator, Board, Admin only. `/Consent` any authenticated human; `/Legal` anonymous; `/Legal/Admin/*` Board or
   Admin only; ConsentCoordinator has no document-management rights.
 
 ## Seams
 
-- **Consent Coordinator review queue** lives in Onboarding (`/OnboardingReview`), not here;
-  this section only feeds it. Docs describe the joint flow — keep the boundary in mind when
-  editing either.
+- **Consent Coordinator review queue** lives here (`/Consent/ReviewQueue`), next to the
+  `consent_reviews` table it writes. Reject is Onboarding's orchestration
+  (`IOnboardingIntake.RejectSignupAsync`), shared with Users' admin screen; Onboarding also sets
+  the `Pending` status at the review threshold through `IConsentWrite`.
+- **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
+  Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs
+  somewhere to act on it, and Reject is the verb he named. The gate is the
+  `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup. Do not add a
+  service-side refusal for it.
+
+  Flag is the exception: `Cleared → Flagged` clears the review's `IsApproved`, which
+  `SystemTeamSyncJob` reads as tier-team eligibility, so exposing it would make an audit
+  annotation silently kick a Colaborador/Asociado out of their tier team. Expose Flag once
+  either `Flagged` stops writing `IsApproved`, or tier eligibility stops reading it.
 - `ILegalDocumentSyncRunner`'s consumers all live in this section, so it could fold inward
   (noted in the Contracts csproj); `ILegalDocumentSyncService` cannot yet — Governance's
   `MembershipCalculator` injects it. Shrinking contract surface needs Peter.

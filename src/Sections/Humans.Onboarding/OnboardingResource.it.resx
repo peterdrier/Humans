@@ -40,116 +40,17 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Onboarding_ReviewTitle" xml:space="preserve">
-    <value>Coda di revisione onboarding</value>
-  </data>
-  <data name="Onboarding_ReviewNoPending" xml:space="preserve">
-    <value>Nessun human in attesa di revisione.</value>
-  </data>
-  <data name="Onboarding_ReviewPendingSection" xml:space="preserve">
-    <value>In attesa di revisione</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve">
-    <value>Segnalato per approfondimento</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve">
-    <value>Segnalato</value>
-  </data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
     <value>Riepilogo del profilo</value>
-  </data>
-  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve">
-    <value>Riepilogo del nuovo human</value>
   </data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve">
     <value>Nome legale</value>
   </data>
-  <data name="Onboarding_ReviewHasApplication" xml:space="preserve">
-    <value>Ha una domanda</value>
-  </data>
-  <data name="Onboarding_ReviewSigned" xml:space="preserve">
-    <value>firmato/i</value>
-  </data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
     <value>Motivazione della domanda</value>
   </data>
-  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve">
-    <value>Note di revisione precedenti</value>
-  </data>
-  <data name="Onboarding_ReviewActions" xml:space="preserve">
-    <value>Azioni</value>
-  </data>
   <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
     <value>Note facoltative...</value>
-  </data>
-  <data name="Onboarding_ReviewClearButton" xml:space="preserve">
-    <value>Approva &amp; Conferma</value>
-  </data>
-  <data name="Onboarding_ReviewClearHelp" xml:space="preserve">
-    <value>Approva la revisione del profilo. Lo human entrerà nei Volontari quando anche i documenti legali saranno firmati.</value>
-  </data>
-  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve">
-    <value>La revisione del profilo di questo human verrà approvata. Continuare?</value>
-  </data>
-  <data name="Onboarding_ReviewFlagButton" xml:space="preserve">
-    <value>Segnala per revisione</value>
-  </data>
-  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve">
-    <value>Motivo della segnalazione...</value>
-  </data>
-  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve">
-    <value>Questo human verrà segnalato per ulteriore revisione. Continuare?</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve">
-    <value>Questo human è già stato approvato.</value>
-  </data>
-  <data name="Onboarding_ReviewCleared" xml:space="preserve">
-    <value>Revisione del profilo approvata.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve">
-    <value>Nessun human selezionato è stato approvato.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve">
-    <value>Approvati {0} humans selezionati.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve">
-    <value>Approvati {0} di {1} selezionati — gli altri non sono più idonei.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve">
-    <value>Approva tutti i selezionati</value>
-  </data>
-  <data name="Onboarding_ReviewFlagged" xml:space="preserve">
-    <value>Human segnalato per ulteriore revisione.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectButton" xml:space="preserve">
-    <value>Rifiuta registrazione</value>
-  </data>
-  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve">
-    <value>Motivo del rifiuto...</value>
-  </data>
-  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve">
-    <value>Sei sicuro di voler rifiutare la registrazione di questo human? Questa azione non può essere annullata.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve">
-    <value>Il rifiuto negherà permanentemente la registrazione di questo human e invierà un'email di notifica.</value>
-  </data>
-  <data name="Onboarding_ReviewRejected" xml:space="preserve">
-    <value>La registrazione è stata rifiutata.</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve">
-    <value>Questo human è già stato rifiutato.</value>
-  </data>
-  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve">
-    <value>Documenti legali</value>
-  </data>
-  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve">
-    <value>Completo</value>
-  </data>
-  <data name="Onboarding_ReviewDocsPending" xml:space="preserve">
-    <value>In attesa</value>
-  </data>
-  <data name="Onboarding_ReviewDocsNote" xml:space="preserve">
-    <value>La revisione del profilo può procedere in modo indipendente. Lo human entrerà nei Volontari quando tutti i documenti saranno firmati.</value>
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Completa la configurazione del tuo account per accedere ai turni e alle funzionalità del team.</value>
@@ -296,8 +197,6 @@
   <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
     <value>I team che fanno funzionare tutto — audio, sicurezza, costruzioni, tutto</value>
   </data>
-  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Rivedi</value></data>
-  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Seleziona {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Vuoi davvero richiedere l'eliminazione dell'account? Puoi annullare prima della data di eliminazione.</value></data>
   <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
     <value>Riguardo la Sua registrazione</value>

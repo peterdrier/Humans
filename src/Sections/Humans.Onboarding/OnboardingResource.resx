@@ -36,43 +36,10 @@
   <!-- Common / Shared          -->
   <!-- ======================== -->
   <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Add your name first — we need it before you can sign up for shifts.</value></data>
-  <data name="Onboarding_ReviewTitle" xml:space="preserve"><value>Onboarding Review Queue</value></data>
-  <data name="Onboarding_ReviewNoPending" xml:space="preserve"><value>No humans are waiting for review.</value></data>
-  <data name="Onboarding_ReviewPendingSection" xml:space="preserve"><value>Pending Review</value></data>
-  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve"><value>Flagged for Follow-up</value></data>
-  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve"><value>Profile Summary</value></data>
-  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve"><value>Legal Name</value></data>
-  <data name="Onboarding_ReviewHasApplication" xml:space="preserve"><value>Has Application</value></data>
-  <data name="Onboarding_ReviewSigned" xml:space="preserve"><value>signed</value></data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
-  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
-  <data name="Onboarding_ReviewActions" xml:space="preserve"><value>Actions</value></data>
   <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>
-  <data name="Onboarding_ReviewClearButton" xml:space="preserve"><value>Clear &amp; Approve</value></data>
-  <data name="Onboarding_ReviewClearHelp" xml:space="preserve"><value>Approves the profile review. Human joins Volunteers once legal documents are also signed.</value></data>
-  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve"><value>This will clear the profile review for this human. Continue?</value></data>
-  <data name="Onboarding_ReviewFlagButton" xml:space="preserve"><value>Flag for Review</value></data>
-  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve"><value>Reason for flagging...</value></data>
-  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
-  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
-  <data name="Onboarding_ReviewCleared" xml:space="preserve"><value>Profile review cleared.</value></data>
-  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve"><value>No selected humans were approved.</value></data>
-  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve"><value>Approved {0} selected humans.</value></data>
-  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve"><value>Approved {0} of {1} selected — the others are no longer eligible.</value></data>
-  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve"><value>Approve all selected</value></data>
-  <data name="Onboarding_ReviewFlagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
-  <data name="Onboarding_ReviewRejectButton" xml:space="preserve"><value>Reject Signup</value></data>
-  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>
-  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve"><value>Are you sure you want to reject this human's signup? This cannot be undone.</value></data>
-  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve"><value>Rejecting will permanently deny this human's signup and send a notification email.</value></data>
-  <data name="Onboarding_ReviewRejected" xml:space="preserve"><value>Signup has been rejected.</value></data>
-  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve"><value>This human has already been rejected.</value></data>
-  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve"><value>Legal Documents</value></data>
-  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve"><value>Complete</value></data>
-  <data name="Onboarding_ReviewDocsPending" xml:space="preserve"><value>Pending</value></data>
-  <data name="Onboarding_ReviewDocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
   <data name="Onboarding_BannerText" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value></data>
   <data name="Onboarding_BannerCta" xml:space="preserve"><value>Continue setup →</value></data>
   <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>The name everyone in the system sees. Uniqueness helps but isn't required, though it may be hard to find "Bob" among the few thousand humans here if someone comes looking for you.</value></data>
@@ -139,8 +106,6 @@
   <data name="Onboarding_GuestLegalDescription" xml:space="preserve"><value>Privacy policy, terms, consent docs — the boring but important stuff</value></data>
   <data name="Onboarding_GuestSubtitle" xml:space="preserve"><value>Welcome to Humans — where Nobodies Collective manages everything for Elsewhere.</value></data>
   <data name="Onboarding_GuestTeamsDescription" xml:space="preserve"><value>The crews that keep things running — sound, safety, builds, all of it</value></data>
-  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Review</value></data>
-  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Are you sure you want to request account deletion? You can cancel before the deletion date.</value></data>
   <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve"><value>Regarding Your Signup</value></data>
   <data name="Onboarding_Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Signup Update&lt;/h2&gt;

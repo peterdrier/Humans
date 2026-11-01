@@ -1,15 +1,15 @@
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 
-namespace Humans.Onboarding.Models;
+namespace Humans.Consent.Models;
 
-internal sealed class OnboardingReviewIndexViewModel
+internal sealed class ConsentReviewQueueIndexViewModel
 {
-    public List<OnboardingReviewItemViewModel> PendingReviews { get; set; } = [];
-    public List<OnboardingReviewItemViewModel> FlaggedReviews { get; set; } = [];
+    public List<ConsentReviewQueueItemViewModel> PendingReviews { get; set; } = [];
+    public List<ConsentReviewQueueItemViewModel> FlaggedReviews { get; set; } = [];
 }
 
-internal sealed class OnboardingReviewItemViewModel
+internal sealed class ConsentReviewQueueItemViewModel
 {
     public Guid UserId { get; set; }
     public string LegalName { get; set; } = string.Empty;
@@ -22,7 +22,7 @@ internal sealed class OnboardingReviewItemViewModel
     public int RequiredConsentCount { get; set; }
 }
 
-internal sealed class OnboardingReviewDetailViewModel
+internal sealed class ConsentReviewQueueDetailViewModel
 {
     public Guid UserId { get; set; }
     public string Email { get; set; } = string.Empty;

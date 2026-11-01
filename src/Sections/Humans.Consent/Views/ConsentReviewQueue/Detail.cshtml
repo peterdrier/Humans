@@ -1,6 +1,6 @@
-@model OnboardingReviewDetailViewModel
+@model ConsentReviewQueueDetailViewModel
 @{
-    ViewData["Title"] = Localizer["Onboarding_ReviewTitle"].Value;
+    ViewData["Title"] = Localizer["Consent_Queue_Title"].Value;
 }
 
 @section Crumbs {
@@ -11,10 +11,10 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header">@Localizer["Onboarding_ReviewNewHumanSummary"]</div>
+            <div class="card-header">@Localizer["Consent_Queue_NewHumanSummary"]</div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4">@Localizer["Onboarding_ReviewLegalName"]</dt>
+                    <dt class="col-sm-4">@Localizer["Consent_Queue_LegalName"]</dt>
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
                     @* Admin_* keys are SharedResource's — the section set does not carry them. *@
@@ -26,13 +26,13 @@
                         @Model.MembershipTier
                         @if (Model.HasPendingApplication)
                         {
-                            <span class="badge bg-info ms-1">@Localizer["Onboarding_ReviewHasApplication"]</span>
+                            <span class="badge bg-info ms-1">@Localizer["Consent_Queue_HasApplication"]</span>
                         }
                     </dd>
 
                     @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
                     {
-                        <dt class="col-sm-4">@Localizer["Onboarding_ReviewApplicationMotivation"]</dt>
+                        <dt class="col-sm-4">@Localizer["Consent_Queue_ApplicationMotivation"]</dt>
                         <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.ApplicationMotivation</dd>
                     }
                 </dl>
@@ -42,14 +42,14 @@
         @if (!string.IsNullOrEmpty(Model.ConsentCheckNotes))
         {
             <div class="card mb-4">
-                <div class="card-header">@Localizer["Onboarding_ReviewPreviousNotes"]</div>
+                <div class="card-header">@Localizer["Consent_Queue_PreviousNotes"]</div>
                 <div class="card-body">
                     <p class="mb-0" style="white-space: pre-wrap;">@Model.ConsentCheckNotes</p>
                 </div>
             </div>
         }
 
-        <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.OnboardingReviewApplicant" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
+        <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.ConsentReviewApplicant" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
     </div>
 
     <div class="col-md-4">
@@ -58,13 +58,13 @@
             var allSigned = Model.ConsentCount >= Model.RequiredConsentCount;
             <div class="card mb-4">
                 <div class="card-header">
-                    <i class="fa-solid fa-file-signature me-1"></i> @Localizer["Onboarding_ReviewLegalDocuments"]
+                    <i class="fa-solid fa-file-signature me-1"></i> @Localizer["Consent_Queue_LegalDocuments"]
                 </div>
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span>@Model.ConsentCount / @Model.RequiredConsentCount @Localizer["Onboarding_ReviewSigned"]</span>
+                        <span>@Model.ConsentCount / @Model.RequiredConsentCount @Localizer["Consent_Queue_Signed"]</span>
                         <span class="badge @(allSigned ? "bg-success" : "bg-warning")">
-                            @(allSigned ? Localizer["Onboarding_ReviewDocsComplete"] : Localizer["Onboarding_ReviewDocsPending"])
+                            @(allSigned ? Localizer["Consent_Queue_DocsComplete"] : Localizer["Consent_Queue_DocsPending"])
                         </span>
                     </div>
                     <div class="progress" style="height: 8px;">
@@ -78,14 +78,14 @@
                     </div>
                     @if (!allSigned)
                     {
-                        <div class="form-text mt-2">@Localizer["Onboarding_ReviewDocsNote"]</div>
+                        <div class="form-text mt-2">@Localizer["Consent_Queue_DocsNote"]</div>
                     }
                 </div>
             </div>
         }
 
         <div class="card mb-4">
-            <div class="card-header">@Localizer["Onboarding_ReviewActions"]</div>
+            <div class="card-header">@Localizer["Consent_Queue_Actions"]</div>
             <div class="card-body">
                 @* Reject stays available after a clear: cause can surface later. Its policy on the action is
                    the gate, so add no service-side refusal. *@
@@ -93,7 +93,7 @@
                 {
                     <div class="text-success text-center mb-3">
                         <i class="fa-solid fa-circle-check fa-2x mb-2"></i>
-                        <p class="mb-0">@Localizer["Onboarding_ReviewAlreadyCleared"]</p>
+                        <p class="mb-0">@Localizer["Consent_Queue_AlreadyCleared"]</p>
                     </div>
 
                     <hr />
@@ -103,13 +103,13 @@
                     <form asp-action="Clear" asp-route-userId="@Model.UserId" method="post" class="mb-3">
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
-                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Onboarding_ReviewNotesPlaceholder"].Value"></textarea>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Consent_Queue_NotesPlaceholder"].Value"></textarea>
                         </div>
                         <button type="submit" class="btn btn-success w-100"
-                                data-confirm="@Localizer["Onboarding_ReviewClearConfirm"].Value">
-                            <i class="fa-solid fa-check me-1"></i> @Localizer["Onboarding_ReviewClearButton"]
+                                data-confirm="@Localizer["Consent_Queue_ClearConfirm"].Value">
+                            <i class="fa-solid fa-check me-1"></i> @Localizer["Consent_Queue_ClearButton"]
                         </button>
-                        <div class="form-text">@Localizer["Onboarding_ReviewClearHelp"]</div>
+                        <div class="form-text">@Localizer["Consent_Queue_ClearHelp"]</div>
                     </form>
 
                     <hr />
@@ -117,18 +117,18 @@
 
                 @* Hidden for a cleared human because flagging clears the review's IsApproved, which drops a
                    Colaborador/Asociado from their tier team on the next sync. Reject is the kick-out. Remove this
-                   once Cleared → Flagged stops clearing approval (Docs/health.md §5). *@
+                   once Cleared → Flagged stops clearing approval (Docs/health.md, Seams). *@
                 @if (Model.ConsentCheckStatus is not ConsentCheckStatus.Flagged
                      and not ConsentCheckStatus.Cleared)
                 {
                     <form asp-action="Flag" asp-route-userId="@Model.UserId" method="post">
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
-                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Onboarding_ReviewFlagReasonPlaceholder"].Value"></textarea>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Consent_Queue_FlagReasonPlaceholder"].Value"></textarea>
                         </div>
                         <button type="submit" class="btn btn-danger w-100"
-                                data-confirm="@Localizer["Onboarding_ReviewFlagConfirm"].Value">
-                            <i class="fa-solid fa-flag me-1"></i> @Localizer["Onboarding_ReviewFlagButton"]
+                                data-confirm="@Localizer["Consent_Queue_FlagConfirm"].Value">
+                            <i class="fa-solid fa-flag me-1"></i> @Localizer["Consent_Queue_FlagButton"]
                         </button>
                     </form>
 
@@ -138,13 +138,13 @@
                 <form asp-action="Reject" asp-route-userId="@Model.UserId" method="post">
                     @Html.AntiForgeryToken()
                     <div class="mb-2">
-                        <textarea name="reason" class="form-control" rows="2" placeholder="@Localizer["Onboarding_ReviewRejectReasonPlaceholder"].Value"></textarea>
+                        <textarea name="reason" class="form-control" rows="2" placeholder="@Localizer["Consent_Queue_RejectReasonPlaceholder"].Value"></textarea>
                     </div>
                     <button type="submit" class="btn btn-outline-danger w-100"
-                            data-confirm="@Localizer["Onboarding_ReviewRejectConfirm"].Value">
-                        <i class="fa-solid fa-ban me-1"></i> @Localizer["Onboarding_ReviewRejectButton"]
+                            data-confirm="@Localizer["Consent_Queue_RejectConfirm"].Value">
+                        <i class="fa-solid fa-ban me-1"></i> @Localizer["Consent_Queue_RejectButton"]
                     </button>
-                    <div class="form-text">@Localizer["Onboarding_ReviewRejectHelp"]</div>
+                    <div class="form-text">@Localizer["Consent_Queue_RejectHelp"]</div>
                 </form>
             </div>
         </div>

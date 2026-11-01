@@ -54,7 +54,7 @@ internal sealed class NotificationMeterProvider(
             {
                 Title = localizer["Notifications_Meter_ConsentReviewsPending"],
                 Count = counts.ConsentReviewsPending,
-                ActionUrl = "/OnboardingReview",
+                ActionUrl = "/Consent/ReviewQueue",
                 Priority = 10,
             });
         }
@@ -108,7 +108,7 @@ internal sealed class NotificationMeterProvider(
             {
                 Title = localizer["Notifications_Meter_OnboardingProfilesPending"],
                 Count = counts.ConsentReviewsPending,
-                ActionUrl = "/OnboardingReview",
+                ActionUrl = "/Consent/ReviewQueue",
                 Priority = 6,
             });
         }

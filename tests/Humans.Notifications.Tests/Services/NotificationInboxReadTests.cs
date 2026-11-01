@@ -76,7 +76,7 @@ public sealed class NotificationInboxReadTests : IDisposable
                     new NotificationRowDto
                     {
                         Title = "Consent review pending: Alice",
-                        ActionUrl = "/OnboardingReview",
+                        ActionUrl = "/Consent/ReviewQueue",
                         Priority = NotificationPriority.High,
                         Source = TestSources.Plain.Name,
                         Class = NotificationClass.Actionable,
@@ -112,7 +112,7 @@ public sealed class NotificationInboxReadTests : IDisposable
             {
                 second.CreatedAt.Should().Be(older);
                 second.Title.Should().Be("Consent review pending: Alice");
-                second.ActionUrl.Should().Be("/OnboardingReview");
+                second.ActionUrl.Should().Be("/Consent/ReviewQueue");
                 second.Priority.Should().Be(NotificationPriority.High);
                 second.IsUnread.Should().BeTrue();
             });

@@ -8,7 +8,7 @@ section — owns no DB tables, holds no `IMemoryCache` injection.
 ### OnboardingService (Scoped)
 
 No repository injected. Cross-section calls via `IUserService`,
-`IUserWrite` (`SetRejectedAsync`), `IConsentWrite` (the review annotations), `IConsentService` (review reads), `IGovernanceService`, `IEmailService`, the section's own
+`IUserWrite` (`SetRejectedAsync`), `IConsentWrite` (the rejection record and the `Pending` threshold), `IConsentService` (review reads), `IEmailService`, the section's own
 `OnboardingEmails` builder,
 `INotificationEmitter`, `ISystemTeamSync`, `IMembershipCalculator`,
 `IHumanLifecycleService`, `IAuditLogService`, `IAccountDeletionService`
