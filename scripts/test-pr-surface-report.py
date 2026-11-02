@@ -16,13 +16,30 @@ PATH = "src/Sections/Humans.Stripe/Contracts/IStripeService.cs"
 
 
 class InterfaceSurfaceTests(unittest.TestCase):
-    def delta(self, before, after):
+    def delta(self, before, after, path=PATH):
         def content(args):
             return before if args[1].startswith("base:") else after
 
-        with patch.object(report, "git_files", return_value=[PATH]), \
+        def files(ref, roots):
+            return [path] if any(path.startswith(root + "/") for root in roots) else []
+
+        with patch.object(report, "git_files", side_effect=files), \
                 patch.object(report, "try_run_git", side_effect=content):
             return report.interface_delta("base", "head")
+
+    def test_base_interfaces_and_added_members_are_reported(self):
+        for path in ("src/Humans.Base/IPlatform.cs", "src/Humans.Base/Interfaces/Metering/IPlatform.cs"):
+            with self.subTest(path=path):
+                before = "public interface IPlatform\n{\n}"
+                after = before.replace("\n}", "\n    void Start();\n    bool IsReady { get; }\n}")
+                self.assertEqual(self.delta("", after, path)["new_interfaces"],
+                                 [f"IPlatform ({path})"])
+                delta = self.delta(before, after, path)
+                self.assertEqual(delta["added_interface_methods"], {"IPlatform": ["void Start()"]})
+                self.assertEqual(delta["added_interface_properties"],
+                                 {"IPlatform": ["bool IsReady { get; }"]})
+                self.assertEqual(self.delta("", after.replace("public interface", "internal interface"), path)[
+                    "new_interfaces"], [])
 
     def test_internal_contract_interfaces_do_not_add_public_surface(self):
         for visibility in ("internal ", ""):
