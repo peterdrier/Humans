@@ -1998,8 +1998,8 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
-                [firstUser] = UserInfoWithName(firstUser, "First") with { PreferredLanguage = preferredCulture! , IdentityEmailColumn = "first@example.org" },
-                [secondUser] = UserInfoWithName(secondUser, "Second") with { PreferredLanguage = "de" , IdentityEmailColumn = "second@example.org" }
+                [firstUser] = UserInfoWithName(firstUser, "First") with { PreferredLanguage = preferredCulture!, IdentityEmailColumn = "first@example.org" },
+                [secondUser] = UserInfoWithName(secondUser, "Second") with { PreferredLanguage = "de", IdentityEmailColumn = "second@example.org" }
             }));
 
         (await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken)).Should().Be(2);

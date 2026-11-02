@@ -29,13 +29,20 @@ public class MailerLiteGdprContributorTests
         }
         var rows = verified.Select(address => new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = _userId, Email = address, IsVerified = true,
+            Id = Guid.NewGuid(),
+            UserId = _userId,
+            Email = address,
+            IsVerified = true,
             IsPrimary = string.Equals(address, primary, StringComparison.OrdinalIgnoreCase)
         }).ToList();
         if (primary is not null && rows.Count > 0 && !rows.Any(row => row.IsPrimary))
             rows.Add(new UserEmail
             {
-                Id = Guid.NewGuid(), UserId = _userId, Email = primary, IsVerified = true, IsPrimary = true
+                Id = Guid.NewGuid(),
+                UserId = _userId,
+                Email = primary,
+                IsVerified = true,
+                IsPrimary = true
             });
         var info = new User { Id = _userId }.ToUserInfo(rows) with { IdentityEmailColumn = primary };
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);

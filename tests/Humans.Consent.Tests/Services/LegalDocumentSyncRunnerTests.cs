@@ -117,7 +117,8 @@ public sealed class LegalDocumentSyncRunnerTests
         if (mode is "optional") document.IsRequired = false;
         if (mode is "superseded") document.Versions.Add(new DocumentVersion
         {
-            Id = Guid.NewGuid(), LegalDocumentId = document.Id,
+            Id = Guid.NewGuid(),
+            LegalDocumentId = document.Id,
             EffectiveFrom = document.CurrentVersion.EffectiveFrom + Duration.FromDays(1)
         });
         var sync = Substitute.For<ILegalDocumentSyncManagement>();

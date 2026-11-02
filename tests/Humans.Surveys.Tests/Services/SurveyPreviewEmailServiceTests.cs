@@ -43,7 +43,8 @@ public sealed class SurveyPreviewEmailServiceTests
                 .Returns(new UserInfo(
                     userId, "Author", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                     null, null, null, null, null, null,
-                    null, null, null, [], [], [], null, []) with { IdentityEmailColumn = "author@example.org" });
+                    null, null, null, [], [], [], null, []) with
+                { IdentityEmailColumn = "author@example.org" });
             emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new IOException("Outbox unavailable")));
         }
@@ -90,7 +91,8 @@ public sealed class SurveyPreviewEmailServiceTests
             .Returns(new UserInfo(
                 userId, "Tester", false, "en", null, Instant.FromUnixTimeSeconds(0),
                 null, null, null, null, null, null,
-                null, null, null, [], [], [], null, []) with { IdentityEmailColumn = "tester@example.com" });
+                null, null, null, [], [], [], null, []) with
+            { IdentityEmailColumn = "tester@example.com" });
         var wrapped = new RenderedEmailPreview(
             "tester@example.com", "Choose our gathering dates", "<html>Branded preview</html>");
         emailPreviews.RenderSystemMessage(Arg.Any<EmailMessage>()).Returns(wrapped);
@@ -140,7 +142,8 @@ public sealed class SurveyPreviewEmailServiceTests
             .Returns(new UserInfo(
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                 null, null, null, null, null, null,
-                null, null, null, [], [], [], null, []) with { IdentityEmailColumn = "tester@example.com" });
+                null, null, null, [], [], [], null, []) with
+            { IdentityEmailColumn = "tester@example.com" });
         var sut = new SurveyPreviewEmailService(
             surveys,
             users,
@@ -223,7 +226,8 @@ public sealed class SurveyPreviewEmailServiceTests
             .Returns(new UserInfo(
                 userId, "Tester", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                 null, null, null, null, null, null,
-                null, null, null, [], [], [], null, []) with { IdentityEmailColumn = "tester@example.com" });
+                null, null, null, [], [], [], null, []) with
+            { IdentityEmailColumn = "tester@example.com" });
         emailPreviews.RenderSystemMessage(Arg.Any<EmailMessage>())
             .Returns(call => new RenderedEmailPreview(
                 "tester@example.com", call.Arg<EmailMessage>().Subject, call.Arg<EmailMessage>().HtmlBody));

@@ -60,8 +60,12 @@ public class AccountMergeServiceMergeTests
         var actor = Guid.NewGuid();
         var request = new AccountMergeRequest
         {
-            Id = Guid.NewGuid(), SourceUserId = Guid.NewGuid(), TargetUserId = Guid.NewGuid(),
-            PendingEmailId = Guid.NewGuid(), Email = "pending@example.org", Status = AccountMergeRequestStatus.Pending
+            Id = Guid.NewGuid(),
+            SourceUserId = Guid.NewGuid(),
+            TargetUserId = Guid.NewGuid(),
+            PendingEmailId = Guid.NewGuid(),
+            Email = "pending@example.org",
+            Status = AccountMergeRequestStatus.Pending
         };
         _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
         Transaction? transaction = null;
@@ -138,8 +142,12 @@ public class AccountMergeServiceMergeTests
         {
             db.AccountMergeRequests.Add(new AccountMergeRequest
             {
-                Id = Guid.NewGuid(), SourceUserId = sourceId, TargetUserId = target,
-                Email = address, Status = status, CreatedAt = _clock.GetCurrentInstant()
+                Id = Guid.NewGuid(),
+                SourceUserId = sourceId,
+                TargetUserId = target,
+                Email = address,
+                Status = status,
+                CreatedAt = _clock.GetCurrentInstant()
             });
         }
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);

@@ -910,7 +910,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         };
         user.UserEmails.Add(new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = userId, Email = "bob.notify@test.com", IsVerified = true, IsPrimary = true
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "bob.notify@test.com",
+            IsVerified = true,
+            IsPrimary = true
         });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
 

@@ -68,7 +68,8 @@ public sealed class GoogleSyncLogServiceGdprTests
         var survivor = new User { Id = survivorId, PreferredLanguage = "en" };
         var info = survivor.ToUserInfo([
             new UserEmail { Id = Guid.NewGuid(), UserId = survivorId, Email = "survivor@nobodies.team", IsVerified = true }
-        ]) with { MergedUserIds = mergedUserIds };
+        ]) with
+        { MergedUserIds = mergedUserIds };
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
     }
