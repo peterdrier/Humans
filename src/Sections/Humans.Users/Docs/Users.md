@@ -680,6 +680,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 - Member communication-preference saves reject redirects. An expired or revoked session rolls back the changed checkbox and shows the existing failure feedback instead of confirming a save.
 
+- People search evaluates all eligible cached candidates before its safety cap, selecting by relevance score with a stable user-ID tie-breaker. Callers retain display ordering; field flags, visibility filters and GUID merge resolution retain their existing rules.
 - People-search bio and contribution-interest excerpts preserve complete Unicode characters at both context boundaries. Built-in match labels (including exact user-id matches and contact-field types) use the caller’s current UI culture in all six languages; authored custom contact labels remain verbatim. Labels are composed per search, so switching UI culture does not reuse labels from an earlier query.
 - Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.
 - Profile shift-history and sent-message visibility checks carry request cancellation through coordinator checks and no-show history reads. The profile controller orders no-shows by review time, newest first and undated entries last.
