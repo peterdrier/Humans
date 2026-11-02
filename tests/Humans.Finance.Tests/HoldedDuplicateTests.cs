@@ -44,7 +44,7 @@ public class HoldedDuplicateTests
     private Service MakeService(ILogger<Service>? logger = null) => new(
         _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
         new MemoryCache(new MemoryCacheOptions()), _audit, Substitute.For<IUserService>(),
-        Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
+        Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         logger ?? NullLogger<Service>.Instance);

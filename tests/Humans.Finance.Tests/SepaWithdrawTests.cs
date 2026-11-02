@@ -35,13 +35,12 @@ public class SepaWithdrawTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
 
     private Service MakeService() => new(
         _repo, Substitute.For<IHoldedClient>(), Substitute.For<IBudgetService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
         Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow), new MemoryCache(new MemoryCacheOptions()),
-        _audit, _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
+        _audit, _users, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         NullLogger<Service>.Instance);
 
@@ -56,12 +55,10 @@ public class SepaWithdrawTests
                     DeletionRequestedAt: null, DeletionScheduledFor: null,
                     DeletionEligibleAfter: null,
                     ContactSource: null,
-                    ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
+                    ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: "paul@example.org",
                     UserEmails: [], EventParticipations: [], ExternalLogins: [], Profile: null,
                     CommunicationPreferences: []),
             });
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [UserId] = "paul@example.org" });
     }
 
     private void Seed(
@@ -159,8 +156,9 @@ public class SepaWithdrawTests
     public async Task Withdraw_MemberWithoutAnEmail_StillWithdraws()
     {
         Seed();
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+        var members = await _users.GetUserInfosAsync([UserId], TestContext.Current.CancellationToken);
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [UserId] = members[UserId] with { IdentityEmailColumn = null } });
 
         var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
 

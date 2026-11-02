@@ -34,7 +34,6 @@ internal sealed class Service(
     IMemoryCache cache,
     IAuditLogService audit,
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService emailService,
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
@@ -54,7 +53,7 @@ internal sealed class Service(
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
-    private readonly SepaPayoutEmails payoutEmails = new(users, userEmails, emailService, emails, logger);
+    private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)

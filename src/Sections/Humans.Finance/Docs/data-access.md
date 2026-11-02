@@ -78,7 +78,7 @@ account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
 API calls, plus `PayPurchaseDocumentAsync` for SEPA booking), `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked), and
-`IUserService` / `IUserEmailService` / `IEmailService` (the payout-generated and
+`IUserService` / `IEmailService` (the payout-generated and
 payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).
 Implements `IHoldedFinanceManagement` (the public `IHoldedFinanceService` and `IHoldedFinanceWrite`), `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
