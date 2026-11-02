@@ -19,7 +19,7 @@ internal static class CantinaDailyMatrixCsvWriter
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Cantina — {0}", FormatIsoDate(dto.CalendarDate)));
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Total on site: {0}", dto.TotalOnSite));
             csv.WriteRow(string.Format(CultureInfo.InvariantCulture, "Unanswered: {0}", dto.UnansweredCount));
-            csv.NextRecord();
+            csv.WriteBlankLine();
 
             var diet = DietaryOptions.DietaryPreferences;
             // "Other" gets its own flag and free-text columns instead.
