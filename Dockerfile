@@ -10,7 +10,11 @@ COPY .editorconfig Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 
 # Restore packages
-RUN dotnet restore src/Humans.Web/Humans.Web.csproj
+# Shell does not reference most sections (they load from modules/ at startup), so restoring Shell alone would
+# leave them unrestored. A throwaway solution globs Shell plus every section: no per-project list to maintain.
+RUN dotnet new sln -n Build -o /tmp/restore \
+    && dotnet sln /tmp/restore/Build.sln add src/Humans.Web/Humans.Web.csproj src/Sections/*/*.csproj \
+    && dotnet restore /tmp/restore/Build.sln
 
 # Coolify passes SOURCE_COMMIT as a build arg; deploy-qa.sh sets it from the host repo
 ARG SOURCE_COMMIT=""

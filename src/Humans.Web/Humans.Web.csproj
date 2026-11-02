@@ -14,62 +14,13 @@
       contracts leaves Shell had been reaching through it are declared below.
     -->
     <ProjectReference Include="..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
-    <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
-    <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
-    <ProjectReference Include="..\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Camps\Humans.Camps.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Campaigns\Humans.Campaigns.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Cantina\Humans.Cantina.csproj" />
-    <ProjectReference Include="..\Sections\Humans.CityPlanning\Humans.CityPlanning.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Containers\Humans.Containers.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Debug\Humans.Debug.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Development\Humans.Development.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Email\Humans.Email.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Events\Humans.Events.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Expenses\Humans.Expenses.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Feedback\Humans.Feedback.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Finance\Humans.Finance.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gate\Humans.Gate.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Onboarding\Humans.Onboarding.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Governance\Humans.Governance.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Grants\Humans.Grants.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Guide\Humans.Guide.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />
-    <ProjectReference Include="..\Sections\Humans.LowIncome\Humans.LowIncome.csproj" />
-    <ProjectReference Include="..\Sections\Humans.MailerLite\Humans.MailerLite.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Rideshare\Humans.Rideshare.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Preapprovals\Humans.Preapprovals.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Workgroups\Humans.Workgroups.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Shifts\Humans.Shifts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Stripe\Humans.Stripe.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Surveys\Humans.Surveys.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Settings\Humans.Settings.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
-    <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />
+    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>
 
@@ -119,5 +70,45 @@
     <PackageReference Include="AspNetCore.HealthChecks.Hangfire" />
     <PackageReference Include="AspNetCore.HealthChecks.Uris" />
   </ItemGroup>
+
+  <!--
+    Section modules. Shell compiles against only the sections above; every other section is loaded at
+    startup from modules/ (SectionModuleLoader). The MSBuild call inherits this build's global properties,
+    so inside a solution build it reuses the sections already built rather than building them again.
+  -->
+  <ItemGroup>
+    <SectionModuleProject Include="..\Sections\*\*.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopySectionModules" AfterTargets="Build">
+    <MSBuild Projects="@(SectionModuleProject)" Targets="Build" BuildInParallel="true">
+      <Output TaskParameter="TargetOutputs" ItemName="_SectionModuleAssembly" />
+    </MSBuild>
+    <ItemGroup>
+      <_SectionModuleDir Include="@(_SectionModuleAssembly->'%(RootDir)%(Directory)')" />
+      <_SectionModuleFile Include="%(_SectionModuleDir.Identity)*.dll;%(_SectionModuleDir.Identity)Humans.*.pdb;%(_SectionModuleDir.Identity)**\*.resources.dll" />
+      <!-- Anything Shell already ships in its own output loads from there; modules/ holds only the rest. -->
+      <_SectionModuleFile Remove="@(_SectionModuleFile)" Condition="Exists('$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+      <_SectionModuleWebRoot Include="$([System.IO.Path]::GetDirectoryName('%(SectionModuleProject.FullPath)'))\wwwroot\**\*">
+        <Section>%(SectionModuleProject.Filename)</Section>
+      </_SectionModuleWebRoot>
+      <_SectionModuleWebRoot Remove="@(_SectionModuleWebRoot)" Condition="Exists('$(OutDir)%(Section).dll')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SectionModuleFile)"
+          DestinationFiles="@(_SectionModuleFile->'$(OutDir)modules\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_SectionModuleWebRoot)"
+          DestinationFiles="@(_SectionModuleWebRoot->'$(OutDir)modules\_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="PublishSectionModules" AfterTargets="Publish">
+    <ItemGroup>
+      <_PublishedModuleFile Include="$(OutDir)modules\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PublishedModuleFile)"
+          DestinationFiles="@(_PublishedModuleFile->'$(PublishDir)modules\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
