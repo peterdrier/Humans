@@ -1,5 +1,6 @@
 using Humans.Governance.Contracts;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -1307,7 +1308,7 @@ internal sealed class AssemblyVoteService(
             try
             {
                 await email.SendAsync(
-                    messages.AssemblyVoteOpened(
+                    WithRosterDeliveryId(messages.AssemblyVoteOpened(
                         info.Id,
                         address,
                         info.BurnerName,
@@ -1315,7 +1316,7 @@ internal sealed class AssemblyVoteService(
                         closesAt,
                         rosterRow.IsOfficial,
                         VoteUrl(vote.Id),
-                        language),
+                        language), rows, current.ClosesAt),
                     ct);
 
                 // Stamped per row immediately, so a batch dying halfway does not earn the whole
@@ -1333,6 +1334,19 @@ internal sealed class AssemblyVoteService(
         }
 
         return notified;
+    }
+
+    // Row order cannot change retry identity; extending the announced deadline must produce a new delivery.
+    private static EmailMessage WithRosterDeliveryId(
+        EmailMessage message, IReadOnlyList<AssemblyVoteRoster> rows, Instant closesAt)
+    {
+        var rosterId = rows.Min(row => row.Id);
+        var key = string.Create(CultureInfo.InvariantCulture,
+            $"{message.TemplateName}:{rosterId:N}:{closesAt.ToUnixTimeTicks()}");
+        return message with
+        {
+            DeliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(key)).AsSpan(0, 16))
+        };
     }
 
     /// <summary>
@@ -1587,7 +1601,7 @@ internal sealed class AssemblyVoteService(
                 try
                 {
                     await email.SendAsync(
-                        messages.AssemblyVoteReminder(
+                        WithRosterDeliveryId(messages.AssemblyVoteReminder(
                             info.Id,
                             address,
                             info.BurnerName,
@@ -1595,7 +1609,7 @@ internal sealed class AssemblyVoteService(
                             closesAt,
                             rosterRow.IsOfficial,
                             VoteUrl(vote.Id),
-                            language),
+                            language), rows, current.ClosesAt),
                         ct);
 
                     // Stamped per row immediately, conditional on the deadline this email named.

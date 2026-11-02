@@ -2414,6 +2414,48 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             AssemblyVoteService.LapseJobName);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssemblyEmailRetries_ReuseDeliveryIdentity_AndExtensionRearmsReminders(bool reminder)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(reminder ? 12 : 120));
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true, notified: reminder);
+        var deliveries = new List<EmailMessage>();
+        _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                deliveries.Add(call.Arg<EmailMessage>());
+                return deliveries.Count == 1
+                    ? Task.FromException(new IOException("Enqueue acknowledgement lost"))
+                    : Task.CompletedTask;
+            });
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+        await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+        deliveries.Should().HaveCount(2);
+        deliveries[0].TemplateName.Should().Be(reminder ? "assembly_vote_reminder" : "assembly_vote_opened");
+        deliveries[0].DeliveryId.Should().NotBeNull();
+        deliveries[1].DeliveryId.Should().Be(deliveries[0].DeliveryId);
+
+        if (reminder)
+        {
+            _fx.Clock.Advance(Duration.FromMinutes(1));
+            (await _fx.Service.ExtendAsync(vote.Id, vote.ClosesAt + Duration.FromHours(6), Guid.NewGuid(), ct))
+                .Should().Be(AssemblyVoteActionResult.Ok);
+
+            await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+            deliveries.Should().HaveCount(3);
+            deliveries[2].DeliveryId.Should().NotBeNull().And.NotBe(deliveries[0].DeliveryId!.Value);
+        }
+    }
+
     [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_StopsRemindingOnceTheVoteIsNoLongerOpen()
     {
