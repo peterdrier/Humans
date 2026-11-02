@@ -313,7 +313,7 @@ def normalize_signature(signature: str) -> str:
 
 def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
     interfaces: dict[str, dict[str, object]] = {}
-    interface_re = re.compile(r"\binterface\s+(I[A-Za-z0-9_]*)\b")
+    interface_re = re.compile(r"\bpublic\s+(?:(?:partial|unsafe)\s+)*interface\s+(I[A-Za-z0-9_]*)\b")
     literal_re = re.compile(r'@"(?:[^"]|"")*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
     for path in git_files(ref, INTERFACE_SEARCH_ROOTS):

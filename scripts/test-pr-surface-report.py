@@ -24,6 +24,23 @@ class InterfaceSurfaceTests(unittest.TestCase):
                 patch.object(report, "try_run_git", side_effect=content):
             return report.interface_delta("base", "head")
 
+    def test_internal_contract_interfaces_do_not_add_public_surface(self):
+        for visibility in ("internal ", ""):
+            with self.subTest(visibility=visibility):
+                before = visibility + "interface IStripeService\n{\n}"
+                after = before.replace("\n}", "\n    Task WriteAsync();\n    bool IsConfigured { get; }\n}")
+                delta = self.delta(before, after)
+                self.assertEqual(delta["new_interfaces"], [])
+                self.assertEqual(delta["added_interface_methods"], {})
+                self.assertEqual(delta["added_interface_properties"], {})
+                self.assertEqual(self.delta("", after)["new_interfaces"], [])
+
+    def test_promoting_internal_interface_reports_new_public_surface(self):
+        before = "internal interface IStripeService\n{\n    Task WriteAsync();\n}"
+        after = before.replace("internal interface", "public interface")
+        self.assertEqual(self.delta(before, after)["new_interfaces"],
+                         [f"IStripeService ({PATH})"])
+
     def test_added_property_is_reported_alongside_methods(self):
         before = "public interface IStripeService\n{\n    Task ReadAsync();\n}"
         after = before.replace("    Task", "    bool IsConfigured { get; }\n    Task")
