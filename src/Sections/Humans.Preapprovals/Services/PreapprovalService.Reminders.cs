@@ -28,6 +28,7 @@ internal sealed partial class PreapprovalService
             .Select(r => (r.GrantId, r.Kind, r.ClaimBy))
             .ToHashSet();
 
+        var failures = new List<Exception>();
         foreach (var (grant, kind) in due)
         {
             if (sent.Contains((grant.Id, kind!.Value, grant.Program.ClaimBy))) continue;
@@ -41,9 +42,12 @@ internal sealed partial class PreapprovalService
             }
             catch (Exception ex)
             {
+                failures.Add(ex);
                 logger.LogError(ex, "Pre-approval {Kind} reminder failed for grant {GrantId}", kind, grant.Id);
             }
         }
+        if (failures.Count > 0)
+            throw new AggregateException("Failed to complete one or more pre-approval deadline reminders.", failures);
     }
 
     private async Task RemindAsync(PreapprovalGrant grant, ReminderKind kind, LocalDate today, CancellationToken ct)
@@ -59,8 +63,8 @@ internal sealed partial class PreapprovalService
 
         var info = ToInfo(fresh);
         var priority = kind == ReminderKind.D3 ? NotificationPriority.High : NotificationPriority.Normal;
-        await NotifyFileByAsync(info, "Preapprovals_Notice_Reminder", priority, ct);
-        await EmailAsync(info, PreapprovalNoticeKind.DeadlineReminder, detail: null, ct);
+        await NotifyFileByAsync(info, "Preapprovals_Notice_Reminder", priority, ct, propagateFailures: true);
+        await EmailAsync(info, PreapprovalNoticeKind.DeadlineReminder, detail: null, ct, propagateFailures: true);
         await repository.AddReminderSentAsync(new ReminderSent
         {
             GrantId = fresh.Id,

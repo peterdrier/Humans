@@ -194,7 +194,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
   go to every Open holder; reminders run again for the new date.
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
-  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`.
+  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. Notification or email handoff failures leave no sent marker. The pass attempts the remaining grants, then fails for retry; successful markers prevent repeat delivery. Other grant-change notices remain best effort after their committed mutation.
 - GDPR: export slices `Preapprovals` (own grants, always a list) and `PreapprovalDecisions`
   (created, managed, decided; null when empty). Export follows the resolved identity chain,
   so archived IDs return the same grants and decisions. Erasure deletes Applied and

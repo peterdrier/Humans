@@ -8,7 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>Email and notification failures never fail the write: the row and the audit entry are the record.</summary>
+/// <summary>Committed grant changes keep best-effort notices; reminder delivery must succeed before it is stamped.</summary>
 internal sealed partial class PreapprovalService
 {
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(PreapprovalsResource));
@@ -45,10 +45,11 @@ internal sealed partial class PreapprovalService
             "resolve application-received", grantId);
 
     /// <summary>Keyed by the grant, so one resolve clears every variant (issued, released, reminder, deadline moved).</summary>
-    private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct) =>
+    private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct,
+        bool propagateFailures = false) =>
         NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable,
             priority, titleKey, info, "Preapprovals_Notice_FileBy_Body", MemberUrl(info.ProgramId),
-            FileBySourceKey(info.Id), ct);
+            FileBySourceKey(info.Id), ct, propagateFailures: propagateFailures);
 
     /// <summary>Informational unless revocation affects a holding report; no source key.</summary>
     private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
@@ -76,7 +77,8 @@ internal sealed partial class PreapprovalService
     private async Task NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSourceDefinition source, NotificationClass notificationClass,
         NotificationPriority priority, string titleKey, GrantInfo info, string bodyKey, string actionUrl,
-        string? sourceKey, CancellationToken ct, string? detail = null, decimal? previousAmount = null)
+        string? sourceKey, CancellationToken ct, string? detail = null, decimal? previousAmount = null,
+        bool propagateFailures = false)
     {
         if (recipientUserIds.Count == 0) return;
         try
@@ -106,15 +108,15 @@ internal sealed partial class PreapprovalService
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!propagateFailures)
         {
             logger.LogError(ex, "Failed to send the pre-approval {Title} notice for grant {GrantId}", titleKey, info.Id);
         }
     }
 
     private Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
-        decimal? previousAmount = null) =>
-        EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount);
+        decimal? previousAmount = null, bool propagateFailures = false) =>
+        EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount, propagateFailures);
 
     /// <summary>One email per manager: who applied and for what.</summary>
     private async Task EmailManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
@@ -128,7 +130,7 @@ internal sealed partial class PreapprovalService
 
     private async Task EmailAsync(
         IReadOnlyList<Guid> recipientUserIds, GrantInfo info, PreapprovalNoticeKind kind, string? detail,
-        string url, CancellationToken ct, decimal? previousAmount = null)
+        string url, CancellationToken ct, decimal? previousAmount = null, bool propagateFailures = false)
     {
         var ids = recipientUserIds.Distinct().ToList();
         if (ids.Count == 0) return;
@@ -155,7 +157,7 @@ internal sealed partial class PreapprovalService
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!propagateFailures)
         {
             logger.LogError(ex, "Failed to queue the pre-approval {Kind} email for grant {GrantId}", kind, info.Id);
         }
