@@ -328,7 +328,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Architecture
 
-**Owning services:** `RideshareService` (inner), `CachingRideshareService` (Singleton decorator)
+**Owning services:** `RideshareService` (inner), `CachingRideshareService` (Singleton decorator).
+The inner service delegates all three post-save interest notices to the internal `RideshareNotices`,
+which owns recipient-culture copy and best-effort delivery without a separate DI registration.
 **Owned tables:** `rideshare_trips`, `rideshare_requests`, `rideshare_interests`, `rideshare_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
