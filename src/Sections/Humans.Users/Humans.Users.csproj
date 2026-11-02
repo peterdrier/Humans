@@ -72,7 +72,7 @@
         Auth          — role assignment on provisioning and merge.
         Consent       — profile completeness gates on the consent state.
         Email         — verification, unsubscribe and merge-notification mail.
-        Gdpr          — UserService and AccountMergeService are Article 15 contributors.
+        Gdpr          — AccountDeletionService drives IGdprService erasure.
         Notifications — merge requests and email problems notify the human.
         Onboarding    — profile editing reports onboarding progress.
         Shifts        — participation backfill reads the burn settings.
