@@ -934,7 +934,17 @@ internal sealed class IssuesService(
         IEnumerable<string> notified = queueRoles.Count > 0 ? queueRoles : [RoleNames.Admin];
         var ids = new HashSet<Guid>();
         foreach (var role in notified)
-            ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+        {
+            try
+            {
+                ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to resolve issue notice recipients for queue {Section} role {Role}",
+                    section ?? "(Admin)", role);
+            }
+        }
         return ids;
     }
 

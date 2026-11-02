@@ -680,6 +680,64 @@ public sealed class IssuesServiceTests
         ((IReadOnlyList<Guid>)notice[4]!).Should().Equal(handler.Id);
     }
 
+    [HumansTheory]
+    [InlineData("Submit", false)]
+    [InlineData("Submit", true)]
+    [InlineData("Comment", false)]
+    [InlineData("Comment", true)]
+    public async Task SavedIssueNotice_RoleLookupFailuresPreserveMutationAndRemainingRecipients(
+        string operation, bool allRolesFail)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var reporter = SeedUser(displayName: "Reporter");
+        var handler = SeedUser(displayName: "Handler");
+        var assignee = SeedUser(displayName: "Assignee");
+        var failure = new IOException("Queue role lookup failed");
+        _roleService.GetActiveUserIdsInRoleAsync(TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Guid>>(failure));
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(allRolesFail ? Task.FromException<IReadOnlyList<Guid>>(failure)
+                : Task.FromResult<IReadOnlyList<Guid>>([handler.Id]));
+
+        Guid issueId;
+        if (operation is "Submit")
+        {
+            var submitted = await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Details",
+                "Scanner", null, null, null, null, ct: ct);
+            issueId = submitted.Issue!.Id;
+        }
+        else
+        {
+            issueId = await SeedIssueRowAsync(reporter.Id, IssueStatus.Open, "Title", "Scanner");
+            var issue = (await _repository.GetByIdAsync(issueId, ct))!;
+            issue.AssigneeUserId = assignee.Id;
+            await _repository.SaveTrackedIssueAsync(issue, ct);
+            var posted = await _service.PostCommentAsync(issueId, new IssueViewer(reporter.Id, []),
+                reporter.Id, "An update", ct: ct);
+            posted.Comment.Should().NotBeNull();
+        }
+
+        var stored = (await _repository.GetByIdAsync(issueId, ct))!;
+        stored.ReporterUserId.Should().Be(reporter.Id);
+        if (operation is "Comment") stored.Comments.Should().ContainSingle().Which.Content.Should().Be("An update");
+        var expectedRecipients = new List<Guid>();
+        if (!allRolesFail) expectedRecipients.Add(handler.Id);
+        if (operation is "Comment") expectedRecipients.Add(assignee.Id);
+        var notices = _notificationService.ReceivedCalls().ToList();
+        if (expectedRecipients.Count == 0) notices.Should().BeEmpty();
+        else
+        {
+            var notice = notices.Should().ContainSingle().Subject.GetArguments();
+            ((IReadOnlyList<Guid>)notice[4]!).Should().BeEquivalentTo(expectedRecipients);
+            notice[0].Should().Be(operation is "Submit"
+                ? IssuesNotificationSources.IssueSubmitted : IssuesNotificationSources.IssueComment);
+        }
+        await _roleService.Received(1).GetActiveUserIdsInRoleAsync(RoleNames.Board, CancellationToken.None);
+        _logger.ReceivedCalls().Count(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Error
+            && ReferenceEquals(call.GetArguments()[3], failure)).Should().Be(allRolesFail ? 2 : 1);
+    }
+
     public static TheoryData<NotificationSourceDefinition> FanoutNoticeSources => new(
         IssuesNotificationSources.IssueSubmitted,
         IssuesNotificationSources.IssueComment,
