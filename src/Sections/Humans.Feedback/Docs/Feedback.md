@@ -21,7 +21,7 @@ None. Feedback holds no data and serves no requests.
 ## Routing
 
 None. `/Feedback` no longer exists, and `PrivateUploadMiddleware` returns 404 for every
-`/uploads/feedback/*` path, whoever asks. Screenshot files already on disk stay there, unserved.
+`/uploads/feedback/*` path, whoever asks; the files themselves were deleted before the drop.
 
 ## Actors & Roles
 
