@@ -169,7 +169,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketAttendees | R/W |
 | TicketTransferRequests | R/W |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
+Cross-section calls via `IUserService` (including canonical contact email),
 `IEmailService`, the section's own `TicketsEmails` builder,
 `IAuditLogService`, plus
 `ITicketVendorService` (`ProcessTransferAsync` / `RetryReissueAsync` run the
