@@ -1409,7 +1409,7 @@ internal sealed class ShiftManagementService(
 
         var ticketOrders = await TicketQueryService.GetTicketOrdersAsync(ct);
         var ticketHolders = ticketOrders
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
+            .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
             .Select(o => o.MatchedUserId!.Value)
             .ToHashSet();
 
@@ -1701,7 +1701,7 @@ internal sealed class ShiftManagementService(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset, ct);
 
         var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync(ct))
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+            .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid
                 && o.PurchasedAt >= startInstant
                 && o.PurchasedAt < endInstant)
             .Select(o => o.PurchasedAt)
