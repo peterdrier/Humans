@@ -89,11 +89,8 @@ internal sealed class FeedbackService(
             report.ResolvedByUserId = null;
         }
 
-        await repository.SaveTrackedReportAsync(report, cancellationToken);
-
-        // Audit after the business save so a rollback never leaves a ghost audit row.
-        await LogTriageMutationAsync(FeedbackAuditActions.FeedbackStatusChanged, id,
-            $"Feedback {id} status changed to {status}", actorUserId);
+        await SaveTriageMutationAsync(report, FeedbackAuditActions.FeedbackStatusChanged,
+            $"Feedback {id} status changed to {status}", actorUserId, cancellationToken);
 
         cache.Remove(BadgeCacheKey);
         return FeedbackMutationResult.Success;
@@ -119,11 +116,9 @@ internal sealed class FeedbackService(
         report.GitHubIssueNumber = issueNumber;
         report.UpdatedAt = clock.GetCurrentInstant();
 
-        await repository.SaveTrackedReportAsync(report, cancellationToken);
-
         var description =
             $"Feedback {id} GitHub link: {(issueNumber.HasValue ? issueNumber.Value.ToString(CultureInfo.InvariantCulture) : "(cleared)")}";
-        await LogTriageMutationAsync(FeedbackAuditActions.FeedbackGitHubLinked, id, description, actorUserId);
+        await SaveTriageMutationAsync(report, FeedbackAuditActions.FeedbackGitHubLinked, description, actorUserId, cancellationToken);
         return FeedbackMutationResult.Success;
     }
 
@@ -224,10 +219,8 @@ internal sealed class FeedbackService(
 
         report.UpdatedAt = clock.GetCurrentInstant();
 
-        await repository.SaveTrackedReportAsync(report, cancellationToken);
-
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
-        await LogTriageMutationAsync(FeedbackAuditActions.FeedbackAssignmentChanged, id, description, actorUserId);
+        await SaveTriageMutationAsync(report, FeedbackAuditActions.FeedbackAssignmentChanged, description, actorUserId, cancellationToken);
 
         logger.LogInformation(
             "Feedback {ReportId} assignment updated by {ActorId}: {Changes}",
@@ -235,10 +228,15 @@ internal sealed class FeedbackService(
         return FeedbackMutationResult.Success;
     }
 
-    private Task LogTriageMutationAsync(AuditActionDefinition action, Guid reportId, string description, Guid? actorUserId) =>
-        actorUserId is { } actor
-            ? auditLogService.LogAsync(action, AuditEntityTypes.FeedbackReport, reportId, description, actor)
-            : auditLogService.LogAsync(action, AuditEntityTypes.FeedbackReport, reportId, description, "API");
+    private async Task SaveTriageMutationAsync(
+        FeedbackReport report, AuditActionDefinition action, string description, Guid? actorUserId, CancellationToken ct)
+    {
+        // Audit after the business save so a rollback never leaves a ghost audit row.
+        await repository.SaveTrackedReportAsync(report, ct);
+        await (actorUserId is { } actor
+            ? auditLogService.LogAsync(action, AuditEntityTypes.FeedbackReport, report.Id, description, actor)
+            : auditLogService.LogAsync(action, AuditEntityTypes.FeedbackReport, report.Id, description, "API"));
+    }
 
     public async Task<int> GetActionableCountAsync(
         CancellationToken cancellationToken = default) =>
