@@ -27,7 +27,6 @@ internal sealed class ExpenseReportService(
     IBudgetService budgetService,
     ITeamService teamService,
     IUserService userService,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
@@ -1350,9 +1349,8 @@ internal sealed class ExpenseReportService(
         if (approved is null) return;
 
         var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
-        var targets = await userEmailService.GetNotificationTargetEmailsAsync([approved.SubmitterUserId], ct);
-        if (submitter is null || !targets.TryGetValue(approved.SubmitterUserId, out var recipient)
-            || string.IsNullOrWhiteSpace(recipient))
+        var recipient = submitter?.Email;
+        if (submitter is null || string.IsNullOrWhiteSpace(recipient))
         {
             logger.LogWarning(
                 "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
