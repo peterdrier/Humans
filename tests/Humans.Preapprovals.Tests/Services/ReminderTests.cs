@@ -1,3 +1,4 @@
+using System.Transactions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -30,6 +31,20 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         var person = SeedUser("Person", language: "fr");
         var grant = await SeedGrantAsync(program, person);
         var service = NewService();
+        Transaction? transaction = null;
+        Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            transaction = Transaction.Current?.Clone();
+            return Task.CompletedTask;
+        });
+        var auditAfterCommit = false;
+        AuditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
+            Arg.Any<string>(), PreapprovalService.ReminderJobName, program.Id, AuditEntityTypes.Program).Returns(_ =>
+        {
+            auditAfterCommit = Transaction.Current is null
+                && transaction?.TransactionInformation.Status == TransactionStatus.Committed;
+            return Task.CompletedTask;
+        });
 
         await service.SendDeadlineRemindersAsync(Ct);
         await service.SendDeadlineRemindersAsync(Ct);
@@ -41,6 +56,10 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
             Arg.Is<string>(d => d.StartsWith("14-day", StringComparison.Ordinal)), PreapprovalService.ReminderJobName, program.Id, AuditEntityTypes.Program);
 
+        using (transaction)
+        {
+            auditAfterCommit.Should().BeTrue();
+        }
         await using var db = OpenContext();
         var markers = await db.RemindersSent.ToListAsync(Ct);
         markers.Should().ContainSingle().Which.Should().BeEquivalentTo(new { GrantId = grant.Id, Kind = ReminderKind.D14, ClaimBy = program.ClaimBy });

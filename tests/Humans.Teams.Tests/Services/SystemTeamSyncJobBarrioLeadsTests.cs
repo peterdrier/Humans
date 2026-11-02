@@ -276,47 +276,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     }
 
     [HumansFact]
-    public async Task SyncBarrioLeadsTeam_AuditFailuresStillAttemptEveryCommittedMembershipAudit()
-    {
-        var removedId = Guid.NewGuid();
-        var addedIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
-        var team = StubBarrioLeadsTeam(
-            [new TeamMember { Id = Guid.NewGuid(), UserId = removedId, JoinedAt = _clock.GetCurrentInstant() }]);
-        _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(addedIds);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-        var addFailure = new IOException("Addition audit unavailable");
-        var removeFailure = new IOException("Removal audit unavailable");
-        _auditLogService.LogAsync(TeamsAuditActions.TeamMemberAdded, "Team", team.Id, Arg.Any<string>(),
-                nameof(SystemTeamSyncJob), addedIds[0], nameof(User))
-            .Returns(Task.FromException(addFailure));
-        _auditLogService.LogAsync(TeamsAuditActions.TeamMemberRemoved, "Team", team.Id, Arg.Any<string>(),
-                nameof(SystemTeamSyncJob), removedId, nameof(User))
-            .Returns(Task.FromException(removeFailure));
-        var job = CreateJob();
-
-        var act = () => job.SyncBarrioLeadsTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
-
-        var thrown = (await act.Should().ThrowAsync<AggregateException>()).Which;
-        thrown.InnerExceptions.Should().Equal(addFailure, removeFailure);
-        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
-            team.Id, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && addedIds.All(ids.Contains)),
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(removedId)),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        foreach (var addedId in addedIds)
-            await _auditLogService.Received(1).LogAsync(
-                TeamsAuditActions.TeamMemberAdded, "Team", team.Id, Arg.Any<string>(),
-                nameof(SystemTeamSyncJob), addedId, nameof(User));
-        await _auditLogService.Received(1).LogAsync(
-            TeamsAuditActions.TeamMemberRemoved, "Team", team.Id, Arg.Any<string>(),
-            nameof(SystemTeamSyncJob), removedId, nameof(User));
-        await _googleSyncService.DidNotReceiveWithAnyArgs().AddUserToTeamResourcesAsync(default, default);
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task ReconcileCoordinatorRoles_AuditsOnlyCommittedChangesAndAttemptsAllAudits(bool auditFails)
+    public async Task ReconcileCoordinatorRoles_AuditsOnlyCommittedChanges()
     {
         var promote = new TeamRoleReconciliationMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
             "Promote", TeamMemberRole.Member, SystemTeamType.None, true);
@@ -333,22 +293,18 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _teamService.ApplyMemberRoleChangesAsync(
                 Arg.Any<IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)>>(), Arg.Any<CancellationToken>())
             .Returns(_ => { saved = true; return (IReadOnlyList<Guid>)new[] { promote.TeamMemberId, demote.TeamMemberId }; });
-        var failure = new IOException("Role audit unavailable");
         _auditLogService.LogAsync(TeamsAuditActions.TeamMemberRoleChanged, "Team", promote.TeamId,
                 Arg.Any<string>(), nameof(SystemTeamSyncJob), promote.UserId, nameof(User))
             .Returns(_ =>
             {
                 saved.Should().BeTrue();
-                return auditFails ? Task.FromException(failure) : Task.CompletedTask;
+                return Task.CompletedTask;
             });
         var report = new SyncReport();
         var job = CreateJob();
         var act = () => job.ReconcileCoordinatorRolesAsync(report, Xunit.TestContext.Current.CancellationToken);
 
-        if (auditFails)
-            (await act.Should().ThrowAsync<AggregateException>()).Which.InnerExceptions.Should().Equal(failure);
-        else
-            await act();
+        await act();
 
         await _teamService.Received(1).ApplyMemberRoleChangesAsync(
             Arg.Is<IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)>>(changes => changes.Count == 3

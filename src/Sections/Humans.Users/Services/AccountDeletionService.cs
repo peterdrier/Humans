@@ -77,10 +77,6 @@ internal sealed class AccountDeletionService(
             endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
             endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-            await auditLogService.LogAsync(
-                UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
-                $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
-                userId);
             scope.Complete();
         }
         catch
@@ -97,6 +93,11 @@ internal sealed class AccountDeletionService(
             }
             throw;
         }
+
+        await auditLogService.LogAsync(
+            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
+            userId);
 
         logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +

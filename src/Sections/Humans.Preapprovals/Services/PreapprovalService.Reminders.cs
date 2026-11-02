@@ -52,31 +52,34 @@ internal sealed partial class PreapprovalService
 
     private async Task RemindAsync(PreapprovalGrant grant, ReminderKind kind, LocalDate today, CancellationToken ct)
     {
-        using var scope = new TransactionScope(TransactionScopeOption.Required,
+        PreapprovalGrant? fresh;
+        GrantInfo info;
+        using (var scope = new TransactionScope(TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-            TransactionScopeAsyncFlowOption.Enabled);
-
-        // Re-read inside the scope: a claim or revoke since the list was built means no reminder.
-        var fresh = await repository.GetGrantAsync(grant.Id, ct);
-        if (fresh is null || fresh.Status != GrantStatus.Open || fresh.Program.ClaimBy != grant.Program.ClaimBy)
-            return;
-
-        var info = ToInfo(fresh);
-        var priority = kind == ReminderKind.D3 ? NotificationPriority.High : NotificationPriority.Normal;
-        await NotifyFileByAsync(info, "Preapprovals_Notice_Reminder", priority, ct, propagateFailures: true);
-        await EmailAsync(info, PreapprovalNoticeKind.DeadlineReminder, detail: null, ct, propagateFailures: true);
-        await repository.AddReminderSentAsync(new ReminderSent
+            TransactionScopeAsyncFlowOption.Enabled))
         {
-            GrantId = fresh.Id,
-            Kind = kind,
-            ClaimBy = fresh.Program.ClaimBy,
-            SentAt = clock.GetCurrentInstant()
-        }, ct);
+            // Re-read inside the scope: a claim or revoke since the list was built means no reminder.
+            fresh = await repository.GetGrantAsync(grant.Id, ct);
+            if (fresh is null || fresh.Status != GrantStatus.Open || fresh.Program.ClaimBy != grant.Program.ClaimBy)
+                return;
+
+            info = ToInfo(fresh);
+            var priority = kind == ReminderKind.D3 ? NotificationPriority.High : NotificationPriority.Normal;
+            await NotifyFileByAsync(info, "Preapprovals_Notice_Reminder", priority, ct, propagateFailures: true);
+            await EmailAsync(info, PreapprovalNoticeKind.DeadlineReminder, detail: null, ct, propagateFailures: true);
+            await repository.AddReminderSentAsync(new ReminderSent
+            {
+                GrantId = fresh.Id,
+                Kind = kind,
+                ClaimBy = fresh.Program.ClaimBy,
+                SentAt = clock.GetCurrentInstant()
+            }, ct);
+            scope.Complete();
+        }
         await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, fresh.Id,
             $"{(kind == ReminderKind.D3 ? LastReminderDays : FirstReminderDays)}-day reminder sent: " +
             $"{Euros(fresh.MaxAmount)} under \"{fresh.Program.Name}\", claim by {fresh.Program.ClaimBy.ToInvariantDate()} ({info.DaysLeft(today)} days left).",
             ReminderJobName, relatedEntityId: fresh.ProgramId, relatedEntityType: AuditEntityTypes.Program);
-        scope.Complete();
     }
 
     /// <summary>D3 inside the last three days, D14 inside the last fourteen, nothing past the deadline.</summary>

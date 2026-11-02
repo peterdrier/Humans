@@ -1,4 +1,3 @@
-using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
@@ -53,10 +52,6 @@ internal sealed class MembershipTierService(
                 ? null
                 : LatestActiveApproved(await applications.GetByUserIdAsync(userId, ct), newTier, today);
             var displayName = (await users.GetUserInfoAsync(userId, ct))?.BurnerName ?? "Unknown";
-            // A later recipient failure must not strand this downgrade without its audit.
-            using var scope = new TransactionScope(TransactionScopeOption.Required,
-                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                TransactionScopeAsyncFlowOption.Enabled);
             await repo.UpsertAsync(new MembershipTierRecord
             {
                 UserId = userId,
@@ -70,7 +65,6 @@ internal sealed class MembershipTierService(
                 $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                 nameof(Jobs.MembershipTierExpiryJob),
                 relatedEntityId: userId, relatedEntityType: nameof(User));
-            scope.Complete();
             result.Add((userId, newTier));
         }
         return result;

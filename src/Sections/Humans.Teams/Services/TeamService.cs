@@ -512,25 +512,13 @@ internal sealed class TeamService(
         var now = clock.GetCurrentInstant();
 
         var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
-        var auditFailures = new List<Exception>();
         foreach (var userId in closedUsers)
         {
-            try
-            {
-                await auditLogService.LogAsync(
-                    TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
-                    $"Membership ended when {team.Name} was deactivated",
-                    actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
-            }
-            catch (Exception ex)
-            {
-                auditFailures.Add(ex);
-                logger.LogError(ex, "Failed to audit membership closure for user {UserId} on deactivated team {TeamId}",
-                    userId, teamId);
-            }
+            await auditLogService.LogAsync(
+                TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
+                $"Membership ended when {team.Name} was deactivated",
+                actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
         }
-        if (auditFailures.Count > 0)
-            throw new AggregateException("Failed to audit one or more memberships closed by team deactivation", auditFailures);
 
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",

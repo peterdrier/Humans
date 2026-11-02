@@ -153,7 +153,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   and grant ownership checks. Malformed amounts never fall back to a program/request amount,
   and malformed bulk selections never issue grants to only the valid subset.
 - The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
-  ClaimBy)`; it never touches a grant. A moved deadline reminds again (`ReminderTests`).
+  ClaimBy)`; it never touches a grant. The marker transaction commits before the independently persisted, best-effort reminder audit is attempted. A moved deadline reminds again (`ReminderTests`).
 - Table names start with `pre_`. The section's migrations are immutable once shipped.
 
 ## Negative Access Rules

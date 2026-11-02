@@ -1,3 +1,4 @@
+using System.Transactions;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Humans.Users.Data;
@@ -49,6 +50,65 @@ public class AccountMergeServiceMergeTests
             }.ToUserInfo());
         _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = targetId }.ToUserInfo());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RejectAsync_AuditsOnlyAfterItsCompoundWriteCommits(bool metadataFails)
+    {
+        var actor = Guid.NewGuid();
+        var request = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(), SourceUserId = Guid.NewGuid(), TargetUserId = Guid.NewGuid(),
+            PendingEmailId = Guid.NewGuid(), Email = "pending@example.org", Status = AccountMergeRequestStatus.Pending
+        };
+        _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        Transaction? transaction = null;
+        string? updateTransactionId = null;
+        _userEmailRepo.RemoveUserEmailByIdAsync(request.PendingEmailId, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            transaction = Transaction.Current?.Clone();
+            return Task.FromResult(true);
+        });
+        var failure = new IOException("Merge metadata unavailable");
+        _mergeRepo.UpdateAsync(request, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            updateTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
+            return metadataFails ? Task.FromException(failure) : Task.CompletedTask;
+        });
+        var auditAfterCommit = false;
+        _audit.LogAsync(UsersAuditActions.AccountMergeRejected, nameof(AccountMergeRequest), request.Id,
+            Arg.Any<string>(), actor).Returns(_ =>
+        {
+            auditAfterCommit = Transaction.Current is null
+                && transaction?.TransactionInformation.Status == TransactionStatus.Committed;
+            return Task.CompletedTask;
+        });
+        Func<Task> reject = () => BuildSut().RejectAsync(request.Id, actor, "Declined", TestContext.Current.CancellationToken);
+        try
+        {
+            if (metadataFails)
+            {
+                (await reject.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+                _audit.ReceivedCalls().Should().BeEmpty();
+            }
+            else
+            {
+                await reject.Should().NotThrowAsync();
+                auditAfterCommit.Should().BeTrue();
+                request.Status.Should().Be(AccountMergeRequestStatus.Rejected);
+                request.ResolvedByUserId.Should().Be(actor);
+                request.AdminNotes.Should().Be("Declined");
+            }
+            transaction.Should().NotBeNull();
+            updateTransactionId.Should().Be(transaction!.TransactionInformation.LocalIdentifier);
+            transaction.TransactionInformation.Status.Should().Be(metadataFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
+        }
+        finally
+        {
+            transaction?.Dispose();
+        }
     }
 
     [HumansTheory]

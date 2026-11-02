@@ -200,11 +200,21 @@ public class AccountDeletionServiceTests
                 return Task.FromResult(1);
             });
 
+        var auditAfterCommit = false;
+        _auditLogService.LogAsync(UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            Arg.Any<string>(), userId).Returns(_ =>
+        {
+            auditAfterCommit = Transaction.Current is null
+                && transaction?.TransactionInformation.Status == TransactionStatus.Committed;
+            return Task.CompletedTask;
+        });
+
         var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         using (transaction)
         {
             result.Success.Should().BeTrue();
+            auditAfterCommit.Should().BeTrue();
             transaction.Should().NotBeNull();
             transaction!.TransactionInformation.Status.Should().Be(TransactionStatus.Committed);
             transactionIds.Should().HaveCount(3).And.OnlyContain(id => string.Equals(id, transaction.TransactionInformation.LocalIdentifier, StringComparison.Ordinal));

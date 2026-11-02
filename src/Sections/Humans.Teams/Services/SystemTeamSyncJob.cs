@@ -136,7 +136,6 @@ internal sealed class SystemTeamSyncJob(
             plannedChanges.Select(change => (change.Member.TeamMemberId, change.Role)).ToList(), cancellationToken))
             .ToHashSet();
 
-        var auditFailures = new List<Exception>();
         foreach (var change in plannedChanges.Where(change => changedMemberIds.Contains(change.Member.TeamMemberId)))
         {
             var member = change.Member;
@@ -157,24 +156,13 @@ internal sealed class SystemTeamSyncJob(
                     userName, member.TeamId);
             }
 
-            try
-            {
-                await auditLogService.LogAsync(
-                    TeamsAuditActions.TeamMemberRoleChanged, "Team", member.TeamId,
-                    $"Set member role to {change.Role} by system sync",
-                    nameof(SystemTeamSyncJob), member.UserId, nameof(User));
-            }
-            catch (Exception ex)
-            {
-                auditFailures.Add(ex);
-                logger.LogError(ex, "Failed to audit committed role change for user {UserId} on team {TeamId}",
-                    member.UserId, member.TeamId);
-            }
+            await auditLogService.LogAsync(
+                TeamsAuditActions.TeamMemberRoleChanged, "Team", member.TeamId,
+                $"Set member role to {change.Role} by system sync",
+                nameof(SystemTeamSyncJob), member.UserId, nameof(User));
         }
 
         report?.Steps.Add(step);
-        if (auditFailures.Count > 0)
-            throw new AggregateException("Failed to audit one or more committed coordinator-role changes", auditFailures);
     }
 
     public async Task SyncVolunteersTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
@@ -471,51 +459,29 @@ internal sealed class SystemTeamSyncJob(
         await teamService.ApplySystemTeamMembershipDeltaAsync(
             team.Id, toAdd, toRemove, now, cancellationToken);
 
-        var auditFailures = new List<Exception>();
         // Provisioning failures must not hide already-committed membership changes from the audit trail.
         foreach (var userId in toAdd)
         {
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             step?.Added(userId, userName);
-            try
-            {
-                await auditLogService.LogAsync(
-                    // A persisted audit discriminator: stays a literal.
-                    TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
-                    $"{userName} added to {team.Name} by system sync",
-                    nameof(SystemTeamSyncJob),
-                    relatedEntityId: userId, relatedEntityType: nameof(User));
-            }
-            catch (Exception ex)
-            {
-                auditFailures.Add(ex);
-                logger.LogError(ex, "Failed to audit committed membership change for user {UserId} on system team {TeamId}",
-                    userId, team.Id);
-            }
+            await auditLogService.LogAsync(
+                // A persisted audit discriminator: stays a literal.
+                TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
+                $"{userName} added to {team.Name} by system sync",
+                nameof(SystemTeamSyncJob),
+                relatedEntityId: userId, relatedEntityType: nameof(User));
         }
 
         foreach (var userId in toRemove)
         {
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             step?.Removed(userId, userName);
-            try
-            {
-                await auditLogService.LogAsync(
-                    TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
-                    $"{userName} removed from {team.Name} by system sync",
-                    nameof(SystemTeamSyncJob),
-                    relatedEntityId: userId, relatedEntityType: nameof(User));
-            }
-            catch (Exception ex)
-            {
-                auditFailures.Add(ex);
-                logger.LogError(ex, "Failed to audit committed membership change for user {UserId} on system team {TeamId}",
-                    userId, team.Id);
-            }
+            await auditLogService.LogAsync(
+                TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
+                $"{userName} removed from {team.Name} by system sync",
+                nameof(SystemTeamSyncJob),
+                relatedEntityId: userId, relatedEntityType: nameof(User));
         }
-
-        if (auditFailures.Count > 0)
-            throw new AggregateException("Failed to audit one or more committed system-team membership changes", auditFailures);
 
         foreach (var userId in toAdd)
         {

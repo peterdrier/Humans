@@ -174,27 +174,25 @@ public sealed class MembershipTierServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Expire_AuditFailure_AbortsMutationTransaction()
+    public async Task Expire_AuditsAfterTheTierWriteCommits()
     {
         var userId = SeedUser();
         await SeedRowAsync(userId, MembershipTier.Asociado);
-        Transaction? transaction = null;
+        var auditInsideTransaction = false;
+        MembershipTier? tierWhenAudited = null;
         _audit.LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", userId,
                 Arg.Any<string>(), "MembershipTierExpiryJob", userId, nameof(User))
-            .Returns(_ =>
+            .Returns(async _ =>
             {
-                transaction = Transaction.Current?.Clone();
-                return Task.FromException(new InvalidOperationException("Audit unavailable"));
+                auditInsideTransaction = Transaction.Current is not null;
+                tierWhenAudited = (await RowAsync(userId))!.Tier;
             });
 
-        var act = () => _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
+        var result = await _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        using (transaction)
-        {
-            transaction.Should().NotBeNull();
-            transaction!.TransactionInformation.Status.Should().Be(TransactionStatus.Aborted);
-        }
+        result.Should().ContainSingle().Which.Should().Be((userId, MembershipTier.Volunteer));
+        tierWhenAudited.Should().Be(MembershipTier.Volunteer);
+        auditInsideTransaction.Should().BeFalse();
     }
 
     [HumansFact]
