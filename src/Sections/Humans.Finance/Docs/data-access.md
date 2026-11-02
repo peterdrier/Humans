@@ -111,7 +111,8 @@ It calls the Holded section's `IHoldedClient.ListBankMovementsAsync` (find and
 match the bank line), `ListAccountingAccountsAsync` (live balance),
 `ListLedgerEntriesAsync` (what is already posted, by tag) and
 `ReconcileBankMovementAsync` (nobodies-collective/Humans#1185), alongside the
-existing `PayPurchaseDocumentAsync` / `PostLedgerEntryAsync` / `ListPurchaseDocumentsAsync`.
+existing `PayPurchaseDocumentAsync` / `ListPurchaseDocumentsAsync`. Journal remainders use
+`IHoldedWrite.PostJournalEntryAsync`, returning a confirmation outcome rather than a connector reference.
 `WithdrawSepaTransferAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
 (`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw` and
 `/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines

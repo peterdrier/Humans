@@ -321,7 +321,7 @@ public class ExpenseReconTests
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private Service MakeService() => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(SyncedAt),
+        _repo, _client, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
         new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),

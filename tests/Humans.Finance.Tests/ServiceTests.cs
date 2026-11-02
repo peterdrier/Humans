@@ -39,6 +39,7 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
@@ -97,6 +98,7 @@ public class HoldedFinanceServiceTests
         _client,
         _budget,
         _holded,
+        _write,
         _expenses,
         _clock,
         _cache,
@@ -110,7 +112,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _expenses, _clock, _cache, _audit,
+        _repo, _client, _budget, _holded, _write, _expenses, _clock, _cache, _audit,
         _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
@@ -3336,11 +3338,11 @@ public class HoldedFinanceServiceTests
             });
     }
 
-    private void SeedEntryId(string id) =>
-        _client.PostLedgerEntryAsync(
+    private void SeedJournalEntry() =>
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(id);
+            .Returns(new HoldedJournalEntryOutcome(true));
 
     [HumansFact]
     public async Task BookSepaTransfer_AlreadyBooked_PaysNothing()
@@ -3437,7 +3439,7 @@ public class HoldedFinanceServiceTests
         SeedBookableTransfer(holdedContactId: null);
         SeedBankLine();
         SeedOpenDocs();
-        SeedEntryId("e-1");
+        SeedJournalEntry();
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, Guid.NewGuid());
 
@@ -3492,7 +3494,7 @@ public class HoldedFinanceServiceTests
         SeedBankLine();
         SeedOpenDocs(Doc("d1", 10m, 1), Doc("d2", 100m, 2, draft: true), Doc("d3", 100m, 3, contactId: "c9"));
         SeedPaymentIds("pay-a");
-        SeedEntryId("e-1");
+        SeedJournalEntry();
         var actor = Guid.NewGuid();
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, actor);
@@ -3501,7 +3503,7 @@ public class HoldedFinanceServiceTests
         result.Message.Should().Contain("and a journal entry for 20.00 EUR");
         await _client.Received(1).PayPurchaseDocumentAsync("d1", 10m, "treasury-1", Arg.Any<LocalDate>(),
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             BankLineDate, 40000004, 57200001, 20m,
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
@@ -3509,8 +3511,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
-            Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR", StringComparison.Ordinal)
-                                && d.Contains("e-1", StringComparison.Ordinal)),
+            Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR (confirmed)", StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
     }
 
@@ -3522,14 +3523,14 @@ public class HoldedFinanceServiceTests
         SeedBookableTransfer();
         SeedBankLine();
         SeedOpenDocs();
-        SeedEntryId("e-1");
+        SeedJournalEntry();
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
@@ -3544,7 +3545,7 @@ public class HoldedFinanceServiceTests
         SeedBankLine();
         SeedOpenDocs(Doc("d1", 10m, 1));
         SeedPaymentIds("pay-a");
-        _client.PostLedgerEntryAsync(
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HoldedPermanentException("Holded 400"));
@@ -3588,7 +3589,7 @@ public class HoldedFinanceServiceTests
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         // Fully covered by documents: nothing is left for a journal entry.
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
     }
 
