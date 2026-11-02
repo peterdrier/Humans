@@ -454,46 +454,37 @@ internal sealed class SystemTeamSyncJob(
         await teamService.ApplySystemTeamMembershipDeltaAsync(
             team.Id, toAdd, toRemove, now, cancellationToken);
 
-        // Google sync stays outside the Teams write so its failures don't roll it back.
-        var addedAudits = new List<(Guid UserId, string UserName)>();
+        // Provisioning failures must not hide already-committed membership changes from the audit trail.
         foreach (var userId in toAdd)
         {
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             step?.Added(userId, userName);
-            addedAudits.Add((userId, userName));
-
-            await googleSyncService.AddUserToTeamResourcesAsync(
-                team.Id,
-                userId,
-                cancellationToken,
-                GoogleSyncSource.SystemTeamSync);
-        }
-
-        var removedAudits = new List<(Guid UserId, string UserName)>();
-        foreach (var userId in toRemove)
-        {
-            var userName = userNames.GetValueOrDefault(userId, userId.ToString());
-            step?.Removed(userId, userName);
-            removedAudits.Add((userId, userName));
-        }
-
-        foreach (var (auditUserId, userName) in addedAudits)
-        {
             await auditLogService.LogAsync(
                 // A persisted audit discriminator: stays a literal.
                 TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: auditUserId, relatedEntityType: nameof(User));
+                relatedEntityId: userId, relatedEntityType: nameof(User));
         }
 
-        foreach (var (auditUserId, userName) in removedAudits)
+        foreach (var userId in toRemove)
         {
+            var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+            step?.Removed(userId, userName);
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
                 $"{userName} removed from {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: auditUserId, relatedEntityType: nameof(User));
+                relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
+
+        foreach (var userId in toAdd)
+        {
+            await googleSyncService.AddUserToTeamResourcesAsync(
+                team.Id,
+                userId,
+                cancellationToken,
+                GoogleSyncSource.SystemTeamSync);
         }
 
         logger.LogInformation(

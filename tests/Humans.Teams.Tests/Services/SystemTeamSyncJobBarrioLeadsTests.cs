@@ -243,6 +243,39 @@ public class SystemTeamSyncJobBarrioLeadsTests
     }
 
     [HumansFact]
+    public async Task SyncBarrioLeadsTeam_GoogleFailure_DoesNotSkipCommittedMembershipAudits()
+    {
+        var removedId = Guid.NewGuid();
+        var addedIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var team = StubBarrioLeadsTeam(
+            [new TeamMember { Id = Guid.NewGuid(), UserId = removedId, JoinedAt = _clock.GetCurrentInstant() }]);
+        _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(addedIds);
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        _googleSyncService.AddUserToTeamResourcesAsync(
+                team.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), GoogleSyncSource.SystemTeamSync)
+            .Returns<GoogleResourceGrantResult>(_ => throw new InvalidOperationException("Google unavailable"));
+        var job = CreateJob();
+
+        var act = () => job.SyncBarrioLeadsTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Google unavailable");
+        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
+            team.Id,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && addedIds.All(ids.Contains)),
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(removedId)),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        foreach (var addedId in addedIds)
+            await _auditLogService.Received(1).LogAsync(
+                TeamsAuditActions.TeamMemberAdded, "Team", team.Id, Arg.Any<string>(),
+                nameof(SystemTeamSyncJob), addedId, nameof(User));
+        await _auditLogService.Received(1).LogAsync(
+            TeamsAuditActions.TeamMemberRemoved, "Team", team.Id, Arg.Any<string>(),
+            nameof(SystemTeamSyncJob), removedId, nameof(User));
+    }
+
+    [HumansFact]
     public async Task SyncMembershipForUserAsync_InvalidatesTeamCacheBeforeReading()
     {
         // Several services call the per-user sync from inside their own mutation,
