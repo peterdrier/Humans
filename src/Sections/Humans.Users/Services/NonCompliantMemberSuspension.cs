@@ -51,7 +51,6 @@ internal sealed class NonCompliantMemberSuspension(
 
         if (suspendedIds.Count == 0)
         {
-            metrics.RecordJobRun("suspend_noncompliant_members", "success");
             logger.LogInformation(
                 "Completed non-compliant member check, no eligible users to suspend");
             return;
@@ -119,7 +118,6 @@ internal sealed class NonCompliantMemberSuspension(
                 AuditActor);
         }
 
-        metrics.RecordJobRun("suspend_noncompliant_members", "success");
         logger.LogInformation(
             "Completed non-compliant member check, suspended {Count} members",
             suspendedIds.Count);
