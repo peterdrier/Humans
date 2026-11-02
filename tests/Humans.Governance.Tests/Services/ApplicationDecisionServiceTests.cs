@@ -102,7 +102,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         repository ?? _repository,
         _userService,
         new MembershipTierService(
-            new ApplicationRepository(factory ?? GovernanceDbFactory), repository ?? _repository, _userService, Clock),
+            new ApplicationRepository(factory ?? GovernanceDbFactory), repository ?? _repository, _userService, AuditLog, Clock),
         _roleAssignmentService,
         AuditLog,
         _emailService,

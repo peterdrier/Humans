@@ -1,3 +1,5 @@
+using System.Transactions;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
@@ -13,6 +15,7 @@ internal sealed class MembershipTierService(
     IMembershipTierRepository repo,
     IApplicationRepository applications,
     IUserService users,
+    IAuditLogService audit,
     IClock clock) : IUserDataContributor, IUserMerge
 {
     internal const string MembershipTierSlice = "MembershipTier";
@@ -49,6 +52,11 @@ internal sealed class MembershipTierService(
             var granting = newTier == MembershipTier.Volunteer
                 ? null
                 : LatestActiveApproved(await applications.GetByUserIdAsync(userId, ct), newTier, today);
+            var displayName = (await users.GetUserInfoAsync(userId, ct))?.BurnerName ?? "Unknown";
+            // A later recipient failure must not strand this downgrade without its audit.
+            using var scope = new TransactionScope(TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled);
             await repo.UpsertAsync(new MembershipTierRecord
             {
                 UserId = userId,
@@ -57,6 +65,12 @@ internal sealed class MembershipTierService(
                 ExpiresAt = granting?.TermExpiresAt,
                 GrantedByApplicationId = granting?.Id,
             }, ct);
+            await audit.LogAsync(
+                GovernanceAuditActions.TierDowngraded, "Profile", userId,
+                $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
+                nameof(Jobs.MembershipTierExpiryJob),
+                relatedEntityId: userId, relatedEntityType: nameof(User));
+            scope.Complete();
             result.Add((userId, newTier));
         }
         return result;
