@@ -320,18 +320,6 @@ internal sealed class UserEmailService(
         return result;
     }
 
-    public async Task<string?> GetNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        // Raw: the sole consumer is GDPR erasure, which asks about tombstones. A tombstone owns no
-        // addresses, and resolving forward would suspend the living survivor's mailbox.
-        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
-        return info?.UserEmails
-            .FirstOrDefault(e => e.IsVerified
-                && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            ?.Email;
-    }
-
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
     {
@@ -377,29 +365,6 @@ internal sealed class UserEmailService(
         string suffix,
         CancellationToken cancellationToken = default) =>
         repository.GetUserIdsByUserEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
-
-    public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        if (info is null) return null;
-        var primary = info.UserEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary);
-        if (primary is not null) return primary.Email;
-        var anyVerified = info.UserEmails.FirstOrDefault(e => e.IsVerified);
-        if (anyVerified is not null) return anyVerified.Email;
-        return info.IdentityEmailColumn;
-    }
-
-
-    public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        if (info is null) return [];
-        return info.UserEmails
-            .Where(e => e.IsVerified)
-            .Select(e => e.Email)
-            .ToList();
-    }
 
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default)
