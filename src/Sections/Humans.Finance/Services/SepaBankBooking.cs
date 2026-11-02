@@ -23,7 +23,7 @@ internal sealed class SepaBankBooking(
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IAuditLogService audit,
     IOptions<SepaOptions> sepa,
-    ILogger logger) : ISepaBankBooking, IApplicationService
+    ILogger logger) : IApplicationService
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -787,7 +787,7 @@ internal sealed class SepaBankBooking(
                     entryRef = await client.PostLedgerEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
-                    remaining -= entryAmount;   // what is still unposted, which is now nothing
+                    remaining -= entryAmount;
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {

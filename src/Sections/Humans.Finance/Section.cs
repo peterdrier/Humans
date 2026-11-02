@@ -67,7 +67,6 @@ public sealed class Section :
         services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IHoldedFinanceWrite>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<Jobs.SepaBankBookingJob>();
         services.AddScoped<Jobs.HoldedDocSyncJob>();
         services.AddScoped<Jobs.ExpenseReconJob>();

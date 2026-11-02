@@ -38,7 +38,7 @@ internal sealed class Service(
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
     TrackedCache<string, Dictionary<string, int>> bookingState,
-    ILogger<Service> logger) : IHoldedFinanceManagement, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
+    ILogger<Service> logger) : IHoldedFinanceManagement, IHoldedFinanceAdminService, IUserDataContributor
 {
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
@@ -1237,7 +1237,7 @@ internal sealed class Service(
         GetSepaPayoutsAsync(int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 
-    public Task RunAsync(CancellationToken ct = default) => booking.RunAsync(ct);
+    public Task RunSepaBookingSweepAsync(CancellationToken ct = default) => booking.RunAsync(ct);
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
