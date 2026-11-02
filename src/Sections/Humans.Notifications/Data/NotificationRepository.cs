@@ -15,13 +15,6 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddAsync(Notification notification, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Notifications.Add(notification);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<NotificationMutationOutcome> ResolveAsync(
         Guid notificationId, Guid actorUserId, Instant now, NotificationClass expectedClass, CancellationToken ct = default)
     {
