@@ -211,9 +211,6 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
             IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
-            CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
             string prefix, string suffix, CancellationToken ct = default) =>
             throw new NotSupportedException();

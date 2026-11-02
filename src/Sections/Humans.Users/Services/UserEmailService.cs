@@ -341,7 +341,6 @@ internal sealed class UserEmailService(
         // Resolve first: a tombstone's own address is a sentinel that bounces, and its
         // notification rows moved to the survivor. The key stays the requested id.
         var resolved = await userService.GetUserInfosAsync(userIds, cancellationToken);
-        var allNotificationTargets = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
         foreach (var userId in userIds)
@@ -349,9 +348,7 @@ internal sealed class UserEmailService(
             if (!resolved.TryGetValue(userId, out var user))
                 continue;
 
-            if (allNotificationTargets.TryGetValue(user.Id, out var email))
-                result[userId] = email;
-            else if (!string.IsNullOrEmpty(user.Email))
+            if (!string.IsNullOrEmpty(user.Email))
                 result[userId] = user.Email;
         }
 
@@ -434,10 +431,11 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var all = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
-        return all
-            .Where(kv => userIds.Contains(kv.Key))
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
+        var requestedIds = userIds.ToHashSet();
+        var users = await userService.GetAllRawUserInfosAsync(cancellationToken);
+        return users
+            .Where(user => requestedIds.Contains(user.Id) && user.PrimaryEmail != null)
+            .ToDictionary(user => user.Id, user => user.PrimaryEmail!);
     }
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(

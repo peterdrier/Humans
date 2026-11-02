@@ -61,7 +61,7 @@ Cross-section reads via `IUserService`, `ITeamService`,
 
 ### UserEmailService (Scoped)
 
-Repository: `IUserRepository`.
+Repository: `IUserRepository`. Notification-address projections use existing `IUserService` snapshots: merge-resolved `Email` for delivery and raw `PrimaryEmail` for primary-only reads. Raw email-row scans remain for orphan diagnostics.
 
 | Table | R/W |
 |-------|-----|

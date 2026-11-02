@@ -1839,6 +1839,54 @@ public class UserEmailServiceTests
         result.Select(r => r.UserId).Should().BeEquivalentTo([userA, userB]);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetNotificationTargetEmailsAsync_UsesCanonicalEmail(bool hasPrimary)
+    {
+        var id = Guid.NewGuid();
+        var user = new User { Id = id, Email = "login@example.org" }.ToUserInfo(
+            hasPrimary
+                ? [new UserEmail { UserId = id, Email = "primary@example.org", IsVerified = true, IsPrimary = true }]
+                : []);
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [id] = user }));
+
+        var result = await _service.GetNotificationTargetEmailsAsync(
+            [id], Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainKey(id).WhoseValue.Should().Be(
+            hasPrimary ? "primary@example.org" : "login@example.org");
+    }
+
+    [HumansFact]
+    public async Task GetNotificationEmailsByUserIdsAsync_OnlyReturnsRequestedRawVerifiedPrimaries()
+    {
+        var primaryId = Guid.NewGuid();
+        var secondaryId = Guid.NewGuid();
+        var unverifiedId = Guid.NewGuid();
+        var unrelatedId = Guid.NewGuid();
+        _userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<UserInfo>
+            {
+                BuildStubUserInfo(primaryId,
+                    [new UserEmail { UserId = primaryId, Email = "primary@example.org", IsVerified = true, IsPrimary = true }]),
+                BuildStubUserInfo(secondaryId,
+                    [new UserEmail { UserId = secondaryId, Email = "secondary@example.org", IsVerified = true }]),
+                BuildStubUserInfo(unverifiedId,
+                    [new UserEmail { UserId = unverifiedId, Email = "unverified@example.org", IsPrimary = true }]),
+                BuildStubUserInfo(unrelatedId,
+                    [new UserEmail { UserId = unrelatedId, Email = "unrelated@example.org", IsVerified = true, IsPrimary = true }]),
+            });
+
+        var result = await _service.GetNotificationEmailsByUserIdsAsync(
+            [primaryId, secondaryId, unverifiedId, Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEquivalentTo(new Dictionary<Guid, string> { [primaryId] = "primary@example.org" });
+    }
+
     [HumansFact]
     public async Task GetNotificationTargetEmailsAsync_ForAMergedAwayId_ReturnsTheSurvivorsAddress()
     {
@@ -1852,10 +1900,9 @@ public class UserEmailServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
                 {
-                    [archived] = UserInfoStubHelpers.MakeUserInfo(survivor),
+                    [archived] = BuildStubUserInfo(survivor,
+                        [new UserEmail { UserId = survivor, Email = "survivor@example.org", IsVerified = true, IsPrimary = true }]),
                 }));
-        _repository.GetAllNotificationTargetUserEmailsAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [survivor] = "survivor@example.org" });
 
         var result = await _service.GetNotificationTargetEmailsAsync(
             [archived], Xunit.TestContext.Current.CancellationToken);
