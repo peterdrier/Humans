@@ -4747,8 +4747,10 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().GetResponsesForResultsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers(bool missingDefinition)
     {
         var userId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -4766,7 +4768,7 @@ public class SurveyServiceTests
             TextQuestion(textId, surveyId, 3),
             GridQuestion(gridId, surveyId),
         };
-        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(missingDefinition ? null : survey);
 
         var response = SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
             _clock.GetCurrentInstant(), userId,
@@ -4784,8 +4786,20 @@ public class SurveyServiceTests
 
         // The payload serialises the user's response (title + answers). Round-trip through JSON to assert shape.
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
-        json.Should().Contain("Summer Feedback");
-        json.Should().Contain("Yes");        // resolved choice label
+        if (missingDefinition)
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            var row = document.RootElement[0];
+            row.GetProperty("Survey").GetString().Should().Be(surveyId.ToString());
+            var choice = row.GetProperty("Answers")[0];
+            choice.GetProperty("Question").GetString().Should().BeEmpty();
+            choice.GetProperty("SelectedLabels")[0].GetString().Should().Be("yes");
+        }
+        else
+        {
+            json.Should().Contain("Summer Feedback");
+            json.Should().Contain("Yes");
+        }
         json.Should().Contain("loved it");   // free-text value
         json.Should().Contain("4");          // rating value
         json.Should().Contain("removed-row");

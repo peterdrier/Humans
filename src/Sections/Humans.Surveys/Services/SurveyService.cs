@@ -1452,10 +1452,7 @@ internal sealed class SurveyService(
                  q.RankedUnavailableOptionValues?.ToList()))
             .ToList();
 
-        var questionsById = survey.Questions.ToDictionary(q => q.Id);
-        var optionLabels = survey.Questions.ToDictionary(
-            q => q.Id,
-            q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
+        var answerContext = BuildRespondentAnswerContext(survey, culture);
 
         // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
         // expose identity, timestamps or submission order, including for legacy Identified rows.
@@ -1489,11 +1486,11 @@ internal sealed class SurveyService(
                     .Select(a => new SurveyExportAnswer(
                         a.QuestionId,
                         a.SelectedOptionValues,
-                        ResolveSelectedLabels(a, optionLabels),
+                        ResolveSelectedLabels(a, answerContext.OptionLabels),
                         a.TextValue,
                         a.RatingValue,
                         CopyGridSelections(a),
-                         questionsById.TryGetValue(a.QuestionId, out var question)
+                         answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
                              ? ResolveGridSelections(a, question, culture)
                              : [],
                          CopyRankedBallot(a)))
@@ -1544,16 +1541,7 @@ internal sealed class SurveyService(
                     ? survey?.DefaultCulture ?? "en"
                     : r.Culture;
 
-                var prompts = survey is null
-                    ? new Dictionary<Guid, string>()
-                    : survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
-                var optionLabels = survey is null
-                    ? new Dictionary<Guid, Dictionary<string, string>>()
-                    : survey.Questions.ToDictionary(
-                        q => q.Id,
-                        q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
-                var questionsById = survey?.Questions.ToDictionary(q => q.Id)
-                    ?? new Dictionary<Guid, SurveyQuestion>();
+                var answerContext = BuildRespondentAnswerContext(survey, culture);
 
                 return new
                 {
@@ -1562,14 +1550,14 @@ internal sealed class SurveyService(
                     Culture = culture,
                     Answers = r.Answers.Select(a => new
                     {
-                        Question = prompts.GetValueOrDefault(a.QuestionId, string.Empty),
-                        SelectedLabels = ResolveSelectedLabels(a, optionLabels),
+                        Question = answerContext.Prompts.GetValueOrDefault(a.QuestionId, string.Empty),
+                        SelectedLabels = ResolveSelectedLabels(a, answerContext.OptionLabels),
                         GridSelections = CopyGridSelections(a),
-                        GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
+                        GridSelectionLabels = answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
                              ? ResolveGridSelections(a, question, culture)
                              : [],
                         RankedBallot = CopyRankedBallot(a),
-                        RankedBallotLabels = ResolveRankedBallot(a, optionLabels),
+                        RankedBallotLabels = ResolveRankedBallot(a, answerContext.OptionLabels),
                         a.TextValue,
                         a.RatingValue,
                     }).ToList(),
@@ -1703,18 +1691,21 @@ internal sealed class SurveyService(
             .ToList();
     }
 
-    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey survey, string culture) =>
-        new(
-            survey.Questions.ToDictionary(
+    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey? survey, string culture)
+    {
+        var questions = survey?.Questions ?? [];
+        return new(
+            questions.ToDictionary(
                 question => question.Id,
                 question => question.Options.ToDictionary(
                     option => option.Value,
                     option => option.Label.Resolve(culture, culture),
                     StringComparer.Ordinal)),
-            survey.Questions.ToDictionary(
+            questions.ToDictionary(
                 question => question.Id,
                 question => question.Prompt.Resolve(culture, culture)),
-            survey.Questions.ToDictionary(question => question.Id));
+            questions.ToDictionary(question => question.Id));
+    }
 
     private static IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(
         SurveyResponse response, RespondentAnswerContext context, string culture) =>
