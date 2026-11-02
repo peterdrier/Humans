@@ -78,15 +78,6 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
             .ToDictionaryAsync(x => x.TeamId, x => x.Count, ct);
     }
 
-    public async Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleResources
-            .AsNoTracking()
-            .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.DriveFolder)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<GoogleResource>> GetActiveByResourceTypeAsync(
         GoogleResourceType resourceType,
         CancellationToken ct = default)

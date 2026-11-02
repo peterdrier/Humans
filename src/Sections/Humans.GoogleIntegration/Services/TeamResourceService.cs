@@ -81,7 +81,7 @@ internal sealed partial class TeamResourceService(
 
     public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
     {
-        var resources = await repository.GetActiveDriveFoldersAsync(ct);
+        var resources = await repository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct);
         return resources.Select(ToSnapshot).ToList();
     }
 
