@@ -97,7 +97,7 @@ test.describe('Profile (02-profiles)', () => {
   });
 
   test('US-9.2: board reads human detail without the suspend action', async ({ page }) => {
-    // Board reads every section admin page and writes only its own decisions (#2208).
+    // Board reads every section admin page and writes only its own decisions.
     await loginAs(page, 'board');
     await openFirstHuman(page);
     await expect(suspendButton(page)).toHaveCount(0);

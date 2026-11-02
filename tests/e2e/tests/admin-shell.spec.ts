@@ -27,8 +27,8 @@ interface SidebarExpectation {
 
 const sidebarMatrix: SidebarExpectation[] = [
   {
-    // Board reads every section admin page and writes only its own decisions (#2208), so it
-    // sees every <Section>Policies.Read and BoardOrAdmin item and no AdminOnly or Manage one.
+    // Board reads every section admin page and writes only its own decisions, so it sees every
+    // <Section>Policies.Read and BoardOrAdmin item and no AdminOnly or Manage one.
     name: 'board',
     persona: 'board',
     groups: [

@@ -7,17 +7,17 @@ on:
   # before it merges; the deploy wait only applies to pushes.
   workflow_dispatch:
 
-# QA only ever runs the newest main deploy, so an e2e run against a superseded
-# sha is testing an environment that no longer exists — cancel it.
+# QA only ever runs the newest main deploy, so a push run against a superseded
+# sha is testing an environment that no longer exists — cancel it. A manual run
+# queues behind whatever is running instead of cancelling it.
 concurrency:
   group: e2e-qa
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   e2e:
     if: github.repository == 'peterdrier/Humans'
-    # devbox only: nuc-runner's OS is one Playwright does not recognise, so
-    # `playwright install --with-deps` fails there since the 1.63 bump (#1640).
+    # devbox only: Playwright's --with-deps does not recognise nuc-runner's OS.
     runs-on: [self-hosted, devbox]
     defaults:
       run:
@@ -39,8 +39,7 @@ jobs:
           URL="https://humans.n.burn.camp/api/version"
           echo "Waiting for $SHORT_SHA to deploy..."
 
-          # A QA deploy normally lands 3 to 4.5 minutes after the push; the old 5-minute cap
-          # failed runs that were merely waiting on a slow one.
+          # A QA deploy normally lands 3 to 4.5 minutes after the push.
           for i in $(seq 1 180); do
             DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
             if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
