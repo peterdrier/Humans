@@ -27,18 +27,38 @@ interface SidebarExpectation {
 
 const sidebarMatrix: SidebarExpectation[] = [
   {
+    // Board reads every section admin page and writes only its own decisions (#2208), so it
+    // sees every <Section>Policies.Read and BoardOrAdmin item and no AdminOnly or Manage one.
     name: 'board',
     persona: 'board',
     groups: [
+      { label: 'Agent', items: ['Status', 'History'] },
       { label: 'Audit', items: ['Audit log'] },
-      { label: 'Consent', items: ['Legal documents'] },
+      { label: 'Backdoor', items: ['API keys'] },
+      { label: 'Budget', items: ['Overview'] },
+      { label: 'Cantina', items: ['Roster'] },
+      { label: 'Consent', items: ['Review queue', 'Legal documents'] },
+      {
+        label: 'Debug',
+        items: [
+          'Logs', 'HTTP errors', 'DB stats', 'Cache stats', 'Client stats', 'Timings', 'Sections',
+          'Configuration', 'Maintenance', 'All users', 'Data migrations', 'Hangfire', 'Health',
+          'Color palette', 'Components', 'Date formats', 'Translations',
+        ],
+      },
+      { label: 'Early Entry', items: ['Early entry'] },
+      { label: 'Events', items: ['Dashboard', 'Moderation', 'Categories', 'Venues', 'Export'] },
+      { label: 'Finance', items: ['Holded connector'] },
+      { label: 'Gate', items: ['Terminal'] },
       { label: 'Google', items: ['Resource sync'] },
-      { label: 'Governance', items: ['Voting', 'Applications'] },
+      { label: 'Governance', items: ['Voting', 'Applications', 'Assembly Votes'] },
+      { label: 'Holded', items: ['Holded'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Onboarding', items: ['Review'] },
+      { label: 'Rideshare', items: ['Settings & stats', 'Day roster'] },
       { label: 'Scanner', items: ['Scanner'] },
-      { label: 'Surveys', items: ['Surveys'] },
-      { label: 'Tickets', items: ['Tickets', 'Onsite roster'] },
+      { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Order years', 'Payment methods'] },
+      { label: 'Surveys', items: ['Surveys', 'Approvals'] },
+      { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster'] },
       { label: 'Users', items: ['Humans', 'Roles'] },
       { label: 'Workgroups', items: ['Workgroups'] },
     ],
