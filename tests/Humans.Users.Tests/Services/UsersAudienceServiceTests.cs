@@ -37,13 +37,13 @@ public class UsersAudienceServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
 
         var allTime = await service.GetAudienceSegmentationAsync(null, ct);
-        allTime.AvailableYears.Should().Equal(2026, 2025);
+        allTime.AvailableYears.Should().BeEquivalentTo(new[] { 2025, 2026 });
         allTime.WithTicket.Should().Be(2);
         allTime.WithBoth.Should().Be(1);
         allTime.WithNeither.Should().Be(1);
 
         var selected = await service.GetAudienceSegmentationAsync(2025, ct);
-        selected.AvailableYears.Should().Equal(allTime.AvailableYears);
+        selected.AvailableYears.Should().BeEquivalentTo(allTime.AvailableYears);
         selected.SelectedYear.Should().Be(2025);
         selected.WithTicket.Should().Be(1);
         selected.WithBoth.Should().Be(1);

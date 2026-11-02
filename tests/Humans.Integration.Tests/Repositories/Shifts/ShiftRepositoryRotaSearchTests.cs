@@ -38,7 +38,7 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
         await SeedRotaAsync(shiftsDb, es, team, $"{token} Admin", visibleToVolunteers: false);
 
         var hits = await sut.SearchVolunteerVisibleRotasAsync(
-            token, es.Id, int.MaxValue, TestContext.Current.CancellationToken);
+            token, es.Id, TestContext.Current.CancellationToken);
 
         hits.Select(r => r.Name).Should().Equal($"{token} Prep");
     }
@@ -59,7 +59,7 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
         await SeedRotaAsync(shiftsDb, otherEvent, team, $"{token} Crew", visibleToVolunteers: true);
 
         var hits = await sut.SearchVolunteerVisibleRotasAsync(
-            token.ToUpperInvariant(), es.Id, int.MaxValue, TestContext.Current.CancellationToken);
+            token.ToUpperInvariant(), es.Id, TestContext.Current.CancellationToken);
 
         hits.Should().ContainSingle().Which.EventSettingsId.Should().Be(es.Id);
     }

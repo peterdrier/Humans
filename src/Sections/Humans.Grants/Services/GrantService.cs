@@ -14,7 +14,6 @@ namespace Humans.Grants.Services;
 internal sealed partial class GrantService(
     IGrantRepository repository,
     IUserService users,
-    IUserEmailService userEmails,
     INotificationEmitter notifications,
     IEmailService email,
     GrantsEmails emailFactory,

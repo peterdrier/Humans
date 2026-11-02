@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.AuditLog.Contracts;
 
 /// <summary>
-/// Call after the business save. Each <c>LogAsync</c> saves at once and is best-effort: a failure is logged,
+/// Call after the business transaction commits. Each <c>LogAsync</c> saves at once and is best-effort: a failure is logged,
 /// never thrown, so audit never breaks the operation.
 /// </summary>
 public interface IAuditLogService : IApplicationService

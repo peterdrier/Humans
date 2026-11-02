@@ -503,6 +503,23 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task SearchAsync_LimitKeepsTheHighestScoringMatch()
+    {
+        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        var (_, contains) = await SeedCampWithSeasonAsync(2026);
+        contains.Name = "A Kitchen";
+        var (_, prefix) = await SeedCampWithSeasonAsync(2026);
+        prefix.Name = "Kitchen Crew";
+        var (exactCamp, exact) = await SeedCampWithSeasonAsync(2026);
+        exact.Name = "Kitchen";
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync("Kitchen", 1, TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.CampId.Should().Be(exactCamp.Id);
+    }
+
+    [HumansFact]
     public async Task SearchAsync_ServesFromCache_MatchesPublicYearSeasonName()
     {
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);

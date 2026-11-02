@@ -11,7 +11,8 @@ public interface IAccountDeletionService
 {
     /// <summary>
     /// Schedules deletion in 30 days (held past the event for a ticket holder) and revokes team memberships and
-    /// role assignments at once, so access goes without waiting out the grace period. Audits and emails.
+    /// role assignments at once, so access goes without waiting out the grace period. The pending marker and
+    /// revocations commit together; the audit and confirmation email follow the commit.
     /// <c>NotFound</c>, or <c>AlreadyPending</c> when a request is open.
     /// </summary>
     Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);

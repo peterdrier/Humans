@@ -1067,12 +1067,12 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
     }
 
-    public async Task<int> ApplyMemberRoleChangesAsync(
+    public async Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken ct = default)
     {
         if (changes.Count == 0)
-            return 0;
+            return [];
 
         await using var db = await factory.CreateDbContextAsync(ct);
         var ids = changes.Select(c => c.TeamMemberId).ToList();
@@ -1082,17 +1082,17 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
         var targetRoleById = changes.ToDictionary(c => c.TeamMemberId, c => c.Role);
 
-        var updated = 0;
+        var updated = new List<Guid>();
         foreach (var member in members)
         {
             if (targetRoleById.TryGetValue(member.Id, out var newRole) && member.Role != newRole)
             {
                 member.Role = newRole;
-                updated++;
+                updated.Add(member.Id);
             }
         }
 
-        if (updated > 0)
+        if (updated.Count > 0)
         {
             await db.SaveChangesAsync(ct);
         }

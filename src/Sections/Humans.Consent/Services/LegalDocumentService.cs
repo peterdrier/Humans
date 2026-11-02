@@ -12,7 +12,7 @@ internal sealed class LegalDocumentService(
     private static readonly IReadOnlyList<LegalDocumentDefinition> Documents =
     [
         new("statutes", "Statutes", "Estatutos", "ESTATUTOS"),
-        new("agent-chat", LegalDocumentNames.AgentChatTerms, "AgentChat", "AGENTCHAT"),
+        new("agent-chat", "Agent Chat Terms", "AgentChat", "AGENTCHAT"),
     ];
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);

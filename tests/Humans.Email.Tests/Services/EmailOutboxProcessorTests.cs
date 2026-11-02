@@ -12,6 +12,7 @@ using Humans.Base.Enums;
 using Humans.Email.Data;
 using Humans.Email.Domain;
 using Humans.Email.Services;
+using Humans.Email.Jobs;
 using Humans.Base.Configuration;
 using Humans.Base.Interfaces;
 using Humans.Base.Services.Metering;
@@ -27,8 +28,7 @@ public class EmailOutboxProcessorTests : IDisposable
     private readonly EmailDbContext _dbContext;
     private readonly IEmailTransport _transport;
     private readonly FakeClock _clock;
-    // Substituted: the concrete HumansMetricsService lives in Humans.Web, which this section
-    // may not reference. Nothing here asserts on metrics.
+    // The concrete metrics service lives in the Shell; section tests use the shared contract.
     private readonly IHumansMetrics _metrics;
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
@@ -63,6 +63,25 @@ public class EmailOutboxProcessorTests : IDisposable
         _dbContext.Dispose();
         _meters.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScheduledDrain_RecordsEveryOutcome_AndPreservesFailure(bool failed)
+    {
+        var failure = new IOException("Settings unavailable");
+        if (failed)
+            _settingsStore.GetValueAsync(SettingKeys.IsEmailSendingPaused, Arg.Any<CancellationToken>())
+                .ThrowsAsync(failure);
+        var scheduled = new ProcessEmailOutboxJob(_job, _metrics);
+
+        var error = await Record.ExceptionAsync(() => scheduled.ExecuteAsync(TestContext.Current.CancellationToken));
+
+        if (failed) error.Should().BeSameAs(failure);
+        else error.Should().BeNull();
+        _metrics.Received(1).RecordJobRun("process_email_outbox", failed ? "failure" : "success");
+        _metrics.DidNotReceive().RecordJobRun("process_email_outbox", failed ? "success" : "failure");
     }
 
     [HumansFact(Timeout = 10000)]

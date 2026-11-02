@@ -106,21 +106,4 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         return result;
     }
 
-    public async Task<IReadOnlyList<(Guid UserId, Guid DocumentVersionId)>> GetPairsForUsersAndVersionsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        IReadOnlyCollection<Guid> documentVersionIds,
-        CancellationToken ct = default)
-    {
-        if (userIds.Count == 0 || documentVersionIds.Count == 0)
-            return [];
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var pairs = await ctx.ConsentRecords
-            .AsNoTracking()
-            .Where(c => userIds.Contains(c.UserId) && documentVersionIds.Contains(c.DocumentVersionId))
-            .Select(c => new { c.UserId, c.DocumentVersionId })
-            .ToListAsync(ct);
-
-        return pairs.Select(p => (p.UserId, p.DocumentVersionId)).ToList();
-    }
 }

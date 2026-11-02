@@ -34,7 +34,6 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly IRoleAssignmentService RoleAssignments = Substitute.For<IRoleAssignmentService>();
     public readonly ITeamService Teams = Substitute.For<ITeamService>();
     public readonly IUserService Users = Substitute.For<IUserService>();
-    public readonly IUserEmailService UserEmails = Substitute.For<IUserEmailService>();
     public readonly IEmailService Email = Substitute.For<IEmailService>();
     public readonly GovernanceEmails Messages = TestGovernanceEmails.Create();
     public readonly INotificationEmitter Notifications = Substitute.For<INotificationEmitter>();
@@ -65,16 +64,13 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
-        UserEmails.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
+
         Service = new AssemblyVoteService(
             Repository,
             Applications,
             RoleAssignments,
             Teams,
             Users,
-            UserEmails,
             Email,
             Messages,
             Notifications,
@@ -107,10 +103,6 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));
 
-        UserEmails.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                userIds.ToDictionary(id => id, id => id + "@example.org")));
     }
 
     /// <summary>
@@ -133,12 +125,6 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             .Returns(call => new ValueTask<UserInfo?>(
                 map.TryGetValue((Guid)call[0], out var info) ? info : null));
 
-        UserEmails.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                ((IReadOnlyCollection<Guid>)call[0])
-                    .Where(map.ContainsKey)
-                    .ToDictionary(id => id, _ => survivor + "@example.org")));
     }
 
     private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>

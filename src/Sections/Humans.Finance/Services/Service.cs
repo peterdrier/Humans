@@ -28,12 +28,12 @@ internal sealed class Service(
     IHoldedClient client,
     IBudgetService budget,
     IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IExpenseHoldedBookingService expenses,
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService emailService,
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
@@ -51,9 +51,9 @@ internal sealed class Service(
 
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
+    private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
-    private readonly SepaPayoutEmails payoutEmails = new(users, userEmails, emailService, emails, logger);
+    private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
@@ -249,9 +249,9 @@ internal sealed class Service(
             throw;
         }
 
-        await RegisterManagedAsync(next, id, name, managed, now, ct);
         await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
+        await RegisterManagedAsync(next, id, name, managed, now, ct);
         return new HoldedExpenseAccountRef(next, id, name, Created: true);
     }
 

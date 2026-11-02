@@ -40,12 +40,23 @@ public sealed class HumansCsvTests
         Text(csv => csv.WriteRow("line one\nline two")).Should().StartWith("\"line one\nline two\"");
     }
 
+    [HumansFact]
+    public void WriteBlankLine_SeparatesSectionsWithAnEmptyLine()
+    {
+        Text(csv =>
+        {
+            csv.WriteRow("a", "b");
+            csv.WriteBlankLine();
+            csv.WriteRow("c");
+        }).Should().Be("a,b\r\n\r\nc\r\n");
+    }
+
     [HumansTheory]
     [InlineData("=1+2")]
     [InlineData("+34 600 000 000")]
     [InlineData("-2+3+cmd")]
     [InlineData("@user")]
-    [InlineData("\ttabbed")] // \t and \r are in our injection set; CsvHelper's default omits them
+    [InlineData("\ttabbed")]
     public void WriteRow_EscapesOwaspFormulaPrefixes(string payload)
     {
         var cell = Text(csv => csv.WriteRow(payload)).TrimEnd('\r', '\n');
@@ -56,15 +67,12 @@ public sealed class HumansCsvTests
     [HumansFact]
     public void ReadConfig_MatchesHeadersCaseAndWhitespaceInsensitively_AndDetectsSemicolons()
     {
-        using var reader = new StringReader(" NAME ;Count\nAna;3\n");
-        using var csv = new CsvReader(reader, HumansCsv.ReadConfig());
+        using var csv = CsvReader.FromText(" NAME ;Count\nAna;3\n", HumansCsv.ReadConfig());
 
         csv.Read();
-        csv.ReadHeader();
-        csv.Read();
 
-        csv.GetField("name").Should().Be("Ana");
-        csv.GetField(1).Should().Be("3");
+        csv.GetString("name").Should().Be("Ana");
+        csv.GetString(1).Should().Be("3");
     }
 
     private static string Text(Action<CsvWriter> write) =>

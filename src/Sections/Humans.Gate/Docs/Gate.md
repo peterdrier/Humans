@@ -88,7 +88,7 @@ after the retention window.
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
   the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority. Enqueue
   failures are logged without failing the already-recorded admit response; the mirror ledger is
-  marked only after enqueue succeeds.
+  marked only after enqueue succeeds. Live jobs carry the persisted scan's original admit time, so attendance work and queue delays cannot change the vendor timestamp.
   **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
   with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
   AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
@@ -103,7 +103,7 @@ after the retention window.
   (`/Gate/Admin/VendorCheckInBackfill`, `AdminOnly`, temp — remove after use) recovers admits from
   the last 30 days (`GateService.GetVendorCheckInBackfillAsync`) that never mirrored: it diffs
   local admits against the vendor's check-in status, supports a single test send before the bulk
-  run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteAsync` with its optional admit timestamp,
+  run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteAsync` with its required admit timestamp,
   unix seconds), and skips anything the ledger already claimed until the ticket sync confirms it.
   `GateService` owns the pending/sent split and `EnqueueVendorCheckInBackfillAsync` rechecks the
   current diff, refuses sends while mirroring is disabled, and atomically claims each ticket

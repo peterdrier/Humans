@@ -180,7 +180,7 @@ Profile picture, burner name, pronouns, location (Google Places), birthday, cont
 Burner CV entries with "No prior burn experience" checkbox, contribution interests. Includes a note that this info may be considered for tier applications.
 
 ### Section 3: Membership tier (initial setup only)
-Describes the Volunteer, Colaborador and Asociado tiers and links to `/Governance/Applications/Create` (new tab); the form carries no tier or application fields. Only shown when `IsInitialSetup` is true. After onboarding, users apply via `/Governance/Applications/Create`.
+Describes the Volunteer, Colaborador and Asociado tiers and links to `/Governance/Applications/Create` (new tab); the form carries no tier or application fields. Only shown when `IsInitialSetup` is true: the account is `Bare`, has no profile, or the GET explicitly requests preview mode. Consent Coordinator review does not affect setup mode. POST error redisplays derive the mode from the account. After onboarding, users apply via `/Governance/Applications/Create`.
 
 ### Section 4: Private Information (always visible)
 Legal first name(s), last name, emergency contact, board notes. Prefixed with lock icon and "only visible to you and the board" note.

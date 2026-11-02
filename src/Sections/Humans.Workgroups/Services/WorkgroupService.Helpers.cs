@@ -400,11 +400,9 @@ internal sealed partial class WorkgroupService
         if (ids.Count == 0)
             return;
 
-        IReadOnlyDictionary<Guid, string> addresses;
         IReadOnlyDictionary<Guid, UserInfo> infos;
         try
         {
-            addresses = await userEmails.GetNotificationTargetEmailsAsync(ids, ct);
             infos = await users.GetUserInfosAsync(ids, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -420,7 +418,9 @@ internal sealed partial class WorkgroupService
 
         foreach (var id in ids)
         {
-            if (!addresses.TryGetValue(id, out var address) || string.IsNullOrWhiteSpace(address))
+            infos.TryGetValue(id, out var info);
+            var address = info?.Email;
+            if (string.IsNullOrWhiteSpace(address))
             {
                 logger.LogWarning(
                     "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: no effective email",
@@ -428,7 +428,6 @@ internal sealed partial class WorkgroupService
                 continue;
             }
 
-            infos.TryGetValue(id, out var info);
             var language = info?.PreferredLanguage;
             await SendNoticeAsync(new WorkgroupNoticeRequest(
                 id, address, info?.BurnerName, kind, w.Name, w.Slug, detail,

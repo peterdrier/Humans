@@ -54,4 +54,6 @@
   <data name="Auth_AddRole_SelectRole" xml:space="preserve"><value>Select a role...</value></data>
   <data name="Auth_AddRole_NotesLabel" xml:space="preserve"><value>Notes (optional)</value></data>
   <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve"><value>Reason for assignment</value></data>
+  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>You were assigned the {0} role</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Your {0} role assignment has ended</value><comment>{0}=role name</comment></data>
 </root>

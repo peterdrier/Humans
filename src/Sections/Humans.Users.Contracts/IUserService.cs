@@ -28,8 +28,8 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Unordered: callers sort and take at the presentation layer. Rejected and profileless users are never
-    /// matched, nor emergency contacts. Services are auth-free, so passing <see cref="PersonSearchFields.Admin"/>
+    /// The safety cap selects the highest-scoring matches; callers own presentation ordering. Rejected and
+    /// profileless users are never matched, nor emergency contacts. Services are auth-free, so passing <see cref="PersonSearchFields.Admin"/>
     /// or <see cref="PersonSearchFields.LegalName"/> from a non-admin endpoint is a bug only review catches.
     /// </summary>
     Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(

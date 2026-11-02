@@ -11,8 +11,15 @@ internal sealed class ProcessEmailOutboxJob(
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        await outbox.ProcessQueuedAsync(cancellationToken);
-
-        metrics.RecordJobRun("process_email_outbox", "success");
+        try
+        {
+            await outbox.ProcessQueuedAsync(cancellationToken);
+            metrics.RecordJobRun("process_email_outbox", "success");
+        }
+        catch
+        {
+            metrics.RecordJobRun("process_email_outbox", "failure");
+            throw;
+        }
     }
 }

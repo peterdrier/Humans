@@ -220,14 +220,14 @@ internal sealed class AccountMergeService(
             request.AdminNotes = notes;
             await mergeRepository.UpdateAsync(request, ct);
 
-            await auditLogService.LogAsync(
-                UsersAuditActions.AccountMergeRejected,
-                nameof(AccountMergeRequest), request.Id,
-                $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
-                adminUserId);
-
             scope.Complete();
         }
+
+        await auditLogService.LogAsync(
+            UsersAuditActions.AccountMergeRejected,
+            nameof(AccountMergeRequest), request.Id,
+            $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
+            adminUserId);
 
         // After commit.
         await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);

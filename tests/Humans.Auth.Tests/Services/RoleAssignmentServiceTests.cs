@@ -231,6 +231,53 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         result.ErrorKey.Should().Be("RoleNotActive");
     }
 
+    [HumansTheory]
+    [InlineData("en", "You were assigned the Board role", "Your Board role assignment has ended")]
+    [InlineData("es", "Se te ha asignado el rol Board", "Tu asignación al rol Board ha finalizado")]
+    [InlineData("de", "Dir wurde die Rolle Board zugewiesen", "Deine Zuweisung zur Rolle Board ist beendet")]
+    [InlineData("it", "Ti è stato assegnato il ruolo Board", "La tua assegnazione al ruolo Board è terminata")]
+    [InlineData("fr", "Le rôle Board t’a été attribué", "Ton attribution au rôle Board a pris fin")]
+    [InlineData("ca", "Se t'ha assignat el rol Board", "La teva assignació al rol Board ha finalitzat")]
+    [InlineData("", "You were assigned the Board role", "Your Board role assignment has ended")]
+    [InlineData("not-a-culture", "You were assigned the Board role", "Your Board role assignment has ended")]
+    [InlineData("pt", "You were assigned the Board role", "Your Board role assignment has ended")]
+    [InlineData("lookup-fails", "You were assigned the Board role", "Your Board role assignment has ended")]
+    public async Task RoleChanges_NotifyInTheRecipientsLanguage(
+        string language, string assignedTitle, string endedTitle)
+    {
+        using var actorCulture = new Humans.Base.Extensions.CultureScope("en");
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+        var user = (await _userService.GetUserInfoAsync(userId, TestContext.Current.CancellationToken))!;
+        if (string.Equals(language, "lookup-fails", StringComparison.Ordinal))
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<UserInfo?>(new IOException("Directory unavailable")));
+        else
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(user with { PreferredLanguage = language });
+
+        var assigned = await _service.AssignRoleAsync(userId, RoleNames.Board, actorId, null,
+            TestContext.Current.CancellationToken);
+        var row = await AuthDb.RoleAssignments.AsNoTracking().SingleAsync(r => r.UserId == userId,
+            TestContext.Current.CancellationToken);
+        var ended = await _service.EndRoleAsync(row.Id, actorId, null, TestContext.Current.CancellationToken);
+
+        assigned.Success.Should().BeTrue();
+        ended.Success.Should().BeTrue();
+        var notices = Notifier.ReceivedCalls().ToList();
+        notices.Should().HaveCount(2);
+        notices[0].GetArguments()[3].Should().Be(assignedTitle);
+        notices[1].GetArguments()[3].Should().Be(endedTitle);
+        foreach (var notice in notices)
+        {
+            notice.GetArguments()[4].Should().BeEquivalentTo(new[] { userId });
+            notice.GetArguments()[6].Should().Be("/Profile");
+            notice.GetArguments()[10].Should().Be(CancellationToken.None);
+        }
+        await _systemTeamSync.Received(2).SyncBoardTeamAsync(Arg.Any<SyncReport?>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task AssignRoleAsync_NotificationThrows_StillSucceeds()
     {

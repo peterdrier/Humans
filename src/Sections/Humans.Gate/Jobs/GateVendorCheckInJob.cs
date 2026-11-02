@@ -16,16 +16,13 @@ namespace Humans.Gate.Jobs;
 [AutomaticRetry(Attempts = 0)]
 public sealed class GateVendorCheckInJob(
     ITicketVendorMirror vendor,
-    IClock clock,
     IConfiguration configuration,
     ILogger<GateVendorCheckInJob> logger)
 {
     public async Task ExecuteAsync(
-        string vendorTicketId, long? admittedAtUnixSeconds = null, CancellationToken cancellationToken = default)
+        string vendorTicketId, long admittedAtUnixSeconds, CancellationToken cancellationToken = default)
     {
-        var occurredAt = admittedAtUnixSeconds is { } originalAdmit
-            ? Instant.FromUnixTimeSeconds(originalAdmit)
-            : clock.GetCurrentInstant();
+        var occurredAt = Instant.FromUnixTimeSeconds(admittedAtUnixSeconds);
         if (string.IsNullOrWhiteSpace(vendorTicketId))
             return;
 

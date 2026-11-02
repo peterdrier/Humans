@@ -61,7 +61,7 @@ Cross-section reads via `IUserService`, `ITeamService`,
 
 ### UserEmailService (Scoped)
 
-Repository: `IUserRepository`.
+Repository: `IUserRepository`. Notification-address projections use existing `IUserService` snapshots: merge-resolved `Email` for delivery and raw `PrimaryEmail` for primary-only reads. Raw email-row scans remain for orphan diagnostics.
 
 | Table | R/W |
 |-------|-----|
@@ -129,6 +129,7 @@ downstream side effects. Cross-section calls via `IUserService`,
 `IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService` and `IHumansMetrics`. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
+Per-member suspension metrics stay here; run success/failure metrics belong to the scheduled job.
 
 ### UsersEmails (Scoped, internal)
 

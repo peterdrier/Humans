@@ -66,8 +66,8 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         foreach (var uid in expectedIds)
         {
             if (!byUserId.TryGetValue(uid, out var u)) continue;
-            var email = NotificationTargetEmail(u);
-            if (email is null) continue;
+            var email = u.Email;
+            if (string.IsNullOrEmpty(email)) continue;
             expected.Add(new DebugExpectedRow(uid, u.BurnerName, email));
         }
 
@@ -188,17 +188,6 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         var lastPage = rowCount == 0 ? 1 : (rowCount - 1) / size + 1;
         var page = Math.Clamp(state.Page, 1, lastPage);
         return state with { Page = page, PageSize = size };
-    }
-
-    private static string? NotificationTargetEmail(UserInfo u)
-    {
-        var primary = u.UserEmails
-            .Where(e => e.IsVerified && e.IsPrimary)
-            .Select(e => e.Email)
-            .FirstOrDefault();
-        if (primary is not null) return primary;
-        // Same fallback as IUserEmailService.GetNotificationTargetEmailsAsync.
-        return u.IdentityEmailColumn;
     }
 
     internal sealed record DebugSnapshot(
