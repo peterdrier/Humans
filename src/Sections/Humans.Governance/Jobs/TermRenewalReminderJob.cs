@@ -89,7 +89,7 @@ internal sealed class TermRenewalReminderJob(
                         applicant.BurnerName,
                         application.MembershipTier.ToString(),
                         application.TermExpiresAt!.Value,
-                        language),
+                        language) with { DeliveryId = application.Id },
                         cancellationToken);
 
                     await applicationDecisionService.MarkRenewalReminderSentAsync(

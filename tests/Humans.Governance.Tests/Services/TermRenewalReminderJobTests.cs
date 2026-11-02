@@ -49,7 +49,7 @@ public sealed class TermRenewalReminderJobTests
                 .Returns(Task.FromException(failure));
         if (string.Equals(failedStep, "stamp", StringComparison.Ordinal))
             applications.MarkRenewalReminderSentAsync(first.Id, clock.GetCurrentInstant(), CancellationToken.None)
-                .Returns(Task.FromException(failure));
+                .Returns(Task.FromException(failure), Task.CompletedTask);
         if (string.Equals(failedStep, "notice", StringComparison.Ordinal))
             notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                     Arg.Any<NotificationPriority>(), Arg.Any<string>(),
@@ -63,7 +63,7 @@ public sealed class TermRenewalReminderJobTests
         var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(CancellationToken.None));
 
         await email.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.RecipientEmail == "next@example.com"), CancellationToken.None);
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == "next@example.com" && m.DeliveryId == next.Id), CancellationToken.None);
         await applications.Received(1).MarkRenewalReminderSentAsync(next.Id, clock.GetCurrentInstant(), CancellationToken.None);
         if (string.Equals(failedStep, "email", StringComparison.Ordinal))
             await applications.DidNotReceive().MarkRenewalReminderSentAsync(first.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -78,6 +78,21 @@ public sealed class TermRenewalReminderJobTests
         {
             error.Should().BeNull();
             metrics.Received(1).RecordJobRun("term_renewal_reminder", "success");
+        }
+
+        if (string.Equals(failedStep, "stamp", StringComparison.Ordinal))
+        {
+            applications.GetExpiringApplicationsNeedingReminderAsync(
+                    Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([first]));
+
+            await job.ExecuteAsync(CancellationToken.None);
+
+            await email.Received(2).SendAsync(
+                Arg.Is<EmailMessage>(message => message.RecipientEmail == "first@example.com" && message.DeliveryId == first.Id),
+                CancellationToken.None);
+            await email.Received(1).SendAsync(
+                Arg.Is<EmailMessage>(message => message.RecipientEmail == "next@example.com"), CancellationToken.None);
         }
     }
 
