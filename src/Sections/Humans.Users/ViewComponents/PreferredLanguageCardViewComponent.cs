@@ -20,7 +20,9 @@ internal sealed class PreferredLanguageCardViewComponent(
         var allUserIds = snapshot.Select(u => u.Id).ToList();
         var partition = await membershipCalculator.PartitionUsersAsync(allUserIds, ct);
 
-        var languages = PreferredLanguageCalculator.Build(snapshot, partition);
+        var languages = PreferredLanguageCalculator.Build(snapshot, partition)
+            .OrderByDescending(language => language.Count)
+            .ToList();
         return languages.Count == 0 ? Content(string.Empty) : View(languages);
     }
 }
