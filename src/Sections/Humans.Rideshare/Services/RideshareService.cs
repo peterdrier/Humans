@@ -254,7 +254,7 @@ internal sealed class RideshareService(
                 throw new UnauthorizedAccessException("Only the driver of this ride can answer a request with it.");
             if (request.UserId == fromUserId)
                 return new(Refusal: new("Rideshare_Error_OwnRequest"));
-            if (CheckAnswerable(trip, request) is { } answerRefusal) return new(Refusal: answerRefusal);
+            if (await CheckAnswerableAsync(trip, request, ct) is { } answerRefusal) return new(Refusal: answerRefusal);
             if (seats == 0)
                 seats = request.PartySize;
         }
@@ -311,7 +311,7 @@ internal sealed class RideshareService(
             return new(Refusal: new("Rideshare_Error_InterestNotPending"));
         if (interest.Trip.Status != TripStatus.Active)
             return new(Refusal: new("Rideshare_Error_RideUnavailable"));
-        if (interest.Request is { } request && CheckAnswerable(interest.Trip, request) is { } answerRefusal)
+        if (interest.Request is { } request && await CheckAnswerableAsync(interest.Trip, request, ct) is { } answerRefusal)
             return new(Refusal: answerRefusal);
         if (SeatsRemaining(interest.Trip) < interest.Seats)
             return new(Refusal: new("Rideshare_Error_NotEnoughSeats"));
@@ -543,10 +543,21 @@ internal sealed class RideshareService(
     /// A trip may answer a pin only while the pin is open and the trip still goes that way on that day.
     /// Checked when the driver answers and again when the rider accepts, since either side may have edited in between.
     /// </summary>
-    private static RideshareRefusal? CheckAnswerable(RideshareTrip trip, RideshareRequest request)
+    private async Task<RideshareRefusal?> CheckAnswerableAsync(
+        RideshareTrip trip, RideshareRequest request, CancellationToken ct)
     {
         if (request.Status != RequestStatus.Active)
             return new("Rideshare_Error_RequestClosed");
+        var tripEventId = trip.EventSettingsId;
+        var requestEventId = request.EventSettingsId;
+        if (tripEventId is null || requestEventId is null)
+        {
+            var events = await settingsService.GetAllEventSettingsAsync(ct);
+            tripEventId ??= PickEventForYear(events, trip.Year)?.Id;
+            requestEventId ??= PickEventForYear(events, request.Year)?.Id;
+        }
+        if (tripEventId is null || tripEventId != requestEventId)
+            return new("Rideshare_Error_RideUnavailable");
         if (trip.Direction != request.Direction || !TravelsOn(trip, request.DesiredDate))
             return new("Rideshare_Error_RideNotOnRequestDate");
         return null;

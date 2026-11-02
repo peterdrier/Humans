@@ -778,6 +778,63 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         (await ctx.Interests.SingleAsync(i => i.Id == id, Ct)).TripId.Should().Be(covering.Id);
     }
 
+    [HumansTheory]
+    [InlineData(false, 0)]
+    [InlineData(false, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 0)]
+    [InlineData(true, 1)]
+    [InlineData(true, 2)]
+    public async Task PinAnswer_RejectsAnotherEvent_EvenWhenDirectionAndDateMatch(bool accepting, int legacySide)
+    {
+        var autumn = StubAutumnEvent();
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var request = await SeedRequestAsync(rider);
+        trip.EventSettingsId = legacySide == 1 ? null : autumn.Id;
+        request.EventSettingsId = legacySide == 2 ? null : EventId;
+        if (legacySide == 1) request.EventSettingsId = autumn.Id;
+        await Db.SaveChangesAsync(Ct);
+        var interest = accepting ? await SeedInterestAsync(driver, trip.Id, requestId: request.Id) : null;
+        var service = NewService();
+
+        var result = accepting
+            ? await service.AcceptInterestAsync(interest!.Id, rider, Ct)
+            : await service.ExpressInterestAsync(driver, trip.Id, request.Id, 0, null, Ct);
+
+        result.Refusal!.Key.Should().Be("Rideshare_Error_RideUnavailable");
+        await using var ctx = OpenContext();
+        if (accepting)
+            (await ctx.Interests.SingleAsync(Ct)).Status.Should().Be(InterestStatus.Pending);
+        else
+            (await ctx.Interests.CountAsync(Ct)).Should().Be(0);
+        Notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PinAnswer_AllowsLegacyAndStampedRowsOfTheSameEvent(bool legacyTrip)
+    {
+        StubAutumnEvent();
+        var driver = SeedUser("Ada");
+        var rider = SeedUser("Bo");
+        var trip = await SeedTripAsync(driver);
+        var request = await SeedRequestAsync(rider);
+        if (legacyTrip) request.EventSettingsId = EventId;
+        else trip.EventSettingsId = EventId;
+        await Db.SaveChangesAsync(Ct);
+        var service = NewService();
+
+        var sent = await service.ExpressInterestAsync(driver, trip.Id, request.Id, 0, null, Ct);
+        sent.Refusal.Should().BeNull();
+        (await service.AcceptInterestAsync(sent.Id!.Value, rider, Ct)).Refusal.Should().BeNull();
+
+        await using var ctx = OpenContext();
+        (await ctx.Interests.SingleAsync(Ct)).Status.Should().Be(InterestStatus.Accepted);
+    }
+
     [HumansFact]
     public async Task ExpressInterest_AnsweringAPin_RequiresTheDriver()
     {
