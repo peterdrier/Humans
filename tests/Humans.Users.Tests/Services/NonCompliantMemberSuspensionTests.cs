@@ -144,6 +144,40 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ExecuteAsync_AuditFailuresStillAttemptEveryChangedUserAndFailTheJob()
+    {
+        var users = new[] { SetupUser(), SetupUser(), SetupUser() };
+        var ids = users.Select(user => user.Id).ToList();
+        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>()).Returns(ids);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.ToDictionary(user => user.Id, user => user.ToUserInfo())));
+        StubSuspendSucceeds(ids);
+        var failures = new[] { new IOException("First audit unavailable"), new IOException("Second audit unavailable") };
+        for (var i = 0; i < failures.Length; i++)
+            _auditLogService.LogAsync(UsersAuditActions.MemberSuspended, nameof(User), ids[i],
+                    Arg.Any<string>(), "SuspendNonCompliantMembersJob", Arg.Any<Guid?>(), Arg.Any<string?>())
+                .Returns(Task.FromException(failures[i]));
+        var metrics = Substitute.For<IHumansMetrics>();
+        var job = new SuspendNonCompliantMembersJob(
+            _sut, metrics, Substitute.For<ILogger<SuspendNonCompliantMembersJob>>(), _clock);
+
+        var thrown = await Assert.ThrowsAsync<AggregateException>(() => job.ExecuteAsync(CancellationToken.None));
+
+        Assert.Equal(failures, thrown.InnerExceptions);
+        foreach (var id in ids)
+        {
+            await _auditLogService.Received(1).LogAsync(UsersAuditActions.MemberSuspended, nameof(User), id,
+                Arg.Any<string>(), "SuspendNonCompliantMembersJob", Arg.Any<Guid?>(), Arg.Any<string?>());
+            await _emailService.Received(1).SendAsync(
+                Arg.Is<EmailMessage>(message => message.UserId == id), Arg.Any<CancellationToken>());
+        }
+        Assert.Equal(3, _notificationService.ReceivedCalls().Count());
+        metrics.Received(1).RecordJobRun("suspend_noncompliant_members", "failure");
+        metrics.DidNotReceive().RecordJobRun("suspend_noncompliant_members", "success");
+    }
+
+    [HumansFact]
     public async Task ExecuteAsync_NoUsersToSuspend_DoesNothing()
     {
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
@@ -178,14 +212,14 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_SkipsUsersMissingFromUserLookup()
+    public async Task ExecuteAsync_MissingUserMetadataStillAuditsTheCommittedSuspension()
     {
         var userId = Guid.NewGuid();
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { userId });
 
         // User service says it suspended the user, but the prepared lookup returns
-        // an empty lookup — job should not emit email/notification/audit.
+        // an empty lookup — notices need metadata, but the committed suspension still needs an audit.
         _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
@@ -201,10 +235,11 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
 
-        await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
+        Assert.Empty(_notificationService.ReceivedCalls());
+        await _auditLogService.Received(1).LogAsync(
+            UsersAuditActions.MemberSuspended, nameof(User), userId,
+            Arg.Is<string>(description => description.Contains(userId.ToString(), StringComparison.Ordinal)),
+            "SuspendNonCompliantMembersJob", Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

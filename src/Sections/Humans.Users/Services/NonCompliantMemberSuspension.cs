@@ -56,12 +56,27 @@ internal sealed class NonCompliantMemberSuspension(
             return;
         }
 
+        var auditFailures = new List<Exception>();
         foreach (var userId in suspendedIds)
         {
-            if (!usersById.TryGetValue(userId, out var user))
+            usersById.TryGetValue(userId, out var user);
+            try
+            {
+                await auditLogService.LogAsync(
+                    UsersAuditActions.MemberSuspended, nameof(User), userId,
+                    $"{user?.BurnerName ?? userId.ToString()} suspended for missing required document consent (grace period expired)",
+                    AuditActor);
+            }
+            catch (Exception ex)
+            {
+                auditFailures.Add(ex);
+                logger.LogError(ex, "Failed to audit committed consent suspension for user {UserId}", userId);
+            }
+
+            if (user is null)
             {
                 logger.LogWarning(
-                    "Suspended user {UserId} not found in user lookup — skipping downstream side effects",
+                    "Suspended user {UserId} not found in user lookup — skipping notices",
                     userId);
                 continue;
             }
@@ -111,12 +126,10 @@ internal sealed class NonCompliantMemberSuspension(
                 user.Id, effectiveEmail);
 
             metrics.RecordMemberSuspended("job");
-
-            await auditLogService.LogAsync(
-                UsersAuditActions.MemberSuspended, nameof(User), user.Id,
-                $"{user.BurnerName} suspended for missing required document consent (grace period expired)",
-                AuditActor);
         }
+
+        if (auditFailures.Count > 0)
+            throw new AggregateException("Failed to audit one or more committed consent suspensions", auditFailures);
 
         logger.LogInformation(
             "Completed non-compliant member check, suspended {Count} members",
