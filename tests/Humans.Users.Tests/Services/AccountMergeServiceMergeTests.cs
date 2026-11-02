@@ -52,6 +52,46 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansTheory]
+    [InlineData("alex_smith@example.com", null, "alexXsmith@example.com", false)]
+    [InlineData("alex_smith@example.com", null, "ALEX_SMITH@example.com", true)]
+    [InlineData("alex%smith@example.com", null, "alexXsmith@example.com", false)]
+    [InlineData("alex%smith@example.com", null, "ALEX%SMITH@example.com", true)]
+    [InlineData("alex_smith@gmail.com", "alex_smith@googlemail.com", "alexXsmith@googlemail.com", false)]
+    [InlineData("alex_smith@gmail.com", "alex_smith@googlemail.com", "ALEX_SMITH@GOOGLEMAIL.COM", true)]
+    public async Task HasPendingForUserAndEmailAsync_MatchesLiteralAddressesWithinPendingTargetRequests(
+        string email, string? alternate, string pendingEmail, bool expected)
+    {
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var otherTargetId = Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using var db = new UsersDbContext(options);
+        db.Users.AddRange(new[] { sourceId, targetId, otherTargetId }.Select(id => new User { Id = id }));
+        foreach (var (target, address, status) in new[]
+                 {
+                     (targetId, pendingEmail, AccountMergeRequestStatus.Pending),
+                     (otherTargetId, email, AccountMergeRequestStatus.Pending),
+                     (targetId, email, AccountMergeRequestStatus.Accepted),
+                     (targetId, alternate ?? email, AccountMergeRequestStatus.Rejected)
+                 })
+        {
+            db.AccountMergeRequests.Add(new AccountMergeRequest
+            {
+                Id = Guid.NewGuid(), SourceUserId = sourceId, TargetUserId = target,
+                Email = address, Status = status, CreatedAt = _clock.GetCurrentInstant()
+            });
+        }
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var repository = new AccountMergeRepository(new TestDbContextFactory(options));
+
+        var result = await BuildSut(repository).HasPendingForUserAndEmailAsync(
+            targetId, email, alternate, TestContext.Current.CancellationToken);
+
+        result.Should().Be(expected);
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ContributeForUserAsync_IncludesEveryMergedAccountsRequestsOnce(bool requestArchivedId)
