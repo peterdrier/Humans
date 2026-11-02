@@ -1,4 +1,3 @@
-using System.Transactions;
 using Humans.AuditLog.Contracts;
 using NodaTime;
 
@@ -100,24 +99,16 @@ internal sealed class CampImageGallery(
             return CampUpdateResult.Failure("Camps_Flash_ImageWrongCamp");
         }
 
-        (string StoragePath, Guid CampId)? result;
-        using (var scope = new TransactionScope(TransactionScopeOption.Required,
-            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-            TransactionScopeAsyncFlowOption.Enabled))
-        {
-            result = await repo.DeleteImageAsync(imageId, cancellationToken);
-            if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
+        var result = await repo.DeleteImageAsync(imageId, cancellationToken);
+        if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
 
-            await auditLog.LogAsync(
-                CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
-                $"Deleted image {imageId}",
-                actorUserId,
-                relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
+        await auditLog.LogAsync(
+            CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
+            $"Deleted image {imageId}",
+            actorUserId,
+            relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
 
-            scope.Complete();
-        }
-
-        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        // Metadata has committed and audit was attempted; cleanup must finish independently of the request.
         try
         {
             await fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);

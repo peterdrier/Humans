@@ -1,3 +1,6 @@
+using System.Transactions;
+using NSubstitute;
+using Xunit;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Domain;
 using AwesomeAssertions;
@@ -19,6 +22,40 @@ public class AuditLogRepositoryTests
             .Options;
         _factory = new TestDbContextFactory<AuditLogDbContext>(options);
         _sut = new AuditLogRepository(_factory);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddAsync_DoesNotEnlistInTheCallersTransaction(bool callerCommits)
+    {
+        var entry = MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid());
+        var factory = Substitute.For<IDbContextFactory<AuditLogDbContext>>();
+        string? auditTransactionId = null;
+        factory.CreateDbContextAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            auditTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
+            return _factory.CreateDbContextAsync(call.Arg<CancellationToken>());
+        });
+        var repository = new AuditLogRepository(factory);
+        Transaction transaction;
+        using (var scope = new TransactionScope(TransactionScopeOption.Required,
+            TransactionScopeAsyncFlowOption.Enabled))
+        {
+            transaction = Transaction.Current!.Clone();
+            await repository.AddAsync(entry, TestContext.Current.CancellationToken);
+            Transaction.Current.Should().NotBeNull();
+            Transaction.Current!.TransactionInformation.LocalIdentifier.Should().Be(transaction.TransactionInformation.LocalIdentifier);
+            if (callerCommits) scope.Complete();
+        }
+        using (transaction)
+        {
+            auditTransactionId.Should().BeNull("audit saves must commit independently of the caller's business transaction");
+            transaction.TransactionInformation.Status.Should().Be(callerCommits ? TransactionStatus.Committed : TransactionStatus.Aborted);
+        }
+        await factory.Received(1).CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var context = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await context.AuditLogEntries.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken)).Id.Should().Be(entry.Id);
     }
 
     [HumansFact]

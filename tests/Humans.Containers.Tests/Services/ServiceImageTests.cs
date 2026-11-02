@@ -1,4 +1,3 @@
-using System.Transactions;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -484,49 +483,6 @@ public sealed class ServiceImageTests
         var thrown = await act.Should().ThrowAsync<IOException>();
         thrown.Which.Should().BeSameAs(original);
         await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DeleteAsync_AuditSharesMetadataTransactionBeforeFileCleanup(bool auditFails)
-    {
-        var container = new Container { Id = Guid.NewGuid(), CampId = CampId, Name = "Container" };
-        var actorId = Guid.NewGuid();
-        var repo = Substitute.For<IContainerRepository>();
-        Transaction? transaction = null;
-        string? auditTransactionId = null;
-        repo.GetByIdAsync(container.Id, Arg.Any<CancellationToken>()).Returns(container);
-        repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(_ =>
-        {
-            transaction = Transaction.Current?.Clone();
-            return (IReadOnlyList<string>)new[] { "uploads/containers/deleted.jpg" };
-        });
-        var failure = new IOException("Audit unavailable");
-        _auditLog.LogAsync(ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
-            Arg.Any<string>(), actorId, CampId, AuditEntityTypes.Camp).Returns(_ =>
-        {
-            auditTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
-            return auditFails ? Task.FromException(failure) : Task.CompletedTask;
-        });
-        var service = new Service(repo, _fileStorage, _camps, _auditLog, new FakeClock(StartTime), _logger);
-        var delete = () => service.DeleteAsync(container.Id, actorId, TestContext.Current.CancellationToken);
-
-        if (auditFails)
-            (await delete.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        else
-            await delete.Should().NotThrowAsync();
-
-        using (transaction)
-        {
-            transaction.Should().NotBeNull();
-            auditTransactionId.Should().Be(transaction!.TransactionInformation.LocalIdentifier);
-            transaction.TransactionInformation.Status.Should().Be(auditFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
-        }
-        if (auditFails)
-            await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
-        else
-            await _fileStorage.Received(1).DeleteAsync("uploads/containers/deleted.jpg", CancellationToken.None);
     }
 
     [HumansFact]
