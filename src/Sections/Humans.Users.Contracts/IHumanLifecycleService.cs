@@ -3,6 +3,7 @@ using Humans.Onboarding.Contracts;
 namespace Humans.Users.Contracts;
 
 /// <summary>The state machine for already-onboarded humans, beside the intake funnel and the deletion cascade.</summary>
+/// <remarks>Reads and state writes honor caller cancellation. After a successful write, notification work finishes independently.</remarks>
 public interface IHumanLifecycleService
 {
     /// <summary>
