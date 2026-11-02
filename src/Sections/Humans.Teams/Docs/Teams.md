@@ -335,7 +335,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 - **Search:** the global `/Search` page renders every team hit through this section's own public `<vc:teams-search-result team-id>`, which fetches its display fields — including the slug it links to — from `ITeamService.GetTeamAsync`. Search passes the team id and no display fields; `TeamSearchHit` is `(TeamId, Name, Score)`, carrying the section's own `Score`.
 - **Budget, Expenses:** coordinator status (`GetEffectiveBudgetCoordinatorTeamIdsAsync`, `IsUserCoordinatorOfTeamAsync`) scopes budget and expense editing; Budget's dev seeder uses `ITeamSeeding`.
 - **Onboarding, Governance, Auth, Camps, GoogleIntegration, Development:** call `ISystemTeamSync` after the facts they own change (volunteer activation, tier approval, role grants, camp leads, the sync admin page, the persona seeder).
-- **Users:** `AccountDeletionService` calls `RevokeAllMembershipsAsync`; account merge reaches `IUserMerge.ReassignAsync`; the profile card and popovers read `GetTeamsAsync` / `GetUserTeamMembershipsAsync`.
+- **Users:** `AccountDeletionService` calls `RevokeAllMembershipsAsync` inside its pending-deletion/access-revocation transaction; account merge reaches `IUserMerge.ReassignAsync`; the profile card and popovers read `GetTeamsAsync` / `GetUserTeamMembershipsAsync`.
 - **Shifts:** `ShiftAdminController` derives from `HumansTeamControllerBase`; shift authorization reads `GetUserCoordinatedTeamIdsAsync`.
 - **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Feedback, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read-side consumers of `ITeamService` / `TeamInfo`. Consent’s legal-document cache and sync path both stitch team display names through `ITeamService`.
 

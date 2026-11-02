@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Auth.Contracts;
@@ -61,17 +62,41 @@ internal sealed class AccountDeletionService(
         var effectiveDeletionDate = eligibleAfter is { } holdDate && holdDate > deletionDate
             ? holdDate : deletionDate;
 
-        await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
+        int endedMemberships;
+        int endedRoles;
+        try
+        {
+            // A partial revocation must not leave an AlreadyPending request that cannot retry.
+            using var scope = new TransactionScope(TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled);
+            if (!await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct))
+                return new DeletionRequestResult(false, "NotFound");
 
-        // Access ends during the grace period.
-        var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
+            // Access ends during the grace period.
+            endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
+            endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
-
-        await auditLogService.LogAsync(
-            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
-            $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
-            userId);
+            await auditLogService.LogAsync(
+                UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+                $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
+                userId);
+            scope.Complete();
+        }
+        catch
+        {
+            // The decorator may have published the pending state inside the rolled-back transaction.
+            // Refresh after disposal; its failure path evicts the stale entry for a later reload.
+            try
+            {
+                await userInfoRefresher.RefreshAsync(userId, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to refresh user {UserId} after deletion-request rollback", userId);
+            }
+            throw;
+        }
 
         logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +

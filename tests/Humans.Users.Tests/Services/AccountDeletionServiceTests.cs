@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Base.Extensions;
 using Humans.Users.Data;
 using Humans.Auth.Contracts;
@@ -38,6 +39,8 @@ public class AccountDeletionServiceTests
 
     public AccountDeletionServiceTests()
     {
+        _userService.SetDeletionPendingAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<Instant>(),
+                Arg.Any<Instant?>(), Arg.Any<CancellationToken>()).Returns(true);
         _ticketQueryService.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, []));
         _service = new AccountDeletionService(
@@ -129,6 +132,101 @@ public class AccountDeletionServiceTests
                 && m.RecipientEmail == user.Email! && m.RecipientName == user.BurnerName
                 && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RequestDeletionAsync_RevocationFailure_AbortsBeforeRefreshingUser(bool rolesFail)
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        Transaction? transaction = null;
+        _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transaction = Transaction.Current?.Clone();
+                return rolesFail ? Task.FromResult(1) : Task.FromException<int>(new IOException("Membership write failed"));
+            });
+        _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<int>(new IOException("Role write failed")));
+        var refreshedAfterRollback = false;
+        _userInfoRefresher.RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(_ =>
+            {
+                refreshedAfterRollback = Transaction.Current is null
+                    && transaction?.TransactionInformation.Status == TransactionStatus.Aborted;
+                return Task.CompletedTask;
+            });
+
+        var act = () => _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<IOException>();
+        using (transaction)
+        {
+            transaction.Should().NotBeNull();
+            transaction!.TransactionInformation.Status.Should().Be(TransactionStatus.Aborted);
+            refreshedAfterRollback.Should().BeTrue();
+        }
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RequestDeletionAsync_CommitsMarkerAndRevocationsTogether()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        Transaction? transaction = null;
+        var transactionIds = new List<string?>();
+        _userService.SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
+                Arg.Any<Instant?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transaction = Transaction.Current?.Clone();
+                transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
+                return Task.FromResult(true);
+            });
+        _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
+                return Task.FromResult(1);
+            });
+        _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
+                return Task.FromResult(1);
+            });
+
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        using (transaction)
+        {
+            result.Success.Should().BeTrue();
+            transaction.Should().NotBeNull();
+            transaction!.TransactionInformation.Status.Should().Be(TransactionStatus.Committed);
+            transactionIds.Should().HaveCount(3).And.OnlyContain(id => string.Equals(id, transaction.TransactionInformation.LocalIdentifier, StringComparison.Ordinal));
+        }
+    }
+
+    [HumansFact]
+    public async Task RequestDeletionAsync_MarkerNotWritten_RefusesBeforeRevokingAccess()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        _userService.SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+        _teamService.ReceivedCalls().Should().BeEmpty();
+        _roleAssignmentService.ReceivedCalls().Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
