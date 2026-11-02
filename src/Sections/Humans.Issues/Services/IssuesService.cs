@@ -19,7 +19,6 @@ namespace Humans.Issues.Services;
 internal sealed class IssuesService(
     IIssuesRepository repo,
     IUserService users,
-    IUserEmailService userEmails,
     IRoleAssignmentService roles,
     IEmailService email,
     IssuesEmails emailMessages,
@@ -865,11 +864,9 @@ internal sealed class IssuesService(
         try
         {
             var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
-            var emails = await userEmails.GetNotificationTargetEmailsAsync(
-                [issue.ReporterUserId], ct);
+            var to = reporter?.Email;
 
             if (reporter is not null &&
-                emails.TryGetValue(issue.ReporterUserId, out var to) &&
                 !string.IsNullOrWhiteSpace(to))
             {
                 var language = reporter.PreferredLanguage;

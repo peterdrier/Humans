@@ -67,7 +67,6 @@ public sealed class IssuesServiceTests
     private readonly IssuesEmails _emailMessages;
     private readonly List<string> _renderedEmailCultures = [];
     private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationEmitter _notificationService;
     private readonly INotificationAutoResolve _notificationInbox;
@@ -97,18 +96,6 @@ public sealed class IssuesServiceTests
 
         _userService = NewRegistryBackedUserService();
 
-        _userEmailService = Substitute.For<IUserEmailService>();
-        _userEmailService
-            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, string> dict = Db.Users
-                    .Where(u => ids.Contains(u.Id) && u.Email != null)
-                    .ToDictionary(u => u.Id, u => u.Email!);
-                return Task.FromResult(dict);
-            });
-
         _roleService = Substitute.For<IRoleAssignmentService>();
         _roleService
             .GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -122,7 +109,7 @@ public sealed class IssuesServiceTests
         _repository = new IssuesRepository(new TestDbContextFactory<IssuesDbContext>(issuesDbOptions));
 
         _service = new IssuesApplicationService(
-            _repository, _userService, _userEmailService, _roleService,
+            _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
@@ -437,7 +424,7 @@ public sealed class IssuesServiceTests
             var failure = new IOException("Issue persistence failed");
             repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
             var service = new IssuesApplicationService(
-                repo, _userService, _userEmailService, _roleService,
+                repo, _userService, _roleService,
                 _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
                 Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
@@ -485,7 +472,7 @@ public sealed class IssuesServiceTests
                 ? Task.FromException<Issue?>(new IOException("Verification unavailable"))
                 : _repository.GetByIdAsync(call.ArgAt<Guid>(0), CancellationToken.None));
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
@@ -980,7 +967,7 @@ public sealed class IssuesServiceTests
 
     [HumansTheory]
     [InlineData("name")]
-    [InlineData("address")]
+    [InlineData("template")]
     [InlineData("enqueue")]
     public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(string failure)
     {
@@ -992,15 +979,17 @@ public sealed class IssuesServiceTests
         if (string.Equals(failure, "name", StringComparison.Ordinal))
             _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
                 .Returns(_ => ValueTask.FromException<UserInfo?>(error));
-        else if (string.Equals(failure, "address", StringComparison.Ordinal))
-            _userEmailService.GetNotificationTargetEmailsAsync(
-                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(error));
-        else
+        else if (string.Equals(failure, "enqueue", StringComparison.Ordinal))
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(error));
 
-        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
+        var service = string.Equals(failure, "template", StringComparison.Ordinal)
+            ? new IssuesApplicationService(
+                _repository, _userService, _roleService, _emailService,
+                TestIssuesEmails.Create(_ => throw error), _notificationService, _notificationInbox,
+                AuditLog, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
+            : _service;
+        var result = await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
             resolveOnPost: true, ct: TestContext.Current.CancellationToken);
 
         result.Comment.Should().NotBeNull();
@@ -1225,7 +1214,7 @@ public sealed class IssuesServiceTests
             ? Task.FromException<Issue?>(failure) : Task.FromResult<Issue?>(issue));
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
@@ -1260,7 +1249,7 @@ public sealed class IssuesServiceTests
         repo.GetByIdAsync(issue.Id, ct).Returns(issue);
         repo.CountActionableAsync(null, null, ct).Returns(snapshot.Task, Task.FromResult(0));
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -1322,7 +1311,7 @@ public sealed class IssuesServiceTests
         var reporter = new IssueViewer(reporterId, []);
         (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(1);
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -2396,7 +2385,7 @@ public sealed class IssuesServiceTests
         _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(_ =>
             ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
         var service = new IssuesApplicationService(
-            _repository, _userService, _userEmailService, _roleService,
+            _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -2425,7 +2414,7 @@ public sealed class IssuesServiceTests
             throw new IOException("Screenshot storage unavailable");
         });
         var service = new IssuesApplicationService(
-            _repository, _userService, _userEmailService, _roleService,
+            _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
