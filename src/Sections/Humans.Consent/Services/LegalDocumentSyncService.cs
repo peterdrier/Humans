@@ -304,7 +304,7 @@ internal sealed partial class LegalDocumentSyncService(
     private static partial Regex GitHubUrlPattern();
 
     public async Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, ICollection<Exception>? failures = null)
     {
         logger.LogInformation("Starting sync of all legal documents");
 
@@ -322,9 +322,15 @@ internal sealed partial class LegalDocumentSyncService(
                     updatedDocuments.Add(document);
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (GitHubApiException ex) when (ex.IsTransient)
             {
-                // The next run self-heals. No exception object: it can carry GitHub's HTML error page.
+                // The next run self-heals. Neither logs nor the job's aggregate may carry GitHub's HTML error page.
+                failures?.Add(new InvalidOperationException(
+                    $"GitHub sync failed for legal document {document.Id} (HTTP {(int)ex.StatusCode})."));
                 logger.LogWarning(
                     "Transient GitHub error syncing document {DocumentName} ({DocumentId}): {StatusCode}, will retry next run",
                     document.Name, document.Id, ex.StatusCode);
@@ -332,12 +338,15 @@ internal sealed partial class LegalDocumentSyncService(
             catch (GitHubApiException ex)
             {
                 // Repeats every run until a human acts, so Error; still status code only.
+                failures?.Add(new InvalidOperationException(
+                    $"GitHub sync failed for legal document {document.Id} (HTTP {(int)ex.StatusCode})."));
                 logger.LogError(
                     "GitHub API error syncing document {DocumentName} ({DocumentId}): {StatusCode} — not transient, check GitHub token/config",
                     document.Name, document.Id, ex.StatusCode);
             }
             catch (Exception ex)
             {
+                failures?.Add(ex);
                 logger.LogError(ex, "Error syncing document {DocumentName} ({DocumentId})",
                     document.Name, document.Id);
             }

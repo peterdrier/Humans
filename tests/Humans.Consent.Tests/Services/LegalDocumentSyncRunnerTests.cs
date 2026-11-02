@@ -44,7 +44,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var optional = MakeDocument("Own optional", false);
         optional.TeamId = own.TeamId;
         var sync = Substitute.For<ILegalDocumentSyncManagement>();
-        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new[] { own, other, optional });
+        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>(), Arg.Any<ICollection<Exception>?>()).Returns(new[] { own, other, optional });
         var teams = Substitute.For<ITeamService>();
         teams.GetTeamAsync(own.TeamId, Arg.Any<CancellationToken>()).Returns(new TeamInfo(
             own.TeamId, "Own", null, "own", true, false, SystemTeamType.None, false,
@@ -90,7 +90,7 @@ public sealed class LegalDocumentSyncRunnerTests
     public async Task Sync_OptionalUpdate_DoesNotResolveRecipientsOrSendConsentEmail()
     {
         var sync = Substitute.For<ILegalDocumentSyncManagement>();
-        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new[] { MakeDocument("Optional", false) });
+        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>(), Arg.Any<ICollection<Exception>?>()).Returns(new[] { MakeDocument("Optional", false) });
         var teams = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var runner = new LegalDocumentSyncRunner(sync, email, TestConsentEmails.Create(), teams,
@@ -121,7 +121,7 @@ public sealed class LegalDocumentSyncRunnerTests
             EffectiveFrom = document.CurrentVersion.EffectiveFrom + Duration.FromDays(1)
         });
         var sync = Substitute.For<ILegalDocumentSyncManagement>();
-        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<LegalDocument>());
+        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>(), Arg.Any<ICollection<Exception>?>()).Returns(Array.Empty<LegalDocument>());
         var documents = Substitute.For<ILegalDocumentRepository>();
         documents.GetDocumentsAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { document });
         var teams = Substitute.For<ITeamService>();

@@ -23,7 +23,8 @@ internal sealed class LegalDocumentSyncRunner(
 {
     public async Task SyncAndNotifyAsync(CancellationToken cancellationToken = default)
     {
-        var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken);
+        var failures = new List<Exception>();
+        var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken, failures);
         logger.LogInformation("Synced {Count} updated legal documents", updatedDocs.Count);
 
         // The version and its marker commit together, so a crash or a later unchanged sync cannot lose this work.
@@ -32,7 +33,6 @@ internal sealed class LegalDocumentSyncRunner(
                 .Where(version => version.PendingReConsentBatchId is not null)
                 .Select(version => (Document: document, Version: version)))
             .GroupBy(change => change.Version.PendingReConsentBatchId!.Value);
-        var failures = new List<Exception>();
         foreach (var batch in pending)
         {
             try
@@ -55,7 +55,7 @@ internal sealed class LegalDocumentSyncRunner(
             }
         }
         if (failures.Count > 0)
-            throw new AggregateException("Failed to complete one or more legal document notification batches.", failures);
+            throw new AggregateException("Failed to complete legal document sync or notification batches.", failures);
     }
 
     private async Task<IReadOnlyList<Exception>> SendReConsentNotificationsAsync(

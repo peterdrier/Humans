@@ -1,3 +1,5 @@
+using Humans.Base.Interfaces;
+using Humans.Consent.Jobs;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
@@ -158,6 +160,77 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         email.ClearReceivedCalls();
         await runner.SyncAndNotifyAsync(ct);
         email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("transient")]
+    [Xunit.InlineData("permanent")]
+    [Xunit.InlineData("unexpected")]
+    public async Task ScheduledSync_ReportsDocumentFailuresAfterDrainingSuccessfulUpdates(string kind)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var broken = await SeedDocumentAsync("Broken", folderPath: "broken/");
+        var good = await SeedDocumentAsync("Good", folderPath: "good/");
+        StubGitHubFolder("good/", "Good content", "good-sha", "Good update");
+        var transient = kind is "transient";
+        Exception failure = kind is "unexpected" ? new IOException("Storage read failed")
+            : new GitHubApiException(transient ? System.Net.HttpStatusCode.ServiceUnavailable : System.Net.HttpStatusCode.Forbidden,
+                transient, new IOException("PRIVATE_GITHUB_BODY"));
+        _gitHub.DiscoverLanguageFilesAsync("broken/", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyDictionary<string, string>>(failure));
+        var person = UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Human", Email = "human@example.com" },
+            [], [], [], null, []);
+        _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
+        {
+            Members = [new TeamMemberInfo(Guid.NewGuid(), person.Id, person.BurnerName, person.Email, null, TeamMemberRole.Member, default)]
+        });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person });
+        var consents = Substitute.For<IConsentService>();
+        consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>());
+        var email = Substitute.For<IEmailService>();
+        var runner = new LegalDocumentSyncRunner(_service, email, Infrastructure.TestConsentEmails.Create(),
+            _teamService, _userService, consents, _repository, NullLogger<LegalDocumentSyncRunner>.Instance);
+        var metrics = Substitute.For<IHumansMetrics>();
+        var job = new SyncLegalDocumentsJob(runner, metrics, NullLogger<SyncLegalDocumentsJob>.Instance, Clock);
+
+        var run = () => job.ExecuteAsync(ct);
+        var error = await run.Should().ThrowAsync<AggregateException>();
+
+        var reported = error.Which.Flatten().InnerExceptions.Should().ContainSingle().Subject;
+        if (kind is "unexpected") reported.Should().BeSameAs(failure);
+        else
+        {
+            reported.InnerException.Should().BeNull();
+            reported.Message.Should().Contain(broken.Id.ToString()).And.Contain(transient ? "503" : "403");
+        }
+        error.Which.ToString().Should().NotContain("PRIVATE_GITHUB_BODY");
+        var message = email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        message.HtmlBody.Should().Contain("Good").And.NotContain("Broken");
+        (await _repository.GetByIdAsync(good.Id, ct))!.Versions.Should().ContainSingle()
+            .Which.PendingReConsentBatchId.Should().BeNull();
+        (await _repository.GetByIdAsync(broken.Id, ct))!.Versions.Should().BeEmpty();
+        metrics.Received(1).RecordJobRun("sync_legal_documents", "failure");
+        metrics.DidNotReceive().RecordJobRun("sync_legal_documents", "success");
+    }
+
+    [HumansFact]
+    public async Task SyncAll_RequestedCancellationStopsBeforeNextDocument()
+    {
+        await SeedDocumentAsync("First", folderPath: "first/");
+        await SeedDocumentAsync("Second", folderPath: "second/");
+        using var request = new CancellationTokenSource();
+        _gitHub.DiscoverLanguageFilesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            return await Task.FromException<IReadOnlyDictionary<string, string>>(new OperationCanceledException(request.Token));
+        });
+
+        var run = () => _service.SyncAllDocumentsAsync(request.Token);
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        await _gitHub.Received(1).DiscoverLanguageFilesAsync(Arg.Any<string>(), request.Token);
     }
 
     [HumansTheory]

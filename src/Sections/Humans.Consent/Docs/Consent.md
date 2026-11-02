@@ -240,6 +240,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 
 ## Triggers
 
+- Scheduled legal sync collects per-document failures while continuing other documents, then drains durable email batches before failing the job. GitHub failures expose only document ID and HTTP status in propagated diagnostics; inner HTML response bodies stay out of job logs. Requested cancellation stops the document loop immediately.
 - Full GitHub sync persists a nullable re-consent batch ID with each newly synced required version in the same Consent-owned save. The runner drains these durable batches even when the next sync is unchanged, consolidates outstanding current documents per resolved human, and uses the existing merge-aware consent map. A failed team lookup, email preparation/enqueue or completion save leaves the batch pending; other recipients and batches are attempted before the job fails. Stable batch/user delivery IDs reuse successful Email outbox handoffs on retry. Completion clears only that batch. Historical versions remain null without backfill; inactive, optional or superseded versions are retired without email. Admin single-document sync behavior is unchanged.
 
 - When a human signs all required global documents: their consent check status transitions to Pending. `ConsentService.SubmitConsentAsync` fires no per-user team sync — Volunteers admission is reconciled by the scheduled `SystemTeamSyncJob.SyncVolunteersTeamAsync` pass on name + consents (eventually consistent). App access never depended on Volunteers membership.
