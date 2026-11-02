@@ -229,7 +229,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 | LastSentAt | Instant | The cooldown anchor; stamped after each successful enqueue |
 
 - **Single owner.** Reminder cooldown and export reads use only `consent_reminders`; the Users column waits for its own drop.
-- **Merge.** No `IUserMerge`: rows stay keyed to the id they were written for; the job reads by the resolved survivor id.
+- **Merge.** No `IUserMerge`: rows stay keyed to the id they were written for. Cooldown reads use the latest stamp across the survivor and every merged-away id, keyed by the survivor, so merging accounts cannot restart the reminder cooldown.
 - **GDPR.** Export slice `ConsentReminder` (the stamps of every id in the member's merge chain, survivor first). Erasure deletes the member's row.
 
 - No one **can** update or delete consent records. They are permanently immutable.
