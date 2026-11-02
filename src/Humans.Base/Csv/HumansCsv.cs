@@ -1,7 +1,6 @@
-using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using CsvHelper;
-using CsvHelper.Configuration;
 
 namespace Humans.Base.Csv;
 
@@ -14,58 +13,54 @@ public static class HumansCsv
     /// <summary>UTF-8 with BOM — Excel needs the BOM to detect UTF-8 in downloads.</summary>
     public static readonly UTF8Encoding Utf8WithBom = new(encoderShouldEmitUTF8Identifier: true);
 
+    // CsvHelper 34 refuses zero-field records, so blank separator lines go straight to the text writer.
+    private static readonly ConditionalWeakTable<CsvWriter, TextWriter> Destinations = new();
+
     /// <summary>
     /// Reading defaults for user-supplied files: invariant culture, delimiter
     /// detection (Spanish/European Excel saves semicolon-delimited CSV),
     /// whitespace-and-case-forgiving header matching, trimmed fields.
-    /// Call sites may tweak the returned instance (e.g. <c>AllowComments</c>).
+    /// Malformed quoting throws <see cref="CsvFormatException"/> rather than being guessed at.
+    /// Call sites adjust it with <c>with</c> (e.g. <c>CommentPrefix</c>).
     /// </summary>
-    public static CsvConfiguration ReadConfig() => new(CultureInfo.InvariantCulture)
+    public static CsvReaderOptions ReadConfig() => new()
     {
-        DetectDelimiter = true,
-        PrepareHeaderForMatch = args => args.Header.Trim().ToLowerInvariant(),
-        TrimOptions = TrimOptions.Trim,
+        Separator = null,
+        NormalizeHeaderName = header => header.Trim().ToLowerInvariant(),
+        TrimWhitespace = true,
+        MalformedData = CsvMalformedDataHandling.Throw,
     };
 
     /// <summary>
-    /// Writing defaults for exports: invariant culture, RFC 4180 CRLF (pinned —
-    /// <c>Environment.NewLine</c> would differ between Windows dev and the Linux
-    /// deploy), and OWASP CSV-injection escaping. The injection character set is
-    /// set explicitly because CsvHelper's default omits <c>\t</c> and <c>\r</c>.
+    /// Writing defaults for exports: invariant culture, RFC 4180 CRLF, OWASP CSV-injection escaping
+    /// (CsvHelper's default set includes <c>\t</c> and <c>\r</c>), and quoting of any field holding CR or LF.
+    /// Field counts may vary between records: several exports write titled sections and summary rows.
     /// </summary>
-    public static CsvConfiguration WriteConfig() => new(CultureInfo.InvariantCulture)
+    public static CsvWriterOptions WriteConfig() => new()
     {
         NewLine = "\r\n",
-        InjectionOptions = InjectionOptions.Escape,
-        InjectionCharacters = ['=', '+', '-', '@', '\t', '\r'],
-        InjectionEscapeCharacter = '\'',
-        // CsvHelper's default only quotes when the field contains the configured
-        // NewLine string ("\r\n"), so a field with a bare \n would corrupt the
-        // record structure. Quote on either line-break character individually.
-        ShouldQuote = args =>
-            !string.IsNullOrEmpty(args.Field)
-            && (args.Field.Contains(args.Row.Configuration.Quote)
-                || args.Field.Contains(args.Row.Configuration.Delimiter, StringComparison.Ordinal)
-                || args.Field.Contains('\r', StringComparison.Ordinal)
-                || args.Field.Contains('\n', StringComparison.Ordinal)),
+        Injection = CsvInjection.Escape,
+        InjectionEscape = '\'',
+        ValidateFieldCount = false,
     };
 
     /// <summary>
     /// Builds a UTF-8 (BOM) CSV byte payload — the standard body for a
-    /// <c>text/csv</c> file result. <paramref name="configure"/> may adjust the
-    /// write configuration before the writer is created.
+    /// <c>text/csv</c> file result. <paramref name="configure"/> may return an
+    /// adjusted copy of the write configuration (via <c>with</c>) before the writer is created.
     /// </summary>
-    public static byte[] WriteBytes(Action<CsvWriter> write, Action<CsvConfiguration>? configure = null)
+    public static byte[] WriteBytes(Action<CsvWriter> write, Func<CsvWriterOptions, CsvWriterOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(write);
 
         var config = WriteConfig();
-        configure?.Invoke(config);
+        if (configure is not null) config = configure(config);
 
         using var ms = new MemoryStream();
         using (var sw = new StreamWriter(ms, Utf8WithBom))
-        using (var csv = new CsvWriter(sw, config))
+        using (var csv = CsvWriter.Create(sw, config, leaveOpen: false))
         {
+            Destinations.Add(csv, sw);
             write(csv);
         }
 
@@ -79,9 +74,21 @@ public static class HumansCsv
 
         foreach (var value in values)
         {
-            csv.WriteField(value);
+            if (value is null) csv.WriteField((string?)null);
+            else csv.WriteField(value);
         }
 
-        csv.NextRecord();
+        csv.EndRecord();
+    }
+
+    /// <summary>Writes an empty line between sections of a <see cref="WriteBytes"/> payload.</summary>
+    public static void WriteBlankLine(this CsvWriter csv)
+    {
+        ArgumentNullException.ThrowIfNull(csv);
+        if (!Destinations.TryGetValue(csv, out var destination))
+            throw new InvalidOperationException("Blank lines are only supported on writers created by WriteBytes.");
+
+        csv.Flush();
+        destination.Write(csv.Options.NewLine);
     }
 }

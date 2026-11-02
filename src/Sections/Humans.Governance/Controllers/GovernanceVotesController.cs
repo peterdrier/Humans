@@ -226,12 +226,12 @@ internal sealed class GovernanceVotesController(
         {
             csv.WriteRow(Text("Governance_Votes_CsvVoteLabel"), results.Vote.Title);
             csv.WriteRow(Text("Governance_Votes_MethodLabel"), Text("Governance_Votes_Method_" + results.Result.Method));
-            csv.NextRecord();
+            csv.WriteBlankLine();
 
             WriteAudienceCsv(csv, Text("Governance_Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel, optionKeys);
             if (results.Result.Indicative is { } indicative)
             {
-                csv.NextRecord();
+                csv.WriteBlankLine();
                 WriteAudienceCsv(csv, Text("Governance_Votes_IndicativeRosterLabel"), indicative, OptionLabel, optionKeys);
             }
         });

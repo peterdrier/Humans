@@ -258,7 +258,7 @@ public class ScannerControllerTests
 
         var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new[] { "Liability Waiver" });
+            .Returns(new[] { "Privacy Policy", "Liability Waiver" });
 
         var burnSettings = Substitute.For<ISettingsService>();
         burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
@@ -304,7 +304,7 @@ public class ScannerControllerTests
         vm.Stub!.EarlyEntryDate.Should().Be(new LocalDate(2026, 6, 15));
         vm.EarlyEntrySources.Should().Equal("Teams: Gate");
         vm.CheckedInAt.Should().Be(checkedInAt);
-        vm.PendingConsents.Should().Equal("Liability Waiver");
+        vm.PendingConsents.Should().Equal("Liability Waiver", "Privacy Policy");
         vm.BurnTimeZone.Should().NotBeNull();
         vm.BurnTimeZone!.Id.Should().Be("Europe/Madrid");
 

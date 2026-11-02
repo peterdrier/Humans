@@ -19,8 +19,7 @@ One partial class (`GrantService.*.cs`) registered once and resolved as `IGrantM
 | grant_program_managers | R/W (added/removed per program; deleted on erasure; re-keyed on merge) |
 | grants | R/W (deleted on erasure; re-keyed on merge, duplicate live grant revoked) |
 
-Cross-section calls via `IUserService` (merged ids, language, names), `IUserEmailService`
-(notification targets), `INotificationEmitter`, `IEmailService`, `IAuditLogService`, `ISettingsService` (events), plus the
+Cross-section calls via `IUserService` (merged ids, language, names and canonical notification targets), `INotificationEmitter`, `IEmailService`, `IAuditLogService`, `ISettingsService` (events), plus the
 section's own `GrantsEmails` builder and `IClock`. No `IMemoryCache`.
 
 ### GrantsEmails / GrantsEmailPreviews (Scoped)

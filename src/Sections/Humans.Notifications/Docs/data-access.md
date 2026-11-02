@@ -18,8 +18,9 @@ Repository: `INotificationRepository`.
 | Notifications | R/W |
 | NotificationRecipients | R/W |
 
-Cross-section calls via `INotificationEmitter`, `IRoleAssignmentService`,
-`ICommunicationPreferenceService`, `IClock`. Implements `IUserMerge`.
+Resolves role holders through `IRoleAssignmentService`, then delegates all emission to the
+section-internal `NotificationEmitter`. Its only repository write is merge reassignment.
+Implements `IUserMerge`.
 
 ### NotificationEmitter (Scoped)
 
@@ -30,10 +31,10 @@ Repository: `INotificationRepository`.
 | Notifications | R/W |
 | NotificationRecipients | R/W |
 
-Low-level emitter used by `NotificationService` and direct callers
-(`TeamService`, `CampService`, `CampRoleService`, `CampContactService`)
-that have a single-recipient dispatch already targeted. Cross-section
-calls via `ICommunicationPreferenceService`.
+Owns preference filtering, copy normalization and persistence for both individual delivery
+and shared role broadcasts. `NotificationService` resolves role recipients; direct callers
+use `INotificationEmitter` with their known recipient lists. Both resolve the same scoped
+emitter. Cross-section calls via `ICommunicationPreferenceService`.
 
 ### NotificationInboxService (Scoped)
 

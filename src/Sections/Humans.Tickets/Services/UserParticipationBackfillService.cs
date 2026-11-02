@@ -46,20 +46,16 @@ internal sealed class UserParticipationBackfillService(
     /// count).</summary>
     private static List<(Guid UserId, ParticipationStatus Status)> ParseEntries(string csvData)
     {
-        var config = HumansCsv.ReadConfig();
-        config.HasHeaderRecord = false;
-
         var entries = new List<(Guid UserId, ParticipationStatus Status)>();
-        using var reader = new StringReader(csvData);
-        using var csv = new CsvReader(reader, config);
+        using var csv = CsvReader.FromText(csvData, HumansCsv.ReadConfig() with { HasHeader = false });
 
         while (csv.Read())
         {
-            if (csv.Parser.Count < 2) continue;
-            var first = csv.GetField(0);
+            if (csv.FieldCount < 2) continue;
+            var first = csv.GetString(0);
             if (string.Equals(first, "UserId", StringComparison.OrdinalIgnoreCase)) continue;
             if (!Guid.TryParse(first, out var userId)) continue;
-            if (!Enum.TryParse<ParticipationStatus>(csv.GetField(1), ignoreCase: true, out var status) ||
+            if (!Enum.TryParse<ParticipationStatus>(csv.GetString(1), ignoreCase: true, out var status) ||
                 !Enum.IsDefined(status)) continue;
 
             entries.Add((userId, status));

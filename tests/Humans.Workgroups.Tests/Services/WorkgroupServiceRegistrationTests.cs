@@ -2,6 +2,7 @@ using Xunit;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Email.Contracts;
 using Humans.Base.Constants;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
@@ -220,9 +221,9 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
 
     [HumansTheory]
     [InlineData("role")]
-    [InlineData("address")]
+    [InlineData("send")]
     [InlineData("member")]
-    public async Task Apply_EmailRecipientLookupFailureDoesNotFailTheSavedApplication(string failure)
+    public async Task Apply_EmailFailureDoesNotFailTheSavedApplication(string failure)
     {
         var boardMember = SeedUser();
         Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
@@ -231,8 +232,8 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
         if (string.Equals(failure, "role", StringComparison.Ordinal))
             Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
                 .ThrowsAsync(unavailable);
-        else if (string.Equals(failure, "address", StringComparison.Ordinal))
-            UserEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        else if (string.Equals(failure, "send", StringComparison.Ordinal))
+            Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .ThrowsAsync(unavailable);
         else
             Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -247,11 +248,12 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Register_EmailAddressLookupFailureStillRequestsDriveAccessSync()
+    public async Task Register_EmailRecipientLookupFailureStillRequestsDriveAccessSync()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, driveFolderId: null);
-        UserEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Email recipient lookup unavailable"));
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(
+                new InvalidOperationException("Email recipient lookup unavailable")));
 
         await NewService().RegisterAsync(workgroup.Id, SeedUser(), Ct);
 

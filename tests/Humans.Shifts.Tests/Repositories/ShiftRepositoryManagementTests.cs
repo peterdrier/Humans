@@ -169,6 +169,42 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         result.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("first_aid", "firstXaid")]
+    [Xunit.InlineData("100% ready", "100X ready")]
+    [Xunit.InlineData("a\\b", "ab")]
+    public async Task GetOrCreateTagAsync_UsesLiteralNamesAndReusesCaseVariants(string name, string otherName)
+    {
+        var other = new ShiftTag { Id = Guid.NewGuid(), Name = otherName };
+        _shiftsDbContext.ShiftTags.Add(other);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var created = await _repo.GetOrCreateTagAsync(name, Xunit.TestContext.Current.CancellationToken);
+        var reused = await _repo.GetOrCreateTagAsync(name.ToUpperInvariant(), Xunit.TestContext.Current.CancellationToken);
+
+        created.Id.Should().NotBe(other.Id);
+        created.Name.Should().Be(name);
+        reused.Id.Should().Be(created.Id);
+        (await _shiftsDbContext.ShiftTags.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Be(2);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("first_aid", "firstXaid")]
+    [Xunit.InlineData("100% ready", "100X ready")]
+    [Xunit.InlineData("a\\b", "ab")]
+    public async Task GetTagsAsync_SearchesLiteralNameFragments(string query, string otherName)
+    {
+        var matching = new ShiftTag { Id = Guid.NewGuid(), Name = "Before " + query + " after" };
+        var other = new ShiftTag { Id = Guid.NewGuid(), Name = "Before " + otherName + " after" };
+        _shiftsDbContext.ShiftTags.AddRange(matching, other);
+        await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repo.GetTagsAsync(query.ToUpperInvariant(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle().Which.Id.Should().Be(matching.Id);
+    }
+
     [HumansFact]
     public async Task SetVolunteerTagPreferencesAsync_ReplacesExisting()
     {

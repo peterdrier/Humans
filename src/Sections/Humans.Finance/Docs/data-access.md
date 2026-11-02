@@ -78,7 +78,7 @@ account-balance reads for creditor status, ledger, and account listing),
 `IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
 API calls, plus `PayPurchaseDocumentAsync` for SEPA booking), `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked), and
-`IUserService` / `IUserEmailService` / `IEmailService` (the payout-generated and
+`IUserService` / `IEmailService` (the payout-generated and
 payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).
 Implements `IHoldedFinanceManagement` (the public `IHoldedFinanceService` and `IHoldedFinanceWrite`), `IHoldedFinanceAdminService`
 and `IUserDataContributor`.
@@ -111,7 +111,8 @@ It calls the Holded section's `IHoldedClient.ListBankMovementsAsync` (find and
 match the bank line), `ListAccountingAccountsAsync` (live balance),
 `ListLedgerEntriesAsync` (what is already posted, by tag) and
 `ReconcileBankMovementAsync` (nobodies-collective/Humans#1185), alongside the
-existing `PayPurchaseDocumentAsync` / `PostLedgerEntryAsync` / `ListPurchaseDocumentsAsync`.
+existing `PayPurchaseDocumentAsync` / `ListPurchaseDocumentsAsync`. Journal remainders use
+`IHoldedWrite.PostJournalEntryAsync`, returning a confirmation outcome rather than a connector reference.
 `WithdrawSepaTransferAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
 (`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw` and
 `/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines

@@ -120,6 +120,7 @@ Browse signup display ordering is shared by the browse page, row refresh, onboar
 **Acceptance Criteria:**
 - Coordinators can add/remove tags from rotas via the shift admin page
 - Tags are shared across all teams — any coordinator can use existing tags or create new ones
+- Creating a tag reuses its existing name case-insensitively. Autocomplete searches literal name fragments; SQL pattern characters in names have no special meaning.
 - Tag picker shows existing tags as checkboxes plus an inline "create new tag" field
 - Tags displayed as badges on rota cards in both admin and browse views
 - Initial tags seeded from coordinator feedback: Heavy lifting, Working in the sun, Working in the shade, Organisational task, Meeting new people, Looking after folks, Exploring the site, Feeding and hydrating folks

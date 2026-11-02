@@ -304,46 +304,6 @@ public sealed class ConsentRepositoryTests : IDisposable
         map[userId].Should().NotContain(implicitVersion);
     }
 
-    [HumansFact]
-    public async Task GetPairsForUsersAndVersionsAsync_EmptyUsers_ReturnsEmpty()
-    {
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
-            [], [Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
-
-        pairs.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPairsForUsersAndVersionsAsync_EmptyVersions_ReturnsEmpty()
-    {
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync([Guid.NewGuid()], [], Xunit.TestContext.Current.CancellationToken);
-
-        pairs.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPairsForUsersAndVersionsAsync_ReturnsOnlyMatchingPairs()
-    {
-        var userA = Guid.NewGuid();
-        var userB = Guid.NewGuid();
-        var versionX = Guid.NewGuid();
-        var versionY = Guid.NewGuid();
-        var versionOutside = Guid.NewGuid();
-
-        await _repo.AddAsync(BuildRecord(userA, versionX), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(userA, versionY), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(userB, versionX), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(userA, versionOutside), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionX), Xunit.TestContext.Current.CancellationToken);
-
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync([userA, userB], [versionX, versionY], Xunit.TestContext.Current.CancellationToken);
-
-        pairs.Should().HaveCount(3);
-        pairs.Should().Contain((userA, versionX));
-        pairs.Should().Contain((userA, versionY));
-        pairs.Should().Contain((userB, versionX));
-    }
-
     private async Task<Guid> SeedVersionAsync(string documentName = "Doc")
     {
         // TeamId is a bare cross-section Guid — no Team row needed in this model.

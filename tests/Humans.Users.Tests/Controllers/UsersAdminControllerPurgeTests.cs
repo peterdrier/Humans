@@ -202,7 +202,7 @@ public class UsersAdminControllerPurgeTests
         model.WithProfile.Should().Be(8);
         model.WithBoth.Should().Be(5);
         model.WithNeither.Should().Be(1);
-        model.AvailableYears.Should().Equal(2025, 2026);
+        model.AvailableYears.Should().Equal(2026, 2025);
         model.SelectedYear.Should().Be(2026);
     }
 
