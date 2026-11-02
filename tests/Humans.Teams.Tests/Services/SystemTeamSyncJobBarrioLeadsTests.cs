@@ -276,6 +276,44 @@ public class SystemTeamSyncJobBarrioLeadsTests
     }
 
     [HumansFact]
+    public async Task SyncBarrioLeadsTeam_AuditFailuresStillAttemptEveryCommittedMembershipAudit()
+    {
+        var removedId = Guid.NewGuid();
+        var addedIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var team = StubBarrioLeadsTeam(
+            [new TeamMember { Id = Guid.NewGuid(), UserId = removedId, JoinedAt = _clock.GetCurrentInstant() }]);
+        _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(addedIds);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        var addFailure = new IOException("Addition audit unavailable");
+        var removeFailure = new IOException("Removal audit unavailable");
+        _auditLogService.LogAsync(TeamsAuditActions.TeamMemberAdded, "Team", team.Id, Arg.Any<string>(),
+                nameof(SystemTeamSyncJob), addedIds[0], nameof(User))
+            .Returns(Task.FromException(addFailure));
+        _auditLogService.LogAsync(TeamsAuditActions.TeamMemberRemoved, "Team", team.Id, Arg.Any<string>(),
+                nameof(SystemTeamSyncJob), removedId, nameof(User))
+            .Returns(Task.FromException(removeFailure));
+        var job = CreateJob();
+
+        var act = () => job.SyncBarrioLeadsTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var thrown = (await act.Should().ThrowAsync<AggregateException>()).Which;
+        thrown.InnerExceptions.Should().Equal(addFailure, removeFailure);
+        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
+            team.Id, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && addedIds.All(ids.Contains)),
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(removedId)),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        foreach (var addedId in addedIds)
+            await _auditLogService.Received(1).LogAsync(
+                TeamsAuditActions.TeamMemberAdded, "Team", team.Id, Arg.Any<string>(),
+                nameof(SystemTeamSyncJob), addedId, nameof(User));
+        await _auditLogService.Received(1).LogAsync(
+            TeamsAuditActions.TeamMemberRemoved, "Team", team.Id, Arg.Any<string>(),
+            nameof(SystemTeamSyncJob), removedId, nameof(User));
+        await _googleSyncService.DidNotReceiveWithAnyArgs().AddUserToTeamResourcesAsync(default, default);
+    }
+
+    [HumansFact]
     public async Task SyncMembershipForUserAsync_InvalidatesTeamCacheBeforeReading()
     {
         // Several services call the per-user sync from inside their own mutation,
