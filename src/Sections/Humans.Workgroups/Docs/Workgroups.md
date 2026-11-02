@@ -274,7 +274,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
+- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant dot decimals without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then saves the budget/binding and system log together before auditing. Amount-only saves retain cancellation until their combined save succeeds; audit finishes independently.
 

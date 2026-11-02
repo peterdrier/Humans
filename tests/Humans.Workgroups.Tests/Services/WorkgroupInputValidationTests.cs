@@ -112,6 +112,8 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     [InlineData(true, "100", "link", 62900170, true)]
     [InlineData(true, "100", "create", null, true)]
     [InlineData(true, "abc", "create", null, false)]
+    [InlineData(true, "12,34", "create", null, false)]
+    [InlineData(true, "1,234.56", "link", 62900170, false)]
     [InlineData(true, "-1", "create", null, false)]
     [InlineData(false, null, "link", null, true)]
     public void BudgetForm_RequiresAmountAndLinkedAccountWhenBudgeted(

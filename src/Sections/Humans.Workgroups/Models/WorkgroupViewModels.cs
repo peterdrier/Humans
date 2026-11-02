@@ -66,7 +66,7 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
     private bool IsLink => string.Equals(AccountMode, "link", StringComparison.Ordinal);
 
     public decimal? ParsedAmount =>
-        decimal.TryParse(Amount, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) ? amount : null;
+        decimal.TryParse(Amount, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var amount) ? amount : null;
 
     public WorkgroupBudgetSave ToSave() => new(
         HasBudget ? ParsedAmount : null,
