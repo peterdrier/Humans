@@ -9,7 +9,6 @@ namespace Humans.Email.Services;
 
 /// <summary>Never takes a recipient from the caller.</summary>
 internal sealed class ComposerSelfSendService(
-    IUserEmailService userEmailService,
     IUserService userService,
     IEmailService emailService,
     IAuditLogService audit,
@@ -22,11 +21,11 @@ internal sealed class ComposerSelfSendService(
     public async Task<string?> SendToSelfAsync(
         Guid userId, string? subject, string? markdownBody, CancellationToken ct = default)
     {
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        if (!emails.TryGetValue(userId, out var email) || string.IsNullOrWhiteSpace(email))
+        var user = await userService.GetUserInfoAsync(userId, ct);
+        var email = user?.Email;
+        if (string.IsNullOrWhiteSpace(email))
             return null;
 
-        var user = await userService.GetUserInfoAsync(userId, ct);
         var fullSubject = string.IsNullOrWhiteSpace(subject)
             ? localizer["Email_ComposerSelfTest_DefaultSubject"].Value
             : string.Format(CultureInfo.CurrentCulture, localizer["Email_ComposerSelfTest_Subject"].Value, subject.Trim());

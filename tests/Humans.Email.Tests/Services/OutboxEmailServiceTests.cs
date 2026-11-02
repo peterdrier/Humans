@@ -52,7 +52,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IImmediateOutboxProcessor _immediate = Substitute.For<IImmediateOutboxProcessor>();
     private readonly ICommunicationPreferenceManagement _commPrefService = Substitute.For<ICommunicationPreferenceManagement>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailBodyComposer _bodyComposer = Substitute.For<IEmailBodyComposer>();
     private readonly IEmailTransport _transport = Substitute.For<IEmailTransport>();
 
@@ -103,11 +102,11 @@ public sealed class OutboxEmailServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("subject", "[Test] {0}"));
-        _userEmailService.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [userId] = "self@example.com" });
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId, Email = "self@example.com" }, [], [], [], null, []));
         var selfSend = new ComposerSelfSendService(
-            _userEmailService, Substitute.For<IUserService>(), _service,
+            users, _service,
             Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), localizer,
             NullLogger<ComposerSelfSendService>.Instance);
         var subject = string.Concat(Enumerable.Repeat(character, 1000));
