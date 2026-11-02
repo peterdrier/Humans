@@ -28,7 +28,6 @@ internal sealed class SurveyService(
     IGovernanceService governanceService,
     ITicketService ticketService,
     IShiftView shiftView,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     SurveysEmails emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
@@ -557,7 +556,6 @@ internal sealed class SurveyService(
             .ToList();
         var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
 
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync(netNew, ct);
         var users = await userService.GetUserInfosAsync(netNew, ct);
         var invitationsCreated = 0;
         var emailsQueued = 0;
@@ -570,7 +568,7 @@ internal sealed class SurveyService(
 
         foreach (var userId in netNew)
         {
-            if (!emails.TryGetValue(userId, out var email))
+            if (!users.TryGetValue(userId, out var user) || user.Email is not { Length: > 0 } email)
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",
@@ -598,11 +596,11 @@ internal sealed class SurveyService(
 
             try
             {
-                var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
+                var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
                     ? preferredCulture!
                     : survey.DefaultCulture;
-                var name = user?.BurnerName ?? string.Empty;
+                var name = user.BurnerName;
                 var title = survey.Title.Resolve(culture, survey.DefaultCulture);
                 var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
                 var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);

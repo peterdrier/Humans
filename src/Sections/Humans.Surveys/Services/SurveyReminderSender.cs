@@ -16,7 +16,6 @@ internal sealed class SurveyReminderSender(
     IAuditLogService auditLog,
     IClock clock,
     IUserService userService,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     SurveysEmails emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
@@ -31,7 +30,6 @@ internal sealed class SurveyReminderSender(
         if (due.Count == 0) return 0;
 
         var userIds = due.Select(i => i.UserId).Distinct().ToList();
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
         var users = await userService.GetUserInfosAsync(userIds, ct);
 
         // Loaded once per distinct survey (few open surveys at this scale). The answer window is
@@ -55,7 +53,7 @@ internal sealed class SurveyReminderSender(
                 continue;
             }
 
-            if (!emails.TryGetValue(inv.UserId, out var email))
+            if (!users.TryGetValue(inv.UserId, out var user) || user.Email is not { Length: > 0 } email)
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for survey {SurveyId}; skipping reminder",
@@ -80,11 +78,11 @@ internal sealed class SurveyReminderSender(
             // sweep. ReminderSentAt stays unstamped on failure so the failed run can retry.
             try
             {
-                var preferredCulture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : null;
+                var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
                     ? preferredCulture!
                     : meta.DefaultCulture;
-                var name = user?.BurnerName ?? string.Empty;
+                var name = user.BurnerName;
                 var token = tokenProvider.Create(inv.Id);
                 var title = meta.Title.Resolve(culture, meta.DefaultCulture);
                 var msg = emailMessages.SurveyReminder(inv.UserId, email, name, title, token, culture)
