@@ -3447,6 +3447,35 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task ApplyMemberRoleChanges_ReturnsOnlyRowsActuallyChangedAfterSave()
+    {
+        var team = SeedTeam("Roles");
+        var changed = SeedTeamMember(team.Id, SeedUser().Id);
+        var alreadyCoordinator = SeedTeamMember(team.Id, SeedUser().Id, TeamMemberRole.Coordinator);
+        var departed = SeedTeamMember(team.Id, SeedUser().Id);
+        departed.LeftAt = Clock.GetCurrentInstant();
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var changes = new[]
+        {
+            (changed.Id, TeamMemberRole.Coordinator),
+            (alreadyCoordinator.Id, TeamMemberRole.Coordinator),
+            (departed.Id, TeamMemberRole.Coordinator),
+            (Guid.NewGuid(), TeamMemberRole.Coordinator),
+        };
+
+        var updated = await _service.ApplyMemberRoleChangesAsync(changes, TestContext.Current.CancellationToken);
+
+        updated.Should().Equal(changed.Id);
+        await using var fresh = await TeamsDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var roles = await fresh.TeamMembers.ToDictionaryAsync(member => member.Id, member => member.Role,
+            TestContext.Current.CancellationToken);
+        roles[changed.Id].Should().Be(TeamMemberRole.Coordinator);
+        roles[alreadyCoordinator.Id].Should().Be(TeamMemberRole.Coordinator);
+        roles[departed.Id].Should().Be(TeamMemberRole.Member);
+        (await _service.ApplyMemberRoleChangesAsync(changes, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetExpectedAsync_DuplicateGoogleGroupEmail_SkipsClaim()
     {
         var alice = SeedUser(displayName: "Alice");

@@ -2067,12 +2067,12 @@ internal sealed class TeamService(
             .ToList();
     }
 
-    public async Task<int> ApplyMemberRoleChangesAsync(
+    public async Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default)
     {
         if (changes.Count == 0)
-            return 0;
+            return [];
         return await repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
     }
 

@@ -128,36 +128,53 @@ internal sealed class SystemTeamSyncJob(
             .ToList();
         var userNamesById = await userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
 
-        var changes = new List<(Guid TeamMemberId, TeamMemberRole Role)>(
-            shouldBeCoordinator.Count + shouldBeMember.Count);
+        var plannedChanges = shouldBeCoordinator
+            .Select(member => (Member: member, Role: TeamMemberRole.Coordinator))
+            .Concat(shouldBeMember.Select(member => (Member: member, Role: TeamMemberRole.Member)))
+            .ToList();
+        var changedMemberIds = (await teamService.ApplyMemberRoleChangesAsync(
+            plannedChanges.Select(change => (change.Member.TeamMemberId, change.Role)).ToList(), cancellationToken))
+            .ToHashSet();
 
-        foreach (var member in shouldBeCoordinator)
+        var auditFailures = new List<Exception>();
+        foreach (var change in plannedChanges.Where(change => changedMemberIds.Contains(change.Member.TeamMemberId)))
         {
-            changes.Add((member.TeamMemberId, TeamMemberRole.Coordinator));
-            var userName = userNamesById.TryGetValue(member.UserId, out var u)
-                ? u.BurnerName : member.UserId.ToString();
-            var teamName = member.TeamName;
-            step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {teamName}");
-            logger.LogInformation(
-                "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
-                userName, member.TeamId);
-        }
+            var member = change.Member;
+            var userName = userNamesById.TryGetValue(member.UserId, out var user)
+                ? user.BurnerName : member.UserId.ToString();
+            if (change.Role == TeamMemberRole.Coordinator)
+            {
+                step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {member.TeamName}");
+                logger.LogInformation(
+                    "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
+                    userName, member.TeamId);
+            }
+            else
+            {
+                step.Fixed(member.UserId, userName, $"Demoted to Member on {member.TeamName} (no IsManagement role)");
+                logger.LogInformation(
+                    "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
+                    userName, member.TeamId);
+            }
 
-        foreach (var member in shouldBeMember)
-        {
-            changes.Add((member.TeamMemberId, TeamMemberRole.Member));
-            var userName = userNamesById.TryGetValue(member.UserId, out var u)
-                ? u.BurnerName : member.UserId.ToString();
-            var teamName = member.TeamName;
-            step.Fixed(member.UserId, userName, $"Demoted to Member on {teamName} (no IsManagement role)");
-            logger.LogInformation(
-                "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
-                userName, member.TeamId);
+            try
+            {
+                await auditLogService.LogAsync(
+                    TeamsAuditActions.TeamMemberRoleChanged, "Team", member.TeamId,
+                    $"Set member role to {change.Role} by system sync",
+                    nameof(SystemTeamSyncJob), member.UserId, nameof(User));
+            }
+            catch (Exception ex)
+            {
+                auditFailures.Add(ex);
+                logger.LogError(ex, "Failed to audit committed role change for user {UserId} on team {TeamId}",
+                    member.UserId, member.TeamId);
+            }
         }
-
-        await teamService.ApplyMemberRoleChangesAsync(changes, cancellationToken);
 
         report?.Steps.Add(step);
+        if (auditFailures.Count > 0)
+            throw new AggregateException("Failed to audit one or more committed coordinator-role changes", auditFailures);
     }
 
     public async Task SyncVolunteersTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)

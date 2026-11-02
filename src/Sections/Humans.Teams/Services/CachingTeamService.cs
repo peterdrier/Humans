@@ -571,10 +571,10 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
 
-    public Task<int> ApplyMemberRoleChangesAsync(
+    public Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default) =>
-        MutateAsync(inner => inner.ApplyMemberRoleChangesAsync(changes, cancellationToken), static result => result > 0);
+        MutateAsync(inner => inner.ApplyMemberRoleChangesAsync(changes, cancellationToken), static result => result.Count > 0);
 
     public Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,
