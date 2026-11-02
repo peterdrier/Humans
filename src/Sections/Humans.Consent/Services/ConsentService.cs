@@ -301,7 +301,7 @@ internal sealed class ConsentService(
                 names.Add(version.LegalDocumentName);
         }
 
-        return names.OrderBy(n => n, StringComparer.Ordinal).ToList();
+        return names.ToList();
     }
 
     private static string ComputeContentHash(string content)
