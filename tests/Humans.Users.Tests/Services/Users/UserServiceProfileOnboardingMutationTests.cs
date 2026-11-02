@@ -610,6 +610,24 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task MarkFakeAsync_SetsTheMarkOnceAndAuditsOnlyTheFirstMark()
+    {
+        var userId = Guid.NewGuid();
+        SeedUser(userId);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var actorId = Guid.NewGuid();
+
+        await _service.MarkFakeAsync(userId, actorId, "gate", TestContext.Current.CancellationToken);
+        await _service.MarkFakeAsync(userId, actorId, "gate", TestContext.Current.CancellationToken);
+
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        user.MarkedFakeAt.Should().Be(Clock.GetCurrentInstant());
+        UserInfo.Create(user, [], [], [], profile: null, []).IsFake.Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(UsersAuditActions.AccountMarkedFake, nameof(User), userId, "gate", actorId);
+        AuditLog.ReceivedCalls().Should().HaveCount(1);
+    }
+
+    [HumansFact]
     public async Task EnsureStubProfileAsync_WithoutNames_CreatesStubProfile()
     {
         var userId = Guid.NewGuid();

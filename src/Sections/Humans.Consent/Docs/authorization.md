@@ -3,6 +3,8 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `AdminLegalDocumentsController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`/Legal/Admin` — Documents CRUD, Archive, Sync, Versions/Summary all inherit) |
+| `ConsentReviewQueueController` | Class | `ConsentCoordinator, ShiftsAdmin, Board, Admin` | `PolicyNames.ReviewQueueAccess` (`/Consent/ReviewQueue` and its detail page) |
+| `ConsentReviewQueueController.Clear` / `.BulkClear` / `.Flag` / `.Reject` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin`; a Shifts Admin may read the queue but not act on it |
 | `ConsentController` | Class | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — the consent wall is reachable before admission |
 | `LegalController` | Class | `AllowAnonymous` | — |
 | `MyDataController` | Class | `[Authorize]` (authenticated) | `Index` carries `[AllowBeforeActiveMembership]` (the caller's own My Data page at `/Consent/MyData`; never takes a user id) |

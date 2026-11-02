@@ -104,6 +104,7 @@ public class CachingUserServiceTests
             row.State = expectedState;
             row.BurnerName = "After";
             row.PreferredLanguage = "es";
+            row.MarkedFakeAt = Instant.FromUnixTimeSeconds(1);
             await write.SaveChangesAsync(ct);
         }
 
@@ -113,6 +114,7 @@ public class CachingUserServiceTests
         refreshed!.State.Should().Be(expectedState);
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
+        refreshed.IsFake.Should().BeTrue();
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
 #pragma warning disable HUM_USER_PARTICIPATIONS // the frozen legacy slice must survive a user-row refresh: Tickets' fallback reads it
         refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);

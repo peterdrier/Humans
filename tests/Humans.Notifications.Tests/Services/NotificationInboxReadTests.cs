@@ -76,7 +76,7 @@ public sealed class NotificationInboxReadTests : IDisposable
                     new NotificationRowDto
                     {
                         Title = "Consent review pending: Alice",
-                        ActionUrl = "/OnboardingReview",
+                        ActionUrl = "/Consent/ReviewQueue",
                         Priority = NotificationPriority.High,
                         Source = TestSources.Plain.Name,
                         Class = NotificationClass.Actionable,
@@ -103,7 +103,7 @@ public sealed class NotificationInboxReadTests : IDisposable
         {
             new UnreadNotificationDto(newer, TestSources.TeamUpdate.Name, "Welcome to Ice Crew", null,
                 NotificationPriority.Normal, NotificationClass.Informational, false),
-            new UnreadNotificationDto(older, TestSources.Plain.Name, "Consent review pending: Alice", "/OnboardingReview",
+            new UnreadNotificationDto(older, TestSources.Plain.Name, "Consent review pending: Alice", "/Consent/ReviewQueue",
                 NotificationPriority.High, NotificationClass.Actionable, true),
         });
         snapshot.Meters.Should().BeEmpty();

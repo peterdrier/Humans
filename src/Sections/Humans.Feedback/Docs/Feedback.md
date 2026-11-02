@@ -16,7 +16,7 @@ None. Feedback holds no data and serves no requests.
 ## Data Model
 
 `FeedbackDbContext` maps no entities. Its one live migration, `DropFeedbackTables`, drops
-`feedback_reports` and `feedback_messages`; the reports and their threads are not kept anywhere.
+`feedback_reports` and `feedback_messages`; the reports and their threads are not kept anywhere. The screenshots went first, through the `feedback.delete-screenshots` data migration, which this removal retires.
 
 ## Routing
 

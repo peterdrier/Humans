@@ -1,21 +1,21 @@
-@model OnboardingReviewIndexViewModel
+@model ConsentReviewQueueIndexViewModel
 @{
-    ViewData["Title"] = Localizer["Onboarding_ReviewTitle"].Value;
+    ViewData["Title"] = Localizer["Consent_Queue_Title"].Value;
     var hasSelectableReviews = Model.PendingReviews
         .Concat(Model.FlaggedReviews)
         .Any(item => !string.IsNullOrWhiteSpace(item.LegalName));
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Onboarding_ReviewTitle"]</h1>
-    <vc:access-matrix section="OnboardingReview" />
+    <h1 class="mb-0">@Localizer["Consent_Queue_Title"]</h1>
+    <vc:access-matrix section="ConsentReview" />
 </div>
 
 
 @if (Model.PendingReviews.Count == 0 && Model.FlaggedReviews.Count == 0)
 {
     <div class="alert alert-success">
-        @Localizer["Onboarding_ReviewNoPending"]
+        @Localizer["Consent_Queue_NoPending"]
     </div>
 }
 
@@ -25,7 +25,7 @@
         @if (Model.PendingReviews.Count > 0)
         {
             <h4 class="mt-4 mb-3">
-                @Localizer["Onboarding_ReviewPendingSection"]
+                @Localizer["Consent_Queue_PendingSection"]
                 <span class="badge bg-warning">@Model.PendingReviews.Count</span>
             </h4>
 
@@ -39,7 +39,7 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="@Localizer["Onboarding_ReviewSelectRowLabel", item.LegalName]" />
+                                           value="@item.UserId" aria-label="@Localizer["Consent_Queue_SelectRowLabel", item.LegalName]" />
                                 }
                                 else
                                 {
@@ -70,7 +70,7 @@
                                 <br />
                                 <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Onboarding_ReviewReviewLink"]
+                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Consent_Queue_ReviewLink"]
                                 </a>
                             </div>
                         </div>
@@ -82,7 +82,7 @@
         @if (Model.FlaggedReviews.Count > 0)
         {
             <h4 class="mt-4 mb-3">
-                @Localizer["Onboarding_ReviewFlaggedSection"]
+                @Localizer["Consent_Queue_FlaggedSection"]
                 <span class="badge bg-danger">@Model.FlaggedReviews.Count</span>
             </h4>
 
@@ -96,7 +96,7 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="@Localizer["Onboarding_ReviewSelectRowLabel", item.LegalName]" />
+                                           value="@item.UserId" aria-label="@Localizer["Consent_Queue_SelectRowLabel", item.LegalName]" />
                                 }
                                 else
                                 {
@@ -117,7 +117,7 @@
                                 {
                                     <span class="badge bg-info me-1">@item.MembershipTier</span>
                                 }
-                                <span class="badge bg-danger">@Localizer["Onboarding_ReviewFlaggedBadge"]</span>
+                                <span class="badge bg-danger">@Localizer["Consent_Queue_FlaggedBadge"]</span>
                                 @if (item.RequiredConsentCount > 0)
                                 {
                                     var allSigned = item.ConsentCount >= item.RequiredConsentCount;
@@ -128,7 +128,7 @@
                                 <br />
                                 <small class="text-muted">@item.ProfileCreatedAt.ToDate()</small>
                                 <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Onboarding_ReviewReviewLink"]
+                                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Consent_Queue_ReviewLink"]
                                 </a>
                             </div>
                         </div>
@@ -143,13 +143,13 @@
             @if (hasSelectableReviews)
             {
                 <button type="submit" class="btn btn-success">
-                    <i class="fa-solid fa-check me-1"></i>@Localizer["Onboarding_ReviewBulkClearButton"]
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["Consent_Queue_BulkClearButton"]
                 </button>
             }
             else
             {
                 <button type="submit" class="btn btn-success" disabled>
-                    <i class="fa-solid fa-check me-1"></i>@Localizer["Onboarding_ReviewBulkClearButton"]
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["Consent_Queue_BulkClearButton"]
                 </button>
             }
         </div>

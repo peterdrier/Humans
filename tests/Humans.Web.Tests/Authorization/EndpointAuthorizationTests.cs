@@ -68,10 +68,10 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncResults", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "CheckGroupSettings", "AdminOnly" },
         { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "GroupSettingsResults", "AdminOnly" },
-        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess" },
-        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
-        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
-        { SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), null, "ReviewQueueAccess" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, FinancePolicies.Read },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
@@ -108,18 +108,18 @@ public class EndpointAuthorizationTests
     }
 
     [HumansFact]
-    public void OnboardingReviewController_RequiresReviewQueueAccess()
+    public void ConsentReviewQueueController_RequiresReviewQueueAccess()
     {
-        AssertHasPolicy(SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), null, "ReviewQueueAccess");
+        AssertHasPolicy(SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), null, "ReviewQueueAccess");
     }
 
     [HumansTheory]
     [InlineData("Clear")]
     [InlineData("Flag")]
     [InlineData("Reject")]
-    public void OnboardingReviewConsentActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
+    public void ConsentReviewQueueActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
     {
-        AssertHasPolicy(SectionType("Humans.Onboarding.Controllers.OnboardingReviewController"), actionName, "ConsentCoordinatorBoardOrAdmin");
+        AssertHasPolicy(SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), actionName, "ConsentCoordinatorBoardOrAdmin");
     }
 
     [HumansFact]

@@ -460,6 +460,12 @@ internal sealed class CachingUserService(
         await RefreshEntryAsync(userId);
     }
 
+    public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.MarkFakeAsync(userId, actorUserId, reason, ct));
+        await RefreshEntryAsync(userId);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

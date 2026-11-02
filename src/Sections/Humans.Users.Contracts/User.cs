@@ -134,4 +134,11 @@ public class User : IdentityUser<Guid>
 
     /// <summary>The single source of truth for access. Written at each transition; never derived on read.</summary>
     public UserState State { get; set; }
+
+    /// <summary>
+    /// Set once when the account is marked as not a real person (the gate terminal, dev personas); null for every
+    /// real member. Orthogonal to <see cref="State"/>: a fake account still moves through the same states. Written
+    /// only by <c>IUserWrite.MarkFakeAsync</c>.
+    /// </summary>
+    public Instant? MarkedFakeAt { get; set; }
 }

@@ -31,7 +31,7 @@ public static class AgentSectionKeys
             // but users and the model still say "profile".
             ["Profiles"] = "Users",
             ["Profile"] = "Users",
-            ["OnboardingReview"] = "Onboarding",
+            ["ConsentReview"] = "Consent",
             // Kept as an alias because the model still meets the old name in its own
             // context: docs/guide/ has not been renamed (GuideFiles.Sections still lists
             // "LegalAndConsent"), and stored conversations emit it.
