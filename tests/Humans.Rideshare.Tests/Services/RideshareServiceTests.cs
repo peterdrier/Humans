@@ -935,6 +935,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var byAuthorRequest = await SeedRequestAsync(byAuthor);
         await SeedInterestAsync(byAuthor, trip.Id, status: InterestStatus.Accepted);
 
+        // Offering someone else a seat does not satisfy the driver's own request.
+        var driverRequest = await SeedRequestAsync(driver);
+
         // Matched because the driver's accepted answer points at the request.
         var byId = SeedUser("Cy");
         var byIdRequest = await SeedRequestAsync(byId);
@@ -968,6 +971,8 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         snapshot.Requests.Single(r => r.Id == byIdRequest.Id).IsMatched.Should().BeTrue();
         snapshot.Requests.Single(r => r.Id == pendingRequest.Id).IsMatched.Should().BeFalse();
         snapshot.Requests.Single(r => r.Id == strandedRequest.Id).IsMatched.Should().BeFalse();
+        snapshot.Requests.Single(r => r.Id == driverRequest.Id).IsMatched.Should().BeFalse();
+        snapshot.Stats().RidersStillLooking.Should().Be(5);
     }
 
     [HumansFact]

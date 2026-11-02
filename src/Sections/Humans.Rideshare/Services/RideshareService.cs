@@ -677,7 +677,7 @@ internal sealed class RideshareService(
         r.Id, r.UserId, r.Year, r.Direction, r.PickupPlaceLabel, r.PickupLatitude, r.PickupLongitude,
         r.DesiredDate, r.PartySize, r.LuggageLoad, r.CanContributeToFuel, r.Notes, r.Status,
         IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted
-            && (i.FromUserId == r.UserId || i.RequestId == r.Id)
+            && (i.RequestId is { } requestId ? requestId == r.Id : i.FromUserId == r.UserId)
             && activeTrips.TryGetValue(i.TripId, out var trip)
             && trip.Direction == r.Direction && TravelsOn(trip, r.DesiredDate)),
         r.CreatedAt, r.UpdatedAt);

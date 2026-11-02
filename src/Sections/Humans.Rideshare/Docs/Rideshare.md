@@ -44,7 +44,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **SeatsRemaining** is derived, never stored: `SeatsOffered − Σ(Seats of Accepted interests on
   the trip)`. A trip `IsFull` when this is `≤ 0`.
 - **Matched** (on a request) is derived: an `Accepted` interest exists either authored by the
-  request's owner or referencing the request by id, on an active trip going the request's
+  request's owner as a rider (no `RequestId`) or referencing the request by id, on an active trip going the request's
   direction and travelling on its date.
 - **Full** and **Matched** are read-model properties, computed by `RideshareSnapshot`/`TripView`/
   `RequestView` — no stored flags to drift.
@@ -246,7 +246,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Members-only board.** Every route requires `AppAccess` or `RidesharePolicies.Read`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
-- **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request.
+- **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` with no `RequestId`, or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request. A driver's accepted answer to another rider's request does not match the driver's own request.
 - **Routing preparation stays section-internal.** `RideshareRouting` resolves member points, reuses or geocodes waypoints, and builds travel-order routes through `IRouteProvider`. `RideshareService` retains authorization, validation, lifecycle transitions and persistence.
 - **Route geometry is computed once at save and frozen.** Recomputed only on create, on an update that changes the member point, waypoints, or direction, or on an update of a trip saved without a route (a retry after a provider outage) — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
 - **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it. Changing the place label clears the previous coordinates even when the map library or WebGL fails, so saving geocodes the new place.
