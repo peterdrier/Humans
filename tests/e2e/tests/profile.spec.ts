@@ -85,7 +85,7 @@ test.describe('Profile (02-profiles)', () => {
     await expect(page.locator('h1, h2').first()).toBeVisible();
     const viewLink = page.locator('.list-group-item a.btn').filter({ hasText: /^\s*View\s*$/ }).first();
     await page.goto((await viewLink.getAttribute('href'))!);
-    await expect(page.locator('h1, h2').first()).toBeVisible();
+    await expect(page).toHaveTitle(/Member:/);
   };
   const suspendButton = (page: import('@playwright/test').Page) =>
     page.getByRole('button', { name: /Suspend Human|Unsuspend Human/ });

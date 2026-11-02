@@ -57,7 +57,9 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Rideshare', items: ['Settings & stats', 'Day roster'] },
       { label: 'Scanner', items: ['Scanner'] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Order years', 'Payment methods'] },
-      { label: 'Surveys', items: ['Surveys', 'Approvals'] },
+      // Board also sees Approvals, but the Surveys index is app-access and renders outside the admin
+      // shell, so its page has no tab strip to assert against.
+      { label: 'Surveys', items: ['Surveys'] },
       { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster'] },
       { label: 'Users', items: ['Humans', 'Roles'] },
       { label: 'Workgroups', items: ['Workgroups'] },
@@ -87,8 +89,8 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'consentCoordinator',
     persona: 'consent-coordinator',
     groups: [
+      { label: 'Consent', items: ['Review queue'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Onboarding', items: ['Review'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
   },
@@ -96,9 +98,9 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'volunteerCoordinator',
     persona: 'shifts-admin',
     groups: [
+      { label: 'Consent', items: ['Review queue'] },
       { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Onboarding', items: ['Review'] },
       { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
