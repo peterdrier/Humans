@@ -81,7 +81,7 @@
     <SectionModuleProject Include="..\Sections\*\*.csproj" />
   </ItemGroup>
 
-  <Target Name="CopySectionModules" AfterTargets="Build">
+  <Target Name="CopySectionModules" AfterTargets="CopyFilesToOutputDirectory">
     <PropertyGroup>
       <_SectionModuleManifest>$(IntermediateOutputPath)section-modules.txt</_SectionModuleManifest>
     </PropertyGroup>
@@ -114,11 +114,20 @@
     </ItemGroup>
     <Copy SourceFiles="@(_SectionModuleFile)"
           DestinationFiles="@(_SectionModuleFile->'$(OutDir)%(Relative)')"
-          SkipUnchangedFiles="true" />
+          SkipUnchangedFiles="true">
+      <!-- FileWrites: clean and incremental clean remove a module that stops being built, so it is not discovered. -->
+      <Output TaskParameter="CopiedFiles" ItemName="FileWrites" />
+    </Copy>
     <Copy SourceFiles="@(_SectionModuleWebRoot)"
           DestinationFiles="@(_SectionModuleWebRoot->'$(OutDir)_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+          SkipUnchangedFiles="true">
+      <!-- FileWrites: clean and incremental clean remove a module that stops being built, so it is not discovered. -->
+      <Output TaskParameter="CopiedFiles" ItemName="FileWrites" />
+    </Copy>
     <WriteLinesToFile File="$(_SectionModuleManifest)" Lines="@(_SectionModuleFile->'%(Relative)')" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <FileWrites Include="$(_SectionModuleManifest)" />
+    </ItemGroup>
   </Target>
 
   <!-- In publish, a module's wwwroot lands where a referenced section's would: wwwroot/_content/<Section>. -->
