@@ -4,6 +4,7 @@ using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Xunit;
 
 namespace Humans.Notifications.Tests.Services;
 
@@ -57,6 +58,46 @@ public class NotificationRepositoryTests : IDisposable
         ], Xunit.TestContext.Current.CancellationToken);
 
         (await _dbContext.Notifications.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+    }
+
+    [HumansTheory]
+    [InlineData(" % done ", "50% done", "50X done", false)]
+    [InlineData(" % done ", "50% done", "50X done", true)]
+    [InlineData("A_B", "a_b", "axb", false)]
+    [InlineData("A_B", "a_b", "axb", true)]
+    [InlineData("a\\b", "A\\B", "ab", false)]
+    [InlineData("a\\b", "A\\B", "ab", true)]
+    [InlineData("HeLLo", "say hello", "unrelated", false)]
+    [InlineData("HeLLo", "say hello", "unrelated", true)]
+    public async Task GetInboxAsync_SearchesLiteralTextWithinTheSelectedInbox(
+        string search, string matchingText, string nonmatchingText, bool searchBody)
+    {
+        var userId = Guid.NewGuid();
+        var matching = CreateNotification(userId);
+        var nonmatching = CreateNotification(userId);
+        var otherUser = CreateNotification(Guid.NewGuid());
+        var alreadyRead = CreateNotification(userId);
+        var resolved = CreateNotification(userId);
+        var otherSource = CreateNotification(userId, NotificationClass.Informational, TestSources.Plain, null);
+        foreach (var notification in new[] { matching, otherUser, alreadyRead, resolved, otherSource })
+        {
+            if (searchBody) notification.Body = matchingText;
+            else notification.Title = matchingText;
+        }
+        if (searchBody) nonmatching.Body = nonmatchingText;
+        else nonmatching.Title = nonmatchingText;
+        alreadyRead.Recipients.Single().ReadAt = _now;
+        resolved.ResolvedAt = _now;
+        await _repo.AddRangeAsync(
+            [matching, nonmatching, otherUser, alreadyRead, resolved, otherSource],
+            Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _repo.GetInboxAsync(
+            userId, search, NotificationInboxFilter.Shifts, [TestSources.TeamUpdate.Name],
+            NotificationInboxTab.Unread, _now - Duration.FromDays(7),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle().Which.Notification.Id.Should().Be(matching.Id);
     }
 
     [HumansFact]

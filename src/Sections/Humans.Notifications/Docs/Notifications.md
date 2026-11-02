@@ -90,6 +90,8 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
   oversized title is retained at the start of the body before the body is excerpted.
   Valid-length copy is preserved unchanged.
 
+- Inbox search matches literal, case-insensitive text in titles and bodies after applying recipient, tab and source filters. Surrounding whitespace is trimmed; fewer than two characters leaves the selected inbox unfiltered. SQL pattern characters have no special meaning.
+
 - Inbox keyboard Enter activates a notification’s action once, cancelling native activation when the row handler clicks it.
 
 - Notifications are stored events — once written, they are persisted until cleaned up by `CleanupNotificationsJob` (resolved older than 7 days; unresolved informational older than 30 days; unresolved rows of **retired sources** purged outright; other actionable notifications are never auto-cleaned — they represent real work).

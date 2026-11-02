@@ -249,16 +249,17 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
                 break;
         }
 
+        var recipients = await query.ToListAsync(ct);
         if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length >= 2)
         {
-            var term = $"%{search.Trim()}%";
-            query = query.Where(nr =>
-                EF.Functions.ILike(nr.Notification.Title, term) ||
-                (nr.Notification.Body != null && EF.Functions.ILike(nr.Notification.Body, term)));
+            var term = search.Trim();
+            return recipients.Where(nr =>
+                nr.Notification.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                nr.Notification.Body?.Contains(term, StringComparison.OrdinalIgnoreCase) == true)
+                .ToList();
         }
 
-        return await query
-            .ToListAsync(ct);
+        return recipients;
     }
 
     public async Task<IReadOnlyList<NotificationRecipient>> GetPopupAsync(
