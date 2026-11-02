@@ -238,4 +238,11 @@
   <data name="Teams_SendMessage_Send" xml:space="preserve"><value>Send Message</value></data>
   <data name="Teams_SendMessage_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = recipient name</comment></data>
   <data name="Teams_SendMessage_OptedOut" xml:space="preserve"><value>This human has opted out of receiving messages.</value></data>
+  <data name="Teams_Notification_JoinRequestSubmitted" xml:space="preserve"><value>New join request for {0}</value></data>
+  <data name="Teams_Notification_MemberJoined" xml:space="preserve"><value>{0} joined {1}</value></data>
+  <data name="Teams_Notification_JoinRequestSubmittedBody" xml:space="preserve"><value>{0} has requested to join {1}.</value></data>
+  <data name="Teams_Notification_MemberJoinedBody" xml:space="preserve"><value>{0} has joined {1}.</value></data>
+  <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Review request</value></data>
+  <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>View members</value></data>
+  <data name="Teams_Notification_Someone" xml:space="preserve"><value>Someone</value></data>
 </root>
