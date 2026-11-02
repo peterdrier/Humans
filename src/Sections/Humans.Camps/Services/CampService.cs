@@ -1351,7 +1351,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
-        await _membershipNotices.NotifyApprovalAsync(scopedCampId, member.CampSeasonId, member.UserId, member.Id);
+        await _membershipNotices.NotifyDecisionAsync(scopedCampId, member.CampSeasonId, member.UserId, member.Id, approved: true);
         return CampMembershipMutationResult.Success();
 
     }
@@ -1376,7 +1376,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             cascadeRoleAssignments: false,
             cancellationToken);
 
-        await _membershipNotices.NotifyRejectionAsync(scopedCampId, seasonId, requesterUserId, member.Id);
+        await _membershipNotices.NotifyDecisionAsync(scopedCampId, seasonId, requesterUserId, member.Id, approved: false);
         return CampMembershipMutationResult.Success();
 
     }
