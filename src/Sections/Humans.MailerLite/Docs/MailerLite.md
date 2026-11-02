@@ -109,11 +109,10 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
 
 - **Audit actions:** declared on `MailerLiteAuditActions` (`src/Sections/Humans.MailerLite/MailerLiteAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `MailerLiteReconciliationCompleted`, `MailerLiteAudienceSyncCompleted`.
 - **Users — people**: `IUserService.GetAllUserInfosAsync` and `GetUserInfoAsync` over the
-  cached `UserInfo` set. `MarketingAudience` / `MarketingNoTicketAudience` enumerate it
+  cached `UserInfo` set. GDPR erasure reads `GetRawUserInfoAsync` for the exact account id. `MarketingAudience` / `MarketingNoTicketAudience` enumerate it
   and keep the explicit opt-ins; the debug screen reads it for names and addresses.
 - **Users — email**: `IUserEmailService.GetNotificationTargetEmailsAsync` (the sync's
-  user-id → address resolution), `GetPrimaryEmailAsync` and `GetVerifiedEmailsForUserAsync`
-  (GDPR erasure), `FindByAddressAsync` (import matching: the verified-only pass counts
+  user-id → address resolution), `FindByAddressAsync` (import matching: the verified-only pass counts
   distinct owners, the unverified pass picks the row to replace).
 - **Email — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
   `GetPreferenceOrNullAsync`, `GetPreferencesForCategoryAsync` (the bulk Marketing map every
@@ -131,7 +130,7 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
   predicate they apply to `ShiftUserSummary` (`HasShift`, or `HasShiftInPeriod` for Build /
   Event / Strike; Setup = Build). `TicketNoShiftsAudience` reads the same view directly.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
-- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure deletes the MailerLite subscriber under every verified + primary email, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`.
+- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure reads the exact raw account and deletes subscribers under its owned verified addresses plus a live account’s canonical/legacy email fallback, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`. An archived id never resolves forward to the survivor; tombstone identity-column fallbacks are excluded because that address may now belong to the living survivor. Verified rows still owned by the archived id remain erasable.
 
 ## Architecture
 
