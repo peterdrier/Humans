@@ -3324,6 +3324,50 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task DeleteImageAsync_AuditSharesMetadataTransactionBeforeFileCleanup(bool auditFails)
+    {
+        var campId = Guid.NewGuid();
+        var image = new CampImage { Id = Guid.NewGuid(), CampId = campId, StoragePath = "uploads/camps/image.jpg" };
+        var repo = Substitute.For<ICampRepository>();
+        var storage = Substitute.For<IFileStorage>();
+        Transaction? transaction = null;
+        string? auditTransactionId = null;
+        repo.GetImageForMutationAsync(image.Id, Arg.Any<CancellationToken>()).Returns(image);
+        repo.DeleteImageAsync(image.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            transaction = Transaction.Current?.Clone();
+            return Task.FromResult<(string StoragePath, Guid CampId)?>((image.StoragePath, campId));
+        });
+        var failure = new IOException("Audit unavailable");
+        AuditLog.LogAsync(CampsAuditActions.CampImageDeleted, nameof(CampImage), image.Id,
+            Arg.Any<string>(), TestActorId, campId, nameof(Camp)).Returns(_ =>
+        {
+            auditTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
+            return auditFails ? Task.FromException(failure) : Task.CompletedTask;
+        });
+        var gallery = new CampImageGallery(repo, storage, Clock, AuditLog, NullLogger.Instance);
+        var delete = () => gallery.DeleteImageAsync(campId, image.Id, TestActorId, TestContext.Current.CancellationToken);
+
+        if (auditFails)
+            (await delete.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        else
+            (await delete()).Succeeded.Should().BeTrue();
+
+        using (transaction)
+        {
+            transaction.Should().NotBeNull();
+            auditTransactionId.Should().Be(transaction!.TransactionInformation.LocalIdentifier);
+            transaction.TransactionInformation.Status.Should().Be(auditFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
+        }
+        if (auditFails)
+            await storage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+        else
+            await storage.Received(1).DeleteAsync(image.StoragePath, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task DeleteCampAsync_AuditSharesTheDeletionTransactionBeforeFileCleanup(bool auditFails)
     {
         var campId = Guid.NewGuid();

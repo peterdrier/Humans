@@ -1,3 +1,4 @@
+using System.Transactions;
 using System.Text.Json;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
@@ -158,13 +159,21 @@ internal sealed class Service(
         var container = await repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
 
-        var imagePaths = await repo.DeleteAsync(id, ct);
+        IReadOnlyList<string> imagePaths;
+        using (var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled))
+        {
+            imagePaths = await repo.DeleteAsync(id, ct);
 
-        await auditLog.LogAsync(
-            ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
-            $"Deleted container '{container.Name}'",
-            actorUserId,
-            relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
+            await auditLog.LogAsync(
+                ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
+                $"Deleted container '{container.Name}'",
+                actorUserId,
+                relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
+
+            scope.Complete();
+        }
 
         await DeleteFilesAsync(imagePaths, id, "its deletion");
     }
