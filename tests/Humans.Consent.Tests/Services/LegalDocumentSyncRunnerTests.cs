@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Consent.Data;
+using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;
 using Humans.Consent.Tests.Infrastructure;
@@ -52,10 +53,11 @@ public sealed class LegalDocumentSyncRunnerTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = user });
-        var repository = Substitute.For<IConsentRepository>();
-        repository.GetPairsForUsersAndVersionsAsync(Arg.Any<IReadOnlyCollection<Guid>>(),
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(alreadyConsented ? new[] { (user.Id, own.CurrentVersion!.Id) } : []);
+        var repository = Substitute.For<ILegalDocumentRepository>();
+        repository.GetDocumentsAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { own, other, optional });
+        var consents = Substitute.For<IConsentService>();
+        consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlySet<Guid>> { [user.Id] = alreadyConsented ? new HashSet<Guid> { own.CurrentVersion!.Id } : new HashSet<Guid>() });
         var email = Substitute.For<IEmailService>();
         var localizerFactory = new ResourceManagerStringLocalizerFactory(
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
@@ -63,7 +65,7 @@ public sealed class LegalDocumentSyncRunnerTests
             Options.Create(new EmailSettings { BaseUrl = TestConsentEmails.BaseUrl }),
             new StringLocalizer<ConsentResource>(localizerFactory), NullLogger<ConsentEmails>.Instance);
         var runner = new LegalDocumentSyncRunner(sync, email, emailMessages, teams, users,
-            repository, NullLogger<LegalDocumentSyncRunner>.Instance);
+            consents, repository, NullLogger<LegalDocumentSyncRunner>.Instance);
 
         await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
 
@@ -92,7 +94,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var teams = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var runner = new LegalDocumentSyncRunner(sync, email, TestConsentEmails.Create(), teams,
-            Substitute.For<IUserService>(), Substitute.For<IConsentRepository>(),
+            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<ILegalDocumentRepository>(),
             NullLogger<LegalDocumentSyncRunner>.Instance);
 
         await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
@@ -101,10 +103,47 @@ public sealed class LegalDocumentSyncRunnerTests
         await email.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("legacy")]
+    [InlineData("inactive")]
+    [InlineData("optional")]
+    [InlineData("superseded")]
+    public async Task Sync_DoesNotAnnounceHistoricalOrNoLongerRequiredVersions(string mode)
+    {
+        var document = MakeDocument("Agreement", true);
+        var batchId = document.CurrentVersion!.PendingReConsentBatchId!.Value;
+        if (mode is "legacy") document.CurrentVersion.PendingReConsentBatchId = null;
+        if (mode is "inactive") document.IsActive = false;
+        if (mode is "optional") document.IsRequired = false;
+        if (mode is "superseded") document.Versions.Add(new DocumentVersion
+        {
+            Id = Guid.NewGuid(), LegalDocumentId = document.Id,
+            EffectiveFrom = document.CurrentVersion.EffectiveFrom + Duration.FromDays(1)
+        });
+        var sync = Substitute.For<ILegalDocumentSyncManagement>();
+        sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<LegalDocument>());
+        var documents = Substitute.For<ILegalDocumentRepository>();
+        documents.GetDocumentsAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { document });
+        var teams = Substitute.For<ITeamService>();
+        var email = Substitute.For<IEmailService>();
+        var runner = new LegalDocumentSyncRunner(sync, email, TestConsentEmails.Create(), teams,
+            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), documents,
+            NullLogger<LegalDocumentSyncRunner>.Instance);
+
+        await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
+
+        await teams.DidNotReceive().GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        email.ReceivedCalls().Should().BeEmpty();
+        if (mode is "legacy")
+            await documents.DidNotReceive().CompleteReConsentBatchAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        else
+            await documents.Received(1).CompleteReConsentBatchAsync(batchId, Arg.Any<CancellationToken>());
+    }
+
     private static LegalDocument MakeDocument(string name, bool required)
     {
         var document = new LegalDocument { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), Name = name, IsRequired = required };
-        document.Versions.Add(new DocumentVersion { Id = Guid.NewGuid(), LegalDocumentId = document.Id, EffectiveFrom = Instant.FromUtc(2026, 10, 2, 1, 0) });
+        document.Versions.Add(new DocumentVersion { Id = Guid.NewGuid(), LegalDocumentId = document.Id, EffectiveFrom = Instant.FromUtc(2026, 10, 2, 1, 0), PendingReConsentBatchId = required ? Guid.NewGuid() : null });
         return document;
     }
 }

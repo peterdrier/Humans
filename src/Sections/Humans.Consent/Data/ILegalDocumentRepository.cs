@@ -69,4 +69,6 @@ internal interface ILegalDocumentRepository : IRepository
         Guid versionId,
         string? changesSummary,
         CancellationToken ct = default);
+    /// <summary>Clears only this batch after every required email handoff has succeeded.</summary>
+    Task CompleteReConsentBatchAsync(Guid batchId, CancellationToken ct = default);
 }

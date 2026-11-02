@@ -22,6 +22,8 @@ using Humans.Teams.Contracts;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
+using Humans.Consent.Contracts;
+using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Consent.Tests.Services;
@@ -86,6 +88,76 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             }),
             Clock,
             NullLogger<LegalDocumentSyncService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SyncAndNotify_RetainsBatchAcrossFailureAndRestartWithoutAnotherGitHubChange(bool completionFails)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var first = await SeedDocumentAsync("Privacy", folderPath: "privacy/");
+        var second = await SeedDocumentAsync("Code", folderPath: "code/");
+        StubGitHubFolder("privacy/", "Privacy content", "sha-privacy", "Privacy update");
+        StubGitHubFolder("code/", "Code content", "sha-code", "Code update");
+        var person = UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Human", Email = "human@example.com" },
+            [], [], [], null, []);
+        var reached = UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Reached", Email = "reached@example.com" },
+            [], [], [], null, []);
+        _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
+        {
+            Members = new[] { person, reached }.Select(user => new TeamMemberInfo(
+                Guid.NewGuid(), user.Id, user.BurnerName, user.Email, null, TeamMemberRole.Member, default)).ToList()
+        });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person, [reached.Id] = reached });
+        var consents = Substitute.For<IConsentService>();
+        consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>());
+        var pendingRepository = Substitute.For<ILegalDocumentRepository>();
+        pendingRepository.GetDocumentsAsync(null, Arg.Any<CancellationToken>())
+            .Returns(call => _repository.GetDocumentsAsync(null, call.Arg<CancellationToken>()));
+        var email = Substitute.For<Humans.Email.Contracts.IEmailService>();
+        var recovered = false;
+        email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call => recovered || completionFails || call.Arg<EmailMessage>().UserId != person.Id
+                ? Task.CompletedTask : Task.FromException(new IOException("Outbox unavailable")));
+        pendingRepository.CompleteReConsentBatchAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => completionFails && !recovered
+                ? Task.FromException(new IOException("Batch completion unavailable"))
+                : _repository.CompleteReConsentBatchAsync(call.Arg<Guid>(), call.Arg<CancellationToken>()));
+        var runner = new LegalDocumentSyncRunner(_service, email, Infrastructure.TestConsentEmails.Create(),
+            _teamService, _userService, consents, pendingRepository, NullLogger<LegalDocumentSyncRunner>.Instance);
+
+        var failedRun = () => runner.SyncAndNotifyAsync(ct);
+        await failedRun.Should().ThrowAsync<AggregateException>();
+        var firstMessages = email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
+        firstMessages.Select(message => message.UserId).Should().BeEquivalentTo(new Guid?[] { person.Id, reached.Id });
+        firstMessages.Select(message => message.DeliveryId).Distinct().Should().HaveCount(2);
+        var pending = (await _repository.GetDocumentsAsync(null, ct)).SelectMany(document => document.Versions).ToList();
+        pending.Should().HaveCount(2).And.OnlyContain(version => version.PendingReConsentBatchId.HasValue);
+        pending.Select(version => version.PendingReConsentBatchId).Distinct().Should().ContainSingle();
+        (await _repository.GetByIdAsync(first.Id, ct))!.Versions.Should().ContainSingle();
+        (await _repository.GetByIdAsync(second.Id, ct))!.Versions.Should().ContainSingle();
+        recovered = true;
+        email.ClearReceivedCalls();
+
+        runner = new LegalDocumentSyncRunner(_service, email, Infrastructure.TestConsentEmails.Create(),
+            _teamService, _userService, consents, pendingRepository, NullLogger<LegalDocumentSyncRunner>.Instance);
+        await runner.SyncAndNotifyAsync(ct);
+
+        var retried = email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
+        retried.Should().HaveCount(2);
+        foreach (var message in retried)
+        {
+            message.HtmlBody.Should().Contain("Privacy").And.Contain("Code");
+            message.DeliveryId.Should().NotBeNull().And.Be(firstMessages.Single(firstMessage => firstMessage.UserId == message.UserId).DeliveryId);
+        }
+        (await _repository.GetDocumentsAsync(null, ct)).SelectMany(document => document.Versions)
+            .Should().OnlyContain(version => version.PendingReConsentBatchId == null);
+        email.ClearReceivedCalls();
+        await runner.SyncAndNotifyAsync(ct);
+        email.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]

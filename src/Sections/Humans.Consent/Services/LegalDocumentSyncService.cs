@@ -309,13 +309,14 @@ internal sealed partial class LegalDocumentSyncService(
         logger.LogInformation("Starting sync of all legal documents");
 
         var updatedDocuments = new List<LegalDocument>();
+        var notificationBatchId = Guid.NewGuid();
         var activeDocuments = await repository.GetActiveDocumentsAsync(cancellationToken);
 
         foreach (var document in activeDocuments)
         {
             try
             {
-                var result = await SyncSingleDocumentAsync(document, actorUserId: null, cancellationToken);
+                var result = await SyncSingleDocumentAsync(document, actorUserId: null, cancellationToken, notificationBatchId);
                 if (result is not null)
                 {
                     updatedDocuments.Add(document);
@@ -473,7 +474,8 @@ internal sealed partial class LegalDocumentSyncService(
     private async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
         Guid? actorUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? notificationBatchId = null)
     {
         if (string.IsNullOrEmpty(document.GitHubFolderPath))
         {
@@ -481,13 +483,13 @@ internal sealed partial class LegalDocumentSyncService(
                 $"Document '{document.Name}' has no GitHub Folder Path configured.");
         }
 
-        return await SyncFolderBasedDocumentAsync(document, actorUserId, cancellationToken);
+        return await SyncFolderBasedDocumentAsync(document, actorUserId, cancellationToken, notificationBatchId);
     }
 
     private async Task<string?> SyncFolderBasedDocumentAsync(
         LegalDocument document,
         Guid? actorUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Guid? notificationBatchId)
     {
         logger.LogDebug("Syncing document {Name} from folder {Folder}",
             document.Name, document.GitHubFolderPath);
@@ -568,6 +570,7 @@ internal sealed partial class LegalDocumentSyncService(
             Content = content,
             EffectiveFrom = now,
             RequiresReConsent = !isNew,
+            PendingReConsentBatchId = document.IsRequired ? notificationBatchId : null,
             CreatedAt = now,
             ChangesSummary = commitMessage ?? (isNew ? "Initial version" : "Updated from GitHub")
         };
