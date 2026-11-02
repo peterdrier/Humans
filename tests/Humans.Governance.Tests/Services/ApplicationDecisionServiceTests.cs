@@ -73,7 +73,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ApplicationDecisionService _service;
 
@@ -90,10 +89,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _roleAssignmentService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
-        _userEmailService.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
-
         _service = CreateService();
     }
 
@@ -102,12 +97,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         repository ?? _repository,
         _userService,
         new MembershipTierService(
-            new ApplicationRepository(factory ?? GovernanceDbFactory), repository ?? _repository, _userService, Clock),
+            new ApplicationRepository(factory ?? GovernanceDbFactory), repository ?? _repository, _userService, AuditLog, Clock),
         _roleAssignmentService,
         AuditLog,
         _emailService,
         _emailMessages,
-        _userEmailService,
         _notificationService,
         _syncJob,
         _metrics,
@@ -785,20 +779,19 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     [InlineData(true, true)]
     [InlineData(false, false)]
     [InlineData(false, true)]
-    public async Task FinalizeAsync_EmailLookupFailureKeepsDecisionSuccessfulAndDispatchesNotice(
-        bool approve, bool addressLookup)
+    public async Task FinalizeAsync_EmailPreparationOrDeliveryFailureKeepsDecisionSuccessfulAndDispatchesNotice(
+        bool approve, bool deliveryFailure)
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
         await SeedBoardVoteAsync(app.Id);
-        if (addressLookup)
+        if (deliveryFailure)
         {
-            var user = new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "en" };
+            var user = new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "en", Email = "applicant@example.com" };
             _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
-            _userEmailService.GetNotificationTargetEmailsAsync(
-                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(new IOException("address lookup unavailable")));
+            _emailService.SendAsync(Arg.Any<EmailMessage>())
+                .Returns(Task.FromException(new IOException("email delivery unavailable")));
         }
         else
         {
@@ -837,9 +830,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var app = await SeedSubmittedApplicationAsync(userId);
         await SeedBoardVoteAsync(app.Id);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "es" }.ToUserInfo());
-        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string> { [userId] = "applicant@example.com" }));
+            .Returns(new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "es", Email = "applicant@example.com" }.ToUserInfo());
+
         if (emailFailure)
             _emailService.SendAsync(Arg.Any<EmailMessage>())
                 .Returns(Task.FromException(new IOException("Email delivery unavailable")));
@@ -884,11 +876,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             PreferredLanguage = language
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
-        _userEmailService.GetNotificationTargetEmailsAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                new Dictionary<Guid, string> { [userId] = "alice@test.com" }));
 
         var result = approve
             ? await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken)
@@ -921,12 +908,15 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = null,
             PreferredLanguage = "en"
         };
+        user.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "bob.notify@test.com",
+            IsVerified = true,
+            IsPrimary = true
+        });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
-        _userEmailService.GetNotificationTargetEmailsAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
-                new Dictionary<Guid, string> { [userId] = "bob.notify@test.com" }));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
 

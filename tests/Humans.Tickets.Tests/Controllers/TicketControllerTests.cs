@@ -99,12 +99,9 @@ public class TicketControllerTests
             .Select(c => c.CodesGranted).Should().Equal(1, 2);
 
         var export = (await controller.ExportAccountantReport()).Should().BeOfType<FileContentResult>().Which;
-        using var input = new StreamReader(new MemoryStream(export.FileContents));
-        using var csv = new CsvReader(input, HumansCsv.ReadConfig());
-        await csv.ReadAsync();
-        csv.ReadHeader();
+        using var csv = CsvReader.Create(export.FileContents, HumansCsv.ReadConfig());
         var months = new List<string?>();
-        while (await csv.ReadAsync()) months.Add(csv.GetField("Month"));
+        while (await csv.ReadAsync()) months.Add(csv.GetString("Month"));
         months.Should().Equal("2025-12", "2026-01", "2026-02", "Total");
 
         var codes = await controller.Codes(null);

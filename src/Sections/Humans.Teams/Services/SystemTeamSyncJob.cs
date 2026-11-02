@@ -128,34 +128,39 @@ internal sealed class SystemTeamSyncJob(
             .ToList();
         var userNamesById = await userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
 
-        var changes = new List<(Guid TeamMemberId, TeamMemberRole Role)>(
-            shouldBeCoordinator.Count + shouldBeMember.Count);
+        var plannedChanges = shouldBeCoordinator
+            .Select(member => (Member: member, Role: TeamMemberRole.Coordinator))
+            .Concat(shouldBeMember.Select(member => (Member: member, Role: TeamMemberRole.Member)))
+            .ToList();
+        var changedMemberIds = (await teamService.ApplyMemberRoleChangesAsync(
+            plannedChanges.Select(change => (change.Member.TeamMemberId, change.Role)).ToList(), cancellationToken))
+            .ToHashSet();
 
-        foreach (var member in shouldBeCoordinator)
+        foreach (var change in plannedChanges.Where(change => changedMemberIds.Contains(change.Member.TeamMemberId)))
         {
-            changes.Add((member.TeamMemberId, TeamMemberRole.Coordinator));
-            var userName = userNamesById.TryGetValue(member.UserId, out var u)
-                ? u.BurnerName : member.UserId.ToString();
-            var teamName = member.TeamName;
-            step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {teamName}");
-            logger.LogInformation(
-                "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
-                userName, member.TeamId);
-        }
+            var member = change.Member;
+            var userName = userNamesById.TryGetValue(member.UserId, out var user)
+                ? user.BurnerName : member.UserId.ToString();
+            if (change.Role == TeamMemberRole.Coordinator)
+            {
+                step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {member.TeamName}");
+                logger.LogInformation(
+                    "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
+                    userName, member.TeamId);
+            }
+            else
+            {
+                step.Fixed(member.UserId, userName, $"Demoted to Member on {member.TeamName} (no IsManagement role)");
+                logger.LogInformation(
+                    "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
+                    userName, member.TeamId);
+            }
 
-        foreach (var member in shouldBeMember)
-        {
-            changes.Add((member.TeamMemberId, TeamMemberRole.Member));
-            var userName = userNamesById.TryGetValue(member.UserId, out var u)
-                ? u.BurnerName : member.UserId.ToString();
-            var teamName = member.TeamName;
-            step.Fixed(member.UserId, userName, $"Demoted to Member on {teamName} (no IsManagement role)");
-            logger.LogInformation(
-                "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
-                userName, member.TeamId);
+            await auditLogService.LogAsync(
+                TeamsAuditActions.TeamMemberRoleChanged, "Team", member.TeamId,
+                $"Set member role to {change.Role} by system sync",
+                nameof(SystemTeamSyncJob), member.UserId, nameof(User));
         }
-
-        await teamService.ApplyMemberRoleChangesAsync(changes, cancellationToken);
 
         report?.Steps.Add(step);
     }
@@ -454,46 +459,37 @@ internal sealed class SystemTeamSyncJob(
         await teamService.ApplySystemTeamMembershipDeltaAsync(
             team.Id, toAdd, toRemove, now, cancellationToken);
 
-        // Google sync stays outside the Teams write so its failures don't roll it back.
-        var addedAudits = new List<(Guid UserId, string UserName)>();
+        // Provisioning failures must not hide already-committed membership changes from the audit trail.
         foreach (var userId in toAdd)
         {
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             step?.Added(userId, userName);
-            addedAudits.Add((userId, userName));
-
-            await googleSyncService.AddUserToTeamResourcesAsync(
-                team.Id,
-                userId,
-                cancellationToken,
-                GoogleSyncSource.SystemTeamSync);
-        }
-
-        var removedAudits = new List<(Guid UserId, string UserName)>();
-        foreach (var userId in toRemove)
-        {
-            var userName = userNames.GetValueOrDefault(userId, userId.ToString());
-            step?.Removed(userId, userName);
-            removedAudits.Add((userId, userName));
-        }
-
-        foreach (var (auditUserId, userName) in addedAudits)
-        {
             await auditLogService.LogAsync(
                 // A persisted audit discriminator: stays a literal.
                 TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: auditUserId, relatedEntityType: nameof(User));
+                relatedEntityId: userId, relatedEntityType: nameof(User));
         }
 
-        foreach (var (auditUserId, userName) in removedAudits)
+        foreach (var userId in toRemove)
         {
+            var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+            step?.Removed(userId, userName);
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
                 $"{userName} removed from {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: auditUserId, relatedEntityType: nameof(User));
+                relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
+
+        foreach (var userId in toAdd)
+        {
+            await googleSyncService.AddUserToTeamResourcesAsync(
+                team.Id,
+                userId,
+                cancellationToken,
+                GoogleSyncSource.SystemTeamSync);
         }
 
         logger.LogInformation(

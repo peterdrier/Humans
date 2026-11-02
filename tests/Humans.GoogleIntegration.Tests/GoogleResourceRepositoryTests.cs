@@ -82,6 +82,53 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         missing.Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GroupEmailLookup_UsesLiteralAddressesWithinTeamTypeAndState(bool inactive)
+    {
+        var teamId = Guid.NewGuid();
+        const string email = "ops_team@nobodies.team";
+        Seed(teamId, "different-address", GoogleResourceType.Group,
+            isActive: !inactive, googleId: "opsXteam@nobodies.team");
+        Seed(Guid.NewGuid(), "other-team", GoogleResourceType.Group,
+            isActive: !inactive, googleId: email);
+        Seed(teamId, "other-type", GoogleResourceType.DriveFolder,
+            isActive: !inactive, googleId: email);
+        Seed(teamId, "other-state", GoogleResourceType.Group,
+            isActive: inactive, googleId: email);
+        await _seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        async Task<GoogleResource?> FindAsync() => inactive
+            ? await _repository.FindInactiveGroupByCandidatesAsync(teamId, "12345", email, TestContext.Current.CancellationToken)
+            : await _repository.FindActiveGroupByEmailAsync(teamId, email, TestContext.Current.CancellationToken);
+
+        (await FindAsync()).Should().BeNull();
+
+        var exact = Seed(teamId, "exact-address", GoogleResourceType.Group,
+            isActive: !inactive, googleId: email.ToUpperInvariant());
+        await _seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var matched = await FindAsync();
+        matched.Should().NotBeNull();
+        matched!.Id.Should().Be(exact.Id);
+    }
+
+    [HumansFact]
+    public async Task FindInactiveGroupByCandidatesAsync_PreservesExactNumericIdRecovery()
+    {
+        var teamId = Guid.NewGuid();
+        Seed(teamId, "numeric-prefix", GoogleResourceType.Group, isActive: false, googleId: "123456");
+        var exact = Seed(teamId, "numeric-id", GoogleResourceType.Group, isActive: false, googleId: "12345");
+        await _seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await _repository.FindInactiveGroupByCandidatesAsync(
+            teamId, "12345", "renamed@nobodies.team", TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(exact.Id);
+    }
+
     [HumansFact]
     public async Task ReactivateAsync_UpdatesNameUrlAndClearsErrorMessage()
     {

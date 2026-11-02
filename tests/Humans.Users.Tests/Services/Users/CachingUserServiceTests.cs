@@ -104,6 +104,7 @@ public class CachingUserServiceTests
             row.State = expectedState;
             row.BurnerName = "After";
             row.PreferredLanguage = "es";
+            row.MarkedFakeAt = Instant.FromUnixTimeSeconds(1);
             await write.SaveChangesAsync(ct);
         }
 
@@ -113,6 +114,7 @@ public class CachingUserServiceTests
         refreshed!.State.Should().Be(expectedState);
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
+        refreshed.IsFake.Should().BeTrue();
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
 #pragma warning disable HUM_USER_PARTICIPATIONS // the frozen legacy slice must survive a user-row refresh: Tickets' fallback reads it
         refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);
@@ -859,6 +861,27 @@ public class CachingUserServiceTests
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
         results[0].MatchField.Should().Be("Name");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SearchUsersAsync_LimitKeepsTheHighestScore_RegardlessOfWhichUserMatchesExactly(bool swap)
+    {
+        var ids = new[]
+        {
+            Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Guid.Parse("00000000-0000-0000-0000-000000000002"),
+        };
+        var exactId = ids[swap ? 1 : 0];
+        var sut = CreateSut();
+        foreach (var id in ids)
+            await PrimeAsync(sut, BuildSearchableUserInfo(id, burnerName: id == exactId ? "Ian" : "Brian"));
+
+        var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll, limit: 1,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.UserId.Should().Be(exactId);
     }
 
     [HumansFact]

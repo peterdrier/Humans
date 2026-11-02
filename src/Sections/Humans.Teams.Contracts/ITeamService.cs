@@ -74,7 +74,7 @@ public interface ITeamService : IApplicationService
 
     /// <summary>
     /// Active, non-hidden teams whose name contains <paramref name="query"/>, case-insensitive. At most
-    /// <paramref name="max"/>, in no particular order: the global search ranks them.
+    /// <paramref name="max"/> highest-scoring matches; the caller controls presentation order.
     /// </summary>
     Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,

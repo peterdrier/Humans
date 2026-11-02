@@ -1,5 +1,6 @@
 using Humans.Governance.Contracts;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -27,7 +28,6 @@ internal sealed class AssemblyVoteService(
     IRoleAssignmentService roleAssignments,
     ITeamService teams,
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService email,
     GovernanceEmails messages,
     INotificationEmitter notifications,
@@ -1288,7 +1288,8 @@ internal sealed class AssemblyVoteService(
     /// Takes the whole roster so a human with a stamped row is not mailed again through another.
     /// </summary>
     private async Task<int> SendOpenedEmailsAsync(
-        AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct)
+        AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct,
+        ICollection<Exception>? failures = null)
     {
         var recipients = (await RecipientsAsync(roster, ct))
             .Where(r => r.Rows.All(row => row.NotifiedAt is null))
@@ -1307,7 +1308,7 @@ internal sealed class AssemblyVoteService(
             try
             {
                 await email.SendAsync(
-                    messages.AssemblyVoteOpened(
+                    WithRosterDeliveryId(messages.AssemblyVoteOpened(
                         info.Id,
                         address,
                         info.BurnerName,
@@ -1315,7 +1316,7 @@ internal sealed class AssemblyVoteService(
                         closesAt,
                         rosterRow.IsOfficial,
                         VoteUrl(vote.Id),
-                        language),
+                        language), rows, current.ClosesAt),
                     ct);
 
                 // Stamped per row immediately, so a batch dying halfway does not earn the whole
@@ -1324,8 +1325,13 @@ internal sealed class AssemblyVoteService(
                     rows.Select(r => r.Id).ToList(), clock.GetCurrentInstant(), current.ClosesAt, ct);
                 notified++;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
+                failures?.Add(ex);
                 logger.LogError(ex,
                     "Failed to send the vote-opened email for assembly vote {VoteId} to roster row {RosterId}.",
                     vote.Id, rosterRow.Id);
@@ -1333,6 +1339,19 @@ internal sealed class AssemblyVoteService(
         }
 
         return notified;
+    }
+
+    // Row order cannot change retry identity; extending the announced deadline must produce a new delivery.
+    private static EmailMessage WithRosterDeliveryId(
+        EmailMessage message, IReadOnlyList<AssemblyVoteRoster> rows, Instant closesAt)
+    {
+        var rosterId = rows.Min(row => row.Id);
+        var key = string.Create(CultureInfo.InvariantCulture,
+            $"{message.TemplateName}:{rosterId:N}:{closesAt.ToUnixTimeTicks()}");
+        return message with
+        {
+            DeliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(key)).AsSpan(0, 16))
+        };
     }
 
     /// <summary>
@@ -1431,11 +1450,10 @@ internal sealed class AssemblyVoteService(
         if (userIds.Count == 0) return [];
 
         var infos = await users.GetUserInfosAsync(userIds, ct);
-        var addresses = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
 
         return roster
             .Where(r => r.UserId is not null
-                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value))
+                && infos.TryGetValue(r.UserId.Value, out var info) && !string.IsNullOrEmpty(info.Email))
             .GroupBy(r => infos[r.UserId!.Value].Id)
             .Select(g =>
             {
@@ -1445,7 +1463,7 @@ internal sealed class AssemblyVoteService(
                     representative,
                     (IReadOnlyList<AssemblyVoteRoster>)g.ToList(),
                     info,
-                    addresses[representative.UserId!.Value],
+                    info.Email!,
                     info.PreferredLanguage.IsSupportedCultureCode()
                         ? info.PreferredLanguage : CultureCatalog.DefaultCultureCode);
             })
@@ -1473,7 +1491,8 @@ internal sealed class AssemblyVoteService(
         var now = clock.GetCurrentInstant();
 
         // Reminders first: closing a lapsed vote makes its roster ineligible for one.
-        await SendRemindersAsync(now, ct);
+        var failures = new List<Exception>();
+        await SendRemindersAsync(now, failures, ct);
 
         var lapsed = await repository.GetLapsedOpenVotesAsync(now, ct);
         var closed = 0;
@@ -1500,9 +1519,11 @@ internal sealed class AssemblyVoteService(
         foreach (var vote in await repository.GetAllAsync(ct))
         {
             await FinishInterruptedCloseAsync(vote, ct);
-            await RetryOpenedEmailsAsync(vote, ct);
+            await RetryOpenedEmailsAsync(vote, failures, ct);
         }
 
+        if (failures.Count > 0)
+            throw new AggregateException("Failed to complete one or more assembly vote email deliveries.", failures);
         return closed;
     }
 
@@ -1516,7 +1537,8 @@ internal sealed class AssemblyVoteService(
     /// stamped and so is retried every sweep. That costs one in-memory roster read while the
     /// vote is open, and a row that becomes reachable gets the email it missed.
     /// </remarks>
-    private async Task RetryOpenedEmailsAsync(AssemblyVote vote, CancellationToken ct)
+    private async Task RetryOpenedEmailsAsync(
+        AssemblyVote vote, ICollection<Exception> failures, CancellationToken ct)
     {
         if (vote.Status != AssemblyVoteStatus.Open) return;
 
@@ -1525,7 +1547,7 @@ internal sealed class AssemblyVoteService(
 
         // The whole roster, not the unstamped rows: a human holding a stamped row and an
         // unstamped one was reached, and the send decides that over all their rows.
-        var sent = await SendOpenedEmailsAsync(vote, roster, ct);
+        var sent = await SendOpenedEmailsAsync(vote, roster, ct, failures);
         if (sent == 0) return;
 
         // Automation that emails the electorate says so under the job actor: the Admin's
@@ -1542,7 +1564,7 @@ internal sealed class AssemblyVoteService(
     /// the reminder cannot repeat however often the job runs, and auditing the batch that
     /// was delivered under the job actor.
     /// </summary>
-    private async Task SendRemindersAsync(Instant now, CancellationToken ct)
+    private async Task SendRemindersAsync(Instant now, ICollection<Exception> failures, CancellationToken ct)
     {
         var due = await repository.GetOpenVotesClosingBetweenAsync(now, now + ReminderLeadTime, ct);
 
@@ -1587,7 +1609,7 @@ internal sealed class AssemblyVoteService(
                 try
                 {
                     await email.SendAsync(
-                        messages.AssemblyVoteReminder(
+                        WithRosterDeliveryId(messages.AssemblyVoteReminder(
                             info.Id,
                             address,
                             info.BurnerName,
@@ -1595,7 +1617,7 @@ internal sealed class AssemblyVoteService(
                             closesAt,
                             rosterRow.IsOfficial,
                             VoteUrl(vote.Id),
-                            language),
+                            language), rows, current.ClosesAt),
                         ct);
 
                     // Stamped per row immediately, conditional on the deadline this email named.
@@ -1605,8 +1627,13 @@ internal sealed class AssemblyVoteService(
                     // but the member behind them got one email and the audit count says members.
                     reminded.Add(rosterRow.Id);
                 }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
+                    failures.Add(ex);
                     logger.LogError(ex,
                         "Failed to send the vote reminder for assembly vote {VoteId} to roster row {RosterId}.",
                         vote.Id, rosterRow.Id);

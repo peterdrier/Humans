@@ -9,7 +9,6 @@ internal static class ProfileEditViewModelBuilder
     public static ProfileViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
-        bool isApproved,
         bool preview,
         Func<ProfileInfo, string?> customPictureUrl)
     {
@@ -22,7 +21,7 @@ internal static class ProfileEditViewModelBuilder
         var isTierLocked = profile is not null && applications.Any(a =>
             a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
         var hasCustomPicture = profile?.HasCustomPicture == true;
-        var isInitialSetup = profile is null || !isApproved || preview;
+        var isInitialSetup = profile is null || info.State == UserState.Bare || preview;
 
         return new ProfileViewModel
         {

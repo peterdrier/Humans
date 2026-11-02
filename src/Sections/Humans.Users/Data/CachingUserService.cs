@@ -275,11 +275,13 @@ internal sealed class CachingUserService(
                 MatchSnippet: match.Snippet,
                 MatchedEmail: match.MatchedEmail,
                 Score: match.Score));
-
-            if (results.Count >= limit) break;
         }
 
-        return results;
+        return results
+            .OrderByDescending(result => result.Score) // arch:db-sort-ok top-N relevance selection
+            .ThenBy(result => result.UserId)
+            .Take(limit)
+            .ToList();
     }
 
     /// <summary>
@@ -457,6 +459,12 @@ internal sealed class CachingUserService(
     public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
     {
         await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
+        await RefreshEntryAsync(userId);
+    }
+
+    public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.MarkFakeAsync(userId, actorUserId, reason, ct));
         await RefreshEntryAsync(userId);
     }
 

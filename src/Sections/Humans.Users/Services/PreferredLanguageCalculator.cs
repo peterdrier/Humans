@@ -14,7 +14,6 @@ internal static class PreferredLanguageCalculator
             .Where(u => approvedNotSuspended.Contains(u.Id))
             .GroupBy(u => u.PreferredLanguage, StringComparer.Ordinal)
             .Select(g => new PreferredLanguageCount(g.Key, g.Count()))
-            .OrderByDescending(l => l.Count)
             .ToList();
     }
 }

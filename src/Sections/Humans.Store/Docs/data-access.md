@@ -101,8 +101,10 @@ Repository: `IStoreRepository`.
 | store_payments | R/W (PaymentIntent dedupe, add, status update, delete) |
 | store_orders | R (`GetOrderByIdAsync` — refuses team-owned orders) |
 
-Records Stripe payments from checkout webhooks under a process-wide `TrackedLock`.
-Cross-section calls via `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
+Records Stripe payments from checkout webhooks and missing-payment recovery through
+the same idempotent recording path under a process-wide `TrackedLock`. Recovery reads
+checkout sessions through `IStripeService`; report reads remain in `Service`.
+Cross-section calls also use `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
 
 ### BalanceCalculator
 

@@ -11,10 +11,10 @@ documents. It decides — from data other sections own — which of those three 
 still owes, and it puts that decision behind one URL so every other page can just say "continue
 setup" without knowing where they are.
 
-Alongside that it runs the Consent Coordinator's desk: the list of people who have finished
-signing and are waiting to be looked at, and the four things a coordinator can do about one of
-them (clear, clear in bulk, flag, reject). Only reject changes what the person can reach; the
-other three are notes for the record.
+It also carries out a signup reject, from Consent's review queue or Users' admin screen: the
+rejection record, the account state, the team de-provisioning and the person's notice. The
+coordinator's desk itself (the queue, clear, bulk clear, flag) is Consent's, next to the
+review table it writes.
 
 It also gives the people who never get a profile — ticket holders, imported newsletter
 contacts — somewhere to land.
@@ -24,7 +24,7 @@ Consent, Teams, Governance, Shifts, Email, Notifications or AuditLog.
 
 ## 2. The shapes
 
-Six questions. Everything in the section is one of these.
+Five questions. Everything in the section is one of these.
 
 | # | Question | Answered by | Reached from |
 |---|---|---|---|
@@ -32,8 +32,7 @@ Six questions. Everything in the section is one of these.
 | 2 | Record this step's answer and move them on | `Names` POST, `SignUp`, `SignUpRange`, `Skip`, `SignConsent` | the three step pages |
 | 3 | Did that write push them over the review threshold? | `IOnboardingIntake.ProfileSavedAsync` / `ConsentSignedAsync` | reported by three controllers after a profile or consent write |
 | 4 | What is left for them to sign? | `GetNextUnsignedConsentAsync` | the widget's consent step |
-| 5 | Who is waiting for a coordinator, and what do I do about them? | review queue, review detail, clear / bulk clear / flag | `/OnboardingReview` |
-| 6 | This person is out | `IOnboardingIntake.RejectSignupAsync` | the review detail page and Users' admin screen |
+| 5 | This person is out | `IOnboardingIntake.RejectSignupAsync` | Consent's review detail page and Users' admin screen |
 
 Notes the table hides:
 
@@ -46,8 +45,8 @@ Notes the table hides:
 - **Shape 2's steps hand forward directly (Names → Shifts → Consents).** Only `SignConsent`
   returns to the dispatcher. The dispatcher remains shape 1's sole answer and the only thing
   that resolves a step from data.
-- **Only shapes 3 and 6 are asked from outside the section.** Shape 1's answer is asked from
-  inside this section and nowhere else; shapes 4 and 5 have no outside caller at all. That is
+- **Only shapes 3 and 5 are asked from outside the section.** Shape 1's answer is asked from
+  inside this section and nowhere else; shape 4 has no outside caller at all. That is
   what decides which types belong on the leaf — see §3.
 
 ## 3. Structure
@@ -57,20 +56,20 @@ Notes the table hides:
   funnel's result vocabulary, returned by Users' own surfaces). Nothing else. The leaf is a
   project, not a folder, because Consent calls into Onboarding and Onboarding renders Consent's
   copy; a folder would close a cycle. It has zero project references and that is load-bearing.
-- **`Services/`** — `OnboardingService` (shapes 3–6, an orchestrator over other sections'
+- **`Services/`** — `OnboardingService` (shapes 3–5, an orchestrator over other sections'
   service interfaces), `OnboardingWidgetState` (shape 1) behind `IOnboardingWidgetState` with
   the step enum it returns, and the session seam the step resolver needs to see the "not right
   now" click. The funnel-step pair is `internal` and lives here rather than on the leaf: every
   consumer is inside this section. That is also why the dispatcher test keys its theory on the
   action name instead of the enum — xUnit requires a public test class, and a public test
   method taking `OnboardingWidgetStep` would drag it back onto the public surface.
-- **`Controllers/`** — one per audience: the widget for the person onboarding, the review
-  queue for the coordinator, Guest for the profileless, Welcome for the anonymous visitor.
+- **`Controllers/`** — one per audience: the widget for the person onboarding, Guest for the
+  profileless, Welcome for the anonymous visitor.
 - **`Models/`** — view models and the one builder that keeps the shifts action thin.
-- **`Views/` + `ViewComponents/`** — the three step pages, the two review pages, the guest and
-  welcome pages, and the site-wide progress banner.
+- **`Views/` + `ViewComponents/`** — the three step pages, the guest and welcome pages, and the
+  site-wide progress banner.
 - **`OnboardingResource.*`** — the section's own copy, six languages.
-- Root `Section*.cs` files are the composition entry points (DI, admin nav, chrome).
+- Root `Section*.cs` files are the composition entry points (DI, issue queue, chrome).
 
 Presentation the section does *not* own: the rota tables on the shifts step are Shifts'
 (`OnboardingShiftsListViewComponent`, invoked by Type through the `IOnboardingShiftsStep` seam), the consent body is Consent's
@@ -82,13 +81,6 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   && HasAllRequiredConsentsForTeam(Volunteers)`, reconciled by `SystemTeamSyncJob`.
   The review's `Status` and `IsApproved` are never consulted. (The review is Consent's
   `ConsentReviewInfo`; `Humans.Consent/Contracts/ConsentReviewInfo.cs`.)
-- **Clear and Flag change nothing but the record *for a Volunteer*.** No team sync, no email,
-  no access change — admission ignores `IsApproved` (above). They are *not* inert for a
-  Colaborador/Asociado: `RecordConsentCheck` sets the review's `IsApproved = (status == Cleared)`
-  (Consent's `ConsentReviewService`) and `SystemTeamSyncJob` gates the two tier teams on that flag,
-  so `Cleared → Flagged` drops a tier member from their tier team on the next hourly sync.
-  That is why the detail view still withholds Flag from a cleared human — see §5.
-  (`Services/OnboardingService.cs` `RecordConsentCheckAsync`.)
 - **Reject is the only coordinator action with consequences.** It records the rejection
   (Consent) and `UserState.Rejected` (Users),
   de-provisions the approval-gated system teams (Volunteers, Colaboradors, Asociados), and
@@ -99,13 +91,9 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
 - **Nothing in the funnel notifies a coordinator.** The threshold check writes the status and
   logs; the only notification the section raises is `ProfileRejected`, to the rejected person.
   `ConsentReviewNeeded` is a retired source — the coordinator finds the queue through the
-  `Review` pill in the admin sidebar (`Section.cs:15`), not through an inbox row.
+  `Review queue` pill in the admin sidebar (Consent's `Section.cs`), not through an inbox row.
   (`Services/OnboardingService.cs` `SetConsentCheckPendingIfEligibleAsync`;
   `Humans.Notifications/Services/NotificationInboxService.cs:202`.)
-- **A flagged, unresolved person stays in the queue** even if an override set `IsApproved`.
-  A rejected person leaves it — Clear is refused on them, so the row would be unresolvable.
-  (`ConsentReviewPredicates.IsConsentCheckFlagged`; `Services/OnboardingService.cs` `GetReviewQueueAsync`.)
-- **A merged tombstone never appears in the queue.** (`ConsentReviewPredicates`.)
 - **The name save is never gated on cross-section state.** Gating it on a step or consent
   computation loops a bare account on the Names form forever.
   (`Controllers/OnboardingWidgetController.cs:87`.)
@@ -134,28 +122,12 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   `[AllowAnonymous]` — and that page's breadcrumb and back button, `GuestAccountController`'s
   error and success redirects, and Gdpr's `Gdpr/Guest/DownloadData` all send it to `/Guest`, which
   bounces it again. Finding 1; the fix is Needs Peter.
-- **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
-  Settled by Peter on 2026-08-23: cause can surface after the fact, so the coordinator needs
-  somewhere to act on it, and Reject is the verb he named. The service was always permissive —
-  the restriction lived only in the detail view, which means every other caller already had
-  what the page withheld. Reject is now exposed for a cleared human and the gate is the
-  `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup. Do not add a
-  service-side refusal for it.
-
-  Flag is the exception, and not because the view is the rule: `Cleared → Flagged` clears
-  the review's `IsApproved`, which `SystemTeamSyncJob` reads as tier-team eligibility (§4), so
-  exposing it would make an audit annotation silently kick a Colaborador/Asociado out of their
-  tier team. Volunteers admission was already carved out of `IsApproved` for exactly this
-  reason; the tier path never was. Expose Flag once that is settled — either `Flagged` stops
-  writing `IsApproved`, or tier eligibility stops reading it. Both changes live in
-  `Humans.Consent`/`Humans.Teams`, not here.
-
 ## 6. Deliberately not done
 
 - **No caching decorator.** The section owns no cached data; invalidation belongs to whoever
   owns the write.
-- **No `IOnboardingService` on the leaf.** The review queue, its DTOs, the clear/flag pair and
-  the next-document resolver have no consumer outside the section and must stay internal —
+- **No `IOnboardingService` on the leaf.** The next-document resolver has no consumer outside
+  the section and must stay internal —
   the leaf is what other sections actually call, and nothing more.
 - **No narrow `IOnboardingEligibilityQuery`-style interface for the threshold check.** That
   was a band-aid for an inverted dependency; the peer call from the controller replaced it and

@@ -19,7 +19,7 @@ membership-tier expiry and the section's own members. Readers outside this secti
 `IGovernanceService` — tier reads from Users (popover, human summary, admin detail, duplicate
 accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. Nothing outside the section
 writes Governance data: the section's own `MembershipTierExpiryJob` calls
-`IGovernanceManagement.ExpireMembershipTiersAsync` and records the `TierDowngraded` audit.
+`IGovernanceManagement.ExpireMembershipTiersAsync`; `MembershipTierService` records each `TierDowngraded` audit after its tier mutation commits.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).

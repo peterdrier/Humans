@@ -19,6 +19,7 @@ namespace Humans.Finance.Services;
 internal sealed class SepaBankBooking(
     IHoldedRepository repo,
     IHoldedClient client,
+    IHoldedWrite holdedWrite,
     IClock clock,
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IAuditLogService audit,
@@ -734,7 +735,7 @@ internal sealed class SepaBankBooking(
         var overpaidBy = Math.Round(toPost - owedNow, 2, MidpointRounding.AwayFromZero);
 
         var paidDocs = new List<(string DocId, decimal Amount, string Ref)>();
-        string? entryRef = null;
+        HoldedJournalEntryOutcome? entry = null;
         var entryAmount = 0m;
         var remaining = toPost;
 
@@ -784,7 +785,7 @@ internal sealed class SepaBankBooking(
                 try
                 {
                     entryAmount = remaining;
-                    entryRef = await client.PostLedgerEntryAsync(
+                    entry = await holdedWrite.PostJournalEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
                     remaining -= entryAmount;   // what is still unposted, which is now nothing
@@ -804,7 +805,7 @@ internal sealed class SepaBankBooking(
         // The journal remainder rides along as an `entry:<amount>` token: not a Holded id, never
         // sent in a reconcile, but what lets the row say how much of the line a human has to match.
         var refTokens = paidDocs.Select(p => p.Ref).ToList();
-        if (entryRef is not null)
+        if (entry is not null)
             refTokens.Add(SepaPayoutTransferRow.JournalEntryRefPrefix
                           + entryAmount.ToString("F2", CultureInfo.InvariantCulture));
         var refs = refTokens.Count == 0 ? null : string.Join(",", refTokens);
@@ -833,7 +834,7 @@ internal sealed class SepaBankBooking(
         // Name the PAYMENTS, never the documents: a purchase ref makes Holded mint a new payment for the whole line.
         // An unconfirmed payment or a journal entry cannot be named, so Holded may read the line `partial`.
         var docs = PaymentRefs(refs);
-        var incomplete = docs.Count < paidDocs.Count || entryRef is not null || resumed;
+        var incomplete = docs.Count < paidDocs.Count || entry is not null || resumed;
 
         var summary = PostingSummary();
         var resumedPart = resumed ? $"; resumed ({Euros(posted)} already posted)" : "";
@@ -861,10 +862,10 @@ internal sealed class SepaBankBooking(
         if (reconciledAt is not null)
             await repo.MarkSepaTransferReconciledAsync(transfer.Id, reconciledAt.Value, ct);
 
-        // Step 9: audit, after the save, naming every Holded id this run created.
+        // Audit payment references and the journal outcome after saving the booking.
         var reconcilePart = reconciledAt is not null
             ? "reconciled."
-            : entryRef is not null
+            : entry is not null
                 ? "RECONCILE PENDING — the journal entry cannot be linked to the bank line by API; "
                   + "reconcile the line in Holded by hand."
                 : "RECONCILE PENDING — tick it in Holded.";
@@ -893,9 +894,9 @@ internal sealed class SepaBankBooking(
                 ? "0 document payment(s)"
                 : $"{paidDocs.Count} document payment(s) ("
                   + string.Join(", ", paidDocs.Select(p => $"{p.DocId} {Euros(p.Amount)} {p.Ref}")) + ")";
-            var entryPart = entryRef is null
+            var entryPart = entry is null
                 ? ""
-                : $" and a journal entry for {Euros(entryAmount)} ({entryRef})";
+                : $" and a journal entry for {Euros(entryAmount)} ({(entry.Confirmed ? "confirmed" : "unconfirmed")})";
             return docPart + entryPart;
         }
 

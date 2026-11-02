@@ -67,7 +67,6 @@ public sealed class IssuesServiceTests
     private readonly IssuesEmails _emailMessages;
     private readonly List<string> _renderedEmailCultures = [];
     private readonly IUserService _userService;
-    private readonly IUserEmailService _userEmailService;
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationEmitter _notificationService;
     private readonly INotificationAutoResolve _notificationInbox;
@@ -97,18 +96,6 @@ public sealed class IssuesServiceTests
 
         _userService = NewRegistryBackedUserService();
 
-        _userEmailService = Substitute.For<IUserEmailService>();
-        _userEmailService
-            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, string> dict = Db.Users
-                    .Where(u => ids.Contains(u.Id) && u.Email != null)
-                    .ToDictionary(u => u.Id, u => u.Email!);
-                return Task.FromResult(dict);
-            });
-
         _roleService = Substitute.For<IRoleAssignmentService>();
         _roleService
             .GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -122,7 +109,7 @@ public sealed class IssuesServiceTests
         _repository = new IssuesRepository(new TestDbContextFactory<IssuesDbContext>(issuesDbOptions));
 
         _service = new IssuesApplicationService(
-            _repository, _userService, _userEmailService, _roleService,
+            _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
@@ -437,7 +424,7 @@ public sealed class IssuesServiceTests
             var failure = new IOException("Issue persistence failed");
             repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
             var service = new IssuesApplicationService(
-                repo, _userService, _userEmailService, _roleService,
+                repo, _userService, _roleService,
                 _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
                 Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
@@ -485,7 +472,7 @@ public sealed class IssuesServiceTests
                 ? Task.FromException<Issue?>(new IOException("Verification unavailable"))
                 : _repository.GetByIdAsync(call.ArgAt<Guid>(0), CancellationToken.None));
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
@@ -678,6 +665,64 @@ public sealed class IssuesServiceTests
         var notice = _notificationService.ReceivedCalls().Single().GetArguments();
         notice[3].Should().Be("New issue filed: Title");
         ((IReadOnlyList<Guid>)notice[4]!).Should().Equal(handler.Id);
+    }
+
+    [HumansTheory]
+    [InlineData("Submit", false)]
+    [InlineData("Submit", true)]
+    [InlineData("Comment", false)]
+    [InlineData("Comment", true)]
+    public async Task SavedIssueNotice_RoleLookupFailuresPreserveMutationAndRemainingRecipients(
+        string operation, bool allRolesFail)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var reporter = SeedUser(displayName: "Reporter");
+        var handler = SeedUser(displayName: "Handler");
+        var assignee = SeedUser(displayName: "Assignee");
+        var failure = new IOException("Queue role lookup failed");
+        _roleService.GetActiveUserIdsInRoleAsync(TicketsRoles.TicketsAdmin, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Guid>>(failure));
+        _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(allRolesFail ? Task.FromException<IReadOnlyList<Guid>>(failure)
+                : Task.FromResult<IReadOnlyList<Guid>>([handler.Id]));
+
+        Guid issueId;
+        if (operation is "Submit")
+        {
+            var submitted = await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Details",
+                "Scanner", null, null, null, null, ct: ct);
+            issueId = submitted.Issue!.Id;
+        }
+        else
+        {
+            issueId = await SeedIssueRowAsync(reporter.Id, IssueStatus.Open, "Title", "Scanner");
+            var issue = (await _repository.GetByIdAsync(issueId, ct))!;
+            issue.AssigneeUserId = assignee.Id;
+            await _repository.SaveTrackedIssueAsync(issue, ct);
+            var posted = await _service.PostCommentAsync(issueId, new IssueViewer(reporter.Id, []),
+                reporter.Id, "An update", ct: ct);
+            posted.Comment.Should().NotBeNull();
+        }
+
+        var stored = (await _repository.GetByIdAsync(issueId, ct))!;
+        stored.ReporterUserId.Should().Be(reporter.Id);
+        if (operation is "Comment") stored.Comments.Should().ContainSingle().Which.Content.Should().Be("An update");
+        var expectedRecipients = new List<Guid>();
+        if (!allRolesFail) expectedRecipients.Add(handler.Id);
+        if (operation is "Comment") expectedRecipients.Add(assignee.Id);
+        var notices = _notificationService.ReceivedCalls().ToList();
+        if (expectedRecipients.Count == 0) notices.Should().BeEmpty();
+        else
+        {
+            var notice = notices.Should().ContainSingle().Subject.GetArguments();
+            ((IReadOnlyList<Guid>)notice[4]!).Should().BeEquivalentTo(expectedRecipients);
+            notice[0].Should().Be(operation is "Submit"
+                ? IssuesNotificationSources.IssueSubmitted : IssuesNotificationSources.IssueComment);
+        }
+        await _roleService.Received(1).GetActiveUserIdsInRoleAsync(RoleNames.Board, CancellationToken.None);
+        _logger.ReceivedCalls().Count(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Error
+            && ReferenceEquals(call.GetArguments()[3], failure)).Should().Be(allRolesFail ? 2 : 1);
     }
 
     public static TheoryData<NotificationSourceDefinition> FanoutNoticeSources => new(
@@ -922,7 +967,7 @@ public sealed class IssuesServiceTests
 
     [HumansTheory]
     [InlineData("name")]
-    [InlineData("address")]
+    [InlineData("template")]
     [InlineData("enqueue")]
     public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(string failure)
     {
@@ -934,15 +979,17 @@ public sealed class IssuesServiceTests
         if (string.Equals(failure, "name", StringComparison.Ordinal))
             _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
                 .Returns(_ => ValueTask.FromException<UserInfo?>(error));
-        else if (string.Equals(failure, "address", StringComparison.Ordinal))
-            _userEmailService.GetNotificationTargetEmailsAsync(
-                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(error));
-        else
+        else if (string.Equals(failure, "enqueue", StringComparison.Ordinal))
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(error));
 
-        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
+        var service = string.Equals(failure, "template", StringComparison.Ordinal)
+            ? new IssuesApplicationService(
+                _repository, _userService, _roleService, _emailService,
+                TestIssuesEmails.Create(_ => throw error), _notificationService, _notificationInbox,
+                AuditLog, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
+            : _service;
+        var result = await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
             resolveOnPost: true, ct: TestContext.Current.CancellationToken);
 
         result.Comment.Should().NotBeNull();
@@ -1167,7 +1214,7 @@ public sealed class IssuesServiceTests
             ? Task.FromException<Issue?>(failure) : Task.FromResult<Issue?>(issue));
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
@@ -1202,7 +1249,7 @@ public sealed class IssuesServiceTests
         repo.GetByIdAsync(issue.Id, ct).Returns(issue);
         repo.CountActionableAsync(null, null, ct).Returns(snapshot.Task, Task.FromResult(0));
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -1264,7 +1311,7 @@ public sealed class IssuesServiceTests
         var reporter = new IssueViewer(reporterId, []);
         (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(1);
         var service = new IssuesApplicationService(
-            repo, _userService, _userEmailService, _roleService,
+            repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -2338,7 +2385,7 @@ public sealed class IssuesServiceTests
         _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(_ =>
             ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
         var service = new IssuesApplicationService(
-            _repository, _userService, _userEmailService, _roleService,
+            _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -2367,7 +2414,7 @@ public sealed class IssuesServiceTests
             throw new IOException("Screenshot storage unavailable");
         });
         var service = new IssuesApplicationService(
-            _repository, _userService, _userEmailService, _roleService,
+            _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
             Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
@@ -2659,6 +2706,66 @@ public sealed class IssuesServiceTests
 
         var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.AssigneeUserId.Should().Be(survivorId);
+    }
+
+    [HumansTheory]
+    [InlineData("Submit")]
+    [InlineData("Comment")]
+    [InlineData("Status")]
+    [InlineData("Assigned")]
+    public async Task IssueNotices_ExcludeTheResolvedActorAcrossMergeAliases(string operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (archivedId, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var survivor = SeedUser(displayName: "Survivor");
+        StubResolution(archivedId, survivor.Id);
+        _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([survivor.Id]));
+        if (operation is not "Assigned")
+        {
+            var issue = (await _repository.GetByIdAsync(issueId, ct))!;
+            issue.AssigneeUserId = survivor.Id;
+            await _repository.SaveTrackedIssueAsync(issue, ct);
+        }
+
+        switch (operation)
+        {
+            case "Submit":
+                (await _service.SubmitIssueAsync(archivedId, IssueCategory.Bug, "New issue", "Details",
+                    null, null, null, null, null, ct: ct)).Issue.Should().NotBeNull();
+                break;
+            case "Comment":
+                (await _service.PostCommentAsync(issueId, Admin, archivedId, "An update", ct: ct)).Comment.Should().NotBeNull();
+                break;
+            case "Status":
+                (await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, archivedId, ct)).Succeeded.Should().BeTrue();
+                break;
+            default:
+                (await _service.UpdateAssigneeAsync(issueId, Admin, survivor.Id, archivedId, ct)).Succeeded.Should().BeTrue();
+                break;
+        }
+
+        _notificationService.ReceivedCalls().Should().BeEmpty("the actor and recipient resolve to the same human");
+    }
+
+    [HumansFact]
+    public async Task IssueSubmittedNotice_ResolvesAndDeduplicatesQueueHandlersBeforeLanguageGrouping()
+    {
+        var reporter = SeedUser(displayName: "Reporter");
+        var archived = SeedUser(displayName: "Archived handler");
+        var survivor = SeedUser(displayName: "Surviving handler");
+        survivor.PreferredLanguage = "es";
+        StubResolution(archived.Id, survivor.Id);
+        _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([archived.Id, survivor.Id]));
+
+        var result = await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Details",
+            null, null, null, null, null, ct: TestContext.Current.CancellationToken);
+
+        var notice = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(survivor.Id);
+        notice[3].Should().Be("Se presentó un asunto nuevo: Title");
+        notice[9].Should().Be(result.Issue!.Id.ToString());
     }
 
     /// <summary>Makes the registry-backed user service resolve <paramref name="archived"/> forward.</summary>

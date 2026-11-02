@@ -148,6 +148,9 @@ public sealed record UserInfo(
     /// <summary>The single source of truth for access; only <see cref="UserState.Active"/> has full access.</summary>
     public UserState State { get; init; }
 
+    /// <summary>Not a real person (the gate terminal, dev personas). Queues and counts of people skip these.</summary>
+    public bool IsFake { get; init; }
+
     /// <summary>
     /// Every id whose merge chain passes through this row, transitively, sorted: in A→B→C, C carries <c>[A, B]</c>.
     /// Callers union by these ids; nobody walks a chain. Stamped by the caching decorator, the only thing that sees
@@ -331,6 +334,7 @@ public sealed record UserInfo(
             CommunicationPreferences: communicationPreferenceInfos)
         {
             State = user.State,
+            IsFake = user.MarkedFakeAt is not null,
         };
 
         return info;

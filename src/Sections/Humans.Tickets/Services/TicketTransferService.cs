@@ -17,7 +17,6 @@ internal sealed class TicketTransferService(
     ITicketService holdings,
     ITicketVendorService vendor,
     IUserService userService,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     TicketsEmails emailMessages,
     IAuditLogService auditLog,
@@ -67,7 +66,7 @@ internal sealed class TicketTransferService(
 
         var receiverInfo = await userService.GetUserInfoAsync(receiverUserId, ct);
         if (receiverInfo is null || receiverInfo.Id != receiverUserId || !receiverInfo.HasRequiredNameFields) return null;
-        var receiverEmail = await userEmailService.GetPrimaryEmailAsync(receiverUserId, ct);
+        var receiverEmail = receiverInfo.Email;
         if (string.IsNullOrWhiteSpace(receiverEmail)) return null;
 
         return new TicketTransferConfirmDto(
@@ -119,7 +118,7 @@ internal sealed class TicketTransferService(
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_AlreadyPending");
 
         var receiverLegalName = receiverProfile.FullName;
-        var receiverEmail = await userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct);
+        var receiverEmail = receiverInfo.Email;
         if (receiverEmail is null)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
@@ -662,7 +661,7 @@ internal sealed class TicketTransferService(
     private async Task<(string? Email, string Name, string? Culture)> ResolveSenderAsync(Guid senderUserId, CancellationToken ct)
     {
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
-        var email = await userEmailService.GetPrimaryEmailAsync(senderUserId, ct);
+        var email = info?.Email;
         var name = info?.BurnerName;
         var language = info?.PreferredLanguage;
         return (email, string.IsNullOrWhiteSpace(name) ? "there" : name,

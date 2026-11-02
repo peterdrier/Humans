@@ -84,7 +84,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Manual and source issuance share one persist/audit/notice pipeline. Persistence retains caller cancellation; after commit, audit and notices finish independently of browser cancellation. Their distinct batch and source-reference audit descriptions are preserved.
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
 - Grant reads, GDPR exports (held grants and programs created), and issue/revoke/resend audits use the program's current Settings event year, falling back to its stored year when the event is unavailable. Audit year resolution finishes before the mutation commits.
-- A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend.
+- A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend. A successful recipient lookup supplies the email address too; if that lookup fails, the email step retains its independent lookup attempt.
 - Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all six cultures.
 
 ## Negative Access Rules
@@ -107,7 +107,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `GrantsAuditActions` (`src/Sections/Humans.Grants/GrantsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GrantProgramCreated`, `GrantProgramEdited`, `GrantProgramManagerAdded`, `GrantProgramManagerRemoved`, `GrantIssued`, `GrantRevoked`, `GrantNoticeResent`.
-- **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, preferred language, burner names), `IUserEmailService.GetNotificationTargetEmailsAsync` (notice address). Implements `IUserMerge`.
+- **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, preferred language, burner names and canonical notice address). Implements `IUserMerge`.
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`). Its sources are declared in `GrantsNotificationSources` (`src/Sections/Humans.Grants/GrantsNotificationSources.cs`), one `NotificationSourceDefinition` each: `GrantReceived` (informational, to the grant holder: a grant issued to the person, or its notice resent); `GrantRevoked` (informational, to the former holder: a grant the person held was revoked).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.
 - **AuditLog**: `IAuditLogService.LogAsync`.

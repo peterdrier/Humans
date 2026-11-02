@@ -284,8 +284,8 @@ internal interface ITeamManagementService : ITeamManagement
     Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default);
 
-    /// <summary>One save. Returns the number of memberships updated.</summary>
-    Task<int> ApplyMemberRoleChangesAsync(
+    /// <summary>One save. Returns the ids of memberships actually updated.</summary>
+    Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default);
 

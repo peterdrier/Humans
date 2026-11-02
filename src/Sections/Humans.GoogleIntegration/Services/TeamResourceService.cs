@@ -81,7 +81,7 @@ internal sealed partial class TeamResourceService(
 
     public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
     {
-        var resources = await repository.GetActiveDriveFoldersAsync(ct);
+        var resources = await repository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct);
         return resources.Select(ToSnapshot).ToList();
     }
 
@@ -256,6 +256,15 @@ internal sealed partial class TeamResourceService(
             };
             var serviceAccountEmail = await googleClient.GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false, ErrorMessage: hint, ServiceAccountEmail: serviceAccountEmail);
+        }
+
+        duplicate = await repository.FindActiveByGoogleIdAsync(
+            teamId, lookup.Group.NumericId, GoogleResourceType.Group, ct)
+            ?? await repository.FindActiveGroupByEmailAsync(teamId, lookup.Group.NormalizedEmail, ct);
+        if (duplicate is not null)
+        {
+            return new LinkResourceResult(false,
+                ErrorMessage: "This Google Group is already linked to this team.");
         }
 
         var now = clock.GetCurrentInstant();

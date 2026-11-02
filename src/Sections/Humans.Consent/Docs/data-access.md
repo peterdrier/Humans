@@ -154,6 +154,12 @@ row reads the legacy `profiles` review columns via `IUserService`; the copy
 also calls `IUserWrite.SetRejectedAsync` for a legacy rejection the stored
 state never recorded. No cache.
 
+### ConsentReviewQueueService (Scoped, internal; implements `IConsentReviewQueueService`)
+
+No repository. The Consent Coordinator review queue: reads reviews through `IConsentService`, people
+through `IUserService`, tiers and pending applications through `IGovernanceService`, signed/required counts
+through `IMembershipCalculator`, and clears or flags through the section's own `IConsentWrite`. No cache.
+
 ### ConsentReminderService (Scoped, internal; implements `IUserDataContributor`)
 
 Repository: `IConsentReminderRepository` (Singleton, `IDbContextFactory<LegalDbContext>`).

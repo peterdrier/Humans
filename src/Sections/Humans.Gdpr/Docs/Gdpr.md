@@ -61,7 +61,7 @@ email links `/Gdpr/Deletion`.
 | `GET /Gdpr/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
 | `POST /Gdpr/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
-The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record. Users keeps its own copies of the suspension keys its notification text reads.
+The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record. Users keeps its own copies of the suspension keys its notification text reads. The pending-deletion date uses the shared display formatter and follows the request's UI culture in all six languages, independently of the fixed parsing culture.
 
 The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions carry

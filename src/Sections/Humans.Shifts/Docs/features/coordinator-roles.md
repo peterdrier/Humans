@@ -2,17 +2,17 @@
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Sections/Humans.Onboarding/Services/**
   src/Sections/Humans.Consent/Services/**
-  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Sections/Humans.Consent/Controllers/ConsentReviewQueueController.cs
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
-  src/Sections/Humans.Onboarding/Views/OnboardingReview/**
+  src/Sections/Humans.Consent/Views/ConsentReviewQueue/**
   src/Humans.Base/Constants/RoleNames.cs
   src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
 -->
 <!-- freshness:flag-on-change
-  ConsentCoordinator/ShiftsAdmin capabilities, OnboardingReview authorization, and role-management permissions — review when role names, OnboardingReviewController, or membership filter change.
+  ConsentCoordinator/ShiftsAdmin capabilities, review queue authorization, and role-management permissions — review when role names, ConsentReviewQueueController, or membership filter change.
 -->
 
 # Coordinator Roles
@@ -38,7 +38,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 |------------|-------|-------|-------------------|---------------------|
 | Requires `UserState == Active` access gate | Yes | Yes | Yes | Yes |
 | Access Admin area | Yes | Yes | No | No |
-| Access Onboarding Review queue | Yes | Yes | Yes | Yes (read-only) |
+| Access Consent review queue | Yes | Yes | Yes | Yes (read-only) |
 | Clear/Flag consent checks | Yes | Yes | Yes | No |
 | Vote on tier applications | Yes | No | No | No |
 | Assign roles | No | Yes | No | No |
@@ -103,16 +103,16 @@ RoleAssignment
 ## Authorization Changes
 
 ### MembershipRequiredFilter
-Coordinator roles do not bypass the global access filter. A coordinator must have `UserState == Active`; after that, the role authorizes coordinator pages such as `/OnboardingReview`.
+Coordinator roles do not bypass the global access filter. A coordinator must have `UserState == Active`; after that, the role authorizes coordinator pages such as `/Consent/ReviewQueue`.
 
-### OnboardingReview Controller Authorization
+### ConsentReviewQueue Controller Authorization
 ```
 [Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 ```
 
 With action-level restrictions:
 - **View queue/details**: All four roles (`ReviewQueueAccess` = ConsentCoordinator, ShiftsAdmin, Board, Admin)
-- **Clear/Flag consent check**: Board, Admin, ConsentCoordinator only (`PolicyNames.ConsentCoordinatorBoardOrAdmin`)
+- **Clear/Flag consent check, reject signup**: Board, Admin, ConsentCoordinator only (`PolicyNames.ConsentCoordinatorBoardOrAdmin`)
 - **Vote on tier applications**: Board only (separate Board Voting dashboard)
 
 ### Role Assignment Authorization
@@ -120,15 +120,15 @@ Role management lives on `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.
 - **Admin** can assign any role
 - **UsersAdmin** can assign every role except Admin, including ConsentCoordinator and ShiftsAdmin; Board assigns no roles
 
-## Onboarding Review Queue
+## Consent Review Queue
 
-### Access: `/OnboardingReview`
+### Access: `/Consent/ReviewQueue`
 
 The review queue is the primary workspace for Consent Coordinators:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Onboarding Review                                            │
+│ Consent Review Queue                                         │
 ├──────────────────────────────────────────────────────────────┤
 │ [Pending (5)]  [Flagged (1)]  [Cleared (12)]  [All]         │
 ├──────────────────────────────────────────────────────────────┤

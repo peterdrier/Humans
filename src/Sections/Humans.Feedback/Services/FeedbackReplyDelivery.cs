@@ -17,7 +17,6 @@ namespace Humans.Feedback.Services;
 internal sealed class FeedbackReplyDelivery(
     IFeedbackRepository repository,
     IUserService userService,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     FeedbackEmails emailMessages,
     INotificationEmitter notificationService,
@@ -80,10 +79,9 @@ internal sealed class FeedbackReplyDelivery(
         FeedbackReport report, FeedbackMessage message, CancellationToken ct)
     {
         var reporter = await userService.GetUserInfoAsync(report.UserId, ct);
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync(
-            [report.UserId], ct);
+        var recipientEmail = reporter?.Email;
 
-        if (reporter is not null && !reporter.IsTombstone && emails.TryGetValue(report.UserId, out var recipientEmail) &&
+        if (reporter is not null && !reporter.IsTombstone &&
             !string.IsNullOrWhiteSpace(recipientEmail))
         {
             await emailService.SendAsync(emailMessages.FeedbackResponse(

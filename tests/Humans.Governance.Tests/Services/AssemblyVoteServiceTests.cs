@@ -1288,10 +1288,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // Resolving recipients happens after the vote is already persisted Open, and Open is
         // irreversible with no retry path.
-        _fx.UserEmails.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns<Task<IReadOnlyDictionary<Guid, string>>>(
-                _ => throw new InvalidOperationException("email lookup is down"));
+        var infos = await _fx.Users.GetUserInfosAsync([asociado], TestContext.Current.CancellationToken);
+        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => ResolveRecipientsAsync(call.Arg<CancellationToken>()));
+
+        async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveRecipientsAsync(CancellationToken ct)
+        {
+            var lookupVote = await _fx.Db.AssemblyVotes.AsNoTracking().SingleAsync(v => v.Id == vote.Id, ct);
+            if (lookupVote.Status == AssemblyVoteStatus.Open)
+                throw new InvalidOperationException("recipient lookup is down");
+            return infos;
+        }
 
         var result = await _fx.Service.OpenAsync(
             vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -2351,6 +2358,49 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         persisted.ClosesAt.Should().Be(extended, "the extension is the newer fact");
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RunLapseAndReminderSweepAsync_DeliveryFailureFinishesSweepThenFailsForRetry(bool reminder)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var now = _fx.Clock.GetCurrentInstant();
+        var vote = await _fx.AddVoteAsync(closesAt: now + (reminder ? Duration.FromHours(12) : Duration.FromDays(5)));
+        var lapsed = await _fx.AddVoteAsync(closesAt: now - Duration.FromMinutes(1));
+        var failed = Guid.NewGuid();
+        var reached = Guid.NewGuid();
+        _fx.StubActiveUsers(failed, reached);
+        var failedRow = await _fx.AddRosterRowAsync(vote.Id, failed, isOfficial: true, notified: reminder);
+        var reachedRow = await _fx.AddRosterRowAsync(vote.Id, reached, isOfficial: true, notified: reminder);
+        var failure = new IOException("Recipient delivery failed");
+        var recovered = false;
+        _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call => !recovered && call.Arg<EmailMessage>().UserId == failed
+                ? Task.FromException(failure) : Task.CompletedTask);
+
+        var run = () => _fx.Service.RunLapseAndReminderSweepAsync(ct);
+        var error = await run.Should().ThrowAsync<AggregateException>();
+
+        error.Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking().Where(row => row.VoteId == vote.Id).ToListAsync(ct);
+        var stamps = rows.ToDictionary(row => row.Id, row => reminder ? row.ReminderSentAt : row.NotifiedAt);
+        stamps[failedRow.Id].Should().BeNull();
+        stamps[reachedRow.Id].Should().NotBeNull();
+        var closed = await _fx.Db.AssemblyVotes.AsNoTracking().SingleAsync(row => row.Id == lapsed.Id, ct);
+        closed.Status.Should().Be(AssemblyVoteStatus.Closed);
+        closed.ResultJson.Should().NotBeNull();
+        var firstAttempts = _fx.Email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
+        firstAttempts.Select(message => message.UserId).Should().BeEquivalentTo(new Guid?[] { failed, reached });
+
+        recovered = true;
+        _fx.Email.ClearReceivedCalls();
+        (await _fx.Service.RunLapseAndReminderSweepAsync(ct)).Should().Be(0);
+
+        var retry = _fx.Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        retry.UserId.Should().Be(failed);
+        retry.DeliveryId.Should().Be(firstAttempts.Single(message => message.UserId == failed).DeliveryId);
+    }
+
     [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_StopsRemindingOnceTheDeadlineMoves()
     {
@@ -2412,6 +2462,50 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id,
             Arg.Any<string>(),
             AssemblyVoteService.LapseJobName);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AssemblyEmailRetries_ReuseDeliveryIdentity_AndExtensionRearmsReminders(bool reminder)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync(
+            closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromHours(reminder ? 12 : 120));
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true, notified: reminder);
+        var deliveries = new List<EmailMessage>();
+        _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                deliveries.Add(call.Arg<EmailMessage>());
+                return deliveries.Count == 1
+                    ? Task.FromException(new IOException("Enqueue acknowledgement lost"))
+                    : Task.CompletedTask;
+            });
+
+        var failedSweep = () => _fx.Service.RunLapseAndReminderSweepAsync(ct);
+        var error = await failedSweep.Should().ThrowAsync<AggregateException>();
+        error.Which.InnerExceptions.Should().ContainSingle().Which.Should().BeOfType<IOException>();
+        await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+        deliveries.Should().HaveCount(2);
+        deliveries[0].TemplateName.Should().Be(reminder ? "assembly_vote_reminder" : "assembly_vote_opened");
+        deliveries[0].DeliveryId.Should().NotBeNull();
+        deliveries[1].DeliveryId.Should().Be(deliveries[0].DeliveryId);
+
+        if (reminder)
+        {
+            _fx.Clock.Advance(Duration.FromMinutes(1));
+            (await _fx.Service.ExtendAsync(vote.Id, vote.ClosesAt + Duration.FromHours(6), Guid.NewGuid(), ct))
+                .Should().Be(AssemblyVoteActionResult.Ok);
+
+            await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+            deliveries.Should().HaveCount(3);
+            deliveries[2].DeliveryId.Should().NotBeNull().And.NotBe(deliveries[0].DeliveryId!.Value);
+        }
     }
 
     [HumansFact]

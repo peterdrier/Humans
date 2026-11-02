@@ -546,4 +546,11 @@
     <value>Votre message a été envoyé à {0}.</value>
   </data>
   <data name="Teams_SendMessage_OptedOut" xml:space="preserve"><value>Cette personne a choisi de ne pas recevoir de messages.</value></data>
+  <data name="Teams_Notification_JoinRequestSubmitted" xml:space="preserve"><value>Nouvelle demande pour rejoindre {0}</value></data>
+  <data name="Teams_Notification_MemberJoined" xml:space="preserve"><value>{0} a rejoint {1}</value></data>
+  <data name="Teams_Notification_JoinRequestSubmittedBody" xml:space="preserve"><value>{0} a demandé à rejoindre {1}.</value></data>
+  <data name="Teams_Notification_MemberJoinedBody" xml:space="preserve"><value>{0} a rejoint {1}.</value></data>
+  <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Examiner la demande</value></data>
+  <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>Voir les membres</value></data>
+  <data name="Teams_Notification_Someone" xml:space="preserve"><value>Quelqu’un</value></data>
 </root>

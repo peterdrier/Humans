@@ -15,6 +15,12 @@ public interface IUserWrite
     Task RecordLoginAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Marks the account as not a real person, so people-only queues and counts skip it. Idempotent: audited only
+    /// on the first mark. No-op if the user doesn't exist.
+    /// </summary>
+    Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets <see cref="UserState.Rejected"/>, which outranks everything but merge and deletion and survives every
     /// later re-classification. The reason and reviewer are Consent's. <c>NotFound</c> without a profile.
     /// </summary>

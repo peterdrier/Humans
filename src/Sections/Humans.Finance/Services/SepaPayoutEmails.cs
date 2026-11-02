@@ -8,7 +8,6 @@ namespace Humans.Finance.Services;
 
 internal sealed class SepaPayoutEmails(
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService emailService,
     FinanceEmails emails,
     ILogger logger)
@@ -22,11 +21,9 @@ internal sealed class SepaPayoutEmails(
         var ct = CancellationToken.None;
         var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
         IReadOnlyDictionary<Guid, UserInfo> infos;
-        IReadOnlyDictionary<Guid, string> targets;
         try
         {
             infos = await users.GetUserInfosAsync(userIds, ct);
-            targets = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
         }
         catch (Exception ex)
         {
@@ -36,8 +33,9 @@ internal sealed class SepaPayoutEmails(
 
         foreach (var t in transfers)
         {
-            if (!infos.TryGetValue(t.UserId, out var member)
-                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
+            infos.TryGetValue(t.UserId, out var member);
+            var recipient = member?.Email;
+            if (member is null || string.IsNullOrWhiteSpace(recipient))
             {
                 logger.LogWarning(
                     "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
@@ -68,9 +66,9 @@ internal sealed class SepaPayoutEmails(
         try
         {
             var infos = await users.GetUserInfosAsync([t.UserId], ct);
-            var targets = await userEmails.GetNotificationTargetEmailsAsync([t.UserId], ct);
-            if (!infos.TryGetValue(t.UserId, out var member)
-                || !targets.TryGetValue(t.UserId, out var recipient) || string.IsNullOrWhiteSpace(recipient))
+            infos.TryGetValue(t.UserId, out var member);
+            var recipient = member?.Email;
+            if (member is null || string.IsNullOrWhiteSpace(recipient))
             {
                 logger.LogWarning(
                     "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} has no notification email",

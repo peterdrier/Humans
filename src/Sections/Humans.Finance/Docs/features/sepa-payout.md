@@ -154,8 +154,8 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    reconcile in Holded.
    If the save itself fails after Holded accepted the postings, the money that moved is audited
    (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
-9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
-   resumed, and whether the reconcile landed.
+9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming document payment references, the journal amount and
+   confirmed/unconfirmed outcome, whether the run resumed, and whether the reconcile landed.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
 ledger, so paying one would post against a document that does not exist for accounting. An approved document

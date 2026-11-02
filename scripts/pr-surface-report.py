@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 LEGACY_INTERFACES_PREFIX = "src/Humans.Application/Interfaces/"
-INTERFACE_SEARCH_ROOTS = ("src/Humans.Application/Interfaces", "src/Sections")
+INTERFACE_SEARCH_ROOTS = ("src/Humans.Base", "src/Humans.Application/Interfaces", "src/Sections")
 # Section-owned interfaces live either in a dedicated `Humans.<Section>.Contracts`
 # project or, when a section hasn't earned a separate Contracts project yet, in an
 # in-project `Contracts/` folder (e.g. Humans.Store).
@@ -49,7 +49,8 @@ def is_migration_path(path: str) -> bool:
 def is_interface_path(path: str) -> bool:
     path = normalize(path)
     return (
-        path.startswith(LEGACY_INTERFACES_PREFIX)
+        path.startswith("src/Humans.Base/")
+        or path.startswith(LEGACY_INTERFACES_PREFIX)
         or bool(SECTION_CONTRACTS_PROJECT_RE.match(path))
         or bool(SECTION_CONTRACTS_FOLDER_RE.match(path))
     )
@@ -313,7 +314,7 @@ def normalize_signature(signature: str) -> str:
 
 def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
     interfaces: dict[str, dict[str, object]] = {}
-    interface_re = re.compile(r"\binterface\s+(I[A-Za-z0-9_]*)\b")
+    interface_re = re.compile(r"\bpublic\s+(?:(?:partial|unsafe)\s+)*interface\s+(I[A-Za-z0-9_]*)\b")
     literal_re = re.compile(r'@"(?:[^"]|"")*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
     for path in git_files(ref, INTERFACE_SEARCH_ROOTS):

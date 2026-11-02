@@ -21,12 +21,13 @@ internal static class TestFinanceEmails
         ["Finance_Email_SepaPayoutWithdrawn_Body"] = "<p>Hi {0},</p><p>Amount: {1}</p><p>IBAN: {2}</p><p>Announced: {3}</p>",
     };
 
-    public static FinanceEmails Create()
+    public static FinanceEmails Create(Action<string>? onLocalize = null)
     {
         var localizer = Substitute.For<IStringLocalizer<FinanceResource>>();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();
+            onLocalize?.Invoke(key);
             return new LocalizedString(key,
                 Formats.GetValueOrDefault(key, $"{key}#{CultureInfo.CurrentUICulture.Name}"));
         });

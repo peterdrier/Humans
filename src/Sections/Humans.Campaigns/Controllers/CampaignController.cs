@@ -161,32 +161,30 @@ internal sealed class CampaignController(
         var codes = new List<string>();
         if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
         {
-            var config = HumansCsv.ReadConfig();
-            config.HasHeaderRecord = false;
-            using var csv = new CsvReader(new StringReader(content), config);
+            using var csv = CsvReader.FromText(content, HumansCsv.ReadConfig() with { HasHeader = false });
             var invalid = false;
             try
             {
                 while (await csv.ReadAsync())
                 {
                     HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                    if (csv.Parser.Count != 1)
+                    if (csv.FieldCount != 1)
                     {
                         invalid = true;
                         break;
                     }
-                    var code = csv.GetField(0);
+                    var code = csv.GetString(0);
                     if (!string.IsNullOrWhiteSpace(code)) codes.Add(code);
                 }
             }
-            catch (CsvHelperException)
+            catch (CsvFormatException)
             {
                 invalid = true;
             }
             if (invalid)
             {
                 logger.LogWarning("Rejected campaign {CampaignId} code CSV at row {Row}: expected one well-formed column",
-                    id, csv.Parser.Row);
+                    id, csv.RowNumber);
                 SetError("Invalid CSV. Upload one column of codes without a header.");
                 return RedirectToAction(nameof(Detail), new { id });
             }
