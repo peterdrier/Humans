@@ -250,9 +250,9 @@ internal sealed class Service(
             throw;
         }
 
-        await RegisterManagedAsync(next, id, name, managed, now, ct);
         await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
+        await RegisterManagedAsync(next, id, name, managed, now, ct);
         return new HoldedExpenseAccountRef(next, id, name, Created: true);
     }
 

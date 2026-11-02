@@ -268,6 +268,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 - Expense-account options carry account metadata without display ordering. Expenses orders its choices by budget-category status, label and account number; Preapprovals orders its choices by account number.
 
+- Managed expense-account creation records its audit as soon as Holded returns success, before the local registry save. A failed registry write still propagates; the external account creation remains visible and a retry can link the existing account.
 - Finance marks account provisioning, create-or-link expense accounts, and creditor-contact creation as external writes. State-changing HTTP callers must not pass browser cancellation into those Holded mutations.
 
 - Holded provisioning POSTs require an explicit account-block start and one/all choice. Missing fields and binding errors return HTTP 400 and a Warning after actor resolution, before planning or creating accounts. Missing actors retain Challenge; explicit false add-all flags remain valid.

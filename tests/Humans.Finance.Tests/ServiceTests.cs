@@ -3852,6 +3852,29 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task CreateOrLink_RegistrySaveFailsAfterHoldedCreation_StillAuditsTheAccount()
+    {
+        NoManagedAccounts();
+        NoCategoryMap();
+        LiveChart();
+        _client.CreateExpenseAccountAsync(62900100, "Workgroups / New", Arg.Any<CancellationToken>())
+            .Returns("new-account");
+        _repo.UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Registry unavailable"));
+
+        var act = () => MakeService().CreateOrLinkExpenseAccountAsync(
+            "Workgroups / New", null, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Registry unavailable");
+        await _client.Received(1).CreateExpenseAccountAsync(
+            62900100, "Workgroups / New", Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            FinanceAuditActions.HoldedExpenseAccountCreated, Service.HoldedExpenseAccount, Guid.Empty,
+            Arg.Is<string>(description => description.Contains("62900100") && description.Contains("Workgroups / New")),
+            "Finance", null, null);
+    }
+
+    [HumansFact]
     public async Task CreateOrLink_NameMatchesIgnoringCaseSpaceAndAccents_LinksInsteadOfCreating()
     {
         NoManagedAccounts();
