@@ -229,6 +229,50 @@ public class AccountDeletionServiceTests
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RequestDeletionAsync_ConfirmationFailureStillReportsTheCommittedRequest(bool lookupFails)
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        Transaction? transaction = null;
+        _userService.SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
+                Arg.Any<Instant?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transaction = Transaction.Current?.Clone();
+                return true;
+            });
+        var failure = new InvalidOperationException("Confirmation dependency unavailable");
+        if (lookupFails)
+            _userEmailService.GetNotificationTargetEmailsAsync(
+                    Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(failure));
+        else
+            _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(failure));
+
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        using (transaction)
+        {
+            result.Success.Should().BeTrue();
+            result.EffectiveDeletionDate.Should().Be(_clock.GetCurrentInstant().Plus(Duration.FromDays(30)));
+            transaction.Should().NotBeNull();
+            transaction!.TransactionInformation.Status.Should().Be(TransactionStatus.Committed);
+        }
+        await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
+        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            Arg.Any<string>(), userId, Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _userEmailService.Received(1).GetNotificationTargetEmailsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), CancellationToken.None);
+        if (!lookupFails)
+            await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task RequestDeletionAsync_PrefersVerifiedNotificationEmailOverUserEmail()
     {

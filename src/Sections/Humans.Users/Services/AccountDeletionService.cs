@@ -103,18 +103,26 @@ internal sealed class AccountDeletionService(
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
             userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
 
-        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
-        if (notificationEmail is not null)
+        // The request and access revocations are committed; confirmation cannot undo them.
+        try
         {
-            await emailService.SendAsync(emailMessages.AccountDeletionRequested(
-                userId,
-                notificationEmail,
-                user.BurnerName,
-                effectiveDeletionDate,
-                user.PreferredLanguage.IsSupportedCultureCode()
-                    ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-                ct);
+            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], CancellationToken.None);
+            var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
+            if (notificationEmail is not null)
+            {
+                await emailService.SendAsync(emailMessages.AccountDeletionRequested(
+                    userId,
+                    notificationEmail,
+                    user.BurnerName,
+                    effectiveDeletionDate,
+                    user.PreferredLanguage.IsSupportedCultureCode()
+                        ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
+                    CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Account deletion requested for user {UserId} but its confirmation email failed", userId);
         }
 
         return new DeletionRequestResult(
