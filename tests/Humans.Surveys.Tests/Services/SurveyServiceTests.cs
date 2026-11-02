@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
@@ -40,8 +39,6 @@ public class SurveyServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IGovernanceService _governance = Substitute.For<IGovernanceService>();
     private readonly Dictionary<Guid, MembershipTier> _tiers = [];
-    private readonly IConsentService _consent = Substitute.For<IConsentService>();
-    private readonly HashSet<Guid> _approved = [];
     private readonly ITicketService _ticketService = Substitute.For<ITicketService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -59,10 +56,6 @@ public class SurveyServiceTests
             .Returns(call => _tiers.GetValueOrDefault(call.Arg<Guid>(), MembershipTier.Volunteer));
         _governance.GetMembershipTiersAsync(Arg.Any<CancellationToken>())
             .Returns(_ => new Dictionary<Guid, MembershipTier>(_tiers));
-        _consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Review(call.Arg<Guid>()));
-        _consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => _approved.ToDictionary(id => id, Review));
         _repo.GetInvitationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<SurveyInvitation>());
         _repo.GetInvitationsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -71,13 +64,8 @@ public class SurveyServiceTests
 
     private SurveyService CreateService(ILogger<SurveyService>? logger = null, ISurveyRepository? repository = null) => new(
         repository ?? _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
-        _teamService, _userService, _governance, _consent, _ticketService, _shiftView,
+        _teamService, _userService, _governance, _ticketService, _shiftView,
         _userEmailService, _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
-
-    /// <summary>The Consent Coordinator review: cleared for ids in <see cref="_approved"/>.</summary>
-    private ConsentReviewInfo Review(Guid id) => _approved.Contains(id)
-        ? ConsentReviewInfo.None(id) with { Status = ConsentCheckStatus.Cleared, IsApproved = true }
-        : ConsentReviewInfo.None(id);
 
     private SurveyReminderSender CreateReminderSender() => new(
         _repo, _audit, _clock, _userService, _userEmailService, _emailService,
@@ -1307,6 +1295,42 @@ public class SurveyServiceTests
             CreatedByUserId = createdByUserId ?? Guid.Empty,
         };
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Active_audiences_use_account_state_instead_of_consent_review(bool shiftParticipants)
+    {
+        var active = UserWithLastLogin(Guid.NewGuid(), null);
+        var inactive = Enum.GetValues<UserState>()
+            .Where(state => state != UserState.Active)
+            .Select(state => UserWithLastLogin(Guid.NewGuid(), null, state)).ToList();
+        inactive.Add(active with { Id = Guid.NewGuid(), IsFake = true });
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<UserInfo> { active }.Concat(inactive).ToList());
+        var requestedShiftIds = new List<Guid>();
+        _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var ids = call.Arg<IEnumerable<Guid>>().ToList();
+                requestedShiftIds.AddRange(ids);
+                return ids.ToDictionary(id => id, id => new ShiftUserSummary(id, [],
+                [new ShiftSignupSummary(Guid.NewGuid(), Guid.NewGuid(), null, SignupStatus.Confirmed,
+                    Guid.NewGuid(), "Rota", null, null, Guid.NewGuid(), Guid.NewGuid(),
+                    new LocalDate(2026, 7, 1), ShiftPeriod.Event, false,
+                    new LocalTime(10, 0), new LocalTime(12, 0), 2, null,
+                    Instant.FromUtc(2026, 7, 1, 10, 0), Instant.FromUtc(2026, 7, 1, 12, 0))]));
+            });
+        var survey = SurveyWith(SurveyStatus.Draft,
+            shiftParticipants ? SurveyAudienceType.ShiftParticipants : SurveyAudienceType.AllActiveMembers, null);
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetInvitedUserIdsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+
+        var count = await CreateService().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        count.Should().Be(1);
+        if (shiftParticipants) requestedShiftIds.Should().Equal(active.Id);
+    }
+
     private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState state = UserState.Active) =>
         UserInfo.Create(
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
@@ -1315,7 +1339,6 @@ public class SurveyServiceTests
     private UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
     {
         _tiers[id] = tier;
-        _approved.Add(id);
         var profile = UserFixtures.Profile(
             burnerName: "Voter",
             firstName: "Eligible",
@@ -1751,7 +1774,7 @@ public class SurveyServiceTests
                 if (fail) throw new InvalidOperationException("outbox unavailable");
             });
         var service = new SurveyService(repo, _audit, _clock, NullLogger<SurveyService>.Instance,
-            _teamService, _userService, _governance, _consent, _ticketService, _shiftView, _userEmailService,
+            _teamService, _userService, _governance, _ticketService, _shiftView, _userEmailService,
             _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
 
         var first = await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
@@ -5617,7 +5640,6 @@ public class SurveyServiceTests
     {
         var userId = Guid.NewGuid();
         var asociado = Asociado(userId);
-        _approved.Remove(userId);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(asociado);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo> { asociado });
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Asociados, null);

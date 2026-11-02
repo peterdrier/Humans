@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
@@ -27,7 +26,6 @@ internal sealed class SurveyService(
     ITeamService teamService,
     IUserService userService,
     IGovernanceService governanceService,
-    IConsentService consentService,
     ITicketService ticketService,
     IShiftView shiftView,
     IUserEmailService userEmailService,
@@ -2031,16 +2029,11 @@ internal sealed class SurveyService(
     private async Task<List<Guid>> ActiveMemberIdsAsync(CancellationToken ct)
     {
         var users = await userService.GetAllUserInfosAsync(ct);
-        var reviews = await consentService.GetConsentReviewsAsync(ct);
         return users
-            .Where(u => IsApproved(reviews, u.Id) && !u.IsDeletionPending)
+            .Where(u => u.State == UserState.Active && !u.IsFake && !u.IsDeletionPending)
             .Select(u => u.Id)
             .ToList();
     }
-
-    /// <summary>Cleared by the Consent Coordinator (Consent's review).</summary>
-    private static bool IsApproved(IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews, Guid userId) =>
-        reviews.TryGetValue(userId, out var review) && review.IsApproved;
 
     /// <summary>The account half of Asociado eligibility; the tier half is Governance's
     /// (<see cref="IGovernanceService.GetMembershipTierAsync"/>). The Consent Coordinator's review
