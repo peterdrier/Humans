@@ -160,7 +160,7 @@ What the shapes say about the inside:
 
 - Board, `FinanceAdmin` and `Admin` read every `/Finance/*` page this controller serves; every POST
   needs `FinanceAdmin` or `Admin` (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:17`,
-  `src/Sections/Humans.Finance/Section.cs:160`, `src/Sections/Humans.Finance/Section.cs:163`).
+  `src/Sections/Humans.Finance/Section.cs:158`, `src/Sections/Humans.Finance/Section.cs:161`).
 - Only `Admin` sees a member's IBAN unmasked, and every reveal is audited
   (`src/Sections/Humans.Finance/Controllers/PaymentDetailsAdminController.cs:12`,
   `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:52`).
@@ -168,46 +168,46 @@ What the shapes say about the inside:
   not at all; first match wins (`src/Sections/Humans.Finance/Services/HoldedDocumentSync.cs:142`,
   `src/Sections/Humans.Finance/Services/HoldedMatcher.cs:56`).
 - An invoice counts toward a category's actuals only when Holded has approved it
-  (`src/Sections/Humans.Finance/Services/Service.cs:358`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:352`).
 - An invoice booked to a managed account is matched with no category
   (`src/Sections/Humans.Finance/Services/HoldedMatcher.cs:57`).
 - Provisioning and the managed registry are additive in Holded: they create accounts and never
-  delete or edit one (`src/Sections/Humans.Finance/Services/Service.cs:159`,
-  `src/Sections/Humans.Finance/Services/Service.cs:244`).
+  delete or edit one (`src/Sections/Humans.Finance/Services/Service.cs:156`,
+  `src/Sections/Humans.Finance/Services/Service.cs:241`).
 - A creditor account, and the Holded contact behind it, belongs to at most one member. Every write
-  path checks with one predicate (`src/Sections/Humans.Finance/Services/Service.cs:698`); the manual
-  bind and the seed refuse (`src/Sections/Humans.Finance/Services/Service.cs:758`,
-  `src/Sections/Humans.Finance/Services/Service.cs:862`), the post-push number write records Holded's
-  fact and logs the collision (`src/Sections/Humans.Finance/Services/Service.cs:997`).
+  path checks with one predicate (`src/Sections/Humans.Finance/Services/Service.cs:690`); the manual
+  bind and the seed refuse (`src/Sections/Humans.Finance/Services/Service.cs:750`,
+  `src/Sections/Humans.Finance/Services/Service.cs:855`), the post-push number write records Holded's
+  fact and logs the collision (`src/Sections/Humans.Finance/Services/Service.cs:991`).
 - A member's binding is never downgraded from a hand-made link to an automatic one
-  (`src/Sections/Humans.Finance/Services/Service.cs:937`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:929`).
 - A linked Holded contact is never updated from here — only a member with no contact gets one
-  created (`src/Sections/Humans.Finance/Services/Service.cs:880`).
+  created (`src/Sections/Humans.Finance/Services/Service.cs:872`).
 - Every read that draws on Holded's contact list for creditor accounts, and the manual bind, are
-  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/Service.cs:538`,
-  `src/Sections/Humans.Finance/Services/Service.cs:751`).
+  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/Service.cs:530`,
+  `src/Sections/Humans.Finance/Services/Service.cs:743`).
 - Balances keep Holded's sign (`Σdebit − Σcredit`) on every DTO; the creditor list and the statement
   flip it for display, and a ledger line's running balance is computed from the member's side
   (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:105`,
   `src/Sections/Humans.Finance/Models/CreditorStatementVm.cs:14`,
-  `src/Sections/Humans.Finance/Services/Service.cs:829`).
+  `src/Sections/Humans.Finance/Services/Service.cs:821`).
 - A Holded outage costs account names, never a page; anything that is not a vendor failure throws
-  (`src/Sections/Humans.Finance/Services/Service.cs:663`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:657`).
 - A payout transfer pays only a singly-bound account, never more than is owed, never more than the
   posted cap, and only to the IBAN Holded holds for the contact the binding names
-  (`src/Sections/Humans.Finance/Services/Service.cs:1084`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1090`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1111`,
+  (`src/Sections/Humans.Finance/Services/Service.cs:1076`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1082`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1103`,
   `src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:174`).
 - An account with an unbooked transfer in an earlier file, or with duplicate documents in Holded,
   or whose documents cannot be read, is not paid again
-  (`src/Sections/Humans.Finance/Services/Service.cs:1096`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1104`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:1088`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1096`).
 - A generated file validates against the schema before it is stored, and is stored as sent
   (`src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:123`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1168`).
+  `src/Sections/Humans.Finance/Services/Service.cs:1160`).
 - A transfer is withdrawn only while nothing has moved: never once booked, tied to a bank line, or
-  carrying a Holded payment (`src/Sections/Humans.Finance/Services/Service.cs:1220`).
+  carrying a Holded payment (`src/Sections/Humans.Finance/Services/Service.cs:1215`).
 - A transfer books at most once: the row's `BookedAt` refuses a second booking, and every booking on
   the server runs one at a time (`src/Sections/Humans.Finance/Services/SepaBankBooking.cs:621`,
   `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:493`).
@@ -227,14 +227,14 @@ What the shapes say about the inside:
   `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:346`).
 - A duplicate document is deleted only when its notes match the push exactly; a contact is deleted
   only once every document it held was deleted without a failure
-  (`src/Sections/Humans.Finance/Services/Service.cs:1352`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1475`).
+  (`src/Sections/Humans.Finance/Services/Service.cs:1347`,
+  `src/Sections/Humans.Finance/Services/Service.cs:1467`).
 - A raw IBAN lives in the payment-details row, the bank file, the transfer row and the contact
   create that hands it to Holded; audit entries, exports and cross-section rows carry it masked
-  (`src/Sections/Humans.Finance/Services/Service.cs:1125`,
+  (`src/Sections/Humans.Finance/Services/Service.cs:1117`,
   `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:110`).
 - Erasure deletes the member's IBAN row and contact link and nothing else
-  (`src/Sections/Humans.Finance/Services/Service.cs:1659`,
+  (`src/Sections/Humans.Finance/Services/Service.cs:1651`,
   `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:119`).
 
 ## 5. Seams
@@ -306,6 +306,7 @@ Settled; do not re-litigate.
 
 | Run | Anchor | Headline | PR |
 |---|---|---|---|
+| [2026-11-02](../../../../docs/health/runs/2026-11-02-Finance.md) | `3b63d6603` | Fourth target; the section moved and the old target was wrong on Board's access. A public contract interface existed only to feed the sweep job and leaves; nothing pinned the write policy on each POST, now a test does; one category lookup and one creditor-block check instead of several. No code defect found. | pending |
 | [2026-10-02](../../../../docs/health/runs/2026-10-02-Finance.md) | `119ba6503` | Third target. A code comment named a member with their creditor balance; Finance.md denied the remainder journal entry and its own resx and still called the #995 race open; the Finance-only provisioning and bind methods left the public contract. No code defect found; bind, unbind and provisioning wrote no audit entry (FIN-4, closed in review). | [#1883](https://github.com/peterdrier/Humans/pull/1883) |
 | [2026-09-06](../../../../docs/health/runs/2026-09-06-Finance.md) | `10199a23` | Second target; the section moved (SEPA payout and GDPR shapes, read split shipped). Docs and comments narrated the moves and counted things; named invariants had no test and one test pinned an absence. No code defect found. A raw IBAN on the creditor statement contradicts the docs — Peter's call. | [#1613](https://github.com/peterdrier/Humans/pull/1613) |
 | [2026-08-18](../../../../docs/health/runs/2026-08-18-Finance.md) | `41fd7374d` | First target. Doc led with 23 routes the section does not serve; a tag-collision bug in provisioning; a published DTO with no consumer. Prod code −113 lines, tests 55 → 92, mutation 34.4% → 57.9%. | [#1374](https://github.com/peterdrier/Humans/pull/1374) |
