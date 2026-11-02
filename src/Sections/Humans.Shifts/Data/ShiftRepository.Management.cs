@@ -176,9 +176,9 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     }
 
     public async Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
-        string query, Guid eventSettingsId, int max, CancellationToken ct = default)
+        string query, Guid eventSettingsId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+        if (string.IsNullOrWhiteSpace(query))
             return [];
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
@@ -190,11 +190,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
                 && r.IsVisibleToVolunteers
                 && EF.Functions.ILike(r.Name, pattern, "\\"));
 
-        return await q
-            // Deterministic Take(max) for global search; controller re-ranks by score before display.
-            .OrderBy(r => r.Name) // arch:db-sort-ok
-            .Take(max)
-            .ToListAsync(ct);
+        return await q.ToListAsync(ct);
     }
 
     private static string EscapeLikePattern(string value)

@@ -529,7 +529,10 @@ internal sealed class ShiftManagementService(
         string query, int max,
         CancellationToken cancellationToken = default)
     {
-        if (Guid.TryParse(query, out var id))
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return [];
+        var trimmed = query.Trim();
+        if (Guid.TryParse(trimmed, out var id))
         {
             var rota = await repo.GetRotaAsync(id, RotaReadShape.None, cancellationToken);
             return rota is null
@@ -541,11 +544,14 @@ internal sealed class ShiftManagementService(
         if (settings is null) return [];
 
         var rotas = await repo.SearchVolunteerVisibleRotasAsync(
-            query, settings.Id,
-            max, cancellationToken);
+            trimmed, settings.Id, cancellationToken);
 
         return rotas
-            .Select(r => new RotaSearchHit(r.Id, r.Name, r.Name.NameMatchScore(query)))
+            .Select(r => new RotaSearchHit(r.Id, r.Name, r.Name.NameMatchScore(trimmed)))
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.RotaId)
+            .Take(max)
             .ToList();
     }
 

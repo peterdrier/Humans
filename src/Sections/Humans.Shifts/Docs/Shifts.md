@@ -486,3 +486,5 @@ Event deletion evicts event dashboard/shift caches after the repository cascade 
 Account-deletion signup cancellation, signup reassignment on account merge, and bulk signup deletion capture the source signups' event IDs before writing and evict those events' dashboard aggregates after a change. Existing row-view and Early Entry invalidation remains in place; bulk deletion authorizes the admin before reading or writing signups.
 
 - Rota and shift deletion return resource-key refusals for missing records or confirmed signups, warning without an exception before any cascade delete. Department coordinators receive refusal counts and successful deletion feedback in all six cultures. Dependency faults propagate instead of becoming refusal text; department ownership/authorization gates, confirmed-signup protection and existing cascade/cache behavior remain.
+
+- Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.

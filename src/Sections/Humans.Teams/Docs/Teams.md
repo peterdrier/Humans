@@ -391,3 +391,5 @@ discovers the declaration through DI and holds no list of sections; dropping the
 sends this section's stored issues to the Admin-only queue.
 
 Validation and authorization refusals for permanent team deletion happen before the delete.
+
+- Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.

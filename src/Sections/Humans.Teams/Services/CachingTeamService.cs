@@ -131,9 +131,11 @@ internal sealed class CachingTeamService(
         return teamsById.Values
             .Where(t => t.IsActive && !t.IsHidden
                 && t.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .Take(max)
             .Select(t => new TeamSearchHit(t.Id, t.Name, t.Name.NameMatchScore(trimmed)))
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.TeamId)
+            .Take(max)
             .ToList();
     }
 
