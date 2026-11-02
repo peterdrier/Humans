@@ -1288,10 +1288,17 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         // Resolving recipients happens after the vote is already persisted Open, and Open is
         // irreversible with no retry path.
-        _fx.UserEmails.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns<Task<IReadOnlyDictionary<Guid, string>>>(
-                _ => throw new InvalidOperationException("email lookup is down"));
+        var infos = await _fx.Users.GetUserInfosAsync([asociado], TestContext.Current.CancellationToken);
+        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => ResolveRecipientsAsync(call.Arg<CancellationToken>()));
+
+        async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveRecipientsAsync(CancellationToken ct)
+        {
+            var lookupVote = await _fx.Db.AssemblyVotes.AsNoTracking().SingleAsync(v => v.Id == vote.Id, ct);
+            if (lookupVote.Status == AssemblyVoteStatus.Open)
+                throw new InvalidOperationException("recipient lookup is down");
+            return infos;
+        }
 
         var result = await _fx.Service.OpenAsync(
             vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);

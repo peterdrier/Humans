@@ -28,7 +28,6 @@ internal sealed class AssemblyVoteService(
     IRoleAssignmentService roleAssignments,
     ITeamService teams,
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService email,
     GovernanceEmails messages,
     INotificationEmitter notifications,
@@ -1451,11 +1450,10 @@ internal sealed class AssemblyVoteService(
         if (userIds.Count == 0) return [];
 
         var infos = await users.GetUserInfosAsync(userIds, ct);
-        var addresses = await userEmails.GetNotificationTargetEmailsAsync(userIds, ct);
 
         return roster
             .Where(r => r.UserId is not null
-                && infos.ContainsKey(r.UserId.Value) && addresses.ContainsKey(r.UserId.Value))
+                && infos.TryGetValue(r.UserId.Value, out var info) && !string.IsNullOrEmpty(info.Email))
             .GroupBy(r => infos[r.UserId!.Value].Id)
             .Select(g =>
             {
@@ -1465,7 +1463,7 @@ internal sealed class AssemblyVoteService(
                     representative,
                     (IReadOnlyList<AssemblyVoteRoster>)g.ToList(),
                     info,
-                    addresses[representative.UserId!.Value],
+                    info.Email!,
                     info.PreferredLanguage.IsSupportedCultureCode()
                         ? info.PreferredLanguage : CultureCatalog.DefaultCultureCode);
             })
