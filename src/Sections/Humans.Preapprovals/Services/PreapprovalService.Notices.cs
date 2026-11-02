@@ -93,15 +93,27 @@ internal sealed partial class PreapprovalService
             }).DistinctBy(person => person.Id);
             foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
             {
-                var culture = CultureInfo.GetCultureInfo(group.Key);
-                using var cultureScope = new CultureScope(culture.Name, logger);
-                var title = $"{NoticeResources.GetString(titleKey, culture)}: {info.ProgramName}";
-                var body = string.Format(culture, NoticeResources.GetString(bodyKey, culture) ?? bodyKey,
-                    info.ProgramName, info.Label ?? "", info.MaxAmount.ToEuro(), info.ClaimBy.ToDate(),
-                    previousAmount?.ToEuro() ?? detail ?? "");
-                await notifications.SendAsync(source, notificationClass, priority, title,
-                    group.Select(person => person.Id).ToList(), body.Trim(),
-                    actionUrl: actionUrl, sourceKey: sourceKey, cancellationToken: ct);
+                try
+                {
+                    var culture = CultureInfo.GetCultureInfo(group.Key);
+                    using var cultureScope = new CultureScope(culture.Name, logger);
+                    var title = $"{NoticeResources.GetString(titleKey, culture)}: {info.ProgramName}";
+                    var body = string.Format(culture, NoticeResources.GetString(bodyKey, culture) ?? bodyKey,
+                        info.ProgramName, info.Label ?? "", info.MaxAmount.ToEuro(), info.ClaimBy.ToDate(),
+                        previousAmount?.ToEuro() ?? detail ?? "");
+                    await notifications.SendAsync(source, notificationClass, priority, title,
+                        group.Select(person => person.Id).ToList(), body.Trim(),
+                        actionUrl: actionUrl, sourceKey: sourceKey, cancellationToken: ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (!propagateFailures)
+                {
+                    logger.LogError(ex, "Failed to send the pre-approval {Title} notice for grant {GrantId} in {Language}",
+                        titleKey, info.Id, group.Key);
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -140,17 +152,29 @@ internal sealed partial class PreapprovalService
             var infos = await users.GetUserInfosAsync(ids, ct);
             foreach (var id in ids)
             {
-                if (!addresses.TryGetValue(id, out var address) || string.IsNullOrWhiteSpace(address))
+                try
                 {
-                    logger.LogWarning("Skipping pre-approval {Kind} email for {UserId} on grant {GrantId}: no effective email",
-                        kind, id, info.Id);
-                    continue;
+                    if (!addresses.TryGetValue(id, out var address) || string.IsNullOrWhiteSpace(address))
+                    {
+                        logger.LogWarning("Skipping pre-approval {Kind} email for {UserId} on grant {GrantId}: no effective email",
+                            kind, id, info.Id);
+                        continue;
+                    }
+                    infos.TryGetValue(id, out var person);
+                    var language = person?.PreferredLanguage;
+                    await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
+                        id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
+                        url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
                 }
-                infos.TryGetValue(id, out var person);
-                var language = person?.PreferredLanguage;
-                await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
-                    id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
-                    url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (!propagateFailures)
+                {
+                    logger.LogError(ex, "Failed to queue the pre-approval {Kind} email for grant {GrantId} recipient {UserId}",
+                        kind, info.Id, id);
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

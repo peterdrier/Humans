@@ -188,6 +188,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   plus email; approve, decline and a merge-drop resolve it. Applicant-name enrichment
   belongs to each best-effort channel: a lookup or delivery fault is logged after the audited
   save, leaves the successful application successful, and does not skip the other channel.
+  Best-effort manager notices isolate each notification language group and each email recipient, so one preparation
+  or handoff failure does not skip later groups or managers. Required reminder deliveries still propagate failures.
   Initial reads and the first persistence call retain request cancellation. Once a grant or complete program edit commits, audit, notification resolution and notice/email handoffs finish independently of browser cancellation; this includes each beneficiary of a batch issue.
 - Decline, revoke, amount change: `PreapprovalGrantDecided` notification and the matching
   email. A revoke on a Claimed grant links the holding expense report.
