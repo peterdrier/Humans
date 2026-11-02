@@ -229,7 +229,7 @@ and the Article 15 slice shows `WithdrawnAt`.
 
 ### When Holded accepts one posting and refuses the next
 
-The state is **no longer terminal**. On a Holded failure mid-allocation, the ids already accepted
+The state is **retryable, not terminal**. On a Holded failure mid-allocation, the ids already accepted
 are logged and audited (`SepaPayoutTransferBooked`, prefixed `PARTIAL`), but **nothing is written to
 the transfer row** — the row stays unbooked and is retryable. The next attempt re-reads what is
 already posted under the transfer's tag (step 4 above) and continues from there, so nothing is ever
@@ -408,7 +408,8 @@ Server-side, all-or-nothing:
 
 ## IBAN handling
 
-The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
+The payee's unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`
+(the IBAN a member gives for reimbursement is a separate row, `finance_payment_details`).
 Logs, audit descriptions, the SEPA page and the cross-section `HoldedCreditorAccountRow` carry
 `IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
 screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it in full.

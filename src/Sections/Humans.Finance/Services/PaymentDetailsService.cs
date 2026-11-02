@@ -48,7 +48,7 @@ internal sealed class PaymentDetailsService(
         var iban = await ReadIbanAsync(userId, info, ct);
         if (iban is null) return null;
 
-        // Same entity type and wording as before, so old and new reveals read back together.
+        // Entity type and wording are persisted: unchanged, so every IbanReveal row reads back together.
         await audit.LogAsync(
             FinanceAuditActions.IbanReveal, nameof(User), userId,
             $"Admin revealed IBAN for user {userId}", actorUserId);
@@ -81,7 +81,7 @@ internal sealed class PaymentDetailsService(
     /// <summary>The one reader of the obsolete field. Delete with the migration once production reports it done.</summary>
     private static string? LegacyIban(UserInfo? info)
     {
-#pragma warning disable HUM_PROFILE_IBAN // the fallback and copy the field is kept for (plan §3.1)
+#pragma warning disable HUM_PROFILE_IBAN // the legacy fallback and copy this obsolete field is kept for
         var iban = info?.Profile?.Iban;
 #pragma warning restore HUM_PROFILE_IBAN
         return string.IsNullOrWhiteSpace(iban) ? null : iban;
