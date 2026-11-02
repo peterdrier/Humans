@@ -51,6 +51,7 @@ internal sealed class TermRenewalReminderJob(
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             var sentCount = 0;
+            var failures = new List<Exception>();
             var now = clock.GetCurrentInstant();
 
             foreach (var application in expiringApplications)
@@ -124,11 +125,15 @@ internal sealed class TermRenewalReminderJob(
                 }
                 catch (Exception ex)
                 {
+                    failures.Add(ex);
                     logger.LogError(ex,
                         "Failed to send term renewal reminder to user {UserId} for {Tier}",
                         application.UserId, application.MembershipTier);
                 }
             }
+
+            if (failures.Count > 0)
+                throw new AggregateException("Failed to complete one or more term renewal reminders.", failures);
 
             metrics.RecordJobRun("term_renewal_reminder", "success");
             logger.LogInformation(
