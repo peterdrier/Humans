@@ -148,19 +148,19 @@ internal sealed partial class PreapprovalService
         if (ids.Count == 0) return;
         try
         {
-            var addresses = await userEmails.GetNotificationTargetEmailsAsync(ids, ct);
             var infos = await users.GetUserInfosAsync(ids, ct);
             foreach (var id in ids)
             {
                 try
                 {
-                    if (!addresses.TryGetValue(id, out var address) || string.IsNullOrWhiteSpace(address))
+                    infos.TryGetValue(id, out var person);
+                    var address = person?.Email;
+                    if (string.IsNullOrWhiteSpace(address))
                     {
                         logger.LogWarning("Skipping pre-approval {Kind} email for {UserId} on grant {GrantId}: no effective email",
                             kind, id, info.Id);
                         continue;
                     }
-                    infos.TryGetValue(id, out var person);
                     var language = person?.PreferredLanguage;
                     await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
                         id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
