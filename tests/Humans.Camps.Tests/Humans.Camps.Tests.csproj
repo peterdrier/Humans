@@ -8,7 +8,6 @@
       It drops out when the harness stops building the other section's context directly.
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />

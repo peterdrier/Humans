@@ -33,7 +33,7 @@ public interface IAuditLogService : IApplicationService
         CancellationToken ct = default);
 }
 
-/// <summary><c>Action</c> is the stored name; <see cref="IAuditViewerService"/> resolves it to its definition.</summary>
+/// <summary><c>Action</c> is the stored name; <c>IAuditViewerService</c> resolves it to its definition.</summary>
 public sealed record AuditLogEntrySnapshot(
     Guid Id,
     string Action,

@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Notifications\Humans.Notifications.csproj" />

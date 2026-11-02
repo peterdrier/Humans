@@ -25,11 +25,9 @@
     <!--
       Cantina owns cantina_dietary_profiles (its own CantinaDbContext). The roster service
       composes over IShiftService / ISettingsService / IUserService, all in their
-      owners' public contracts, and the CSV writers use Humans.Base.Csv.HumansCsv. AuditLog for
-      IAuditLogService (roster CSV export disclosure).
+      owners' public contracts, and the CSV writers use Humans.Base.Csv.HumansCsv.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />

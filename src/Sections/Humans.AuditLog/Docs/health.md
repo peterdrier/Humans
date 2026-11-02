@@ -41,10 +41,11 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 ## 3. Structure
 
-- **Contracts, one folder.** `Contracts/` (namespace `Humans.AuditLog.Contracts`) holds the
-  append path (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its
-  contributor contract, `ILegacyGoogleSyncAuditReader`) and the
-  read surface (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
+- **Contracts, two homes, one namespace** (`Humans.AuditLog.Contracts`). The append path
+  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its contributor
+  contract) is in `src/Humans.Base/AuditLog/`, so writers don't reference this section.
+  `Contracts/` keeps `ILegacyGoogleSyncAuditReader` and the read surface
+  (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
   internal on `AuditViewerService`.
 - **Write and raw reads:** `AuditLogService` (internal; implements `IAuditLogService`,
   `IAuditLogReader`, `IUserDataContributor`, `ILegacyGoogleSyncAuditReader`) over
