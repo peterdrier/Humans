@@ -139,13 +139,9 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
         string normalizedGroupEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleResources
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.TeamId == teamId
-                && EF.Functions.ILike(r.GoogleId, normalizedGroupEmail)
-                && r.ResourceType == GoogleResourceType.Group
-                && r.IsActive, ct);
+        return (await GetActiveByTeamIdAsync(teamId, ct)).FirstOrDefault(r =>
+            r.ResourceType == GoogleResourceType.Group
+            && string.Equals(r.GoogleId, normalizedGroupEmail, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<GoogleResource?> FindInactiveGroupByCandidatesAsync(
@@ -155,12 +151,14 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleResources
+        var groups = await ctx.GoogleResources
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.TeamId == teamId
-                && (r.GoogleId == googleNumericId || EF.Functions.ILike(r.GoogleId, normalizedGroupEmail))
+            .Where(r => r.TeamId == teamId
                 && r.ResourceType == GoogleResourceType.Group
-                && !r.IsActive, ct);
+                && !r.IsActive)
+            .ToListAsync(ct);
+        return groups.FirstOrDefault(r => string.Equals(r.GoogleId, googleNumericId, StringComparison.Ordinal)
+            || string.Equals(r.GoogleId, normalizedGroupEmail, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task AddAsync(GoogleResource resource, CancellationToken ct = default)

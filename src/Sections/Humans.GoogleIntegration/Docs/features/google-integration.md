@@ -126,6 +126,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - If access denied, shows clear instructions with service account email
 - Group metadata (name, ID) fetched and saved as GoogleResource
 - Duplicate links prevented (same group + team)
+- Legacy email-valued ids match literally, ignoring case; inactive recovery also matches the exact numeric id. Recovery remains scoped to the same team and Group resource type.
 
 ### US-7.7: Unlink Resource
 **As a** Board member or authorized Coordinator
