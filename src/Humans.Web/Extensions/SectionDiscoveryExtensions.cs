@@ -223,7 +223,7 @@ public static class SectionDiscoveryExtensions
             ?? [Assembly.GetExecutingAssembly().GetName().Name!];
 
         var candidates = referenced
-            .Concat(SectionModuleLoader.DiscoveredModuleNames())
+            .Concat(SectionModuleLoader.DiscoveredAssemblyNames())
             .Distinct(StringComparer.Ordinal)
             .Select(TryLoad)
             .OfType<Assembly>();

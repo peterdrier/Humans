@@ -4,37 +4,31 @@ using System.Runtime.Loader;
 namespace Humans.Web.Extensions;
 
 /// <summary>
-/// Loads the section assemblies Shell does not reference from <c>modules/</c> beside the app, into the default load
-/// context so <c>Humans.Base</c>, the contracts and every package stay one shared copy.
+/// Loads the section assemblies Shell does not reference. The build copies them, with their package dependencies,
+/// beside Shell; they are not in Shell's deps.json, so the runtime resolves them only through this loader. They load
+/// into the default context, so <c>Humans.Base</c>, the contracts and every package stay one shared copy.
 /// </summary>
 /// <remarks>
 /// Assemblies resolve by name, lazily, so load order is irrelevant: a module referencing another module resolves it
-/// through <see cref="AssemblyLoadContext.Resolving"/> on first use. Shell's own output wins over <c>modules/</c>.
+/// through <see cref="AssemblyLoadContext.Resolving"/> on first use. Anything in Shell's deps.json wins.
 /// </remarks>
 internal static class SectionModuleLoader
 {
-    private static readonly string ModulesDirectory = Path.Combine(AppContext.BaseDirectory, "modules");
-
-    private static readonly Lazy<IReadOnlyList<string>> ModuleNames = new(() =>
+    private static readonly Lazy<IReadOnlyList<string>> SectionAssemblyNames = new(() =>
     {
-        if (!Directory.Exists(ModulesDirectory))
-        {
-            return [];
-        }
-
         AssemblyLoadContext.Default.Resolving += Resolve;
 
         return
         [
-            .. Directory.EnumerateFiles(ModulesDirectory, "Humans.*.dll")
+            .. Directory.EnumerateFiles(AppContext.BaseDirectory, "Humans.*.dll")
                 .Select(Path.GetFileNameWithoutExtension)
                 .OfType<string>()
                 .Order(StringComparer.Ordinal)
         ];
     });
 
-    /// <summary>The assembly names found in <c>modules/</c>; installs the resolver on first call.</summary>
-    internal static IReadOnlyList<string> DiscoveredModuleNames() => ModuleNames.Value;
+    /// <summary>Every <c>Humans.*</c> assembly beside Shell; installs the resolver on first call.</summary>
+    internal static IReadOnlyList<string> DiscoveredAssemblyNames() => SectionAssemblyNames.Value;
 
     private static Assembly? Resolve(AssemblyLoadContext context, AssemblyName name)
     {
@@ -44,8 +38,8 @@ internal static class SectionModuleLoader
         }
 
         var directory = string.IsNullOrEmpty(name.CultureName)
-            ? ModulesDirectory
-            : Path.Combine(ModulesDirectory, name.CultureName);
+            ? AppContext.BaseDirectory
+            : Path.Combine(AppContext.BaseDirectory, name.CultureName);
         var path = Path.Combine(directory, name.Name + ".dll");
 
         return File.Exists(path) ? context.LoadFromAssemblyPath(path) : null;

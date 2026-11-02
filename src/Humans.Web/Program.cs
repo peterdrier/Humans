@@ -480,7 +480,7 @@ mvcBuilder.ConfigureApplicationPartManager(apm =>
 mvcBuilder.ConfigureApplicationPartManager(apm =>
     apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider()));
 
-// A section loaded from modules/ is outside Shell's reference graph, so MVC's default part discovery never sees its
+// A section Shell loads as a module is outside its reference graph, so MVC's default part discovery never sees its
 // controllers or compiled views.
 mvcBuilder.ConfigureApplicationPartManager(apm =>
 {
@@ -683,8 +683,8 @@ app.UseStaticFiles(new StaticFileOptions
     },
 });
 
-// A module's wwwroot is not in Shell's static web assets manifest; the build copies it to modules/_content.
-var moduleContent = Path.Combine(AppContext.BaseDirectory, "modules", "_content");
+// In a build (not a publish), a module's wwwroot is in no static web assets manifest; the build copies it to _content.
+var moduleContent = Path.Combine(AppContext.BaseDirectory, "_content");
 if (Directory.Exists(moduleContent))
 {
     app.UseStaticFiles(new StaticFileOptions

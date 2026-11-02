@@ -10,7 +10,7 @@ COPY .editorconfig Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 
 # Restore packages
-# Shell does not reference most sections (they load from modules/ at startup), so restoring Shell alone would
+# Shell does not reference most sections (they load as modules at startup), so restoring Shell alone would
 # leave them unrestored. A throwaway solution globs Shell plus every section: no per-project list to maintain.
 RUN dotnet new sln -n Build -o /tmp/restore \
     && dotnet sln /tmp/restore/Build.slnx add src/Humans.Web/Humans.Web.csproj src/Sections/*/*.csproj \

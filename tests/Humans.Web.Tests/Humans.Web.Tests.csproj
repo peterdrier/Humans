@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Humans.Web\Humans.Web.csproj" />
-    <!-- Shell loads most sections from modules/ at runtime; the tests sweep every one, so they reference all. -->
+    <!-- Shell loads most sections as modules at runtime; the tests sweep every one, so they reference all. -->
     <ProjectReference Include="..\..\src\Sections\*\*.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>

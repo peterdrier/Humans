@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <!--
-      A section loaded from modules/ brings its own package dependencies: Shell's deps.json does not list them.
+      A section Shell loads as a module brings its own package dependencies: Shell's deps.json does not list them.
       Shell's CopySectionModules copies whatever its own output does not already ship.
     -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

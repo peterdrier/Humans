@@ -72,42 +72,62 @@
   </ItemGroup>
 
   <!--
-    Section modules. Shell compiles against only the sections above; every other section is loaded at
-    startup from modules/ (SectionModuleLoader). The MSBuild call inherits this build's global properties,
-    so inside a solution build it reuses the sections already built rather than building them again.
+    Section modules. Shell compiles against only the sections above. Every other section, with the packages it
+    needs, is copied flat into the output beside Shell and loaded at startup by SectionModuleLoader: not in
+    Shell's deps.json, but where dotnet ef with startup project Humans.Web still finds it. The MSBuild call
+    inherits this build's global properties, so inside a solution build it reuses the sections already built.
   -->
   <ItemGroup>
     <SectionModuleProject Include="..\Sections\*\*.csproj" />
   </ItemGroup>
 
   <Target Name="CopySectionModules" AfterTargets="Build">
+    <PropertyGroup>
+      <_SectionModuleManifest>$(IntermediateOutputPath)section-modules.txt</_SectionModuleManifest>
+    </PropertyGroup>
     <MSBuild Projects="@(SectionModuleProject)" Targets="Build" BuildInParallel="true">
       <Output TaskParameter="TargetOutputs" ItemName="_SectionModuleAssembly" />
     </MSBuild>
+    <ReadLinesFromFile File="$(_SectionModuleManifest)" Condition="Exists('$(_SectionModuleManifest)')">
+      <Output TaskParameter="Lines" ItemName="_PreviousSectionModuleFile" />
+    </ReadLinesFromFile>
     <ItemGroup>
       <_SectionModuleDir Include="@(_SectionModuleAssembly->'%(RootDir)%(Directory)')" />
       <_SectionModuleFile Include="%(_SectionModuleDir.Identity)*.dll;%(_SectionModuleDir.Identity)Humans.*.pdb;%(_SectionModuleDir.Identity)**\*.resources.dll" />
-      <!-- Anything Shell already ships in its own output loads from there; modules/ holds only the rest. -->
-      <_SectionModuleFile Remove="@(_SectionModuleFile)" Condition="Exists('$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+      <_SectionModuleFile>
+        <Relative>%(RecursiveDir)%(Filename)%(Extension)</Relative>
+      </_SectionModuleFile>
+      <_PreviousSectionModuleFile Relative="%(Identity)" />
+      <!-- What Shell ships itself stays Shell's; a file this target copied on an earlier build is still a module's. -->
+      <_ShellOwnedFile Include="@(_SectionModuleFile)" Condition="Exists('$(OutDir)%(Relative)')" />
+      <_ShellOwnedFile Remove="@(_PreviousSectionModuleFile)" MatchOnMetadata="Relative" />
+      <_SectionModuleFile Remove="@(_ShellOwnedFile)" MatchOnMetadata="Relative" />
+      <!-- A copy-local section bin also holds shared-framework assemblies; the runtime always takes the framework's. -->
+      <_SharedFrameworkFile Include="$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Ref\$(BundledNETCoreAppPackageVersion)\ref\**\*.dll;$(NetCoreTargetingPackRoot)\Microsoft.AspNetCore.App.Ref\$(BundledNETCoreAppPackageVersion)\ref\**\*.dll" />
+      <_SharedFrameworkFile Relative="%(Filename)%(Extension)" />
+      <_SectionModuleFile Remove="@(_SharedFrameworkFile)" MatchOnMetadata="Relative" />
+      <_ShellOwnedSection Include="@(_ShellOwnedFile->'%(Filename)')" Condition="'%(Extension)' == '.dll'" Section="%(Filename)" />
       <_SectionModuleWebRoot Include="$([System.IO.Path]::GetDirectoryName('%(SectionModuleProject.FullPath)'))\wwwroot\**\*">
         <Section>%(SectionModuleProject.Filename)</Section>
       </_SectionModuleWebRoot>
-      <_SectionModuleWebRoot Remove="@(_SectionModuleWebRoot)" Condition="Exists('$(OutDir)%(Section).dll')" />
+      <_SectionModuleWebRoot Remove="@(_ShellOwnedSection)" MatchOnMetadata="Section" />
     </ItemGroup>
     <Copy SourceFiles="@(_SectionModuleFile)"
-          DestinationFiles="@(_SectionModuleFile->'$(OutDir)modules\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(_SectionModuleFile->'$(OutDir)%(Relative)')"
           SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_SectionModuleWebRoot)"
-          DestinationFiles="@(_SectionModuleWebRoot->'$(OutDir)modules\_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
+          DestinationFiles="@(_SectionModuleWebRoot->'$(OutDir)_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
+    <WriteLinesToFile File="$(_SectionModuleManifest)" Lines="@(_SectionModuleFile->'%(Relative)')" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
 
-  <Target Name="PublishSectionModules" AfterTargets="Publish">
-    <ItemGroup>
-      <_PublishedModuleFile Include="$(OutDir)modules\**\*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_PublishedModuleFile)"
-          DestinationFiles="@(_PublishedModuleFile->'$(PublishDir)modules\%(RecursiveDir)%(Filename)%(Extension)')"
+  <!-- In publish, a module's wwwroot lands where a referenced section's would: wwwroot/_content/<Section>. -->
+  <Target Name="PublishSectionModules" AfterTargets="Publish" DependsOnTargets="CopySectionModules">
+    <Copy SourceFiles="@(_SectionModuleFile)"
+          DestinationFiles="@(_SectionModuleFile->'$(PublishDir)%(Relative)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_SectionModuleWebRoot)"
+          DestinationFiles="@(_SectionModuleWebRoot->'$(PublishDir)wwwroot\_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
