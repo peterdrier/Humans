@@ -41,6 +41,7 @@ internal sealed class SurveyReminderSender(
         var surveys = new Dictionary<Guid, (LocalizedText Title, string DefaultCulture, bool Answerable)>();
 
         var reminded = 0;
+        var failures = new List<Exception>();
         foreach (var inv in due)
         {
             // An invitation held by a since-merged id belongs to the survivor's past: the
@@ -76,7 +77,7 @@ internal sealed class SurveyReminderSender(
             if (!meta.Answerable) continue;
 
             // Per-invitee guard (mirrors SendInvitesAsync): preparation or transport failure must not abort the
-            // sweep. ReminderSentAt stays unstamped on failure so the next daily run retries.
+            // sweep. ReminderSentAt stays unstamped on failure so the failed run can retry.
             try
             {
                 var preferredCulture = users.TryGetValue(inv.UserId, out var user) ? user.PreferredLanguage : null;
@@ -86,7 +87,8 @@ internal sealed class SurveyReminderSender(
                 var name = user?.BurnerName ?? string.Empty;
                 var token = tokenProvider.Create(inv.Id);
                 var title = meta.Title.Resolve(culture, meta.DefaultCulture);
-                var msg = emailMessages.SurveyReminder(inv.UserId, email, name, title, token, culture);
+                var msg = emailMessages.SurveyReminder(inv.UserId, email, name, title, token, culture)
+                    with { DeliveryId = inv.Id };
 
                 await emailService.SendAsync(msg, ct);
                 await repo.SetReminderSentAsync(inv.Id, now, ct);
@@ -98,15 +100,20 @@ internal sealed class SurveyReminderSender(
             }
             catch (Exception ex)
             {
+                failures.Add(ex);
                 logger.LogError(ex,
                     "Failed to enqueue survey reminder email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
                     inv.UserId, inv.Id, inv.SurveyId);
             }
         }
 
+        var summary = $"Sent {reminded} survey reminder(s)";
+        if (failures.Count > 0) summary += $"; {failures.Count} failed";
         await auditLog.LogAsync(SurveysAuditActions.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
-            $"Sent {reminded} survey reminder(s)", jobName: AuditEntityTypes.ReminderJob);
+            summary, jobName: AuditEntityTypes.ReminderJob);
 
+        if (failures.Count > 0)
+            throw new AggregateException("Failed to complete one or more survey reminders.", failures);
         return reminded;
     }
 }

@@ -2121,9 +2121,10 @@ public class SurveyServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task SendDueRemindersAsync_continues_sweep_after_one_preparation_or_send_failure(bool preparationFails)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task SendDueRemindersAsync_continues_then_fails_and_retries_with_stable_delivery_ids(int failureStage)
     {
         var now = _clock.GetCurrentInstant();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
@@ -2155,24 +2156,42 @@ public class SurveyServiceTests
             });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-        if (preparationFails)
-            _tokenProvider.Create(invA.Id).Returns(_ =>
-                throw new System.Security.Cryptography.CryptographicException("key unavailable"));
-        else
+        var failure = new InvalidOperationException("Reminder handoff failed");
+        var recovered = false;
+        if (failureStage == 0)
+            _tokenProvider.Create(invA.Id).Returns(_ => recovered ? "recovered-token" : throw failure);
+        else if (failureStage == 1)
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
-                .Returns(
-                    _ => Task.FromException(new InvalidOperationException("smtp down")),
-                    _ => Task.CompletedTask);
+                .Returns(_ => Task.FromException(failure), _ => Task.CompletedTask);
+        else
+            _repo.SetReminderSentAsync(invA.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromException(failure), _ => Task.CompletedTask);
 
-        var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
+        var action = () => CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 
-        count.Should().Be(1);
-        await _emailService.Received(preparationFails ? 1 : 2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        var error = await action.Should().ThrowAsync<AggregateException>();
+        error.Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+        await _emailService.Received(failureStage == 0 ? 1 : 2)
+            .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         // A stays unstamped (retried next run); B is stamped.
-        await _repo.DidNotReceive().SetReminderSentAsync(invA.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        if (failureStage != 2)
+            await _repo.DidNotReceive().SetReminderSentAsync(invA.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SetReminderSentAsync(invB.Id, now, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            SurveysAuditActions.SurveyReminderSent, "Survey", Guid.Empty, Arg.Any<string>(), "SurveyService");
+            SurveysAuditActions.SurveyReminderSent, "Survey", Guid.Empty,
+            Arg.Is<string>(description => description.Contains("1 failed")), "SurveyService");
+
+        recovered = true;
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyInvitation> { invA });
+
+        (await action()).Should().Be(1);
+        await _emailService.Received(failureStage == 0 ? 1 : 2).SendAsync(
+            Arg.Is<EmailMessage>(message => message.RecipientEmail == "a@example.org" && message.DeliveryId == invA.Id),
+            Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(message => message.RecipientEmail == "b@example.org" && message.DeliveryId == invB.Id),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
