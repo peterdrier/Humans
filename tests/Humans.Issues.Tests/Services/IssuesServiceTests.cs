@@ -2661,6 +2661,66 @@ public sealed class IssuesServiceTests
         stored.AssigneeUserId.Should().Be(survivorId);
     }
 
+    [HumansTheory]
+    [InlineData("Submit")]
+    [InlineData("Comment")]
+    [InlineData("Status")]
+    [InlineData("Assigned")]
+    public async Task IssueNotices_ExcludeTheResolvedActorAcrossMergeAliases(string operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (archivedId, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var survivor = SeedUser(displayName: "Survivor");
+        StubResolution(archivedId, survivor.Id);
+        _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([survivor.Id]));
+        if (operation is not "Assigned")
+        {
+            var issue = (await _repository.GetByIdAsync(issueId, ct))!;
+            issue.AssigneeUserId = survivor.Id;
+            await _repository.SaveTrackedIssueAsync(issue, ct);
+        }
+
+        switch (operation)
+        {
+            case "Submit":
+                (await _service.SubmitIssueAsync(archivedId, IssueCategory.Bug, "New issue", "Details",
+                    null, null, null, null, null, ct: ct)).Issue.Should().NotBeNull();
+                break;
+            case "Comment":
+                (await _service.PostCommentAsync(issueId, Admin, archivedId, "An update", ct: ct)).Comment.Should().NotBeNull();
+                break;
+            case "Status":
+                (await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.InProgress, archivedId, ct)).Succeeded.Should().BeTrue();
+                break;
+            default:
+                (await _service.UpdateAssigneeAsync(issueId, Admin, survivor.Id, archivedId, ct)).Succeeded.Should().BeTrue();
+                break;
+        }
+
+        _notificationService.ReceivedCalls().Should().BeEmpty("the actor and recipient resolve to the same human");
+    }
+
+    [HumansFact]
+    public async Task IssueSubmittedNotice_ResolvesAndDeduplicatesQueueHandlersBeforeLanguageGrouping()
+    {
+        var reporter = SeedUser(displayName: "Reporter");
+        var archived = SeedUser(displayName: "Archived handler");
+        var survivor = SeedUser(displayName: "Surviving handler");
+        survivor.PreferredLanguage = "es";
+        StubResolution(archived.Id, survivor.Id);
+        _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([archived.Id, survivor.Id]));
+
+        var result = await _service.SubmitIssueAsync(reporter.Id, IssueCategory.Bug, "Title", "Details",
+            null, null, null, null, null, ct: TestContext.Current.CancellationToken);
+
+        var notice = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(survivor.Id);
+        notice[3].Should().Be("Se presentó un asunto nuevo: Title");
+        notice[9].Should().Be(result.Issue!.Id.ToString());
+    }
+
     /// <summary>Makes the registry-backed user service resolve <paramref name="archived"/> forward.</summary>
     private void StubResolution(Guid archived, Guid survivor)
     {
