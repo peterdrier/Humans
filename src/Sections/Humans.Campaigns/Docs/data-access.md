@@ -17,7 +17,7 @@ Repository: `ICampaignRepository`.
 | CampaignCodes | R/W |
 | CampaignGrants | R/W |
 
-Cross-section calls via `ITeamService`, `IUserEmailService`,
+Cross-section calls via `ITeamService`,
 `IUserService`, `INotificationEmitter`, `IAuditLogService`,
 `IEmailService`, the section's own `CampaignsEmails` builder,
 `ITicketDiscountCodes` (Tickets Contracts leaf — vendor discount code
