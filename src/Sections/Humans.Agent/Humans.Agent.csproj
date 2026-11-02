@@ -42,7 +42,6 @@
          Issues' own IssueCategory. That enum sits in Issues' Contracts/ folder precisely
          because another section names it. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
   </ItemGroup>
 
   <ItemGroup>

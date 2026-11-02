@@ -50,10 +50,10 @@ contributor names its own portions with constants on itself; there is no central
 
 The shapes imply these and no more:
 
-- **A `Contracts/` folder** holding the fan-out seam (`IUserDataContributor`), the
-  vocabulary (`UserDataSlice`, `GdprExport`), the orchestrator's contract (`IGdprService`)
-  and the one file format (`GdprExportSerializer`). Every section owning user-scoped tables
-  references `Humans.Gdpr` to implement the seam.
+- **The fan-out seam in Base** (`IUserDataContributor`, `UserDataSlice` in `src/Humans.Base/Gdpr/`),
+  so every section owning user-scoped tables implements it without referencing `Humans.Gdpr`.
+- **A `Contracts/` folder** holding the export vocabulary (`GdprExport`), the orchestrator's
+  contract (`IGdprService`) and the one file format (`GdprExportSerializer`).
 - **One internal orchestrator** — the two fan-out loops plus the one account read the
   envelope needs.
 - **Internal controllers that translate only** — the member pair (download, request

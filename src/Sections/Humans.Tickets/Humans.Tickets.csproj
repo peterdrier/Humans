@@ -43,12 +43,10 @@
                     the code-tracking dashboard; CampaignService now asks *this* section
                     for codes through Humans.Tickets.Contracts.ITicketDiscountCodes.
         Email     — the transfer wizard's three notification templates (primitives only).
-        Gdpr      — TicketQueryService is an Article 15 contributor.
     -->
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!-- IConsentWrite: the gate-terminal seeder clears the account's consent check. -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />

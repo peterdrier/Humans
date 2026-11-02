@@ -85,6 +85,10 @@
     again (Humans.Infrastructure.Configuration), so no call site moved. Everything else went to
     Humans.Web — including InfrastructureServiceCollectionExtensions, whose two anchor rules
     were self-retiring and went with the assembly.
+
+    Gdpr/ holds the GDPR fan-out seam (IUserDataContributor, UserDataSlice), moved from
+    Humans.Gdpr/Contracts so every data-owning section implements it without referencing the
+    Gdpr section. Namespace kept (Humans.Gdpr.Contracts); Gdpr still owns the types.
   -->
 
   <!--
