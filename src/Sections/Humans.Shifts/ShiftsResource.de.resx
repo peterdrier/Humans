@@ -1277,4 +1277,20 @@
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Diese Anmeldung ist nicht mehr aktiv und kann nicht mehr abgesagt werden.</value></data>
   <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Medizinische Angaben anzeigen (jeder Aufruf wird im Audit-Log festgehalten)</value></data>
   <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht geladen werden.</value></data>
+  <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Unbesetzte Schichten: {0} Tag {1}</value></data>
+  <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Nur {0}/{1} humans bestätigt.</value></data>
+  <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Ersatz finden →</value></data>
+  <data name="Shifts_Notification_SignupChangeTitle" xml:space="preserve"><value>Geänderte Schichtanmeldung: {0}</value></data>
+  <data name="Shifts_Notification_View" xml:space="preserve"><value>Anzeigen →</value></data>
+  <data name="Shifts_Notification_ChangeConfirmed" xml:space="preserve"><value>Neue bestätigte Anmeldung für '{0}' an Tag {1}.</value></data>
+  <data name="Shifts_Notification_ChangeApproved" xml:space="preserve"><value>Anmeldung für '{0}' an Tag {1} genehmigt.</value></data>
+  <data name="Shifts_Notification_ChangeRefused" xml:space="preserve"><value>Anmeldung für '{0}' an Tag {1} abgelehnt.</value></data>
+  <data name="Shifts_Notification_ChangeBailed" xml:space="preserve"><value>Ein human hat die Anmeldung für '{0}' an Tag {1} abgesagt.</value></data>
+  <data name="Shifts_Notification_ChangeAssigned" xml:space="preserve"><value>Für '{0}' an Tag {1} eingeteilt.</value></data>
+  <data name="Shifts_Notification_ChangeRemoved" xml:space="preserve"><value>Aus '{0}' an Tag {1} entfernt.</value></data>
+  <data name="Shifts_Notification_ChangeAssignedRange" xml:space="preserve"><value>Für '{0}' eingeteilt ({1} Schichten).</value></data>
+  <data name="Shifts_Notification_ChangeConfirmedRange" xml:space="preserve"><value>Anmeldung für mehrere Schichten von '{0}' ({1} Schichten, bestätigt).</value></data>
+  <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Mehrere Schichten für '{0}' genehmigt ({1} Schichten).</value></data>
+  <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Mehrere Schichten für '{0}' abgelehnt ({1} Schichten).</value></data>
+  <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Mehrere Schichten von '{0}' abgesagt ({1} Schichten).</value></data>
 </root>

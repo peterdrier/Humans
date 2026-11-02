@@ -55,7 +55,7 @@ internal sealed class ShiftSignupNotices(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to resolve assignment notice language for user {UserId}; using English", userId);
+            logger.LogError(ex, "Failed to resolve shift notice language for user {UserId}; using English", userId);
             return CultureInfo.GetCultureInfo("en");
         }
     }
@@ -64,33 +64,15 @@ internal sealed class ShiftSignupNotices(
     {
         try
         {
-            if (shift.MinVolunteers <= 0)
-                return;
-
+            if (shift.MinVolunteers <= 0) return;
             var confirmedCount = shift.ShiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
-            if (confirmedCount >= shift.MinVolunteers)
-                return;
+            if (confirmedCount >= shift.MinVolunteers) return;
 
-            var teamId = shift.Rota.TeamId;
-            var team = await TeamService.GetTeamAsync(teamId);
-            var coordinatorIds = team?.Members
-                .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(m => m.UserId)
-                .ToList() ?? [];
-
-            if (coordinatorIds.Count == 0)
-                return;
-
-            var title = $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}";
-            await notificationService.SendAsync(
-                ShiftsNotificationSources.ShiftCoverageGap,
-                NotificationClass.Actionable,
-                NotificationPriority.High,
-                title,
-                coordinatorIds,
-                body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
-                actionUrl: $"/Shifts?departmentId={teamId}",
-                actionLabel: "Find cover →");
+            await SendCoordinatorNoticeAsync(shift.Rota.TeamId, ShiftsNotificationSources.ShiftCoverageGap,
+                NotificationClass.Actionable, NotificationPriority.High, culture => (
+                    string.Format(culture, NoticeResources.GetString("Shifts_Notification_CoverageGapTitle", culture)!, shift.Rota.Name, shift.DayOffset),
+                    string.Format(culture, NoticeResources.GetString("Shifts_Notification_CoverageGapBody", culture)!, confirmedCount, shift.MinVolunteers),
+                    NoticeResources.GetString("Shifts_Notification_FindCover", culture)!));
         }
         catch (Exception ex)
         {
@@ -98,47 +80,69 @@ internal sealed class ShiftSignupNotices(
         }
     }
 
-    public Task DispatchSignupChangeNotificationAsync(ShiftSignup signup, Shift shift, string changeDescription) =>
-        DispatchSignupChangeNotificationAsync(signup, shift, shift.Rota, changeDescription);
+    public Task DispatchSignupChangeNotificationAsync(
+        ShiftSignup signup, Shift shift, string resourceKey, params object[] args) =>
+        DispatchSignupChangeNotificationAsync(signup, shift, shift.Rota, resourceKey, args);
 
-    public async Task DispatchSignupChangeNotificationAsync(ShiftSignup signup, Shift shift, Rota rota, string changeDescription)
+    public async Task DispatchSignupChangeNotificationAsync(
+        ShiftSignup signup, Shift shift, Rota rota, string resourceKey, params object[] args)
     {
         try
         {
-            var teamId = rota.TeamId;
-            var rotaName = rota.Name;
-
             // From Settings: the row's own calendar columns are dead.
             var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
             if (calendar is null) return;
-            string day;
-            using (new CultureScope("en"))
-                day = calendar.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth();
-            var enrichedDescription = $"{changeDescription} ({rotaName}, {day})";
 
-            var team = await TeamService.GetTeamAsync(teamId);
-            var coordinatorIds = team?.Members
-                .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(m => m.UserId)
-                .ToList() ?? [];
-
-            if (coordinatorIds.Count == 0)
-                return;
-
-            var title = $"Shift signup change: {rotaName}";
-            await notificationService.SendAsync(
-                ShiftsNotificationSources.ShiftSignupChange,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                title,
-                coordinatorIds,
-                body: enrichedDescription,
-                actionUrl: $"/Shifts?departmentId={teamId}",
-                actionLabel: "View →");
+            await SendCoordinatorNoticeAsync(rota.TeamId, ShiftsNotificationSources.ShiftSignupChange,
+                NotificationClass.Informational, NotificationPriority.Normal, culture =>
+                {
+                    using var recipientCulture = new CultureScope(culture.Name);
+                    var day = calendar.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth();
+                    var description = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
+                    return (
+                        string.Format(culture, NoticeResources.GetString("Shifts_Notification_SignupChangeTitle", culture)!, rota.Name),
+                        $"{description} ({rota.Name}, {day})",
+                        NoticeResources.GetString("Shifts_Notification_View", culture)!);
+                });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to dispatch ShiftSignupChange notification for signup {SignupId}", signup.Id);
+        }
+    }
+
+    private async Task SendCoordinatorNoticeAsync(
+        Guid teamId, NotificationSourceDefinition source, NotificationClass notificationClass,
+        NotificationPriority priority, Func<CultureInfo, (string Title, string Body, string ActionLabel)> createCopy)
+    {
+        var team = await TeamService.GetTeamAsync(teamId);
+        var coordinatorIds = team?.Members
+            .Where(m => m.Role == TeamMemberRole.Coordinator)
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToList() ?? [];
+        var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
+        foreach (var coordinatorId in coordinatorIds)
+        {
+            var culture = await GetRecipientCultureAsync(coordinatorId);
+            if (!recipientsByCulture.TryGetValue(culture, out var recipients))
+                recipientsByCulture[culture] = recipients = [];
+            recipients.Add(coordinatorId);
+        }
+
+        foreach (var (culture, recipients) in recipientsByCulture)
+        {
+            try
+            {
+                var (title, body, actionLabel) = createCopy(culture);
+                await notificationService.SendAsync(source, notificationClass, priority, title, recipients,
+                    body: body, actionUrl: $"/Shifts?departmentId={teamId}", actionLabel: actionLabel);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispatch {Source} notification for team {TeamId} in {Culture}",
+                    source, teamId, culture.Name);
+            }
         }
     }
 }

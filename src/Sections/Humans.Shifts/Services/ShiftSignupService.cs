@@ -136,7 +136,7 @@ internal sealed class ShiftSignupService(
         if (autoConfirm)
         {
             await notices.DispatchSignupChangeNotificationAsync(signup, shift,
-                $"New confirmed signup for '{shift.Rota.Name}' on day {shift.DayOffset}.");
+                "Shifts_Notification_ChangeConfirmed", shift.Rota.Name, shift.DayOffset);
         }
 
         return SignupResult.Ok(signup.Id, warning);
@@ -190,7 +190,7 @@ internal sealed class ShiftSignupService(
             signup.UserId, nameof(User));
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
-            $"Signup approved for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
+            "Shifts_Notification_ChangeApproved", signup.Shift.Rota.Name, signup.Shift.DayOffset);
 
         return SignupResult.Ok(signup.Id, warning);
     }
@@ -214,7 +214,7 @@ internal sealed class ShiftSignupService(
             signup.UserId, nameof(User));
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
-            $"Signup refused for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
+            "Shifts_Notification_ChangeRefused", signup.Shift.Rota.Name, signup.Shift.DayOffset);
 
         return SignupResult.Ok(signup.Id);
     }
@@ -264,7 +264,7 @@ internal sealed class ShiftSignupService(
             signup.UserId, nameof(User));
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
-            $"Volunteer bailed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
+            "Shifts_Notification_ChangeBailed", signup.Shift.Rota.Name, signup.Shift.DayOffset);
 
         if (wasConfirmed)
             await notices.CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
@@ -325,7 +325,7 @@ internal sealed class ShiftSignupService(
             userId, nameof(User));
 
         await notices.DispatchSignupChangeNotificationAsync(signup, shift,
-            $"Voluntold for '{shift.Rota.Name}' on day {shift.DayOffset}.");
+            "Shifts_Notification_ChangeAssigned", shift.Rota.Name, shift.DayOffset);
 
         if (shift.GetAbsoluteEnd(calendar) > now)
         {
@@ -435,7 +435,7 @@ internal sealed class ShiftSignupService(
         }
 
         await notices.DispatchSignupChangeNotificationAsync(firstSignup!, assignable[0], rota,
-            $"Voluntold range for '{rota.Name}' ({assignable.Count} shifts).");
+            "Shifts_Notification_ChangeAssignedRange", rota.Name, assignable.Count);
 
         if (assignable.Any(s => s.GetAbsoluteEnd(calendar) > now))
         {
@@ -498,7 +498,7 @@ internal sealed class ShiftSignupService(
             signup.UserId, nameof(User));
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
-            $"Removed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
+            "Shifts_Notification_ChangeRemoved", signup.Shift.Rota.Name, signup.Shift.DayOffset);
         await notices.CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
 
         return SignupResult.Ok(signup.Id);
@@ -600,7 +600,7 @@ internal sealed class ShiftSignupService(
         if (autoConfirm)
         {
             await notices.DispatchSignupChangeNotificationAsync(createdSignups.LastSignup, availableShifts[^1], rota,
-                $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
+                "Shifts_Notification_ChangeConfirmedRange", rota.Name, shiftsInRange.Count);
         }
 
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
@@ -820,7 +820,7 @@ internal sealed class ShiftSignupService(
         }
 
         await notices.DispatchSignupChangeNotificationAsync(approved[0], approved[0].Shift,
-            $"Range approved ({approved.Count} shifts) for '{approved[0].Shift.Rota.Name}'.");
+            "Shifts_Notification_ChangeApprovedRange", approved[0].Shift.Rota.Name, approved.Count);
 
         var warning = warnings.Count > 0 ? string.Join(" ", warnings.Distinct(StringComparer.Ordinal)) : null;
         return SignupResult.Ok(approved[0].Id, warning);
@@ -855,7 +855,7 @@ internal sealed class ShiftSignupService(
         }
 
         await notices.DispatchSignupChangeNotificationAsync(signups[0], signups[0].Shift,
-            $"Range refused ({signups.Count} shifts) for '{signups[0].Shift.Rota.Name}'.");
+            "Shifts_Notification_ChangeRefusedRange", signups[0].Shift.Rota.Name, signups.Count);
 
         return SignupResult.Ok(signups[0].Id);
     }
@@ -905,7 +905,7 @@ internal sealed class ShiftSignupService(
         }
 
         await notices.DispatchSignupChangeNotificationAsync(firstSignup, firstSignup.Shift,
-            $"Range bail from '{firstSignup.Shift.Rota.Name}' ({signups.Count} shifts).");
+            "Shifts_Notification_ChangeBailedRange", firstSignup.Shift.Rota.Name, signups.Count);
 
         foreach (var signup in confirmedSignups)
         {

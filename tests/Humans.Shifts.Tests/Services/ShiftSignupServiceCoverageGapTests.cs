@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
@@ -27,6 +28,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     private readonly INotificationEmitter _notificationService;
     private readonly ITeamService _teamService;
     private readonly ShiftSignupService _service;
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     public ShiftSignupServiceCoverageGapTests()
         : base(TestNow)
@@ -66,8 +68,96 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,
-            Substitute.For<IUserService>(),
+            _users,
             Substitute.For<IStringLocalizer<ShiftsResource>>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en", "Coverage gap: Rota day 1", "Only 1/2 humans confirmed.", "Find cover →", "Shift signup change: Rota", "Removed from 'Rota' on day 1.", "View →")]
+    [Xunit.InlineData("es", "Falta de cobertura: Rota día 1", "Solo 1/2 humans confirmados.", "Buscar cobertura →", "Cambio de inscripción a un turno: Rota", "Inscripción eliminada de 'Rota' el día 1.", "Ver →")]
+    [Xunit.InlineData("de", "Unbesetzte Schichten: Rota Tag 1", "Nur 1/2 humans bestätigt.", "Ersatz finden →", "Geänderte Schichtanmeldung: Rota", "Aus 'Rota' an Tag 1 entfernt.", "Anzeigen →")]
+    [Xunit.InlineData("it", "Copertura insufficiente: Rota giorno 1", "Solo 1/2 humans confermati.", "Trova copertura →", "Modifica iscrizione al turno: Rota", "Iscrizione rimossa da 'Rota' il giorno 1.", "Visualizza →")]
+    [Xunit.InlineData("fr", "Manque de couverture : Rota jour 1", "Seulement 1/2 humans confirmés.", "Trouver un remplacement →", "Modification d’inscription au créneau : Rota", "Inscription supprimée de 'Rota' le jour 1.", "Voir →")]
+    [Xunit.InlineData("ca", "Falta de cobertura: Rota dia 1", "Només 1/2 humans confirmats.", "Cerca cobertura →", "Canvi d’inscripció a un torn: Rota", "Inscripció eliminada de 'Rota' el dia 1.", "Mostra →")]
+    public async Task CoordinatorNotices_UseRecipientLanguageIncludingCalendarDate(
+        string language, string gapTitle, string gapBody, string gapAction,
+        string changeTitle, string changeBody, string changeAction)
+    {
+        using var actorCulture = new CultureScope("en");
+        var (calendar, rota, _, userA, _) = await SeedScenarioAsync(2, 5);
+        rota.Name = "Rota";
+        var coordinatorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(coordinatorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubHelpers.MakeUserInfo(coordinatorId) with { PreferredLanguage = language });
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var signup = await ShiftsDb.ShiftSignups.FirstAsync(s => s.UserId == userA, Xunit.TestContext.Current.CancellationToken);
+        signup.Shift.DayOffset.Should().Be(1);
+
+        var result = await _service.RemoveSignupAsync(signup.Id, Guid.NewGuid(), reason: null);
+
+        result.Success.Should().BeTrue();
+        var notices = _notificationService.ReceivedCalls().Select(call => call.GetArguments()).ToList();
+        notices.Should().HaveCount(2);
+        var gap = notices.Single(args => (NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftCoverageGap);
+        gap[3].Should().Be(gapTitle);
+        gap[5].Should().Be(gapBody);
+        gap[7].Should().Be(gapAction);
+        var change = notices.Single(args => (NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftSignupChange);
+        change[3].Should().Be(changeTitle);
+        using var recipientCulture = new CultureScope(language);
+        change[5].Should().Be($"{changeBody} (Rota, {calendar.GateOpeningDate.PlusDays(1).ToWeekdayDayMonth()})");
+        change[7].Should().Be(changeAction);
+        foreach (var notice in notices)
+        {
+            ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(coordinatorId);
+            notice[6].Should().Be($"/Shifts?departmentId={rota.TeamId}");
+        }
+    }
+
+    [HumansFact]
+    public async Task CoordinatorNotices_GroupLanguagesAndContinueAfterDispatchFailure()
+    {
+        var (_, rota, _, userA, _) = await SeedScenarioAsync(2, 5);
+        rota.Name = "Rota";
+        var unavailable = Guid.NewGuid();
+        var spanish = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var team = BuildTeamInfoWithCoordinator(rota.TeamId, unavailable);
+        foreach (var id in spanish)
+        {
+            team.Members.AddRange(BuildTeamInfoWithCoordinator(rota.TeamId, id).Members);
+            _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+                .Returns(UserInfoStubHelpers.MakeUserInfo(id) with { PreferredLanguage = "es" });
+        }
+        _users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new IOException("Language lookup failed"))));
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>()).Returns(team);
+        _notificationService.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+                Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(unavailable)), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new IOException("One language dispatch failed")));
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var signup = await ShiftsDb.ShiftSignups.FirstAsync(s => s.UserId == userA, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.RemoveSignupAsync(signup.Id, Guid.NewGuid(), reason: null);
+
+        result.Success.Should().BeTrue();
+        var notices = _notificationService.ReceivedCalls().Select(call => call.GetArguments()).ToList();
+        notices.Should().HaveCount(4);
+        foreach (var source in new[] { ShiftsNotificationSources.ShiftCoverageGap, ShiftsNotificationSources.ShiftSignupChange })
+        {
+            var groups = notices.Where(args => (NotificationSourceDefinition)args[0]! == source).ToList();
+            groups.Should().HaveCount(2);
+            var fallback = groups.Single(args => ((IReadOnlyList<Guid>)args[4]!).Contains(unavailable));
+            fallback[3].Should().Be(source == ShiftsNotificationSources.ShiftCoverageGap
+                ? "Coverage gap: Rota day 1" : "Shift signup change: Rota");
+            var translated = groups.Single(args => ((IReadOnlyList<Guid>)args[4]!).Contains(spanish[0]));
+            ((IReadOnlyList<Guid>)translated[4]!).Should().BeEquivalentTo(spanish);
+            translated[3].Should().Be(source == ShiftsNotificationSources.ShiftCoverageGap
+                ? "Falta de cobertura: Rota día 1" : "Cambio de inscripción a un turno: Rota");
+        }
     }
 
     [HumansFact]
@@ -214,7 +304,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
                 if ((NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftCoverageGap)
                 {
                     args[3].Should().Be($"Coverage gap: {rota.Name} day {signupA.Shift.DayOffset}");
-                    args[5].Should().Be("Only 1/2 volunteers confirmed.");
+                    args[5].Should().Be("Only 1/2 humans confirmed.");
                 }
                 else
                 {
