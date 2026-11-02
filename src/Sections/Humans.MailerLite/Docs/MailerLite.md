@@ -58,6 +58,8 @@ All routes are `AdminOnly`.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
+- Audience debug expected/to-add rows use canonical `UserInfo.Email`, including verified-secondary fallback when no verified primary exists, and exclude empty addresses like the actual sync.
+
 - Audience debug tables normalize the requested page and allowed page size once before slicing. Rows and pager state use the same available page, including the last page for oversized requests and page one for empty tables.
 
 - `IMailerLiteService` exposes reads + five narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
