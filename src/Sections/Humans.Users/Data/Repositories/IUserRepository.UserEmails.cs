@@ -57,10 +57,6 @@ internal partial interface IUserRepository
     Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
         IReadOnlyCollection<string> emails, CancellationToken ct = default);
 
-    /// <summary>userId → verified notification-target email; with several, one is picked arbitrarily.</summary>
-    Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
-        CancellationToken ct = default);
-
     Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,

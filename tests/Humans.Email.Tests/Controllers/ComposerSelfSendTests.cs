@@ -24,7 +24,7 @@ public sealed class ComposerSelfSendTests
 {
     private static readonly Guid UserId = Guid.NewGuid();
 
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ILogger<ComposerSelfSendService> _logger = Substitute.For<ILogger<ComposerSelfSendService>>();
@@ -35,7 +35,7 @@ public sealed class ComposerSelfSendTests
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("s", "[Test] {0}"));
         localizer["Email_ComposerSelfTest_DefaultSubject"].Returns(new LocalizedString("d", "[Test] Preview"));
         return new ComposerSelfSendService(
-            _userEmails, Substitute.For<IUserService>(), _email, _audit, localizer,
+            _users, _email, _audit, localizer,
             _logger);
     }
 
@@ -51,10 +51,9 @@ public sealed class ComposerSelfSendTests
         return controller;
     }
 
-    private void GivenAddress(string address) =>
-        _userEmails.GetNotificationTargetEmailsAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == UserId), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [UserId] = address });
+    private void GivenAddress(string? address) =>
+        _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = UserId, Email = address }, [], [], [], null, []));
 
     [HumansFact]
     public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits()
@@ -142,8 +141,7 @@ public sealed class ComposerSelfSendTests
     [HumansFact]
     public async Task SendMarkdownToSelf_WithNoAddress_Is422AndSendsNothing()
     {
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+        GivenAddress(null);
 
         var result = await BuildController(signedIn: true)
             .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);

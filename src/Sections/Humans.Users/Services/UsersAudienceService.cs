@@ -47,7 +47,6 @@ internal sealed class UsersAudienceService(
         var years = matchedOrders
             .Select(o => o.PurchasedAt.InUtc().Year)
             .Distinct()
-            .OrderByDescending(y => y)
             .ToList();
 
         return new AudienceSegmentation(

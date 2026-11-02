@@ -546,4 +546,11 @@
     <value>Deine Nachricht wurde an {0} gesendet.</value>
   </data>
   <data name="Teams_SendMessage_OptedOut" xml:space="preserve"><value>Diese Person hat den Empfang von Nachrichten abgelehnt.</value></data>
+  <data name="Teams_Notification_JoinRequestSubmitted" xml:space="preserve"><value>Neue Beitrittsanfrage für {0}</value></data>
+  <data name="Teams_Notification_MemberJoined" xml:space="preserve"><value>{0} ist dem Team {1} beigetreten</value></data>
+  <data name="Teams_Notification_JoinRequestSubmittedBody" xml:space="preserve"><value>{0} möchte {1} beitreten.</value></data>
+  <data name="Teams_Notification_MemberJoinedBody" xml:space="preserve"><value>{0} ist dem Team {1} beigetreten.</value></data>
+  <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Anfrage prüfen</value></data>
+  <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>Mitglieder anzeigen</value></data>
+  <data name="Teams_Notification_Someone" xml:space="preserve"><value>Jemand</value></data>
 </root>

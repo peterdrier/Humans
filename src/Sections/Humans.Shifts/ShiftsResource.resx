@@ -487,4 +487,20 @@
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>This signup is no longer active. You cannot bail from it.</value></data>
   <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
   <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
+  <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Coverage gap: {0} day {1}</value></data>
+  <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Only {0}/{1} humans confirmed.</value></data>
+  <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Find cover →</value></data>
+  <data name="Shifts_Notification_SignupChangeTitle" xml:space="preserve"><value>Shift signup change: {0}</value></data>
+  <data name="Shifts_Notification_View" xml:space="preserve"><value>View →</value></data>
+  <data name="Shifts_Notification_ChangeConfirmed" xml:space="preserve"><value>New confirmed signup for '{0}' on day {1}.</value></data>
+  <data name="Shifts_Notification_ChangeApproved" xml:space="preserve"><value>Signup approved for '{0}' on day {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRefused" xml:space="preserve"><value>Signup refused for '{0}' on day {1}.</value></data>
+  <data name="Shifts_Notification_ChangeBailed" xml:space="preserve"><value>Human bailed from '{0}' on day {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssigned" xml:space="preserve"><value>Voluntold for '{0}' on day {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRemoved" xml:space="preserve"><value>Removed from '{0}' on day {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssignedRange" xml:space="preserve"><value>Voluntold range for '{0}' ({1} shifts).</value></data>
+  <data name="Shifts_Notification_ChangeConfirmedRange" xml:space="preserve"><value>Range signup for '{0}' ({1} shifts, confirmed).</value></data>
+  <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Range approved ({1} shifts) for '{0}'.</value></data>
+  <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Range refused ({1} shifts) for '{0}'.</value></data>
+  <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Range bail from '{0}' ({1} shifts).</value></data>
 </root>

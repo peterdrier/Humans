@@ -1,5 +1,6 @@
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
+using Humans.MailerLite.Tests.Infrastructure;
 using NSubstitute;
 using Xunit;
 
@@ -16,18 +17,83 @@ public class MailerLiteGdprContributorTests
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     private readonly IMailerLiteService _mailerLite = Substitute.For<IMailerLiteService>();
-    private readonly IUserEmailService _emails = Substitute.For<IUserEmailService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly Guid _userId = Guid.NewGuid();
 
     private void Emails(string? primary, params string[] verified)
     {
-        _emails.GetPrimaryEmailAsync(_userId, Arg.Any<CancellationToken>()).Returns(primary);
-        _emails.GetVerifiedEmailsForUserAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(verified);
+        if (primary is null && verified.Length == 0)
+        {
+            _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+            return;
+        }
+        var rows = verified.Select(address => new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = _userId,
+            Email = address,
+            IsVerified = true,
+            IsPrimary = string.Equals(address, primary, StringComparison.OrdinalIgnoreCase)
+        }).ToList();
+        if (primary is not null && rows.Count > 0 && !rows.Any(row => row.IsPrimary))
+            rows.Add(new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = _userId,
+                Email = primary,
+                IsVerified = true,
+                IsPrimary = true
+            });
+        var info = new User { Id = _userId }.ToUserInfo(rows) with { IdentityEmailColumn = primary };
+        _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 
     private Task EraseAsync() =>
-        new MailerLiteGdprContributor(_mailerLite, _emails).EraseForUserAsync(_userId, Ct);
+        new MailerLiteGdprContributor(_mailerLite, _users).EraseForUserAsync(_userId, Ct);
+
+    [HumansFact]
+    public async Task EraseForUserAsync_ArchivedId_DoesNotDeleteTheLivingSurvivorsSubscriptions()
+    {
+        var survivorId = Guid.NewGuid();
+        const string address = "survivor@example.com";
+        Emails(address, address);
+        var survivor = new User { Id = survivorId }.ToUserInfo([
+            new UserEmail { Id = Guid.NewGuid(), UserId = survivorId, Email = address, IsVerified = true }
+        ]);
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(survivor);
+        _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
+            new User { Id = _userId }.ToUserInfo() with
+            {
+                State = UserState.Merged,
+                MergedToUserId = survivorId,
+                IdentityEmailColumn = address
+            });
+
+        await EraseAsync();
+
+        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!, default);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_ArchivedId_StillDeletesItsOwnVerifiedRows()
+    {
+        const string owned = "archived@example.com";
+        const string survivor = "survivor@example.com";
+        _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
+            new User { Id = _userId }.ToUserInfo([
+                new UserEmail { Id = Guid.NewGuid(), UserId = _userId, Email = owned, IsVerified = true }
+            ]) with
+            {
+                State = UserState.Merged,
+                MergedToUserId = Guid.NewGuid(),
+                IdentityEmailColumn = survivor
+            });
+
+        await EraseAsync();
+
+        await _mailerLite.Received(1).DeleteSubscriberAsync(owned, Arg.Any<CancellationToken>());
+        await _mailerLite.DidNotReceive().DeleteSubscriberAsync(survivor, Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task EraseForUserAsync_DeletesTheSubscriberUnderEveryVerifiedAddress()
@@ -43,7 +109,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_IncludesThePrimaryEvenWhenItIsNotInTheVerifiedSet()
+    public async Task EraseForUserAsync_IncludesTheVerifiedPrimaryAlongsideOtherVerifiedAddresses()
     {
         Emails("frank@nobodies.team", "frank@gmail.com");
 
@@ -51,8 +117,6 @@ public class MailerLiteGdprContributorTests
 
         await _mailerLite.Received(1)
             .DeleteSubscriberAsync("frank@nobodies.team", Arg.Any<CancellationToken>());
-        // Both, not either: the primary is added to the verified set, it does not replace it.
-        // Asserting only the primary passes an implementation that erases nothing else.
         await _mailerLite.Received(1)
             .DeleteSubscriberAsync("frank@gmail.com", Arg.Any<CancellationToken>());
     }
@@ -90,7 +154,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_WithNoAddressOnFile_DeletesNothing()
+    public async Task EraseForUserAsync_UnknownRawAccount_DeletesNothing()
     {
         Emails(null);
 

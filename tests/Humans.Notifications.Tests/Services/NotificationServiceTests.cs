@@ -46,8 +46,7 @@ public class NotificationServiceTests : IDisposable
             _repo, _preferenceService, _clock,
             NullLogger<NotificationEmitter>.Instance);
         _service = new NotificationService(
-            emitter, _repo, _roleAssignmentService, _preferenceService,
-            _clock, NullLogger<NotificationService>.Instance);
+            emitter, _repo, _roleAssignmentService, NullLogger<NotificationService>.Instance);
     }
 
     public void Dispose()
@@ -114,8 +113,9 @@ public class NotificationServiceTests : IDisposable
         var repo = Substitute.For<INotificationRepository>();
         repo.ReassignRecipientsToUserAsync(source, target, Arg.Any<CancellationToken>())
             .Returns(Task.FromException(failure));
-        var service = new NotificationService(Substitute.For<INotificationEmitter>(), repo,
-            _roleAssignmentService, _preferenceService, _clock, NullLogger<NotificationService>.Instance);
+        var emitter = new NotificationEmitter(repo, _preferenceService, _clock, NullLogger<NotificationEmitter>.Instance);
+        var service = new NotificationService(emitter, repo,
+            _roleAssignmentService, NullLogger<NotificationService>.Instance);
 
         var act = () => service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(),
             TestContext.Current.CancellationToken);

@@ -185,4 +185,12 @@ internal sealed class LegalDocumentRepository(IDbContextFactory<LegalDbContext> 
         await ctx.SaveChangesAsync(ct);
         return true;
     }
+    public async Task CompleteReConsentBatchAsync(Guid batchId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var versions = await ctx.DocumentVersions.Where(v => v.PendingReConsentBatchId == batchId).ToListAsync(ct);
+        foreach (var version in versions)
+            version.PendingReConsentBatchId = null;
+        await ctx.SaveChangesAsync(ct);
+    }
 }

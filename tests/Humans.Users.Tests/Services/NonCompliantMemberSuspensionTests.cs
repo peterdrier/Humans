@@ -4,6 +4,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Web.Services;
+using Humans.Base.Interfaces;
+using Humans.Users.Jobs;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -16,8 +18,7 @@ using Humans.Users.Tests.Infrastructure;
 namespace Humans.Users.Tests.Services;
 
 /// <summary>
-/// The nightly sweep's body: the job class stays in <c>Humans.Infrastructure</c> because
-/// Hangfire pins its serialized type name.
+/// The nightly sweep and its scheduled job's metric boundary.
 /// </summary>
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
@@ -54,6 +55,30 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     {
         _metrics.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Job_RecordsOneSuccessForEveryCompletedSweep(bool hasCandidates, bool changesUser)
+    {
+        var user = SetupUser();
+        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+            .Returns(hasCandidates ? new List<Guid> { user.Id } : []);
+        StubSuspendSucceeds(changesUser ? [user.Id] : []);
+        var metrics = Substitute.For<IHumansMetrics>();
+        var sweep = new NonCompliantMemberSuspension(
+            _userService, _membershipCalculator, _emailService, _emailMessages, _notificationService,
+            _auditLogService, metrics, Substitute.For<ILogger<NonCompliantMemberSuspension>>());
+        var job = new SuspendNonCompliantMembersJob(
+            sweep, metrics, Substitute.For<ILogger<SuspendNonCompliantMembersJob>>(), _clock);
+
+        await job.ExecuteAsync(TestContext.Current.CancellationToken);
+
+        metrics.Received(1).RecordJobRun("suspend_noncompliant_members", "success");
+        metrics.DidNotReceive().RecordJobRun("suspend_noncompliant_members", "failure");
+        metrics.Received(changesUser ? 1 : 0).RecordMemberSuspended("job");
     }
 
     [HumansFact]
@@ -153,14 +178,14 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_SkipsUsersMissingFromUserLookup()
+    public async Task ExecuteAsync_MissingUserMetadataStillAuditsTheCommittedSuspension()
     {
         var userId = Guid.NewGuid();
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { userId });
 
         // User service says it suspended the user, but the prepared lookup returns
-        // an empty lookup — job should not emit email/notification/audit.
+        // an empty lookup — notices need metadata, but the committed suspension still needs an audit.
         _userService.SuspendProfilesForMissingConsentAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
@@ -176,10 +201,11 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "access_suspended"), Arg.Any<CancellationToken>());
 
-        await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
+        Assert.Empty(_notificationService.ReceivedCalls());
+        await _auditLogService.Received(1).LogAsync(
+            UsersAuditActions.MemberSuspended, nameof(User), userId,
+            Arg.Is<string>(description => description.Contains(userId.ToString(), StringComparison.Ordinal)),
+            "SuspendNonCompliantMembersJob", Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

@@ -32,8 +32,4 @@ internal interface IConsentRepository : IRepository
     Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetExplicitlyConsentedVersionIdsForUsersAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 
-    Task<IReadOnlyList<(Guid UserId, Guid DocumentVersionId)>> GetPairsForUsersAndVersionsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        IReadOnlyCollection<Guid> documentVersionIds,
-        CancellationToken ct = default);
 }

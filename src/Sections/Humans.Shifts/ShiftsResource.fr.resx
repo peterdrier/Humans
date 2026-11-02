@@ -1277,4 +1277,20 @@
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Cette inscription n’est plus active et ne peut plus être annulée.</value></data>
   <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Afficher les informations médicales (chaque consultation est enregistrée dans le journal d'audit)</value></data>
   <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Impossible de charger les informations médicales.</value></data>
+  <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Manque de couverture : {0} jour {1}</value></data>
+  <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Seulement {0}/{1} humans confirmés.</value></data>
+  <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Trouver un remplacement →</value></data>
+  <data name="Shifts_Notification_SignupChangeTitle" xml:space="preserve"><value>Modification d’inscription au créneau : {0}</value></data>
+  <data name="Shifts_Notification_View" xml:space="preserve"><value>Voir →</value></data>
+  <data name="Shifts_Notification_ChangeConfirmed" xml:space="preserve"><value>Nouvelle inscription confirmée pour '{0}' le jour {1}.</value></data>
+  <data name="Shifts_Notification_ChangeApproved" xml:space="preserve"><value>Inscription approuvée pour '{0}' le jour {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRefused" xml:space="preserve"><value>Inscription refusée pour '{0}' le jour {1}.</value></data>
+  <data name="Shifts_Notification_ChangeBailed" xml:space="preserve"><value>Un human a annulé son inscription à '{0}' le jour {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssigned" xml:space="preserve"><value>Affectation à '{0}' le jour {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRemoved" xml:space="preserve"><value>Inscription supprimée de '{0}' le jour {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssignedRange" xml:space="preserve"><value>Affectation à '{0}' ({1} créneaux).</value></data>
+  <data name="Shifts_Notification_ChangeConfirmedRange" xml:space="preserve"><value>Inscription à plusieurs créneaux de '{0}' ({1} créneaux, confirmés).</value></data>
+  <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Inscription à plusieurs créneaux de '{0}' approuvée ({1} créneaux).</value></data>
+  <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscription à plusieurs créneaux de '{0}' refusée ({1} créneaux).</value></data>
+  <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Annulation de plusieurs créneaux de '{0}' ({1} créneaux).</value></data>
 </root>

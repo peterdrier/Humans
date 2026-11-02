@@ -2,7 +2,6 @@
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
   src/Sections/Humans.Users.Contracts/IUserService.cs
-  src/Sections/Humans.Users.Contracts/IUserEmailService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
@@ -275,7 +274,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
+- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant dot decimals without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then saves the budget/binding and system log together before auditing. Amount-only saves retain cancellation until their combined save succeeds; audit finishes independently.
 
@@ -444,8 +443,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 - **Audit actions:** declared on `WorkgroupsAuditActions` (`src/Sections/Humans.Workgroups/WorkgroupsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `WorkgroupRegistered`, `WorkgroupReferred`, `WorkgroupRefused`, `WorkgroupWithdrawn`, `WorkgroupClosed`, `WorkgroupReactivated`, `WorkgroupCoordinatorsChanged`, `WorkgroupDispositionRecorded`, `WorkgroupRegisteredExisting`, `WorkgroupBudgetSet`, `WorkgroupApplicationOverdue`, `WorkgroupUpdateDueNotified`, `WorkgroupLogEntryDeleted`, `WorkgroupLogEntryUpdated`, `WorkgroupMeetingUpdated`, `WorkgroupMeetingDeleted`, `WorkgroupCommentHidden`, `WorkgroupsRootFolderUpdated`, `WorkgroupMembershipApproved`, `WorkgroupMembershipDeclined`, `WorkgroupMemberAdded`.
 - **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `WorkgroupsNotificationSources` (`src/Sections/Humans.Workgroups/WorkgroupsNotificationSources.cs`), one `NotificationSourceDefinition` each: `WorkgroupRegistrationPending` (actionable, to board role: a working group applies, or its application goes overdue); `WorkgroupRegistrationDecided` (informational, to the group's coordinators: registration decided (registered, refused, withdrawn, ended, reactivated)); `WorkgroupReportingDue` (informational, to the group's coordinators: thirty days without an update or meeting); `WorkgroupDocumentActivity` (informational (actionable to board when a document is delivered for disposition), to group members, comment authors, or Board role: document published, comment opened/answered, or delivered for disposition); `WorkgroupDispositionRecorded` (informational, to the group's current members: board records its written disposition on a delivered document); `WorkgroupMembershipRequested` (informational, to the group's coordinators: someone asks to join a working group); `WorkgroupMembershipDecided` (informational, to the requester or added person: join request approved or declined, or a coordinator adds the person directly).
-- **Users**: `IUserService` — names, approved-profile check;
-  `IUserEmailService` — notification target addresses for lifecycle emails.
+- **Users**: `IUserService` — names, approved-profile check, and canonical `UserInfo.Email` for lifecycle notices from the same recipient snapshot as name and language.
 - **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.
 - **Auth**: `IRoleAssignmentService` — active holders of the Board role, the recipients of Board emails.
 - **Teams**: `ITeamService` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
@@ -526,7 +524,7 @@ display-name reads.
 - **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started meeting directly, and Calendar consumers order feed items.
 - **Log ordering** — the details timeline orders log entries by occurrence date, then creation time, both descending. The snapshot does not impose log display order; rhythm calculations select their latest qualifying activity explicitly.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
-- **Cross-section calls** — `IUserService`, `IUserEmailService`,
+- **Cross-section calls** — `IUserService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.

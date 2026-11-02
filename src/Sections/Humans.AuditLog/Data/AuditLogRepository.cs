@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.AuditLog.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,9 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
 {
     public async Task AddAsync(AuditLogEntry entry, CancellationToken ct = default)
     {
+        // A fresh context still enlists in ambient transactions; audit owns its commit.
+        using var scope = new TransactionScope(TransactionScopeOption.Suppress,
+            TransactionScopeAsyncFlowOption.Enabled);
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.AuditLogEntries.Add(entry);
         await ctx.SaveChangesAsync(ct);

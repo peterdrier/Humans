@@ -27,7 +27,6 @@ public sealed class GoogleSyncLogServiceGdprTests
     private readonly IGoogleSyncLogRepository _repo = Substitute.For<IGoogleSyncLogRepository>();
     private readonly ITeamResourceManagement _teamResources = Substitute.For<ITeamResourceManagement>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
     private readonly GoogleSyncLogService _service;
 
@@ -37,7 +36,6 @@ public sealed class GoogleSyncLogServiceGdprTests
             _repo,
             _teamResources,
             _userService,
-            _userEmails,
             _serviceProvider,
             new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0)),
             NullLogger<GoogleSyncLogService>.Instance);
@@ -68,7 +66,10 @@ public sealed class GoogleSyncLogServiceGdprTests
     private void StubResolvesTo(Guid requestedId, Guid survivorId, params Guid[] mergedUserIds)
     {
         var survivor = new User { Id = survivorId, PreferredLanguage = "en" };
-        var info = survivor.ToUserInfo() with { MergedUserIds = mergedUserIds };
+        var info = survivor.ToUserInfo([
+            new UserEmail { Id = Guid.NewGuid(), UserId = survivorId, Email = "survivor@nobodies.team", IsVerified = true }
+        ]) with
+        { MergedUserIds = mergedUserIds };
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
     }
@@ -83,8 +84,6 @@ public sealed class GoogleSyncLogServiceGdprTests
         var sibling = Guid.NewGuid();
         var survivor = Guid.NewGuid();
         StubResolvesTo(archived, survivor, archived, sibling);
-        _userEmails.GetNobodiesTeamEmailAsync(archived, Arg.Any<CancellationToken>())
-            .Returns((string?)null);
 
         await _service.EraseForUserAsync(archived, TestContext.Current.CancellationToken);
 
@@ -101,13 +100,61 @@ public sealed class GoogleSyncLogServiceGdprTests
         var archived = Guid.NewGuid();
         var survivor = Guid.NewGuid();
         StubResolvesTo(archived, survivor, archived);
-        _userEmails.GetNobodiesTeamEmailAsync(archived, Arg.Any<CancellationToken>())
-            .Returns((string?)null);
 
         await _service.EraseForUserAsync(archived, TestContext.Current.CancellationToken);
 
-        await _userEmails.Received(1).GetNobodiesTeamEmailAsync(archived, Arg.Any<CancellationToken>());
+        await _userService.Received(1).GetRawUserInfoAsync(archived, Arg.Any<CancellationToken>());
         _serviceProvider.DidNotReceive().GetService(typeof(IGoogleAdminService));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EraseForUserAsync_SuspendsAllVerifiedManagedMailboxesBeforeDroppingReferences(bool secondFails)
+    {
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        var info = user.ToUserInfo([
+            new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "first@nobodies.team", IsVerified = true },
+            new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "second@nobodies.team", IsVerified = true },
+            new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "SECOND@NOBODIES.TEAM", IsVerified = true },
+            new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "unverified@nobodies.team" },
+            new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "personal@example.com", IsVerified = true }
+        ]);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
+        var admin = Substitute.For<IGoogleAdminService>();
+        _serviceProvider.GetService(typeof(IGoogleAdminService)).Returns(admin);
+        var suspended = new List<string>();
+        admin.SuspendAccountAsync(Arg.Any<string>(), userId, true, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var address = call.Arg<string>();
+                suspended.Add(address);
+                return Task.FromResult(new WorkspaceAccountActionResult(
+                    !secondFails || !string.Equals(address, "second@nobodies.team", StringComparison.OrdinalIgnoreCase)));
+            });
+        _repo.DeleteByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                suspended.Should().BeEquivalentTo(["first@nobodies.team", "second@nobodies.team"]);
+                return Task.FromResult(1);
+            });
+
+        var error = await Record.ExceptionAsync(() => _service.EraseForUserAsync(userId, TestContext.Current.CancellationToken));
+
+        suspended.Should().BeEquivalentTo(["first@nobodies.team", "second@nobodies.team"]);
+        if (secondFails)
+        {
+            error.Should().BeOfType<InvalidOperationException>();
+            await _repo.DidNotReceiveWithAnyArgs().DeleteByUserIdsAsync(default!, default);
+        }
+        else
+        {
+            error.Should().BeNull();
+            await _repo.Received(1).DeleteByUserIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)),
+                Arg.Any<CancellationToken>());
+        }
     }
 
     [HumansFact]

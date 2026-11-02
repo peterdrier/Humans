@@ -25,67 +25,65 @@ internal sealed class TeamMembershipNotices(
     private IEmailService EmailService => serviceProvider.GetRequiredService<IEmailService>();
     private TeamsEmails EmailMessages => serviceProvider.GetRequiredService<TeamsEmails>();
 
-    public async Task SendTeamJoinRequestSubmittedNotificationAsync(
-        Team team,
-        Guid userId,
-        CancellationToken cancellationToken)
+    public Task SendTeamJoinRequestSubmittedNotificationAsync(
+        Team team, Guid userId, CancellationToken cancellationToken) =>
+        SendCoordinatorNoticeAsync(team, userId, joinRequest: true, cancellationToken);
+
+    public Task SendTeamMemberAddedNotificationAsync(
+        Team team, Guid userId, CancellationToken cancellationToken) =>
+        SendCoordinatorNoticeAsync(team, userId, joinRequest: false, cancellationToken);
+
+    private async Task SendCoordinatorNoticeAsync(
+        Team team, Guid userId, bool joinRequest, CancellationToken cancellationToken)
     {
         var coordinatorUserIds = GetCoordinatorUserIds(team);
-        if (coordinatorUserIds.Count == 0)
-        {
-            return;
-        }
-
+        if (coordinatorUserIds.Count == 0) return;
+        var source = joinRequest
+            ? TeamsNotificationSources.TeamJoinRequestSubmitted
+            : TeamsNotificationSources.TeamMemberAdded;
         try
         {
-            var displayName = await GetDisplayNameAsync(userId, cancellationToken);
-            var title = $"New join request for {team.Name}";
-            await notificationService.SendAsync(
-                TeamsNotificationSources.TeamJoinRequestSubmitted,
-                NotificationClass.Actionable,
-                NotificationPriority.Normal,
-                title,
-                coordinatorUserIds,
-                body: $"{displayName} has requested to join {team.Name}.",
-                actionUrl: $"/Teams/{team.Slug}/Members",
-                actionLabel: "Review request",
-                cancellationToken: cancellationToken);
+            var displayName = (await UserService.GetUserInfoAsync(userId, cancellationToken))?.BurnerName;
+            var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
+            foreach (var coordinatorId in coordinatorUserIds)
+            {
+                var culture = await GetRecipientCultureAsync(coordinatorId, cancellationToken);
+                if (!recipientsByCulture.TryGetValue(culture, out var recipients))
+                    recipientsByCulture[culture] = recipients = [];
+                recipients.Add(coordinatorId);
+            }
+
+            foreach (var (culture, recipients) in recipientsByCulture)
+            {
+                try
+                {
+                    var name = displayName ?? NoticeResources.GetString("Teams_Notification_Someone", culture)!;
+                    var title = joinRequest
+                        ? string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRequestSubmitted", culture)!, team.Name)
+                        : string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberJoined", culture)!, name, team.Name);
+                    var bodyKey = joinRequest ? "Teams_Notification_JoinRequestSubmittedBody" : "Teams_Notification_MemberJoinedBody";
+                    var actionKey = joinRequest ? "Teams_Notification_ReviewRequest" : "Teams_Notification_ViewMembers";
+                    await notificationService.SendAsync(
+                        source,
+                        joinRequest ? NotificationClass.Actionable : NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        title,
+                        recipients,
+                        body: string.Format(culture, NoticeResources.GetString(bodyKey, culture)!, name, team.Name),
+                        actionUrl: $"/Teams/{team.Slug}/Members",
+                        actionLabel: NoticeResources.GetString(actionKey, culture),
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to dispatch {Source} notification for team {TeamId} in {Culture}",
+                        source, team.Id, culture.Name);
+                }
+            }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
-        }
-    }
-
-    public async Task SendTeamMemberAddedNotificationAsync(
-        Team team,
-        Guid userId,
-        CancellationToken cancellationToken)
-    {
-        var coordinatorUserIds = GetCoordinatorUserIds(team);
-        if (coordinatorUserIds.Count == 0)
-        {
-            return;
-        }
-
-        try
-        {
-            var displayName = await GetDisplayNameAsync(userId, cancellationToken);
-            var title = $"{displayName} joined {team.Name}";
-            await notificationService.SendAsync(
-                TeamsNotificationSources.TeamMemberAdded,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                title,
-                coordinatorUserIds,
-                body: $"{displayName} has joined {team.Name}.",
-                actionUrl: $"/Teams/{team.Slug}/Members",
-                actionLabel: "View members",
-                cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to dispatch TeamMemberAdded notification for team {TeamId}", team.Id);
+            logger.LogError(ex, "Failed to prepare {Source} notification for team {TeamId}", source, team.Id);
         }
     }
 
@@ -112,12 +110,6 @@ internal sealed class TeamMembershipNotices(
             logger.LogError(ex, "Failed to resolve notification language for user {UserId}; using English", userId);
             return CultureInfo.GetCultureInfo("en");
         }
-    }
-
-    private async Task<string> GetDisplayNameAsync(Guid userId, CancellationToken cancellationToken)
-    {
-        var user = await UserService.GetUserInfoAsync(userId, cancellationToken);
-        return user?.BurnerName ?? "Someone";
     }
 
     public async Task SendJoinRequestApprovedNotificationAsync(

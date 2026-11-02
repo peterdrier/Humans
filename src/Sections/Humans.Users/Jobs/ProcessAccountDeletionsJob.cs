@@ -48,6 +48,7 @@ internal sealed class ProcessAccountDeletionsJob(
                 dueUserIds.Count);
 
             var processed = 0;
+            var failures = new List<Exception>();
 
             foreach (var userId in dueUserIds)
             {
@@ -101,11 +102,15 @@ internal sealed class ProcessAccountDeletionsJob(
                 }
                 catch (Exception ex)
                 {
+                    failures.Add(ex);
                     logger.LogError(ex,
                         "Failed to process deletion for user {UserId}",
                         userId);
                 }
             }
+
+            if (failures.Count > 0)
+                throw new AggregateException("Failed to process one or more account deletions.", failures);
 
             metrics.RecordJobRun("process_account_deletions", "success");
             logger.LogInformation(

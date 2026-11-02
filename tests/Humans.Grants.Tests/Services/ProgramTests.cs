@@ -119,7 +119,7 @@ public sealed class ProgramTests : GrantsTestHarness
             .Options;
         var service = new GrantService(
             new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
-            Users, UserEmails, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+            Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
         Func<Task> update = () => service.UpdateProgramAsync(
             program.Id, Save("Renamed", managers: newManager), actor, Ct);

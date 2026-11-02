@@ -94,8 +94,7 @@ public class ProfileControllerEditTests
             localizer,
             sharedLocalizer,
             _governanceService,
-            _membershipCalculator,
-            ConsentReviewStubs.Create());
+            _membershipCalculator);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -390,6 +389,45 @@ public class ProfileControllerEditTests
         (await load()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Active, false, false)]
+    [InlineData(UserState.Bare, false, true)]
+    [InlineData(UserState.Active, true, true)]
+    public async Task Edit_Get_SetupModeFollowsAccountStateAndPreview(UserState state, bool preview, bool initialSetup)
+    {
+        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }) with { State = state };
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
+        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await _controller.Edit(preview);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>()
+            .Which.IsInitialSetup.Should().Be(initialSetup);
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Active, false)]
+    [InlineData(UserState.Active, true)]
+    [InlineData(UserState.Bare, false)]
+    [InlineData(UserState.Bare, true)]
+    public async Task Edit_Post_RedisplayUsesAccountSetupMode(UserState state, bool serviceRefusal)
+    {
+        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }) with { State = state };
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
+        if (serviceRefusal)
+            _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+                .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
+        else
+            _controller.ModelState.AddModelError(nameof(ProfileViewModel.BurnerName), "Invalid");
+        var model = MakeValidModel();
+        model.IsInitialSetup = state != UserState.Bare;
+
+        var result = await _controller.Edit(model);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        model.IsInitialSetup.Should().Be(state == UserState.Bare);
     }
 
     [HumansFact]

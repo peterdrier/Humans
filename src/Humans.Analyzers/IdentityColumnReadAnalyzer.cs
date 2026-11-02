@@ -11,7 +11,7 @@ namespace Humans.Analyzers;
 /// columns on <c>User</c> (<c>Email</c>, <c>NormalizedEmail</c>,
 /// <c>UserName</c>, <c>NormalizedUserName</c>). Read paths go through
 /// <c>UserInfo.Email</c> / <c>UserInfo.PrimaryEmail</c> /
-/// <c>IUserEmailService.GetPrimaryEmailAsync</c> /
+/// <c>IUserService.GetUserInfoAsync</c> /
 /// <c>IUserEmailService</c> instead. Pairs with HUM0002 (writes) and
 /// HUM0003 (FindByEmailAsync/FindByNameAsync).
 /// </summary>

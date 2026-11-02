@@ -242,8 +242,8 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken ct = default);
 
-    /// <summary>Ignores team-member ids that are no longer active.</summary>
-    Task<int> ApplyMemberRoleChangesAsync(
+    /// <summary>Returns only changed membership ids after saving. Ignores ids that are no longer active.</summary>
+    Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken ct = default);
 

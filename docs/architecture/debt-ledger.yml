@@ -152,20 +152,20 @@ themes:
     title: One-off inbox items
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
-    last_swept: 2026-10-30
-    remaining: 5
+    last_swept: 2026-11-02
+    remaining: 6
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-10-30
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-11-02
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
   - added: 2026-10-30
     id: CENTRAL-105
     status: partial
-    what: "IHoldedClient is still public because sections call the Holded connector directly instead of through IHoldedService / IHoldedWrite (the single-mirror refactor, phase 1 built that face). Remaining callers: Finance (Service, HoldedDocumentSync, SepaBankBooking), Expenses (ExpenseHoldedPublisher, ExpenseReportBackgroundProcessor), Store (Service, StoreInvoiceIssuer). Workgroups now reads active expense accounts through IHoldedService.GetChartAsync; Expenses report and reconciliation readers use IHoldedService.IsConfigured. Each later phase moves one section's callers onto IHoldedService/IHoldedWrite and deletes its own Holded copies; when none remain, IHoldedClient goes internal. Design: the single-mirror section-flow records (holded-, pleo-, expenses-, finance-section.html, 2026-10-30)."
+    what: "IHoldedClient is still public because sections call the Holded connector directly instead of through IHoldedService / IHoldedWrite (the single-mirror refactor, phase 1 built that face). Remaining callers: Finance (Service, HoldedDocumentSync, SepaBankBooking), Expenses (ExpenseHoldedPublisher, ExpenseReportBackgroundProcessor), Store (Service, StoreInvoiceIssuer). Workgroups now reads active expense accounts through IHoldedService.GetChartAsync; Expenses report and reconciliation readers use IHoldedService.IsConfigured. Finance journal remainders now post through IHoldedWrite.PostJournalEntryAsync; SepaBankBooking still uses the connector for live balance/tag checks, purchase payments and bank reconciliation. Each later phase moves one section's callers onto IHoldedService/IHoldedWrite and deletes its own Holded copies; when none remain, IHoldedClient goes internal. Design: the single-mirror section-flow records (holded-, pleo-, expenses-, finance-section.html, 2026-10-30)."
     review: panel
   - added: 2026-10-21
     id: CENTRAL-89
