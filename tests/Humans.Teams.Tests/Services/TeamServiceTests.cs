@@ -3371,8 +3371,10 @@ public sealed class TeamServiceTests : TeamsTestHarness
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task DeleteTeamAsync_ClosesActiveMemberships()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeleteTeamAsync_ClosesActiveMemberships(bool auditFails)
     {
         var team = SeedTeam("Doomed Team");
         var alice = SeedUser(displayName: "Alice");
@@ -3385,7 +3387,23 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var actor = Guid.NewGuid();
-        (await _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        if (auditFails)
+        {
+            var aliceFailure = new IOException("Alice audit unavailable");
+            var bobFailure = new IOException("Bob audit unavailable");
+            AuditLog.LogAsync(TeamsAuditActions.TeamMemberRemoved, nameof(Team), team.Id,
+                    Arg.Any<string>(), actor, alice.Id, nameof(User))
+                .Returns(Task.FromException(aliceFailure));
+            AuditLog.LogAsync(TeamsAuditActions.TeamMemberRemoved, nameof(Team), team.Id,
+                    Arg.Any<string>(), actor, bob.Id, nameof(User))
+                .Returns(Task.FromException(bobFailure));
+            var deactivate = () => _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken);
+
+            var thrown = (await deactivate.Should().ThrowAsync<AggregateException>()).Which;
+            thrown.InnerExceptions.Should().HaveCount(2).And.Contain(aliceFailure).And.Contain(bobFailure);
+        }
+        else
+            (await _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         // Service uses its own DbContext; detach trackers so assertions re-read
         // from the store rather than returning stale tracked entities.
