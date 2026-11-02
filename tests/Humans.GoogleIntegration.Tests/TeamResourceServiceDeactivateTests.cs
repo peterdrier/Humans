@@ -87,6 +87,50 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
             Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
     }
 
+    [HumansTheory]
+    [InlineData("12345")]
+    [InlineData("CREW@nobodies.team")]
+    public async Task LinkGroup_ResolvedIdentityAlreadyActive_RefusesWithoutMutationOrAudit(string storedGoogleId)
+    {
+        var teamId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var resourceId = SeedResource(teamId, "Existing group", GoogleResourceType.Group, googleId: storedGoogleId);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _googleClient.LookupGroupAsync("crew-alias@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupResult(
+                new ResolvedGroup("12345", "crew@nobodies.team", "Crew", "https://groups.google.com/crew"), null));
+
+        var result = await _service.LinkGroupAsync(
+            teamId, "crew-alias@nobodies.team", actorId, TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("This Google Group is already linked to this team.");
+        var rows = await GoogleIntegrationDb.GoogleResources.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        rows.Should().ContainSingle().Which.Id.Should().Be(resourceId);
+        rows[0].GoogleId.Should().Be(storedGoogleId);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task LinkGroup_InactiveResolvedNumericId_ReactivatesTheExistingResource()
+    {
+        var teamId = Guid.NewGuid();
+        var resourceId = SeedResource(teamId, "Old group", GoogleResourceType.Group,
+            isActive: false, googleId: "12345");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        _googleClient.LookupGroupAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupResult(
+                new ResolvedGroup("12345", "crew@nobodies.team", "Crew", "https://groups.google.com/crew"), null));
+
+        var result = await _service.LinkGroupAsync(
+            teamId, "crew@nobodies.team", ct: TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        var row = await GoogleIntegrationDb.GoogleResources.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        row.Id.Should().Be(resourceId);
+        row.IsActive.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task InheritedAccess_EnforcementFailureStillAuditsCommittedPreference()
     {
@@ -269,7 +313,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
             Arg.Any<string?>());
     }
 
-    private Guid SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true)
+    private Guid SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true, string? googleId = null)
     {
         var id = Guid.NewGuid();
         GoogleIntegrationDb.GoogleResources.Add(new GoogleResource
@@ -277,7 +321,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleIn
             Id = id,
             TeamId = teamId,
             Name = name,
-            GoogleId = Guid.NewGuid().ToString(),
+            GoogleId = googleId ?? Guid.NewGuid().ToString(),
             Url = $"https://example.com/{name}",
             ResourceType = type,
             IsActive = isActive,

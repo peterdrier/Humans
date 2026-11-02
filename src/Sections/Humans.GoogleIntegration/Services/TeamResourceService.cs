@@ -258,6 +258,15 @@ internal sealed partial class TeamResourceService(
             return new LinkResourceResult(false, ErrorMessage: hint, ServiceAccountEmail: serviceAccountEmail);
         }
 
+        duplicate = await repository.FindActiveByGoogleIdAsync(
+            teamId, lookup.Group.NumericId, GoogleResourceType.Group, ct)
+            ?? await repository.FindActiveGroupByEmailAsync(teamId, lookup.Group.NormalizedEmail, ct);
+        if (duplicate is not null)
+        {
+            return new LinkResourceResult(false,
+                ErrorMessage: "This Google Group is already linked to this team.");
+        }
+
         var now = clock.GetCurrentInstant();
         var url = lookup.Group.DisplayUrl;
 
