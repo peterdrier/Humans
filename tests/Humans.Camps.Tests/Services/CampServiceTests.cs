@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Base.Helpers;
 using Humans.Base.Caching;
 using Microsoft.Extensions.Caching.Memory;
@@ -3318,6 +3319,64 @@ public sealed class CampServiceTests : CampsTestHarness
         return new CampInfo(
             campId, "resolve-camp", "camp@example.com", "+34600000010",
             IsSwissCamp: false, TimesAtNowhere: 1, [season]);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeleteCampAsync_AuditSharesTheDeletionTransactionBeforeFileCleanup(bool auditFails)
+    {
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var camp = new Camp { Id = campId, Seasons = [new CampSeason { Id = seasonId, CampId = campId }] };
+        var repo = Substitute.For<ICampRepository>();
+        var storage = Substitute.For<IFileStorage>();
+        var transactionIds = new List<string?>();
+        Transaction? transaction = null;
+        repo.GetByIdAsync(campId, Arg.Any<CancellationToken>()).Returns(camp);
+        _cityPlanningService.DeleteCampPolygonsForSeasonsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transaction = Transaction.Current?.Clone();
+                transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
+                return 1;
+            });
+        repo.DeleteCampAsync(campId, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
+                return (IReadOnlyList<string>)new[] { "uploads/camps/deleted.jpg" };
+            });
+        var failure = new IOException("Audit unavailable");
+        AuditLog.LogAsync(CampsAuditActions.CampDeleted, nameof(Camp), campId,
+                Arg.Any<string>(), TestActorId, Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(_ =>
+            {
+                transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
+                return auditFails ? Task.FromException(failure) : Task.CompletedTask;
+            });
+        var service = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            Clock, NullLogger<CampService>.Instance);
+        var delete = () => service.DeleteCampAsync(campId, TestActorId, TestContext.Current.CancellationToken);
+
+        if (auditFails)
+            (await delete.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        else
+            (await delete()).Succeeded.Should().BeTrue();
+
+        using (transaction)
+        {
+            transaction.Should().NotBeNull();
+            transactionIds.Should().HaveCount(3).And.OnlyContain(id =>
+                string.Equals(id, transaction!.TransactionInformation.LocalIdentifier, StringComparison.Ordinal));
+            transaction!.TransactionInformation.Status.Should().Be(auditFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
+        }
+        if (auditFails)
+            await storage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+        else
+            await storage.Received(1).DeleteAsync("uploads/camps/deleted.jpg", CancellationToken.None);
     }
 
     [HumansFact]

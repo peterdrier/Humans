@@ -890,7 +890,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (camp is null) return new(false, "Camp not found.");
 
         // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
-        // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
+        // share one ambient transaction with the audit so failure cannot leave an unaudited deletion or partial cleanup.
         // A SaveCampPolygonAsync landing between cleanup and commit still orphans a row: an accepted trade.
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths;
@@ -918,13 +918,13 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 return new(false, "Camp not found.");
             }
 
+            await _auditLog.LogAsync(
+                CampsAuditActions.CampDeleted, nameof(Camp), campId,
+                $"Camp {campId} permanently deleted",
+                actorUserId);
+
             scope.Complete();
         }
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampDeleted, nameof(Camp), campId,
-            $"Camp {campId} permanently deleted",
-            actorUserId);
 
         // Metadata and audit have committed; file cleanup must finish independently of the request.
         foreach (var path in deletedImagePaths)
