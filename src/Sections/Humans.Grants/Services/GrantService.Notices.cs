@@ -37,16 +37,17 @@ internal sealed partial class GrantService
         {
             // Reuse a successful lookup; email still gets its independent attempt after a lookup failure.
             var recipient = person ?? await users.GetUserInfoAsync(grant.UserId, ct);
-            var address = recipient?.Email;
-            if (string.IsNullOrWhiteSpace(address))
+            if (recipient is null || string.IsNullOrWhiteSpace(recipient.Email))
             {
                 logger.LogWarning("Skipping grant {Kind} email for {UserId} on grant {GrantId}: no effective email",
                     kind, grant.UserId, grant.Id);
                 return;
             }
+            var emailLanguage = recipient.PreferredLanguage;
+            var emailCulture = emailLanguage.IsSupportedCultureCode() ? emailLanguage! : CultureCatalog.DefaultCultureCode;
             await email.SendAsync(emailFactory.Notice(new GrantNoticeRequest(
-                person?.Id ?? grant.UserId, address, person?.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
-                grant.RevokeReason, culture)), ct);
+                recipient.Id, recipient.Email, recipient.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
+                grant.RevokeReason, emailCulture)), ct);
         }, ct);
     }
 
