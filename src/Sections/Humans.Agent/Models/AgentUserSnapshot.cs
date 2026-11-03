@@ -12,5 +12,4 @@ internal sealed record AgentUserSnapshot(
     IReadOnlyList<TeamMembership> Teams,
     IReadOnlyList<string> PendingConsentDocs,
     IReadOnlyList<Guid> OpenTicketIds,
-    IReadOnlyList<Guid> OpenFeedbackIds,
     IReadOnlyList<UpcomingShiftEntry> UpcomingShifts);

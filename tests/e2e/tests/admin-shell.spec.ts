@@ -203,9 +203,9 @@ test.describe('Admin shell — chrome', () => {
     // Tiles from _DashboardStats. The "Active humans" tile was renamed to
     // "Active (has profile)" by #546 (UserInfo-driven stats); the test was never
     // updated, so this assertion had been failing against a label that no longer exists.
-    // The "Open feedback" tile and the "Recent activity" card are authorize-policy
-    // ="AdminOnly" (#977) — Board reaches /Admin but is deliberately not shown either,
-    // so they are asserted in-process instead (AdminLayoutRenderTests).
+    // The "Recent activity" card is authorize-policy
+    // ="AdminOnly" (#977): Board reaches /Admin but is deliberately not shown it,
+    // so it is asserted in-process instead (AdminLayoutRenderTests).
     const stats = page.locator('.stats');
     await expect(stats).toBeVisible();
     await expect(stats.locator('.stat .label', { hasText: 'Active (has profile)' })).toBeVisible();

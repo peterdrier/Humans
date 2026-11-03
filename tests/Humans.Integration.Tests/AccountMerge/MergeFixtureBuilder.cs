@@ -17,9 +17,7 @@ using Humans.Budget.Data;
 using Humans.Budget.Domain;
 using Humans.Campaigns.Data;
 using Humans.Campaigns.Domain;
-using Humans.Feedback.Data;
 using Humans.Governance.Data;
-using Humans.Feedback.Domain;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
@@ -34,7 +32,6 @@ using Humans.Users.Domain;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Feedback.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
@@ -51,7 +48,6 @@ public sealed class MergeFixtureBuilder
     private readonly NotificationsDbContext _notificationsDb;
     private readonly GovernanceDbContext _governanceDb;
     private readonly CampaignsDbContext _campaignsDb;
-    private readonly FeedbackDbContext _feedbackDb;
     private readonly BudgetDbContext _budgetDb;
     private readonly LegalDbContext _legalDb;
     private readonly AuditLogDbContext _auditLogDb;
@@ -66,7 +62,6 @@ public sealed class MergeFixtureBuilder
     private readonly List<Action<NotificationsDbContext>> _pendingNotifications = [];
     private readonly List<Action<GovernanceDbContext>> _pendingGovernance = [];
     private readonly List<Action<CampaignsDbContext>> _pendingCampaigns = [];
-    private readonly List<Action<FeedbackDbContext>> _pendingFeedback = [];
     private readonly List<Action<BudgetDbContext>> _pendingBudget = [];
     private readonly List<Action<LegalDbContext>> _pendingLegal = [];
     private readonly List<Action<AuditLogDbContext>> _pendingAuditLog = [];
@@ -85,7 +80,6 @@ public sealed class MergeFixtureBuilder
         _notificationsDb = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         _governanceDb = scope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
         _campaignsDb = scope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
-        _feedbackDb = scope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
         _budgetDb = scope.ServiceProvider.GetRequiredService<BudgetDbContext>();
         _legalDb = scope.ServiceProvider.GetRequiredService<LegalDbContext>();
         _auditLogDb = scope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
@@ -319,28 +313,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    public MergeFixtureBuilder WithSourceFeedbackReport(string title)
-        => AddFeedbackReport(SourceUserId, title);
-
-    public MergeFixtureBuilder WithTargetFeedbackReport(string title)
-        => AddFeedbackReport(TargetUserId, title);
-
-    private MergeFixtureBuilder AddFeedbackReport(Guid userId, string title)
-    {
-        _pendingFeedback.Add(db => db.FeedbackReports.Add(new FeedbackReport
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Category = FeedbackCategory.Bug,
-            Description = title,
-            PageUrl = "/test",
-            Status = FeedbackStatus.Open,
-            CreatedAt = _now,
-            UpdatedAt = _now,
-        }));
-        return this;
-    }
-
     // Attached via ActorUserId, which the chain-follow read uses.
     public MergeFixtureBuilder WithSourceAuditLogEntry(string action, string description)
     {
@@ -518,44 +490,6 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    public Guid SeedFeedbackReportNow(Guid userId, string description)
-    {
-        var reportId = Guid.NewGuid();
-        var report = new FeedbackReport
-        {
-            Id = reportId,
-            UserId = userId,
-            Category = FeedbackCategory.Bug,
-            Description = description,
-            PageUrl = "/test",
-            Status = FeedbackStatus.Open,
-            CreatedAt = _now,
-            UpdatedAt = _now,
-        };
-        _feedbackDb.FeedbackReports.Add(report);
-        _feedbackDb.SaveChanges();
-        return reportId;
-    }
-
-    public MergeFixtureBuilder WithSourceFeedbackMessage(Guid reportId, string content)
-        => AddFeedbackMessage(SourceUserId, reportId, content);
-
-    public MergeFixtureBuilder WithTargetFeedbackMessage(Guid reportId, string content)
-        => AddFeedbackMessage(TargetUserId, reportId, content);
-
-    private MergeFixtureBuilder AddFeedbackMessage(Guid userId, Guid reportId, string content)
-    {
-        _pendingFeedback.Add(db => db.FeedbackMessages.Add(new FeedbackMessage
-        {
-            Id = Guid.NewGuid(),
-            FeedbackReportId = reportId,
-            SenderUserId = userId,
-            Content = content,
-            CreatedAt = _now,
-        }));
-        return this;
-    }
-
     // Append-only (DB triggers block UPDATE/DELETE): insert only.
     public Guid SeedBudgetYearNow(string yearLabel)
     {
@@ -684,13 +618,6 @@ public sealed class MergeFixtureBuilder
         }
         _pendingCampaigns.Clear();
         await _campaignsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        foreach (var apply in _pendingFeedback)
-        {
-            apply(_feedbackDb);
-        }
-        _pendingFeedback.Clear();
-        await _feedbackDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         foreach (var apply in _pendingBudget)
         {

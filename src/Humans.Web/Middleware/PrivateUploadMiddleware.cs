@@ -12,15 +12,15 @@ internal sealed class PrivateUploadMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context)
     {
         var path = NormalizePath(context.Request.Path);
-        if (path.StartsWithSegments("/uploads/profile-pictures", StringComparison.OrdinalIgnoreCase))
+        // Feedback is removed; its historical screenshots are never served.
+        if (path.StartsWithSegments("/uploads/profile-pictures", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/uploads/feedback", StringComparison.OrdinalIgnoreCase))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
 
-        var feedback = path.StartsWithSegments("/uploads/feedback", StringComparison.OrdinalIgnoreCase);
-        var issue = path.StartsWithSegments("/uploads/issues", StringComparison.OrdinalIgnoreCase, out var remaining);
-        if (feedback || issue)
+        if (path.StartsWithSegments("/uploads/issues", StringComparison.OrdinalIgnoreCase, out var remaining))
         {
             context.Response.Headers.CacheControl = "private, no-store";
             // Static files run before the normal authentication middleware.
@@ -29,10 +29,7 @@ internal sealed class PrivateUploadMiddleware(RequestDelegate next)
             if (authentication.Succeeded && authentication.Principal is { } principal)
             {
                 context.User = principal;
-                if (feedback)
-                    allowed = (await context.RequestServices.GetRequiredService<IAuthorizationService>()
-                        .AuthorizeAsync(principal, context, PolicyNames.AdminOnly)).Succeeded;
-                else if (Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+                if (Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
                     && Guid.TryParse(remaining.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(), out var issueId))
                 {
                     var viewer = new IssueViewer(userId, principal.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList());
