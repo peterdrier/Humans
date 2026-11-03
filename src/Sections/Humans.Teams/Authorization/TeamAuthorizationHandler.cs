@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Teams.Authorization;
 
 /// <summary>
-/// Admin, TeamsAdmin and Board: any team, any requirement. EETeamAdmin: any team, ManageEarlyEntry only. A coordinator
-/// of the team or its parent department: that team, both requirements. Everyone else: deny.
+/// Admin and TeamsAdmin: any team, any requirement. EarlyEntryAdmin: any team, ManageEarlyEntry only. A coordinator
+/// of the team or its parent department: that team, both requirements. Everyone else, Board included: deny. Board
+/// reads the per-team admin pages through Teams' Read policy.
 /// </summary>
 internal sealed class TeamAuthorizationHandler(ITeamService teamService)
     : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
@@ -19,7 +20,7 @@ internal sealed class TeamAuthorizationHandler(ITeamService teamService)
         TeamOperationRequirement requirement,
         TeamInfo resource)
     {
-        if (TeamsRoles.IsTeamsAdminBoardOrAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdmin(context.User) || RoleChecks.IsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;

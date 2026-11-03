@@ -53,6 +53,10 @@ internal sealed class AdminProgramViewModel
     public required ProgramInfo Program { get; init; }
     public required LocalDate Today { get; init; }
     public required bool CanAdminister { get; init; }
+
+    /// <summary>False for Board, which reads every program and changes nothing.</summary>
+    public required bool CanManage { get; init; }
+
     public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
     public string NameOf(Guid? userId) =>

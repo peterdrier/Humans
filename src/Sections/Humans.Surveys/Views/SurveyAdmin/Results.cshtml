@@ -14,9 +14,9 @@
 
 <nav aria-label="@Localizer["Surveys_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a></li>
-        <li class="breadcrumb-item" authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
+        <li class="breadcrumb-item" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Surveys_Admin_Results_Breadcrumb"]</li>
     </ol>
 </nav>
@@ -25,7 +25,7 @@
     <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</h1>
     <div class="d-flex align-items-center gap-2">
         <span class="badge @StatusBadge(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
-        @if (!Model.IsEmbargoed)
+        @if (!Model.IsEmbargoed && Model.CanExport)
         {
             <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadCsv"]</a>
             <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadJson"]</a>
@@ -240,7 +240,7 @@ else
                         @if (Model.Status == SurveyStatus.Closed)
                         {
                             <form asp-action="RankedAvailability" asp-route-id="@Model.SurveyId" method="post"
-                                  authorize-policy="@Humans.Base.Authorization.PolicyNames.BoardOrAdmin">
+                                  authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="questionId" value="@q.QuestionId" />
                                 <fieldset>

@@ -116,6 +116,21 @@ public class ShiftAdminControllerTests
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
     }
 
+    [HumansFact]
+    public async Task ShiftsReader_who_coordinates_nothing_sees_the_page_with_every_control_off()
+    {
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(false);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), ShiftsPolicies.Read)
+            .Returns(AuthorizationResult.Success());
+
+        var result = await BuildSut(authorization: authorization).Index(Slug);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ShiftAdminViewModel>().Subject;
+        model.CanManageShifts.Should().BeFalse();
+        model.CanApproveSignups.Should().BeFalse();
+    }
+
     [HumansTheory]
     [InlineData(0)]
     [InlineData(1)]
@@ -970,7 +985,8 @@ public class ShiftAdminControllerTests
         controller.TempData["ErrorMessage"].Should().BeOfType<string>().Which.Should().Contain("3").And.NotContain("{0}");
     }
 
-    private ShiftAdminController BuildSut(IStringLocalizer<ShiftsResource>? localizer = null)
+    private ShiftAdminController BuildSut(
+        IStringLocalizer<ShiftsResource>? localizer = null, IAuthorizationService? authorization = null)
     {
         var ctrl = new ShiftAdminController(
             _teamService,
@@ -979,7 +995,7 @@ public class ShiftAdminControllerTests
             _signupService,
             _shiftView,
             _userService,
-            Substitute.For<IAuthorizationService>(),
+            authorization ?? Substitute.For<IAuthorizationService>(),
             Substitute.For<IClock>(),
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculator>(), _userService, Substitute.For<ICantinaService>(), _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, Substitute.For<ICantinaService>(), _shiftView, _signupService, _tracking),
