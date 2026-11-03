@@ -54,16 +54,7 @@ internal sealed class IndividualEventRowViewModel
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
 
-    public string StatusBadgeClass => Status switch
-    {
-        EventStatus.Draft => "bg-secondary",
-        EventStatus.Pending => "bg-warning text-dark",
-        EventStatus.Approved => "bg-success",
-        EventStatus.Rejected => "bg-danger",
-        EventStatus.ResubmitRequested => "bg-info",
-        EventStatus.Withdrawn => "bg-dark",
-        _ => "bg-secondary"
-    };
+    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
 internal sealed class IndividualEventFormViewModel
