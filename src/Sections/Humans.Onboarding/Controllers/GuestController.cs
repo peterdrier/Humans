@@ -35,7 +35,7 @@ internal sealed class GuestController(
     {
         var viewModel = new GuestDashboardViewModel
         {
-            DisplayName = user.BurnerName,
+            UserId = user.Id,
         };
 
         viewModel.IsDeletionPending = user.IsDeletionPending;

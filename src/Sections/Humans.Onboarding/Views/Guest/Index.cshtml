@@ -1,11 +1,20 @@
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<OnboardingResource> HtmlLocalizer
 @model GuestDashboardViewModel
 @{
     ViewData["Title"] = SharedLocalizer["Dashboard_Title"].Value;
+    var viewer = await Component.InvokeAsync(typeof(HumanViewComponent), new
+    {
+        userId = Model.UserId,
+        link = HumanLink.None,
+    });
+    using var viewerWriter = new System.IO.StringWriter();
+    viewer.WriteTo(viewerWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var viewerHtml = new Microsoft.AspNetCore.Html.HtmlString(viewerWriter.ToString().Trim());
 }
 
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8 text-center">
-        <h1 class="mb-1">@Html.Raw(string.Format(Localizer["Onboarding_GuestGreeting"].Value, Html.Encode(Model.DisplayName)))</h1>
+        <h1 class="mb-1">@HtmlLocalizer["Onboarding_GuestGreeting", viewerHtml]</h1>
         <p class="text-muted">@Localizer["Onboarding_GuestSubtitle"]</p>
     </div>
 </div>

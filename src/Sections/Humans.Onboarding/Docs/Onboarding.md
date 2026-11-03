@@ -86,6 +86,7 @@ Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding does not
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - Guest dashboard and widget-step reads propagate request cancellation through viewer, eligibility, consent, active-event, priority-shift browse and signup reads; an abandoned request stops rather than selecting a fallback step.
 - Access is the stored `User.State`: the full app requires `UserState.Active` (legal name entered). It is NOT derived from Volunteers-team membership — nothing in-app should read Volunteers membership to decide access.
+- The Guest dashboard carries the resolved viewer ID and renders its localized greeting through Human, without a profile link. Names are resolved and encoded at render time rather than copied into the dashboard model.
 - Widget self-signups use Shifts’ default actor, chosen after resolving the signup account. A merged session cannot stamp its archived cookie ID onto the signup audit entry.
 - Successful single and range widget signups retain the service's localized capacity or skipped-day warning in the information alert after redirecting to Consents.
 - Shifts enforces `UserState.Active` for self-signups from the widget. Saving required names makes a new account eligible before consents; suspended, rejected, deletion-pending and terminal accounts cannot use those exempt endpoints to create signups.
