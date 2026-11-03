@@ -13,7 +13,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Finance.Controllers;
 
-/// <summary>Budget's <c>BudgetAdminController</c> shares the <c>Finance</c> route prefix.</summary>
 [Authorize(Policy = FinancePolicies.Read)]
 [Route("Finance")]
 internal sealed class FinanceController(
@@ -25,6 +24,10 @@ internal sealed class FinanceController(
     CreditorMatchService creditorMatches,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
+    /// <summary>Placeholder index until the Finance overview (balances, owed, budget vs actuals) exists.</summary>
+    [HttpGet("")]
+    public IActionResult Index() => View();
+
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
     {

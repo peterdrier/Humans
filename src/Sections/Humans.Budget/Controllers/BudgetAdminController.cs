@@ -15,11 +15,8 @@ using Humans.Users.Contracts;
 
 namespace Humans.Budget.Controllers;
 
-/// <summary>
-/// Shares the <c>/Finance</c> route prefix with Finance's <c>FinanceController</c>; the action templates are disjoint.
-/// </summary>
 [Authorize(Policy = FinancePolicies.Read)]
-[Route("Finance")]
+[Route("Budget/Admin")]
 internal sealed class BudgetAdminController(
     IBudgetManagement budgetService,
     ITeamService teamService,
@@ -124,7 +121,7 @@ internal sealed class BudgetAdminController(
         }
     }
 
-    [HttpGet("Admin")]
+    [HttpGet("Years")]
     public async Task<IActionResult> Admin()
     {
         var ct = HttpContext.RequestAborted;

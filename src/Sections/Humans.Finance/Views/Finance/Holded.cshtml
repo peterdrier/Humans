@@ -17,39 +17,15 @@
     };
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Holded Connector</h1>
-    <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="HoldedAccounts" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-list-ol me-1"></i>Account provisioning
-        </a>
-        <a asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-question me-1"></i>Unmatched docs
-        </a>
-        <a asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-users me-1"></i>Creditors
-        </a>
-        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
-           title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
-            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
-        </a>
-        <a asp-action="ExpenseRecon" class="btn btn-outline-secondary"
-           title="Approved expense lines against the Holded documents and creditor balances.">
-            <i class="fa-solid fa-scale-balanced me-1"></i>Expense recon
-        </a>
-        <a asp-controller="Holded" asp-action="Index" class="btn btn-outline-secondary"
-           title="The ledger mirror's own screen: API budget, ledger sweeps, chart of accounts.">
-            <i class="fa-solid fa-book me-1"></i>Ledger mirror
-        </a>
-    </div>
-</div>
+<h1 class="mb-3">Holded Connector</h1>
 
 <p class="text-muted">
     Finance's half of the Holded integration — the purchase-doc sync, what each budget category is
     booked to, and every doc pulled so far. Every figure is read from the local cache; this page
     makes no Holded API call, so it cannot stall on one. The mirror's own health (API budget, ledger
     sweeps, chart of accounts) lives on <a asp-controller="Holded" asp-action="Index">the ledger
-    mirror screen</a>; the pages linked above own the working surfaces and are not restated here.
+    mirror screen</a>; the working screens (provisioning, unmatched and duplicate docs) are linked
+    where their figures appear and are not restated here.
 </p>
 
 @if (sync.IsStale || string.Equals(sync.Status, "Error", StringComparison.Ordinal))
@@ -361,7 +337,8 @@
             <code>None</code> = neither, which is what puts it in the
             <a asp-action="HoldedUnmatched">unmatched queue</a>. Only approved docs count toward
             budget actuals. Docs are read-only here — re-categorizing is done in Holded, and the next
-            sync picks the correction up.
+            sync picks the correction up. Documents the expense push created twice are on
+            <a asp-action="HoldedDuplicates">Duplicate docs</a>.
         </div>
     }
 </div>

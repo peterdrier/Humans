@@ -3,6 +3,7 @@
 @using NodaTime
 @{
     var a = Model.Account;
+    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Accounts";
     ViewData["Title"] = $"{a.Number}{(string.IsNullOrWhiteSpace(a.Name) ? "" : $" · {a.Name}")}";
     var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
@@ -16,7 +17,6 @@
         </a>
     </div>
 </div>
-<partial name="_HoldedNav" />
 
 <p class="text-muted">
     Every figure below reads in the association's own point of view: + means its money went up,

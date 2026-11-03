@@ -17,7 +17,7 @@ Finance is the **treasurer's reality side** of the money story. Budget owns plan
 
 The end-to-end *business* process — how a reimbursement actually moves from expense report through the bank and back to a zero balance, including the manual steps and external parties — is [`expense-reimbursement-process.md`](expense-reimbursement-process.md). This file stays about code invariants.
 
-What lives here: the Holded purchase-doc sync and its attribution to budget categories; creditor bindings and the balances derived from the Holded section's ledger mirror ([Feature 2](#feature-2--creditor-reads-over-the-holded-sections-mirror)); and SEPA payout generation and booking ([Feature 3](#feature-3--sepa-payout-of-creditor-balances), [`features/sepa-payout.md`](features/sepa-payout.md)). The Budget surface on the same `/Finance` prefix is Budget's — see Routing.
+What lives here: the Holded purchase-doc sync and its attribution to budget categories; creditor bindings and the balances derived from the Holded section's ledger mirror ([Feature 2](#feature-2--creditor-reads-over-the-holded-sections-mirror)); and SEPA payout generation and booking ([Feature 3](#feature-3--sepa-payout-of-creditor-balances), [`features/sepa-payout.md`](features/sepa-payout.md)). Budget's admin surface is at `/Budget/Admin`, not under `/Finance`.
 
 ## Concepts
 
@@ -34,7 +34,9 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 - The **Holded Sync State** is a singleton row tracking the operational state of the recurring sync job (`Idle / Running / Error`).
 - A **Managed Account** is an expense account Finance created or linked outside the budget map on another caller's request (`CreateOrLinkExpenseAccountAsync`). Finance records number, id, label and an active flag — never who asked. Docs booked to one are Matched with no category: off the Unmatched queue, outside every year's actuals. Create, link, retire and restore each write an audit entry (`HoldedExpenseAccountCreated` / `Linked` / `ActiveChanged`). Expense-account reads reject missing or blank Holded expense-account IDs before Finance writes its managed registry or returns an account binding.
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync. Its controller orders documents newest first; the repository and service return unmatched data with document-date metadata, without display ordering. Backdoor's Holded-sync projection applies the same order.
-- The **Connector index** (`/Finance/Holded`) is the read-only answer to "what is Finance's half of Holded doing": doc-sync status with its age rendered as a **Stale** badge rather than left implied, the live `HoldedCategoryMap` rows, every pulled `HoldedExpenseDoc` with its match source and raw tags, and the counts that link out to the four working screens. Its view orders managed accounts by account number; the service projects them without display ordering. It never calls Holded — cache reads only, so it cannot inherit the live-contacts timeout `/Finance/Creditors` carries (nobodies-collective/Humans#976). Its read model is `IHoldedFinanceAdminService`, section-**internal**, the same shape as the Holded section's `IHoldedAdminService`.
+- **`/Finance`** is a plain index of the Finance pages, a placeholder until a Finance overview (balances, owed, budget vs actuals) is built.
+- **Navigation**: the Finance admin nav group's items (Overview, Cash flow, Creditors, SEPA payouts, Expense recon, Holded connector) are the admin shell's tab strip on every Finance page; a creditor statement sits under Creditors, and provisioning, unmatched and duplicate docs sit under Holded connector.
+- The **Connector index** (`/Finance/Holded`) is the read-only answer to "what is Finance's half of Holded doing": doc-sync status with its age rendered as a **Stale** badge rather than left implied, the live `HoldedCategoryMap` rows, every pulled `HoldedExpenseDoc` with its match source and raw tags, and inline links to provisioning, the unmatched queue and duplicate docs. Its view orders managed accounts by account number; the service projects them without display ordering. It never calls Holded — cache reads only, so it cannot inherit the live-contacts timeout `/Finance/Creditors` carries (nobodies-collective/Humans#976). Its read model is `IHoldedFinanceAdminService`, section-**internal**, the same shape as the Holded section's `IHoldedAdminService`.
 
 - **Cash flow** (`/Finance/CashFlow`) answers "when does the money move, and do we run out?" from the active budget year's plan: every line item plus a synthetic VAT settlement per dated line item with VAT (income owes its VAT portion as "VAT Liability", an expense reclaims it as "VAT Credits"; Spanish quarterly VAT settles 45 days after the quarter end), bucketed by ISO week or calendar month with income, expenses, net and running net. Undated items are totalled under **Unscheduled**. The **Funds exhausted** marker is an expense-only runway: it starts at the gross revenue of the year's paid ticket orders (the year's `VendorEventId`, else the current event, selected by Tickets' `TicketOrderInfo.IsForEvent`), subtracts each period's expenses and ignores income, and marks only the first period it reaches ≤ 0. `CashFlowService` (internal) computes it from `IBudgetService.GetActiveYearAsync` and `ITicketService.GetTicketOrdersAsync`; it owns no tables. Planned next step: fold in actuals — Holded purchase documents, expense reports and invoices — beside the plan.
 
@@ -53,7 +55,7 @@ What lives here: the Holded purchase-doc sync and its attribution to budget cate
 | DocNumber | string | e.g. `F260009` |
 | ContactName | string | Vendor name, denormalized. |
 | ContactId | string(64)? | Holded `contact_id` from the list; null when the doc names no contact or the row predates the column and has not been re-synced. The expense reconciliation matches contacts on it. |
-| Description | string? | Holded's internal description (`description`; "Add an internal description" in its UI). Trimmed; blank stored as null. Shown beside the doc on `/Finance`, `/Finance/Holded` and the unmatched queue. |
+| Description | string? | Holded's internal description (`description`; "Add an internal description" in its UI). Trimmed; blank stored as null. Shown beside the doc on `/Budget/Admin`, `/Finance/Holded` and the unmatched queue. |
 | Date | LocalDate | From Holded `date` (epoch s, Europe/Madrid) |
 | Subtotal | decimal | EUR, raw |
 | Tax | decimal | EUR, raw (net of IVA − IRPF) |
@@ -205,7 +207,7 @@ Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
-Every `/Finance/*` route except the one below is gated on `FinancePolicies.Read` (FinanceAdmin, Board, Admin) at class level, and every POST on `FinancePolicies.Manage` (FinanceAdmin, Admin), declared separately on each of the two controllers serving the prefix — this section's `FinanceController` and Budget's `BudgetAdminController`.
+Every `/Finance/*` route except the one below is gated on `FinancePolicies.Read` (FinanceAdmin, Board, Admin) at class level, and every POST on `FinancePolicies.Manage` (FinanceAdmin, Admin), declared on this section's `FinanceController`.
 
 ### Member payment details
 
@@ -217,7 +219,7 @@ The Payment Details card itself is `PaymentDetailsViewComponent`, contributed to
 
 ### Not this section — the Budget surface on the same prefix
 
-`Humans.Budget`'s `BudgetAdminController` keeps `[Route("Finance")]`, so `/Finance`, `/Finance/Years/*`, `/Finance/Categories/*`, `/Finance/LineItems/*`, `/Finance/AuditLog` and `/Finance/Admin` are served by Budget. Their table lives in [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
+Budget's admin pages are at `/Budget/Admin/*` (`Humans.Budget`'s `BudgetAdminController`); their table lives in [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
 
 ### Cash flow
 
@@ -229,7 +231,8 @@ The Payment Details card itself is `PaymentDetailsViewComponent`, contributed to
 
 | Route | Purpose |
 |-------|---------|
-| `GET /Finance/Holded` | Connector index — doc-sync health with explicit staleness, the live category map, the managed-account registry, every pulled doc, and the way into the four screens below. Read-only, cache only (nobodies-collective/Humans#1000) |
+| `GET /Finance` | Index of the Finance pages, a placeholder until the Finance overview exists |
+| `GET /Finance/Holded` | Connector index — doc-sync health with explicit staleness, the live category map, the managed-account registry, every pulled doc, and inline links to provisioning, unmatched and duplicate docs. Read-only, cache only (nobodies-collective/Humans#1000) |
 | `GET /Finance/HoldedAccounts` | Account provisioning UI (reconcile + apply) |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
 | `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings and, per bound contact, the count of open (approved, still-owing) purchase documents — one live `ListPurchaseDocumentsAsync` call per render, "—" when unbound, colliding or unreadable. A **Checks** column flags a single-bound account whose expense side and ledger disagree (`CreditorMatchService`, below); "—" on any other row |
@@ -283,7 +286,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - A purchase doc is attributed **as a whole, by its first product line's** booked account (plus the union of doc-level and line-level tags), and its full `Total` lands on that one category. A multi-line doc booked across several Holded accounts is not split; line-level attribution is a deliberate later refinement (`HoldedDocumentSync.MapDoc`).
 - Actuals are keyed on the **calendar year** of the doc's Europe/Madrid date, matched against `BudgetYear.Year` parsed as an integer (`BudgetAdminController` → `GetActualsForYearAsync` → `IHoldedRepository.GetMatchedForYearAsync`). A budget year whose `Year` string is not a plain number, or that does not run January–December, shows no actuals.
 - Only `FinanceAdmin`, `Board` or `Admin` may read a `/Finance/*` page (`[Authorize(Policy = FinancePolicies.Read)]` on `FinanceController`), and only `FinanceAdmin` or `Admin` may post anything (`FinancePolicies.Manage` on every POST).
-- `FinanceController` performs no budget mutations at all — its actions are the Holded, creditor, SEPA-payout and cash-flow surface. Budget CRUD on the same prefix is `Humans.Budget`'s `BudgetAdminController`.
+- `FinanceController` performs no budget mutations at all — its actions are the Holded, creditor, SEPA-payout and cash-flow surface. Budget CRUD is `Humans.Budget`'s `BudgetAdminController` at `/Budget/Admin`.
 - `/Finance/Holded` issues **no** Holded HTTP call. Every figure comes from `holded_doc_sync_state`, `holded_category_map`, `holded_expense_docs` and `holded_creditor_contacts`; the mirror's own health (API budget, ledger sweeps, chart of accounts) is `/Holded`'s and is linked, not restated. Pinned by `GetConnectorOverview_MakesNoHoldedApiCall`.
 - The doc sync counts as **stale** at 36 h — the nightly job's 24 h cadence plus half a day of grace — and never having run counts as stale too: budget actuals and the unmatched queue are equally wrong either way, so both raise the same alarm.
 - Each successful full pull replaces the purchase-document cache, including an empty snapshot. Documents absent from Holded are removed from actuals and unmatched review. Retained rows match on `HoldedDocId` and preserve their identity and `CreatedAt`. A failed fetch leaves the cached documents unchanged.
@@ -430,7 +433,7 @@ Browser attribution on creditor bindings, duplicate-contact pages, expense-recon
 
 `GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, exactly what `/Finance/Holded`'s category-map table and `/Finance/Sepa` already render: `GetCategoryMapAsync` returns the same `HoldedCategoryMapRow` projection `GetConnectorOverviewAsync` builds (both share one private helper, so the two views cannot drift), and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`HoldedCategoryMapRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
 
-**Controllers.** `/Finance` is served by two controllers under one route prefix: this section's `FinanceController` — the Holded, creditor, SEPA-payout and cash-flow surface, the routing table above — and `Humans.Budget.Controllers.BudgetAdminController`, Budget CRUD under the same `[Route("Finance")]`. See [`Budget.md`](../../Humans.Budget/Docs/Budget.md) for the Budget side.
+**Controllers.** `/Finance` is this section's `FinanceController`: the index, Holded, creditor, SEPA-payout and cash-flow surface in the routing table above. Budget CRUD is `Humans.Budget.Controllers.BudgetAdminController` at `/Budget/Admin`; see [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
 
 **The Holded connector is not this section.** `IHoldedClient`, `HoldedClient`, `HoldedClientOptions`, `HoldedApiException` and the connector DTOs belong to the **Holded** section — public in its `Contracts/` folder (namespace `Humans.Holded.Contracts`), implementation `internal` in `Humans.Holded/Services/` — with their own [`Holded-connector.md`](../../Humans.Holded/Docs/Holded-connector.md). Finance consumes them through that folder. Consequence for the boundary: `HoldedCreditorLedger.Lines` carries Finance's own `CreditorLedgerLine` rather than the connector's `HoldedLedgerLineDto`, because Finance's contracts leaf may reference only the bottom of the graph and re-exporting another component's wire DTO across a section boundary is the thing the split exists to stop.
 

@@ -33,14 +33,20 @@ internal sealed class HoldedController(
         return View(page with
         {
             Groups = page.Groups.OrderBy(group => group.Digit)
-                .Select(group => group with { Accounts = group.Accounts.OrderBy(account => account.Number).ToList() })
+                .Select(group => group with
+                {
+                    Accounts = group.Accounts.OrderBy(account => account.Number).ToList(),
+                    Subgroups = group.Subgroups.OrderBy(sub => sub.Number)
+                        .Select(sub => sub with { Accounts = sub.Accounts.OrderBy(account => account.Number).ToList() })
+                        .ToList()
+                })
                 .ToList()
         });
     }
 
     [HttpGet("Calls")]
     public async Task<IActionResult> Calls(CancellationToken ct) =>
-        View((await admin.GetCallsByMonthAsync(ct)).OrderByDescending(m => m.Year).ThenByDescending(m => m.Month).ToList());
+        View((await admin.GetCallsByMonthAsync(ct)).OrderBy(m => m.Year).ThenBy(m => m.Month).ToList());
 
     /// <summary>Any account in the chart. Figures are in the association's point of view (+ money in, − money
     /// out), not Holded's raw debit/credit sign.</summary>
