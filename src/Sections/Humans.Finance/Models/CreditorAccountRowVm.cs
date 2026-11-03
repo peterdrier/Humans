@@ -50,6 +50,7 @@ internal sealed record CreditorAccountRowVm(
         : string.Join(", ", Bindings.Select(b => b.MemberName)).ToUpperInvariant();
 }
 
+/// <summary>MemberName supports server-side sorting and native confirmation prompts; visible names render UserId.</summary>
 internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string Source);
 
 /// <summary>

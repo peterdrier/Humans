@@ -1,3 +1,14 @@
+using System.Resources;
+using System.Text.Encodings.Web;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Humans.Base.ViewComponents;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using System.Globalization;
 using AwesomeAssertions;
@@ -678,7 +689,7 @@ public class FinanceControllerTests
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
         page.Files.Select(f => f.FileName).Should().Equal("new.xml", "old.xml");
-        page.Files[0].GeneratedByName.Should().Be("Treasurer");
+        page.Files[0].GeneratedByUserId.Should().Be(admin);
         page.Files[0].Transfers.Select(t => t.Row.SupplierAccountNum).Should().Equal(40000002, 40000007);
         page.Files[0].Transfers[0].MemberName.Should().Be("Ada");
     }
@@ -792,7 +803,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Sepa_ResolvesTheWithdrawingAdminsName()
+    public async Task Sepa_PreservesTheWithdrawingAdminsId()
     {
         var admin = Guid.NewGuid();
         var row = Transfer(Guid.NewGuid(), "f.xml", Stamp(1), admin, Ana, 40000002) with
@@ -808,11 +819,11 @@ public class FinanceControllerTests
 
         var transfer = page.Files.Single().Transfers.Single();
         transfer.Row.IsWithdrawn.Should().BeTrue();
-        transfer.WithdrawnByName.Should().Be("Zoe");
+        transfer.Row.WithdrawnByUserId.Should().Be(Bo);
     }
 
     [HumansFact]
-    public async Task HoldedDuplicates_RendersThePlanWithMemberNames()
+    public async Task HoldedDuplicates_PassesMemberIdsWithoutHydratingNames()
     {
         var vm = new HoldedDuplicatesVm(
             [new HoldedDuplicateMember(Ana, "Ana Ruiz", "c1", 41000067, [], [])], [], null);
@@ -823,7 +834,7 @@ public class FinanceControllerTests
         var result = await controller.HoldedDuplicates(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
-        ((Dictionary<Guid, string>)controller.ViewBag.MemberNames)[Ana].Should().Be("Ada");
+        await _users.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!, default);
     }
 
     [HumansFact]
@@ -891,6 +902,133 @@ public class FinanceControllerTests
     }
 
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
+
+    [HumansTheory]
+    [InlineData("en", false)]
+    [InlineData("es", false)]
+    [InlineData("de", false)]
+    [InlineData("it", false)]
+    [InlineData("fr", false)]
+    [InlineData("ca", false)]
+    [InlineData("en", true)]
+    [InlineData("es", true)]
+    [InlineData("de", true)]
+    [InlineData("it", true)]
+    [InlineData("fr", true)]
+    [InlineData("ca", true)]
+    public async Task DuplicatePages_RenderMemberIdsWithoutANameDictionary(string language, bool applied)
+    {
+        using var culture = new CultureScope(language);
+        const string name = "Member <script>&";
+        _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, name));
+        object model = applied
+            ? new HoldedDuplicateApplyResult([
+                new(Ana, "Legal contact", 40000002, 1m, 1m, [], [], []),
+                new(Bo, "Other contact", 40000003, 0m, 0m, [], [], [])], null, null)
+            : new HoldedDuplicatesVm([
+                new(Ana, "Legal contact", "c1", 40000002, [], []),
+                new(Bo, "Other contact", "c2", 40000003, [], [])], [], null);
+
+        var html = await RenderAsync(applied ? "HoldedDuplicatesApplied" : "HoldedDuplicates", model);
+
+        html.Should().Contain(HtmlEncoder.Default.Encode(name)).And.Contain("Legal contact")
+            .And.Contain("Other contact").And.NotContain(name);
+        html.Should().Contain(HtmlEncoder.Default.Encode(new ResourceManager(typeof(SharedResource))
+            .GetString("Common_Unknown", CultureInfo.CurrentUICulture)!));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Sepa_RendersRecordedActorIdsAndIdentifiesAutomaticBookings(bool automatic)
+    {
+        var generatedBy = Guid.NewGuid();
+        var bookedBy = Guid.NewGuid();
+        var withdrawnBy = Guid.NewGuid();
+        foreach (var (id, name) in new[] { (Ana, "Member <b>&"), (generatedBy, "Generator <b>&"),
+                     (bookedBy, "Booker <b>&"), (withdrawnBy, "Withdrawer <b>&") })
+            _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(id, name));
+        var fileId = Guid.NewGuid();
+        var booked = Transfer(fileId, "f.xml", Stamp(1), generatedBy, Ana, 40000002) with
+        {
+            BookedAt = Stamp(2), BookedByUserId = automatic ? null : bookedBy,
+        };
+        var withdrawn = booked with
+        {
+            TransferId = Guid.NewGuid(), BookedAt = null, BookedByUserId = null,
+            WithdrawnAt = Stamp(2), WithdrawnByUserId = withdrawnBy,
+        };
+        var model = new SepaPayoutsPageVm([
+            new(fileId, "f.xml", Stamp(1), generatedBy,
+                [new(booked, "Confirmation name"), new(withdrawn, "Confirmation name")], null)], null, [], null, 3);
+
+        var html = await RenderAsync("Sepa", model);
+
+        foreach (var name in new[] { "Member <b>&", "Generator <b>&", "Withdrawer <b>&" })
+            html.Should().Contain(HtmlEncoder.Default.Encode(name)).And.NotContain(name);
+        html.Should().Contain("Ana Ruiz");
+        html.Contains("automatic sweep", StringComparison.Ordinal).Should().Be(automatic);
+        html.Contains(HtmlEncoder.Default.Encode("Booker <b>&"), StringComparison.Ordinal).Should().Be(!automatic);
+    }
+
+    [HumansFact]
+    public async Task Creditors_RenderCurrentHumansWhileKeepingConfirmationText()
+    {
+        _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, "Current <b>&"));
+        _users.GetUserInfoAsync(Bo, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Bo, "Unresolved <b>&"));
+        var model = new CreditorsPageVm([
+            new(40000002, "Legal account", 12m, [new(Ana, "Confirmation name", "Auto")])],
+            [new(Bo, "Other confirmation", "Auto")], "member", "asc", new(100m, null));
+
+        var html = await RenderAsync("Creditors", model);
+
+        html.Should().Contain(HtmlEncoder.Default.Encode("Current <b>&"))
+            .And.Contain(HtmlEncoder.Default.Encode("Unresolved <b>&"))
+            .And.Contain("Clear Confirmation name")
+            .And.Contain("Legal account").And.NotContain("Current <b>&");
+    }
+
+    private async Task<string> RenderAsync(string page, object model)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(FinanceControllerTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddControllersWithViews()
+            .AddApplicationPart(typeof(FinanceResource).Assembly)
+            .AddApplicationPart(typeof(HumanViewComponent).Assembly);
+        builder.Services.AddSingleton(_users);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        builder.Services.AddSingleton(authorization);
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var result = services.GetRequiredService<IRazorViewEngine>()
+            .GetView(null, $"/Views/Finance/{page}.cshtml", isMainPage: false);
+        result.Success.Should().BeTrue();
+        var http = new DefaultHttpContext { RequestServices = services };
+        services.GetRequiredService<IHttpContextAccessor>().HttpContext = http;
+        var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
+        {
+            Model = model,
+        };
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        var context = new ViewContext(action, result.View!, data,
+            new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions());
+        await result.View!.RenderAsync(context);
+        return writer.ToString();
+    }
 
     private static SepaPayoutTransferRow Transfer(
         Guid fileId, string fileName, Instant generatedAt, Guid generatedBy, Guid userId, int account) =>
