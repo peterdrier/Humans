@@ -38,12 +38,12 @@ public class GuideContentServiceTests
 
     private sealed class StubRenderer : IGuideRenderer
     {
-        public string Render(string markdown, string fileStem) => $"[rendered:{fileStem}]";
+        public string Render(string markdown) => $"[rendered:{markdown}]";
     }
 
     private sealed class ThrowingRenderer(Exception toThrow) : IGuideRenderer
     {
-        public string Render(string markdown, string fileStem) => throw toThrow;
+        public string Render(string markdown) => throw toThrow;
     }
 
     private static GuideContentService CreateService(IGuideContentSource source, out IMemoryCache cache) =>
@@ -96,7 +96,7 @@ public class GuideContentServiceTests
 
         var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
-        html.Should().Be("[rendered:Profiles]");
+        html.Should().Be("[rendered:# Profiles\n\nContent.]");
         source.Calls.Should().BeGreaterThan(0);
     }
 
@@ -143,8 +143,8 @@ public class GuideContentServiceTests
         var queuedRead = service.GetPageAsync("profiles", GuideRoleContext.Anonymous, token);
         release.SetResult();
 
-        (await firstRead.WaitAsync(token)).Should().Be("[rendered:Profiles]");
-        (await queuedRead.WaitAsync(token)).Should().Be("[rendered:Profiles]");
+        (await firstRead.WaitAsync(token)).Should().Be("[rendered:# Profiles\n\nContent.]");
+        (await queuedRead.WaitAsync(token)).Should().Be("[rendered:# Profiles\n\nContent.]");
         calls.Should().Be(GuideFiles.All.Count, "the queued page read must not refetch the entire corpus after its page was loaded");
     }
 
@@ -198,7 +198,7 @@ public class GuideContentServiceTests
 
         var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
-        html.Should().Be("[rendered:Profiles]");
+        html.Should().Be("[rendered:# Profiles\n\nContent.]");
     }
 
     [HumansFact]

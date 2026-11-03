@@ -36,7 +36,7 @@ internal sealed class GuideContentService(
 
         try
         {
-            return renderer.Render(GuideFilter.Apply(document, roleContext), canonical);
+            return renderer.Render(GuideFilter.Apply(document, roleContext));
         }
         catch (RegexMatchTimeoutException ex)
         {

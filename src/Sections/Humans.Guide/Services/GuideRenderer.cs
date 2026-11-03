@@ -12,10 +12,9 @@ internal sealed class GuideRenderer(
         .UseAdvancedExtensions()
         .Build();
 
-    public string Render(string markdown, string fileStem)
+    public string Render(string markdown)
     {
         ArgumentNullException.ThrowIfNull(markdown);
-        ArgumentException.ThrowIfNullOrWhiteSpace(fileStem);
 
         return postprocessor.Rewrite(Markdown.ToHtml(markdown, Pipeline), settings.Value);
     }

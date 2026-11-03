@@ -1,7 +1,7 @@
 namespace Humans.Guide.Services;
 
-/// <summary>Pure function of (markdown, file stem). The markdown is already filtered.</summary>
+/// <summary>Renders already-filtered markdown.</summary>
 internal interface IGuideRenderer
 {
-    string Render(string markdown, string fileStem);
+    string Render(string markdown);
 }
