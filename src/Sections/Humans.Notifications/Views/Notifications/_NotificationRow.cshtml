@@ -1,5 +1,6 @@
 @model Humans.Notifications.Services.NotificationRowDto
 @inject NodaTime.IClock Clock
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<NotificationsResource> HtmlLocalizer
 
 @{
     var borderClass = Model switch
@@ -26,12 +27,21 @@
 <div class="notification-row @borderClass @bgClass" data-notification-id="@Model.Id">
     @if (Model.IsResolved)
     {
+        var resolver = await Component.InvokeAsync(typeof(HumanViewComponent), new
+        {
+            userId = Model.ResolvedByUserId ?? Guid.Empty,
+            link = HumanLink.None,
+        });
+        using var resolverWriter = new System.IO.StringWriter();
+        resolver.WriteTo(resolverWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+        // Template indentation must not add whitespace before the localized sentence's punctuation.
+        var resolverHtml = new Microsoft.AspNetCore.Html.HtmlString(resolverWriter.ToString().Trim());
         <div class="notification-row-line">
             <span class="notification-title notification-title-resolved">@Model.Title</span>
             <span class="notification-timestamp">@timeAgo</span>
         </div>
         <div class="notification-resolved-label">
-            @string.Format(Localizer["Notifications_HandledBy"].Value, Model.ResolvedByName ?? "?", resolvedTimeAgo)
+            @HtmlLocalizer["Notifications_HandledBy", resolverHtml, resolvedTimeAgo]
         </div>
     }
     else if (hasActionUrl)

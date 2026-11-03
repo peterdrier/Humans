@@ -3,11 +3,9 @@ using Humans.Notifications.Services;
 using AwesomeAssertions;
 using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
-using NSubstitute;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Users.Contracts;
 
 namespace Humans.Notifications.Tests.Services;
 
@@ -33,7 +31,7 @@ public class NotificationRetentionTests : IDisposable
 
         var repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
         _retention = new NotificationInboxService(
-            repo, Substitute.For<IUserService>(), TestSources.Registry, _clock);
+            repo, TestSources.Registry, _clock);
     }
 
     public void Dispose()

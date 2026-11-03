@@ -245,7 +245,7 @@ public class NotificationEmitterTests : IDisposable
     {
         var user = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
-        var inbox = new NotificationInboxService(_repo, Substitute.For<IUserService>(), TestSources.Registry, _clock);
+        var inbox = new NotificationInboxService(_repo, TestSources.Registry, _clock);
         (await inbox.GetUnreadBadgeCountsAsync(user, ct)).Should().Be((0, 0));
 
         await _emitter.SendAsync(
