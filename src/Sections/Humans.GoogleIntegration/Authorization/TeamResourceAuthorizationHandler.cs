@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.GoogleIntegration.Contracts;
@@ -13,6 +14,7 @@ namespace Humans.GoogleIntegration.Authorization;
 /// </summary>
 internal sealed class TeamResourceAuthorizationHandler(
     ITeamResourceService teamResources,
+    IUserService users,
     IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<TeamResourceManageRequirement, TeamInfo>
 {
@@ -30,9 +32,14 @@ internal sealed class TeamResourceAuthorizationHandler(
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return;
 
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        var viewer = await users.GetUserInfoAsync(userId, ct);
+        if (viewer is null)
+            return;
+
         var departmentId = resource.ParentTeamId ?? resource.Id;
         if (await teamResources.CanManageTeamResourcesAsync(
-                departmentId, userId, httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None))
+                departmentId, viewer.Id, ct))
             context.Succeed(requirement);
     }
 }

@@ -326,7 +326,7 @@ public class TeamResourcesControllerTests
             .AddLogging()
             .AddAuthorizationCore()
             .AddSingleton<IAuthorizationHandler>(new TeamResourceAuthorizationHandler(
-                _resources, new HttpContextAccessor { HttpContext = http }))
+                _resources, _users, new HttpContextAccessor { HttpContext = http }))
             .BuildServiceProvider()
             .GetRequiredService<IAuthorizationService>();
         return new TeamResourcesController(_users, _teams, _resources, authorization, _sync,
