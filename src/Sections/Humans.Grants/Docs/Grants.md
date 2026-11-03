@@ -28,7 +28,7 @@ A grant entitles a human to a thing (a cheaper ticket, early entry for build, st
 | Entitles | string(500) | What the person gets, in their notice and on their profile |
 | Description | string(2000)? | Managers and Board only |
 | Year | int | the event's year, for display and sorting |
-| EventSettingsId | Guid? | index; the event. Null on programs from before events were tracked: they read as the earliest non-deleted event of their year (by gate opening) until the `grants.event-ids` data migration (on `/Debug/DataMigrations`) stamps that event |
+| EventSettingsId | Guid? | index; the stored event id. Legacy unassigned programs retain their year label without inferring an event; the `grants.event-ids` migration and fallback retired after production reported done on 2026-11-03 |
 | IssuedBy | GrantIssuer (string) | `Managers` or `Source` |
 | SourceKey | string(32)? | Set only when `IssuedBy = Source`; the key the source section passes |
 | GrantsExpireOn | LocalDate? | Default expiry for its grants; null = never |

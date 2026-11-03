@@ -111,6 +111,7 @@ public abstract class GrantsTestHarness : IDisposable
             Name = name,
             Entitles = "a ticket at the build-crew price",
             Year = 2027,
+            EventSettingsId = Event2027.Id,
             IssuedBy = issuedBy,
             SourceKey = issuedBy == GrantIssuer.Source ? sourceKey ?? "low-income" : null,
             GrantsExpireOn = expiresOn,
