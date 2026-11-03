@@ -31,9 +31,10 @@ internal sealed class ComposerSelfSendService(
             ? localizer["Email_ComposerSelfTest_DefaultSubject"].Value
             : string.Format(CultureInfo.CurrentCulture, localizer["Email_ComposerSelfTest_Subject"].Value, subject.Trim());
 
+        // Closing the composer must not interrupt sending after the account read.
         await emailService.SendAsync(new EmailMessage(
             email, user.BurnerName, userId, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
-            TemplateName, MessageCategory.System), ct);
+            TemplateName, MessageCategory.System), CancellationToken.None);
 
         try
         {
