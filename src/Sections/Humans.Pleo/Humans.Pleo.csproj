@@ -29,9 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Jobs/PleoSyncJob.cs — [DisableConcurrentExecution] and IRecurringJob. Package, not
-         project, so no cycle is possible; it was already arriving transitively. -->
-    <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />

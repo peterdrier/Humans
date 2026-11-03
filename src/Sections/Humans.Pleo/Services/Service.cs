@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Humans.AuditLog.Contracts;
 using Humans.Pleo.Contracts;
 using Humans.Pleo.Data;
 using Humans.Pleo.Domain;
@@ -11,12 +12,15 @@ internal sealed class Service(
     IPleoRepository repo,
     IPleoClient client,
     IClock clock,
+    IAuditLogService audit,
     ILogger<Service> logger) : IPleoService, IPleoAdminService
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     /// <summary>One sweep at a time across the nightly job and Sync now; a second caller skips instead of waiting.</summary>
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
+
+    private const string AuditEntity = "PleoCategory";
 
     private static readonly PleoEntryKind[] SpendKinds =
         [PleoEntryKind.CardPurchase, PleoEntryKind.PleoInvoice, PleoEntryKind.OutOfPocket];
@@ -421,7 +425,8 @@ internal sealed class Service(
         category.PleoCategoryId = pleoCategoryId;
         Stamp(category, userId);
         await repo.SaveCategoryAsync(category, ct);
-        logger.LogInformation("Pleo category {PleoCategoryId} linked to {Name} by {UserId}", pleoCategoryId, category.Name, userId);
+        await audit.LogAsync(PleoAuditActions.PleoCategoryLinked, AuditEntity, category.Id,
+            $"Linked Pleo category id {pleoCategoryId} to '{category.Name}' (Holded {category.HoldedCode})", userId);
         return null;
     }
 
@@ -430,11 +435,12 @@ internal sealed class Service(
         var category = (await repo.GetCategoriesAsync(ct)).FirstOrDefault(c => c.Id == categoryId);
         if (category?.PleoCategoryId is null) return "That category is not linked.";
 
-        logger.LogInformation("Pleo category {PleoCategoryId} unlinked from {Name} by {UserId}",
-            category.PleoCategoryId, category.Name, userId);
+        var pleoCategoryId = category.PleoCategoryId;
         category.PleoCategoryId = null;
         Stamp(category, userId);
         await repo.SaveCategoryAsync(category, ct);
+        await audit.LogAsync(PleoAuditActions.PleoCategoryUnlinked, AuditEntity, category.Id,
+            $"Unlinked Pleo category id {pleoCategoryId} from '{category.Name}' (Holded {category.HoldedCode})", userId);
         return null;
     }
 
@@ -452,6 +458,8 @@ internal sealed class Service(
         var category = new PleoCategory { Id = Guid.NewGuid(), Name = name, HoldedCode = holdedCode };
         Stamp(category, userId);
         await repo.SaveCategoryAsync(category, ct);
+        await audit.LogAsync(PleoAuditActions.PleoCategoryAdded, AuditEntity, category.Id,
+            $"Added Pleo category '{name}' → Holded {holdedCode}", userId);
         return null;
     }
 

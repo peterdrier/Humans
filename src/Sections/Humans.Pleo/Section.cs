@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -39,6 +40,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<IPleoAdminService>(sp => sp.GetRequiredService<Service>());
 
         services.AddScoped<PleoSyncJob>();
+
+        services.AddSingleton<IAuditActionContributor, PleoAuditActions>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>

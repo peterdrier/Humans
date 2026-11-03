@@ -87,6 +87,12 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 - Per-account totals are spend with a linked category; they plus Unmapped equal total spend.
 - Display order is the controller's; the service orders only the top-three merchants.
 
+## Audit
+
+Every link, unlink and add on `/Pleo/Categories` writes an audit entry naming the category, the Pleo id or Holded code,
+and the actor (`PleoCategoryLinked`, `PleoCategoryUnlinked`, `PleoCategoryAdded`): the mapping decides where spend is
+booked. Sweeps write none; their result is the sync row.
+
 ## Negative Access Rules
 
 - Board can **not** sync, link, unlink or add a category.

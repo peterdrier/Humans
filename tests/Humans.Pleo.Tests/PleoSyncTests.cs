@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Pleo.Data;
 using Humans.Pleo.Services;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public sealed class PleoSyncTests
 
     private readonly Repository _repo;
     private readonly IPleoClient _client = Substitute.For<IPleoClient>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Service _service;
     private List<JsonElement> _entries = [];
 
@@ -36,7 +38,7 @@ public sealed class PleoSyncTests
             [new PleoEmployeeWire("emp-1", "Zak", "Bulpitt ", "NCA003", false)]);
         _client.GetBalanceAsync(Arg.Any<CancellationToken>()).Returns(new PleoBalanceWire("EUR", 1_000_000, 990_000, 0));
 
-        _service = new Service(_repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)),
+        _service = new Service(_repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
             NullLogger<Service>.Instance);
     }
 
@@ -107,7 +109,10 @@ public sealed class PleoSyncTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("a")];
         await SyncAsync();
-        (await _service.LinkCategoryAsync(LaCantinaCategory, LaCantinaRow, Guid.NewGuid(), ct)).Should().BeNull();
+        var actor = Guid.NewGuid();
+        (await _service.LinkCategoryAsync(LaCantinaCategory, LaCantinaRow, actor, ct)).Should().BeNull();
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryLinked, "PleoCategory", LaCantinaRow,
+            Arg.Is<string>(d => d.Contains(LaCantinaCategory, StringComparison.Ordinal)), actor);
 
         _entries = [Entry("a"), Entry("b")];
         await SyncAsync();
