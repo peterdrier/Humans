@@ -66,7 +66,6 @@ internal sealed class BudgetSummaryViewModel
     public decimal TotalIncome { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
-    public decimal TotalLineItems { get; init; }
     public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
     public bool IsCoordinator { get; init; }

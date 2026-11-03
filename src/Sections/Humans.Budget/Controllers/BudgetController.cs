@@ -86,7 +86,6 @@ internal sealed class BudgetController(
                 TotalIncome = summary.TotalIncome,
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
-                TotalLineItems = summary.TotalLineItems,
                 IncomeSlices = summary.IncomeSlices,
                 ExpenseSlices = summary.ExpenseSlices,
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
