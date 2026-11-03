@@ -1,4 +1,5 @@
 using Humans.Containers.Contracts;
+using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Http;
 namespace Humans.Containers.Authorization;
 
 internal sealed class ContainerAuthorizationHandler(
-    ICampService campService, ICityPlanningService cityPlanningService, IHttpContextAccessor httpContextAccessor)
+    ICampService campService, ICityPlanningService cityPlanningService, IUserService users, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
     protected override async Task HandleRequirementAsync(
@@ -30,7 +31,10 @@ internal sealed class ContainerAuthorizationHandler(
         }
 
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
-        if (await cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct))
+        var viewer = await users.GetUserInfoAsync(userId, ct);
+        if (viewer is null) return;
+
+        if (await cityPlanningService.IsCityPlanningTeamMemberAsync(viewer.Id, ct))
         {
             context.Succeed(requirement);
             return;
@@ -46,7 +50,7 @@ internal sealed class ContainerAuthorizationHandler(
 
         var camp = (await campService.GetCampsForYearAsync(year, ct))
             .FirstOrDefault(c => c.Id == resource.CampId);
-        if (camp?.Seasons.Any(s => s.Year == year && s.IsLead(userId)) != true)
+        if (camp?.Seasons.Any(s => s.Year == year && s.IsLead(viewer.Id)) != true)
         {
             return;
         }

@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Containers.Tests.Authorization;
 
@@ -21,16 +22,20 @@ public sealed class ContainerAuthorizationHandlerTests
 
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ICityPlanningService _cityPlanningService = Substitute.For<ICityPlanningService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ContainerAuthorizationHandler _handler;
 
     public ContainerAuthorizationHandlerTests()
     {
-        _handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], profile: null));
+        _handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         _cityPlanningService.IsCityPlanningTeamMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
     }
 
     [HumansTheory]
+    [InlineData("User")]
     [InlineData("Team")]
     [InlineData("ActiveSettings")]
     [InlineData("Camp")]
@@ -49,6 +54,11 @@ public sealed class ContainerAuthorizationHandlerTests
             }
             ct.ThrowIfCancellationRequested();
         }
+        _users.GetUserInfoAsync(LeadUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("User", call.Arg<CancellationToken>());
+            return UserInfo.Create(new User { Id = LeadUserId }, [], [], profile: null);
+        });
         _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Team", call.Arg<CancellationToken>());
@@ -64,7 +74,7 @@ public sealed class ContainerAuthorizationHandlerTests
             Read("Camp", call.Arg<CancellationToken>());
             return new List<CampInfo> { CreateCampInfo(2027, true) };
         });
-        var handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, http);
+        var handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, _users, http);
         var resource = new ContainerAuthorizationTarget(CampId)
         {
             Year = string.Equals(boundary, "YearSettings", StringComparison.Ordinal) ? 2027 : null,
@@ -211,6 +221,39 @@ public sealed class ContainerAuthorizationHandlerTests
         // Settings for a request-supplied year are read (and so created) only for its camp lead.
         await _cityPlanningService.Received(lead ? 1 : 0).GetSettingsAsync(Arg.Any<CancellationToken>(), 2026);
         await _campService.DidNotReceive().GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MembershipAccess_UsesResolvedAccount(bool teamMember)
+    {
+        var cookieId = Guid.NewGuid();
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = LeadUserId }, [], [], profile: null));
+        _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>())
+            .Returns(teamMember);
+        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), 2027)
+            .Returns(MakeSettings(2027, true));
+        _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
+            .Returns([CreateCampInfo(2027, true)]);
+
+        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), ContainerOperationRequirement.Place, 2027);
+
+        allowed.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task MembershipAccess_MissingAccountIsDeniedBeforeMembershipReads()
+    {
+        _users.GetUserInfoAsync(LeadUserId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var allowed = await EvaluateAsync(CreateUserWithId(LeadUserId), ContainerOperationRequirement.Place, 2027);
+
+        allowed.Should().BeFalse();
+        _cityPlanningService.ReceivedCalls().Should().BeEmpty();
+        _campService.ReceivedCalls().Should().BeEmpty();
     }
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, ContainerOperationRequirement requirement, int? year = null)

@@ -11,6 +11,8 @@
 
 # Containers — Section Invariants
 
+Membership-based authorization resolves the session's account through Users before checking the City Planning team or camp leadership. Merged sessions use the surviving account's memberships; a missing account is denied. Request cancellation applies to this identity lookup and the subsequent authorization reads. Existing admin-role bypasses remain in effect.
+
 Physical shipping containers managed per-barrio or at org level, placed on the City Planning map.
 
 ## Concepts

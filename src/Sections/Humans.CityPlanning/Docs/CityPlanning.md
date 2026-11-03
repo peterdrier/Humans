@@ -12,6 +12,8 @@
 
 # City Planning — Section Invariants
 
+Membership-based authorization resolves the session's account through Users before checking the City Planning team or camp leadership. Merged sessions use the surviving account's memberships; a missing account is denied. Request cancellation applies to this identity lookup and the subsequent authorization reads. Existing admin-role bypasses remain in effect.
+
 API polygon and container writes, and lead-scoped container exports, resolve the current account through Users before checking access or recording an actor. A merged session uses the surviving account ID; an unresolved account returns 401 before any write.
 
 Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history. Barrio map popup and drawing warnings, history browsing, save failures and discard confirmations use the viewer’s language in all six supported cultures; map-admin-only restore controls remain operator copy. Polygon saves cannot overlap; draw updates keep Save disabled until the request finishes. A successful save closes editing only when the active camp and polygon still match its captured snapshot, preserving subsequent edits. Restores cannot overlap and close their history panel and draft only if both still match the state at request start. Failed save/restore requests retain the current edit and show their error message; failed history requests or JSON decoding show the history failure panel. A history load started during the panel’s close transition waits for cleanup before fetching and reopening; only the latest waiting load resumes.
