@@ -29,7 +29,6 @@ internal sealed class WorkgroupsAdminController(
         {
             Now = clock.GetCurrentInstant(),
             Register = register,
-            People = await PeopleAsync(register, ct),
             RootDriveFolderId = await workgroups.GetRootDriveFolderIdAsync(ct)
         });
     }
@@ -209,16 +208,4 @@ internal sealed class WorkgroupsAdminController(
             : RedirectToAction("Details", "Workgroups", new { slug = id });
     }
 
-    private async Task<IReadOnlyDictionary<Guid, UserInfo>> PeopleAsync(
-        IReadOnlyList<WorkgroupInfo> register, CancellationToken ct)
-    {
-        var ids = register
-            .SelectMany(w => w.Members.Select(m => m.UserId))
-            .Distinct()
-            .ToList();
-
-        return ids.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(ids, ct);
-    }
 }

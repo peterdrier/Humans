@@ -2,11 +2,6 @@
 @{
     ViewData["Title"] = Localizer["Workgroups_Title"];
 
-    string DisplayName(Guid? userId) =>
-        userId is { } id && Model.People.TryGetValue(id, out var info) ? info.BurnerName : "—";
-
-    string Coordinators(WorkgroupInfo w) =>
-        string.Join(", ", w.Coordinators().OrderBy(m => m.JoinedAt).Select(m => DisplayName(m.UserId)));
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -33,7 +28,7 @@ else
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                         <div>
                             <a asp-action="Details" asp-route-slug="@w.Slug" class="h5 text-decoration-none">@w.Name</a>
-                            <div class="small text-muted">@Localizer["Workgroups_CoordinatedBy"] @Coordinators(w)</div>
+                            <div class="small text-muted">@Localizer["Workgroups_CoordinatedBy"] @await Html.PartialAsync("_WorkgroupCoordinators", w)</div>
                         </div>
                         <div class="text-end">
                             @if (w.IsSensitive)
@@ -82,7 +77,7 @@ else
                 {
                     <tr>
                         <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@Coordinators(w)</td>
+                        <td>@await Html.PartialAsync("_WorkgroupCoordinators", w)</td>
                         <td>
                             <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
                             @if (w.IsRegistrationOverdue(Model.Now))

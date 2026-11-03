@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +11,7 @@ namespace Humans.Workgroups.ViewComponents;
 /// the constructor takes the internal <c>IWorkgroupService</c>.
 /// </remarks>
 internal sealed class GovernanceWorkgroupsViewComponent(
-    IWorkgroupService workgroups, IUserService users, IClock clock) : ViewComponent
+    IWorkgroupService workgroups, IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -29,20 +28,10 @@ internal sealed class GovernanceWorkgroupsViewComponent(
         if (active.Count == 0)
             return Content(string.Empty);
 
-        var ids = active.SelectMany(w => w.CoordinatorUserIds()).Distinct().ToList();
-        var people = ids.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await users.GetUserInfosAsync(ids, ct);
-
-        return View(new GovernanceWorkgroupsViewModel(active, people, clock.GetCurrentInstant()));
+        return View(new GovernanceWorkgroupsViewModel(active, clock.GetCurrentInstant()));
     }
 }
 
 internal sealed record GovernanceWorkgroupsViewModel(
     IReadOnlyList<WorkgroupInfo> Active,
-    IReadOnlyDictionary<Guid, UserInfo> People,
-    Instant Now)
-{
-    public string DisplayName(Guid userId) =>
-        People.TryGetValue(userId, out var info) ? info.BurnerName : "—";
-}
+    Instant Now);
