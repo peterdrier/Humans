@@ -272,7 +272,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Consent | `ConsentCoordinatorBoardOrAdmin` |
 | Events | `EventsPolicies.Read`, `EventsPolicies.Manage` |
 | Expenses | `ExpenseReportView` |
-| Finance | `FinancePolicies.Read`, `FinancePolicies.Manage` (also gate Budget admin, Holded and the expense decisions) |
+| Finance | `FinancePolicies.Read`, `FinancePolicies.Manage` (also gate Budget admin, Holded, Pleo and the expense decisions) |
 | Grants | `GrantsPolicies.Read`, `GrantsPolicies.Manage`; `GrantPrograms` — section-local in `GrantProgramsPolicy` |
 | Preapprovals | `PreapprovalsManage`, `PreapprovalsAccess` — section-local in `PreapprovalsPolicies` |
 | Rideshare | `RidesharePolicies.Read`, `RidesharePolicies.Manage` |
@@ -301,8 +301,8 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `TicketsPolicies.Manage` | TicketsAdmin, Admin | Syncs, exports, transfer decisions, contacts import, gate password and staff PINs, discount codes |
 | `ScannerAccess` | TicketsAdmin, Board, Admin OR `SystemUserIds.GateTerminal` | Composite assertion; the read-only gate and scanner |
 | `GateAdmit` | TicketsAdmin, Admin OR `SystemUserIds.GateTerminal` | Composite assertion; the gate write actions. Board reads the gate and admits no one |
-| `FinancePolicies.Read` | FinanceAdmin, Board, Admin | Finance, Budget admin, Holded |
-| `FinancePolicies.Manage` | FinanceAdmin, Admin | Every Finance, Budget, Holded and expense decision |
+| `FinancePolicies.Read` | FinanceAdmin, Board, Admin | Finance, Budget admin, Holded, Pleo |
+| `FinancePolicies.Manage` | FinanceAdmin, Admin | Every Finance, Budget, Holded, Pleo and expense decision |
 | `EventsPolicies.Read` | EventsAdmin, Board, Admin | |
 | `EventsPolicies.Manage` | EventsAdmin, Admin | Moderation, categories, venues, guide settings, the CSV export |
 | `CantinaPolicies.Read` | CantinaAdmin, Board, Admin | Roster and the audited health reveal |

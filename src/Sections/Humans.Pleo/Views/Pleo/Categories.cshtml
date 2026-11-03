@@ -1,0 +1,132 @@
+@model PleoCategoriesPage
+@{
+    ViewData["Title"] = "Pleo categories";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
+}
+
+<h1 class="mb-3">Pleo categories</h1>
+<partial name="_PleoNav" />
+
+<p class="text-muted">
+    Pleo's API names an entry's category only by id, and won't say which Holded account a category books to. The
+    names and accounts below are copied from Pleo's settings; each id is linked here by hand. An entry whose category
+    is not linked counts as unmapped and is never booked.
+</p>
+
+<h2 class="h5">Unlinked category ids</h2>
+@if (Model.Unlinked.Count == 0)
+{
+    <p class="text-muted">Every category id seen on an entry is linked.</p>
+}
+else
+{
+    <div class="table-responsive mb-4">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr><th>Category id</th><th class="text-end">Entries</th><th class="text-end">Spend</th><th>Top merchants</th><th>Cardholders</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Unlinked)
+                {
+                    <tr>
+                        <td><code class="small">@u.CategoryId</code></td>
+                        <td class="text-end">@N(u.Count)</td>
+                        <td class="text-end text-nowrap">@u.Spend.ToEuro()</td>
+                        <td class="small">@string.Join(", ", u.TopMerchants)</td>
+                        <td class="small">@string.Join(", ", u.Cardholders)</td>
+                        <td>
+                            <form authorize-policy="@FinancePolicies.Manage" asp-action="Link" method="post" class="d-flex gap-1">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="pleoCategoryId" value="@u.CategoryId" />
+                                <select name="categoryId" class="form-select form-select-sm" required>
+                                    <option value="">Link to…</option>
+                                    @foreach (var n in Model.UnlinkedNames)
+                                    {
+                                        <option value="@n.Value">@n.Label</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">Link</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="h5">Categories</h2>
+<div class="table-responsive mb-4">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr><th>Name</th><th>Holded account</th><th>Linked id</th><th class="text-end">Entries</th><th class="text-end">Spend</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Categories)
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td class="@(c.CodeProblem ? "text-danger" : "")">
+                        @c.HoldedCode · @(c.HoldedName ?? "not in Pleo's chart")
+                        @if (c.CodeProblem && c.HoldedName is not null)
+                        {
+                            <span class="small">(archived)</span>
+                        }
+                    </td>
+                    <td>
+                        @if (c.PleoCategoryId is null)
+                        {
+                            <span class="text-muted">not linked</span>
+                        }
+                        else
+                        {
+                            <code class="small">@c.PleoCategoryId</code>
+                            @if (c.SetAt is { } at)
+                            {
+                                <div class="small text-muted">@at.ToDate(madrid)</div>
+                            }
+                        }
+                    </td>
+                    <td class="text-end">@N(c.Count)</td>
+                    <td class="text-end text-nowrap">@c.Spend.ToEuro()</td>
+                    <td>
+                        @if (c.PleoCategoryId is not null)
+                        {
+                            <form authorize-policy="@FinancePolicies.Manage" asp-action="Unlink" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="categoryId" value="@c.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Unlink</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div authorize-policy="@FinancePolicies.Manage" class="card mb-4">
+    <div class="card-header">Add a category</div>
+    <div class="card-body">
+        <p class="small text-muted">For a category Pleo gains later. Use the name exactly as Pleo's settings show it.</p>
+        <form asp-action="Add" method="post" class="row g-2 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-5">
+                <label class="form-label small mb-0" for="name">Name</label>
+                <input id="name" name="name" class="form-control form-control-sm" maxlength="128" required />
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small mb-0" for="holdedCode">Holded account</label>
+                <select id="holdedCode" name="holdedCode" class="form-select form-select-sm" required>
+                    <option value="">Pick…</option>
+                    @foreach (var a in Model.ActiveAccounts)
+                    {
+                        <option value="@a.Value">@a.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-sm btn-primary">Add</button></div>
+        </form>
+    </div>
+</div>

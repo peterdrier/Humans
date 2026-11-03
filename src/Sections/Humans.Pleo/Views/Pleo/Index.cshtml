@@ -1,0 +1,215 @@
+@model PleoSummary
+@{
+    ViewData["Title"] = "Pleo";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var r = Model.Reconciliation;
+    string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
+    string StatusBadge(string status) => status switch
+    {
+        "Running" => "bg-info",
+        "Error" => "bg-danger",
+        _ => "bg-success"
+    };
+}
+
+<h1 class="mb-3">Pleo</h1>
+<partial name="_PleoNav" />
+
+<p class="text-muted">
+    A local mirror of the Pleo card wallet, rebuilt from Pleo by every sweep. Nothing here is booked into Holded.
+</p>
+
+@if (Model.UnlinkedCategoryCount > 0)
+{
+    <div class="alert alert-warning">
+        <a asp-action="Categories">@N(Model.UnlinkedCategoryCount) new categor@(Model.UnlinkedCategoryCount == 1 ? "y" : "ies") to map</a>:
+        their entries count as unmapped until a Holded account is linked.
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header"><i class="fa-solid fa-ban me-1"></i>Blocking a Holded booking (completed spend)</div>
+    <ul class="list-group list-group-flush">
+        @foreach (var (block, route) in new[] { (Model.Unmapped, "unmapped"), (Model.MissingReceipt, "noReceipt") })
+        {
+            <li class="list-group-item d-flex justify-content-between @(block.Count > 0 ? "text-danger" : "text-success")">
+                <a asp-action="Entries" asp-all-route-data="@(new Dictionary<string, string> { [route] = "true" })"
+                   class="@(block.Count > 0 ? "link-danger" : "link-success")">@N(block.Count) @block.Label.ToLowerInvariant()</a>
+                <span class="text-nowrap">@block.Spend.ToEuro()</span>
+            </li>
+        }
+    </ul>
+    <div class="card-footer small text-muted">
+        Only an entry with both a Holded account and a receipt or invoice will be booked; the rest wait here.
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-rotate me-1"></i>Sync</span>
+        <form authorize-policy="@FinancePolicies.Manage" asp-action="SyncNow" method="post" class="d-inline js-sync-form">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary btn-sm" disabled="@(!Model.IsConfigured)">
+                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync now
+            </button>
+        </form>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Connection</dt>
+            <dd class="col-sm-9">
+                @if (Model.IsConfigured)
+                {
+                    <span class="badge bg-success">Configured</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Not configured</span>
+                    <span class="text-muted small">No <code>PLEO_API_KEY</code> / <code>PLEO_COMPANY_ID</code>: the mirror is shown as last synced, and syncing is off.</span>
+                }
+            </dd>
+            <dt class="col-sm-3">Last sweep</dt>
+            <dd class="col-sm-9">
+                @if (Model.Sync is { } s)
+                {
+                    <span class="badge @StatusBadge(s.Status)">@s.Status</span>
+                    <span class="ms-1">@(s.LastSyncAt is { } at ? at.ToDateTime(madrid) : "never")</span>
+                    <span class="text-muted small ms-1">@N(s.LastCount) entries mirrored, @N(s.SkippedCount) empty rows skipped</span>
+                    @if (s.LastError is not null)
+                    {
+                        <div class="small text-danger mt-1">@s.LastError</div>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">never</span>
+                }
+            </dd>
+            <dt class="col-sm-3">Mirror</dt>
+            <dd class="col-sm-9"><a asp-action="Entries">@N(Model.EntryCount) entries</a></dd>
+        </dl>
+    </div>
+    <div class="card-footer text-muted small">
+        Every sweep reads all of Pleo (three to five calls) and replaces the mirror; it runs nightly at 03:15.
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="fa-solid fa-scale-balanced me-1"></i>Reconciliation (EUR, completed entries)</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <tbody>
+                @foreach (var k in r.Kinds)
+                {
+                    <tr>
+                        <td>@k.Label</td>
+                        <td class="text-muted small">
+                            @N(k.Count) entr@(k.Count == 1 ? "y" : "ies")
+                            @if (k.RefundCount > 0)
+                            {
+                                <text>, incl. @N(k.RefundCount) refund@(k.RefundCount == 1 ? "" : "s") of @k.RefundTotal.ToSignedEuro()</text>
+                            }
+                        </td>
+                        <td class="text-end text-nowrap">@k.Total.ToSignedEuro()</td>
+                    </tr>
+                }
+                <tr class="fw-semibold">
+                    <td>Computed balance</td><td></td>
+                    <td class="text-end text-nowrap">@r.Computed.ToEuro()</td>
+                </tr>
+                <tr class="fw-semibold">
+                    <td>Pleo's current balance</td>
+                    <td class="text-muted small">
+                        @if (r.PleoPendingDebits is { } pending)
+                        {
+                            <text>excludes @pending.ToEuro() pending debits</text>
+                        }
+                    </td>
+                    <td class="text-end text-nowrap">@(r.PleoCurrent is { } current ? current.ToEuro() : "—")</td>
+                </tr>
+                <tr class="fw-semibold">
+                    <td>Difference (Pleo − computed)</td><td></td>
+                    <td class="text-end text-nowrap @(r.Difference is { } d && d != 0m ? "text-danger" : "text-success")">
+                        @(r.Difference is { } diff ? diff.ToSignedEuro() : "—")
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer small text-muted">
+        Beside the totals:
+        @N(r.ConvertedCount) non-EUR entr@(r.ConvertedCount == 1 ? "y" : "ies") counted at Pleo's EUR figure ·
+        <span class="@(r.NoEurCount > 0 ? "text-danger" : "")">@N(r.NoEurCount) completed without an EUR figure (left out)</span> ·
+        @N(r.PendingCount) pending or not completed (left out) ·
+        <span class="@(r.UnclassifiedCount > 0 ? "text-danger" : "")">@N(r.UnclassifiedCount) unclassified (@r.UnclassifiedTotal.ToSignedEuro(), left out)</span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-header">Spend by Holded account</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Account</th><th class="text-end">Entries</th><th class="text-end">Spend</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in Model.ByAccount)
+                        {
+                            <tr>
+                                <td class="@(a.Flagged ? "text-danger" : "")">
+                                    <a asp-action="Entries" asp-route-account="@a.Key">@a.Label</a>
+                                    @if (a.Flagged)
+                                    {
+                                        <span class="small">(missing or archived in Pleo's chart)</span>
+                                    }
+                                </td>
+                                <td class="text-end">@N(a.Count)</td>
+                                <td class="text-end text-nowrap">@a.Spend.ToEuro()</td>
+                            </tr>
+                        }
+                        <tr class="@(Model.Unmapped.Count > 0 ? "text-danger" : "text-muted")">
+                            <td><a asp-action="Entries" asp-route-unmapped="true">Unmapped</a></td>
+                            <td class="text-end">@N(Model.Unmapped.Count)</td>
+                            <td class="text-end text-nowrap">@Model.Unmapped.Spend.ToEuro()</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer small text-muted">
+                Completed card purchases, Pleo invoices and out-of-pocket, net of refunds. An entry maps through its
+                category, once that category's id is <a asp-action="Categories">linked</a>.
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card mb-4">
+            <div class="card-header">Spend by cardholder</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Cardholder</th><th class="text-end">Entries</th><th class="text-end">Spend</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in Model.ByCardholder)
+                        {
+                            <tr>
+                                <td><a asp-action="Entries" asp-route-cardholder="@c.Key">@c.Label</a></td>
+                                <td class="text-end">@N(c.Count)</td>
+                                <td class="text-end text-nowrap">@c.Spend.ToEuro()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // A second submit only earns a "skipped" toast; disable on click.
+    document.querySelectorAll('.js-sync-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            var button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Working…';
+        });
+    });
+</script>

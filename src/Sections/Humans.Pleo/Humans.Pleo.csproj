@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Pleo.Tests" />
+    <!-- The one assembly allowed to see many sections. -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
+    -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- FinancePolicies only: /Pleo is gated by Finance's Read and Manage policies. No Finance service is
+         called. Contracts leaf only; the section itself is never referenced. -->
+    <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Jobs/PleoSyncJob.cs — [DisableConcurrentExecution] and IRecurringJob. Package, not
+         project, so no cycle is possible; it was already arriving transitively. -->
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

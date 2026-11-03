@@ -1,0 +1,101 @@
+@model PleoEntriesPage
+@{
+    ViewData["Title"] = "Pleo entries";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var f = Model.Filter;
+}
+
+<h1 class="mb-3">Pleo entries</h1>
+<partial name="_PleoNav" />
+
+<form method="get" asp-action="Entries" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label small mb-0" for="account">Holded account</label>
+        <select id="account" name="account" class="form-select form-select-sm">
+            <option value="">Any</option>
+            @foreach (var a in Model.Accounts)
+            {
+                <option value="@a.Value" selected="@(a.Value == f.Account)">@a.Label</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-0" for="cardholder">Cardholder</label>
+        <select id="cardholder" name="cardholder" class="form-select form-select-sm">
+            <option value="">Any</option>
+            @foreach (var c in Model.Cardholders)
+            {
+                <option value="@c.Value" selected="@(c.Value == f.Cardholder)">@c.Label</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-0" for="family">Family</label>
+        <select id="family" name="family" class="form-select form-select-sm">
+            <option value="">Any</option>
+            @foreach (var fam in Model.Families)
+            {
+                <option value="@fam" selected="@(fam == f.Family)">@fam</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="noReceipt" name="noReceipt" value="true" checked="@f.NoReceipt" />
+            <label class="form-check-label small" for="noReceipt">No receipt</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="unmapped" name="unmapped" value="true" checked="@f.Unmapped" />
+            <label class="form-check-label small" for="unmapped">Unmapped</label>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+        <a asp-action="Entries" class="btn btn-sm btn-link">Clear</a>
+    </div>
+</form>
+
+<p class="text-muted small">@Model.Rows.Count.ToString("N0", CultureInfo.InvariantCulture) entries, newest first.</p>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Settled</th><th>Cardholder</th><th>Merchant</th><th>Family</th>
+                <th class="text-end">Amount</th><th>Holded account</th><th>Receipt</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in Model.Rows)
+            {
+                <tr>
+                    <td class="text-nowrap">
+                        <a asp-action="Entry" asp-route-id="@e.Id">@(e.SettledAt is { } at ? at.ToDate(madrid) : "—")</a>
+                    </td>
+                    <td>@e.Cardholder</td>
+                    <td>@e.Merchant</td>
+                    <td class="small">@e.Family<span class="text-muted">@(e.SubFamily is null ? "" : $" / {e.SubFamily}")</span></td>
+                    <td class="text-end text-nowrap">
+                        @(e.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
+                        @if (e.Currency != "EUR")
+                        {
+                            <div class="small text-muted">@((e.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @e.Currency</div>
+                        }
+                    </td>
+                    <td class="small">
+                        @if (e.HoldedCode is not null)
+                        {
+                            <span>@e.HoldedCode</span> <span class="text-muted">@e.HoldedName</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">unmapped</span>
+                        }
+                    </td>
+                    <td>@(e.HasReceipt ? "yes" : "no")</td>
+                    <td class="small">@e.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,9 @@
+@{
+    var current = ViewContext.RouteData.Values["action"]?.ToString();
+    string Active(params string[] actions) => actions.Contains(current, StringComparer.Ordinal) ? "active" : "";
+}
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item"><a asp-action="Index" class="nav-link @Active("Index")">Summary</a></li>
+    <li class="nav-item"><a asp-action="Entries" class="nav-link @Active("Entries", "Entry")">Entries</a></li>
+    <li class="nav-item"><a asp-action="Categories" class="nav-link @Active("Categories")">Categories</a></li>
+</ul>
