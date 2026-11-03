@@ -408,9 +408,9 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted budget category {CategoryId}", categoryId);
     }
 
-    public async Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id)
+    public async Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var lineItem = await repository.GetLineItemByIdAsync(id);
+        var lineItem = await repository.GetLineItemByIdAsync(id, ct);
         return lineItem is null ? null : ToLineItemSnapshot(lineItem);
     }
 

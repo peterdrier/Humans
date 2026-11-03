@@ -141,7 +141,7 @@ internal sealed class BudgetController(
     public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         var authResult = await AuthorizeCategoryEditAsync(budgetCategoryId);
@@ -181,10 +181,10 @@ internal sealed class BudgetController(
     public async Task<IActionResult> UpdateLineItem(Guid id, string description, [BindRequired] decimal amount,
         Guid? responsibleTeamId, string? notes, DateTime? expectedDate, [BindRequired] int vatRate)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await budgetService.GetLineItemByIdAsync(id);
+        var lineItem = await budgetService.GetLineItemByIdAsync(id, HttpContext.RequestAborted);
         if (lineItem is null) return NotFound();
 
         var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
@@ -223,10 +223,10 @@ internal sealed class BudgetController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteLineItem(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await budgetService.GetLineItemByIdAsync(id);
+        var lineItem = await budgetService.GetLineItemByIdAsync(id, HttpContext.RequestAborted);
         if (lineItem is null) return NotFound();
 
         var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
@@ -247,7 +247,7 @@ internal sealed class BudgetController(
 
     private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId)
     {
-        var category = await budgetService.GetCategoryByIdAsync(categoryId);
+        var category = await budgetService.GetCategoryByIdAsync(categoryId, HttpContext.RequestAborted);
         if (category is null) return NotFound();
 
         var result = await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit);

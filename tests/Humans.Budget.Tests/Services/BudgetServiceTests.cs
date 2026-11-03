@@ -71,18 +71,134 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task YearReads_CancelledRead_AbortsRepositoryQuery(bool active)
+    [InlineData("active")]
+    [InlineData("year")]
+    [InlineData("line")]
+    public async Task BudgetReads_CancelledRead_AbortsRepositoryQuery(string kind)
     {
         using var request = new CancellationTokenSource();
         await request.CancelAsync();
 
-        var read = () => active
-            ? _service.GetActiveYearAsync(request.Token)
-            : _service.GetYearByIdAsync(_yearId, request.Token);
+        Func<Task> read = () => kind switch
+        {
+            "active" => _service.GetActiveYearAsync(request.Token),
+            "year" => _service.GetYearByIdAsync(_yearId, request.Token),
+            _ => _service.GetLineItemByIdAsync(_yearId, request.Token)
+        };
 
         await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("sync-departments")]
+    [InlineData("create-year")]
+    [InlineData("year-status")]
+    [InlineData("update-year")]
+    [InlineData("delete-year")]
+    [InlineData("create-group")]
+    [InlineData("update-group")]
+    [InlineData("delete-group")]
+    [InlineData("create-category")]
+    [InlineData("update-category")]
+    [InlineData("delete-category")]
+    [InlineData("create-line")]
+    [InlineData("update-line")]
+    [InlineData("delete-line")]
+    [InlineData("ensure-ticketing")]
+    [InlineData("projection")]
+    [InlineData("sync-ticketing")]
+    public async Task AdminMutations_CancelAccountLookupBeforeFinancialWrites(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        });
+        var (controller, budget, _) = CreateAdminController(true, identityUsers: users);
+        budget.UpdateYearStatusAsync(Arg.Any<Guid>(), Arg.Any<BudgetYearStatus>(), Arg.Any<Guid>()).Returns(new BudgetYearMutationResult());
+        budget.UpdateYearAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<Guid>())
+            .Returns(new BudgetYearMutationResult());
+        budget.DeleteYearAsync(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(new BudgetYearMutationResult());
+        controller.HttpContext.RequestAborted = request.Token;
+        budget.ClearReceivedCalls();
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "sync-departments" => controller.SyncDepartments(_yearId),
+            "create-year" => controller.CreateYear("2026", "Budget"),
+            "year-status" => controller.UpdateYearStatus(_yearId, BudgetYearStatus.Active),
+            "update-year" => controller.UpdateYear(_yearId, "2026", "Budget", null),
+            "delete-year" => controller.DeleteYear(_yearId),
+            "create-group" => controller.CreateGroup(_yearId, "Group", false),
+            "update-group" => controller.UpdateGroup(_yearId, "Group", 0, false),
+            "delete-group" => controller.DeleteGroup(_yearId),
+            "create-category" => controller.CreateCategory(_yearId, "Category", 1m, default, null, _yearId),
+            "update-category" => controller.UpdateCategory(_yearId, "Category", 1m, default),
+            "delete-category" => controller.DeleteCategory(_yearId, _yearId),
+            "create-line" => controller.CreateLineItem(_yearId, "Line", 1m, null, null, null, 21),
+            "update-line" => controller.UpdateLineItem(_yearId, "Line", 1m, null, null, null, 21, _yearId),
+            "delete-line" => controller.DeleteLineItem(_yearId, _yearId),
+            "ensure-ticketing" => controller.EnsureTicketingGroup(_yearId),
+            "projection" => controller.UpdateTicketingProjection(_yearId, new TicketingProjectionUpdateForm { BudgetYearId = _yearId }),
+            _ => controller.SyncTicketingBudget(_yearId)
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        budget.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("create", "actor")]
+    [InlineData("create", "category")]
+    [InlineData("update", "actor")]
+    [InlineData("update", "line")]
+    [InlineData("update", "category")]
+    [InlineData("delete", "actor")]
+    [InlineData("delete", "line")]
+    [InlineData("delete", "category")]
+    public async Task MemberMutations_CancelPreflightBeforeLineItemWrites(string action, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var users = Substitute.For<IUserService>();
+        async ValueTask<UserInfo?> ReadUserAsync(Guid id, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (string.Equals(boundary, "line", StringComparison.Ordinal)
+                || (string.Equals(action, "create", StringComparison.Ordinal) && string.Equals(boundary, "category", StringComparison.Ordinal)))
+                await request.CancelAsync();
+            return UserInfo.Create(new User { Id = id }, [], [], null);
+        }
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call => ReadUserAsync(call.Arg<Guid>(), call.Arg<CancellationToken>()));
+        var (admin, budget, _) = CreateAdminController(true, identityUsers: users);
+        budget.GetLineItemByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns<Task<BudgetLineItemSnapshot?>>(async call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (string.Equals(boundary, "category", StringComparison.Ordinal)) await request.CancelAsync();
+            return new BudgetLineItemSnapshot(_yearId, _yearId, "Line", 1m, null, null, null, 21, false, false, 0);
+        });
+        budget.GetCategoryByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new BudgetCategorySnapshot(_yearId, _yearId, "Category", 1m, default, null, 0, null, []);
+        });
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var localizer = Substitute.For<IStringLocalizer<BudgetResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new BudgetController(budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
+        { ControllerContext = admin.ControllerContext, TempData = admin.TempData, Url = admin.Url };
+        controller.HttpContext.RequestAborted = request.Token;
+        if (string.Equals(boundary, "actor", StringComparison.Ordinal)) await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "create" => controller.CreateLineItem(_yearId, "Line", 1m, null, null, null, 21),
+            "update" => controller.UpdateLineItem(_yearId, "Line", 1m, null, null, null, 21),
+            _ => controller.DeleteLineItem(_yearId)
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        budget.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name.StartsWith("Get", StringComparison.Ordinal));
     }
 
     [HumansTheory]
@@ -547,15 +663,15 @@ public sealed class BudgetServiceTests
         }
     }
 
-    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null)
+    private (BudgetAdminController Controller, IBudgetManagement Budget, Guid ViewerId) CreateAdminController(bool viewerExists, IBudgetManagement? budgetOverride = null, IUserService? identityUsers = null)
     {
         var viewerId = Guid.NewGuid();
         var budget = Substitute.For<IBudgetManagement>();
         budget.GetYearByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false,
                 [new BudgetGroupDetail(_yearId, _yearId, "Ticketing", 0, false, false, true, null, [])]));
-        var users = Substitute.For<IUserService>();
-        if (viewerExists)
+        var users = identityUsers ?? Substitute.For<IUserService>();
+        if (viewerExists && identityUsers is null)
             users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = viewerId }, [], [], null));
         var tickets = Substitute.For<ITicketService>();

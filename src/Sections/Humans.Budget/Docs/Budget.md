@@ -195,6 +195,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Member and finance-admin mutation actions forward request cancellation through account lookup before writes. Member line-item actions also cancel line-item and category-authorization reads; the internal line-item read forwards its token to the repository. Financial writes, ticketing projection refreshes and ticketing sync retain their existing non-cancellable mutation boundaries.
+
 - Authorization’s effective-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
