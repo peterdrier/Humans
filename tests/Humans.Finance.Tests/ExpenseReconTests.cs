@@ -302,6 +302,24 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
+    public async Task GetExpenseRecon_BoundContactMissingFromList_IsUnavailable()
+    {
+        _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = AliceAccount },
+            new HoldedCreditorContact { UserId = Guid.NewGuid(), HoldedContactId = "c-unparsed", SupplierAccountNum = 41000099 },
+        ]);
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = AliceAccount }]);
+
+        var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
+
+        report.IsAvailable.Should().BeFalse();
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetExpenseRecon_LedgerNeverSynced_IsUnavailable()
     {
         _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);

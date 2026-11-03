@@ -327,7 +327,7 @@ internal sealed class Service(
     }
 
     /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
-    /// contact list, which says which account each bound contact is on. Unreadable, the report is unavailable: the
+    /// contact list, which says which account each bound contact is on. Unreadable, or missing a bound contact, the report is unavailable: the
     /// binding's stored number may be wrong, and judging against it is worse than not judging. The document mirror is
     /// not read.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
@@ -342,8 +342,15 @@ internal sealed class Service(
         if (contacts.Count == 0)
             return ExpenseRecon.Unavailable(year, "The Holded contact list could not be read, so no member's account is known.");
 
+        // The list skips a contact it cannot parse, so a non-empty list can still be missing a bound member's account.
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        var unreadable = bindings.Count(b => !contacts.ContainsKey(b.HoldedContactId));
+        if (unreadable > 0)
+            return ExpenseRecon.Unavailable(year,
+                $"{unreadable} bound Holded contact(s) are missing from the contact list, so those members' accounts are not known.");
+
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
-        var accountByUser = (await repo.GetCreditorContactsAsync(ct))
+        var accountByUser = bindings
             .Select(b => (b.UserId, Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
             .Where(x => x.Account is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(x => x.UserId)
