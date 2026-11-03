@@ -38,12 +38,10 @@ internal sealed class TeamMessageButtonsViewComponent(
         if (teams.Count == 0)
             return Content(string.Empty);
 
-        var recipient = await users.GetUserInfoAsync(userId, ct);
-        return View(new TeamMessageButtonsViewModel(userId, recipient?.BurnerName ?? string.Empty, teams));
+        return View(new TeamMessageButtonsViewModel(userId, teams));
     }
 }
 
 internal sealed record TeamMessageButtonsViewModel(
     Guid UserId,
-    string DisplayName,
     IReadOnlyList<TeamMessageOption> Teams);

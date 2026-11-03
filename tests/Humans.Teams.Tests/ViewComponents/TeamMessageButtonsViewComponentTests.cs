@@ -10,7 +10,6 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using NodaTime;
 using NSubstitute;
 
 namespace Humans.Teams.Tests.ViewComponents;
@@ -32,10 +31,6 @@ public sealed class TeamMessageButtonsViewComponentTests
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _viewerId }, [], [], profile: null));
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(new UserInfo(
-            _targetId, "Target", false, "en", null, Instant.FromUnixTimeSeconds(0),
-            null, null, null, null, null, null,
-            null, null, null, [], [], null));
     }
 
     [HumansTheory]
@@ -99,7 +94,6 @@ public sealed class TeamMessageButtonsViewComponentTests
         var model = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
             .Should().BeOfType<TeamMessageButtonsViewModel>().Subject;
         model.UserId.Should().Be(_targetId);
-        model.DisplayName.Should().Be("Target");
         model.Teams.Should().Equal(a, b);
     }
 

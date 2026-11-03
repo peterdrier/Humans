@@ -1,3 +1,16 @@
+using Xunit;
+using System.Globalization;
+using System.Resources;
+using System.Text.Encodings.Web;
+using Humans.Base.ViewComponents;
+using Humans.Teams.ViewComponents;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -92,6 +105,71 @@ public sealed class TeamMessageControllerTests
         model.TeamReplyToEmail.Should().Be("infra@nobodies.team");
         model.RecipientId.Should().Be(_targetId);
         model.SenderEmail.Should().Be("coordinator@example.com");
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task MessageViews_RenderTheCurrentEncodedRecipient(string language)
+    {
+        using var culture = new CultureScope(language);
+        var result = (ViewResult)await _controller.SendMessage(_teamId, _targetId, Ct);
+        const string teamName = "Infrastructure <b>&</b>";
+        ((TeamSendMessageViewModel)result.Model!).TeamName = teamName;
+        var buttons = new TeamMessageButtonsViewModel(_targetId,
+            [new TeamMessageOption(_teamId, teamName, "infra@nobodies.team")]);
+        const string currentName = "Renamed <script>alert(1)</script> &";
+        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _targetId, BurnerName = currentName }, [], [], profile: null));
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(TeamMessageControllerTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddSingleton(_users);
+        builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+        builder.Services.AddControllersWithViews()
+            .AddApplicationPart(typeof(TeamsResource).Assembly)
+            .AddApplicationPart(typeof(HumanViewComponent).Assembly)
+            .AddViewLocalization();
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var template = new ResourceManager(typeof(TeamsResource))
+            .GetString("Teams_SendMessage_FromTeam", CultureInfo.GetCultureInfo(language));
+        Assert.NotNull(template);
+        var expected = string.Format(CultureInfo.CurrentCulture, template,
+            $"<span>{HtmlEncoder.Default.Encode(currentName)}</span>", HtmlEncoder.Default.Encode(teamName));
+        foreach (var (path, model) in new (string, object?)[]
+        {
+            ("/Views/TeamMessage/SendMessage.cshtml", result.Model),
+            ("/Views/Shared/Components/TeamMessageButtons/Default.cshtml", buttons),
+        })
+        {
+            var view = services.GetRequiredService<IRazorViewEngine>().GetView(null, path, isMainPage: false);
+            Assert.True(view.Success);
+            var http = new DefaultHttpContext { RequestServices = services };
+            var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+            var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
+            using var writer = new StringWriter();
+            var context = new ViewContext(action, view.View!, data,
+                new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions());
+            await view.View!.RenderAsync(context);
+            var html = writer.ToString();
+            Assert.Contains(expected, html, StringComparison.Ordinal);
+            Assert.DoesNotContain(currentName, html, StringComparison.Ordinal);
+        }
     }
 
     [HumansFact]
