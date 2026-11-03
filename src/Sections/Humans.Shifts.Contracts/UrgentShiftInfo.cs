@@ -1,5 +1,6 @@
 
 using NodaTime;
+using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Contracts;
 
@@ -37,7 +38,50 @@ public sealed record ShiftInfo(
     int MaxVolunteers,
     bool AdminOnly,
     bool IsAllDay,
-    bool IsEarlyEntry);
+    bool IsEarlyEntry)
+{
+    internal static readonly LocalTime AllDayWindowStart = new(8, 0);
+    internal static readonly LocalTime AllDayWindowEnd = new(18, 0);
+    internal static double AllDayWindowHours =>
+        Duration.FromTicks(AllDayWindowEnd.TickOfDay - AllDayWindowStart.TickOfDay).TotalHours;
+
+    internal Duration GetDuration() => Duration.FromHours(DurationHours);
+
+    internal Instant GetAbsoluteStart(IEventSettingsInfo eventSettings) =>
+        ResolveAbsoluteStart(DayOffset, StartTime, IsAllDay, eventSettings);
+
+    internal Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings) =>
+        ResolveAbsoluteEnd(DayOffset, StartTime, GetDuration(), IsAllDay, eventSettings);
+
+    internal ShiftPeriod GetShiftPeriod(IEventSettingsInfo eventSettings) =>
+        ResolveShiftPeriod(DayOffset, eventSettings);
+
+    internal static Instant ResolveAbsoluteStart(
+        int dayOffset, LocalTime startTime, bool isAllDay, IEventSettingsInfo eventSettings)
+    {
+        var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
+        var wallTime = isAllDay ? AllDayWindowStart : startTime;
+        return date.At(wallTime).InZoneLeniently(tz).ToInstant();
+    }
+
+    internal static Instant ResolveAbsoluteEnd(
+        int dayOffset, LocalTime startTime, Duration duration, bool isAllDay, IEventSettingsInfo eventSettings)
+    {
+        if (isAllDay)
+        {
+            var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+            var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
+            return date.At(AllDayWindowEnd).InZoneLeniently(tz).ToInstant();
+        }
+        return ResolveAbsoluteStart(dayOffset, startTime, isAllDay, eventSettings).Plus(duration);
+    }
+
+    internal static ShiftPeriod ResolveShiftPeriod(int dayOffset, IEventSettingsInfo eventSettings) =>
+        dayOffset < 0 ? ShiftPeriod.Build :
+        dayOffset <= eventSettings.EventEndOffset ? ShiftPeriod.Event :
+        ShiftPeriod.Strike;
+}
 
 /// <summary>Member names match <c>Rota</c>'s so the rota partials bind unchanged.</summary>
 public sealed record RotaInfo(

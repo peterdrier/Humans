@@ -31,17 +31,17 @@ internal sealed class Shift
     public bool AdminOnly { get; set; }
 
     /// <summary>Used by <see cref="GetAbsoluteStart"/> for all-day shifts, whatever <see cref="StartTime"/> holds.</summary>
-    internal static readonly LocalTime AllDayWindowStart = new(8, 0);
+    internal static readonly LocalTime AllDayWindowStart = ShiftInfo.AllDayWindowStart;
 
     /// <summary>Used by <see cref="GetAbsoluteEnd"/> for all-day shifts.</summary>
-    internal static readonly LocalTime AllDayWindowEnd = new(18, 0);
+    internal static readonly LocalTime AllDayWindowEnd = ShiftInfo.AllDayWindowEnd;
 
     /// <summary>
     /// The worked hours of an all-day shift, used in place of its stored <see cref="Duration"/>, which holds a 24h
     /// sentinel.
     /// </summary>
     internal static double AllDayWindowHours =>
-        Duration.FromTicks(AllDayWindowEnd.TickOfDay - AllDayWindowStart.TickOfDay).TotalHours;
+        ShiftInfo.AllDayWindowHours;
 
     /// <summary>
     /// When true, <see cref="StartTime"/> and <see cref="Duration"/> are don't-care and older rows may hold anything:
@@ -66,29 +66,16 @@ internal sealed class Shift
     /// its instants by the same rule as the entity.
     /// </summary>
     internal static Instant ResolveAbsoluteStart(
-        int dayOffset, LocalTime startTime, bool isAllDay, IEventSettingsInfo eventSettings)
-    {
-        var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
-        var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
-        var wallTime = isAllDay ? AllDayWindowStart : startTime;
-        return date.At(wallTime).InZoneLeniently(tz).ToInstant();
-    }
+        int dayOffset, LocalTime startTime, bool isAllDay, IEventSettingsInfo eventSettings) =>
+        ShiftInfo.ResolveAbsoluteStart(dayOffset, startTime, isAllDay, eventSettings);
 
     public Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings) =>
         ResolveAbsoluteEnd(DayOffset, StartTime, Duration, IsAllDay, eventSettings);
 
     /// <summary><see cref="GetAbsoluteEnd"/> over raw field values.</summary>
     internal static Instant ResolveAbsoluteEnd(
-        int dayOffset, LocalTime startTime, Duration duration, bool isAllDay, IEventSettingsInfo eventSettings)
-    {
-        if (isAllDay)
-        {
-            var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
-            var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
-            return date.At(AllDayWindowEnd).InZoneLeniently(tz).ToInstant();
-        }
-        return ResolveAbsoluteStart(dayOffset, startTime, isAllDay, eventSettings).Plus(duration);
-    }
+        int dayOffset, LocalTime startTime, Duration duration, bool isAllDay, IEventSettingsInfo eventSettings) =>
+        ShiftInfo.ResolveAbsoluteEnd(dayOffset, startTime, duration, isAllDay, eventSettings);
 
     /// <summary>
     /// All-day shifts always qualify; timed shifts need at least 6 hours. See
@@ -104,7 +91,5 @@ internal sealed class Shift
 
     /// <summary><see cref="GetShiftPeriod"/> over a raw day offset.</summary>
     internal static ShiftPeriod ResolveShiftPeriod(int dayOffset, IEventSettingsInfo eventSettings) =>
-        dayOffset < 0 ? ShiftPeriod.Build :
-        dayOffset <= eventSettings.EventEndOffset ? ShiftPeriod.Event :
-        ShiftPeriod.Strike;
+        ShiftInfo.ResolveShiftPeriod(dayOffset, eventSettings);
 }

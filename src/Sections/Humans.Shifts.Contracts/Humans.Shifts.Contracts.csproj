@@ -44,6 +44,11 @@
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
   </ItemGroup>
 
+  <!-- Internal timing rules are shared only with this section's implementation. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Shifts" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="NodaTime" />
   </ItemGroup>
