@@ -42,4 +42,4 @@ internal sealed record GeoJsonUploadResult(
 internal sealed record SaveCampPolygonRequest(
     string GeoJson,
     double AreaSqm,
-    [StringLength(512, ErrorMessage = "Note cannot exceed 512 characters")] string? Note = null);
+    [StringLength(512, ErrorMessage = "Validation_MaxLength")] string? Note = null);

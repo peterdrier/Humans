@@ -1,4 +1,6 @@
 using Humans.Containers;
+using Humans.Base;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
@@ -88,6 +90,36 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             },
         };
         return controller;
+    }
+
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public void PolygonNoteLengthValidation_UsesLocalizedFeedback(string culture)
+    {
+        using var cultureScope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var shared = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var expected = shared["Validation_MaxLength", "Note", 512];
+        expected.ResourceNotFound.Should().BeFalse();
+
+        foreach (var length in new[] { 512, 513 })
+        {
+            var context = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+            validator.Validate(context, null, "", new SaveCampPolygonRequest(Square, 10, new string('x', length)));
+            if (length == 512)
+                context.ModelState.IsValid.Should().BeTrue();
+            else
+                context.ModelState["Note"]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
+        }
     }
 
     [HumansTheory]
