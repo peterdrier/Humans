@@ -58,7 +58,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_ConsentReviewsPending"],
                 Count = counts.ConsentReviewsPending,
                 ActionUrl = "/Consent/ReviewQueue",
-                Audience = ConsentRoles.ConsentCoordinator,
+                Audience = localizer[$"Notifications_Audience_{ConsentRoles.ConsentCoordinator}"],
                 Priority = 10,
             });
         }
@@ -75,7 +75,7 @@ internal sealed class NotificationMeterProvider(
                         Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
                         Count = pendingVoteCount,
                         ActionUrl = "/Governance/BoardVoting",
-                        Audience = RoleNames.Board,
+                        Audience = localizer[$"Notifications_Audience_{RoleNames.Board}"],
                         Priority = 9,
                     });
                 }
@@ -89,7 +89,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_PendingAccountDeletions"],
                 Count = counts.PendingDeletions,
                 ActionUrl = "/Users/Admin?filter=deleting&sort=name&dir=asc",
-                Audience = RoleNames.Admin,
+                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
                 Priority = 8,
             });
         }
@@ -101,7 +101,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_FailedGoogleSyncEvents"],
                 Count = counts.FailedSyncEvents,
                 ActionUrl = "/Google/SyncOutbox",
-                Audience = RoleNames.Admin,
+                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
                 Priority = 7,
             });
         }
@@ -115,7 +115,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_OnboardingProfilesPending"],
                 Count = counts.ConsentReviewsPending,
                 ActionUrl = "/Consent/ReviewQueue",
-                Audience = isBoard ? RoleNames.Board : ShiftsRoles.ShiftsAdmin,
+                Audience = localizer[$"Notifications_Audience_{(isBoard ? RoleNames.Board : ShiftsRoles.ShiftsAdmin)}"],
                 Priority = 6,
             });
         }
@@ -129,7 +129,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_TeamJoinRequestsPending"],
                 Count = teamJoinRequestsPending,
                 ActionUrl = "/Teams/Summary",
-                Audience = RoleNames.Admin,
+                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
                 Priority = 5,
             });
         }
@@ -141,7 +141,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_TicketSyncError"],
                 Count = 1,
                 ActionUrl = "/Tickets",
-                Audience = RoleNames.Admin,
+                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
                 Priority = 4,
             });
         }

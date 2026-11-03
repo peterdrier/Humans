@@ -228,7 +228,7 @@ public class NotificationMeterProviderTests : IDisposable
         var onboardingMeter = meters.Single(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal));
         onboardingMeter.Count.Should().Be(1);
-        onboardingMeter.Audience.Should().Be(RoleNames.Board);
+        onboardingMeter.Audience.Should().Be("the Board");
     }
 
     [HumansFact]
@@ -244,7 +244,7 @@ public class NotificationMeterProviderTests : IDisposable
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal) &&
             string.Equals(m.ActionUrl, "/Consent/ReviewQueue", StringComparison.Ordinal) &&
-            string.Equals(m.Audience, ShiftsRoles.ShiftsAdmin, StringComparison.Ordinal));
+            string.Equals(m.Audience, "Shifts Admins", StringComparison.Ordinal));
     }
 
     [HumansFact]

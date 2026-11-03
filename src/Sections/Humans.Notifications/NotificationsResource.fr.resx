@@ -159,4 +159,16 @@
   <data name="Notifications_Audience_CampLeads" xml:space="preserve">
     <value>responsables de barrio</value>
   </data>
+  <data name="Notifications_Audience_Admin" xml:space="preserve">
+    <value>administrateurs</value>
+  </data>
+  <data name="Notifications_Audience_Board" xml:space="preserve">
+    <value>le Conseil</value>
+  </data>
+  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
+    <value>coordinateurs du consentement</value>
+  </data>
+  <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
+    <value>administrateurs des créneaux</value>
+  </data>
 </root>

@@ -159,4 +159,16 @@
   <data name="Notifications_Audience_CampLeads" xml:space="preserve">
     <value>Barrio-Leitung</value>
   </data>
+  <data name="Notifications_Audience_Admin" xml:space="preserve">
+    <value>Admins</value>
+  </data>
+  <data name="Notifications_Audience_Board" xml:space="preserve">
+    <value>den Vorstand</value>
+  </data>
+  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
+    <value>Einwilligungskoordination</value>
+  </data>
+  <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
+    <value>Schicht-Admins</value>
+  </data>
 </root>

@@ -82,4 +82,8 @@
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Could not load notifications. Please try again.</value></data>
   <data name="Notifications_SentTo" xml:space="preserve"><value>For {0}</value></data>
   <data name="Notifications_Audience_CampLeads" xml:space="preserve"><value>Barrio leads</value></data>
+  <data name="Notifications_Audience_Admin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Notifications_Audience_Board" xml:space="preserve"><value>the Board</value></data>
+  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve"><value>Consent Coordinators</value></data>
+  <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve"><value>Shifts Admins</value></data>
 </root>

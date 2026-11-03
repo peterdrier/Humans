@@ -65,7 +65,9 @@
     }
     @if (!string.IsNullOrEmpty(Model.TargetGroupName))
     {
-        <div class="notification-audience">@string.Format(Localizer["Notifications_SentTo"].Value, Model.TargetGroupName)</div>
+        // Role sends store the role name; a group without a label shows as stored.
+        var audience = Localizer[$"Notifications_Audience_{Model.TargetGroupName}"];
+        <div class="notification-audience">@string.Format(Localizer["Notifications_SentTo"].Value, audience.ResourceNotFound ? Model.TargetGroupName : audience.Value)</div>
     }
 </div>
 
