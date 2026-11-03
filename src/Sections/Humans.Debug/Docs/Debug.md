@@ -61,6 +61,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Invariants
 
+- Operation timing rows measure instrumented `TimeOperation` scopes and snapshot in-process aggregates since startup.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Every page requires `PolicyNames.BoardOrAdmin` (class-level `[Authorize]` on every controller in the section) and every POST carries its own `PolicyNames.AdminOnly`, so Board sees everything and changes nothing; the forms hide behind `authorize-policy="AdminOnly"`. The deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, `/api/data-migrations`, which returns only data-migration keys, counts and done flags, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`, which discovers the controllers from the assembly rather than listing them, and by `DataMigrationsTests` for the minimal-API endpoint.

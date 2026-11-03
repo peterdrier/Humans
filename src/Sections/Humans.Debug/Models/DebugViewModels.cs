@@ -74,7 +74,6 @@ internal sealed class DecoratorCacheStatEntryViewModel
 internal sealed class TimingsViewModel
 {
     public List<TimingEntryViewModel> Entries { get; set; } = [];
-    public List<SwallowedEntryViewModel> Swallowed { get; set; } = [];
 }
 
 internal sealed class TimingEntryViewModel
@@ -87,10 +86,4 @@ internal sealed class TimingEntryViewModel
     public double MaxMs { get; set; }
     public double TotalMs { get; set; }
     public DateTime LastAtUtc { get; set; }
-}
-
-internal sealed class SwallowedEntryViewModel
-{
-    public string Operation { get; set; } = string.Empty;
-    public long Count { get; set; }
 }

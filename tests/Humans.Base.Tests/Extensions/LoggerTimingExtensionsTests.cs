@@ -60,21 +60,6 @@ public class LoggerTimingExtensionsTests
     }
 
     [HumansFact]
-    public void Eat_increments_swallowed_counter_in_registry()
-    {
-        var logger = NullLogger.Instance;
-        var registry = OperationTimingRegistry.Instance;
-
-        logger.Eat(
-            new InvalidOperationException("oops"),
-            operation: "EatTestMethod",
-            filePath: "/src/EatTestClass.cs");
-
-        var swallowed = registry.GetSwallowed();
-        swallowed.Should().Contain(s => s.Key == "EatTestClass.EatTestMethod" && s.Count >= 1);
-    }
-
-    [HumansFact]
     public void OperationTimer_double_dispose_is_safe()
     {
         var logger = NullLogger.Instance;

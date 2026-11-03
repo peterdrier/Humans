@@ -36,21 +36,3 @@ else
         .Build();
     <partial name="_Table" model="timingsTable" />
 }
-
-<h2 class="h5 mt-4">Swallowed Exceptions</h2>
-@if (Model.Swallowed.Count == 0)
-{
-    <div class="alert alert-info">
-        <i class="fa-solid fa-info-circle me-1"></i>No swallowed exceptions recorded.
-    </div>
-}
-else
-{
-    var swallowedTable = TableModel.For(Model.Swallowed)
-        .RowCss(_ => "table-danger")
-        .Column("Operation", r => r.Operation)
-        .Column("Count", r => r.Count, c => c.Number().End())
-        .Id("swallowedTable")
-        .Build();
-    <partial name="_Table" model="swallowedTable" />
-}

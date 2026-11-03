@@ -308,16 +308,7 @@ internal sealed class DebugController(
             })
             .ToList();
 
-        var swallowed = registry.GetSwallowed()
-            .OrderByDescending(s => s.Count)
-            .Select(s => new SwallowedEntryViewModel
-            {
-                Operation = s.Key,
-                Count = s.Count,
-            })
-            .ToList();
-
-        return View(new TimingsViewModel { Entries = entries, Swallowed = swallowed });
+        return View(new TimingsViewModel { Entries = entries });
     }
 
     [HttpGet("FormatGallery")]

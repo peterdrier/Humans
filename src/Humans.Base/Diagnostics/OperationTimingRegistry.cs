@@ -3,7 +3,7 @@ using NodaTime;
 namespace Humans.Base.Diagnostics;
 
 /// <summary>
-/// In-process registry of operation timing aggregates and swallowed-exception counts.
+/// In-process registry of operation timing aggregates.
 /// Thread-safe via per-entry locks; designed for a small single-server deployment.
 /// </summary>
 public sealed class OperationTimingRegistry
@@ -13,11 +13,7 @@ public sealed class OperationTimingRegistry
     private readonly Dictionary<string, OperationAggregate> _timings =
         new(StringComparer.Ordinal);
 
-    private readonly Dictionary<string, long> _swallowed =
-        new(StringComparer.Ordinal);
-
     private readonly Lock _timingsLock = new();
-    private readonly Lock _swallowedLock = new();
 
     public void Record(string key, double elapsedMs)
     {
@@ -32,31 +28,12 @@ public sealed class OperationTimingRegistry
         }
     }
 
-    public void IncrementSwallowed(string key)
-    {
-        lock (_swallowedLock)
-        {
-            _swallowed.TryGetValue(key, out var count);
-            _swallowed[key] = count + 1;
-        }
-    }
-
     public IReadOnlyList<OperationTimingSnapshot> GetTimings()
     {
         lock (_timingsLock)
         {
             return _timings
                 .Select(kvp => kvp.Value.ToSnapshot(kvp.Key))
-                .ToList();
-        }
-    }
-
-    public IReadOnlyList<SwallowedExceptionSnapshot> GetSwallowed()
-    {
-        lock (_swallowedLock)
-        {
-            return _swallowed
-                .Select(kvp => new SwallowedExceptionSnapshot(kvp.Key, kvp.Value))
                 .ToList();
         }
     }
@@ -103,5 +80,3 @@ public sealed record OperationTimingSnapshot(
 {
     public double AvgMs => Count > 0 ? TotalMs / Count : 0;
 }
-
-public sealed record SwallowedExceptionSnapshot(string Key, long Count);
