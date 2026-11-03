@@ -2,6 +2,7 @@ using System.Net;
 using AwesomeAssertions.Execution;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Xunit;
 using Humans.AuditLog.Contracts;
@@ -119,6 +120,34 @@ public sealed class GrantTests : PreapprovalsTestHarness
         Logger.Entries.Should().ContainSingle(entry => ReferenceEquals(entry.Exception, failure));
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, AuditEntityTypes.Grant,
             grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Notices_UseCanonicalEmailRecipient_OncePerMergedPerson(bool managerNotice)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Ana", language: "ca", mergedIds: [archived]);
+        var person = (await Users.GetUserInfoAsync(survivor, Ct))!;
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.Arg<IReadOnlyCollection<Guid>>().Distinct()
+                    .Where(id => id == archived || id == survivor).ToDictionary(id => id, _ => person)));
+        var program = await SeedProgramAsync(managers: managerNotice ? [archived, survivor] : []);
+        var service = NewService();
+
+        if (managerNotice)
+            (await service.ApplyAsync(program.Id, SeedUser("Applicant"), null, null, Ct)).Refusal.Should().BeNull();
+        else
+            (await service.IssueAsync(program.Id, archived, null, null, SeedUser("Actor"), Ct)).Refusal.Should().BeNull();
+
+        var messages = Email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
+        var message = messages.Should().ContainSingle().Subject;
+        message.UserId.Should().Be(survivor);
+        message.RecipientEmail.Should().Be(person.Email);
+        message.RecipientName.Should().Be("Ana");
+        message.Culture.Should().Be("ca");
     }
 
     [HumansFact]
