@@ -59,7 +59,7 @@
             <span class="notification-timestamp">@timeAgo</span>
         </div>
     }
-    @if (!Model.IsResolved && !string.IsNullOrWhiteSpace(Model.Body))
+    @if (!string.IsNullOrWhiteSpace(Model.Body))
     {
         <div class="notification-body">@Model.Body</div>
     }
