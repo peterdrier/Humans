@@ -34,6 +34,7 @@ public sealed class BoardReadsEverythingTests : IDisposable
         "GovernanceBoardVotingController",
         "GovernanceVotesAdminController",
         "WorkgroupsAdminController",
+        "WorkgroupsController.RequestStatus",
         "AdminLegalDocumentsController",
         "ConsentReviewQueueController",
         "CantinaController.RevealHealth",

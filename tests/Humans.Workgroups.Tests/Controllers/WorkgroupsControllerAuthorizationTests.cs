@@ -415,18 +415,12 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         (await board.Document(workgroup.Slug, document.Id, Ct)).Should().BeOfType<ViewResult>();
     }
 
-    [HumansTheory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public async Task RequestingAStatusUpdate_IsBoardOrAdminOnly(bool asMember, bool isBoard)
+    [HumansFact]
+    public void RequestStatus_IsGatedByBoardOrAdmin()
     {
-        var (controller, workgroup) = await BuildAsync(asMember, isBoard);
-
-        var result = await controller.RequestStatus(workgroup.Slug, "Where is the report?", Ct);
-
-        if (isBoard) result.Should().BeOfType<RedirectToActionResult>();
-        else result.Should().BeOfType<ForbidResult>();
+        typeof(WorkgroupsController).GetMethod(nameof(WorkgroupsController.RequestStatus))!
+            .GetCustomAttributes(typeof(AuthorizeAttribute), true)
+            .Cast<AuthorizeAttribute>().Should().Contain(a => a.Policy == PolicyNames.BoardOrAdmin);
     }
 
     [HumansFact]

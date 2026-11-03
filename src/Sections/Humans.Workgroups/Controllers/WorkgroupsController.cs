@@ -121,10 +121,11 @@ internal sealed class WorkgroupsController(
             "Workgroups_Left", ct, memberOnly: false);
 
     [HttpPost("{slug}/RequestStatus")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> RequestStatus(string slug, string? question, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.RequestStatusAsync(id, userId, question, ct),
-            "Workgroups_StatusRequested", ct, memberOnly: false, adminOnly: true);
+            "Workgroups_StatusRequested", ct, memberOnly: false);
 
     [HttpPost("{slug}/Members/{userId:guid}/Approve")]
     [ValidateAntiForgeryToken]
@@ -475,14 +476,12 @@ internal sealed class WorkgroupsController(
         CancellationToken ct,
         Guid? documentId = null,
         bool memberOnly = true,
-        Func<WorkgroupInfo, bool>? owns = null,
-        bool adminOnly = false) where T : WorkgroupMutationResult
+        Func<WorkgroupInfo, bool>? owns = null) where T : WorkgroupMutationResult
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (memberOnly && !await MayDoMemberWorkAsync(workgroup)) return Forbid();
-        if (adminOnly && !await MayAdministerAsync(workgroup)) return Forbid();
         if (owns is not null && !owns(workgroup)) return NotFound();
 
         if (!ModelState.IsValid)

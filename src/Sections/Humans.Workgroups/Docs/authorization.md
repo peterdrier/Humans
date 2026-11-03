@@ -26,8 +26,8 @@ independently enforce lifecycle and document rules; they do not authorize the ca
 - Join, leave and posting comments do not require the Member operation.
   Their service rules enforce Active status, membership when leaving, the last-coordinator
   replacement and the comment window.
-- Requesting a status update requires the Administer operation (Board/Admin); anyone else
-  gets 403 and the page hides the form. It is rate-limited by nothing.
+- Requesting a status update requires the `BoardOrAdmin` policy; anyone else gets 403 and
+  the page hides the form. It is rate-limited by nothing.
 - Join is a request. Approve, Decline and Add (`ManageMembersAsync`) require a current
   coordinator of an Active group or Board/Admin; the service re-checks the coordinator role
   unless the controller passed `asAdmin`. A plain member gets 403.
