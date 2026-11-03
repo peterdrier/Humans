@@ -320,7 +320,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         services.AddLogging();
         services.AddAuthorization(((ISectionPolicies)new Section()).AddPolicies);
         services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService()));
+        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));

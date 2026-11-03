@@ -89,6 +89,8 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Invariants
 
+- Authorization’s city-planning membership, settings and camp-lead reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - A container belongs to its `CampId`; the owning camp's leads and Map Admins (CampsAdmin or city-planning team) may manage it.
 - Placement writes (place / clear / annotate) for barrio leads are gated by `CityPlanningSettings.IsContainerPlacementOpen`; container CRUD is not phase-gated (`ContainerOperation.Manage` vs `.Place`). Map Admins are never gated.
 - `Container` is year-agnostic; `ContainerPlacement` carries the year. There is no `Year` column on `containers`.

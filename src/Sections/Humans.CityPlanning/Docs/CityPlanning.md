@@ -159,6 +159,8 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Invariants
 
+- Authorization’s city-planning membership reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).

@@ -203,6 +203,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Authorization’s event-timezone, camp-season, camp-lead and department reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - Product creation and updates share one editable-field mapping, including trimmed names, year, pricing, VAT, deposits, revenue account, ordering cutoff and active state. Identity, creation/update timestamps and price-change audit handling remain owned by their respective write paths.
 
 - Add/remove line operations forward caller cancellation to the read-only event-timezone lookup before changing line rows or writing their audit entries.

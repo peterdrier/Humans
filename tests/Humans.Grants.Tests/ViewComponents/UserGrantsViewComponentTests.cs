@@ -76,8 +76,8 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
                 options.AddPolicy(UsersPolicies.Read, policy =>
                     policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Board, RoleNames.Admin));
             })
-            .AddSingleton<IAuthorizationHandler>(new GrantsPolicyHandler(service, Users))
-            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users))
+            .AddSingleton<IAuthorizationHandler>(new GrantsPolicyHandler(service, Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()))
+            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()))
             .BuildServiceProvider();
 
         var http = new DefaultHttpContext

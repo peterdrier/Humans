@@ -59,7 +59,7 @@ public abstract class CityPlanningTestBase : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorizationCore(((ISectionPolicies)new Section()).AddPolicies);
-        services.AddSingleton<IAuthorizationHandler>(new CityPlanningMapAdminHandler(cityPlanning));
+        services.AddSingleton<IAuthorizationHandler>(new CityPlanningMapAdminHandler(cityPlanning, new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         return services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
     }
 

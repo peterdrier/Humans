@@ -9,6 +9,7 @@ using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Store.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -36,7 +37,58 @@ public class OrderAuthorizationHandlerTests
     public OrderAuthorizationHandlerTests()
     {
         _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
-        _handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock);
+        _handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+    }
+
+    [HumansTheory]
+    [InlineData("Date")]
+    [InlineData("Season")]
+    [InlineData("Camp")]
+    [InlineData("Team")]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var observed = CancellationToken.None;
+        var userId = Guid.NewGuid();
+        var order = MakeOrder(team: string.Equals(boundary, "Team", StringComparison.Ordinal));
+        var camp = MakeCampInfo(Guid.NewGuid(), order.CampSeasonId ?? Guid.NewGuid(), userId);
+        void Read(string name, CancellationToken ct)
+        {
+            if (string.Equals(name, boundary, StringComparison.Ordinal))
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Date", call.Arg<CancellationToken>());
+            return BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
+        });
+        _campService.GetCampSeasonByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Season", call.Arg<CancellationToken>());
+            return camp.Seasons[0];
+        });
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Camp", call.Arg<CancellationToken>());
+            return new List<CampInfo> { camp };
+        });
+        _teamService.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Team", call.Arg<CancellationToken>());
+            return (TeamInfo?)null;
+        });
+        object resource = string.Equals(boundary, "Date", StringComparison.Ordinal) ? new OrderLineContext(order, FutureDeadline) : order;
+        var requirement = string.Equals(boundary, "Date", StringComparison.Ordinal) ? OrderOperationRequirement.AddLine : OrderOperationRequirement.View;
+        var context = new AuthorizationHandlerContext([requirement], Principal(role: null, userId), resource);
+        var handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock, http);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => handler.HandleAsync(context));
+        Assert.Equal(request.Token, observed);
+        Assert.False(context.HasSucceeded);
     }
 
     [HumansFact]

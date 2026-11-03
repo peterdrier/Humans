@@ -74,7 +74,7 @@ public sealed class StoreControllerRecordPaymentTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorizationCore();
-        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, settings, clock));
+        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, settings, clock, new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         var auth = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
 
         var users = Substitute.For<IUserService>();

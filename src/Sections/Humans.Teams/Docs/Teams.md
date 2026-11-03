@@ -194,6 +194,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Authorization’s team-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - Team detail and role-management pages build role view models from `TeamRoleDefinitionSnapshot` plus resolved member view models; there is no entity-navigation mapper in the presentation model.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.

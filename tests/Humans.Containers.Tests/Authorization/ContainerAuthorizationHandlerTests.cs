@@ -7,6 +7,7 @@ using Humans.Containers.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -24,9 +25,55 @@ public sealed class ContainerAuthorizationHandlerTests
 
     public ContainerAuthorizationHandlerTests()
     {
-        _handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService);
+        _handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         _cityPlanningService.IsCityPlanningTeamMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
+    }
+
+    [HumansTheory]
+    [InlineData("Team")]
+    [InlineData("ActiveSettings")]
+    [InlineData("Camp")]
+    [InlineData("YearSettings")]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var observed = CancellationToken.None;
+        void Read(string name, CancellationToken ct)
+        {
+            if (string.Equals(name, boundary, StringComparison.Ordinal))
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Team", call.Arg<CancellationToken>());
+            return false;
+        });
+        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), Arg.Any<int?>()).Returns(call =>
+        {
+            Read(call.Arg<int?>() is null ? "ActiveSettings" : "YearSettings", call.Arg<CancellationToken>());
+            return MakeSettings(2027, true);
+        });
+        _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Camp", call.Arg<CancellationToken>());
+            return new List<CampInfo> { CreateCampInfo(2027, true) };
+        });
+        var handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, http);
+        var resource = new ContainerAuthorizationTarget(CampId)
+        {
+            Year = string.Equals(boundary, "YearSettings", StringComparison.Ordinal) ? 2027 : null,
+        };
+        var context = new AuthorizationHandlerContext([ContainerOperationRequirement.Place], CreateUserWithId(LeadUserId), resource);
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     [HumansFact]

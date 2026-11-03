@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.CityPlanning.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.CityPlanning.Authorization;
 
@@ -10,7 +11,7 @@ namespace Humans.CityPlanning.Authorization;
 /// CampAdmin/Admin, else city-planning team members. Team membership is not a claim, so this has to be a requirement
 /// rather than a role policy.
 /// </summary>
-internal sealed class CityPlanningMapAdminHandler(ICityPlanningService cityPlanning)
+internal sealed class CityPlanningMapAdminHandler(ICityPlanningService cityPlanning, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<CityPlanningMapAdminRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -29,7 +30,8 @@ internal sealed class CityPlanningMapAdminHandler(ICityPlanningService cityPlann
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        if (await cityPlanning.IsCityPlanningTeamMemberAsync(userId))
+        if (await cityPlanning.IsCityPlanningTeamMemberAsync(
+                userId, httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None))
             context.Succeed(requirement);
     }
 }

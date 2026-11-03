@@ -6,6 +6,7 @@ using Humans.Base.Enums;
 using Humans.Teams.Authorization;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -25,8 +26,30 @@ public sealed class TeamAuthorizationHandlerTests
 
     public TeamAuthorizationHandlerTests()
     {
-        _handler = new TeamAuthorizationHandler(_teamService);
+        _handler = new TeamAuthorizationHandler(_teamService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(CreateTeamMap());
+    }
+
+    [HumansFact]
+    public async Task AuthorizationRead_PropagatesAbandonedRequests()
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var observed = CancellationToken.None;
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observed = call.Arg<CancellationToken>();
+            request.Cancel();
+            observed.ThrowIfCancellationRequested();
+            return CreateTeamMap();
+        });
+        var handler = new TeamAuthorizationHandler(_teamService, http);
+        var context = new AuthorizationHandlerContext([TeamOperationRequirement.ManageCoordinators],
+            CreateUser("coordinator", Guid.NewGuid()), CreateTeam("coordinator"));
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     public static TheoryData<string, string, bool> TeamAuthorizationCases => new()

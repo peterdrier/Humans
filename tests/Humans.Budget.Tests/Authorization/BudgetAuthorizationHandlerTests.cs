@@ -5,6 +5,7 @@ using Humans.Budget.Contracts;
 using Humans.Base.Constants;
 using Humans.Budget.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Xunit;
 
@@ -21,9 +22,30 @@ public sealed class BudgetAuthorizationHandlerTests
 
     public BudgetAuthorizationHandlerTests()
     {
-        _handler = new BudgetAuthorizationHandler(_budgetService);
+        _handler = new BudgetAuthorizationHandler(_budgetService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
             .Returns([CoordinatorTeamId]);
+    }
+
+    [HumansFact]
+    public async Task AuthorizationRead_PropagatesAbandonedRequests()
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var observed = CancellationToken.None;
+        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observed = call.Arg<CancellationToken>();
+            request.Cancel();
+            observed.ThrowIfCancellationRequested();
+            return new HashSet<Guid> { CoordinatorTeamId };
+        });
+        var handler = new BudgetAuthorizationHandler(_budgetService, http);
+        var context = new AuthorizationHandlerContext([BudgetOperationRequirement.Edit], CreateUser("coordinator"), CreateCategory("coordinator"));
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     public static TheoryData<string, string, bool, bool, bool, bool, bool> BudgetAuthorizationCases => new()

@@ -1,12 +1,14 @@
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
+using NSubstitute;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Authorization;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Preapprovals.Tests.Authorization;
 
@@ -28,8 +30,45 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user, IAuthorizationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
-        await new PreapprovalsPolicyHandler(NewService()).HandleAsync(context);
+        await new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(bool atManager)
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var userId = Guid.NewGuid();
+        var preapprovals = NSubstitute.Substitute.For<IPreapprovalManagement>();
+        var observed = CancellationToken.None;
+        void Read(bool manager, CancellationToken ct)
+        {
+            if (manager == atManager)
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        preapprovals.ManagesAnyProgramAsync(userId, NSubstitute.Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(true, call.Arg<CancellationToken>());
+            return false;
+        });
+        preapprovals.HasAnythingForUserAsync(userId, NSubstitute.Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(false, call.Arg<CancellationToken>());
+            return true;
+        });
+        var context = new AuthorizationHandlerContext([new PreapprovalsAccessRequirement()], Principal(userId), null);
+        var handler = new PreapprovalsPolicyHandler(preapprovals, http);
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     [HumansFact]

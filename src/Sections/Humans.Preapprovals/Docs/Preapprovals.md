@@ -120,6 +120,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Invariants
 
+- Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
 
 - Admin program grant ordering belongs to the view model: applications oldest-created first, decided grants nonterminal first then oldest-created. Service projections impose no display order.
