@@ -26,7 +26,7 @@
     </div>
     <div class="col-6 col-md-3 @timedClass" data-when-timed>
         <label asp-for="StartTime" class="form-label">@Localizer["Calendar_StartTime"]</label>
-        <input asp-for="StartTime" type="time" asp-format="{0:HH:mm}" class="form-control" />
+        <input asp-for="StartTime" type="time" value="@Model.StartTime.ToInvariantTime()" class="form-control" />
         <span asp-validation-for="StartTime" class="text-danger small"></span>
     </div>
     <div class="col-6 col-md-3">
@@ -36,7 +36,7 @@
     </div>
     <div class="col-6 col-md-3 @timedClass" data-when-timed>
         <label asp-for="EndTime" class="form-label">@Localizer["Calendar_EndTime"]</label>
-        <input asp-for="EndTime" type="time" asp-format="{0:HH:mm}" class="form-control" />
+        <input asp-for="EndTime" type="time" value="@Model.EndTime.ToInvariantTime()" class="form-control" />
         <span asp-validation-for="EndTime" class="text-danger small"></span>
     </div>
 </div>
