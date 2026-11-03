@@ -65,8 +65,7 @@ internal sealed record GrantInfo(
     Instant CreatedAt,
     Instant UpdatedAt)
 {
-    public bool CountsAgainstCeiling =>
-        Status is GrantStatus.Open or GrantStatus.Claimed or GrantStatus.Consumed;
+    public bool CountsAgainstCeiling => PreapprovalGrant.CountsAgainstCeiling(Status);
 
     public bool IsTerminal =>
         Status is GrantStatus.Consumed or GrantStatus.Declined or GrantStatus.Revoked;

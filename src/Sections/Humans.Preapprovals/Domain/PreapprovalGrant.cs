@@ -29,6 +29,9 @@ internal sealed class PreapprovalGrant
     public Instant UpdatedAt { get; set; }
 
     public PreapprovalProgram Program { get; set; } = null!;
+
+    internal static bool CountsAgainstCeiling(GrantStatus status) =>
+        status is GrantStatus.Open or GrantStatus.Claimed or GrantStatus.Consumed;
 }
 
 /// <summary>

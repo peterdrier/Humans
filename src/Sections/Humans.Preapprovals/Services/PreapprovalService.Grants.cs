@@ -286,7 +286,7 @@ internal sealed partial class PreapprovalService
     {
         if (program.TotalCeiling is not { } ceiling) return null;
         var granted = program.Grants
-            .Where(g => g.Status is GrantStatus.Open or GrantStatus.Claimed or GrantStatus.Consumed)
+            .Where(g => PreapprovalGrant.CountsAgainstCeiling(g.Status))
             .Sum(g => g.MaxAmount);
         return granted + delta > ceiling ? new(PreapprovalErrorKeys.CeilingExceeded, Euros(ceiling - granted)) : null;
     }
