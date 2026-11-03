@@ -40,8 +40,8 @@ public class CalendarServiceValidationTests
     [InlineData(true, false)]
     public async Task EventWithResultAsync_RecurrenceRuleMustFitStorage(bool update, bool oversized)
     {
-        // The 147-position rule is exactly 500 characters; the next position exceeds the limit.
-        var rule = "FREQ=YEARLY;BYSETPOS=" + string.Join(',', Enumerable.Range(1, oversized ? 148 : 147));
+        // With two weekday selectors, 144 positions fill the 500-character column.
+        var rule = "FREQ=YEARLY;BYSETPOS=" + string.Join(',', Enumerable.Range(1, oversized ? 145 : 144)) + ";BYDAY=MO,TU";
         Action parse = () => _ = new Ical.Net.DataTypes.RecurrencePattern(rule);
         parse.Should().NotThrow();
         rule.Length.Should().Be(oversized ? 504 : 500);
@@ -89,6 +89,17 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=3;COUNT=1", true, true)]
     [InlineData("FREQ=3;COUNT=1", false, false)]
     [InlineData("FREQ=3;COUNT=1", false, true)]
+    [InlineData("FREQ=WEEKLY;BYDAY=1MO", false, false)]
+    [InlineData("FREQ=DAILY;BYDAY=-1TU", true, true)]
+    [InlineData("FREQ=YEARLY;BYWEEKNO=1;BYDAY=1MO", false, true)]
+    [InlineData("FREQ=WEEKLY;BYMONTHDAY=1", true, false)]
+    [InlineData("FREQ=DAILY;BYYEARDAY=1", false, false)]
+    [InlineData("FREQ=WEEKLY;BYYEARDAY=1", true, true)]
+    [InlineData("FREQ=MONTHLY;BYYEARDAY=1", false, true)]
+    [InlineData("FREQ=MONTHLY;BYWEEKNO=1", true, false)]
+    [InlineData("FREQ=MONTHLY;BYSETPOS=1", false, false)]
+    [InlineData("FREQ=DAILY;FREQ=WEEKLY", true, true)]
+    [InlineData("FREQ=DAILY;BYDAY=MO;byday=TU", false, true)]
     public async Task EventWithResultAsync_InvalidRecurrence_is_rejected_before_persistence(
         string rule, bool allDay, bool update)
     {
@@ -189,6 +200,11 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=YEARLY;BYDAY=-53SU")]
     [InlineData("FREQ=WEEKLY;BYDAY=TU;COUNT=4")]
     [InlineData("FREQ=WEEKLY;UNTIL=20240201T000000Z")]
+    [InlineData("FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1")]
+    [InlineData("FREQ=MONTHLY;BYMONTHDAY=1")]
+    [InlineData("FREQ=YEARLY;BYWEEKNO=2;BYDAY=MO")]
+    [InlineData("FREQ=YEARLY;BYMONTH=1;BYSETPOS=1")]
+    [InlineData("FREQ=HOURLY;BYYEARDAY=1;BYSETPOS=1")]
     public void RecurrenceRuleRefusal_valid_input_returns_null(string? rrule)
     {
         CalendarService.RecurrenceRuleRefusal(rrule).Should().BeNull();

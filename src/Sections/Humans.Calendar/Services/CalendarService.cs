@@ -6,6 +6,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Teams.Contracts;
+using Ical.Net;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
 using NodaTime;
@@ -239,13 +240,32 @@ internal sealed class CalendarService(
         try
         {
             var pattern = new RecurrencePattern(rrule);
+            var parts = rrule.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            var names = parts.Select(part => part[..part.IndexOf('=')].Trim()).ToArray();
+            if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length)
+                return "Recurrence rule is malformed: rule parts cannot repeat.";
             // The library accepts numeric enum values, which also bypass the all-day frequency guard.
-            if (rrule.Split(';').Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
+            if (parts.Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
                     part[5..].ToUpperInvariant() is not ("SECONDLY" or "MINUTELY" or "HOURLY" or
                         "DAILY" or "WEEKLY" or "MONTHLY" or "YEARLY")))
                 return "Recurrence rule is malformed: FREQ must name an RFC 5545 frequency.";
             if (pattern.ByDay.Any(day => day.Offset is < -53 or 0 or > 53))
                 return "Recurrence rule is malformed: BYDAY ordinal offsets must be between -53 and 53, excluding zero.";
+            // The parser accepts these combinations, but RFC 5545 section 3.3.10 forbids them.
+            if (pattern.ByDay.Any(day => day.Offset is not null) &&
+                (pattern.Frequency is not (FrequencyType.Monthly or FrequencyType.Yearly) || pattern.ByWeekNo.Count > 0))
+                return "Recurrence rule is malformed: ordinal BYDAY requires MONTHLY or YEARLY without BYWEEKNO.";
+            if (pattern.ByMonthDay.Count > 0 && pattern.Frequency == FrequencyType.Weekly)
+                return "Recurrence rule is malformed: BYMONTHDAY cannot be used with WEEKLY.";
+            if (pattern.ByYearDay.Count > 0 &&
+                pattern.Frequency is FrequencyType.Daily or FrequencyType.Weekly or FrequencyType.Monthly)
+                return "Recurrence rule is malformed: BYYEARDAY cannot be used with DAILY, WEEKLY or MONTHLY.";
+            if (pattern.ByWeekNo.Count > 0 && pattern.Frequency != FrequencyType.Yearly)
+                return "Recurrence rule is malformed: BYWEEKNO requires YEARLY.";
+            if (pattern.BySetPosition.Count > 0 && !names.Any(name =>
+                    name.StartsWith("BY", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(name, "BYSETPOS", StringComparison.OrdinalIgnoreCase)))
+                return "Recurrence rule is malformed: BYSETPOS requires another BY rule part.";
         }
         catch (Exception ex)
         {
