@@ -780,6 +780,22 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task CancelSepaFile_PassesTheActorThrough_AndReportsTheOutcome()
+    {
+        var fileId = Guid.NewGuid();
+        _connector.CancelSepaFileAsync(fileId, Ana, Arg.Any<CancellationToken>())
+            .Returns(new SepaBookingResult(true, "Cancelled it."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.CancelSepaFile(fileId, days: 7);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
+        redirect.RouteValues!["days"].Should().Be(7);
+        controller.TempData[Humans.Base.Constants.TempDataKeys.SuccessMessage].Should().Be("Cancelled it.");
+    }
+
+    [HumansFact]
     public async Task WithdrawSepaTransfer_WithoutAnActor_ChallengesAndTouchesNothing()
     {
         var controller = MakeControllerWithHttpContext(Ana);
