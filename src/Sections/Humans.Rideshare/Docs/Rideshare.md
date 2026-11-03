@@ -316,7 +316,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   `GetAllEventSettingsAsync()` — resolves stored event ids and their names.
   The decorator implements `IEventSettingsChangeListener` and clears every snapshot when event metadata changes.
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
-  notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
+  notifications, delivered to the canonical user ID resolved for the recipient (falling back to the supplied ID when unavailable), localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
   `RideshareInterests` for the resolved survivor, including requests under archived account IDs;

@@ -992,6 +992,38 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansTheory]
+    [InlineData("received")]
+    [InlineData("accepted")]
+    [InlineData("declined")]
+    public async Task InterestNotices_DeliverToResolvedSurvivor(string action)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Ada");
+        var actor = SeedUser("Bo");
+        var recipient = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(recipient);
+        var trip = await SeedTripAsync(archived);
+        var interest = new RideshareInterest
+        {
+            Id = Guid.NewGuid(), TripId = trip.Id, Trip = trip,
+            FromUserId = string.Equals(action, "received", StringComparison.Ordinal) ? actor : archived,
+            Seats = 1
+        };
+        var notices = new RideshareNotices(Users, Notifications, Logger);
+
+        switch (action)
+        {
+            case "received": await notices.InterestReceivedAsync(interest, trip, null); break;
+            case "accepted": await notices.InterestAcceptedAsync(interest, actor); break;
+            default: await notices.InterestDeclinedAsync(interest, actor); break;
+        }
+
+        var delivery = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        ((IReadOnlyList<Guid>)delivery[4]!).Should().Equal(survivor);
+        ((CancellationToken)delivery[^1]!).CanBeCanceled.Should().BeFalse();
+    }
+
+    [HumansTheory]
     [InlineData("en", "A human is interested in your ride")]
     [InlineData("es", "Un human está interesado en tu viaje")]
     [InlineData("de", "Ein human interessiert sich für deine Fahrt")]
