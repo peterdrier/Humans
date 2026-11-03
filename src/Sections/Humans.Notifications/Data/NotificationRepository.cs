@@ -92,7 +92,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
         await PersistResolutionAsync(ctx, notifications, now, userId, ct);
     }
 
-    public async Task<ClickThroughOutcome> ClickThroughAsync(
+    public async Task<string?> ClickThroughAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -101,7 +101,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
             .FirstOrDefaultAsync(nr => nr.NotificationId == notificationId && nr.UserId == userId, ct);
 
         if (recipient is null)
-            return new ClickThroughOutcome(ActionUrl: null, NotFound: true);
+            return null;
 
         if (recipient.ReadAt is null)
         {
@@ -109,7 +109,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
             await ctx.SaveChangesAsync(ct);
         }
 
-        return new ClickThroughOutcome(recipient.Notification.ActionUrl, NotFound: false);
+        return recipient.Notification.ActionUrl;
     }
 
     public async Task ResolveBySourceAsync(
