@@ -129,6 +129,10 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Invariants
 
+- Administrative account preflight honours browser cancellation before sync-setting,
+  provisioning, account-management, recovery-credential and sync-queue operations.
+  Once started, those operations retain their independent tokens.
+
 - Cloud Translation returns exactly one non-null translated text per input, in input order. Missing data, missing/null segments or missing/null `translatedText` fail the complete translation call before callers can store incomplete text. Explicit empty strings remain valid.
 
 - Domain-group reads impose no display order. The All Groups view orders linked groups first, then email ignoring case; batch settings remediation explicitly uses that same sequence.

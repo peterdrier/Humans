@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -25,6 +27,7 @@ public class GoogleControllerSyncCancellationTests
     private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
     private readonly IGoogleSyncManagement _syncService = Substitute.For<IGoogleSyncManagement>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
+    private readonly IEmailProvisioningService _provisioning = Substitute.For<IEmailProvisioningService>();
 
     [HumansTheory]
     [Xunit.InlineData(false)]
@@ -235,6 +238,55 @@ public class GoogleControllerSyncCancellationTests
         return box;
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    [Xunit.InlineData(3)]
+    [Xunit.InlineData(4)]
+    [Xunit.InlineData(5)]
+    [Xunit.InlineData(6)]
+    [Xunit.InlineData(7)]
+    [Xunit.InlineData(8)]
+    [Xunit.InlineData(9)]
+    [Xunit.InlineData(10)]
+    public async Task Account_preflight_cancellation_prevents_admin_mutations(int action)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(controller.HttpContext.RequestAborted);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var settings = Substitute.For<ISyncSettingsService>();
+        var targetId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.UpdateSyncSetting(settings, SyncServiceType.GoogleDrive, SyncMode.None),
+            1 => () => controller.ProvisionEmail(targetId, "member"),
+            2 => () => controller.ProvisionAccount(new ProvisionWorkspaceAccountModel { EmailPrefix = "member" }),
+            3 => () => controller.SuspendAccount("member@example.org"),
+            4 => () => controller.ReactivateAccount("member@example.org"),
+            5 => () => controller.ResetPassword("member@example.org"),
+            6 => () => controller.ResetPasswordAndGenerate2Fa("member@example.org"),
+            7 => () => controller.LinkAccount("member@example.org", targetId),
+            8 => () => controller.RequeueOutboxEvent(targetId),
+            9 => () => controller.RequeueAllFailedOutboxEvents(),
+            _ => () => controller.RerunGoogleSync(targetId),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        settings.ReceivedCalls().Should().BeEmpty();
+        _admin.ReceivedCalls().Should().BeEmpty();
+        _provisioning.ReceivedCalls().Should().BeEmpty();
+        _syncService.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
+    }
+
     private GoogleController BuildSut(bool alreadyAbortedRequest)
     {
         var controller = new GoogleController(
@@ -242,7 +294,7 @@ public class GoogleControllerSyncCancellationTests
             _syncService,
             _groupSync,
             _resources,
-            Substitute.For<IEmailProvisioningService>(),
+            _provisioning,
             _admin,
             Substitute.For<IGoogleIntegrationService>(),
             Substitute.For<IGoogleSyncLogService>(),

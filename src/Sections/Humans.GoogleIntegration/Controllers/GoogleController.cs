@@ -63,7 +63,7 @@ internal sealed class GoogleController(
         [FromServices] ISyncSettingsService syncSettingsService,
         SyncServiceType serviceType, SyncMode mode)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -382,7 +382,7 @@ internal sealed class GoogleController(
             return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -449,7 +449,7 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionAccount(ProvisionWorkspaceAccountModel model)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await googleAdminService.ProvisionStandaloneAccountAsync(
@@ -474,7 +474,7 @@ internal sealed class GoogleController(
             return BadRequest();
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await googleAdminService.SuspendAccountAsync(
@@ -498,7 +498,7 @@ internal sealed class GoogleController(
             return BadRequest();
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await googleAdminService.ReactivateAccountAsync(
@@ -517,7 +517,7 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(string email)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await googleAdminService.ResetPasswordAsync(
@@ -546,7 +546,7 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPasswordAndGenerate2Fa(string email)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await googleAdminService.ResetPasswordAndGenerate2FaAsync(
@@ -592,7 +592,7 @@ internal sealed class GoogleController(
             return RedirectToAction(nameof(Accounts));
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await googleAdminService.LinkAccountAsync(
@@ -651,7 +651,7 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequeueOutboxEvent(Guid id)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var requeued = await googleSyncService.RequeueOutboxEventAsync(id, currentUser.Id);
@@ -670,7 +670,7 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequeueAllFailedOutboxEvents()
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var count = await googleSyncService.RequeueAllFailedOutboxEventsAsync(currentUser.Id);
@@ -686,7 +686,7 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RerunGoogleSync(Guid id)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var count = await googleSyncService.EnqueueUserSyncAsync(id, currentUser.Id);
