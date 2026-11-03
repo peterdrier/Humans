@@ -184,7 +184,6 @@ internal sealed class DuplicateAccountService(
             UserId = userId,
             DisplayName = info?.BurnerName ?? "Unknown",
             Email = info?.Email,
-            ProfilePictureUrl = info?.ProfilePictureUrl,
             MembershipTier = membershipTier,
             MembershipStatus = membershipStatus,
             LastLogin = info?.LastLoginAt?.ToDateTimeUtc(),

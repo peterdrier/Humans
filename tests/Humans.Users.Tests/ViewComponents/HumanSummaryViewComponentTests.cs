@@ -19,7 +19,7 @@ namespace Humans.Users.Tests.ViewComponents;
 public sealed class HumanSummaryViewComponentTests
 {
     [HumansFact]
-    public async Task InvokeAsync_ProfiledHuman_UsesCanonicalPictureAndSummaryProjection()
+    public async Task InvokeAsync_ProfiledHuman_UsesResolvedIdentityAndSummaryProjection()
     {
         var userId = Guid.NewGuid();
         var requestedId = Guid.NewGuid();
@@ -71,7 +71,6 @@ public sealed class HumanSummaryViewComponentTests
         var vm = model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.UserId.Should().Be(userId);
         vm.DisplayName.Should().Be("Sparkle");
-        vm.ProfilePictureUrl.Should().Be($"/Profile/Picture?id={profile.Id}&v={at.ToUnixTimeTicks()}");
         vm.MembershipTier.Should().Be("Asociado");
         vm.MembershipStatus.Should().Be("Suspended");
         vm.IsSuspended.Should().BeTrue();

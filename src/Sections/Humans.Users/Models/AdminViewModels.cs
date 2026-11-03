@@ -23,7 +23,6 @@ internal sealed class AdminHumanDetailViewModel
     public Guid UserId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 

@@ -8,7 +8,6 @@ internal sealed class ProfileSummaryViewModel
     public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? Email { get; set; }
-    public string? ProfilePictureUrl { get; set; }
     public string? PreferredLanguage { get; set; }
     public string? MembershipTier { get; set; }
     public string? MembershipStatus { get; set; }

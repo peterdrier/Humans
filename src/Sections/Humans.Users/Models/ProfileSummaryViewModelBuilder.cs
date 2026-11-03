@@ -29,7 +29,6 @@ internal static class ProfileSummaryViewModelBuilder
             UserId = info.Id,
             DisplayName = info.BurnerName,
             Email = info.Email,
-            ProfilePictureUrl = info.ProfilePictureUrl,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = tier.ToString(),
             MembershipStatus = info.IsSuspended ? "Suspended"

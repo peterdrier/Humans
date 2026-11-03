@@ -21,7 +21,6 @@ public sealed class DuplicateAccountInfo
     public Guid UserId { get; init; }
     public string DisplayName { get; init; } = string.Empty;
     public string? Email { get; init; }
-    public string? ProfilePictureUrl { get; init; }
     public string? MembershipTier { get; init; }
     public string? MembershipStatus { get; init; }
     public DateTime? LastLogin { get; init; }

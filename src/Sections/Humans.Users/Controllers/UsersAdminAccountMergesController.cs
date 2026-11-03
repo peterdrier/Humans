@@ -169,7 +169,6 @@ internal sealed class UsersAdminAccountMergesController(
         UserId = user.Id,
         DisplayName = user.DisplayName,
         Email = user.Email,
-        ProfilePictureUrl = user.ProfilePictureUrl,
         PreferredLanguage = user.PreferredLanguage,
         LastLogin = user.LastLoginAt?.ToDateTimeUtc()
     };
@@ -179,7 +178,6 @@ internal sealed class UsersAdminAccountMergesController(
         UserId = account.UserId,
         DisplayName = account.DisplayName,
         Email = account.Email,
-        ProfilePictureUrl = account.ProfilePictureUrl,
         MembershipTier = account.MembershipTier,
         MembershipStatus = account.MembershipStatus,
         LastLogin = account.LastLogin,

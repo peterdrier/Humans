@@ -67,7 +67,6 @@ public sealed record AccountMergeUserSnapshot(
     Guid Id,
     string DisplayName,
     string? Email,
-    string? ProfilePictureUrl,
     string? PreferredLanguage,
     Instant? LastLoginAt);
 

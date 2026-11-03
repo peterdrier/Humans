@@ -38,7 +38,6 @@ public sealed class HumanSummaryViewComponent(
                 DisplayName = info.BurnerName,
                 Email = info.PrimaryEmail
                     ?? info.UserEmails.FirstOrDefault(e => e.IsVerified)?.Email,
-                ProfilePictureUrl = info.ProfilePictureUrl,
                 PreferredLanguage = info.PreferredLanguage,
                 HasProfile = false,
             });
