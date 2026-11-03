@@ -224,8 +224,8 @@ public class ICalFeedServiceTests
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();
         StubUser(userId, icalToken: token);
-        var item = MakeItem("wg@humans.nobodies.team", "Workgroups", Instant.FromUtc(2026, 6, 2, 17, 0))
-            with { RecurrenceRule = "FREQ=WEEKLY;COUNT=3", RecurrenceTimezone = "Europe/Madrid" };
+        var start = Instant.FromUtc(2026, 6, 2, 17, 0);
+        var item = MakeItem("wg@humans.nobodies.team", "Workgroups", start) with { RecurrenceRule = "FREQ=WEEKLY;COUNT=3", RecurrenceTimezone = "Europe/Madrid" };
         var service = CreateService(new FakeContributor(item));
 
         var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
