@@ -109,6 +109,29 @@ public sealed class ServiceImageTests
         _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GalleryCompletion_ReturnsSavedImagesAfterRequestCancellation(bool update)
+    {
+        using var request = new CancellationTokenSource();
+        var container = update ? await SeedContainerAsync(galleryImages: 1) : null;
+        _auditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(async _ => await request.CancelAsync());
+        var data = new ContainerData(CampId, "Completed", null, NewImages: FakeImages(1));
+
+        var result = update
+            ? await _sut.UpdateAsync(container!.Id, data, Guid.NewGuid(), request.Token)
+            : await _sut.CreateAsync(data, Guid.NewGuid(), request.Token);
+
+        request.IsCancellationRequested.Should().BeTrue();
+        result.ErrorKey.Should().BeNull();
+        result.Value!.Images.Should().HaveCount(update ? 2 : 1);
+        await using var db = new ContainersDbContext(_containersOptions);
+        (await db.Containers.SingleAsync(TestContext.Current.CancellationToken)).Name.Should().Be("Completed");
+    }
+
     [HumansFact]
     public async Task CreateAsync_WithImages_SavesEachUnderContainersPrefix()
     {
