@@ -34,8 +34,8 @@ namespace Humans.Workgroups.Tests.Controllers;
 
 /// <summary>
 /// The deny paths design §5 requires of the member pages: a non-member reaching a
-/// member-only mutation route gets Forbid, while Join, Leave, RequestStatus and commenting
-/// stay open to any signed-in human. Every member-only POST goes through one private helper
+/// member-only mutation route gets Forbid, while Join, Leave and commenting stay open to any
+/// signed-in human. RequestStatus is Board/Admin only. Every member-only POST goes through one private helper
 /// (<c>ActAsync</c>), so a representative sample of routes covers the guard.
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
@@ -415,14 +415,18 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         (await board.Document(workgroup.Slug, document.Id, Ct)).Should().BeOfType<ViewResult>();
     }
 
-    [HumansFact]
-    public async Task NonMember_RequestingAStatusUpdate_IsAllowed()
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task RequestingAStatusUpdate_IsBoardOrAdminOnly(bool asMember, bool isBoard)
     {
-        var (controller, workgroup) = await BuildAsync(asMember: false);
+        var (controller, workgroup) = await BuildAsync(asMember, isBoard);
 
         var result = await controller.RequestStatus(workgroup.Slug, "Where is the report?", Ct);
 
-        result.Should().BeOfType<RedirectToActionResult>();
+        if (isBoard) result.Should().BeOfType<RedirectToActionResult>();
+        else result.Should().BeOfType<ForbidResult>();
     }
 
     [HumansFact]
