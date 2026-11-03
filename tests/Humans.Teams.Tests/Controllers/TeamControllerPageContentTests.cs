@@ -463,6 +463,90 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
+    [InlineData("join", "viewer")]
+    [InlineData("join", "team")]
+    [InlineData("leave", "viewer")]
+    [InlineData("leave", "team")]
+    [InlineData("withdraw", "viewer")]
+    [InlineData("delete", "viewer")]
+    [InlineData("create", "parents")]
+    [InlineData("edit", "parents")]
+    public async Task Mutations_StopAtCancelledPreflightReads(string action, string boundary)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        var teams = Substitute.For<ITeamManagementService>();
+        var team = new TeamInfo(Guid.NewGuid(), "Alpha", null, "alpha", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "viewer", StringComparison.Ordinal))
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null));
+        });
+        teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "team", StringComparison.Ordinal))
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<TeamInfo?>(team);
+        });
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>());
+        });
+        teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamJoinResult(ErrorKey: "Teams_Team_AlreadyPendingRequest"));
+        teams.LeaveTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
+            .Returns(new TeamMembershipMutationResult(false, "Teams_NotMember"));
+        teams.WithdrawJoinRequestAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
+            .Returns(new TeamMembershipMutationResult(false, "Teams_RequestUnavailable"));
+        teams.DeleteTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
+            .Returns(new TeamDeactivationResult("Cannot deactivate"));
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), users,
+            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
+            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (action is "create" or "edit")
+            controller.ModelState.AddModelError("Name", "Required");
+        Func<Task> abandonedAction = async () => await (action switch
+        {
+            "join" => controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
+            "leave" => controller.Leave(team.Slug),
+            "withdraw" => controller.WithdrawRequest(Guid.NewGuid()),
+            "delete" => controller.DeleteTeam(team.Id),
+            "create" => controller.CreateTeam(new CreateTeamViewModel()),
+            _ => controller.EditTeam(team.Id, new EditTeamViewModel { Id = team.Id })
+        });
+        await abandonedAction();
+        teams.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+                "JoinTeamAsync" or "LeaveTeamAsync" or "WithdrawJoinRequestAsync" or "DeleteTeamAsync")
+            .Should().OnlyContain(call => call.GetArguments().OfType<CancellationToken>()
+                .All(ct => ct == CancellationToken.None));
+        teams.ClearReceivedCalls();
+        await request.CancelAsync();
+        await abandonedAction.Should().ThrowAsync<OperationCanceledException>();
+        teams.ReceivedCalls().Should().OnlyContain(call =>
+            call.GetMethodInfo().Name == "GetTeamBySlugAsync" || call.GetMethodInfo().Name == "GetTeamsAsync");
+    }
+
+    [HumansTheory]
     [InlineData("Join", false)]
     [InlineData("Join", true)]
     [InlineData("Leave", false)]

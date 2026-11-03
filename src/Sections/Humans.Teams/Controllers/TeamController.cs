@@ -463,13 +463,13 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Join(string slug, JoinTeamViewModel model)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug, HttpContext.RequestAborted);
         if (team is null || !team.IsActive)
         {
             return NotFound();
@@ -517,13 +517,13 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Leave(string slug)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug, HttpContext.RequestAborted);
         if (team is null)
         {
             return NotFound();
@@ -544,7 +544,7 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawRequest(Guid id)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -636,7 +636,7 @@ internal sealed class TeamController(
     {
         if (!ModelState.IsValid)
         {
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
+            await PopulateEligibleParentsAsync(model, excludeTeamId: null, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -720,7 +720,7 @@ internal sealed class TeamController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateEligibleParentsAsync(model, id);
+            await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -760,7 +760,7 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
-        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -814,9 +814,9 @@ internal sealed class TeamController(
             .ToList();
     }
 
-    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId)
+    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId, CancellationToken ct = default)
     {
-        model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, CancellationToken.None);
+        model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, ct);
     }
 
     // Birthdays and the map list members the Consent Coordinator cleared.

@@ -236,7 +236,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - My Teams reads the current member’s pending join requests live through the inner service, with team links and withdrawal forms; resolved requests and other members’ requests are excluded. Concurrent request submissions share a short in-process gate through the insert, so one creates the Pending row and the other receives the existing already-pending refusal. Notices run after the gate is released.
 - Team-detail enrichment retains request cancellation through shift coordination, active-event settings, rota summary reads and subteam management-role/member rollups. Those read failures propagate as cancellation.
-- Birthday, My Teams and join-form GETs carry request cancellation through current-user resolution and their read-only Users/Teams calls. Join POST and membership mutations keep their existing cancellation policy.
+- Birthday, My Teams and join-form GETs carry request cancellation through current-user resolution and their read-only Users/Teams calls. Join, Leave, request withdrawal and team deletion POSTs carry request cancellation through preflight account/team reads. Invalid Create/Edit forms also cancel parent-list reads; reads after a mutation attempt and the mutations themselves retain detached cancellation.
 
 - A department can have **at most one** role flagged as management (coordinator). Enforced in both the toggle and edit paths.
 - A sub-team can have **at most one** role flagged as management (manager).
