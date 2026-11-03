@@ -41,6 +41,89 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public void Dispose() => _fx.Dispose();
 
     [HumansTheory]
+    [InlineData("create", "merged")]
+    [InlineData("create", "missing")]
+    [InlineData("create", "cancelled")]
+    [InlineData("edit", "merged")]
+    [InlineData("edit", "missing")]
+    [InlineData("edit", "cancelled")]
+    [InlineData("delete", "merged")]
+    [InlineData("delete", "missing")]
+    [InlineData("delete", "cancelled")]
+    [InlineData("open", "merged")]
+    [InlineData("open", "missing")]
+    [InlineData("open", "cancelled")]
+    [InlineData("stop", "merged")]
+    [InlineData("stop", "missing")]
+    [InlineData("stop", "cancelled")]
+    [InlineData("extend", "merged")]
+    [InlineData("extend", "missing")]
+    [InlineData("extend", "cancelled")]
+    [InlineData("cancel", "merged")]
+    [InlineData("cancel", "missing")]
+    [InlineData("cancel", "cancelled")]
+    [InlineData("peek", "merged")]
+    [InlineData("peek", "missing")]
+    [InlineData("peek", "cancelled")]
+    [InlineData("ballots", "merged")]
+    [InlineData("ballots", "missing")]
+    [InlineData("ballots", "cancelled")]
+    public async Task AdminOperations_ResolveTheActorBeforeCallingTheVoteService(string action, string account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var votes = Substitute.For<IAssemblyVoteService>();
+        votes.GetBallotsForBoardAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<AssemblyBallotDisclosureRow>?)null);
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new GovernanceVotesAdminController(users, votes,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var voteId = Guid.NewGuid();
+        var draft = new AssemblyVoteDraftFormViewModel { ClosesAt = new DateTime(2026, 12, 1) };
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "create" => controller.Create(draft, null, request.Token),
+            "edit" => controller.Edit(voteId, draft, null, request.Token),
+            "delete" => controller.Delete(voteId, request.Token),
+            "open" => controller.Open(voteId, request.Token),
+            "stop" => controller.Stop(voteId, request.Token),
+            "extend" => controller.Extend(voteId, new AssemblyVoteExtendFormModel { NewClosesAt = new DateTime(2026, 12, 2) }, request.Token),
+            "cancel" => controller.Cancel(voteId, new AssemblyVoteCancelFormModel { Reason = "reason" }, request.Token),
+            "peek" => controller.Peek(voteId, request.Token),
+            _ => controller.Ballots(voteId, request.Token)
+        };
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            var result = await run();
+            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<ChallengeResult>();
+            else votes.ReceivedCalls().Should().ContainSingle().Which.GetArguments().OfType<Guid>().Last().Should().Be(actorId);
+        }
+        if (!string.Equals(account, "merged", StringComparison.Ordinal)) votes.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task VoteLists_ApplyTheirDisplayOrder(bool admin)
@@ -889,6 +972,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
+        _fx.Users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
         {
@@ -961,6 +1046,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             RequestServices = services,
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
         };
+        _fx.Users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
         {

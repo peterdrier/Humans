@@ -273,6 +273,59 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
+    [Xunit.InlineData("merged")]
+    [Xunit.InlineData("missing")]
+    [Xunit.InlineData("cancelled")]
+    public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(string account)
+    {
+        using var request = new CancellationTokenSource();
+        var drifted = await SeedApprovedApplicationAsync(new LocalDate(2029, 12, 31));
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<Humans.Base.SharedResource>>(),
+            NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            Func<Task> run = async () => await controller.AdminTermExpiryFix();
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            var result = await controller.AdminTermExpiryFix();
+            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            {
+                result.Should().BeOfType<RedirectToActionResult>();
+                await AuditLog.Received(1).LogAsync(GovernanceAuditActions.TierTermExpiryCorrected,
+                    AuditEntityTypes.Application, drifted.Id, Arg.Any<string>(), actorId);
+            }
+            else result.Should().BeOfType<UnauthorizedResult>();
+        }
+        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            (await _service.GetTermExpiryDriftAsync(TestContext.Current.CancellationToken)).Should().ContainSingle();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(49, 1000, 2000, 2000, "MotivationLength")]
     [InlineData(50, 1000, 2000, 2000, null)]
     [InlineData(2000, 1000, 2000, 2000, null)]

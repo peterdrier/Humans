@@ -276,11 +276,11 @@ internal sealed class GovernanceApplicationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminTermExpiryFix()
     {
-        var userId = GetCurrentUserId();
-        if (userId is null)
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null)
             return Unauthorized();
 
-        var count = await applicationDecisionService.FixTermExpiryDriftAsync(userId.Value);
+        var count = await applicationDecisionService.FixTermExpiryDriftAsync(actor.Id);
         SetSuccess($"Corrected {count} term expir{(count == 1 ? "y" : "ies")}.");
         return RedirectToAction(nameof(AdminTermExpiry));
     }
