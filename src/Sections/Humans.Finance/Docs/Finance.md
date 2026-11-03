@@ -390,7 +390,7 @@ Derived from `Humans.Finance.csproj`'s project references and the contracts name
 
 Budget never calls into Finance.
 
-Browser attribution on creditor bindings, duplicate-contact pages and SEPA files/transfers renders user IDs through the shared Human component, without profile links. Missing members use its localized fallback. A booked transfer with no actor is labeled as the automatic sweep. SEPA-normalized creditor names remain the bank-file identities; the creditor and SEPA view models retain member-name text only where server-side member sorting or native confirmation prompts need it.
+Browser attribution on creditor bindings, duplicate-contact pages, expense-reconciliation members/lines and SEPA files/transfers renders user IDs through the shared Human component, without profile links. Missing members use its localized fallback. A booked transfer with no actor is labeled as the automatic sweep. SEPA-normalized creditor names remain the bank-file identities; the creditor and SEPA view models retain member-name text only where server-side member sorting or native confirmation prompts need it. Reconciliation name fields remain for the Backdoor JSON projection and ordinal member ordering; browser labels use the IDs.
 
 ## Architecture
 

@@ -142,7 +142,7 @@
             {
                 var (css, label) = MemberBadge(m);
                 <tr>
-                    <td>@m.MemberName</td>
+                    <td><vc:human user-id="@m.UserId" link="None" /></td>
                     <td>
                         @if (m.SupplierAccountNum is { } account)
                         {

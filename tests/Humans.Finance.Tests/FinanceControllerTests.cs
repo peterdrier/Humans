@@ -988,6 +988,41 @@ public class FinanceControllerTests
             .And.Contain("Legal account").And.NotContain("Current <b>&");
     }
 
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLinesWhileKeepingLegalContacts(string language)
+    {
+        using var culture = new CultureScope(language);
+        const string name = "Current member <script>&";
+        _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, name));
+        var report = new ExpenseReconReport(2026, Stamp(1), null, [2026],
+            [
+                new(Guid.NewGuid(), Guid.NewGuid(), Ana, "Stored member A", "Train", 12m,
+                    new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Booked,
+                    "doc", "F1", 12m, "Legal contact", [], 0m),
+                new(Guid.NewGuid(), Guid.NewGuid(), Bo, "Stored member B", "Bus", 7m,
+                    new LocalDate(2026, 10, 11), "Failed", ExpenseReconLineStatus.Missing,
+                    null, null, null, null, [], 0m),
+            ], [],
+            [
+                new(Ana, "Stored member A", 40000002, -12m, -12m, ExpenseReconMemberStatus.Balanced, []),
+                new(Bo, "Stored member B", 40000003, -7m, 0m, ExpenseReconMemberStatus.Off, []),
+            ], new(2, 2, 1, 1, 0, 0m, 0, 1));
+
+        var html = await RenderAsync("ExpenseRecon", report);
+
+        html.Should().Contain(HtmlEncoder.Default.Encode(name), Exactly.Twice())
+            .And.Contain("Legal contact").And.NotContain("Stored member A").And.NotContain("Stored member B")
+            .And.NotContain(name);
+        html.Should().Contain(HtmlEncoder.Default.Encode(new ResourceManager(typeof(SharedResource))
+            .GetString("Common_Unknown", CultureInfo.CurrentUICulture)!), Exactly.Twice());
+    }
+
     private async Task<string> RenderAsync(string page, object model)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -1018,7 +1053,10 @@ public class FinanceControllerTests
         result.Success.Should().BeTrue();
         var http = new DefaultHttpContext { RequestServices = services };
         services.GetRequiredService<IHttpContextAccessor>().HttpContext = http;
-        var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var route = new RouteData();
+        route.Values["controller"] = "Finance";
+        route.Values["action"] = page;
+        var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
         {
             Model = model,
