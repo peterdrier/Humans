@@ -64,19 +64,21 @@ public class TranslationsPageModelBuilderTests
     {
         var camps = Build(CampsAndShifts, "camps", null);
         camps.SelectedSet.Should().Be("Camps");
-        camps.Rows.Should().HaveCount(camps.Selected.Gallery.TotalKeys).And.OnlyContain(h => string.Equals(h.Set, "Camps", StringComparison.Ordinal));
+        camps.Rows.Should().HaveCount(camps.Selected!.Gallery.TotalKeys).And.OnlyContain(h => string.Equals(h.Set, "Camps", StringComparison.Ordinal));
 
         Build(CampsAndShifts, "NoSuchSet", null).SelectedSet.Should().Be(TranslationsPageModelBuilder.SharedName);
     }
 
     [HumansFact]
-    public void A_search_spans_every_set_whatever_set_is_chosen()
+    public void A_search_is_scoped_to_the_chosen_set_and_All_spans_every_set()
     {
         var shiftsKey = Build(CampsAndShifts).Sets.Single(s => string.Equals(s.Name, "Shifts", StringComparison.Ordinal)).Gallery.Groups[0].Rows[0].Key;
 
-        var model = Build(CampsAndShifts, "Camps", shiftsKey.ToLowerInvariant());
-
-        model.IsSearch.Should().BeTrue();
-        model.Rows.Should().Contain(h => string.Equals(h.Set, "Shifts", StringComparison.Ordinal) && string.Equals(h.Row.Key, shiftsKey, StringComparison.Ordinal));
+        Build(CampsAndShifts, "Camps", shiftsKey.ToLowerInvariant()).Rows
+            .Should().OnlyContain(h => string.Equals(h.Set, "Camps", StringComparison.Ordinal));
+        Build(CampsAndShifts, TranslationsPageModelBuilder.AllName, shiftsKey.ToLowerInvariant()).Rows
+            .Should().Contain(h => string.Equals(h.Set, "Shifts", StringComparison.Ordinal) && string.Equals(h.Row.Key, shiftsKey, StringComparison.Ordinal));
+        Build(CampsAndShifts, TranslationsPageModelBuilder.AllName, null).Rows
+            .Should().BeEmpty(because: "every set without a search would render all keys at once");
     }
 }

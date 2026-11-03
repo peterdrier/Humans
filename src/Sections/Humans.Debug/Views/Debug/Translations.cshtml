@@ -30,8 +30,9 @@
 
 <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-3">
     <input type="search" name="q" value="@Model.Query" class="form-control form-control-sm" style="max-width: 320px"
-           placeholder="Search every set by key or text…" autocomplete="off" />
+           placeholder="Search by key or text…" autocomplete="off" />
     <select name="set" id="loc-set" class="form-select form-select-sm" style="max-width: 260px" aria-label="Resource set">
+        <option value="@TranslationsPageModelBuilder.AllName" selected="@(Model.SelectedSet is null)">All sets</option>
         @foreach (var set in Model.Sets)
         {
             var setMissing = set.Gallery.MissingByLanguage.Values.Sum();
@@ -48,21 +49,28 @@
     <button type="submit" class="btn btn-primary btn-sm">Search</button>
     @if (Model.IsSearch)
     {
-        <a asp-action="Translations" asp-route-set="@Model.SelectedSet" class="btn btn-link btn-sm">Clear search</a>
+        <a asp-action="Translations" asp-route-set="@(Model.SelectedSet ?? TranslationsPageModelBuilder.AllName)" class="btn btn-link btn-sm">Clear search</a>
     }
 </form>
 
-<h2 class="h5 mb-2">
-    @(Model.IsSearch ? $"Results for “{Model.Query}”" : Model.SelectedSet)
-    <small class="text-muted">— @Model.Rows.Count @(Model.Rows.Count == 1 ? "key" : "keys")</small>
-</h2>
+@if (Model.Selected is null && !Model.IsSearch)
+{
+    <p class="text-muted">Search to look across every set, or pick one.</p>
+}
+else
+{
+    <h2 class="h5 mb-2">
+        @(Model.SelectedSet ?? "All sets")@(Model.IsSearch ? $": “{Model.Query}”" : "")
+        <small class="text-muted">— @Model.Rows.Count @(Model.Rows.Count == 1 ? "key" : "keys")</small>
+    </h2>
+}
 
-@if (!Model.IsSearch && Model.Selected.Gallery.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
+@if (!Model.IsSearch && Model.Selected is { } selected && selected.Gallery.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
 {
     <div class="alert alert-warning">
         <strong>Orphan keys</strong> — present in a language file but no longer in the English resx; safe to delete:
         <ul class="mb-0">
-            @foreach (var (lang, keys) in Model.Selected.Gallery.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
+            @foreach (var (lang, keys) in selected.Gallery.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
             {
                 <li><code>@lang</code>: @string.Join(", ", keys)</li>
             }
@@ -76,7 +84,7 @@
         <table class="table table-sm table-striped align-middle small">
             <thead>
                 <tr>
-                    @if (Model.IsSearch)
+                    @if (Model.Selected is null)
                     {
                         <th>Set</th>
                     }
@@ -92,7 +100,7 @@
                 @foreach (var hit in Model.Rows)
                 {
                     <tr>
-                        @if (Model.IsSearch)
+                        @if (Model.Selected is null)
                         {
                             <td><a asp-action="Translations" asp-route-set="@hit.Set">@hit.Set</a></td>
                         }
@@ -122,7 +130,6 @@
         (function () {
             const set = document.getElementById('loc-set');
             set.addEventListener('change', function () {
-                set.form.q.value = '';
                 set.form.submit();
             });
             document.getElementById('loc-missing-only').addEventListener('change', function () {
