@@ -27,18 +27,40 @@ interface SidebarExpectation {
 
 const sidebarMatrix: SidebarExpectation[] = [
   {
+    // Board reads every section admin page and writes only its own decisions, so it sees every
+    // <Section>Policies.Read and BoardOrAdmin item and no AdminOnly or Manage one.
     name: 'board',
     persona: 'board',
     groups: [
+      { label: 'Agent', items: ['Status', 'History'] },
       { label: 'Audit', items: ['Audit log'] },
-      { label: 'Consent', items: ['Legal documents'] },
+      { label: 'Backdoor', items: ['API keys'] },
+      { label: 'Budget', items: ['Overview'] },
+      { label: 'Cantina', items: ['Roster'] },
+      { label: 'Consent', items: ['Review queue', 'Legal documents'] },
+      {
+        label: 'Debug',
+        items: [
+          'Logs', 'HTTP errors', 'DB stats', 'Cache stats', 'Client stats', 'Timings', 'Sections',
+          'Configuration', 'Maintenance', 'All users', 'Data migrations', 'Hangfire', 'Health',
+          'Color palette', 'Components', 'Date formats', 'Translations',
+        ],
+      },
+      { label: 'Early Entry', items: ['Early entry'] },
+      { label: 'Events', items: ['Dashboard', 'Moderation', 'Categories', 'Venues', 'Export'] },
+      { label: 'Finance', items: ['Holded connector'] },
+      { label: 'Gate', items: ['Terminal'] },
       { label: 'Google', items: ['Resource sync'] },
-      { label: 'Governance', items: ['Voting', 'Applications'] },
+      { label: 'Governance', items: ['Voting', 'Applications', 'Assembly Votes'] },
+      { label: 'Holded', items: ['Holded'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Onboarding', items: ['Review'] },
+      { label: 'Rideshare', items: ['Settings & stats', 'Day roster'] },
       { label: 'Scanner', items: ['Scanner'] },
+      { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Order years', 'Payment methods'] },
+      // Board also sees Approvals, but the Surveys index is app-access and renders outside the admin
+      // shell, so its page has no tab strip to assert against.
       { label: 'Surveys', items: ['Surveys'] },
-      { label: 'Tickets', items: ['Tickets', 'Onsite roster'] },
+      { label: 'Tickets', items: ['Tickets', 'Transfer requests', 'Attendee contacts', 'Onsite roster'] },
       { label: 'Users', items: ['Humans', 'Roles'] },
       { label: 'Workgroups', items: ['Workgroups'] },
     ],
@@ -67,8 +89,8 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'consentCoordinator',
     persona: 'consent-coordinator',
     groups: [
+      { label: 'Consent', items: ['Review queue'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Onboarding', items: ['Review'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
   },
@@ -76,9 +98,9 @@ const sidebarMatrix: SidebarExpectation[] = [
     name: 'volunteerCoordinator',
     persona: 'shifts-admin',
     groups: [
+      { label: 'Consent', items: ['Review queue'] },
       { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Onboarding', items: ['Review'] },
       { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
@@ -203,9 +225,9 @@ test.describe('Admin shell — chrome', () => {
     // Tiles from _DashboardStats. The "Active humans" tile was renamed to
     // "Active (has profile)" by #546 (UserInfo-driven stats); the test was never
     // updated, so this assertion had been failing against a label that no longer exists.
-    // The "Open feedback" tile and the "Recent activity" card are authorize-policy
-    // ="AdminOnly" (#977) — Board reaches /Admin but is deliberately not shown either,
-    // so they are asserted in-process instead (AdminLayoutRenderTests).
+    // The "Recent activity" card is authorize-policy
+    // ="AdminOnly" (#977): Board reaches /Admin but is deliberately not shown it,
+    // so it is asserted in-process instead (AdminLayoutRenderTests).
     const stats = page.locator('.stats');
     await expect(stats).toBeVisible();
     await expect(stats.locator('.stat .label', { hasText: 'Active (has profile)' })).toBeVisible();

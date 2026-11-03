@@ -70,6 +70,5 @@ Worth knowing, in plain terms:
 
 ## Related
 
-- [Feedback](Feedback.md) — the retired predecessor to Issues; kept for the historical archive only.
 - [Signing in & getting unstuck](SigningIn.md) — you need to be signed in to see
   the helper.

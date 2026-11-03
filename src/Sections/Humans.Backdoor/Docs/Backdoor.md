@@ -3,7 +3,6 @@
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
   src/Humans.Web/Authorization/NameRequiredFilter.cs
   src/Sections/Humans.Agent/Contracts/IAgentTranscriptRead.cs
-  src/Sections/Humans.Feedback/Contracts/IFeedbackTriage.cs
   src/Sections/Humans.Issues/Contracts/IIssueTriage.cs
   src/Sections/Humans.Notifications.Contracts/INotificationInboxRead.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
@@ -55,7 +54,6 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/logs` | read | The in-memory log ring (`InMemoryLogSink`, Base) |
 | `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages; list previews retain a 200 UTF-16 code-unit cap without splitting Unicode surrogate pairs — via `IAgentTranscriptRead` |
 | `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage`; `GET /{id}/screenshot` streams the screenshot (the payload's `ScreenshotUrl`) behind the same reach check |
-| `/api/backdoor/feedback` | read + write | The feedback queue, via `IFeedbackTriage` |
 | `/api/backdoor/surveys` | read | Survey definitions, responses and aggregates, via `ISurveyAnalysisRead` |
 | `/api/backdoor/store/order-lines?year=` | read | One row per Store order line of the year — camp and team orders — with effective price, VAT, revenue account and invoice number, via `IStoreAccountingRead` |
 | `/api/backdoor/store/payments?year=` | read | One row per `Paid` Store payment of the year (refunds negative) with its Stripe payment intent id, via `IStoreAccountingRead` |
@@ -96,9 +94,9 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - Surveys response exports pass the authenticated API key owner to the Surveys service for its disclosure audit (survey id and row count); requests without an actor cannot export.
 - Surveys aggregate JSON orders questions by authored page and position, and choice option counts by authored option position, using owner-supplied metadata without adding JSON fields.
 - Surveys response exports preserve the owning section's privacy rules: closed Asociado ballots have no identity or submission timestamps and order by response id. A `since` filter cannot match their suppressed timestamps.
-- Issues list/detail/comments GETs and legacy Feedback list/detail/messages GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
+- Issues list/detail/comments GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
 
-- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. The Issues queue read consults those role claims to scope its result (see below), and the Notifications read passes the whole principal on so its meters are role-gated the same way the bell is; Agent, Feedback, Logs, Store, and Surveys reads do not. Finance's routes authorize imperatively: each action calls `IAuthorizationService.AuthorizeAsync` against the installed principal — `FinancePolicies.Manage` for the finance-wide routes (creditor accounts, ledger, category map, SEPA transfers, Holded sync), and `PolicyNames.ExpenseReportView` (a named policy Expenses' own `ISectionPolicies` registers, wrapping its internal `ExpenseReportOperationRequirement(View)`/handler) for a single report or attachment — the same check `ExpensesController` uses, not a bespoke Backdoor check (peterdrier/Humans#1838).
+- A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. The Issues queue read consults those role claims to scope its result (see below), and the Notifications read passes the whole principal on so its meters are role-gated the same way the bell is; Agent, Logs, Store, and Surveys reads do not. Finance's routes authorize imperatively: each action calls `IAuthorizationService.AuthorizeAsync` against the installed principal — `FinancePolicies.Manage` for the finance-wide routes (creditor accounts, ledger, category map, SEPA transfers, Holded sync), and `PolicyNames.ExpenseReportView` (a named policy Expenses' own `ISectionPolicies` registers, wrapping its internal `ExpenseReportOperationRequirement(View)`/handler) for a single report or attachment — the same check `ExpensesController` uses, not a bespoke Backdoor check (peterdrier/Humans#1838).
 - JSON triage writes reject undefined issue categories, issue statuses and feedback statuses with HTTP 400 using shared localized validation; defined names and numeric values remain accepted.
 - Issue and feedback status JSON bodies require an explicit `Status` property. Missing status fails JSON binding with HTTP 400 before triage; explicit numeric zero remains valid. Issue-creation JSON likewise requires an explicit `Category`; omission cannot create a Bug by default.
 - Every `/api/backdoor/issues/*` route is fetched as the key's owner — id, roles and admin flag — so a Board-only key lists the Board-only queue, and an issue whose id it happens to hold but whose queue would not list it is a 404 to read, to comment on and to patch. Issues enforces that itself, on the same `IssueSectionRouting.CanHandle` the browser reads, so a key reaches exactly as far as its holder does in the browser.
@@ -110,7 +108,6 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so its role claims come from the same snapshot the key service used for eligibility and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
 - Every `PATCH /api/backdoor/{issues,feedback}/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
-- Feedback mutations map explicit missing results to 404 and refusals to 422. Dependency failures become logged 500 responses; exception wording never selects 404/422 or enters the response body.
 - Issues mutations map owner-section results to 404 for missing/inaccessible issues, 422 for rule refusals, and 500 for dependency failures. Comment posting uses an explicit missing result. Exceptions and their diagnostic text never select 404/422 or enter the response body.
 
 ## Negative Access Rules
@@ -137,7 +134,6 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 - **Audit actions:** declared on `BackdoorAuditActions` (`src/Sections/Humans.Backdoor/BackdoorAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `BackdoorApiKeyIssued`, `BackdoorApiKeyRevoked`.
 - **Agent**: reads transcripts via `IAgentTranscriptRead` (`Humans.Agent.Contracts`).
-- **Feedback**: reads and triages via `IFeedbackTriage` (`Humans.Feedback.Contracts`).
 - **Issues**: reads and triages via `IIssueTriage` (`Humans.Issues.Contracts`).
 - **Surveys**: reads definitions, exports and aggregates via `ISurveyAnalysisRead` (`Humans.Surveys.Contracts`).
 - **Store**: reads the accounting export — order lines and settled payments per year — via `IStoreAccountingRead` (`Humans.Store.Contracts`). Any active key may read; there is no role scoping.

@@ -26,7 +26,6 @@ public class AgentPromptAssemblerTests
             ],
             PendingConsentDocs: ["Privacy Policy", "Code of Conduct"],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: []);
 
         var assembler = new AgentPromptAssembler();
@@ -55,7 +54,6 @@ public class AgentPromptAssemblerTests
             ],
             PendingConsentDocs: [],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: []);
 
         var assembler = new AgentPromptAssembler();
@@ -146,7 +144,6 @@ public class AgentPromptAssemblerTests
             ],
             PendingConsentDocs: [],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: []);
 
         var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
@@ -204,6 +201,5 @@ public class AgentPromptAssemblerTests
             Teams: [],
             PendingConsentDocs: [],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: upcoming);
 }

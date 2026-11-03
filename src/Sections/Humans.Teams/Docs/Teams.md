@@ -349,7 +349,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 - **Onboarding, Governance, Auth, Camps, GoogleIntegration, Development:** call `ISystemTeamSync` after the facts they own change (volunteer activation, tier approval, role grants, camp leads, the sync admin page, the persona seeder).
 - **Users:** `AccountDeletionService` calls `RevokeAllMembershipsAsync` inside its pending-deletion/access-revocation transaction; account merge reaches `IUserMerge.ReassignAsync`; the profile card and popovers read `GetTeamsAsync` / `GetUserTeamMembershipsAsync`.
 - **Shifts:** `ShiftAdminController` derives from `HumansTeamControllerBase`; shift authorization reads `GetUserCoordinatedTeamIdsAsync`.
-- **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Feedback, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read-side consumers of `ITeamService` / `TeamInfo`. Consent’s legal-document cache and sync path both stitch team display names through `ITeamService`.
+- **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read-side consumers of `ITeamService` / `TeamInfo`. Consent’s legal-document cache and sync path both stitch team display names through `ITeamService`.
 
 Teams-owned resource keys use the `Teams_` prefix in all six cultures. Shared vocabulary stays in `SharedResource`; enum reflection keys retain `Enum_`.
 

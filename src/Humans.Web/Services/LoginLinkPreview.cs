@@ -19,7 +19,7 @@ public static class LoginLinkPreview
     public static readonly IReadOnlyList<string> Segments =
     [
         "About", "Agent", "Barrios", "Budget", "Calendar", "Camp", "Camps", "Cantina",
-        "CityPlanning", "Consent", "Events", "Expenses", "Feedback", "Finance", "Gate",
+        "CityPlanning", "Consent", "Events", "Expenses", "Finance", "Gate",
         "Governance", "Guide", "Issues", "Legal", "Notifications", "Profile", "Rideshare",
         "Search", "Settings", "Shifts", "Store", "Survey", "Teams", "Tickets", "Tour",
         "Welcome", "Workgroups"

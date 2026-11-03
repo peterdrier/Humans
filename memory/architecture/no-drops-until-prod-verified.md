@@ -55,7 +55,10 @@ seam, run from `/Debug/DataMigrations`, reported by `GET /api/data-migrations`; 
    and deployed, so no reader is left.
 3. The drop is still its own auto-generated PR, and the baseline entry still names the object; its
    `Approval:` line cites the production `done` reading and this section, its `Evidence:` line cites the
-   retirement PR. No per-case message from Peter is needed.
+   retirement PR. No per-case message from Peter is needed to *open* it.
+4. Peter merges it. debt-review §6 opens it automatically once the retirement is running on
+   production. The title starts `⚠️ DESTRUCTIVE`, the PR carries the `db:Destructive` label, and
+   the body opens with a caution banner. Nothing auto-merges a drop (Peter, 2026-11-03).
 
 This is the one standing approval. A column or table that was never behind a registered data migration
 still needs the per-case gate.

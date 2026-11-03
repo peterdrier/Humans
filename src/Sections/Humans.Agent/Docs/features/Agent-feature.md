@@ -57,7 +57,6 @@ As an **Admin** I want to **see usage, spend, refusals, and Anthropic balance on
 
 Reference: `src/Sections/Humans.Agent/Domain/Agent*.cs`. Key entities: `AgentConversation`, `AgentMessage`, `AgentSettings`. Per-user rate-limit counters are in-memory (Singleton `IAgentRateLimitStore`), no DB table.
 
-Legacy: `FeedbackReport.Source` (`AgentUnresolved`) and `FeedbackReport.AgentConversationId` exist for historical rows from the previous server-side handoff. The Agent no longer writes them.
 
 ## Workflows
 

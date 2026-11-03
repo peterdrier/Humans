@@ -15,7 +15,7 @@ public static class AgentSectionKeys
         {
             "Onboarding", "Teams", "Consent", "Governance", "Shifts",
             "Tickets", "Users", "Auth", "Budget", "Camps",
-            "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
+            "CityPlanning", "Campaigns", "GoogleIntegration",
             "Events", "Guide", "Store", "Scanner", "Gate",
             "Calendar", "Cantina", "Containers", "Issues"
         };

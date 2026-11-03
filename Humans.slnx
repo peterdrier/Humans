@@ -92,7 +92,6 @@
     <Project Path="tests/Humans.Email.Tests/Humans.Email.Tests.csproj" />
     <Project Path="tests/Humans.Events.Tests/Humans.Events.Tests.csproj" />
     <Project Path="tests/Humans.Expenses.Tests/Humans.Expenses.Tests.csproj" />
-    <Project Path="tests/Humans.Feedback.Tests/Humans.Feedback.Tests.csproj" />
     <Project Path="tests/Humans.Finance.Tests/Humans.Finance.Tests.csproj" />
     <Project Path="tests/Humans.Gate.Tests/Humans.Gate.Tests.csproj" />
     <Project Path="tests/Humans.Gdpr.Tests/Humans.Gdpr.Tests.csproj" />

@@ -73,13 +73,6 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, FinancePolicies.Read },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), null, "AdminOnly" },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Index", "AdminOnly" },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "Detail", "AdminOnly" },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "PostMessage", "AdminOnly" },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "UpdateStatus", "AdminOnly" },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "UpdateAssignment", "AdminOnly" },
-        { SectionType("Humans.Feedback.Controllers.FeedbackController"), "SetGitHubIssue", "AdminOnly" },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsGateAdminController"), null, TicketsPolicies.Read },
@@ -127,34 +120,6 @@ public class EndpointAuthorizationTests
     public void ConsentReviewQueueActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
     {
         AssertHasPolicy(SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), actionName, "ConsentCoordinatorBoardOrAdmin");
-    }
-
-    // Feedback is superseded by Issues: no route may create a FeedbackReport.
-    [HumansFact]
-    public void FeedbackController_HasNoReportCreationRoute()
-    {
-        var rootPosts = SectionType("Humans.Feedback.Controllers.FeedbackController")
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
-            .Where(a => a is not null)
-            .Select(a => a!.Template ?? string.Empty)
-            .Where(t => t.Length == 0)
-            .ToList();
-
-        rootPosts.Should().BeEmpty("POST /Feedback must not exist — Feedback accepts no new reports");
-    }
-
-    [HumansFact]
-    public void BackdoorFeedbackController_OnlyPostsMessages()
-    {
-        var postTemplates = SectionType("Humans.Backdoor.Controllers.BackdoorFeedbackController")
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Select(m => m.GetCustomAttribute<HttpPostAttribute>())
-            .Where(a => a is not null)
-            .Select(a => a!.Template ?? string.Empty)
-            .ToList();
-
-        postTemplates.Should().BeEquivalentTo(["{id}/messages"]);
     }
 
     [HumansFact]
@@ -277,7 +242,6 @@ public class EndpointAuthorizationTests
             "ColorPaletteController",
             // API-key authenticated by BackdoorApiKeyAuthFilter, which runs after endpoint authorization.
             "BackdoorAgentController",
-            "BackdoorFeedbackController",
             "BackdoorFinanceController",
             "BackdoorIssuesController",
             "BackdoorLogsController",

@@ -260,7 +260,6 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - **Consumers of `ICommunicationPreferenceService`:** Notifications (inbox switch), MailerLite (audience opt-outs and the import's `ICommunicationPreferenceWrite`), Debug (marketing set), Users (profile card's facilitated-message button), Teams (send as team: its profile buttons and composer refuse an opted-out recipient), and the views that name `MessageCategory`.
 - **Campaigns:** queues campaign wave messages via this section, passing `CampaignId` for the Feedback-ID header. Email calls nothing back: delivery status is not mirrored onto grants (nobodies-collective/Humans#1243), and Email has no project reference to Campaigns.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
-- **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
 - **Onboarding:** `IOnboardingService` sends welcome emails through this section on Volunteer activation.
 - **AuditLog:** `IAuditLogService` records persisted admin outbox controls with the acting admin, without recipient or message content.
 - **Settings:** `ISettingsService` — `EmailOutboxService` reads / writes the `IsEmailSendingPaused` key in `system_settings` through this service (the Settings section owns the table).
@@ -277,7 +276,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
 - **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId` and the retained `CampaignGrantId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav. A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`.
 - **`Humans.Email.Contracts` — everything consumed from outside the section:**
-  - `IEmailService` + `EmailMessage` — the one transport entry point, consumed from the other section projects that send mail (Auth, Camps, Campaigns, Consent, Events, Feedback, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Surveys, Teams, Tickets, Users) plus the `Humans.Web` shell.
+  - `IEmailService` + `EmailMessage` — the one transport entry point, consumed from the other section projects that send mail (Auth, Camps, Campaigns, Consent, Events, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Surveys, Teams, Tickets, Users) plus the `Humans.Web` shell.
   - `IEmailMessageFactory` — one method, `FacilitatedMessage`: the volunteer-to-volunteer relay, the
     single template with no section vocabulary in it, consumed by Email itself, Camps and Teams (send
     as team, with the team's group address as the optional `replyTo`). Nothing else is
