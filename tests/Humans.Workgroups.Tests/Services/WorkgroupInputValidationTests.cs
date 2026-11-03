@@ -288,7 +288,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var actor = group.Members.Single().UserId;
         var url = "https://example.org/".PadRight(2000, 'x');
-        var save = new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, url, false, null);
+        var save = new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, url, false);
         var meetingId = (await service.CreateMeetingAsync(group.Id, actor, save, Ct)).Value;
         Func<Task<WorkgroupMutationResult>> act = async () =>
         {

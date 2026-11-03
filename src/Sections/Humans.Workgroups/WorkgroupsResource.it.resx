@@ -86,6 +86,7 @@
   <data name="Enum_WorkgroupLogKind_Disclosure" xml:space="preserve"><value>Divulgazione</value></data>
   <data name="Enum_WorkgroupLogKind_StatusRequested" xml:space="preserve"><value>Stato richiesto</value></data>
   <data name="Enum_WorkgroupLogKind_Note" xml:space="preserve"><value>Nota</value></data>
+  <data name="Enum_WorkgroupLogKind_MeetingNotes" xml:space="preserve"><value>Note della riunione</value></data>
 
   <data name="Enum_WorkgroupDocumentKind_Deliverable" xml:space="preserve"><value>Deliverable</value></data>
   <data name="Enum_WorkgroupDocumentKind_AnnualReport" xml:space="preserve"><value>Rapporto annuale</value></data>
@@ -130,6 +131,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>È richiesta almeno una categoria di commento.</value></data>
   <data name="Workgroups_Error_CategoryTooLong" xml:space="preserve"><value>Una categoria di commenti non può superare i 100 caratteri.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>Il periodo di commento non è valido.</value></data>
+  <data name="Workgroups_Error_RecurrenceInvalid" xml:space="preserve"><value>La regola di ripetizione non è valida.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>Il periodo di commento non è aperto.</value></data>
   <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Chiudi il periodo di commento prima di consegnare questo documento.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Non è una delle categorie di commento di questo documento.</value></data>
@@ -232,6 +234,7 @@
   <data name="Workgroups_History" xml:space="preserve"><value>Storico</value></data>
   <data name="Workgroups_NewMeeting" xml:space="preserve"><value>Nuova riunione</value></data>
   <data name="Workgroups_NewLogEntry" xml:space="preserve"><value>Nuova voce di registro</value></data>
+  <data name="Workgroups_AddMeetingNotes" xml:space="preserve"><value>Aggiungi note</value></data>
   <data name="Workgroups_NoHistory" xml:space="preserve"><value>Nessuno storico per ora.</value></data>
   <data name="Workgroups_Meeting" xml:space="preserve"><value>Riunione</value></data>
 
@@ -241,7 +244,6 @@
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Gli orari sono in UTC.</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Mostra nel calendario della comunità</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Chiunque abbia accesso all'app può leggere la riunione e il verbale nella pagina del gruppo. Questa opzione mostra la riunione anche nel calendario della comunità.</value></data>
-  <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Verbale</value></data>
 
   <!-- Log entry form -->
   <data name="Workgroups_LogEntryNewTitle" xml:space="preserve"><value>Nuova voce di registro</value></data>

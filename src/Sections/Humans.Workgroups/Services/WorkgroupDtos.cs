@@ -1,3 +1,4 @@
+using Humans.Calendar.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
 
@@ -70,14 +71,24 @@ internal sealed record WorkgroupInfo(
 
     public bool AcceptsMemberWork() => Status == WorkgroupStatus.Active;
 
-    public WorkgroupMeetingInfo? NextMeeting(Instant now) =>
-        Meetings.Where(m => m.StartUtc >= now).MinBy(m => m.StartUtc);
+    /// <summary>Every occurrence that has started, plus each meeting's next one: what the timeline shows.</summary>
+    public IEnumerable<WorkgroupMeetingInfo> MeetingOccurrences(Instant now) =>
+        Meetings.SelectMany(m => m.Occurrences(m.StartUtc, now)
+            .Concat(m.NextOccurrence(now) is { } next ? [next] : []));
 
-    /// <summary>An Update entry or a meeting; a Note or Disclosure doesn't count.</summary>
+    public WorkgroupMeetingInfo? NextMeeting(Instant now) =>
+        Meetings.Select(m => m.NextOccurrence(now))
+            .OfType<WorkgroupMeetingInfo>()
+            .MinBy(m => m.StartUtc);
+
+    /// <summary>
+    /// An Update, meeting notes, or a meeting's stored start; a Note or Disclosure doesn't count. A series' later
+    /// occurrences are only scheduled, not evidence anyone met: the notes posted for them are.
+    /// </summary>
     public Instant? LastActivityAt(Instant now)
     {
         var lastUpdate = LogEntries
-            .Where(e => e.Kind == WorkgroupLogKind.Update)
+            .Where(e => e.Kind is WorkgroupLogKind.Update or WorkgroupLogKind.MeetingNotes)
             .Select(e => (Instant?)e.CreatedAt)
             .Max();
         var lastMeeting = Meetings.Where(m => m.StartUtc <= now).Select(m => (Instant?)m.StartUtc).Max();
@@ -140,7 +151,34 @@ internal sealed record WorkgroupMeetingInfo(
     Guid? CreatedByUserId,
     Instant CreatedAt,
     Instant UpdatedAt,
-    string? Description = null);
+    string? Description = null,
+    string? RecurrenceRule = null,
+    string? RecurrenceTimezone = null)
+{
+    /// <summary>
+    /// Each occurrence starting in [<paramref name="from"/>, <paramref name="to"/>), as the meeting with that
+    /// occurrence's times. A one-off meeting is its own single occurrence.
+    /// </summary>
+    public IEnumerable<WorkgroupMeetingInfo> Occurrences(Instant from, Instant to) =>
+        CalendarRecurrence.Occurrences(StartUtc, EndUtc, RecurrenceRule, RecurrenceTimezone, from, to)
+            .Where(o => o.Start >= from)
+            .Select(o => this with { StartUtc = o.Start, EndUtc = o.End });
+
+    /// <summary>
+    /// The first occurrence starting at or after <paramref name="now"/>, however far off; null once a series has
+    /// ended. The window doubles from a year, so a dense rule stops at the first and a sparse one is still found.
+    /// </summary>
+    public WorkgroupMeetingInfo? NextOccurrence(Instant now)
+    {
+        if (StartUtc >= now) return this;
+        if (RecurrenceRule is null) return null;
+        for (var days = 366; days <= 366 * 128; days *= 2)
+        {
+            if (Occurrences(now, now + Duration.FromDays(days)).FirstOrDefault() is { } next) return next;
+        }
+        return null;
+    }
+}
 
 internal sealed record WorkgroupLogEntryInfo(
     Guid Id,
@@ -152,7 +190,8 @@ internal sealed record WorkgroupLogEntryInfo(
     Guid? DocumentId,
     Guid? SurveyId,
     Instant CreatedAt,
-    Instant UpdatedAt);
+    Instant UpdatedAt,
+    Guid? MeetingId = null);
 
 internal sealed record WorkgroupDocumentInfo(
     Guid Id,
@@ -227,15 +266,20 @@ internal sealed record WorkgroupMeetingSave(
     string? Location,
     string? LocationUrl,
     bool IsPublic,
-    string? Minutes,
-    string? Description = null);
+    string? Description = null,
+    string? RecurrenceRule = null,
+    string? RecurrenceTimezone = null);
 
-/// <summary><paramref name="Kind"/> must be a member kind: Update, Disclosure, StatusRequested or Note.</summary>
+/// <summary>
+/// <paramref name="Kind"/> must be a member kind: Update, Disclosure, StatusRequested, Note or MeetingNotes.
+/// <paramref name="MeetingId"/>, kept only on MeetingNotes, must be one of the group's live meetings.
+/// </summary>
 internal sealed record WorkgroupLogEntrySave(
     WorkgroupLogKind Kind,
     LocalDate OccurredOn,
     string? Title,
-    string? Body);
+    string? Body,
+    Guid? MeetingId = null);
 
 internal sealed record WorkgroupDocumentSave(
     string Title,

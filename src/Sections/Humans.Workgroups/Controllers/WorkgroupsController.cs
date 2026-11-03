@@ -102,7 +102,8 @@ internal sealed class WorkgroupsController(
             CanAdminister = canAdminister,
             CanDoMemberWork = await MayDoMemberWorkAsync(workgroup),
             CanSeeBudget = canSeeBudget,
-            ExpenseAccounts = accounts
+            ExpenseAccounts = accounts,
+            OrganisationZone = await OrganisationZoneAsync(ct)
         });
     }
 
@@ -235,12 +236,16 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (_, userId) => workgroups.DeleteMeetingAsync(id, userId, ct),
             "Workgroups_MeetingDeleted", ct, owns: w => w.Meetings.Any(m => m.Id == id));
 
+    /// <summary>With <paramref name="meetingId"/>, starts meeting notes for its occurrence on <paramref name="on"/>.</summary>
     [HttpGet("{slug}/Log/Add")]
-    public Task<IActionResult> AddLogEntry(string slug, CancellationToken ct) =>
-        MemberFormAsync(slug, ct, w => new LogEntryFormViewModel
+    public Task<IActionResult> AddLogEntry(string slug, Guid? meetingId, LocalDate? on, CancellationToken ct) =>
+        MemberFormAsync(slug, ct, w =>
         {
-            Slug = w.Slug,
-            OccurredOn = clock.GetCurrentInstant().InUtc().Date
+            var today = clock.GetCurrentInstant().InUtc().Date;
+            if (meetingId is null) return new LogEntryFormViewModel { Slug = w.Slug, OccurredOn = today };
+            return w.Meetings.FirstOrDefault(m => m.Id == meetingId) is { } meeting
+                ? LogEntryFormViewModel.ForMeetingNotes(w.Slug, meeting, on ?? today)
+                : null;
         }, LogEntryForm);
 
     [HttpGet("{slug}/Log/{id:guid}/Edit")]

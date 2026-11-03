@@ -14,7 +14,13 @@ internal sealed class WorkgroupMeeting
 
     public Instant EndUtc { get; set; }
 
-    /// <summary>What the meeting is for, written before it; <see cref="Minutes"/> are the notes after.</summary>
+    /// <summary>RFC 5545 RRULE; null for a one-off meeting. <see cref="StartUtc"/>..<see cref="EndUtc"/> is the first occurrence.</summary>
+    public string? RecurrenceRule { get; set; }
+
+    /// <summary>IANA zone the rule repeats in, so a weekly 19:00 stays 19:00 across DST. Set exactly when the rule is.</summary>
+    public string? RecurrenceTimezone { get; set; }
+
+    /// <summary>What the meeting is for, written before it. Notes after it are <see cref="WorkgroupLogKind.MeetingNotes"/> log entries.</summary>
     public string? Description { get; set; }
 
     public string? Location { get; set; }
@@ -23,6 +29,7 @@ internal sealed class WorkgroupMeeting
 
     public bool IsPublic { get; set; }
 
+    /// <summary>Legacy single minutes box, shown read-only; new notes are log entries.</summary>
     public string? Minutes { get; set; }
 
     public Guid? CreatedByUserId { get; set; }
