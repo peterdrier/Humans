@@ -27,6 +27,39 @@ public class GoogleControllerSyncCancellationTests
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
 
     [HumansFact]
+    public async Task CheckEmailRenames_ForwardsBrowserTokenToReadOnlyDetection()
+    {
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>()).Returns(new EmailRenameDetectionResult());
+
+        (await controller.CheckEmailRenames()).Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(GoogleController.EmailRenames));
+
+        await _admin.Received(1).DetectEmailRenamesAsync(controller.HttpContext.RequestAborted);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task CheckEmailRenames_SeparatesCallerAndDependencyCancellation(bool callerAborted)
+    {
+        var controller = BuildSut(alreadyAbortedRequest: callerAborted);
+        var failure = new OperationCanceledException(controller.HttpContext.RequestAborted);
+        _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EmailRenameDetectionResult>(failure));
+        var act = () => controller.CheckEmailRenames();
+        if (callerAborted)
+            (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else
+            (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(GoogleController.Index));
+
+        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.EmailRenameResult).Should().BeFalse();
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
+
+    [HumansFact]
     public async Task AllGroups_ForwardsBrowserTokenToGroupAndTeamReads()
     {
         var controller = BuildSut(alreadyAbortedRequest: true);

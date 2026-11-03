@@ -151,6 +151,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
 - Sync preview local-user rows and email-rename diagnostics render identity through `Human`; a blank copied name cannot hide a known user. External sync rows retain supplied names. Rename-table client sorting follows the rendered name.
+- Email-rename detection forwards browser cancellation through its read-only lookups and propagates caller cancellation without publishing partial diagnostic results. Independent dependency failures retain per-account recovery or the existing load error.
 - Preview requests reject redirects and display the load failure; login or access-denied pages cannot become sync previews.
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.

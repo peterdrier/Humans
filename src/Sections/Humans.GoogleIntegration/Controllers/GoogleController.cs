@@ -696,10 +696,16 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckEmailRenames()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var result = await googleAdminService.DetectEmailRenamesAsync();
+            var result = await googleAdminService.DetectEmailRenamesAsync(ct);
             TempData[TempDataKeys.EmailRenameResult] = System.Text.Json.JsonSerializer.Serialize(result);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Email rename check cancelled by caller");
+            throw;
         }
         catch (Exception ex)
         {

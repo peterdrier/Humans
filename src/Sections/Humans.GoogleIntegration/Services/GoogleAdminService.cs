@@ -648,7 +648,7 @@ internal sealed class GoogleAdminService(
                         });
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                 {
                     logger.LogWarning(ex,
                         "Failed to check email rename for user {UserId} ({Email})",
@@ -661,6 +661,11 @@ internal sealed class GoogleAdminService(
                 Renames = renames,
                 TotalUsersChecked = nobodiesUsers.Count
             };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Email rename detection cancelled by caller");
+            throw;
         }
         catch (Exception ex)
         {
