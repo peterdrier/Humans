@@ -4,7 +4,7 @@
 <div class="d-flex align-items-center" style="min-width: 200px;">
     <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
     <div>
-        <div class="fw-semibold">@Model.DisplayName</div>
+        <div class="fw-semibold"><vc:human user-id="@Model.UserId" link="None" /></div>
         @if (Model.RoleLabels.Count > 0)
         {
             <div class="mt-1">

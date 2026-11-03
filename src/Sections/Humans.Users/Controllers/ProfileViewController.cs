@@ -195,7 +195,6 @@ internal sealed class ProfileViewController(
         var vm = new PublicPopoverViewModel
         {
             UserId = info.Id,
-            DisplayName = info.BurnerName,
             RoleLabels = roleLabels
         };
 

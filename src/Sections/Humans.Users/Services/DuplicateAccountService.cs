@@ -182,7 +182,6 @@ internal sealed class DuplicateAccountService(
         return new DuplicateAccountInfo
         {
             UserId = userId,
-            DisplayName = info?.BurnerName ?? "Unknown",
             Email = info?.Email,
             MembershipTier = membershipTier,
             MembershipStatus = membershipStatus,

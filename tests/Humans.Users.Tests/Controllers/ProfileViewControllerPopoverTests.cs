@@ -206,7 +206,6 @@ public class ProfileViewControllerPopoverTests
         partial.ViewName.Should().Be("_HumanPopover");
         var vm = partial.Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.HasProfile.Should().BeTrue();
-        vm.DisplayName.Should().Be("Active Human");
         vm.MembershipTier.Should().Be(nameof(MembershipTier.Volunteer));
         vm.MembershipStatus.Should().Be("Active");
         vm.City.Should().Be("Madrid");
@@ -272,7 +271,6 @@ public class ProfileViewControllerPopoverTests
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
-        vm.DisplayName.Should().Be("Suspended Human");
         vm.City.Should().Be("Madrid");
         vm.IsSuspended.Should().BeTrue();
     }

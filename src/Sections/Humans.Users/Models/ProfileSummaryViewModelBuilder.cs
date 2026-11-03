@@ -27,7 +27,6 @@ internal static class ProfileSummaryViewModelBuilder
         return new ProfileSummaryViewModel
         {
             UserId = info.Id,
-            DisplayName = info.BurnerName,
             Email = info.Email,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = tier.ToString(),

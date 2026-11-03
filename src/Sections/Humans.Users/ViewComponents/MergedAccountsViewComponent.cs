@@ -32,7 +32,6 @@ public sealed class MergedAccountsViewComponent(IUserService userService) : View
         MergedAccountViewModel Row(Guid id) => new()
         {
             UserId = id,
-            DisplayName = rows.TryGetValue(id, out var row) ? row.BurnerName : null,
             MergedAt = rows.TryGetValue(id, out var at) ? at.MergedAt?.ToDateTimeUtc() : null,
         };
 

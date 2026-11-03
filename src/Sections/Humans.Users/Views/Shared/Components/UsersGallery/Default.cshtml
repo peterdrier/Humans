@@ -40,7 +40,7 @@
         Compact profile summary line — avatar + name + email + status badges. Used in admin tables.
     </div>
     @ParamsBlock(
-        ("@@model", "<code>ProfileSummaryViewModel</code> — UserId, DisplayName, Email, MembershipTier, MembershipStatus, IsSuspended, …")
+        ("@@model", "<code>ProfileSummaryViewModel</code> — UserId, Email, MembershipTier, MembershipStatus, IsSuspended, …")
     )
     <div class="wg-card-example">
         @await Html.PartialAsync("_ProfileCard", Model.Sample)

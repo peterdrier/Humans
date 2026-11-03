@@ -167,7 +167,6 @@ internal sealed class UsersAdminAccountMergesController(
     private static ProfileSummaryViewModel Card(AccountMergeUserSnapshot user) => new()
     {
         UserId = user.Id,
-        DisplayName = user.DisplayName,
         Email = user.Email,
         PreferredLanguage = user.PreferredLanguage,
         LastLogin = user.LastLoginAt?.ToDateTimeUtc()
@@ -176,7 +175,6 @@ internal sealed class UsersAdminAccountMergesController(
     private static ProfileSummaryViewModel Card(DuplicateAccountInfo account) => new()
     {
         UserId = account.UserId,
-        DisplayName = account.DisplayName,
         Email = account.Email,
         MembershipTier = account.MembershipTier,
         MembershipStatus = account.MembershipStatus,

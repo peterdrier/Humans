@@ -4,7 +4,6 @@ namespace Humans.Users.Models;
 internal sealed class MergedAccountViewModel
 {
     public Guid UserId { get; init; }
-    public string? DisplayName { get; init; }
     public DateTime? MergedAt { get; init; }
 }
 
