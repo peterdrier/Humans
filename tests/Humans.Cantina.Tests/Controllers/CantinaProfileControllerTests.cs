@@ -181,6 +181,29 @@ public class CantinaProfileControllerTests
         AssertRedirect(result, "Index", controller);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Post_cancelled_account_lookup_does_not_save_or_decline(bool decline)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], null));
+        });
+        await request.CancelAsync();
+        var model = MakeValidModel();
+        model.DeclineToAnswer = decline;
+
+        var act = () => _controller.Dietary(model);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _dietary.ReceivedCalls().Should().BeEmpty();
+        _controller.TempData.Should().BeEmpty();
+    }
+
     private static void AssertRedirect(IActionResult result, string action, string controller)
     {
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;

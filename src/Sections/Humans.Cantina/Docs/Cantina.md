@@ -69,6 +69,10 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ## Invariants
 
+- Dietary save and decline actions honour request cancellation while resolving the
+  account, before saving. Once started, either mutation finishes independently of
+  the browser request; mutation failures retain the form's existing error handling.
+
 - Roster exports and health reveals resolve the signed-in account before loading
   personal rows and audit the surviving account ID after a merge. Missing accounts
   receive 401; cancellation during account lookup stops before roster work.
