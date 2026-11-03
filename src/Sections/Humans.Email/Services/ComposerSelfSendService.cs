@@ -23,15 +23,16 @@ internal sealed class ComposerSelfSendService(
     {
         var user = await userService.GetUserInfoAsync(userId, ct);
         var email = user?.Email;
-        if (string.IsNullOrWhiteSpace(email))
+        if (user is null || string.IsNullOrWhiteSpace(email))
             return null;
+        userId = user.Id;
 
         var fullSubject = string.IsNullOrWhiteSpace(subject)
             ? localizer["Email_ComposerSelfTest_DefaultSubject"].Value
             : string.Format(CultureInfo.CurrentCulture, localizer["Email_ComposerSelfTest_Subject"].Value, subject.Trim());
 
         await emailService.SendAsync(new EmailMessage(
-            email, user?.BurnerName, userId, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
+            email, user.BurnerName, userId, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
             TemplateName, MessageCategory.System), ct);
 
         try

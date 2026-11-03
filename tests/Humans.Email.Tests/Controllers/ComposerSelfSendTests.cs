@@ -51,14 +51,17 @@ public sealed class ComposerSelfSendTests
         return controller;
     }
 
-    private void GivenAddress(string? address) =>
+    private void GivenAddress(string? address, Guid? resolvedId = null) =>
         _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = UserId, Email = address }, [], [], null));
+            .Returns(UserInfo.Create(new User { Id = resolvedId ?? UserId, Email = address }, [], [], null));
 
-    [HumansFact]
-    public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits(bool mergedAlias)
     {
-        GivenAddress("me@example.com");
+        var resolvedId = mergedAlias ? Guid.NewGuid() : UserId;
+        GivenAddress("me@example.com", resolvedId);
 
         var result = await BuildController(signedIn: true)
             .SendMarkdownToSelf("Hello", "**Hi** there", CancellationToken.None);
@@ -67,14 +70,14 @@ public sealed class ComposerSelfSendTests
         await _email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
                 m.RecipientEmail == "me@example.com"
-                && m.UserId == UserId
+                && m.UserId == resolvedId
                 && m.Subject == "[Test] Hello"
                 && m.HtmlBody.Contains("<strong>Hi</strong>")
                 && m.TemplateName == ComposerSelfSendService.TemplateName
                 && m.Category == MessageCategory.System),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            EmailAuditActions.EmailComposerSelfTestSent, Arg.Any<string>(), UserId, Arg.Any<string>(), UserId,
+            EmailAuditActions.EmailComposerSelfTestSent, Arg.Any<string>(), resolvedId, Arg.Any<string>(), resolvedId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
