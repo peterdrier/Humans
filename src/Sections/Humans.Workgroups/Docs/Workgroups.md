@@ -483,7 +483,7 @@ should end is the Board's decision, taken on the register in front of them.
   17(3)(b)). Membership rows are deleted. If the erased person was the last coordinator
   of an Active group, the Board is notified.
 - **Merge** (`ReassignAsync`/`IUserMerge`): folds every user-id column from source to
-  target, collapsing duplicate membership rows the fold creates.
+  target, collapsing duplicate membership rows the fold creates. Member-work authorization, the dashboard and coordinator tasks resolve the signed-in account before checking membership, so merged sessions follow those reassigned rows. Missing accounts are denied member-work access and omitted from dashboard/tasks; identity lookup cancellation propagates. Existing Read/Administer and privileged-member rules, including the dormant-group restriction, remain unchanged.
 - **Consent**: nothing new is gated — joining is the member's own action.
 
 ## Architecture

@@ -5,6 +5,10 @@ using Humans.Workgroups.Authorization;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
+using NSubstitute;
 using NodaTime;
 
 namespace Humans.Workgroups.Tests.Authorization;
@@ -16,9 +20,52 @@ namespace Humans.Workgroups.Tests.Authorization;
 /// </summary>
 public sealed class WorkgroupAuthorizationHandlerTests
 {
-    private readonly WorkgroupAuthorizationHandler _handler = new();
+    private readonly WorkgroupAuthorizationHandler _handler;
+
+    public WorkgroupAuthorizationHandlerTests()
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new WorkgroupAuthorizationHandler(users, new HttpContextAccessor());
+    }
     private static readonly Guid MemberId = Guid.NewGuid();
     private static readonly Guid StrangerId = Guid.NewGuid();
+
+    [HumansTheory]
+    [Xunit.InlineData("merged")]
+    [Xunit.InlineData("missing")]
+    [Xunit.InlineData("cancelled")]
+    [Xunit.InlineData("stranger")]
+    public async Task Member_ResolvesTheAccountBeforeCheckingMembership(string account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            var id = string.Equals(account, "stranger", StringComparison.Ordinal) ? StrangerId : MemberId;
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = id }, [], [], null));
+        });
+        using var services = new ServiceCollection().AddSingleton(users)
+            .AddSingleton<IHttpContextAccessor>(new HttpContextAccessor
+                { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }).BuildServiceProvider();
+        var handler = ActivatorUtilities.CreateInstance<WorkgroupAuthorizationHandler>(services);
+        var context = new AuthorizationHandlerContext([WorkgroupOperationRequirement.Member], SignedInAs(cookieId), ActiveWorkgroup());
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            Func<Task> run = () => handler.HandleAsync(context);
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            await handler.HandleAsync(context);
+            context.HasSucceeded.Should().Be(string.Equals(account, "merged", StringComparison.Ordinal));
+        }
+    }
 
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]
