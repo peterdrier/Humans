@@ -72,7 +72,7 @@ internal sealed class VolunteerTrackingController(
         var activeEvent = await burnSettings.GetActiveAsync(ct);
         var departments = activeEvent is null
             ? []
-            : await shiftManagementService.GetDepartmentsWithRotasAsync(activeEvent.Id);
+            : await shiftManagementService.GetDepartmentsWithRotasAsync(activeEvent.Id, ct);
 
         var model = new VolunteerTrackingPageViewModel(
             data.BuildStartOffset,

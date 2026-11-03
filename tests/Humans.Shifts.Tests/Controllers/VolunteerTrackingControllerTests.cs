@@ -168,6 +168,28 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
+    public async Task Index_cancels_department_loading_when_the_request_is_aborted()
+    {
+        using var aborted = new CancellationTokenSource();
+        var es = MakeBurn(Guid.NewGuid());
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
+            .Returns(new VolunteerTrackingViewModel(true, es.BuildStartOffset, es.GateOpeningDate, es.GateOpeningDate, [], []));
+        _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id, Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await aborted.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyList<(Guid TeamId, string TeamName)>)[];
+            });
+        var controller = BuildSut(new User { Id = Guid.NewGuid() });
+
+        var act = () => controller.Index(ct: aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task Index_MainCohort_SortedByGapsThenLastSignupThenName()
     {
         var aliceId = Guid.NewGuid();
