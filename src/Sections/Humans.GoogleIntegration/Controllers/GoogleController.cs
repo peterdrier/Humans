@@ -135,10 +135,16 @@ internal sealed class GoogleController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckGroupSettings()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
-            var result = await googleSyncService.CheckGroupSettingsAsync();
+            var result = await googleSyncService.CheckGroupSettingsAsync(ct);
             TempData[TempDataKeys.GroupSettingsResult] = System.Text.Json.JsonSerializer.Serialize(result);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Group settings check cancelled by caller");
+            throw;
         }
         catch (Exception ex)
         {

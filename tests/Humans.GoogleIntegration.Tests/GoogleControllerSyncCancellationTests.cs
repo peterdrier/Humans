@@ -26,34 +26,46 @@ public class GoogleControllerSyncCancellationTests
     private readonly IGoogleSyncManagement _syncService = Substitute.For<IGoogleSyncManagement>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
 
-    [HumansFact]
-    public async Task CheckEmailRenames_ForwardsBrowserTokenToReadOnlyDetection()
-    {
-        var controller = BuildSut(alreadyAbortedRequest: true);
-        _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>()).Returns(new EmailRenameDetectionResult());
-
-        (await controller.CheckEmailRenames()).Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(GoogleController.EmailRenames));
-
-        await _admin.Received(1).DetectEmailRenamesAsync(controller.HttpContext.RequestAborted);
-    }
-
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task CheckEmailRenames_SeparatesCallerAndDependencyCancellation(bool callerAborted)
+    public async Task DiagnosticChecks_ForwardBrowserTokenToReadOnlyDetection(bool groupSettings)
+    {
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>()).Returns(new EmailRenameDetectionResult());
+        _syncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>()).Returns(new GroupSettingsDriftResult());
+
+        (await (groupSettings ? controller.CheckGroupSettings() : controller.CheckEmailRenames()))
+            .Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(
+                groupSettings ? nameof(GoogleController.GroupSettingsResults) : nameof(GoogleController.EmailRenames));
+
+        if (groupSettings)
+            await _syncService.Received(1).CheckGroupSettingsAsync(controller.HttpContext.RequestAborted);
+        else
+            await _admin.Received(1).DetectEmailRenamesAsync(controller.HttpContext.RequestAborted);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task DiagnosticChecks_SeparateCallerAndDependencyCancellation(bool groupSettings, bool callerAborted)
     {
         var controller = BuildSut(alreadyAbortedRequest: callerAborted);
         var failure = new OperationCanceledException(controller.HttpContext.RequestAborted);
         _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException<EmailRenameDetectionResult>(failure));
-        var act = () => controller.CheckEmailRenames();
+        _syncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<GroupSettingsDriftResult>(failure));
+        Func<Task<IActionResult>> act = groupSettings ? controller.CheckGroupSettings : controller.CheckEmailRenames;
         if (callerAborted)
             (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
         else
             (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(GoogleController.Index));
 
-        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.EmailRenameResult).Should().BeFalse();
+        var resultKey = groupSettings ? Humans.Base.Constants.TempDataKeys.GroupSettingsResult : Humans.Base.Constants.TempDataKeys.EmailRenameResult;
+        controller.TempData.ContainsKey(resultKey).Should().BeFalse();
         var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
         args[3].Should().BeSameAs(callerAborted ? null : failure);
