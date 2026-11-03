@@ -30,10 +30,11 @@
 | `TeamAdminController.Roles` / `EditRole` / `ToggleManagement` | In-method | `TeamsAdmin, Admin` | `AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)` — drives the management toggle on the role form; `ToggleManagement` forbids everyone else (coordinators reach the page through `ResolveTeamManagementAsync` but cannot flip a role's management flag) |
 | `TeamAdminController.Roster` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` (narrows the class-level coordinator-reachable `ResolveTeamManagementAsync` down to Board-or-Admin only — coordinators don't see the full-name roster) |
 | `TeamAdminController` runtime guards (most actions) | In-method | `authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` via `ResolveTeamManagementAsync` | Resource-based (see handler below) |
-| `TeamAdminController.EarlyEntry` / `EarlyEntry/Add` / `EarlyEntry/Edit` / `EarlyEntry/Remove` / `EarlyEntry/LookupTicket` | In-method | `authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageEarlyEntry)` via `ResolveEarlyEntryManagementAsync` (Admin/TeamsAdmin/Board any team; EarlyEntryAdmin any team; coordinator own team) | Resource-based (see handler below) |
+| `TeamAdminController.Members` (GET) | In-method | The team's managers, or `TeamsPolicies.Read` (Board) via `ResolveTeamViewAsync`; Board gets `CanManage = false`, so no approve, reject, add, remove or email controls | Resource-based, then `TeamsPolicies.Read` |
+| `TeamAdminController.EarlyEntry` / `EarlyEntry/Add` / `EarlyEntry/Edit` / `EarlyEntry/Remove` / `EarlyEntry/LookupTicket` | In-method | `authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageEarlyEntry)` via `ResolveEarlyEntryManagementAsync` (Admin/TeamsAdmin any team; EarlyEntryAdmin any team; coordinator own team; Board reads the Early Entry roster instead) | Resource-based (see handler below) |
 
 ## Resource-Based Authorization Handler
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
-| `TeamAuthorizationHandler` | `TeamOperationRequirement` (`ManageCoordinators`, `ManageEarlyEntry`) | `TeamInfo` | `Authorization/TeamAuthorizationHandler.cs` (registered in `Section.cs`) — Admin/TeamsAdmin/Board: any team, any op; `EarlyEntryAdmin`: any team for `ManageEarlyEntry` only; team coordinator: own team only (both ops) |
+| `TeamAuthorizationHandler` | `TeamOperationRequirement` (`ManageCoordinators`, `ManageEarlyEntry`) | `TeamInfo` | `Authorization/TeamAuthorizationHandler.cs` (registered in `Section.cs`) — Admin/TeamsAdmin: any team, any op; Board: none; `EarlyEntryAdmin`: any team for `ManageEarlyEntry` only; team coordinator: own team only (both ops) |

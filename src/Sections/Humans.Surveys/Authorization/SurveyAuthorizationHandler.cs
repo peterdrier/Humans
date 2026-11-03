@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Base.Authorization;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -26,15 +25,18 @@ internal sealed class SurveyAuthorizationHandler(IUserService users, IHttpContex
             httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
         if (user is null) return;
 
-        var isBoardOrAdmin = RoleChecks.IsAdminOrBoard(context.User);
+        var manages = SurveysRoles.ManagesEverySurvey(context.User);
+        var sees = SurveysRoles.SeesEverySurvey(context.User);
         var isOwner = resource.CreatedByUserId == user.Id;
+        var ownClosed = isOwner && resource.Status == SurveyStatus.Closed;
 
         var allowed = requirement.Operation switch
         {
-            SurveyOperation.Edit => isBoardOrAdmin || (isOwner && resource.Status == SurveyStatus.Draft),
+            SurveyOperation.Edit => manages || (isOwner && resource.Status == SurveyStatus.Draft),
             SurveyOperation.Submit => isOwner && resource.Status == SurveyStatus.Draft,
-            SurveyOperation.ViewResults => isBoardOrAdmin || (isOwner && resource.Status == SurveyStatus.Closed),
-            SurveyOperation.Preview => isBoardOrAdmin || isOwner,
+            SurveyOperation.ViewResults => sees || ownClosed,
+            SurveyOperation.ExportResults => manages || ownClosed,
+            SurveyOperation.Preview => sees || isOwner,
             _ => false,
         };
 

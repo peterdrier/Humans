@@ -52,6 +52,9 @@ internal sealed class AdminProgramViewModel
     public required LocalDate Today { get; init; }
     public required bool CanAdminister { get; init; }
 
+    /// <summary>False for Board, which reads every program and changes nothing.</summary>
+    public required bool CanManage { get; init; }
+
 
     public IEnumerable<GrantInfo> Applications => Program.Grants
         .Where(g => g.Status == GrantStatus.Applied).OrderBy(g => g.CreatedAt);

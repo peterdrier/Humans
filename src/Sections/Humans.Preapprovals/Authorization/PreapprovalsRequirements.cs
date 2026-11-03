@@ -40,11 +40,15 @@ internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprov
         }
     }
 
-    internal static bool IsManagingRole(ClaimsPrincipal user) =>
-        user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) || user.IsInRole(FinanceRoles.FinanceAdmin);
+    /// <summary>Sees every program. Board reads and changes nothing; see <see cref="ProgramAuthorizationHandler"/>.</summary>
+    internal static bool IsReadingRole(ClaimsPrincipal user) =>
+        IsAdministeringRole(user) || user.IsInRole(RoleNames.Board);
+
+    internal static bool IsAdministeringRole(ClaimsPrincipal user) =>
+        user.IsInRole(RoleNames.Admin) || user.IsInRole(FinanceRoles.FinanceAdmin);
 
     private async Task<bool> ManagesAsync(ClaimsPrincipal user, CancellationToken ct) =>
-        IsManagingRole(user) || (UserId(user) is { } id && await preapprovals.ManagesAnyProgramAsync(id, ct));
+        IsReadingRole(user) || (UserId(user) is { } id && await preapprovals.ManagesAnyProgramAsync(id, ct));
 
     private async Task<bool> HasAnythingAsync(ClaimsPrincipal user, CancellationToken ct) =>
         UserId(user) is { } id && await preapprovals.HasAnythingForUserAsync(id, ct);

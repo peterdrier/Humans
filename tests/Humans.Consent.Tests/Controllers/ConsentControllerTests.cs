@@ -133,6 +133,75 @@ public sealed class ConsentControllerTests
         Assert.False(controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.ErrorMessage));
     }
 
+    [HumansFact]
+    public async Task Submit_WithLocalReturnUrl_ReportsSignatureAndReturnsThere()
+    {
+        // The onboarding widget's signing step posts here and must land back on its dispatcher.
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(true, DocumentName: "Privacy Policy"));
+        var controller = BuildSut(userId);
+        controller.Url.IsLocalUrl("/OnboardingWidget").Returns(true);
+
+        var result = await controller.Submit(new ConsentSubmitModel
+        {
+            DocumentVersionId = versionId,
+            ExplicitConsent = true,
+            ReturnUrl = "/OnboardingWidget",
+        });
+
+        Assert.Equal("/OnboardingWidget", Assert.IsType<LocalRedirectResult>(result).Url);
+        await _onboardingService.Received(1).ConsentSignedAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Submit_AlreadyConsented_WithLocalReturnUrl_ReturnsThereWithInfo()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented"));
+        var controller = BuildSut(userId);
+        controller.Url.IsLocalUrl("/OnboardingWidget").Returns(true);
+
+        var result = await controller.Submit(new ConsentSubmitModel
+        {
+            DocumentVersionId = versionId,
+            ExplicitConsent = true,
+            ReturnUrl = "/OnboardingWidget",
+        });
+
+        Assert.Equal("/OnboardingWidget", Assert.IsType<LocalRedirectResult>(result).Url);
+        Assert.Equal("Consent_AlreadyConsented", controller.TempData[Humans.Base.Constants.TempDataKeys.InfoMessage]);
+    }
+
+    [HumansFact]
+    public async Task Submit_WithForeignReturnUrl_IgnoresItAndReturnsToConsentIndex()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, ActiveProfile()));
+        _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentSubmitResult(true, DocumentName: "Privacy Policy"));
+        var controller = BuildSut(userId);
+        controller.Url.IsLocalUrl("https://evil.example").Returns(false);
+
+        var result = await controller.Submit(new ConsentSubmitModel
+        {
+            DocumentVersionId = versionId,
+            ExplicitConsent = true,
+            ReturnUrl = "https://evil.example",
+        });
+
+        Assert.Equal(nameof(ConsentController.Index), Assert.IsType<RedirectToActionResult>(result).ActionName);
+    }
+
     private static ProfileInfo StubProfile() => UserFixtures.Profile();
 
     private static ProfileInfo ActiveProfile() => UserFixtures.Profile(

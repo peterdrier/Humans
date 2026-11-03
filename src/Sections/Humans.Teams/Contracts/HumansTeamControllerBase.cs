@@ -31,6 +31,23 @@ public abstract class HumansTeamControllerBase(
             }, ct);
     }
 
+    /// <summary>The team's managers, or a Teams reader (Board) who sees the page with <c>CanManage</c> false.</summary>
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team, bool CanManage)> ResolveTeamViewAsync(
+        string slug, CancellationToken ct = default)
+    {
+        var canManage = false;
+        var (error, user, team) = await ResolveTeamAccessAsync(
+            slug,
+            static _ => true,
+            async (team, _) =>
+            {
+                canManage = (await authorizationService.AuthorizeAsync(
+                    User, team, TeamOperationRequirement.ManageCoordinators)).Succeeded;
+                return canManage || (await authorizationService.AuthorizeAsync(User, TeamsPolicies.Read)).Succeeded;
+            }, ct);
+        return (error, user, team, canManage);
+    }
+
     protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveEarlyEntryManagementAsync(string slug, CancellationToken ct = default)
     {
         return await ResolveTeamAccessAsync(

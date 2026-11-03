@@ -65,7 +65,7 @@ internal sealed class ConsentController(
 
         if (!model.ExplicitConsent)
         {
-            return await RedisplayUncheckedConsentAsync(model.DocumentVersionId, user.Id, HttpContext.RequestAborted);
+            return await RedisplayUncheckedConsentAsync(model.DocumentVersionId, user.Id, model.ReturnUrl, HttpContext.RequestAborted);
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -83,7 +83,7 @@ internal sealed class ConsentController(
             logger.LogError(ex, "Failed to submit consent for user {UserId}, document version {DocumentVersionId}",
                 user.Id, model.DocumentVersionId);
             SetError(localizer["Consent_SubmitError"].Value);
-            return RedirectToAction(nameof(Index));
+            return RedirectAfterSubmit(model.ReturnUrl);
         }
 
         if (string.Equals(result.ErrorKey, "StubProfile", StringComparison.Ordinal))
@@ -92,7 +92,7 @@ internal sealed class ConsentController(
         if (!result.Success)
         {
             SetConsentSubmitFailureFlash(result);
-            return RedirectToAction(nameof(Index));
+            return RedirectAfterSubmit(model.ReturnUrl);
         }
 
         // ConsentService doesn't call Onboarding (the arrow is one-way), so the controller reports the signature. The
@@ -107,10 +107,14 @@ internal sealed class ConsentController(
         }
 
         SetConsentSubmitSuccessFlash(result);
-        return RedirectToAction(nameof(Index));
+        return RedirectAfterSubmit(model.ReturnUrl);
     }
 
-    private async Task<IActionResult> RedisplayUncheckedConsentAsync(Guid documentVersionId, Guid userId, CancellationToken ct)
+    private IActionResult RedirectAfterSubmit(string? returnUrl) =>
+        Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Index));
+
+    private async Task<IActionResult> RedisplayUncheckedConsentAsync(
+        Guid documentVersionId, Guid userId, string? returnUrl, CancellationToken ct)
     {
         ModelState.AddModelError(string.Empty, localizer["Consent_MustCheck"].Value);
 
@@ -118,6 +122,7 @@ internal sealed class ConsentController(
         if (viewModel is null)
             return NotFound();
 
+        viewModel.ReturnUrl = returnUrl;
         return View(nameof(Review), viewModel);
     }
 

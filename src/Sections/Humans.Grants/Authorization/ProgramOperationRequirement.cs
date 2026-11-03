@@ -1,3 +1,4 @@
+using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -8,10 +9,13 @@ namespace Humans.Grants.Authorization;
 /// <summary>Used with a <see cref="ProgramInfo"/> as the resource.</summary>
 internal sealed class ProgramOperationRequirement : IAuthorizationRequirement
 {
-    /// <summary>Issue, revoke, resend: a manager of this program, Admin or Board.</summary>
+    /// <summary>The program page: a manager of this program, Grants Admin, Admin or Board.</summary>
+    public static readonly ProgramOperationRequirement View = new(nameof(View));
+
+    /// <summary>Issue, revoke, resend: a manager of this program, Grants Admin or Admin. Never Board.</summary>
     public static readonly ProgramOperationRequirement Manage = new(nameof(Manage));
 
-    /// <summary>The program itself and its managers: Admin or Board.</summary>
+    /// <summary>The program itself and its managers: Grants Admin or Admin.</summary>
     public static readonly ProgramOperationRequirement Administer = new(nameof(Administer));
 
     private ProgramOperationRequirement(string name) => Name = name;
@@ -27,8 +31,9 @@ internal sealed class ProgramAuthorizationHandler(IUserService users, IHttpConte
         AuthorizationHandlerContext context, ProgramOperationRequirement requirement, ProgramInfo resource)
     {
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
-        if (GrantsPolicyHandler.IsAdministering(context.User)
-            || (requirement == ProgramOperationRequirement.Manage
+        if (GrantsRoles.AdministersGrants(context.User)
+            || (requirement == ProgramOperationRequirement.View && GrantsRoles.ReadsGrants(context.User))
+            || (requirement != ProgramOperationRequirement.Administer
                 && await GrantsPolicyHandler.ViewerAsync(users, context.User, ct) is { } viewer
                 && viewer.AllUserIds.Any(resource.IsManager)))
         {

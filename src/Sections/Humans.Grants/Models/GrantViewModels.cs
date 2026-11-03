@@ -21,6 +21,9 @@ internal sealed class AdminProgramViewModel
     public required LocalDate Today { get; init; }
     public required bool CanAdminister { get; init; }
 
+    /// <summary>Issue, revoke and resend. False for Board, which reads the page only.</summary>
+    public required bool CanManage { get; init; }
+
 
     public IEnumerable<GrantInfo> Grants => Program.Grants
         .OrderBy(g => g.State(Today)).ThenByDescending(g => g.IssuedAt);

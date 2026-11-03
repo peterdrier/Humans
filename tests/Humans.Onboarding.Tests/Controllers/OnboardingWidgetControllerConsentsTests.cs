@@ -21,11 +21,8 @@ using Xunit;
 namespace Humans.Onboarding.Tests.Controllers;
 
 /// <summary>
-/// Step 3 of the onboarding widget — Consents GET (renders the next unsigned
-/// required document inline so the user reads what they're agreeing to) and
-/// SignConsent POST (routes a single signature through
-/// <see cref="IConsentSubmission.SubmitConsentAsync"/> and redirects back so the
-/// dispatcher can re-evaluate the step).
+/// Step 3 of the onboarding widget — Consents GET picks the next unsigned required document;
+/// Consent's own signing step renders it and takes the signature.
 /// </summary>
 public class OnboardingWidgetControllerConsentsTests
 {
@@ -35,11 +32,8 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<ConsentResource> _consentLocalizer =
-        Substitute.For<IStringLocalizer<ConsentResource>>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
         Substitute.For<IStringLocalizer<OnboardingResource>>();
@@ -48,8 +42,6 @@ public class OnboardingWidgetControllerConsentsTests
     public OnboardingWidgetControllerConsentsTests()
     {
         _localizer[Arg.Any<string>()].Returns(ci =>
-            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _consentLocalizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
@@ -61,7 +53,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _consents, _onboardingService, SystemClock.Instance, _localizer, _consentLocalizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, SystemClock.Instance, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -97,52 +89,6 @@ public class OnboardingWidgetControllerConsentsTests
         profile: profile);
 
     [HumansFact]
-    public async Task SignConsent_Post_CallsConsentService_AndRedirectsThroughIndexDispatcher()
-    {
-        // Routing back through Index lets the dispatcher send the user Home
-        // when this was the final required consent — instead of stranding
-        // them on the signed-documents page.
-        var userId = Guid.NewGuid();
-        var docVersionId = Guid.NewGuid();
-        _consents.SubmitConsentAsync(
-                userId, docVersionId, true,
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConsentSubmitResult(Success: true));
-        var ctrl = BuildSut(userId);
-
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, TestContext.Current.CancellationToken);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
-        await _consents.Received(1).SubmitConsentAsync(
-            userId, docVersionId, true,
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SignConsent_Post_AlreadyConsented_RedirectsToIndex_WithLocalizedInfo()
-    {
-        // AlreadyConsented isn't really an error — they already signed it.
-        // Mirror ConsentController: localized info, never the raw error key.
-        var userId = Guid.NewGuid();
-        var docVersionId = Guid.NewGuid();
-        _consents.SubmitConsentAsync(
-                userId, docVersionId, true,
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConsentSubmitResult(Success: false, ErrorKey: "AlreadyConsented"));
-        var ctrl = BuildSut(userId);
-
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, TestContext.Current.CancellationToken);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
-        // Localizer stub returns the key as the value — verifies localization
-        // ran rather than the raw ErrorKey being dumped into TempData.
-        Assert.Equal("Consent_AlreadyConsented", ctrl.TempData[TempDataKeys.InfoMessage]);
-        Assert.Null(ctrl.TempData[TempDataKeys.ErrorMessage]);
-    }
-
-    [HumansFact]
     public async Task Consents_Get_StubProfile_RedirectsToNames_WithLocalizedInfo()
     {
         // Stub-profile gate: a user with no legal name reaching the consent
@@ -156,72 +102,9 @@ public class OnboardingWidgetControllerConsentsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Names), redirect.ActionName);
-        Assert.Equal("Consent_StubProfile_AddName", ctrl.TempData[TempDataKeys.InfoMessage]);
+        Assert.Equal("Onboarding_StubProfile_AddName", ctrl.TempData[TempDataKeys.InfoMessage]);
         await _onboardingService.DidNotReceive().GetNextUnsignedConsentAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SignConsent_Post_StubProfile_RedirectsToNames_AndDoesNotCallService()
-    {
-        var userId = Guid.NewGuid();
-        var ctrl = BuildSut(userId, isStub: true);
-
-        var result = await ctrl.SignConsent(Guid.NewGuid(), explicitConsent: true, TestContext.Current.CancellationToken);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Names), redirect.ActionName);
-        Assert.Equal("Consent_StubProfile_AddName", ctrl.TempData[TempDataKeys.InfoMessage]);
-        await _consents.DidNotReceive().SubmitConsentAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SignConsent_Post_StubProfileErrorKey_RedirectsToNames_NoRawKeyDisplayed()
-    {
-        // Defense-in-depth: if upstream gates somehow miss and the service
-        // returns ErrorKey "StubProfile", controller still must NOT display
-        // the raw key. The localized info banner replaces it.
-        var userId = Guid.NewGuid();
-        var docVersionId = Guid.NewGuid();
-        _consents.SubmitConsentAsync(
-                userId, docVersionId, true,
-                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConsentSubmitResult(Success: false, ErrorKey: "StubProfile"));
-        // BuildSut defaults to non-Stub UserInfo so the GET-side gate passes —
-        // we want to specifically exercise the SubmitConsentAsync return path.
-        var ctrl = BuildSut(userId);
-
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, TestContext.Current.CancellationToken);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Names), redirect.ActionName);
-        Assert.Equal("Consent_StubProfile_AddName", ctrl.TempData[TempDataKeys.InfoMessage]);
-        Assert.Null(ctrl.TempData[TempDataKeys.ErrorMessage]);
-    }
-
-    [HumansFact]
-    public async Task SignConsent_Post_WithoutCheckbox_RedirectsToConsents_WithError_AndDoesNotCallService()
-    {
-        // The checkbox is the legal "explicit consent" gesture — submitting
-        // without it is a user error, not a service call. Route back to the
-        // consent page with an error message; never invoke the consent service.
-        var userId = Guid.NewGuid();
-        var docVersionId = Guid.NewGuid();
-        var ctrl = BuildSut(userId);
-
-        var result = await ctrl.SignConsent(docVersionId, explicitConsent: false, TestContext.Current.CancellationToken);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
-        // Localizer stub returns the key as the value, so this verifies that
-        // the controller goes through `_localizer["Consent_MustCheck"]`
-        // (matches ConsentController.Submit) rather than emitting the raw key.
-        Assert.Equal("Consent_MustCheck", ctrl.TempData[TempDataKeys.ErrorMessage]);
-        await _consents.DidNotReceive().SubmitConsentAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -253,13 +136,10 @@ public class OnboardingWidgetControllerConsentsTests
 
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<ConsentsStepViewModel>(view.Model);
-        Assert.Equal(unsignedId, vm.DocumentVersionId);
-        Assert.Equal("Privacy Policy", vm.DocumentName);
-        Assert.Equal("1.2", vm.VersionNumber);
-        Assert.Equal("Updated section 4", vm.ChangesSummary);
+        Assert.Equal(unsignedId, vm.Document.DocumentVersionId);
+        Assert.Equal("Privacy Policy", vm.Document.DocumentName);
         Assert.Equal(2, vm.CurrentIndex);   // signed (1), unsigned (2)
         Assert.Equal(2, vm.TotalRequired);
-        Assert.Equal("# Policy", vm.Content["en"]);
     }
 
     [HumansFact]

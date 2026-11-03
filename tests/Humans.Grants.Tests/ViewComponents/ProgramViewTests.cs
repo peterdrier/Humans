@@ -56,6 +56,7 @@ public sealed class ProgramViewTests
             Program = program,
             Today = new LocalDate(2027, 3, 1),
             CanAdminister = true,
+            CanManage = true,
         };
 
         var html = await RenderAsync(form ? "Form" : "Program", model, users);

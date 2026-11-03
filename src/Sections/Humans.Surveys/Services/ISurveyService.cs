@@ -18,7 +18,7 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
 
     /// <summary>
     /// Replaces a survey's editable graph (questions/options reconciled by id), or returns an expected refusal. Validates branching.
-    /// Board/Admin may edit any survey; anyone else may edit only one they authored.
+    /// Surveys Admin/Admin may edit any survey; anyone else may edit only one they authored.
     /// </summary>
     Task<SurveySaveResult> UpdateAsync(Guid surveyId, SurveyEditInput input, SurveyViewer viewer, CancellationToken ct = default);
 
@@ -37,19 +37,19 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Transitions Open → Closed.</summary>
     Task<SurveyReviewResult> CloseAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Survey list scoped to the viewer: Board/Admin see every survey; anyone else sees only their own.</summary>
+    /// <summary>Survey list scoped to the viewer: Surveys Admin, Board and Admin see every survey; anyone else sees only their own.</summary>
     Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default);
 
-    /// <summary>Surveys awaiting Board/Admin approval, oldest submission first, with the author's display name.</summary>
+    /// <summary>Surveys awaiting Surveys Admin approval, oldest submission first, with the author's display name.</summary>
     Task<IReadOnlyList<SurveyPendingApprovalItem>> GetPendingApprovalQueueAsync(CancellationToken ct = default);
 
     /// <summary>Transitions Draft → PendingApproval. Author-only — enforced here as the state machine's source of truth.</summary>
     Task<SurveySubmitResult> SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Board/Admin only — enforced here.</summary>
+    /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Surveys Admin/Admin only, enforced here.</summary>
     Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
 
-    /// <summary>Transitions PendingApproval → Draft, recording the Board's note. Board/Admin only — enforced here.</summary>
+    /// <summary>Transitions PendingApproval → Draft, recording the reviewer's note. Surveys Admin/Admin only, enforced here.</summary>
     Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);
 
     /// <summary>
@@ -224,8 +224,11 @@ internal sealed record SurveyDetail(
     Guid CreatedByUserId,
     string? RejectionNote = null);
 
-/// <summary>The current viewer for author-scoped survey visibility: Board/Admin see every survey.</summary>
-internal readonly record struct SurveyViewer(Guid UserId, bool IsBoardOrAdmin);
+/// <summary>
+/// The current viewer for author-scoped survey visibility: Surveys Admin, Board and Admin see every survey; only
+/// Surveys Admin and Admin change surveys they did not author.
+/// </summary>
+internal readonly record struct SurveyViewer(Guid UserId, bool SeesEverySurvey, bool ManagesEverySurvey);
 
 internal sealed record SurveyAdminSummary(
     Guid Id,
@@ -313,7 +316,7 @@ internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int 
     public bool Succeeded => Refusal is null;
 }
 
-/// <summary>An expected Board review refusal, or a successful decision with optional invitation totals.</summary>
+/// <summary>An expected review refusal, or a successful decision with optional invitation totals.</summary>
 internal sealed record SurveyReviewResult(SendResult? Send = null, string? Refusal = null)
 {
     public bool Succeeded => Refusal is null;
