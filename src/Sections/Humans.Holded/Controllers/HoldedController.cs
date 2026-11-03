@@ -81,26 +81,37 @@ internal sealed class HoldedController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncNow(CancellationToken ct)
     {
+        // Each sync on its own: a failed document pull must not skip the ledger sweep, or the reverse.
+        var docs = await TrySyncAsync("purchase-document sync", () => holded.SyncPurchaseDocumentsAsync(ct), ct);
+        var ledger = await TrySyncAsync("ledger sweep", () => holded.SyncLedgerAsync(full: false, ct), ct);
+        var failed = new[] { docs is null ? "purchase documents" : null, ledger is null ? "ledger" : null }
+            .OfType<string>().ToList();
+        if (failed.Count > 0)
+            SetError($"Sync failed: {string.Join(" and ", failed)}.");
+        else if (docs == true && ledger == true)
+            SetSuccess("Synced the purchase documents and swept the trailing ledger window.");
+        else
+            SetInfo("A sync was already running, so part of this one was skipped.");
+        return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>Null when the sync threw; caller cancellation still propagates.</summary>
+    private async Task<bool?> TrySyncAsync(string name, Func<Task<bool>> sync, CancellationToken ct)
+    {
         try
         {
-            var docs = await holded.SyncPurchaseDocumentsAsync(ct);
-            var ledger = await holded.SyncLedgerAsync(full: false, ct);
-            if (docs && ledger)
-                SetSuccess("Synced the purchase documents and swept the trailing ledger window.");
-            else
-                SetInfo("A sync was already running, so part of this one was skipped.");
+            return await sync();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            logger.LogWarning("Manual Holded sync cancelled by the caller");
+            logger.LogWarning("Manual Holded {Sync} cancelled by the caller", name);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Holded ledger sweep failed");
-            SetError("Sync failed.");
+            logger.LogError(ex, "Manual Holded {Sync} failed", name);
+            return null;
         }
-        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("FullSync")]

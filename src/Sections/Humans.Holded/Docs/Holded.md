@@ -219,8 +219,8 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next.
-- `/Holded` buttons: `SyncNow` (purchase docs, then incremental ledger + reconcile), `FullSync` (ledger).
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. A failed document pull still lets the ledger sweep run, then fails the job.
+- `/Holded` buttons: `SyncNow` (purchase docs, then incremental ledger + reconcile; each runs whatever the other did, and a failure names which), `FullSync` (ledger).
 - Finance's `POST /Finance/HoldedSync/Run` ("Sync Now" on its unmatched queue) calls `SyncPurchaseDocumentsAsync`.
 
 ## Cross-Section Dependencies

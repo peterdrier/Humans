@@ -50,7 +50,13 @@ public sealed class HoldedPurchaseDocSyncTests
 
     private static HoldedPurchaseDocumentDto Full(string id, string? notes) => new()
     {
-        Id = id, DocNumber = id, Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m, PaymentsPending = 0m,
+        Id = id,
+        DocNumber = id,
+        Subtotal = 0m,
+        Tax = 0m,
+        Total = 0m,
+        PaymentsTotal = 0m,
+        PaymentsPending = 0m,
         Notes = notes,
     };
 
