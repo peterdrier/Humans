@@ -381,7 +381,7 @@ else
                 <div class="accordion-item">
                     <h3 class="accordion-header" id="@headingId">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
-                            @r.Name <span class="text-muted ms-2 small">@r.SubmittedAt</span>
+                            <vc:human user-id="@r.UserId" link="None" /> <span class="text-muted ms-2 small">@r.SubmittedAt</span>
                         </button>
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">

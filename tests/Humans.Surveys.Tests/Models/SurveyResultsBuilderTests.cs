@@ -27,7 +27,9 @@ public sealed class SurveyResultsBuilderTests
 
         var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 4, SurveyResultsScope.Combined));
 
-        model.Respondents.Select(respondent => respondent.Name).Should().Equal("Undated", "First", "Second", "Later");
+        model.Respondents.Select(respondent => respondent.UserId).Should().Equal(
+            results.IdentifiedRespondents[3].UserId, results.IdentifiedRespondents[2].UserId,
+            results.IdentifiedRespondents[1].UserId, results.IdentifiedRespondents[0].UserId);
     }
 
     [HumansTheory]
