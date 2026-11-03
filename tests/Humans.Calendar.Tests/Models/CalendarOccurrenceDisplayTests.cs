@@ -1,11 +1,10 @@
 using AwesomeAssertions;
-using Humans.Calendar.Models;
 using Humans.Calendar.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Calendar.Tests.Models;
 
-public sealed class CalendarOccurrenceViewExtensionsTests
+public sealed class CalendarOccurrenceDisplayTests
 {
     [HumansFact]
     public void EndLocalDate_Treats_a_midnight_end_as_half_open()

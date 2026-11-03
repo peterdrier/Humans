@@ -188,8 +188,8 @@ public sealed class CalendarOccurrenceExpanderTests
 
         results.Should().HaveCount(5);
         foreach (var occurrence in results)
-            Humans.Calendar.Models.CalendarOccurrenceViewExtensions.EndLocalDate(occurrence, zone)
-                .Should().Be(Humans.Calendar.Models.CalendarOccurrenceViewExtensions.StartLocalDate(occurrence, zone));
+            occurrence.EndLocalDate(zone)
+                .Should().Be(occurrence.StartLocalDate(zone));
     }
 
     [HumansTheory]
@@ -250,7 +250,7 @@ public sealed class CalendarOccurrenceExpanderTests
             occurrence.EndDateExclusive.Should().Be(first.PlusDays(n + 2));
             occurrence.OccurrenceStartUtc.Should().BeNull();
             occurrence.OccurrenceEndUtc.Should().BeNull();
-            Humans.Calendar.Models.CalendarOccurrenceViewExtensions.StartLocalDate(occurrence, DateTimeZoneProviders.Tzdb["America/Los_Angeles"])
+            occurrence.StartLocalDate(DateTimeZoneProviders.Tzdb["America/Los_Angeles"])
                 .Should().Be(first.PlusDays(n));
         }
     }
