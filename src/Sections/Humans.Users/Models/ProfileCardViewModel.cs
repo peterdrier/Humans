@@ -8,11 +8,6 @@ namespace Humans.Users.Models;
 internal sealed class ProfileCardViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public bool HasCustomProfilePicture { get; set; }
-    public string? CustomProfilePictureUrl { get; set; }
-    public string BurnerName { get; set; } = string.Empty;
     public string? Pronouns { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
@@ -38,10 +33,6 @@ internal sealed class ProfileCardViewModel
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     public bool IsOwnProfile => ViewMode == ProfileCardViewMode.Self;
-
-    public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
-        ? CustomProfilePictureUrl
-        : ProfilePictureUrl;
 
     /// <summary>E.g. "March 15".</summary>
     public string? FormattedBirthday
