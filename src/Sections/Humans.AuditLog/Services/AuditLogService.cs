@@ -120,23 +120,13 @@ internal sealed class AuditLogService(
         return entries.Select(ToSnapshot).ToList();
     }
 
-    /// <inheritdoc />
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        IReadOnlyList<AuditActionDefinition> actions,
-        string? entityType = null,
-        Guid? entityId = null,
-        Guid? userId = null,
-        int limit = 20,
-        CancellationToken ct = default) =>
-        FilterByNamesAsync(entityType, entityId, userId, Names(actions), limit, ct);
-
-    Task<IReadOnlyList<AuditLogEntrySnapshot>> IAuditLogReader.GetFilteredEntriesAsync(
         string? entityType,
         Guid? entityId,
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
-        CancellationToken ct) =>
+        CancellationToken ct = default) =>
         FilterByNamesAsync(entityType, entityId, userId, actions, limit, ct);
 
     private async Task<IReadOnlyList<AuditLogEntrySnapshot>> FilterByNamesAsync(
