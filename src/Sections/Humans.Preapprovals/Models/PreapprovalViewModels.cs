@@ -3,7 +3,6 @@ using Humans.Finance.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
-using Humans.Users.Contracts;
 using NodaTime;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -53,10 +52,7 @@ internal sealed class AdminProgramViewModel
     public required ProgramInfo Program { get; init; }
     public required LocalDate Today { get; init; }
     public required bool CanAdminister { get; init; }
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
-    public string NameOf(Guid? userId) =>
-        userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 
     public IEnumerable<GrantInfo> Applications => Program.Grants
         .Where(g => g.Status == GrantStatus.Applied).OrderBy(g => g.CreatedAt);
@@ -100,7 +96,6 @@ internal sealed class ProgramFormViewModel
 
     /// <summary>Set by the controller for rendering; never posted.</summary>
     public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
-    public IReadOnlyDictionary<Guid, UserInfo> People { get; set; } = new Dictionary<Guid, UserInfo>();
     public bool KindLocked { get; set; }
 
     public ProgramSave ToSave() => new(

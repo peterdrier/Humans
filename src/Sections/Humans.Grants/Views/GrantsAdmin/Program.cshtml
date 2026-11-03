@@ -30,7 +30,27 @@
     <dt class="col-sm-2">Grants expire</dt>
     <dd class="col-sm-10">@(p.GrantsExpireOn?.ToDate() ?? "never")</dd>
     <dt class="col-sm-2">Managers</dt>
-    <dd class="col-sm-10">@(p.ManagerUserIds.Count == 0 ? "none" : string.Join(", ", p.ManagerUserIds.Select(id => Model.NameOf(id))))</dd>
+    <dd class="col-sm-10">
+        @if (p.ManagerUserIds.Count == 0)
+        {
+            <text>none</text>
+        }
+        else
+        {
+            for (var i = 0; i < p.ManagerUserIds.Count; i++)
+            {
+                if (i > 0) { WriteLiteral(", "); }
+                var manager = await Component.InvokeAsync(typeof(HumanViewComponent), new
+                {
+                    userId = p.ManagerUserIds[i],
+                    link = HumanLink.None,
+                });
+                using var writer = new System.IO.StringWriter();
+                manager.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+                Write(new Microsoft.AspNetCore.Html.HtmlString(writer.ToString().Trim()));
+            }
+        }
+    </dd>
     <dt class="col-sm-2">Grants</dt>
     <dd class="col-sm-10">@p.Count(GrantState.Active, Model.Today) active, @p.Count(GrantState.Expired, Model.Today) expired, @p.Count(GrantState.Revoked, Model.Today) revoked</dd>
 </dl>
@@ -89,12 +109,12 @@ else
                         <td><vc:human user-id="@g.UserId" layout="AvatarName" size="28" /></td>
                         <td><span class="badge @EnumBadgeMap.For(state)">@state</span></td>
                         <td>@(g.ExpiresOn?.ToDate() ?? "—")</td>
-                        <td class="small text-muted">@Model.NameOf(g.IssuedByUserId) @g.IssuedAt.ToDateTime()@(g.SourceRef is null ? "" : $" ({g.SourceRef})")</td>
+                        <td class="small text-muted"><vc:human user-id="@g.IssuedByUserId" link="None" /> @g.IssuedAt.ToDateTime()@(g.SourceRef is null ? "" : $" ({g.SourceRef})")</td>
                         <td class="small text-muted">@(g.NotifiedAt?.ToDateTime() ?? "—")</td>
                         <td class="small text-muted">
                             @if (g.RevokedAt is { } revokedAt)
                             {
-                                @Model.NameOf(g.RevokedByUserId) @revokedAt.ToDateTime()
+                                <vc:human user-id="@(g.RevokedByUserId ?? Guid.Empty)" link="None" /> @revokedAt.ToDateTime()
                                 @if (!string.IsNullOrEmpty(g.RevokeReason)) { <div>@g.RevokeReason</div> }
                             }
                         </td>

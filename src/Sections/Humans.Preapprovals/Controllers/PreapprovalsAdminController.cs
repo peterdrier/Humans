@@ -80,15 +80,11 @@ internal sealed class PreapprovalsAdminController(
         var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Manage, ct);
         if (forbidden is not null) return forbidden;
 
-        var ids = program!.Grants.Select(g => g.BeneficiaryUserId)
-            .Concat(program.Grants.Select(g => g.DecidedByUserId).OfType<Guid>())
-            .Concat(program.ManagerUserIds).Distinct().ToList();
         return View(new AdminProgramViewModel
         {
-            Program = program,
+            Program = program!,
             Today = Today,
             CanAdminister = PreapprovalsPolicyHandler.IsManagingRole(User),
-            People = await UserService.GetUserInfosAsync(ids, ct)
         });
     }
 
@@ -203,7 +199,6 @@ internal sealed class PreapprovalsAdminController(
     private async Task<ProgramFormViewModel> FillAsync(ProgramFormViewModel model, CancellationToken ct)
     {
         model.Accounts = await finance.ListExpenseAccountsAsync(activeOnly: true, ct);
-        model.People = await UserService.GetUserInfosAsync(model.ManagerUserIds, ct);
         return model;
     }
 }
