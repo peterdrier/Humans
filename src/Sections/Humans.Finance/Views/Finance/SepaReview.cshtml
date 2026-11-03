@@ -1,0 +1,99 @@
+@using System.Globalization
+@model Humans.Finance.Models.SepaReviewVm
+@{
+    ViewData["Title"] = "Confirm SEPA payout";
+
+    // Posted back to GenerateSepa, which parses invariantly.
+    string Amount(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Send @Model.Total.ToEuro() to @Model.Lines.Count @(Model.Lines.Count == 1 ? "person" : "people")?</h1>
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to creditors
+    </a>
+</div>
+
+<div class="card mb-3" style="width: fit-content; max-width: 100%; overflow-x: auto">
+    <table class="table table-hover mb-0 align-middle w-auto">
+        <thead>
+            <tr>
+                <th>Human</th>
+                <th>Account</th>
+                <th title="The name the bank receives.">Full name</th>
+                <th>IBAN</th>
+                <th class="text-end">Owed</th>
+                <th class="text-end">This payment</th>
+                <th class="text-end">Owed after</th>
+                <th>Checks</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var l in Model.Lines)
+        {
+            <tr>
+                <td><vc:human user-id="@l.UserId" link="None" /></td>
+                <td><a asp-action="CreditorStatement" asp-route-accountNum="@l.SupplierAccountNum">@l.SupplierAccountNum</a></td>
+                <td>@l.CreditorName</td>
+                <td class="font-monospace text-nowrap">@l.IbanMasked</td>
+                <td class="text-end text-nowrap">@l.Owed.ToEuro()</td>
+                <td class="text-end text-nowrap fw-semibold">@l.Amount.ToEuro()</td>
+                <td class="text-end text-nowrap">@l.OwedAfter.ToEuro()</td>
+                <td class="text-nowrap">
+                    @if (!Model.Matches.TryGetValue(l.SupplierAccountNum, out var match))
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                    else if (match.HasWarnings)
+                    {
+                        <a asp-action="CreditorStatement" asp-route-accountNum="@l.SupplierAccountNum"
+                           class="text-danger fw-semibold text-decoration-none"
+                           data-bs-toggle="tooltip" title="@string.Join("; ", match.Warnings)">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Mismatch
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="text-success" title="Expense docs and ledger purchases match."><i class="fa-solid fa-check"></i></span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+        <tfoot>
+            <tr class="fw-semibold">
+                <td colspan="5">@Model.Lines.Count transfer@(Model.Lines.Count == 1 ? "" : "s")</td>
+                <td class="text-end text-nowrap">@Model.Total.ToEuro()</td>
+                <td colspan="2"></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" id="sepaGenerate" asp-action="GenerateSepa" method="post"
+      class="d-flex align-items-center gap-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="maxPerTransfer" value="@Amount(Model.MaxPerTransfer)" />
+    @foreach (var l in Model.Lines)
+    {
+        <input type="hidden" name="selected" value="@l.SupplierAccountNum" />
+        <input type="hidden" name="amounts[@l.SupplierAccountNum]" value="@Amount(l.Amount)" />
+    }
+    <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-file-arrow-down me-1"></i>Generate SEPA file
+    </button>
+    <span class="text-muted small">
+        Cap per transfer @Model.MaxPerTransfer.ToEuro(). Generating records the payout and emails each member.
+    </span>
+</form>
+
+<script>
+    // Idempotency guard: success answers with a download, so the page never navigates and a second click would
+    // write a second payout file.
+    document.getElementById('sepaGenerate')?.addEventListener('submit', function (e) {
+        var btn = e.target.querySelector('button[type="submit"]');
+        if (!btn) return;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Generating…';
+    });
+</script>

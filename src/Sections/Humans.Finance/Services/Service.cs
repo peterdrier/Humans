@@ -1050,107 +1050,20 @@ internal sealed class Service(
 
     public SepaPayoutSettings GetSepaPayoutSettings() => sepa.Value.GetPayoutSettings();
 
+    public async Task<SepaPayoutPreview> PreviewSepaPayoutAsync(
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, CancellationToken ct = default)
+    {
+        var (plan, error) = await PlanSepaPayoutAsync(selections, maxPerTransfer, ct);
+        return plan is null ? SepaPayoutPreview.Failure(error!) : new SepaPayoutPreview(plan.Lines, null);
+    }
+
     public async Task<SepaPayoutResult> GenerateSepaPayoutAsync(
         IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
         CancellationToken ct = default)
     {
-        var settings = GetSepaPayoutSettings();
-        if (settings.UnavailableReason is { } unavailable)
-            return SepaPayoutResult.Failure(unavailable);
-
-        if (selections.Count == 0)
-            return SepaPayoutResult.Failure("No creditor account was selected — nothing to generate.");
-
-        if (selections.GroupBy(s => s.SupplierAccountNum).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
-            return SepaPayoutResult.Failure(
-                $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
-
-        var (rows, _) = await ListCreditorAccountsAsync(ct);
-        var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
-
-        // The unmasked IBAN goes nowhere but the file and the payout record. Keyed by contact id, not account number:
-        // two contacts can share one 400000xx, and only the bound one is the member's.
-        var contactById = await ContactsByIdAsync(ct);
-
-        var fileId = Guid.NewGuid();
-        var transfers = new List<SepaPayoutTransfer>(selections.Count);
-
-        foreach (var s in selections)
-        {
-            if (!byAccount.TryGetValue(s.SupplierAccountNum, out var row))
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
-
-            if (row.Bindings.Count != 1)
-                return SepaPayoutResult.Failure(row.Bindings.Count == 0
-                    ? $"Creditor account {s.SupplierAccountNum} is not bound to a member — bind it first."
-                    : $"Creditor account {s.SupplierAccountNum} is bound to {row.Bindings.Count} members — "
-                      + "unbind all but the one who owns it first.");
-
-            if (s.Amount > row.OwedToMember)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
-                    + $"{Euros(row.OwedToMember)} owed.");
-
-            // Re-derived here because the posted selection is never trusted.
-            if (row.HasDuplicateDocuments is null)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
-                    + "duplicate documents cannot be ruled out — try again later.");
-            if (row.HasDuplicateDocuments == true)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
-                    + "on /Finance/HoldedDuplicates first.");
-            if (row.PendingPayoutFileName is { } pendingFile)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
-                    + "not booked yet — book it or withdraw the transfer first.");
-
-            // Name and IBAN both come off the bound contact, so no transfer pairs one person's name with another's
-            // account.
-            if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
-                || string.IsNullOrWhiteSpace(contact.Iban))
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} has no IBAN on the Holded contact it is bound to.");
-
-            transfers.Add(new SepaPayoutTransfer
-            {
-                Id = Guid.NewGuid(),
-                FileId = fileId,
-                UserId = row.Bindings[0].UserId,
-                SupplierAccountNum = s.SupplierAccountNum,
-                HoldedContactId = row.Bindings[0].HoldedContactId,
-                CreditorName = SepaText.Normalize(contact.Name, SepaPaymentFileBuilder.MaxNameLength),
-                Iban = IbanValidator.Normalize(contact.Iban),
-                IbanMasked = IbanFormatter.Mask(contact.Iban),
-                Amount = s.Amount,
-            });
-        }
-
-        var now = clock.GetCurrentInstant();
-        var request = new SepaPaymentFileRequest(
-            MsgId: "M" + fileId.ToString("N"),
-            CreatedAt: now,
-            RequestedExecutionDate: now.InZone(MadridZone).Date,
-            Debtor: new SepaDebtor(
-                sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
-                sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
-            MaxAmountPerTransfer: maxPerTransfer,
-            Transfers: transfers
-                .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
-                .ToList());
-
-        string xml;
-        try
-        {
-            xml = SepaPaymentFileBuilder.Build(request);
-        }
-        catch (SepaPaymentFileException ex)
-        {
-            // The builder masks any IBAN it names, so the message is safe to log and to show.
-            logger.LogWarning("SEPA payout generation refused: {Reason}", ex.Message);
-            return SepaPayoutResult.Failure(ex.Message);
-        }
+        var (plan, error) = await PlanSepaPayoutAsync(selections, maxPerTransfer, ct);
+        if (plan is null) return SepaPayoutResult.Failure(error!);
+        var (fileId, now, transfers, _, xml) = plan;
 
         // The stamp is minute-resolution, and the name is what ties a file on the treasurer's disk to its row, so the
         // file id's first 8 hex characters keep two batches in one minute apart.
@@ -1180,6 +1093,119 @@ internal sealed class Service(
         await payoutEmails.SendPayoutEmailsAsync(transfers);
 
         return new SepaPayoutResult(fileName, xml, null);
+    }
+
+    private sealed record SepaPayoutPlan(
+        Guid FileId, Instant Now, IReadOnlyList<SepaPayoutTransfer> Transfers,
+        IReadOnlyList<SepaPayoutPreviewLine> Lines, string Xml);
+
+    /// <summary>Everything but the write, so the confirmation page refuses exactly what generation would.</summary>
+    private async Task<(SepaPayoutPlan? Plan, string? Error)> PlanSepaPayoutAsync(
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, CancellationToken ct)
+    {
+        var settings = GetSepaPayoutSettings();
+        if (settings.UnavailableReason is { } unavailable)
+            return (null, unavailable);
+
+        if (selections.Count == 0)
+            return (null, "No creditor account was selected — nothing to generate.");
+
+        if (selections.GroupBy(s => s.SupplierAccountNum).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
+            return (null, 
+                $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
+
+        var (rows, _) = await ListCreditorAccountsAsync(ct);
+        var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
+
+        // The unmasked IBAN goes nowhere but the file and the payout record. Keyed by contact id, not account number:
+        // two contacts can share one 400000xx, and only the bound one is the member's.
+        var contactById = await ContactsByIdAsync(ct);
+
+        var fileId = Guid.NewGuid();
+        var transfers = new List<SepaPayoutTransfer>(selections.Count);
+        var lines = new List<SepaPayoutPreviewLine>(selections.Count);
+
+        foreach (var s in selections)
+        {
+            if (!byAccount.TryGetValue(s.SupplierAccountNum, out var row))
+                return (null, 
+                    $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
+
+            if (row.Bindings.Count != 1)
+                return (null, row.Bindings.Count == 0
+                    ? $"Creditor account {s.SupplierAccountNum} is not bound to a member — bind it first."
+                    : $"Creditor account {s.SupplierAccountNum} is bound to {row.Bindings.Count} members — "
+                      + "unbind all but the one who owns it first.");
+
+            if (s.Amount > row.OwedToMember)
+                return (null, 
+                    $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
+                    + $"{Euros(row.OwedToMember)} owed.");
+
+            // Re-derived here because the posted selection is never trusted.
+            if (row.HasDuplicateDocuments is null)
+                return (null, 
+                    $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
+                    + "duplicate documents cannot be ruled out — try again later.");
+            if (row.HasDuplicateDocuments == true)
+                return (null, 
+                    $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
+                    + "on /Finance/HoldedDuplicates first.");
+            if (row.PendingPayoutFileName is { } pendingFile)
+                return (null, 
+                    $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
+                    + "not booked yet — book it or withdraw the transfer first.");
+
+            // Name and IBAN both come off the bound contact, so no transfer pairs one person's name with another's
+            // account.
+            if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
+                || string.IsNullOrWhiteSpace(contact.Iban))
+                return (null, 
+                    $"Creditor account {s.SupplierAccountNum} has no IBAN on the Holded contact it is bound to.");
+
+            transfers.Add(new SepaPayoutTransfer
+            {
+                Id = Guid.NewGuid(),
+                FileId = fileId,
+                UserId = row.Bindings[0].UserId,
+                SupplierAccountNum = s.SupplierAccountNum,
+                HoldedContactId = row.Bindings[0].HoldedContactId,
+                CreditorName = SepaText.Normalize(contact.Name, SepaPaymentFileBuilder.MaxNameLength),
+                Iban = IbanValidator.Normalize(contact.Iban),
+                IbanMasked = IbanFormatter.Mask(contact.Iban),
+                Amount = s.Amount,
+            });
+            lines.Add(new SepaPayoutPreviewLine(
+                s.SupplierAccountNum, row.Bindings[0].UserId, transfers[^1].CreditorName, transfers[^1].IbanMasked,
+                row.OwedToMember, s.Amount));
+        }
+
+        var now = clock.GetCurrentInstant();
+        var request = new SepaPaymentFileRequest(
+            MsgId: "M" + fileId.ToString("N"),
+            CreatedAt: now,
+            RequestedExecutionDate: now.InZone(MadridZone).Date,
+            Debtor: new SepaDebtor(
+                sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
+                sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
+            MaxAmountPerTransfer: maxPerTransfer,
+            Transfers: transfers
+                .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
+                .ToList());
+
+        string xml;
+        try
+        {
+            xml = SepaPaymentFileBuilder.Build(request);
+        }
+        catch (SepaPaymentFileException ex)
+        {
+            // The builder masks any IBAN it names, so the message is safe to log and to show.
+            logger.LogWarning("SEPA payout generation refused: {Reason}", ex.Message);
+            return (null, ex.Message);
+        }
+
+        return (new SepaPayoutPlan(fileId, now, transfers, lines, xml), null);
     }
 
     /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no

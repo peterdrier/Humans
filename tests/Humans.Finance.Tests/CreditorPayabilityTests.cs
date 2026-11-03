@@ -108,7 +108,7 @@ public class CreditorPayabilityTests
         row.PendingPayoutFileName.Should().Be("m929.xml");
         row.HasDuplicateDocuments.Should().BeFalse();
         new CreditorAccountRowVm(Account, row.Name, 4800m, [new CreditorBindingVm(UserId, "Paul", "Auto")], row.IbanMasked,
-            0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be("in payout file m929.xml, not booked yet");
+            0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be(CreditorAccountRowVm.InFlightReason);
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in payout file m929.xml");
         await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);
