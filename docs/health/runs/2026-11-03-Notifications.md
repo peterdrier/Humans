@@ -3,7 +3,7 @@
 - Invocation: scheduled routine section-doctor-daily: 'Run the section-doctor skill unattended.' (cloud project thread)
 - Anchor commit: `3929aea08` (origin/main at branch point); branch `section-doctor/2026-11-03T004202Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2254
 
 ## Assessment summary
 
