@@ -16,7 +16,6 @@ internal sealed class BackdoorKeysViewModel
 internal sealed record BackdoorKeyListItem(
     Guid Id,
     Guid UserId,
-    string OwnerName,
     string Label,
     string DisplayPrefix,
     Instant CreatedAt,

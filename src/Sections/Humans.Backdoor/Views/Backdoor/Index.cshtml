@@ -81,7 +81,7 @@ else
                 @foreach (var key in Model.Keys)
                 {
                     <tr class="@(key.IsUsable ? null : "text-muted")">
-                        <td>@key.OwnerName</td>
+                        <td><vc:human user-id="@key.UserId" link="None" /></td>
                         <td>@key.Label</td>
                         <td><code>@key.DisplayPrefix…</code></td>
                         <td>@Stamp(key.CreatedAt)</td>
