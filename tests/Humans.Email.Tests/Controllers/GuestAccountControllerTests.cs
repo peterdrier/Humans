@@ -68,6 +68,45 @@ public class GuestAccountControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdatePreference_CancelsAccountReadButKeepsTheWriteDetached(bool tokenMode)
+    {
+        using var request = new CancellationTokenSource();
+        var user = new User { Id = Guid.NewGuid() };
+        var controller = BuildSut(user);
+        controller.HttpContext.RequestAborted = request.Token;
+        if (tokenMode)
+        {
+            controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+            _commPrefService.ValidateUnsubscribeToken("valid-token")
+                .Returns((TokenValidationStatus.Valid, user.Id, MessageCategory.Marketing));
+        }
+        async ValueTask<UserInfo?> ReadViewerAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return UserInfo.Create(user, [], [], profile: null);
+        }
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(call => ReadViewerAsync(call.Arg<CancellationToken>()));
+        Task<IActionResult> UpdateAsync() => controller.UpdatePreference(
+            MessageCategory.Marketing, false, false, tokenMode ? "valid-token" : null);
+
+        Assert.IsType<OkResult>(await UpdateAsync());
+        await _commPrefService.Received(1).UpdatePreferenceAsync(user.Id, MessageCategory.Marketing,
+            true, false, tokenMode ? "MagicLink" : "Guest", actorUserId: tokenMode ? null : user.Id,
+            cancellationToken: CancellationToken.None);
+        _commPrefService.ClearReceivedCalls();
+        await request.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(UpdateAsync);
+        await _commPrefService.DidNotReceive().UpdatePreferenceAsync(Arg.Any<Guid>(),
+            Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await _userService.Received(2).GetUserInfoAsync(user.Id, request.Token);
+    }
+
+    [HumansTheory]
     [InlineData("emailEnabled", true)]
     [InlineData("alertEnabled", true)]
     [InlineData("emailEnabled", false)]
