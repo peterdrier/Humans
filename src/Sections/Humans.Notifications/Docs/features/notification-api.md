@@ -25,8 +25,8 @@ X-Api-Key: <personal key>
     {
       "date": "2026-04-10T09:00:00Z",
       "source": "IssueAssigned",
-      "subject": "Issue assigned to you: Login page broken",
-      "link": "/Issues",
+      "subject": "You were assigned an issue: Login page broken",
+      "link": "/Issues/3f2b6c1e-8d4a-4b7e-9c21-5a0e7d9f1b42",
       "priority": "normal",
       "class": "actionable",
       "unread": true

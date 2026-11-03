@@ -80,7 +80,8 @@ section answers.
 - Badge counts are counted from committed recipient rows on every read, never cached — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:281`.
 - The purge deletes resolved rows past 7 days, unresolved informational rows past 30 days and
   unresolved rows of retired sources, and nothing else — `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:163`.
-- Meter counts live only in a two-minute memory cache, never in a table — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:196`.
+- Meter counts are never stored in a table: the consent-review, deletion, sync and ticket counts share a
+  two-minute memory cache; team, camp and board-vote counts come live or from their owner's own cache — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:196`.
 - The machine read never mutates: it calls only the inbox's read and the meter provider — `src/Sections/Humans.Notifications/Services/NotificationInboxRead.cs:16`.
 
 ## 5. Seams
