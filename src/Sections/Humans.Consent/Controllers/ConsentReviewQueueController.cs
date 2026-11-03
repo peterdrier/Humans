@@ -63,8 +63,6 @@ internal sealed class ConsentReviewQueueController(
             Email = detailUser.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
-            City = profile.City,
-            CountryCode = profile.CountryCode,
             MembershipTier = profile.MembershipTier,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             ConsentCheckNotes = profile.ConsentCheckNotes,

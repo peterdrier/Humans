@@ -28,8 +28,6 @@ internal sealed class ConsentReviewQueueDetailViewModel
     public string Email { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public string? City { get; set; }
-    public string? CountryCode { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }
     public string? ConsentCheckNotes { get; set; }

@@ -135,12 +135,9 @@ internal sealed class AdminLegalDocumentsController(
                 {
                     Id = v.Id,
                     VersionNumber = v.VersionNumber,
-                    CommitSha = v.CommitSha,
                     EffectiveFrom = v.EffectiveFrom.ToDateTimeUtc(),
-                    CreatedAt = v.CreatedAt.ToDateTimeUtc(),
                     ChangesSummary = v.ChangesSummary,
                     RequiresReConsent = v.RequiresReConsent,
-                    LanguageCount = v.LanguageCount,
                     Languages = v.Languages.ToList()
                 })
                 .ToList()

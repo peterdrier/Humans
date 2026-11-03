@@ -30,7 +30,6 @@ internal sealed class ConsentSubmitModel
 internal sealed class MyDataViewModel
 {
     public bool IsDeletionPending { get; set; }
-    public DateTime? DeletionRequestedAt { get; set; }
     public DateTime? DeletionScheduledFor { get; set; }
     public IReadOnlyList<ConsentDashboardHistoryItem> SignedDocuments { get; set; } = [];
 }

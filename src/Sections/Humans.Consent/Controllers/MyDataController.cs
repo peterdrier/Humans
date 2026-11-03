@@ -31,7 +31,6 @@ internal sealed class MyDataController(
         var viewModel = new MyDataViewModel
         {
             IsDeletionPending = user.IsDeletionPending,
-            DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc(),
             DeletionScheduledFor = user.EffectiveDeletionDate?.ToDateTimeUtc(),
             SignedDocuments = history
         };
