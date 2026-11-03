@@ -119,7 +119,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
             _service, _teamResourceService, shiftManagementService,
-            NewSettingsServiceBackedByShiftsDb(), _userService, _roleAssignmentService);
+            NewSettingsServiceBackedByShiftsDb(), _roleAssignmentService);
     }
 
     [HumansTheory]
@@ -3238,7 +3238,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         critical.Priority.Should().Be(nameof(SlotPriority.Critical));
         critical.PriorityBadgeClass.Should().Be("bg-danger");
         result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
-            .AssignedUserName.Should().Be("Assigned Human");
+            .AssignedUserId.Should().Be(alphaMember.Id);
         var unprioritized = result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 2);
         unprioritized.Priority.Should().Be(nameof(SlotPriority.None));
         unprioritized.PriorityBadgeClass.Should().Be("bg-light text-dark");

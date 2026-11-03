@@ -106,11 +106,7 @@ else
                         {
                             <vc:human user-id="@slot.AssignedUserId.Value" />
                         }
-                        else if (slot.IsFilled)
-                        {
-                            @slot.AssignedUserName
-                        }
-                        else
+                        else if (!slot.IsFilled)
                         {
                             <span class="text-muted fst-italic">@Localizer["Teams_Roster_SlotOpen"]</span>
                         }

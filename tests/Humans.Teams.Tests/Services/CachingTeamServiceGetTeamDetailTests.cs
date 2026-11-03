@@ -68,7 +68,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
             Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
             _shifts,
             _settings,
-            userService,
             _roleAssignmentService);
     }
 

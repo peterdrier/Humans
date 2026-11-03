@@ -69,7 +69,7 @@ internal sealed class TeamDetailViewModel
     public string? PageContentHtml { get; set; }
     public List<CallToAction>? CallsToAction { get; set; }
     public DateTime? PageContentUpdatedAt { get; set; }
-    public string? PageContentUpdatedByDisplayName { get; set; }
+    public Guid? PageContentUpdatedByUserId { get; set; }
 
     public bool IsAuthenticated { get; set; }
     public bool CanEditPageContent { get; set; }
@@ -472,7 +472,6 @@ internal sealed class RosterSlotViewModel
     public RolePeriod Period { get; set; }
     public bool IsFilled { get; set; }
     public Guid? AssignedUserId { get; set; }
-    public string? AssignedUserName { get; set; }
 }
 
 internal sealed class AdminTeamListViewModel

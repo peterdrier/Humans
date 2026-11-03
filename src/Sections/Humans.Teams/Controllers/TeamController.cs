@@ -138,7 +138,7 @@ internal sealed class TeamController(
             PageContentHtml = pageContentHtml,
             CallsToAction = team.CallsToAction,
             PageContentUpdatedAt = team.PageContentUpdatedAt?.ToDateTimeUtc(),
-            PageContentUpdatedByDisplayName = teamPage.PageContentUpdatedByDisplayName,
+            PageContentUpdatedByUserId = team.PageContentUpdatedByUserId,
             IsAuthenticated = teamPage.IsAuthenticated,
             CanEditPageContent = teamPage.CanCurrentUserManage,
             RoleDefinitions = teamPage.RoleDefinitions
@@ -325,8 +325,7 @@ internal sealed class TeamController(
                 PriorityBadgeClass = slot.PriorityBadgeClass,
                 Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
                 IsFilled = slot.IsFilled,
-                AssignedUserId = slot.AssignedUserId,
-                AssignedUserName = slot.AssignedUserName
+                AssignedUserId = slot.AssignedUserId
             }).ToList();
 
         return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status, PeriodFilter = period });
