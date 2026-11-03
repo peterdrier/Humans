@@ -5,6 +5,7 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Xunit;
 
@@ -14,11 +15,32 @@ public sealed class CampComplianceAccessHandlerTests
 {
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
     private readonly CampComplianceAccessHandler _handler;
+    private readonly HttpContextAccessor _httpContext = new();
 
     public CampComplianceAccessHandlerTests()
     {
-        _handler = new CampComplianceAccessHandler(_shiftManagement);
+        _handler = new CampComplianceAccessHandler(_shiftManagement, _httpContext);
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorLookup_PropagatesAbandonedRequests()
+    {
+        using var request = new CancellationTokenSource();
+        _httpContext.HttpContext = new DefaultHttpContext { RequestAborted = request.Token };
+        var userId = Guid.NewGuid();
+        var observed = CancellationToken.None;
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observed = call.Arg<CancellationToken>();
+            request.Cancel();
+            observed.ThrowIfCancellationRequested();
+            return new List<Guid> { Guid.NewGuid() };
+        });
+
+        Func<Task> authorize = () => EvaluateAsync(CreateUserWithIdAndRole(userId, "SomeNonAdminRole"));
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
     }
 
     [HumansTheory]

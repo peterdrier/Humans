@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Xunit;
 
@@ -13,6 +14,7 @@ public sealed class CampAuthorizationHandlerTests
 {
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly CampAuthorizationHandler _handler;
+    private readonly HttpContextAccessor _httpContext = new();
 
     private static readonly Guid LeadCampId = Guid.NewGuid();
     private static readonly Guid OtherCampId = Guid.NewGuid();
@@ -24,7 +26,7 @@ public sealed class CampAuthorizationHandlerTests
 
     public CampAuthorizationHandlerTests()
     {
-        _handler = new CampAuthorizationHandler(_campService);
+        _handler = new CampAuthorizationHandler(_campService, _httpContext);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, []) { ActiveEventSettingsId = ActiveEventId });
         _campService.GetCampsForEventAsync(ActiveEventId, Arg.Any<CancellationToken>())
@@ -34,6 +36,40 @@ public sealed class CampAuthorizationHandlerTests
                 CreateCampInfo("other")
             });
 
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ActiveEventLookup_PropagatesAbandonedRequests(bool atSettings)
+    {
+        using var request = new CancellationTokenSource();
+        _httpContext.HttpContext = new DefaultHttpContext { RequestAborted = request.Token };
+        var observed = CancellationToken.None;
+        void Read(bool settings, CancellationToken ct)
+        {
+            if (settings == atSettings)
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(true, call.Arg<CancellationToken>());
+            return new CampSettingsInfo(2026, []) { ActiveEventSettingsId = ActiveEventId };
+        });
+        _campService.GetCampsForEventAsync(ActiveEventId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(false, call.Arg<CancellationToken>());
+            return new List<CampInfo> { CreateCampInfo("lead") };
+        });
+
+        Func<Task> authorize = () => EvaluateAsync(
+            CreateUser("lead", Guid.NewGuid()), LeadCampId, CampOperationRequirement.Manage);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
     }
 
     public static TheoryData<string, string, bool> CampAuthorizationCases => new()
