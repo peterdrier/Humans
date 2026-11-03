@@ -145,6 +145,39 @@ public sealed class AdminLegalDocumentsControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvalidForms_CancelTeamReadsBeforeMutation(bool edit)
+    {
+        using var request = new CancellationTokenSource();
+        var documents = Substitute.For<IAdminLegalDocumentService>();
+        documents.NormalizeGitHubFolderPath(Arg.Any<string?>())
+            .Returns(new GitHubFolderPathNormalizationResult(true, null, null));
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>());
+        });
+        var users = Substitute.For<IUserService>();
+        var controller = new AdminLegalDocumentsController(users, documents, teams,
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }
+        };
+        controller.ModelState.AddModelError("Name", "Required");
+        var id = Guid.NewGuid();
+        var model = new Humans.Consent.Models.LegalDocumentEditViewModel { Id = id };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => edit
+            ? controller.EditLegalDocument(id, model) : controller.CreateLegalDocument(model);
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        users.ReceivedCalls().Should().BeEmpty();
+        documents.ReceivedCalls().Should().OnlyContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(IAdminLegalDocumentService.NormalizeGitHubFolderPath), StringComparison.Ordinal));
+    }
+
+    [HumansTheory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]

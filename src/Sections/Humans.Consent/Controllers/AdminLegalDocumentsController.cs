@@ -68,7 +68,7 @@ internal sealed class AdminLegalDocumentsController(
 
         if (!ModelState.IsValid)
         {
-            model.Teams = await GetTeamSelectItems();
+            model.Teams = await GetTeamSelectItems(HttpContext.RequestAborted);
             return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", model);
         }
 
@@ -159,7 +159,7 @@ internal sealed class AdminLegalDocumentsController(
 
         if (!ModelState.IsValid)
         {
-            model.Teams = await GetTeamSelectItems();
+            model.Teams = await GetTeamSelectItems(HttpContext.RequestAborted);
             return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", model);
         }
 

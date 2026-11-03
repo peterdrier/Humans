@@ -59,13 +59,13 @@ internal sealed class ConsentController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(ConsentSubmitModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
         if (!model.ExplicitConsent)
         {
-            return await RedisplayUncheckedConsentAsync(model.DocumentVersionId, user.Id);
+            return await RedisplayUncheckedConsentAsync(model.DocumentVersionId, user.Id, HttpContext.RequestAborted);
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -110,11 +110,11 @@ internal sealed class ConsentController(
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<IActionResult> RedisplayUncheckedConsentAsync(Guid documentVersionId, Guid userId)
+    private async Task<IActionResult> RedisplayUncheckedConsentAsync(Guid documentVersionId, Guid userId, CancellationToken ct)
     {
         ModelState.AddModelError(string.Empty, localizer["Consent_MustCheck"].Value);
 
-        var viewModel = await BuildConsentReviewViewModelAsync(documentVersionId, userId);
+        var viewModel = await BuildConsentReviewViewModelAsync(documentVersionId, userId, ct);
         if (viewModel is null)
             return NotFound();
 

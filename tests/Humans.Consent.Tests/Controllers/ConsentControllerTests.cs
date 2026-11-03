@@ -224,6 +224,8 @@ public sealed class ConsentControllerTests
     [InlineData("IndexDashboard")]
     [InlineData("ReviewViewer")]
     [InlineData("ReviewDetail")]
+    [InlineData("SubmitViewer")]
+    [InlineData("SubmitDetail")]
     public async Task ConsentPages_StopLoadingAfterRequestCancellation(string boundary)
     {
         using var request = new CancellationTokenSource();
@@ -237,7 +239,8 @@ public sealed class ConsentControllerTests
             ct.ThrowIfCancellationRequested();
             reads++;
             if (abandon && reads == 1 && (string.Equals(boundary, "IndexDashboard", StringComparison.Ordinal)
-                    || string.Equals(boundary, "ReviewDetail", StringComparison.Ordinal)))
+                    || string.Equals(boundary, "ReviewDetail", StringComparison.Ordinal)
+                    || string.Equals(boundary, "SubmitDetail", StringComparison.Ordinal)))
                 await request.CancelAsync();
             return WrapInUserInfo(userId, ActiveProfile());
         }
@@ -254,7 +257,10 @@ public sealed class ConsentControllerTests
             return (ConsentReviewDetail?)null;
         });
         var index = boundary.StartsWith("Index", StringComparison.Ordinal);
-        Func<Task<IActionResult>> load = index ? ctrl.Index : () => ctrl.Review(Guid.NewGuid());
+        Func<Task<IActionResult>> load = index ? ctrl.Index
+            : boundary.StartsWith("Submit", StringComparison.Ordinal)
+                ? () => ctrl.Submit(new ConsentSubmitModel { DocumentVersionId = Guid.NewGuid(), ExplicitConsent = false })
+                : () => ctrl.Review(Guid.NewGuid());
         if (index) Assert.IsType<ViewResult>(await load());
         else Assert.IsType<NotFoundResult>(await load());
         reads = 0;
@@ -262,6 +268,8 @@ public sealed class ConsentControllerTests
         if (boundary.EndsWith("Viewer", StringComparison.Ordinal))
             await request.CancelAsync();
         await Assert.ThrowsAsync<OperationCanceledException>(load);
+        await _consentService.DidNotReceiveWithAnyArgs().SubmitConsentAsync(default, default, default, default!, default!);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ConsentSignedAsync(default);
     }
 
     [HumansFact]
