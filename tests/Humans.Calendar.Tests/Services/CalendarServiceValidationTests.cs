@@ -102,6 +102,13 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=MONTHLY;BYSETPOS=1", false, false)]
     [InlineData("FREQ=DAILY;FREQ=WEEKLY", true, true)]
     [InlineData("FREQ=DAILY;BYDAY=MO;byday=TU", false, true)]
+    [InlineData("FREQ=DAILY;UNTIL=abcdefgh", true, false)]
+    [InlineData("freq=daily;until= 2026060x ", true, true)]
+    [InlineData("FREQ=DAILY;UNTIL=garbage", false, false)]
+    [InlineData("FREQ=DAILY;UNTIL=2026-06-03", false, true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T1000", false, false)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000Zjunk", false, true)]
+    [InlineData("FREQ=DAILY;UNTIL=20260603T100000+0200", false, false)]
     public async Task EventWithResultAsync_InvalidRecurrence_is_rejected_before_persistence(
         string rule, bool allDay, bool update)
     {

@@ -244,6 +244,9 @@ internal sealed class CalendarService(
             var names = parts.Select(part => part[..part.IndexOf('=')].Trim()).ToArray();
             if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length)
                 return "Recurrence rule is malformed: rule parts cannot repeat.";
+            // The library silently ignores UNTIL values it cannot parse.
+            if (names.Contains("UNTIL", StringComparer.OrdinalIgnoreCase) && pattern.Until is null)
+                return "Recurrence rule is malformed: UNTIL must be a valid DATE or DATE-TIME.";
             // The library accepts numeric enum values, which also bypass the all-day frequency guard.
             if (parts.Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
                     part[5..].Trim().ToUpperInvariant() is not ("SECONDLY" or "MINUTELY" or "HOURLY" or
