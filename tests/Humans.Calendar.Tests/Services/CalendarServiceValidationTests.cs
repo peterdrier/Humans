@@ -85,6 +85,8 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=YEARLY;BYDAY=54MO", true, true)]
     [InlineData("FREQ=YEARLY;BYDAY=-54TU", false, false)]
     [InlineData("FREQ=MONTHLY;BYDAY=MO,0SA", true, true)]
+    [InlineData("FREQ= 3 ;COUNT=1", true, false)]
+    [InlineData("FREQ= HOURLY ;COUNT=1", true, true)]
     [InlineData("FREQ=3;COUNT=1", true, false)]
     [InlineData("FREQ=3;COUNT=1", true, true)]
     [InlineData("FREQ=3;COUNT=1", false, false)]
@@ -405,6 +407,9 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
     [InlineData("FREQ=DAILY;UNTIL=20260603T100000z", true)]
     [InlineData("freq=daily;until=20260603t100000z", true)]
+    [InlineData("FREQ=DAILY;UNTIL= 20260603T100000Z ", false)]
+    [InlineData("FREQ=DAILY;UNTIL=\t20260603T100000z\t", true)]
+    [InlineData("FREQ= DAILY ;UNTIL=20260603T100000Z", false)]
     public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
     {
         CalendarService.RecurrenceRuleRefusal(rule).Should().BeNull();
@@ -436,8 +441,10 @@ public class CalendarServiceValidationTests
                 Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateEventWithResultAsync_DATE_until_persists_the_end_of_that_local_day()
+    [HumansTheory]
+    [InlineData("20260603")]
+    [InlineData(" 20260603 ")]
+    public async Task CreateEventWithResultAsync_DATE_until_persists_the_end_of_that_local_day(string until)
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
@@ -447,7 +454,7 @@ public class CalendarServiceValidationTests
             new CreateCalendarEventDto(
                 "Madrid daily events", null, null, null, Guid.NewGuid(),
                 start, start + Duration.FromHours(1), false,
-                "FREQ=DAILY;UNTIL=20260603", "Europe/Madrid"),
+                $"FREQ=DAILY;UNTIL={until}", "Europe/Madrid"),
             Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
@@ -459,6 +466,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansTheory]
+    [InlineData(" 20260329T023000 ", "Europe/Madrid", 2026, 3, 29, 1, 30)]
     [InlineData("20260329T023000", "Europe/Madrid", 2026, 3, 29, 1, 30)]
     [InlineData("20261025T023000", "Europe/Madrid", 2026, 10, 25, 0, 30)]
     [InlineData("20111229", "Pacific/Apia", 2011, 12, 30, 10, 0)]
@@ -480,6 +488,27 @@ public class CalendarServiceValidationTests
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await repo.Received(1).AddAsync(
             Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e => e.RecurrenceUntilUtc == expectedUntil),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("FREQ=DAILY;UNTIL=20260603")]
+    [InlineData("FREQ= DAILY ;UNTIL= 20260603 ")]
+    public async Task CreateEventWithResultAsync_AllDayUntil_preserves_rule_text_and_date_bound(string rule)
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var day = new LocalDate(2026, 6, 1);
+
+        var result = await service.CreateEventWithResultAsync(
+            new CreateCalendarEventDto("All day", null, null, null, Guid.NewGuid(),
+                null, null, true, rule, null, day, day.PlusDays(1)),
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.ErrorMessage);
+        await repo.Received(1).AddAsync(
+            Arg.Is<Humans.Calendar.Domain.CalendarEvent>(e =>
+                e.RecurrenceRule == rule && e.RecurrenceUntilDate == new LocalDate(2026, 6, 4)),
             Arg.Any<CancellationToken>());
     }
 

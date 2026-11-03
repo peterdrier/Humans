@@ -193,10 +193,13 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260602T230000Z")]
-    [Xunit.InlineData("freq=daily;until=20260602t230000z")]
-    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603t000000")]
-    public void Expand_LegacyAllDayUntil_AcceptsValidatedRuleCasing(string rule)
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260602T230000Z", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("freq=daily;until=20260602t230000z", "freq=daily;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603t000000", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260602T230000Z ", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260603t000000 ", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260603 ", "FREQ=DAILY;UNTIL= 20260603 ")]
+    public void Expand_LegacyAllDayUntil_AcceptsValidatedRuleValues(string rule, string projectedRule)
     {
         CalendarService.RecurrenceRuleRefusal(rule).Should().BeNull();
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -212,7 +215,7 @@ public sealed class CalendarOccurrenceExpanderTests
             RecurrenceTimezone = zone.Id,
         });
 
-        info.RecurrenceRule.Should().EndWith("UNTIL=20260603");
+        info.RecurrenceRule.Should().Be(projectedRule);
         var results = CalendarOccurrenceExpander.Expand([info],
             day.AtStartOfDayInZone(zone).ToInstant(),
             day.PlusDays(5).AtStartOfDayInZone(zone).ToInstant(),
