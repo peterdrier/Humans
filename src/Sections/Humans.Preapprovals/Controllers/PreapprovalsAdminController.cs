@@ -131,7 +131,7 @@ internal sealed class PreapprovalsAdminController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> IssueMany(Guid programId, Guid[] userIds, CancellationToken ct) =>
         ManageAsync(programId, actor => preapprovals.IssueManyAsync(programId, userIds, actor, ct),
-            $"{userIds.Distinct().Count()} pre-approvals issued", ct);
+            "Pre-approvals issued", ct);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Approve")]
     [ValidateAntiForgeryToken]

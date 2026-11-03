@@ -243,6 +243,41 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await OpenContext().Grants.CountAsync(Ct)).Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData("issue")]
+    [InlineData("batch")]
+    [InlineData("apply")]
+    public async Task NewGrants_ResolveMergedBeneficiariesBeforePersistenceAndBatchCeiling(string operation)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        var snapshot = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(snapshot));
+        var program = await SeedProgramAsync(perPerson: 300m, ceiling: 300m);
+        var service = NewService();
+        var actor = SeedUser("Actor");
+
+        switch (operation)
+        {
+            case "issue":
+                (await service.IssueAsync(program.Id, archived, null, null, actor, Ct)).Refusal.Should().BeNull();
+                break;
+            case "batch":
+                var result = await service.IssueManyAsync(program.Id, [archived, survivor, archived], actor, Ct);
+                result.Refusal.Should().BeNull();
+                result.Value.Should().ContainSingle();
+                break;
+            default:
+                (await service.ApplyAsync(program.Id, archived, null, null, Ct)).Refusal.Should().BeNull();
+                break;
+        }
+
+        await using var db = OpenContext();
+        var grant = (await db.Grants.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        grant.BeneficiaryUserId.Should().Be(survivor);
+        grant.MaxAmount.Should().Be(300m);
+    }
+
     [HumansFact]
     public async Task IssueMany_IssuesOnePerDistinctPerson_PerGrantRefused()
     {
