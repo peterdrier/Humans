@@ -6,10 +6,8 @@
     static string CellClass(int total, int filled)
     {
         if (total == 0) return "bg-light text-muted";   // No shift that day for this rota.
-        var pct = 100.0 * filled / total;
-        if (pct >= 80) return "bg-success text-white";
-        if (pct >= 60) return "bg-warning text-dark";
-        return "bg-danger text-white";                   // Under-staffed (including zero-confirmed).
+        return StaffingCoveragePresentation.Describe(
+            StaffingCoveragePresentation.Percentage(filled, total)).CellClass;
     }
 
     static string CellLabel(int total, int filled) =>

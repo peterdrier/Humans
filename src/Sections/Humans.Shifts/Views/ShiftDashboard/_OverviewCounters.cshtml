@@ -1,17 +1,9 @@
 @model (DashboardOverview Overview, ShiftPeriod? SelectedPeriod)
 
 @{
-    static string PctClass(double pct) =>
-        pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
-
-    string PctStatusLabel(double pct) =>
-        pct >= 80 ? Localizer["Shifts_ShiftDash_Status_OnTrack"].Value
-        : pct >= 60 ? Localizer["Shifts_ShiftDash_Status_AtRisk"].Value
-        : Localizer["Shifts_ShiftDash_Status_BelowTarget"].Value;
-
     var o = Model.Overview;
-    var slotsPct = o.TotalSlots == 0 ? 0 : 100.0 * o.FilledSlots / o.TotalSlots;
-    var engagedPct = o.TicketHolderCount == 0 ? 0 : 100.0 * o.TicketHoldersEngaged / o.TicketHolderCount;
+    var slotsPct = StaffingCoveragePresentation.Percentage(o.FilledSlots, o.TotalSlots);
+    var engagedPct = StaffingCoveragePresentation.Percentage(o.TicketHoldersEngaged, o.TicketHolderCount);
     var unreached = Math.Max(0, o.TicketHolderCount - o.TicketHoldersEngaged);
 
     // TEMP: ticket figures are not shareable yet; flip once they are. DashboardOverview still computes them.
@@ -27,9 +19,9 @@
                 @if (!Model.SelectedPeriod.HasValue)
                 {
                     <div class="mt-2">
-                        <span class="badge @PctClass(o.PeriodFillRates.BuildPct) me-1">@SharedLocalizer["Shifts_SetUp"] @o.PeriodFillRates.BuildPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.BuildPct)</span></span>
-                        <span class="badge @PctClass(o.PeriodFillRates.EventPct) me-1">@SharedLocalizer["Shifts_Event"] @o.PeriodFillRates.EventPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.EventPct)</span></span>
-                        <span class="badge @PctClass(o.PeriodFillRates.StrikePct)">@SharedLocalizer["Shifts_Strike"] @o.PeriodFillRates.StrikePct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(o.PeriodFillRates.StrikePct)</span></span>
+                        <span class="badge @StaffingCoveragePresentation.Describe(o.PeriodFillRates.BuildPct).BadgeClass me-1">@SharedLocalizer["Shifts_SetUp"] @o.PeriodFillRates.BuildPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(o.PeriodFillRates.BuildPct).StatusKey]</span></span>
+                        <span class="badge @StaffingCoveragePresentation.Describe(o.PeriodFillRates.EventPct).BadgeClass me-1">@SharedLocalizer["Shifts_Event"] @o.PeriodFillRates.EventPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(o.PeriodFillRates.EventPct).StatusKey]</span></span>
+                        <span class="badge @StaffingCoveragePresentation.Describe(o.PeriodFillRates.StrikePct).BadgeClass">@SharedLocalizer["Shifts_Strike"] @o.PeriodFillRates.StrikePct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(o.PeriodFillRates.StrikePct).StatusKey]</span></span>
                     </div>
                 }
             </div>

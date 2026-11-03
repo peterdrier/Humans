@@ -1,16 +1,6 @@
 @model (IReadOnlyList<DepartmentStaffingRow> Rows, ShiftPeriod? SelectedPeriod)
 
 @{
-    static string PctClass(double pct) =>
-        pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
-
-    static double SlotPct(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
-
-    string PctStatusLabel(double pct) =>
-        pct >= 80 ? Localizer["Shifts_ShiftDash_Status_OnTrack"].Value
-        : pct >= 60 ? Localizer["Shifts_ShiftDash_Status_AtRisk"].Value
-        : Localizer["Shifts_ShiftDash_Status_BelowTarget"].Value;
-
     var periodSelected = Model.SelectedPeriod.HasValue;
 }
 
@@ -39,7 +29,7 @@
                 @foreach (var row in Model.Rows)
                 {
                     var rowId = "dept-" + row.DepartmentId.ToString("N");
-                    var pct = SlotPct(row.FilledSlots, row.TotalSlots);
+                    var pct = StaffingCoveragePresentation.Percentage(row.FilledSlots, row.TotalSlots);
                     // Subgroups are always worth a drill-down; with no period selected the per-period breakdown is too.
                     var hasDrilldown = row.Subgroups.Count > 0 || !periodSelected;
                     if (hasDrilldown)
@@ -58,7 +48,7 @@
                             }
                         </td>
                         <td class="text-end">@row.FilledSlots / @row.TotalSlots</td>
-                        <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pct)</span></span></td>
+                        <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(pct).BadgeClass">@pct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(pct).StatusKey]</span></span></td>
                         <td class="text-end">@row.SlotsRemaining</td>
                     </tr>
                     <tr class="collapse" id="@rowId">
@@ -83,7 +73,7 @@
                                     <tbody>
                                         @foreach (var sub in row.Subgroups)
                                         {
-                                            var sPct = SlotPct(sub.FilledSlots, sub.TotalSlots);
+                                            var sPct = StaffingCoveragePresentation.Percentage(sub.FilledSlots, sub.TotalSlots);
                                             <tr>
                                                 <td>
                                                     @if (sub.IsDirect)
@@ -100,16 +90,16 @@
                                                     }
                                                 </td>
                                                 <td class="text-end">@sub.FilledSlots / @sub.TotalSlots</td>
-                                                <td class="text-end"><span class="badge @PctClass(sPct)">@sPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(sPct)</span></span></td>
+                                                <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(sPct).BadgeClass">@sPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(sPct).StatusKey]</span></span></td>
                                                 <td class="text-end">@sub.SlotsRemaining</td>
                                                 @if (!periodSelected)
                                                 {
-                                                    var bPct = SlotPct(sub.Build.FilledSlots, sub.Build.TotalSlots);
-                                                    var ePct = SlotPct(sub.Event.FilledSlots, sub.Event.TotalSlots);
-                                                    var stPct = SlotPct(sub.Strike.FilledSlots, sub.Strike.TotalSlots);
-                                                    <td class="text-end"><span class="badge @PctClass(bPct)">@bPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(bPct)</span></span></td>
-                                                    <td class="text-end"><span class="badge @PctClass(ePct)">@ePct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(ePct)</span></span></td>
-                                                    <td class="text-end"><span class="badge @PctClass(stPct)">@stPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(stPct)</span></span></td>
+                                                    var bPct = StaffingCoveragePresentation.Percentage(sub.Build.FilledSlots, sub.Build.TotalSlots);
+                                                    var ePct = StaffingCoveragePresentation.Percentage(sub.Event.FilledSlots, sub.Event.TotalSlots);
+                                                    var stPct = StaffingCoveragePresentation.Percentage(sub.Strike.FilledSlots, sub.Strike.TotalSlots);
+                                                    <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(bPct).BadgeClass">@bPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(bPct).StatusKey]</span></span></td>
+                                                    <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(ePct).BadgeClass">@ePct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(ePct).StatusKey]</span></span></td>
+                                                    <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(stPct).BadgeClass">@stPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(stPct).StatusKey]</span></span></td>
                                                 }
                                             </tr>
                                         }
@@ -133,11 +123,11 @@
                                             (SharedLocalizer["Shifts_Event"].Value, row.Event),
                                             (SharedLocalizer["Shifts_Strike"].Value, row.Strike) })
                                         {
-                                            var pPct = SlotPct(p.FilledSlots, p.TotalSlots);
+                                            var pPct = StaffingCoveragePresentation.Percentage(p.FilledSlots, p.TotalSlots);
                                             <tr>
                                                 <td>@label</td>
                                                 <td class="text-end">@p.FilledSlots / @p.TotalSlots</td>
-                                                <td class="text-end"><span class="badge @PctClass(pPct)">@pPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pPct)</span></span></td>
+                                                <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(pPct).BadgeClass">@pPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(pPct).StatusKey]</span></span></td>
                                                 <td class="text-end">@p.SlotsRemaining</td>
                                             </tr>
                                         }
@@ -162,7 +152,7 @@
                             }
                         </td>
                         <td class="text-end">@row.FilledSlots / @row.TotalSlots</td>
-                        <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pct)</span></span></td>
+                        <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(pct).BadgeClass">@pct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(pct).StatusKey]</span></span></td>
                         <td class="text-end">@row.SlotsRemaining</td>
                     </tr>
                     }
