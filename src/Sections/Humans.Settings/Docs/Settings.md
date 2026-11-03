@@ -112,6 +112,10 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 
 ## Invariants
 
+- Event save, timezone change and event activation resolve the signed-in account
+  before writing and audit the surviving account ID after a merge. Missing accounts
+  are challenged; cancelled account lookups perform no write.
+
 - Event forms require every rendered field to be posted. Missing keys cannot mint a new cycle or reset the calendar, early-entry settings or flags through defaults. An explicitly blank id still starts a new cycle; blank optional early-entry values still clear them. Existing false and zero values remain valid.
 
 - The event-name editor uses Elsewhere in its example.

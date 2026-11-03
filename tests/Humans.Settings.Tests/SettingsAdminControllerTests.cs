@@ -39,14 +39,72 @@ public sealed class SettingsAdminControllerTests
     private SettingsAdminController BuildSut()
     {
         var controller = new SettingsAdminController(_settings, _users);
+        var actorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test")),
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
         };
         controller.ControllerContext = new ControllerContext { HttpContext = http };
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         return controller;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0, 0)]
+    [Xunit.InlineData(0, 1)]
+    [Xunit.InlineData(0, 2)]
+    [Xunit.InlineData(1, 0)]
+    [Xunit.InlineData(1, 1)]
+    [Xunit.InlineData(1, 2)]
+    [Xunit.InlineData(2, 0)]
+    [Xunit.InlineData(2, 1)]
+    [Xunit.InlineData(2, 2)]
+    public async Task Settings_mutation_resolves_account_before_writing(int action, int mode)
+    {
+        var controller = BuildSut();
+        var cookieId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var survivorId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(mode == 1 ? null :
+                UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        _settings.SaveTimeZoneAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+        _settings.ActivateEventSettingsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+        if (mode == 2)
+            await request.CancelAsync();
+        var eventId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.Index(MakeForm(eventId, false), request.Token),
+            1 => () => controller.TimeZone("Europe/Madrid", request.Token),
+            _ => () => controller.Activate(eventId, request.Token),
+        };
+
+        if (mode == 2)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (mode == 1)
+            (await invoke()).Should().BeOfType<ChallengeResult>();
+        else
+        {
+            (await invoke()).Should().BeOfType<RedirectResult>();
+            var write = _settings.ReceivedCalls().Should().ContainSingle().Subject;
+            write.GetArguments()[1].Should().Be(survivorId);
+            write.GetArguments()[2].Should().Be(request.Token);
+            return;
+        }
+
+        _settings.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
     }
 
     private static EventSettingsViewModel MakeForm(Guid? id, bool isActive) => new()
@@ -227,7 +285,6 @@ public sealed class SettingsAdminControllerTests
     [HumansFact]
     public async Task Index_Post_SavesWithTheAuthenticatedActor()
     {
-        // The controller resolves the actor from the claims principal, with no Users lookup.
         var sut = BuildSut();
         var actorId = Guid.Parse(((ClaimsIdentity)sut.HttpContext.User.Identity!)
             .FindFirst(ClaimTypes.NameIdentifier)!.Value);
