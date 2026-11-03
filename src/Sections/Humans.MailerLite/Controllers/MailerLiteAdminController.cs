@@ -158,9 +158,10 @@ internal sealed class MailerLiteAdminController(
         var audience = _audiences.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.Ordinal));
         if (audience is null) return NotFound();
 
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+
         try
         {
-            var actor = await GetCurrentUserInfoAsync();
             // Not the request token: an admin closing the tab must not leave the audience half-pushed.
             var result = await audienceSync.SyncAsync(audience, actor?.Id, CancellationToken.None);
             TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
@@ -183,9 +184,10 @@ internal sealed class MailerLiteAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncAll()
     {
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+
         try
         {
-            var actor = await GetCurrentUserInfoAsync();
             // Not the request token; see SyncAudience.
             var results = await audienceSync.SyncAllAsync(actor?.Id, CancellationToken.None);
 

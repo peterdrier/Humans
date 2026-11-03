@@ -78,6 +78,67 @@ public class MailerLiteAdminControllerTests
             Errors: 0, Elapsed: Duration.Zero);
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AudienceSyncActorRead_PropagatesRequestCancellationBeforeWrites(bool all)
+    {
+        using var request = new CancellationTokenSource();
+        var observed = CancellationToken.None;
+        async ValueTask<UserInfo?> CancelActorAsync(CancellationToken ct)
+        {
+            observed = ct;
+            await request.CancelAsync();
+            throw new TaskCanceledException("Actor lookup cancelled", null, observed);
+        }
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(call => CancelActorAsync(call.Arg<CancellationToken>()));
+        var audience = Substitute.For<IMailerLiteAudience>();
+        audience.Key.Returns("test");
+        audience.DisplayName.Returns("Test audience");
+        var controller = BuildSut(audiences: [audience]);
+        controller.HttpContext.RequestAborted = request.Token;
+        Func<Task> sync = () => all ? controller.SyncAll() : controller.SyncAudience("test");
+
+        await sync.Should().ThrowAsync<TaskCanceledException>();
+        observed.Should().Be(request.Token);
+        _audienceSync.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.ContainsKey("Banner").Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AudienceSyncRemoteTimeout_StillShowsBannerAfterRequestAbandonment(bool all)
+    {
+        using var request = new CancellationTokenSource();
+        var audience = Substitute.For<IMailerLiteAudience>();
+        audience.Key.Returns("test");
+        audience.DisplayName.Returns("Test audience");
+        async Task<T> TimeoutAsync<T>()
+        {
+            await request.CancelAsync();
+            throw new TaskCanceledException("HTTP timeout");
+        }
+        if (all)
+            _audienceSync.SyncAllAsync(_actorUserId, Arg.Any<CancellationToken>())
+                .Returns(_ => TimeoutAsync<IReadOnlyList<AudienceSyncResult>>());
+        else
+            _audienceSync.SyncAsync(audience, _actorUserId, Arg.Any<CancellationToken>())
+                .Returns(_ => TimeoutAsync<AudienceSyncResult>());
+        var controller = BuildSut(audiences: [audience]);
+        controller.HttpContext.RequestAborted = request.Token;
+
+        var result = all ? await controller.SyncAll() : await controller.SyncAudience("test");
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["Banner"].Should().BeOfType<string>().Which.Should().Contain("timed out");
+        if (all)
+            await _audienceSync.Received(1).SyncAllAsync(_actorUserId, CancellationToken.None);
+        else
+            await _audienceSync.Received(1).SyncAsync(audience, _actorUserId, CancellationToken.None);
+    }
+
+    [HumansTheory]
     [InlineData("merged")]
     [InlineData("missing")]
     [InlineData("cancelled")]
