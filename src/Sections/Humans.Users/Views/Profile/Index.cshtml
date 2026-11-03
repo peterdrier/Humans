@@ -87,11 +87,17 @@
                 </div>
                 <div class="card-body p-0">
                     @{
+                        Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
+                            @if (item.MarkedByUserId is { } reviewerId)
+                            {
+                                <vc:human user-id="@reviewerId" link="None" />
+                            }
+                        </text>;
                         var noShowTable = TableModel.For(Model.NoShowHistory!)
                             .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
                             .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
                             .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel)
-                            .Column(Localizer["Users_Profile_MarkedBy"].Value, r => r.MarkedByName)
+                            .Template(Localizer["Users_Profile_MarkedBy"].Value, reviewerCell)
                             .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
                             .Build();
                     }

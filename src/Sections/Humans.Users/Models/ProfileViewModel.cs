@@ -373,6 +373,6 @@ internal sealed class NoShowHistoryItem
     public string ShiftLabel { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;
     public string ShiftDateLabel { get; set; } = string.Empty;
-    public string? MarkedByName { get; set; }
+    public Guid? MarkedByUserId { get; set; }
     public string? MarkedAtLabel { get; set; }
 }

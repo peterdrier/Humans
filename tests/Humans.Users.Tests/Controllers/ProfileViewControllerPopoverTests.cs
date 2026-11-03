@@ -101,13 +101,17 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
         _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>())
             .Returns(new[] { Guid.NewGuid() });
+        var reviewerId = Guid.NewGuid();
+        var missingReviewerId = Guid.NewGuid();
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
         var reviewed = Instant.FromUtc(2026, 3, 1, 12, 0);
         _shiftSignups.GetNoShowHistoryAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(new[]
             {
                 new NoShowHistoryEntry("Undated", Guid.Empty, reviewed, "UTC", null, null),
-                new NoShowHistoryEntry("Older", Guid.Empty, reviewed, "UTC", null, reviewed),
-                new NoShowHistoryEntry("Newest", Guid.Empty, reviewed, "UTC", null, reviewed + Duration.FromHours(1)),
+                new NoShowHistoryEntry("Older", Guid.Empty, reviewed, "UTC", missingReviewerId, reviewed),
+                new NoShowHistoryEntry("Newest", Guid.Empty, reviewed, "UTC", reviewerId, reviewed + Duration.FromHours(1)),
             });
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
 
@@ -119,6 +123,8 @@ public class ProfileViewControllerPopoverTests
         model.CanViewShiftSignups.Should().BeTrue();
         model.CanViewSentMessages.Should().BeTrue();
         model.NoShowHistory!.Select(row => row.ShiftLabel).Should().Equal("Newest", "Older", "Undated");
+        model.NoShowHistory!.Select(row => row.MarkedByUserId).Should().Equal(reviewerId, missingReviewerId, null);
+        await _userService.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
         await _shiftManagement.Received(2).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
         await _shiftSignups.Received(1).GetNoShowHistoryAsync(targetId, source.Token);
     }
