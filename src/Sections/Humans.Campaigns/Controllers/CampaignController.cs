@@ -134,11 +134,7 @@ internal sealed class CampaignController(
         var page = await campaignService.GetDetailPageAsync(id, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
-        return View(new CampaignDetailViewModel
-        {
-            Campaign = page.Campaign,
-            Stats = page.Stats
-        });
+        return View(page);
     }
 
     [HttpPost("{id:guid}/ImportCodes")]
@@ -308,13 +304,7 @@ internal sealed class CampaignController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        return View(new CampaignSendWaveViewModel
-        {
-            Campaign = page.Campaign,
-            Teams = page.Teams,
-            SelectedTeamId = page.SelectedTeamId,
-            Preview = page.Preview
-        });
+        return View(page);
     }
 
     [HttpPost("{id:guid}/SendWave")]
