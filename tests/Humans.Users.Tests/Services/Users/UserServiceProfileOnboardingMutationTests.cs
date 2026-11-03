@@ -443,10 +443,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsAndClassifiesRejected()
+    public async Task RetiredLegacyRejection_DoesNotOverrideTheStoredState()
     {
-        // A legacy rejected profile (profiles.RejectedAt set) whose users.State never
-        // recorded Rejected: it reads as rejected, and the next transition stores Rejected.
+        // Migration completion makes users.State authoritative even if a frozen column differs.
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
         var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
@@ -457,11 +456,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .State.Should().NotBe(UserState.Rejected);
 
         var info = await _service.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken);
-        info!.IsRejected.Should().BeTrue();
+        info!.IsRejected.Should().BeFalse();
 
         await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        user.State.Should().Be(UserState.Rejected);
+        user.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]

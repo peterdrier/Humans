@@ -122,7 +122,7 @@ internal sealed partial class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        // Read-only: the classifier needs the profile's names and legacy RejectedAt.
+        // Read-only: the classifier needs the profile's name fields.
         var profile = await ctx.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);

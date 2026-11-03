@@ -87,22 +87,6 @@ public sealed record ProfileInfo(
     string? AdminNotes,
     string? ContributionInterests,
     string? BoardNotes,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    bool IsApproved,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    LegacyConsentCheckStatus? ConsentCheckStatus,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Instant? ConsentCheckAt,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Guid? ConsentCheckedByUserId,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    string? ConsentCheckNotes,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    string? RejectionReason,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Instant? RejectedAt,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Guid? RejectedByUserId,
     bool NoPriorBurnExperience,
     IReadOnlyList<ContactFieldInfo> ContactFields,
     IReadOnlyList<ProfileLanguageInfo> Languages,
@@ -244,14 +228,10 @@ public sealed record UserInfo(
         State is UserState.Suspended or UserState.AdminSuspended;
 
     /// <summary>
-    /// Stored <see cref="UserState.Rejected"/>, or (until the <c>consent.profile-review</c> copy is done) a legacy
-    /// profile rejection time. A tombstone reads its final state instead; Consent keeps the rejection record.
+    /// Stored <see cref="UserState.Rejected"/>. A tombstone reads its final state instead;
+    /// Consent keeps the rejection record.
     /// </summary>
-    public bool IsRejected =>
-        State == UserState.Rejected
-#pragma warning disable HUM_PROFILE_REVIEW // legacy arm, retired with the consent.profile-review copy
-        || Profile?.RejectedAt is not null;
-#pragma warning restore HUM_PROFILE_REVIEW
+    public bool IsRejected => State == UserState.Rejected;
 
     /// <summary>The population person search and the single-person lookups resolve.</summary>
     public bool IsSearchable => Profile is not null && !IsRejected;

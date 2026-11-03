@@ -13,9 +13,6 @@ internal interface IConsentReviewRepository : IRepository
 
     Task UpsertAsync(ConsentReview values, CancellationToken ct = default);
 
-    /// <summary>False when the member already has a row.</summary>
-    Task<bool> TryInsertAsync(ConsentReview values, CancellationToken ct = default);
-
     /// <summary>Article 17: nulls the notes and rejection reason, keeping the rest.</summary>
     Task EraseFreeTextAsync(Guid userId, CancellationToken ct = default);
 }

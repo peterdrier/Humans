@@ -16,9 +16,6 @@ public static class UserFixtures
     public static UserState StateFor(ProfileInfo? profile) =>
         profile switch
         {
-#pragma warning disable HUM_PROFILE_REVIEW // a legacy-rejected fixture profile still classifies as Rejected
-            { RejectedAt: not null } => UserState.Rejected,
-#pragma warning restore HUM_PROFILE_REVIEW
             not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
                 && !string.IsNullOrWhiteSpace(profile.FirstName)
                 && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
@@ -49,14 +46,6 @@ public static class UserFixtures
         string? adminNotes = null,
         string? contributionInterests = null,
         string? boardNotes = null,
-        bool isApproved = false,
-        LegacyConsentCheckStatus? consentCheckStatus = null,
-        Instant? consentCheckAt = null,
-        Guid? consentCheckedByUserId = null,
-        string? consentCheckNotes = null,
-        string? rejectionReason = null,
-        Instant? rejectedAt = null,
-        Guid? rejectedByUserId = null,
         bool noPriorBurnExperience = false,
         IReadOnlyList<ContactFieldInfo>? contactFields = null,
         IReadOnlyList<ProfileLanguageInfo>? languages = null,
@@ -87,14 +76,6 @@ public static class UserFixtures
             AdminNotes: adminNotes,
             ContributionInterests: contributionInterests,
             BoardNotes: boardNotes,
-            IsApproved: isApproved,
-            ConsentCheckStatus: consentCheckStatus,
-            ConsentCheckAt: consentCheckAt,
-            ConsentCheckedByUserId: consentCheckedByUserId,
-            ConsentCheckNotes: consentCheckNotes,
-            RejectionReason: rejectionReason,
-            RejectedAt: rejectedAt,
-            RejectedByUserId: rejectedByUserId,
             NoPriorBurnExperience: noPriorBurnExperience,
             ContactFields: contactFields ?? [],
             Languages: languages ?? [],

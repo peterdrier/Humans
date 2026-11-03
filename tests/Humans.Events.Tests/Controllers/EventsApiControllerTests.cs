@@ -301,8 +301,7 @@ public class EventsApiControllerTests
         var profile = UserFixtures.Profile(
             burnerName: burnerName,
             firstName: "Test",
-            lastName: "Submitter",
-            isApproved: true);
+            lastName: "Submitter");
         var user = new User
         {
             Id = userId,

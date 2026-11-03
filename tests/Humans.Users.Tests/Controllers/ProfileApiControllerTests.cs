@@ -118,13 +118,13 @@ public class ProfileApiControllerTests
             IsApproved = true,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            RejectedAt = isRejected ? Instant.FromUtc(2026, 2, 1, 0, 0) : null,
         };
         var user = new User
         {
             Id = userId,
             BurnerName = burnerName,
             DisplayName = "Target Display",
+            State = isRejected ? UserState.Rejected : UserState.Active,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

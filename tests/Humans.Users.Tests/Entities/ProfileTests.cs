@@ -57,13 +57,14 @@ public class ProfileTests
     }
 
     [HumansTheory]
-    [InlineData(LegacyConsentCheckStatus.Pending)]
-    [InlineData(LegacyConsentCheckStatus.Cleared)]
-    [InlineData(LegacyConsentCheckStatus.Flagged)]
-    public void Profile_CanSetConsentCheckStatus(LegacyConsentCheckStatus status)
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Profile_CanSetConsentCheckStatus(int value)
     {
         var profile = CreateProfile();
 
+        var status = (LegacyConsentCheckStatus)value;
         profile.ConsentCheckStatus = status;
 
         profile.ConsentCheckStatus.Should().Be(status);

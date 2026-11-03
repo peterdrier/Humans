@@ -113,11 +113,7 @@ internal sealed class Profile
     [PersonalData]
     public string? Iban { get; set; }
 
-    /// <summary>
-    /// Frozen legacy column, like the review columns below: Consent's <c>consent_reviews</c> is the
-    /// live review. Kept until the <c>consent.profile-review</c> copy is done in production;
-    /// <see cref="RejectedAt"/> still feeds the state classifier's legacy arm until then.
-    /// </summary>
+    /// <summary>Frozen storage only; Consent owns the review. Kept until the separate column drop.</summary>
     public bool IsApproved { get; set; }
 
     /// <summary>

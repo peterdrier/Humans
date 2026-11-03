@@ -227,7 +227,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var rejected = await SeedUserAsync(UserState.Rejected);
         var active = await SeedUserAsync(UserState.Active);
         var rejectedProfile = NewProfile(rejected.Id, "Burner", "First", "Last");
-        rejectedProfile.RejectedAt = _clock.GetCurrentInstant();
         _dbContext.Profiles.Add(rejectedProfile);
         _dbContext.Profiles.Add(NewProfile(active.Id, "Burner", "First", "Last"));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);

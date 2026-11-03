@@ -889,15 +889,9 @@ internal sealed class UserService(
             profile.BoardNotes,
             // Frozen legacy column; Governance exports the live tier.
             profile.MembershipTier,
-            profile.IsApproved,
             // JSON key pinned: GDPR export stability.
             IsSuspended = isSuspended,
             profile.NoPriorBurnExperience,
-            ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
-            ConsentCheckAt = profile.ConsentCheckAt.ToIso8601(),
-            profile.ConsentCheckNotes,
-            profile.RejectionReason,
-            RejectedAt = profile.RejectedAt.ToIso8601(),
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,
             profile.EmergencyContactRelationship,

@@ -479,8 +479,7 @@ public class NotificationMeterProviderTests : IDisposable
                 profile: UserFixtures.Profile(
                     burnerName: "B",
                     firstName: "F",
-                    lastName: "L",
-                    isApproved: false),
+                    lastName: "L"),
                 communicationPreferences: []);
         }).ToList();
 

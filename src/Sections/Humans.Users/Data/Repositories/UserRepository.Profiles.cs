@@ -149,8 +149,6 @@ internal sealed partial class UserRepository
             profile.AllergyOtherText = null;
             profile.IntoleranceOtherText = null;
             profile.MedicalConditions = null;
-            profile.ConsentCheckNotes = null;
-            profile.RejectionReason = null;
 
             // Erase the legacy column until its separate drop; Finance owns live payment details.
             profile.Iban = null;

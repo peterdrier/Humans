@@ -51,8 +51,7 @@ Three aggregates and one content proxy, each with a single writer:
   invalidation).
 - **Consent side**: `ConsentRepository` (append-only), `ConsentService` (business rules, GDPR
   contributor), `CachingConsentService` (per-user lazy cache, synchronous refresh on submit).
-- **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows, legacy
-  profile fallback until the `consent.profile-review` copy retires), `ConsentReminderRepository` +
+- **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows), `ConsentReminderRepository` +
   `ConsentReminderService` (the reminder cooldown stamp).
 - **Statutes proxy**: `LegalDocumentService`, GitHub to IMemoryCache, no DB.
 - **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers,
@@ -95,8 +94,8 @@ Three aggregates and one content proxy, each with a single writer:
   (`IOnboardingIntake.RejectSignupAsync`); Onboarding also sets the `Pending` status at the
   review threshold through `IConsentWrite`. Fake accounts (Users' `UserInfo.IsFake`) never
   count, through `ConsentReviewPredicates`.
-- **Retiring the legacy review fallback** waits on the `consent.profile-review` data migration in
-  production; then `LegacyReview` and the profile review columns go.
+- **Legacy review retirement:** production reported `consent.profile-review` done on 2026-11-03.
+  The copy and fallback are retired; frozen profile review columns await a separate drop.
 - `ILegalDocumentSyncService` cannot fold inward while Governance's `MembershipCalculator`
   injects it.
 
