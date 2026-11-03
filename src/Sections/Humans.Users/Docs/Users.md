@@ -187,6 +187,12 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Profile, medical, email and administrator lifecycle actions honour request
+  cancellation during account preflight, including purge's raw target-name lookup.
+  These reads finish before mutation handling; started writes retain their existing
+  tokens. Medical account-lookup cancellation propagates instead of showing a save
+  failure.
+
 - A fake account (`UserInfo.IsFake`) is marked by the section that creates it, through `IUserWrite.MarkFakeAsync`: Tickets' gate-terminal seeder on every password set, Development's persona seeder on every role-persona sign-in. Guests stay unmarked so onboarding can be tested end to end. The marker grants and blocks nothing; the gate terminal's login, route restriction and policies still key on `SystemUserIds.GateTerminal`.
 
 - Base’s shared Human component reads `UserInfo.ProfilePictureUrl`, matching profile summaries: uploaded pictures use the canonical versioned route and humans without uploads retain their fallback picture.

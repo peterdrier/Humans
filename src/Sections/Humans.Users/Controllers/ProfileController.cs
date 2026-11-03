@@ -119,7 +119,7 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return NotFound();
         model.UserId = user.Id;
         model.HasCustomProfilePicture = user.Profile?.HasCustomPicture == true;
@@ -330,12 +330,12 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical([Bind(nameof(MedicalViewModel.MedicalConditions))] MedicalViewModel model)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null)
+            return NotFound();
+
         try
         {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return NotFound();
-
             // From the principal, so the reveal list on a re-rendered form is always the member's own.
             model.UserId = user.Id;
             if (!ModelState.IsValid)

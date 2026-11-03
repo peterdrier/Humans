@@ -125,6 +125,35 @@ public class ProfileEmailsControllerGridTests
             .Returns(AuthorizationResult.Success());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task Email_mutation_account_preflight_observes_cancellation(int action)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+        });
+        await request.CancelAsync();
+        var emailId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => _controller.SetEmailVisibility(emailId, null),
+            1 => () => _controller.DeleteEmail(emailId),
+            _ => () => _controller.Link("Google"),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _authorizationService.ReceivedCalls().Should().BeEmpty();
+        _userEmailService.ReceivedCalls().Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Emails_RequestAborted_CancelsEmailGridReads()
     {

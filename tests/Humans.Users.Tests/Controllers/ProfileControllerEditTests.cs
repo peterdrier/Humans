@@ -124,6 +124,30 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Profile_mutation_account_preflight_observes_cancellation(bool medical)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = medical
+            ? () => _controller.Medical(new MedicalViewModel())
+            : () => _controller.Edit(new ProfileViewModel());
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _profileEditorService.ReceivedCalls().Should().BeEmpty();
+        _userService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == nameof(IUserService.GetUserInfoAsync));
+        _controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("missingType", "BoardOnly")]
     [InlineData("missingVisibility", "BoardOnly")]
     [InlineData("retired", "BoardOnly")]

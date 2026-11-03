@@ -209,7 +209,7 @@ internal sealed class ProfileEmailsController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -255,7 +255,7 @@ internal sealed class ProfileEmailsController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -323,7 +323,7 @@ internal sealed class ProfileEmailsController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 

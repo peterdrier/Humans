@@ -125,7 +125,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -142,7 +142,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -159,7 +159,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return Unauthorized();
 
@@ -218,8 +218,8 @@ internal sealed class UsersAdminController(
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
         // Before the purge collapses the identity.
-        var displayName = (await _userService.GetRawUserInfoAsync(id))?.BurnerName;
-        var currentUser = await GetCurrentUserInfoAsync();
+        var displayName = (await _userService.GetRawUserInfoAsync(id, HttpContext.RequestAborted))?.BurnerName;
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
 
         // AccountDeletionService.PurgeAsync owns the production and self-purge refusals.
         var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);

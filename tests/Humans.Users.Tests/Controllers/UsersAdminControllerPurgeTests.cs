@@ -92,6 +92,48 @@ public class UsersAdminControllerPurgeTests
     }
 
     [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public async Task Lifecycle_account_preflight_observes_cancellation(int action)
+    {
+        using var request = new CancellationTokenSource();
+        var targetId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _adminUserId }.ToUserInfo());
+        });
+        _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (action == 4)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return new ValueTask<UserInfo?>(new User { Id = targetId }.ToUserInfo());
+        });
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.SuspendHuman(targetId, null),
+            1 => () => controller.UnsuspendHuman(targetId),
+            2 => () => controller.RejectSignup(targetId, null),
+            _ => () => controller.PurgeHuman(targetId),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _lifecycle.ReceivedCalls().Should().BeEmpty();
+        _onboarding.ReceivedCalls().Should().BeEmpty();
+        _deletion.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(" \tBare Human\n")]
     [InlineData("  member@example.org\t")]
     public async Task AdminList_SearchIgnoresWhitespaceForAccountsWithoutProfiles(string search)
