@@ -599,7 +599,6 @@ internal sealed class GoogleAdminService(
                 .Select(u => new
                 {
                     u.Id,
-                    DisplayName = u.BurnerName,
                     GoogleEmail = identities.TryGetValue(u.Id, out var identity) ? identity.Email : null,
                 })
                 .Where(x => x.GoogleEmail is not null &&
@@ -643,7 +642,6 @@ internal sealed class GoogleAdminService(
                         renames.Add(new EmailRenameInfo
                         {
                             UserId = user.Id,
-                            DisplayName = user.DisplayName,
                             OldEmail = user.GoogleEmail!,
                             NewEmail = account.PrimaryEmail,
                             AffectedResourceCount = affectedResources

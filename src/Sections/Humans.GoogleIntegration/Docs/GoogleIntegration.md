@@ -150,6 +150,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - The Workspace accounts controller orders existing `WorkspaceAccountInfo` rows by primary email with ordinal comparison ignoring case. The service supplies account facts and counts without display ordering; status, member-link, 2FA and recovery fields are preserved.
 
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
+- Sync preview local-user rows and email-rename diagnostics render identity through `Human`; a blank copied name cannot hide a known user. External sync rows retain supplied names. Rename-table client sorting follows the rendered name.
 - Preview requests reject redirects and display the load failure; login or access-denied pages cannot become sync previews.
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.

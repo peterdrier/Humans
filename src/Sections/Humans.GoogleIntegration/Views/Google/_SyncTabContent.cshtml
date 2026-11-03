@@ -66,7 +66,16 @@
                     <tr>
                         <td>@d.ResourceName</td>
                         <td>@m.Email</td>
-                        <td>@m.DisplayName</td>
+                        <td>
+                            @if (m.UserId is { } userId)
+                            {
+                                <vc:human user-id="@userId" link="None" />
+                            }
+                            else
+                            {
+                                @m.DisplayName
+                            }
+                        </td>
                         <td>@m.CurrentRole</td>
                         <td>@m.ExpectedRole</td>
                         <td>
@@ -229,17 +238,13 @@ else
                                     <tr class="member-row" data-member-state="@((int)m.State)">
                                         <td>@m.Email</td>
                                         <td>
-                                            @{
-                                                var nameDisplay = !string.IsNullOrEmpty(m.DisplayName) && !string.Equals(m.DisplayName, m.Email, StringComparison.Ordinal)
-                                                    ? m.DisplayName : null;
-                                            }
-                                            @if (nameDisplay is not null && m.UserId.HasValue)
+                                            @if (m.UserId is { } userId)
                                             {
-                                                <vc:human user-id="@m.UserId.Value" layout="AvatarName" size="24" link="Admin" />
+                                                <vc:human user-id="@userId" layout="AvatarName" size="24" link="Admin" />
                                             }
-                                            else if (nameDisplay is not null)
+                                            else if (!string.IsNullOrEmpty(m.DisplayName) && !string.Equals(m.DisplayName, m.Email, StringComparison.Ordinal))
                                             {
-                                                @nameDisplay
+                                                @m.DisplayName
                                             }
                                         </td>
                                         <td><span class="badge @badgeClass">@stateLabel</span></td>
