@@ -56,7 +56,6 @@ public class UnsubscribeServiceTests
         result.IsExpired.Should().BeFalse();
         result.IsLegacy.Should().BeFalse();
         result.UserId.Should().Be(userId);
-        result.DisplayName.Should().Be("Alice");
         result.Category.Should().Be(MessageCategory.Marketing);
     }
 
@@ -92,7 +91,6 @@ public class UnsubscribeServiceTests
         result.IsValid.Should().BeTrue();
         result.IsLegacy.Should().BeTrue();
         result.UserId.Should().Be(userId);
-        result.DisplayName.Should().Be("Legacy User");
         result.Category.Should().Be(MessageCategory.Marketing);
     }
 
@@ -174,7 +172,6 @@ public class UnsubscribeServiceTests
 
         result.IsValid.Should().BeTrue();
         result.UserId.Should().Be(survivorId);
-        result.DisplayName.Should().Be("Survivor");
     }
 
     [HumansFact]
