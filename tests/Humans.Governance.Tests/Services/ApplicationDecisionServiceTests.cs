@@ -1486,26 +1486,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetUserApplicationDetailAsync_ReturnsStitchedUserDetailDto()
+    public async Task GetUserApplicationDetailAsync_ReturnsReviewerAndHistoryActorIds()
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
-        var reviewer = new User
-        {
-            Id = reviewerId,
-            DisplayName = "Reviewer",
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            BurnerName = "Reviewer",
-            UserName = "r@t.com",
-            Email = "r@t.com"
-        };
-        var users = new Dictionary<Guid, User> { [reviewerId] = reviewer };
-        _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
-            Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [reviewerId] = reviewer.ToUserInfo() }));
-
         var app = await SeedSubmittedApplicationAsync(userId);
         app.Approve(reviewerId, "Good", Clock);
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -1513,9 +1497,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result.ReviewerName.Should().Be("Reviewer");
+        result.ReviewedByUserId.Should().Be(reviewerId);
         result.History.Should().NotBeEmpty();
-        result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
+        result.History[0].ChangedByUserId.Should().Be(reviewerId);
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1677,7 +1663,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
-        items[0].UserDisplayName.Should().Be("Applicant");
+        items[0].UserId.Should().Be(userId);
         items[0].UserEmail.Should().Be("a@t.com");
     }
 
@@ -1696,26 +1682,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = "a@t.com",
             ProfilePictureUrl = "https://example.com/pic.png"
         };
-        var reviewer = new User
-        {
-            Id = reviewerId,
-            DisplayName = "Admin",
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            BurnerName = "Admin",
-            UserName = "r@t.com",
-            Email = "r@t.com"
-        };
         _userService.GetUserInfoAsync(applicantId, Arg.Any<CancellationToken>())
             .Returns(applicant.ToUserInfo());
-        _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo>
-                {
-                    [applicantId] = applicant.ToUserInfo(),
-                    [reviewerId] = reviewer.ToUserInfo()
-                }));
 
         var app = await SeedSubmittedApplicationAsync(applicantId);
         app.Approve(reviewerId, "Looks good", Clock);
@@ -1725,10 +1693,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result.UserId.Should().Be(applicantId);
-        result.UserDisplayName.Should().Be("Applicant");
         result.UserEmail.Should().Be("a@t.com");
-        result.UserProfilePictureUrl.Should().Be("https://example.com/pic.png");
-        result.ReviewerName.Should().Be("Admin");
+        result.ReviewedByUserId.Should().Be(reviewerId);
         result.History.Should().NotBeEmpty();
     }
 

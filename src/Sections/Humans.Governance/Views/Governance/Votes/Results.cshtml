@@ -190,7 +190,7 @@
                         @foreach (var peek in results.Peeks)
                         {
                             <tr>
-                                <td>@peek.AdminName</td>
+                                <td><vc:human user-id="@peek.AdminUserId" link="None" /></td>
                                 <td>@peek.PeekedAt.ToDateTime(madridZone)</td>
                             </tr>
                         }

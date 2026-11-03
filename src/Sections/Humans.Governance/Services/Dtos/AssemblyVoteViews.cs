@@ -82,7 +82,7 @@ internal sealed record AssemblyVoteResultsView(
     string ActaText);
 
 /// <summary>An Admin who looked at the tally before close. Always visible after close.</summary>
-internal sealed record AssemblyVotePeekView(Guid AdminUserId, string AdminName, Instant PeekedAt);
+internal sealed record AssemblyVotePeekView(Guid AdminUserId, Instant PeekedAt);
 
 /// <summary>
 /// One member's ballot as disclosed after close. Reachable only by Board/Admin (audited) or,

@@ -16,7 +16,7 @@
                         <strong>@SharedLocalizer["ApplicationStatus_" + entry.Status.ToString()]</strong>
             <small class="text-muted">@entry.ChangedAt.ToDate()</small>
                     </div>
-                    <small class="text-muted">@Localizer["Governance_ApplicationDetail_By"] @entry.ChangedBy</small>
+                    <small class="text-muted">@Localizer["Governance_ApplicationDetail_By"] <vc:human user-id="@entry.ChangedByUserId" link="None" /></small>
                     @if (!string.IsNullOrEmpty(entry.Notes))
                     {
                         <p class="mt-1 mb-0 small">@entry.Notes</p>

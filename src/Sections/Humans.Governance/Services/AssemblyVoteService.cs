@@ -577,13 +577,9 @@ internal sealed class AssemblyVoteService(
         var peeks = await repository.GetPeeksAsync(voteId, ct);
         if (peeks.Count == 0) return [];
 
-        var infos = await users.GetUserInfosAsync(
-            peeks.Select(p => p.AdminUserId).Distinct().ToList(), ct);
-
         return peeks
             .Select(p => new AssemblyVotePeekView(
                 p.AdminUserId,
-                infos.TryGetValue(p.AdminUserId, out var info) ? info.BurnerName : "—",
                 p.PeekedAt))
             .ToList();
     }

@@ -180,7 +180,7 @@ internal sealed class GovernanceApplicationsController(
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
-            ReviewerName = application.ReviewerName,
+            ReviewedByUserId = application.ReviewedByUserId,
             ReviewNotes = application.ReviewNotes,
             CanWithdraw = application.CanWithdraw,
             History = application.History
@@ -189,7 +189,7 @@ internal sealed class GovernanceApplicationsController(
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
+                    ChangedByUserId = h.ChangedByUserId,
                     Notes = h.Notes
                 }).ToList()
         };
@@ -310,7 +310,7 @@ internal sealed class GovernanceApplicationsController(
             Language = application.Language,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
-            ReviewerName = application.ReviewerName,
+            ReviewedByUserId = application.ReviewedByUserId,
             ReviewNotes = application.ReviewNotes,
             CanApproveReject = application.CanApproveReject,
             History = application.History
@@ -319,7 +319,7 @@ internal sealed class GovernanceApplicationsController(
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
+                    ChangedByUserId = h.ChangedByUserId,
                     Notes = h.Notes
                 }).ToList()
         };
