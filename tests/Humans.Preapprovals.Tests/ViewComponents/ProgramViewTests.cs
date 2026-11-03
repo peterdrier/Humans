@@ -51,8 +51,8 @@ public sealed class ProgramViewTests
             Guid.NewGuid(), null, 20m, GrantStatus.Open, null, null, issuer, now, null,
             new LocalDate(2027, 5, 1), now, now);
         var program = new ProgramInfo(programId, "Program", null, ProgramKind.FixedPerPerson,
-            20m, null, 62900001, "account", false, new LocalDate(2027, 5, 1), ProgramStatus.Open,
-            issuer, now, now, [first, second, missing], [grant]);
+            20m, null, 62900001, false, new LocalDate(2027, 5, 1), ProgramStatus.Open,
+            [first, second, missing], [grant]);
         object model = form ? ProgramFormViewModel.From(program) : new AdminProgramViewModel
         {
             Program = program, Today = new LocalDate(2027, 3, 1), CanAdminister = true,

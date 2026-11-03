@@ -12,13 +12,9 @@ internal sealed record ProgramInfo(
     decimal? PerPersonAmount,
     decimal? TotalCeiling,
     int HoldedAccountNumber,
-    string HoldedAccountId,
     bool AcceptsApplications,
     LocalDate ClaimBy,
     ProgramStatus Status,
-    Guid CreatedByUserId,
-    Instant CreatedAt,
-    Instant UpdatedAt,
     IReadOnlyList<Guid> ManagerUserIds,
     IReadOnlyList<GrantInfo> Grants)
 {

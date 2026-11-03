@@ -10,7 +10,6 @@ namespace Humans.Preapprovals.Models;
 
 internal sealed class MemberIndexViewModel
 {
-    public required Guid CurrentUserId { get; init; }
     public required LocalDate Today { get; init; }
     public required IReadOnlyList<GrantInfo> Grants { get; init; }
     public required IReadOnlyList<ProgramInfo> OpenPrograms { get; init; }

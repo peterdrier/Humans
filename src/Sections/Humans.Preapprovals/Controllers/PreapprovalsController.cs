@@ -34,7 +34,6 @@ internal sealed class PreapprovalsController(
         var canManage = (await authorization.AuthorizeAsync(User, PreapprovalsPolicies.Manage)).Succeeded;
         return View(new MemberIndexViewModel
         {
-            CurrentUserId = user.Id,
             Today = today,
             Grants = (await preapprovals.GetGrantsForUserAsync(user.Id, ct))
                 .OrderBy(g => g.ClaimBy).ThenBy(g => g.CreatedAt).ToList(),
