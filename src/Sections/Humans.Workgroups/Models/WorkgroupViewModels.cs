@@ -10,7 +10,7 @@ using NodaTime;
 
 namespace Humans.Workgroups.Models;
 
-/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupRhythm"/>, so page and job can't disagree.</summary>
+/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupInfo"/>, so page and job can't disagree.</summary>
 internal sealed class RegisterViewModel
 {
     public required Instant Now { get; init; }

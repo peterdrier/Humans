@@ -429,7 +429,7 @@ anything — every action here is a notice, a flag, or a record; a human still h
 | Active, no Update/meeting in 30 days | Notify coordinators, in-app, once per 30-day window |
 | Applied/Referred, ≥ 14 days old | Notify Board once |
 
-Disposition-overdue is a read-time badge computed by `WorkgroupRhythm` against the caller's
+Disposition-overdue is a read-time badge computed by `WorkgroupInfo` against the caller's
 clock, not a job action — a cached register can never show a stale badge. "Request a status
 update" is a member action (any signed-in human, as often as they like), not part of the job.
 
@@ -522,7 +522,7 @@ picker labels and roster profile badges load a member dictionary.
   (`Workgroups.Register`), single
   entry for the whole register, cleared on every write. The shared guarded loader prevents
   loads begun before a clear from repopulating it with the old register. Nothing time-derived is cached —
-  `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
+  `WorkgroupInfo` computes rhythm badges against the caller's clock; document comment windows are evaluated by `WorkgroupDocumentInfo`.
 - **Member ordering** — views show coordinators before other members, then by join date. Coordinator names and selection slots keep join-date order; the details page reuses one ordered member list for its roster and member selectors.
 - **Document ordering** — views order documents newest first. The document page sorts comments once: populated categories follow their earliest comment, and each thread keeps chronological order.
 - **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started meeting directly, and Calendar consumers order feed items.
